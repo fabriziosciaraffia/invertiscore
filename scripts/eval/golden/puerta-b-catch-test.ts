@@ -72,7 +72,7 @@ import {
 } from "../../../src/lib/deptos/respuesta";
 import { COMUNAS_DISPONIBLES } from "../../../src/lib/comunas-disponibles";
 import { calcularResumenDeLaNoche, guardarPendienteGoogle, leerPendiente, reclavarPendienteGoogle } from "../../../src/lib/deptos/servidor";
-import { PIE_DEPTOS, PIES_DEPTOS, PLAZO_DEPTOS } from "../../../src/lib/deptos/estandar";
+import { PIE_DEPTOS, PIES_DEPTOS, PLAZO_COLUMNAS_25, PLAZO_DEPTOS, PLAZO_POR_DEFECTO } from "../../../src/lib/deptos/estandar";
 import { MANUAL_VACIO, perfilDeBusqueda, validarCambiosPerfil } from "../../../src/lib/perfil-busqueda";
 import { correspondeReactivacion, DIAS_ENTRE_REACTIVACIONES, DIAS_SIN_ANALIZAR_REACTIVACION, queEnviarSemanal, rangoSemanal } from "../../../src/lib/guia/semanal";
 import { origenSintetico } from "../../../src/lib/guia/guia-servidor";
@@ -183,10 +183,11 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
         // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockup 3b-dashboard.html) · la modalidad NO se escribe por defecto: /deptos ya no la pregunta y
         // el perfil del dashboard se la pregunta a la cuenta nueva («¿Cómo lo arriendas?»); solo una elección explícita de
         // renta corta se guarda (tier PUERTA-B-DASHBOARD §5). Sin respuesta, todo sigue en renta larga.
-        if (p.pie_pct !== 20 || p.plazo_anios !== 25 || p.precio_min_uf !== 3000 || p.precio_max_uf !== 4000 || JSON.stringify(p.comunas) !== '["Ñuñoa"]' || JSON.stringify(p.dormitorios) !== "[2]" || p.modalidad !== null)
-          F(`1 · la cuenta no nace con el perfil de los chips (pie 20 %, 25 años, el rango): ${JSON.stringify(p)}`);
+        // ⚠ ACTA (30-oct-2026, goal «financiamiento por defecto a 30 años») · el financiamiento por defecto de todo el sitio pasó a pie 20 % y 30 años (deptos/estandar.ts › PLAZO_POR_DEFECTO); la cuenta nueva nace con 30.
+        if (p.pie_pct !== 20 || p.plazo_anios !== 30 || p.precio_min_uf !== 3000 || p.precio_max_uf !== 4000 || JSON.stringify(p.comunas) !== '["Ñuñoa"]' || JSON.stringify(p.dormitorios) !== "[2]" || p.modalidad !== null)
+          F(`1 · la cuenta no nace con el perfil de los chips (pie 20 %, 30 años, el rango): ${JSON.stringify(p)}`);
       }
-      if (PIE_DEPTOS !== 20 || PLAZO_DEPTOS !== 25) F("1 · el estándar no es pie 20 % y 25 años");
+      if (PIE_DEPTOS !== 20 || PLAZO_DEPTOS !== 30 || PLAZO_POR_DEFECTO !== 30 || PLAZO_DEPTOS !== PLAZO_POR_DEFECTO) F("1 · el estándar no es pie 20 % y 30 años (o /deptos no lee la constante del sitio)");
       if (JSON.stringify(comunasParaAgregar(["Ñuñoa", "Macul"], ["Ñuñoa", "La Reina"])) !== '["La Reina"]') F("1 · al entrar, las comunas a agregar repiten las que ya tiene");
       if (comunasParaAgregar(["a", "b", "c", "d", "e", "f", "g", "h"], ["x"]).length !== 0 || MAX_COMUNAS_PERFIL !== 8) F("1 · agregar comunas pasa el tope del perfil");
       // ⚠ ACTA (22-oct-2026, ENTRADA-ALTA) · el cuerpo del alta se mudó a lib/deptos/alta-servidor.ts (ejecutarAlta), que comparten la ruta del alta y la entrada por código: la regla se lee en los dos archivos.
@@ -268,6 +269,10 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       if (/sondaConPatch|runAnalysis|evaluarEstandar25|prefetch/.test(srv) || !/admin\.rpc\("deptos_conteo"/.test(srv)) F("2 · la respuesta calcula en vivo en vez de leer la evaluación de la noche");
       const mig = leer("supabase/migrations/20261016_puerta_b_deptos.sql");
       if (!/count\(\*\) filter \(where ae\.veredicto_20_25 = 'COMPRAR'\)::int,\s*count\(\*\) filter \(where ae\.veredicto_30_25 = 'COMPRAR'\)::int/.test(mig)) F("2 · el conteo no cuenta los Comprar a 25 años con pie 20 % y 30 %");
+      // ⚠ ACTA (30-oct-2026, goal «financiamiento por defecto a 30 años») · el financiamiento por defecto de todo el sitio pasó a pie 20 % y 30 años (deptos/estandar.ts › PLAZO_POR_DEFECTO); el conteo recibe el
+      // plazo y a 30 lee las columnas de 30 (la migración del 30-oct; la de 25 años sigue para la opción de 25).
+      const mig30 = leer("supabase/migrations/20261030_plazo_por_defecto_30.sql");
+      if (!/count\(\*\) filter \(where \(case when plazo = 30 then ae\.veredicto_20 else ae\.veredicto_20_25 end\) = 'COMPRAR'\)::int/.test(mig30)) F("2 · el conteo a 30 años no lee las columnas de 30");
       // ⚠ ACTA (23-oct-2026, mockup `1b-deptos.html`) · el select de comuna solo ofrece la cobertura (§8): en la página no hay
       // estado «fuera»; la ruta sigue respondiéndolo para una URL armada a mano.
     }
@@ -285,7 +290,8 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       if (textoBusca(p) !== "2 dormitorios, Ñuñoa, entre UF 3.000 y 4.000") F(`3 · el correo no dice el rango: ${textoBusca(p)}`);
       if (!validarCambiosPerfil({ precioMinUf: 3000, precioMaxUf: 4000 }).ok || validarCambiosPerfil({ precioMinUf: 4000, precioMaxUf: 3000 }).ok) F("3 · el piso del perfil no se valida contra el tope");
       const o = origenSintetico("u1", { piePct: null, plazoAnios: null, comunas: ["Ñuñoa"], dormitorios: [2] }, { tasa: 4.07 });
-      if (o.analysisId !== null || o.tasa !== 4.07 || o.piePct !== 20 || o.plazoAnios !== 25 || !o.sintetico) F("3 · el origen sintético no es pie 20 %, 25 años y la tasa de mercado, sin informe");
+      // ⚠ ACTA (30-oct-2026, goal «financiamiento por defecto a 30 años») · el financiamiento por defecto de todo el sitio pasó a pie 20 % y 30 años (deptos/estandar.ts › PLAZO_POR_DEFECTO); el sintético también.
+      if (o.analysisId !== null || o.tasa !== 4.07 || o.piePct !== 20 || o.plazoAnios !== 30 || !o.sintetico) F("3 · el origen sintético no es pie 20 %, 30 años y la tasa de mercado, sin informe");
       const sem = sinComentarios(leer("src/lib/guia/semanal-servidor.ts"));
       if (!/from\("perfil_busqueda"\)\.select\("user_id"\)\s*\.not\("comunas", "is", null\)\.not\("dormitorios", "is", null\)\.not\("precio_max_uf", "is", null\)\.is\("semanal_baja_at", null\)/.test(sem)) F("3 · quien solo tiene su perfil a mano no entra al semanal");
       // Desde el 20-oct-2026 el sintético también cubre a quien tiene informes que no sirven de origen (PRIMERA-SELECCION §11).
@@ -470,7 +476,8 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
         F("7 · la evaluación de la noche no escribe el estándar de 25 años");
       // ⚠ ACTA (23-oct-2026, goal Explorar) · el estándar de 25 años y el recálculo del pop-up comparten la sonda (sondaDeCandidato); el plazo sigue siendo PLAZO_DEPTOS.
       const estandar = leer("src/lib/avisos/estandar-deptos.ts");
-      if (!/sondaDeCandidato\(c, \{ piePct: pie, plazoAnios: PLAZO_DEPTOS \}, cfg, asOf\)/.test(estandar) || !/plazo: combo\.plazoAnios, tasaMercado: cfg\.tasa/.test(estandar)) F("7 · el estándar no se evalúa a 25 años");
+      // ⚠ ACTA (30-oct-2026) · las columnas *_25 son el mismo aviso a 25 años con su constante propia (PLAZO_COLUMNAS_25 = 25).
+      if (PLAZO_COLUMNAS_25 !== 25 || !/sondaDeCandidato\(c, \{ piePct: pie, plazoAnios: PLAZO_COLUMNAS_25 \}, cfg, asOf\)/.test(estandar) || !/plazo: combo\.plazoAnios, tasaMercado: cfg\.tasa/.test(estandar)) F("7 · el estándar no se evalúa a 25 años");
     }
     // ── 8 · LA PÁGINA QUE CONVIERTE (16-oct-2026, segunda pasada) ──
     {
@@ -679,3 +686,7 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
 if (require.main === module) {
   runPuertaBTier().then((r) => { process.exitCode = r.hard ? 1 : 0; });
 }
+
+// ACTA DE MUTACIÓN (30-oct-2026, goal «financiamiento por defecto a 30 años»). Los predicados reescritos, 4 de 4 en ROJO
+// (runner `mutar-recorrido.cjs` en el scratchpad de la sesión cb466df3; cada archivo restaurado byte a byte): B1 la cuenta nace con 25 · B2 el conteo a 30 lee las columnas de 25 · B3 las columnas de 25 se evalúan a 30 ·
+// B4 la constante de 25 cambia.

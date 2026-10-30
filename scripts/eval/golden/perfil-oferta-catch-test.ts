@@ -114,7 +114,8 @@ export function runPerfilOfertaTier(): { hard: number } {
       if (comp.indexOf("if (hecho)") < 0 || comp.indexOf("if (hecho)") > comp.indexOf("if (!aviso) return null;")) F("2 · el «Listo» se pierde cuando el servidor deja de mandar el aviso");
       if (!/body: JSON\.stringify\(\{ \.\.\.cambiosDeAjuste\(a, actual\.comunas\), origen: ORIGEN_SIN_OFERTA \}\)/.test(comp) || !/router\.refresh\(\);/.test(comp)) F("2 · el botón no guarda el ajuste en el perfil o no pide la página de nuevo");
       const srv = sinComentarios(leer("src/lib/casa/sin-oferta-servidor.ts"));
-      if (!/const rango = rangoSemanal\(perfil\);/.test(srv) || !/comunas: \[\.\.\.comunas, \.\.\.vecinas\], dorms: perfil\.dormitorios, uf_min: rango\.ufMin, uf_max: rango\.ufMax, desde \}\)/.test(srv)) F("2 · el aviso no cuenta con el rango del semanal, sus comunas y las vecinas");
+      if (!/const rango = rangoSemanal\(perfil\);/.test(srv) || !/comunas: \[\.\.\.comunas, \.\.\.vecinas\], dorms: perfil\.dormitorios, uf_min: rango\.ufMin, uf_max: rango\.ufMax, desde, plazo: PLAZO_DEPTOS \}\)/.test(srv)) F("2 · el aviso no cuenta con el rango del semanal, sus comunas y las vecinas");
+      // ⚠ ACTA (30-oct-2026, goal «financiamiento por defecto a 30 años») · el conteo recibe el plazo del sitio (PLAZO_DEPTOS = 30).
       const put = sinComentarios(leer("src/app/api/perfil-busqueda/route.ts"));
       if (!/if \(body\.origen === ORIGEN_SIN_OFERTA\)/.test(put) || !/event: "casa_ajuste"/.test(put)) F("2 · el toque del aviso no se mide");
     }
@@ -190,7 +191,7 @@ export function runPerfilOfertaTier(): { hard: number } {
       }
       // Cableado: el servidor cuenta el chip de abajo; el correo usa la MISMA cuenta que el dashboard.
       const srv = sinComentarios(leer("src/lib/casa/sin-oferta-servidor.ts"));
-      if (!/const abajo = chipDeAbajo\(rango\);/.test(srv) || !/abajo \? admin\.rpc\("deptos_conteo", \{ comunas, dorms: perfil\.dormitorios, uf_min: abajo\.min \?\? 0, uf_max: abajo\.max, desde \}\)/.test(srv) || !/avisoSinOferta\(\{ piePct: perfil\.piePct, comunas \}, propias, filas\.filter\(\(f\) => vecinas\.includes\(f\.comuna\)\), filasAbajo\)/.test(srv)) F("4 · el servidor no cuenta el chip de abajo o no se lo pasa al aviso");
+      if (!/const abajo = chipDeAbajo\(rango\);/.test(srv) || !/abajo \? admin\.rpc\("deptos_conteo", \{ comunas, dorms: perfil\.dormitorios, uf_min: abajo\.min \?\? 0, uf_max: abajo\.max, desde, plazo: PLAZO_DEPTOS \}\)/.test(srv) || !/avisoSinOferta\(\{ piePct: perfil\.piePct, comunas \}, propias, filas\.filter\(\(f\) => vecinas\.includes\(f\.comuna\)\), filasAbajo\)/.test(srv)) F("4 · el servidor no cuenta el chip de abajo o no se lo pasa al aviso");
       const sem = sinComentarios(leer("src/lib/guia/semanal-servidor.ts"));
       if (!/const cuenta = await contarSinOferta\(admin, userId, perfil\);/.test(sem) || !/salidas: cuenta\?\.aviso\?\.salidas \?\? \[\]/.test(sem)) F("4 · el correo vacío no usa la cuenta del dashboard");
       if (!/salidas: verdad && verdad\.salidas\.length > 0\s*\? \{ linea: lineaDeSalidas\(verdad\.salidas\), botones: verdad\.salidas\.map\(\(s\) => \(\{ boton: s\.boton, url: enlaces\.ajuste\(parametroDeAjuste\(s\.ajuste\)\) \}\)\) \}/.test(sem)) F("4 · el envío del vacío no manda las salidas con su ajuste en un toque");
@@ -206,3 +207,6 @@ export function runPerfilOfertaTier(): { hard: number } {
 if (require.main === module) {
   process.exitCode = runPerfilOfertaTier().hard ? 1 : 0;
 }
+
+// ACTA DE MUTACIÓN (30-oct-2026, goal «financiamiento por defecto a 30 años»): O1 el aviso sin oferta cuenta sin el plazo y
+// O2 el chip de abajo sin el plazo, 2 de 2 en ROJO (runner `mutar-recorrido.cjs` en el scratchpad de la sesión cb466df3; cada archivo restaurado byte a byte).

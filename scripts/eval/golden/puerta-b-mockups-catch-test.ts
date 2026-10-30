@@ -244,7 +244,7 @@ export async function runPuertaBMockupsTier(): Promise<{ hard: number }> {
       else {
         const filas = ["b", "a", "c"].map((id) => ({ id, comuna: "Ñuñoa", superficie_m2: 50, dormitorios: 2, banos: 1, precio_uf: 3500, score_cron: 80, flujo: id === "c" ? 200 : 100, pub_estado: null, pub_at: null }));
         const admin = (orden: typeof filas) => ({ rpc: async () => ({ data: orden, error: null }) }) as never;
-        const p = { comunas: ["Ñuñoa"], dorms: [2], ufMin: 0, ufMax: 4000, pie: 20 };
+        const p = { comunas: ["Ñuñoa"], dorms: [2], ufMin: 0, ufMax: 4000, pie: 20, plazo: 30 };
         const uno2 = (await dep.primerosDeptos(admin(filas), p)).map((d) => d.avisoId).join();
         const otro2 = (await dep.primerosDeptos(admin([...filas].reverse()), p)).map((d) => d.avisoId).join();
         if (uno2 !== "c,a,b" || otro2 !== "c,a,b") F(`4 · los primeros de la noche cambian de orden con el orden de la RPC (${uno2} / ${otro2})`);

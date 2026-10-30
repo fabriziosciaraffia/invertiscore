@@ -118,10 +118,13 @@ async function main(): Promise<void> {
       ok(m.cortados.length === 0, `ALTO · quedan cortados: ${m.cortados.join(" | ")}`);
       ok(m.anchos.length === 0, `ANCHO · no caben a lo ancho (se cortan o se salen): ${m.anchos.join(" | ")}`);
       if (e === "a" || e === "a0") ok(m.titulo === 1, `LÍNEAS · «No te quedan análisis.» ocupa ${m.titulo} líneas`);
+      // ⚠ ACTA (30-oct-2026, goal del recorrido real) · el pop-up lleva la imagen del depto a la izquierda de la tarjeta gris
+      // (decisión de Fabrizio) y a 390 px sus líneas ya no caben en una: se envuelven, hasta dos cada una, y ninguna se corta
+      // (ANCHO, arriba). ALTO sigue igual: el panel entero en 390 × 740, sin scroll.
       if (e.startsWith("a") || e.startsWith("d")) {
-        ok(m.nombre === 1, `LÍNEAS · comuna · tipología · m² · precio ocupa ${m.nombre} líneas`);
-        if (e !== "d2") ok(m.linea === 1, `LÍNEAS · veredicto · flujo ocupa ${m.linea} líneas`);
-        ok(m.incluye === 1 && m.incluyeTexto === "El informe incluye el enlace a la publicación.", `LÍNEAS · la línea del enlace: «${m.incluyeTexto}» en ${m.incluye} líneas`);
+        ok(m.nombre >= 1 && m.nombre <= 2, `LÍNEAS · comuna · tipología · m² · precio ocupa ${m.nombre} líneas`);
+        if (e !== "d2") ok(m.linea >= 1 && m.linea <= 2, `LÍNEAS · veredicto · flujo ocupa ${m.linea} líneas`);
+        ok(m.incluye >= 1 && m.incluye <= 2 && m.incluyeTexto === "El informe incluye el enlace a la publicación.", `LÍNEAS · la línea del enlace: «${m.incluyeTexto}» en ${m.incluye} líneas`);
       }
       if (e === "a") {
         ok(m.filaUna === true && /^Solo para cuentas nuevas\s*·?\s*vence mañana 18:07$/i.test((m.filaTexto ?? "").replace(/\s+/g, " ")), `LÍNEAS · la oferta no va en una fila: «${m.filaTexto}» (una fila: ${m.filaUna})`);

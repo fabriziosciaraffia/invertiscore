@@ -188,7 +188,7 @@ export async function runPuertaBDashboardTier(): Promise<{ hard: number }> {
   if (mapa.urlMapaCasa(e, "LLAVE") !== mapa.urlMapaCasa({ ...e, lat: e.lat + 0.000001 }, "LLAVE")) F("3 · la URL cambia con una milésima de grado: no se cachea");
   const { MapaCasa } = require(join(RAIZ, "src/app/dashboard/mapa-casa")) as typeof import("../../../src/app/dashboard/mapa-casa");
   const datosMapa = {
-    encuadre: e, url: "https://maps.googleapis.com/maps/api/staticmap?x=1",
+    encuadre: e, url: "https://maps.googleapis.com/maps/api/staticmap?x=1", urlOscuro: "https://maps.googleapis.com/maps/api/staticmap?x=2",
     seleccion: dentro.map((q, i) => ({ n: i + 1, avisoId: `a${i + 1}`, x: q!.x, y: q!.y })),
     grises: [{ x: 10, y: 10 }, { x: 20, y: 20 }, { x: 30, y: 30 }], nSeleccion: 5, nConvienen: 312, nOtros: 307, desdePerfil: true, comunas: ["Providencia"],
   };
@@ -207,7 +207,9 @@ export async function runPuertaBDashboardTier(): Promise<{ hard: number }> {
   // dibuja el mapa del dashboard, con los grises; RESPALDO-MAPA §3).
   if (!/qs\.set\("mapa", encabezado === "dentro" \? "1" : "casa"\);/.test(ps) || !/data-primera="titulo">\{titulo\}<\/h2>\s*\{datos\?\.mapa && items\.length > 0 && <div data-primera="mapa"><MapaCasa datos=\{datos\.mapa\} variante=\{encabezado === "casa" \? "casa" : "seleccion"\} totalNoche=\{datos\.totalNoche \?\? null\} \/><\/div>\}/.test(ps)) F("1 · «Estás dentro» no pide el mapa o no lo dibuja bajo el título con la variante de la selección");
   if (!/const conMapa = \(pideMapa === "1" \|\| pideMapa === "casa"\)[\s\S]{0,200}?datosMapaCasa\(admin, user\.id, r\.items\.map\(\(i\) => \(\{ avisoId: i\.avisoId, comuna: i\.comuna \}\)\), undefined, \{ grises: pideMapa === "casa" \}\)/.test(codigo("src/app/api/deptos/primeros/route.ts"))) F("1 · la ruta de los primeros no arma el mapa sin grises");
-  if (!/class="ca-mapa-fondo" style="background-image:url\(&quot;https:\/\/maps\.googleapis\.com/.test(htmlMapa) || renderToStaticMarkup(createElement(MapaCasa, { datos: { ...datosMapa, url: null } })).includes("ca-mapa-fondo")) F("3 · la imagen de fondo no va como fondo (o aparece sin URL)");
+  // ⚠ ACTA (30-oct-2026, goal del recorrido real, punto 9) · la imagen lleva sus dos versiones en variables (--mapa-claro y
+  // --mapa-oscuro) y el tema decide cuál se baja; la oscura es el estilo oscuro de Franco, no la clara invertida (EXPLORAR-RECORRIDO §9).
+  if (!/class="ca-mapa-fondo" style="--mapa-claro:url\(&quot;https:\/\/maps\.googleapis\.com\/maps\/api\/staticmap\?x=1&quot;\);--mapa-oscuro:url\(&quot;https:\/\/maps\.googleapis\.com\/maps\/api\/staticmap\?x=2&quot;\)"/.test(htmlMapa) || renderToStaticMarkup(createElement(MapaCasa, { datos: { ...datosMapa, url: null } })).includes("ca-mapa-fondo")) F("3 · la imagen de fondo no va como fondo (o aparece sin URL)");
   const srv = codigo("src/lib/casa/mapa-casa-servidor.ts");
   if (!/const otros = explorar\.pines\.filter\(\(p\) => !enSel\.has\(p\.avisoId\)\);/.test(srv) || !/pinesExplorar\(admin, filtros\)/.test(srv) || !srv.includes('.from("scraped_properties").select("id, lat, lng").in("id", ids.slice(0, 50)).order("id").limit(50)')) F("3 · los grises no son los de Explorar menos la selección, o las coordenadas no salen de la tabla de avisos");
   if (htmlMapa.includes("ca-mapa-rojo") && !/\.ca-mapa-rojo circle \{ fill: var\(--signal-red\)/.test(leer("src/app/dashboard/casa.css")) || !/\.ca-mapa-gris circle \{ fill: #C9C5BB; \}/.test(leer("src/app/dashboard/casa.css"))) F("3 · los pines de la selección no son rojos o los demás no son grises");
@@ -387,3 +389,6 @@ if (require.main === module) {
 //   23/23 en rojo. Lo que el QA cazó y el tier no medía antes: la modalidad nacía escrita por defecto en /deptos (la pregunta
 //   nacía contestada; perfilManualDeElecciones) y contestar «Arriendo tradicional» igual a lo inferido no llegaba al PUT
 //   (cambiosDelPerfil con `contestadas`): los dos entraron en §5.
+
+// ACTA DE MUTACIÓN (30-oct-2026, goal del recorrido real, punto 9): DB1 el mapa de la selección sin su versión oscura, en
+// ROJO (runner `mutar-recorrido.cjs` en el scratchpad de la sesión cb466df3; cada archivo restaurado byte a byte).

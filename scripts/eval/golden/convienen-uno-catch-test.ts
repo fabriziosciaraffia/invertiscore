@@ -1,13 +1,15 @@
 // ============================================================================
 // TIER CONVIENEN-UNO — «convienen» explicado y un solo número en todo el sitio (30-oct-2026, goal de Fabrizio).
 //
-//   1 · LA LÍNEA MUESTRA LA TASA DEL MOTOR: bajo el número del mapa de /explorar, con y sin cuenta, «Con pie 20 %, 25 años y
-//       tasa X % · ¿Cómo se calcula?». El pie y el plazo son los de los filtros; la tasa, la de `config.tasa_hipotecaria`
-//       —la misma que leen la evaluación de la noche y todo pie o plazo calculado—, leída por `tasaDelMotor` y bajada por la
-//       página. Nunca un número fijo: con otra tasa, la línea dice otra.
-//   2 · LA HOJA «¿CÓMO SE CALCULA?» EXISTE CON Y SIN CUENTA: cuatro ideas (cada noche y con qué crédito; qué quiere decir
-//       «conviene», con la frase de Fabrizio y «algunos te piden poner un poco cada mes»; de dónde sale la tasa y cuándo se
-//       revisó; con otro pie o plazo cambia) y un solo botón, «Entendido». Al abrirla, `explorar_como_se_calcula`.
+//   1 · LA TASA DEL MOTOR: la de `config.tasa_hipotecaria` —la misma que leen la evaluación de la noche y todo pie o plazo
+//       calculado—, leída por `tasaDelMotor` y bajada por la página con y sin cuenta. Nunca un número fijo: con otra tasa,
+//       otro texto.
+//   2 · LA HOJA «¿CÓMO SE CALCULA?» EXISTE CON Y SIN CUENTA, con un solo botón, «Entendido». Al abrirla,
+//       `explorar_como_se_calcula`.
+// ⚠ ACTA (30-oct-2026, goal del recorrido real de Fabrizio) · la línea bajo el número del mapa se retiró con la tarjeta del
+// número: la tasa la dicen ahora «¿Cómo se calcula?» y Filtros («4,07 % · promedio de los bancos»). La hoja pasó de cuatro
+// ideas a los tres párrafos del recorrido (el perfil estándar —pie, plazo y tasa, de la constante y del motor—, que se cambia
+// en Filtros, y qué quiere decir el chip ✓ Comprar); sin la fecha de revisión de la tasa. §1 y §2 reescritos con su mutación.
 //   3 · UN SOLO NÚMERO DE «CONVIENEN»: la landing, /explorar y su bienvenida, el botón «Explorar los N de Santiago» del
 //       dashboard y la prueba de /deptos salen de `cuantosConvienen` sobre el universo de la vista global (`convienenHoy`);
 //       ninguna lee el `convienen` del resumen de la noche (otro universo: 4.767 contra 4.770 el 30-oct-2026), y ningún
@@ -61,58 +63,60 @@ const PINES: po.PinMapa[] = [
 export async function runConvienenUnoTier(): Promise<{ hard: number }> {
   const fallas: string[] = [];
   const F = (m: string) => fallas.push(m);
-  console.log("\n─── TIER CONVIENEN-UNO (la línea con la tasa del motor, «¿Cómo se calcula?» con y sin cuenta, un solo número de «convienen» · 0 tokens) ───");
+  console.log("\n─── TIER CONVIENEN-UNO (la tasa del motor, «¿Cómo se calcula?» con y sin cuenta, un solo número de «convienen» · 0 tokens) ───");
 
-  // ── 1 · LA LÍNEA MUESTRA LA TASA DEL MOTOR ──
-  if (po.lineaSupuestos(G, 4.07) !== "Con pie 20 %, 25 años y tasa 4,07 %") F(`1 · la línea no dice el crédito con la tasa: «${po.lineaSupuestos(G, 4.07)}»`);
-  if (po.lineaSupuestos({ ...G, pie: 30, plazo: 30 }, 5.5) !== "Con pie 30 %, 30 años y tasa 5,5 %") F("1 · con otro pie, plazo o tasa, la línea no dice los suyos");
-  if (po.lineaSupuestos(G, null) !== "Con pie 20 % y 25 años" || /\d+,\d+/.test(po.lineaSupuestos(G, null))) F("1 · sin la tasa del motor, la línea inventa una");
+  // ── 1 · LA TASA DEL MOTOR ──
+  const C = po.COMO_SE_CALCULA;
+  if (!C.estandar(4.07).includes("tasa de 4,07 %") || !C.estandar(5.3).includes("tasa de 5,3 %") || /\d+,\d+ %/.test(C.estandar(null))) F("1 · la hoja no dice la tasa que le llega (o, sin ella, inventa una)");
+  if (po.PORTAL_COPY.tasaFija(4.07) !== "4,07 % · promedio de los bancos" || po.PORTAL_COPY.tasaFija(5.3) !== "5,3 % · promedio de los bancos") F("1 · Filtros no dice la tasa que le llega con «promedio de los bancos»");
+  // Los números del perfil estándar salen de la constante del sitio, no escritos a mano.
+  if (!/pie de \$\{PIE_POR_DEFECTO\} %, crédito a \$\{PLAZO_POR_DEFECTO\} años y \$\{/.test(codigo("src/lib/explorar/portal.ts"))) F("1 · el pie o el plazo de la hoja no salen de la constante del financiamiento por defecto");
   const cli = codigo("src/app/explorar/explorar-cliente.tsx");
-  if (!/\{lineaSupuestos\(filtros, inicial\.tasa\?\.tasa \?\? null\)\} ·\{" "\}\s*<button type="button" className="ex-numero-como" data-explorar="como-se-calcula" onClick=\{abrirCalculo\}>\{COMO_SE_CALCULA\.enlace\}<\/button>/.test(cli)) F("1 · bajo el número del mapa no va la línea con la tasa y «¿Cómo se calcula?»");
   // La tasa la lee el servidor de la misma fila que el motor, y la página la baja en las dos ramas.
   const cache = codigo("src/lib/explorar/portal-cache.ts");
-  const delMotor = /\.from\("config"\)\.select\("value, updated_at"\)\.eq\("key", "tasa_hipotecaria"\)\.maybeSingle\(\)/.test(cache);
+  const delMotor = /\.from\("config"\)\.select\("value"\)\.eq\("key", "tasa_hipotecaria"\)\.maybeSingle\(\)/.test(cache);
   const motorNoche = /\.in\("key", \["uf_value", "tasa_hipotecaria"\]\)/.test(codigo("src/app/api/cron/evaluar-avisos/route.ts"));
   const motorCalculo = /\.in\("key", \["uf_value", "tasa_hipotecaria"\]\)/.test(codigo("src/lib/guia/guia-servidor.ts"));
-  if (!delMotor || !motorNoche || !motorCalculo) F("1 · la tasa de la línea no sale de la misma fila que lee el motor (config.tasa_hipotecaria)");
+  if (!delMotor || !motorNoche || !motorCalculo) F("1 · la tasa de la hoja y de Filtros no sale de la misma fila que lee el motor (config.tasa_hipotecaria)");
   const pag = codigo("src/app/explorar/page.tsx");
   const abierta = pag.slice(pag.indexOf("async function ExplorarAbierto"), pag.indexOf("async function ExplorarConDatos"));
   const conCuenta = pag.slice(pag.indexOf("async function ExplorarConDatos"));
   if (!/tasaDelMotor\(\),/.test(abierta) || !/tasaDelMotor\(\),/.test(conCuenta) || !/inicial=\{\{ filtros, orden, n, cuenta: null, tasa, convienen \}\}/.test(abierta) || !/inicial=\{\{ filtros, orden, n, cuenta, tasa, convienen: null \}\}/.test(conCuenta))
     F("1 · la página no baja la tasa del motor con y sin cuenta");
-  // En el navegador: con otra tasa, otra línea (ningún número fijo en el componente).
+  if (!/\{calculo && <HojaCalculo tasa=\{inicial\.tasa\} sinCuenta=\{sinCuenta\} alCerrar=\{\(\) => setCalculo\(false\)\} \/>\}/.test(cli) || !/<HojaFiltros\s+filtros=\{filtros\}\s+tasa=\{inicial\.tasa\}/.test(cli)) F("1 · la hoja o Filtros no reciben la tasa que bajó la página");
+  // En el navegador, el enlace está con y sin cuenta.
   const modCli = (() => { try { return require(join(RAIZ, "src/app/explorar/explorar-cliente")) as { ExplorarCliente: FC<Record<string, unknown>> }; } catch (e) { F(`0 · no carga explorar-cliente: ${(e as Error).message}`); return null; } })();
   const pintar = (cuenta: unknown, tasa: po.TasaDelMotor | null) =>
     modCli ? dibujar(createElement(modCli.ExplorarCliente, { inicial: { filtros: G, orden: "puntaje", n: 3, cuenta, tasa, convienen: cuenta ? null : 3 } })) : "";
   for (const [cuenta, que] of [[cuentaBase(), "con cuenta"], [null, "sin cuenta"]] as const) {
-    const a = texto(pintar(cuenta, { tasa: 4.07, revisada: "29 de octubre" }));
-    const b = texto(pintar(cuenta, { tasa: 5.3, revisada: "2 de noviembre" }));
-    if (!a.includes("Con pie 20 %, 25 años y tasa 4,07 % · ¿Cómo se calcula?") || !b.includes("Con pie 20 %, 25 años y tasa 5,3 % · ¿Cómo se calcula?")) F(`1 · ${que}, la línea no muestra la tasa que le llega (o la tiene fija)`);
-    if (!pintar(cuenta, null).includes('data-explorar="como-se-calcula"')) F(`2 · ${que}, no hay «¿Cómo se calcula?»`);
+    if (!/data-explorar="como-se-calcula"[^>]*>[\s\S]{0,120}¿Cómo se calcula\?/.test(pintar(cuenta, { tasa: 4.07 }))) F(`2 · ${que}, no hay «¿Cómo se calcula?» arriba`);
   }
 
   // ── 2 · LA HOJA «¿CÓMO SE CALCULA?», CON Y SIN CUENTA ──
   const modHoja = (() => { try { return require(join(RAIZ, "src/app/explorar/hoja-calculo")) as { HojaCalculo: FC<Record<string, unknown>> }; } catch (e) { F(`2 · no carga la hoja: ${(e as Error).message}`); return null; } })();
   if (modHoja) {
     for (const sinCuenta of [false, true]) {
-      const h = dibujar(createElement(modHoja.HojaCalculo, { filtros: G, tasa: { tasa: 4.07, revisada: "29 de octubre" }, sinCuenta, alCerrar: () => {} }));
+      const h = dibujar(createElement(modHoja.HojaCalculo, { tasa: { tasa: 4.07 }, sinCuenta, alCerrar: () => {} }));
       const t = texto(h);
       const que = sinCuenta ? "sin cuenta" : "con cuenta";
       if (!/role="dialog"/.test(h) || !t.startsWith("¿Cómo se calcula?")) F(`2 · ${que}, la hoja no es un diálogo con su título`);
-      if ((h.match(/<li\b/g) ?? []).length !== 4) F(`2 · ${que}, la hoja no lleva cuatro ideas`);
+      if ((h.match(/<p\b/g) ?? []).length !== 3) F(`2 · ${que}, la hoja no lleva tres párrafos`);
       if ((h.match(/<button\b/g) ?? []).length !== 1 || !/data-explorar="calculo-ok"[^>]*>Entendido<\/button>/.test(h)) F(`2 · ${que}, la hoja no tiene un solo botón, «Entendido»`);
-      if (!t.includes("Cada noche Franco revisa los deptos en venta de Santiago y calcula cuáles convienen con un crédito de pie 20 %, 25 años y tasa 4,07 %.")) F(`2 · ${que}, la primera idea no dice la noche y el crédito`);
-      if (!t.includes("Que convenga quiere decir que Franco le da Comprar: su nota de 1 a 100 llega a 70, o el arriendo lo paga solo sin estar caro para su zona. Y en ningún caso tiene señales graves, como perder mucha plata todos los meses."))
-        F(`2 · ${que}, «conviene» no es la frase de Fabrizio`);
-      const poner = sinCuenta ? "Algunos te piden poner un poco cada mes: con tu cuenta gratis, cada tarjeta te dice cuánto." : "Algunos te piden poner un poco cada mes: cada tarjeta te dice cuánto.";
-      if (!t.includes(poner)) F(`2 · ${que}, la hoja no avisa que algunos piden poner plata cada mes (o promete una cifra que sin cuenta va borrosa)`);
-      if (!t.includes("según el Banco Central. Franco la revisa cada mañana; la última vez, el 29 de octubre.")) F(`2 · ${que}, la hoja no dice de dónde sale la tasa ni cuándo se revisó`);
-      if (!t.includes("Con otro pie o plazo el resultado cambia. Con cuenta lo ajustas en Filtros, y siempre puedes cambiarlo antes de analizar.")) F(`2 · ${que}, la hoja no dice que con otro pie o plazo cambia`);
+      if (!t.includes("Cada noche Franco revisa los deptos en venta de Santiago y calcula cuáles convienen con un perfil de búsqueda estándar: pie de 20 %, crédito a 30 años y tasa de 4,07 %, el promedio de los créditos hipotecarios según el Banco Central."))
+        F(`2 · ${que}, el primer párrafo no es el del recorrido (la noche, el perfil estándar y la tasa del motor)`);
+      const cambiar = sinCuenta ? "Puedes cambiar ese perfil en Filtros, registrándote gratis con tu correo." : "Puedes cambiar ese perfil en Filtros.";
+      // texto() deja un espacio donde cerraba el <strong>: se junta con su puntuación antes de comparar.
+      if (!t.replace(/ ([.,])/g, "$1").includes(cambiar) || !/<strong>Filtros<\/strong>/.test(h)) F(`2 · ${que}, no dice dónde se cambia el perfil (Filtros en negrita${sinCuenta ? ", registrándose" : ""})`);
+      const cuanto = sinCuenta ? "con tu cuenta gratis, cada tarjeta te dice cuánto." : "cada tarjeta te dice cuánto.";
+      if (!t.includes(`Un depto lleva ✓ Comprar cuando su nota de 1 a 100 llega a 70, o cuando el arriendo lo paga solo sin estar caro para su zona. Y nunca tiene señales graves, como perder mucha plata todos los meses. Algunos te piden poner un poco cada mes: ${cuanto}`))
+        F(`2 · ${que}, el párrafo del chip no es el del recorrido (o promete una cifra que sin cuenta va borrosa)`);
+      if (!/data-explorar="calculo-conviene">Un depto lleva <span class="chip-v c"[^>]*data-veredicto="COMPRAR"/.test(h)) F(`2 · ${que}, «Un depto lleva» no lleva el chip ✓ Comprar de siempre`);
+      if (/revisa cada mañana|la última vez|25 años/.test(t)) F(`2 · ${que}, la hoja trae la fecha de la tasa o los 25 años`);
     }
+    if (!texto(dibujar(createElement(modHoja.HojaCalculo, { tasa: { tasa: 5.3 }, sinCuenta: false, alCerrar: () => {} }))).includes("tasa de 5,3 %, el promedio")) F("2 · con otra tasa la hoja dice la misma");
   }
   // La monta el cliente sin depender de la cuenta, y al abrirla se mide.
-  if (!/\{calculo && <HojaCalculo filtros=\{filtros\} tasa=\{inicial\.tasa\} sinCuenta=\{sinCuenta\} alCerrar=\{\(\) => setCalculo\(false\)\} \/>\}/.test(cli)
-    || /(!sinCuenta|sinCuenta) &&[^\n]*<HojaCalculo/.test(cli)) F("2 · la hoja no se monta igual con y sin cuenta");
+  if (/(!sinCuenta|sinCuenta) &&[^\n]*<HojaCalculo/.test(cli)) F("2 · la hoja no se monta igual con y sin cuenta");
   if (po.EVENTOS_PORTAL.comoSeCalcula !== "explorar_como_se_calcula" || !/setCalculo\(true\);\s*posthog\?\.capture\(EVENTOS_PORTAL\.comoSeCalcula, \{ sin_cuenta: sinCuenta,/.test(cli)) F("3 · abrir la hoja no deja «explorar_como_se_calcula»");
   // La bienvenida no cambia (lo pide el goal): sus textos siguen.
   const ab = codigo("src/lib/explorar/abierto.ts");
@@ -151,7 +155,7 @@ export async function runConvienenUnoTier(): Promise<{ hard: number }> {
     console.log(`  ✗ CONVIENEN-UNO · ${fallas.length} falla(s):`);
     for (const f of fallas.slice(0, 40)) console.log(`     · ${f}`);
   } else {
-    console.log("  ✓ VERDE — la línea dice el crédito con la tasa del motor, «¿Cómo se calcula?» abre la misma hoja con y sin cuenta y se mide, y la landing, /explorar, la bienvenida, el dashboard y /deptos dicen un solo número de «convienen»");
+    console.log("  ✓ VERDE — «¿Cómo se calcula?» y Filtros dicen la tasa del motor, la hoja del recorrido abre igual con y sin cuenta y se mide, y la landing, /explorar, la bienvenida, el dashboard y /deptos dicen un solo número de «convienen»");
   }
   return { hard: fallas.length };
 }
@@ -168,3 +172,9 @@ if (require.main === module) {
 // nombre; la portada leyendo el resumen, el dashboard con un número propio, la landing contando los pines o leyendo el
 // «convienen» del resumen, la bienvenida con el número filtrado, convienenHoy de otro universo, cuantosConvienen con un
 // cero, un correo que arma su total, la prueba de /deptos y «Estás dentro» sin el número de la portada.
+
+// ── ACTA DE MUTACIONES (30-oct-2026, goal del recorrido real) ──
+// §1 y §2 reescritos: 13 de 13 en ROJO (runner `mutar-recorrido.cjs` en el scratchpad de la sesión cb466df3; cada archivo restaurado byte a byte): C1 la tasa de la hoja a mano · C2 la tasa de otra fila de config · C3 sin
+// cuenta no dice «registrándote» · C4 Filtros sin negrita · C5 el chip escrito a mano · C6 sin cuenta promete la cifra · C7 un
+// cuarto párrafo · C8 dos botones · C9 la hoja solo con cuenta · C10 Filtros sin la tasa de la página · C11 el pie y el plazo
+// de la hoja a mano · C12 la tasa de Filtros a mano · C13 la hoja vuelve a decir la fecha de la tasa.

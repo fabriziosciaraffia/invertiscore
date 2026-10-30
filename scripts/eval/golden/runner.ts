@@ -174,6 +174,7 @@ import { runExplorarPortalTier } from "./explorar-portal-catch-test";
 import { runPuertaETier } from "./puerta-e-catch-test";
 import { runLandingMapaTier } from "./landing-mapa-catch-test";
 import { runConvienenUnoTier } from "./convienen-uno-catch-test";
+import { runExplorarRecorridoTier } from "./explorar-recorrido-catch-test";
 import { runPautaArreglosTier } from "./pauta-arreglos-catch-test";
 import { runCuentasPruebaTier } from "./cuentas-prueba-catch-test";
 import { runDeptosConteoTier } from "./deptos-conteo-catch-test";
@@ -737,10 +738,15 @@ function printSeed(r: SeedReport) {
   // LCP (sin imagen que compita), el campo de siempre con su animación y «¿No tienes la dirección?» en la hoja o al enfocar,
   // y tres eventos distintos: botón, mapa y campo—. ──
   totalHard += (await runLandingMapaTier()).hard;
-  // Tier CONVIENEN-UNO (30-oct-2026, 0 tokens): bajo el número del mapa, «Con pie 20 %, 25 años y tasa X % · ¿Cómo se
-  // calcula?» con la tasa del motor (config.tasa_hipotecaria), la hoja de cuatro ideas con y sin cuenta y su evento, y un solo
-  // número de «convienen» (cuantosConvienen) en la landing, /explorar, la bienvenida, el dashboard y /deptos. ──
+  // Tier CONVIENEN-UNO (30-oct-2026, 0 tokens): la tasa del motor (config.tasa_hipotecaria) en «¿Cómo se calcula?» y en
+  // Filtros, la hoja del recorrido con y sin cuenta y su evento, y un solo número de «convienen» (cuantosConvienen) en la
+  // landing, /explorar, la bienvenida, el dashboard y /deptos. ──
   totalHard += (await runConvienenUnoTier()).hard;
+  // Tier EXPLORAR-RECORRIDO (30-oct-2026, 0 tokens): el financiamiento por defecto a 30 años en todo el sitio (y el 25 elegido
+  // se conserva), la barra de /explorar sin «Ordenar» ni la tarjeta del número, la lista como hoja o panel, Filtros en dos
+  // bloques con la tasa del motor, la vuelta del registro a la tarjeta desbloqueada sin pop-up, las flechas del PC y los
+  // mapas en oscuro. ──
+  totalHard += (await runExplorarRecorridoTier()).hard;
   // Tier PAUTA-ARREGLOS (26-oct-2026, 0 tokens): las cuentas de prueba y @refranco.ai fuera de los correos, la selección
   // diaria del «Ya» también en renta corta, los escáneres marcados robot en las vistas, «explorar_pin» y «explorar_aviso», y
   // el resumen de la noche y la selección diaria MEDIDOS bajo 2 s contra la base. ──

@@ -82,6 +82,7 @@ export async function runDeptosConteoTier(): Promise<{ hard: number }> {
   console.log("\n─── TIER DEPTOS-CONTEO (el número de /deptos se lee del conteo de la noche, bajo 300 ms · 0 tokens) ───");
   const fallas: string[] = [];
   const F = (m: string) => fallas.push(m);
+  const K = (resto: string) => `${PREFIJO_CONTEO}${resto}`;
   const ahora = new Date("2026-10-28T12:00:00Z");
   const v = validarElecciones({ comunas: ["Providencia"], tipologias: ["2"], rango: "3000-4000", modalidad: "ltr" });
   try {
@@ -101,7 +102,9 @@ export async function runDeptosConteoTier(): Promise<{ hard: number }> {
       if (b.rpcs.length > 0) F(`1 · con el conteo guardado, /deptos igual cuenta con la RPC (${b.rpcs.length} llamada(s))`);
       if (JSON.stringify(r) !== JSON.stringify(esperado)) F(`1 · lo guardado no responde lo mismo que la RPC: ${JSON.stringify(r)} contra ${JSON.stringify(esperado)}`);
       if (r.total !== 5 || r.convienen !== 2) F(`1 · la respuesta no es la de Providencia (${r.total} publicados, ${r.convienen} convienen)`);
-      if (claveConteo(v.tipologias, v.rango) !== "deptos_conteo:2|3000-4000" || PREFIJO_CONTEO !== "deptos_conteo:") F("1 · la clave del conteo cambió");
+      // ⚠ ACTA (30-oct-2026, goal «financiamiento por defecto a 30 años») · la clave lleva el plazo («deptos_conteo_p30:»): un conteo
+      // guardado a 25 años nunca se sirve como si fuera de 30, y el cron no vuelve a contar las claves viejas.
+      if (claveConteo(v.tipologias, v.rango) !== "deptos_conteo_p30:2|3000-4000" || PREFIJO_CONTEO !== "deptos_conteo_p30:") F("1 · la clave del conteo cambió");
       // Con su comuna en cero, la respuesta ofrece la vecina que da: igual desde lo guardado que desde la RPC.
       const sinPropia = { ...tabla, Providencia: 0 };
       const vivo0 = await responderDeptos(baseFalsa(sinPropia).admin, v, ahora);
@@ -118,7 +121,7 @@ export async function runDeptosConteoTier(): Promise<{ hard: number }> {
       await responderDeptos(b.admin, v, ahora);
       const pedidas = ["Providencia", ...vecinas].sort().join();
       if (b.rpcs.length !== 1 || [...b.rpcs[0].comunas].sort().join() !== pedidas) F(`2 · sin fila guardada no se cuenta una sola vez lo que falta (${b.rpcs.length} RPC, comunas ${b.rpcs.map((x) => x.comunas.join("+")).join(" / ")})`);
-      if (!b.guardados.includes("deptos_conteo:2|3000-4000")) F("2 · lo contado no se guarda");
+      if (!b.guardados.includes(K("2|3000-4000"))) F("2 · lo contado no se guarda");
       const antes = b.rpcs.length;
       await responderDeptos(b.admin, v, ahora);
       if (b.rpcs.length !== antes) F("2 · la segunda vez vuelve a contar");
@@ -130,21 +133,21 @@ export async function runDeptosConteoTier(): Promise<{ hard: number }> {
         if (b.rpcs.length !== antes + 1 || ultima.comunas.includes("Providencia")) F("2 · con otra comuna se vuelve a contar lo que ya estaba");
       }
       const multi = validarElecciones({ comunas: ["Providencia"], tipologias: ["1", "2"], rango: "3000-4000", modalidad: "ltr" });
-      if (multi.ok && claveConteo(multi.tipologias, multi.rango) !== "deptos_conteo:1,2|3000-4000") F("2 · varias tipologías no son su propia fila");
+      if (multi.ok && claveConteo(multi.tipologias, multi.rango) !== K("1,2|3000-4000")) F("2 · varias tipologías no son su propia fila");
     }
     // ── 3 · el cron lo cuenta de noche ──
     // Mutaciones: M4 sin las de varias tipologías · M5 el cron no lo llama.
     {
       const b = baseFalsa(tabla);
-      b.config.set("deptos_conteo:0,1|hasta-3000", JSON.stringify({ comunas: {}, calculadoAt: "2026-10-01T00:00:00Z" }));
+      b.config.set(K("0,1|hasta-3000"), JSON.stringify({ comunas: {}, calculadoAt: "2026-10-01T00:00:00Z" }));
       const r = await guardarConteosDeLaNoche(b.admin, ahora);
       const base = TIPOLOGIAS_DEPTOS.flatMap((t) => RANGOS_UF.map((rg) => claveConteo([t], rg)));
       const faltan = base.filter((k) => !b.guardados.includes(k));
       if (base.length !== 20 || faltan.length > 0) F(`3 · el cron no guarda las ${base.length} búsquedas de una tipología (faltan ${faltan.join(", ")})`);
-      if (!b.guardados.includes("deptos_conteo:0,1|hasta-3000")) F("3 · el cron no vuelve a contar las de varias tipologías que alguien pidió");
+      if (!b.guardados.includes(K("0,1|hasta-3000"))) F("3 · el cron no vuelve a contar las de varias tipologías que alguien pidió");
       if (r.guardados !== 21 || r.fallidos !== 0) F(`3 · el cron no cuenta lo que guardó (${r.guardados} guardados, ${r.fallidos} fallidos)`);
       const todas = new Set([...COMUNAS_DISPONIBLES, ...comunasVecinas([...COMUNAS_DISPONIBLES])]);
-      const guardado = conteoGuardado(b.config.get("deptos_conteo:2|3000-4000"));
+      const guardado = conteoGuardado(b.config.get(K("2|3000-4000")));
       const sinComuna = Array.from(todas).filter((c) => !guardado || !(c in guardado));
       if (sinComuna.length > 0) F(`3 · el conteo de la noche no trae todas las comunas (faltan ${sinComuna.slice(0, 5).join(", ")})`);
       if (guardado && guardado.Providencia?.[0] !== 5) F("3 · el conteo de la noche no es el de la RPC");
@@ -207,3 +210,6 @@ export async function runDeptosConteoTier(): Promise<{ hard: number }> {
 if (require.main === module) {
   runDeptosConteoTier().then((r) => process.exit(r.hard ? 1 : 0));
 }
+
+// ACTA DE MUTACIÓN (30-oct-2026, goal «financiamiento por defecto a 30 años»): D1 la clave del conteo sin el plazo, en ROJO
+// (runner `mutar-recorrido.cjs` en el scratchpad de la sesión cb466df3; cada archivo restaurado byte a byte).

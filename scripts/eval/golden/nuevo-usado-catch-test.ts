@@ -102,7 +102,7 @@ export async function runNuevoUsadoTier(): Promise<{ hard: number }> {
       // Los primeros de la noche: de la RPC (la trae).
       const rpcFila = (id: string, condicion: string | null) => ({ id, comuna: "Las Condes", superficie_m2: 77, dormitorios: 2, banos: 2, precio_uf: 4200, score_cron: 80, flujo: 1000, pub_estado: null, pub_at: null, condicion });
       const admin = { rpc: async () => ({ data: [rpcFila("p1", "usado"), rpcFila("p2", null)], error: null }) } as unknown as Parameters<typeof primerosDeptos>[0];
-      const prim = await primerosDeptos(admin, { comunas: ["Las Condes"], dorms: [2], ufMin: 0, ufMax: 6000, pie: 20 });
+      const prim = await primerosDeptos(admin, { comunas: ["Las Condes"], dorms: [2], ufMin: 0, ufMax: 6000, pie: 20, plazo: 30 });
       if (prim.find((p) => p.avisoId === "p1")?.condicion !== "usado" || prim.find((p) => p.avisoId === "p2")?.condicion !== undefined) F("2 · los primeros de la noche no traen la condición del aviso (o la suponen)");
       // Lo guardado antes de hoy, con la del aviso.
       const delAviso = new Map([["g1", "nuevo" as const]]);

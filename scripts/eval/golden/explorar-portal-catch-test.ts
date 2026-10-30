@@ -18,6 +18,9 @@
 //   6 · LOS FILTROS, LA URL Y EL ORDEN (en el navegador, al instante) · 7 · EL UNIVERSO (la noche en un pedido, lo calculado
 //       por comuna, la renta corta por zona) · 8 · EL PIN CON ZOOM · 9 · EL PLAN DONDE SE USA · 10 · LA MEDICIÓN ·
 //   11 · LOS GUARDADOS EN EL DASHBOARD · 12 · EL PRIMER PINTADO LIVIANO.
+// ⚠ ACTA (30-oct-2026, goal del recorrido real de Fabrizio) · el financiamiento por defecto es pie 20 % y 30 años; la línea de los
+// supuestos y la tarjeta del número se retiraron (el número va abajo con el chip, los supuestos en «¿Cómo se calcula?»);
+// «Ordenar» vive solo en la lista y «Mi búsqueda», dentro de Filtros. Lo nuevo lo vigila el tier EXPLORAR-RECORRIDO.
 // Verificado EN ROJO por mutación (acta al pie). Corre dentro del QUICK.
 // Solo:  node --env-file=.env.local --import tsx scripts/eval/golden/explorar-portal-catch-test.ts
 // ============================================================================
@@ -116,9 +119,10 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
   if (G.comunas.length || G.tipologias.length || G.ufMin != null || G.ufMax != null || G.modalidad !== "ltr" || G.flujoPositivo || G.publicados !== "todos" || G.zona) F(`1 · la vista global filtra algo: ${JSON.stringify(G)}`);
   if (G.pie !== PIE_DEPTOS || G.plazo !== PLAZO_DEPTOS) F(`1 · la vista global no tiene los supuestos del número de anoche (pie ${PIE_DEPTOS} %, ${PLAZO_DEPTOS} años): ${G.pie}/${G.plazo}`);
   if (!po.esVistaGlobal(G) || po.filtrosActivos(G) !== 0 || po.urlDePortal(G) !== "") F("1 · la vista global cuenta filtros o deja algo en la URL");
-  // ⚠ ACTA (30-oct-2026, «convienen» explicado) · la línea dice el crédito con la tasa del motor: «Con pie 20 %, 25 años y tasa
-  // 4,07 %» (sin tasa, «Con pie 20 % y 25 años»), y a su lado «¿Cómo se calcula?» (tier CONVIENEN-UNO).
-  if (po.lineaSupuestos(G, 4.07) !== "Con pie 20 %, 25 años y tasa 4,07 %" || po.lineaSupuestos(G, null) !== "Con pie 20 % y 25 años" || po.numeroDelMapa(4807, G) !== "4.807 convienen en Gran Santiago") F(`1 · el número o la línea de los supuestos: ${po.numeroDelMapa(4807, G)} / ${po.lineaSupuestos(G, 4.07)}`);
+  // ⚠ ACTA (30-oct-2026, «convienen» explicado) · la línea dice el crédito con la tasa del motor (tier CONVIENEN-UNO).
+  // ⚠ ACTA (30-oct-2026, goal del recorrido real de Fabrizio) · la línea y la tarjeta del número se retiraron: abajo, «4.807 deptos» y
+  // el chip ✓ Comprar (en PC, la píldora «Ver lista · 4.807» y el chip).
+  if (po.deptosN(4807) !== "4.807 deptos" || po.deptosN(1) !== "1 depto" || po.pildoraLista(4807) !== "Ver lista · 4.807") F(`1 · el número de abajo: ${po.deptosN(4807)} / ${po.pildoraLista(4807)}`);
   // La página abre con la URL y nada más: el perfil no decide los filtros iniciales.
   // ⚠ ACTA (29-oct-2026, goal «puerta E», mockup docs/puerta-b-mockups/6-puerta-e.html) · la página tiene ahora dos ramas: con cuenta
   // (ExplorarConDatos) la regla es la misma —la URL tal cual—; sin cuenta (ExplorarAbierto) la URL pasa por filtrosAbiertos (pie
@@ -129,22 +133,25 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
   // ⚠ ACTA (30-oct-2026, «convienen» explicado) · `inicial` lleva además la tasa del motor (las dos ramas) y, sin cuenta, el
   // número de todo el sitio para la bienvenida (tier CONVIENEN-UNO).
   if (!/const \{ filtros, orden \} = portalDeUrl\(sp\);/.test(conCuentaPag) || !/inicial=\{\{ filtros, orden, n, cuenta, tasa, convienen: null \}\}/.test(conCuentaPag) || asignaFiltros.length !== 0) F("1 · la página no abre con portalDeUrl(sp) tal cual (o reasigna los filtros)");
-  if (!/const filtros = filtrosAbiertos\(base\.filtros\);/.test(abiertaPag) || !/inicial=\{\{ filtros, orden, n, cuenta: null, tasa, convienen \}\}/.test(abiertaPag)) F("1 · sin cuenta la página no abre con pie 20 % y 25 años (o le pasa una cuenta)");
+  if (!/const filtros = filtrosAbiertos\(base\.filtros\);/.test(abiertaPag) || !/inicial=\{\{ filtros, orden, n, cuenta: null, tasa, convienen \}\}/.test(abiertaPag)) F("1 · sin cuenta la página no abre con el financiamiento por defecto (o le pasa una cuenta)");
   if (/filtrosDeLaCuenta|filtrosDePerfil|leerPerfilBusqueda|miBusqueda/.test(pag)) F("1 · la página lee el perfil para abrir");
   if (!/const \[filtros, setFiltros\] = useState\(inicial\.filtros\);/.test(cli)) F("1 · el cliente no arranca con los filtros que mandó el servidor");
   if (modCli) {
-    const html = dibujar(createElement(modCli.ExplorarCliente as FC<Record<string, unknown>>, { inicial: { filtros: G, orden: "puntaje", n: 4807, cuenta: cuentaBase(), tasa: { tasa: 4.07, revisada: "29 de octubre" }, convienen: null } }));
+    const html = dibujar(createElement(modCli.ExplorarCliente as FC<Record<string, unknown>>, { inicial: { filtros: G, orden: "puntaje", n: 4807, cuenta: cuentaBase(), tasa: { tasa: 4.07 }, convienen: null } }));
     const t = texto(html);
-    if (!t.includes("4.807 convienen en Gran Santiago") || !t.includes("Con pie 20 %, 25 años y tasa 4,07 %")) F("1 · el primer pintado no dice «4.807 convienen en Gran Santiago» con sus supuestos (con una búsqueda guardada en la cuenta)");
+    if (!t.includes("4.807 deptos") || !/data-veredicto="COMPRAR"/.test(html)) F("1 · el primer pintado no dice «4.807 deptos» con el chip ✓ Comprar (con una búsqueda guardada en la cuenta)");
     if (/Ñuñoa/.test(t) || /Filtros · \d/.test(t)) F("1 · el primer pintado trae los filtros del perfil");
-    if (!/data-explorar="mi-busqueda"/.test(html) || !/data-explorar="filtros"/.test(html) || !/data-explorar="ordenar"/.test(html)) F("1 · falta la fila de arriba: Filtros, Ordenar y Mi búsqueda");
-    if (!t.includes("4.807 deptos que convienen") || !t.includes("Ver lista")) F("1 · la hoja cerrada no dice «N deptos que convienen · Ver lista»");
+    // ⚠ ACTA (30-oct-2026, goal del recorrido real de Fabrizio) · arriba, solo «Filtros» y «¿Cómo se calcula?»: «Ordenar» vive en la lista
+    // y «Mi búsqueda», dentro de Filtros (decisión de Fabrizio).
+    if (!/data-explorar="filtros"/.test(html) || !/data-explorar="como-se-calcula"/.test(html) || /data-explorar="ordenar"|data-explorar="mi-busqueda"/.test(html)) F("1 · la fila de arriba no es «Filtros» y «¿Cómo se calcula?» (o trae Ordenar o Mi búsqueda)");
+    if (!t.includes("4.807 deptos ✓ Comprar Ver lista") || !t.includes("Ver lista · 4.807 ✓ Comprar")) F("1 · abajo no dice «4.807 deptos ✓ Comprar · Ver lista» (teléfono) y «Ver lista · 4.807 ✓ Comprar» (PC)");
   }
   const mb = po.filtrosDeMiBusqueda({ comunas: ["Ñuñoa", "Santiago"], dormitorios: [1, 2], precioMinUf: 1500, precioMaxUf: 3000, piePct: 30, plazoAnios: 30, modalidad: "str" });
   if (!mb || mb.comunas.join() !== "Ñuñoa,Santiago" || mb.tipologias.join() !== "1,2" || mb.ufMin !== 1500 || mb.ufMax !== 3000 || mb.pie !== 30 || mb.plazo !== 30 || mb.modalidad !== "str" || mb.zona || mb.flujoPositivo) F(`1 · «Mi búsqueda» no aplica comunas, tipología, rango, pie, plazo y modalidad de una vez: ${JSON.stringify(mb)}`);
   // El tope que «Avísame» guarda sin «hasta» vuelve como «cualquier precio» (cazado en el QA: «Mi búsqueda» filtraba h=60000).
   if (po.filtrosDeMiBusqueda({ comunas: ["Ñuñoa"], dormitorios: [2], precioMinUf: null, precioMaxUf: po.TOPE_PERFIL_UF, piePct: 20, plazoAnios: 25, modalidad: "ltr" })?.ufMax !== null) F("1 · «Mi búsqueda» convierte el tope de «cualquier precio» en un precio máximo");
-  if (!/function miBusqueda\(\) \{\s*if \(!cuenta\.miBusqueda\) \{ setSinBusqueda\(true\); return; \}\s*aplicar\(cuenta\.miBusqueda, "mi_busqueda"\);/.test(cli) || !/onClick=\{miBusqueda\}/.test(cli)) F("1 · el botón «Mi búsqueda» no aplica el perfil de una vez");
+  // ⚠ ACTA (30-oct-2026, goal del recorrido real de Fabrizio) · el botón vive en Filtros: la hoja se cierra y aplica el perfil.
+  if (!/function miBusqueda\(\) \{\s*setHojaFiltros\(false\);\s*if \(!cuenta\.miBusqueda\) \{ setSinBusqueda\(true\); return; \}\s*aplicar\(cuenta\.miBusqueda, "mi_busqueda"\);/.test(cli) || !/miBusqueda=\{sinCuenta \? null : \{ activa: enMiBusqueda, alUsar: miBusqueda \}\}/.test(cli) || !/onClick=\{miBusqueda\.alUsar\} data-explorar="mi-busqueda"/.test(codigo("src/app/explorar/hoja-filtros.tsx"))) F("1 · el botón «Mi búsqueda» no aplica el perfil de una vez");
 
   // ── 2 · la tarjeta del pin sin las líneas retiradas ──
   if (modTar) {
@@ -251,7 +258,7 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
   if (modCli) {
     const html = dibujar(createElement(modCli.ExplorarCliente as FC<Record<string, unknown>>, { inicial: { filtros: G, orden: "puntaje", n: 4807, cuenta: cuentaBase({ saldo: { tipo: "sin" } }) } }));
     const t = texto(html);
-    if (!t.includes("4.807 convienen en Gran Santiago") || /disabled=""/.test(html.slice(0, html.indexOf("ex-cuerpo")))) F("4 · sin saldo el mapa o la fila de arriba quedan cerrados");
+    if (!t.includes("4.807 deptos") || /disabled=""/.test(html.slice(0, html.indexOf("ex-cuerpo")))) F("4 · sin saldo el mapa o la fila de arriba quedan cerrados");
     if (/necesitas análisis disponibles|Para explorar|data-explorar="cerrado"|data-hoja="cerrada"/.test(html)) F("4 · sin saldo aparece el aviso «Para explorar necesitas análisis disponibles» o el mapa cerrado");
   }
   if (existe("src/app/explorar/aviso-sin-saldo.tsx")) F("4 · el aviso sin saldo de Explorar sigue en el repo");
@@ -410,7 +417,8 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
   if (po.textoPin({ flujo: 1, alta: s - 60 }, { analizado: true, ahora }).texto !== "✓ Analizado" || po.textoPin({ flujo: 142264, alta: s - 3600 }, { analizado: false, ahora }).texto !== "Nuevo hoy" || po.textoPin({ flujo: 142264, alta: s - 2 * 86400 }, { analizado: false, ahora }).texto !== "+$142 mil") F("8 · lo que dice el pin: «✓ Analizado», «Nuevo hoy» o el flujo");
   if (po.esNuevoHoy({ alta: s - 86401 }, ahora) || !po.esNuevoHoy({ alta: s - 86000 }, ahora)) F("8 · «Nuevo hoy» no son las últimas 24 horas");
   const mapa = codigo("src/app/explorar/mapa-explorar.tsx");
-  if (!/if \(zoom >= ZOOM_ETIQUETAS \|\| elegido\) \{\s*const t = textoPin\(p, \{ analizado: an\.has\(id\), ahora \}\);\s*const fondo = elegido \? TINTA : t\.tipo === "analizado" \? azul : ROJO;/.test(mapa) || !/iconoGrupo\(gr\.n,/.test(mapa)) F("8 · el mapa no muestra grupos lejos y el texto del pin con zoom (azul el analizado)");
+  // ⚠ ACTA (30-oct-2026, goal del recorrido real de Fabrizio), punto 9) · el elegido toma el color del tema (tinta en claro, papel en oscuro).
+  if (!/if \(zoom >= ZOOM_ETIQUETAS \|\| elegido\) \{\s*const t = textoPin\(p, \{ analizado: an\.has\(id\), ahora \}\);\s*const fondo = elegido \? elegidoDeTema\(\)\.fondo : t\.tipo === "analizado" \? azul : ROJO;/.test(mapa) || !/iconoGrupo\(gr\.n,/.test(mapa)) F("8 · el mapa no muestra grupos lejos y el texto del pin con zoom (azul el analizado)");
   if (!/map\.addListener\("idle", \(\) => \{\s*dibujarRef\.current\(\);\s*if \(tocado\.current && !propio\.current\)/.test(mapa) || !/onMovido=\{\(c\) => setZonaPendiente\(c\)\}/.test(cli) || !/data-explorar="buscar-zona" onClick=\{\(\) => aplicar\(\{ \.\.\.filtros, zona: zonaPendiente \}, "zona"\)\}/.test(cli)) F("8 · al mover el mapa no aparece «Buscar en esta zona» (o no aplica la zona)");
 
   // ── 9 · el plan donde se usa ──
@@ -472,7 +480,8 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
   // ⚠ ACTA (29-oct-2026, goal «puerta E», mockup docs/puerta-b-mockups/6-puerta-e.html) · dos ramas dentro del MISMO Suspense: con
   // cuenta ExplorarConDatos, sin cuenta ExplorarAbierto (el número de la noche). Ninguna espera antes del esqueleto.
   const cuerpoPagina = pag.slice(pag.indexOf("export default async function ExplorarPage"), pag.indexOf("async function ExplorarAbierto"));
-  if (!cuerpoPagina || /cuentaPortal\(|universoDeLaNocheCacheado\(|await Promise\.all/.test(cuerpoPagina) || !/<Suspense fallback=\{<EsqueletoExplorar consulta=\{consulta\} sinCuenta=\{!user\} \/>\}>\s*\{user \? <ExplorarConDatos consulta=\{consulta\} user=\{user\} \/> : <ExplorarAbierto consulta=\{consulta\} \/>\}\s*<\/Suspense>/.test(cuerpoPagina)) F("12 · la página espera la cuenta antes de mandar el mapa quieto (el LCP)");
+  // ⚠ ACTA (30-oct-2026, goal del recorrido real de Fabrizio) · el esqueleto ya no lleva la línea de los supuestos: no recibe nada.
+  if (!cuerpoPagina || /cuentaPortal\(|universoDeLaNocheCacheado\(|await Promise\.all/.test(cuerpoPagina) || !/<Suspense fallback=\{<EsqueletoExplorar \/>\}>\s*\{user \? <ExplorarConDatos consulta=\{consulta\} user=\{user\} \/> : <ExplorarAbierto consulta=\{consulta\} \/>\}\s*<\/Suspense>/.test(cuerpoPagina)) F("12 · la página espera la cuenta antes de mandar el mapa quieto (el LCP)");
   // UNA SOLA IMAGEN, PRIMERA EN EL HTML (28-oct-2026, candidatos a LCP medidos en Chromium: el header se pintaba antes y el mapa
   // quieto un cuadro después, o se pintaba en el esqueleto y se quitaba al llegar el cliente). La capa va en la página, antes del
   // header, y ni el esqueleto ni el cliente la dibujan.
@@ -493,14 +502,17 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
   if (!nf || /from "next\/link"/.test(nf) || /<FrancoLogo[^>]*\bhref=/.test(nf) || !/<a href="\/">\s*<FrancoLogo size="lg" showTagline \/>\s*<\/a>/.test(nf)) F("12 · el 404 raíz renderiza next/link (cada página que no lo usa baja los chunks de la landing)");
   try {
     const { EsqueletoExplorar } = require(join(RAIZ, "src/app/explorar/esqueleto")) as typeof import("../../../src/app/explorar/esqueleto");
-    const e = dibujar(createElement(EsqueletoExplorar as unknown as FC<Record<string, unknown>>, { consulta: "" }));
-    if (/ex-mapa-quieto|data:image/.test(e) || !texto(e).includes("Con pie 20 % y 25 años · ¿Cómo se calcula?") || !/class="ex-mapa-wrap"/.test(e) || !/class="ex-barra"/.test(e)) F("12 · el esqueleto no trae la fila de arriba y la línea de los supuestos (o repite el mapa quieto)");
+    const e = dibujar(createElement(EsqueletoExplorar as unknown as FC<Record<string, unknown>>, {}));
+    if (/ex-mapa-quieto|data:image/.test(e) || !texto(e).includes("Filtros ⓘ ¿Cómo se calcula?") || /Ordenar|Con pie/.test(texto(e)) || !/class="ex-mapa-wrap"/.test(e) || !/class="ex-barra"/.test(e)) F("12 · el esqueleto no trae la fila de arriba de hoy, «Filtros» y «¿Cómo se calcula?» (o repite el mapa quieto)");
   } catch (err) {
     F(`12 · el esqueleto explotó: ${(err as Error).message}`);
   }
   // CON LA LISTA EL MAPA NO SE ESCONDE (28-oct-2026, cazado en el QA en WebKit 390): con display:none el mapa de Google queda sin
   // tamaño y al volver se descuadra («Buscar en esta zona» caía a 50 km). La lista lo cubre entera.
-  if (/data-mapa=\{mapa\}[^>]*hidden=\{/.test(cli.replace(/aria-hidden=/g, "")) || /\.ex-mapa-wrap\[hidden\]/.test(leer("src/app/explorar/explorar.css")) || !/\.ex-lista \{ position: absolute; inset: 0; z-index: 4;/.test(leer("src/app/explorar/explorar.css"))) F("12 · con la lista abierta el mapa se esconde (y se descuadra al volver)");
+  // ⚠ ACTA (30-oct-2026, goal del recorrido real de Fabrizio) · la lista es una hoja casi a pantalla completa (teléfono) o un panel a la
+  // derecha (PC), sobre su velo; el mapa sigue debajo, con su tamaño. ⚠ ACTA (30-oct-2026, QA en WebKit 390) · en el teléfono el velo es de la pantalla
+  // entera (la hoja arranca a 24 px, como Filtros); en el PC, del cuerpo.
+  if (/data-mapa=\{mapa\}[^>]*hidden=\{/.test(cli.replace(/aria-hidden=/g, "")) || /\.ex-mapa-wrap\[hidden\]/.test(leer("src/app/explorar/explorar.css")) || !/^\.ex-lista-velo \{ position: fixed; inset: 0; z-index: 50;/m.test(leer("src/app/explorar/explorar.css"))) F("12 · con la lista abierta el mapa se esconde (y se descuadra al volver)");
   // EL AVISO DE COOKIES NO TAPA LA PANTALLA FIJA (28-oct-2026, cazado en el QA en WebKit 390: tapaba la hoja «Ver lista» y el botón
   // «Mapa» a quien todavía no eligió): la barra publica su alto y Explorar lo resta.
   const css = leer("src/app/explorar/explorar.css");
@@ -549,3 +561,7 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
 if (require.main === module) {
   runExplorarPortalTier().then((r) => process.exit(r.hard ? 1 : 0));
 }
+
+// ACTA DE MUTACIÓN (30-oct-2026, goal del recorrido real). Los predicados reescritos, 8 de 8 en ROJO (runner `mutar-recorrido.cjs` en el scratchpad de la sesión cb466df3; cada archivo restaurado byte a byte): P1 abajo dice
+// «que convienen» · P2 la píldora sin el número · P3 «Mi búsqueda» vuelve a la barra · P4 «Mi búsqueda» no cierra Filtros ·
+// P5 el esqueleto con la línea · P6 el elegido en tinta fija · P7 la lista no tapa el mapa · P8 el esqueleto con «Ordenar».

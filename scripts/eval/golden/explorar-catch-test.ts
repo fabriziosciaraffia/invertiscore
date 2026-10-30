@@ -88,7 +88,8 @@ export async function runExplorarTier(): Promise<{ hard: number }> {
   // ⚠ ACTA (24-oct-2026, goal «cualquier pie y plazo») · el perfil abre con SU pie y SU plazo (el de la lista más cercano), ya no con el de la noche.
   if (ex.filtrosDePerfil({ comunas: ["Santiago"], dormitorios: [2], precioMinUf: null, precioMaxUf: 4000, piePct: 25, plazoAnios: 20 })?.plazo !== 20) F("1 · el plazo 20 del perfil no abre con 20");
   if (ex.filtrosDePerfil({ comunas: ["Santiago"], dormitorios: [2], precioMinUf: null, precioMaxUf: 4000, piePct: 25, plazoAnios: 20 })?.pie !== 25) F("1 · el pie 25 del perfil no abre con 25");
-  if (ex.pieDeLista(12) !== 10 || ex.pieDeLista(13) !== 15 || ex.pieDeLista(null) !== 20 || ex.pieDeLista(80) !== 50 || ex.plazoDeLista(18) !== 20 || ex.plazoDeLista(null) !== 25 || ex.plazoDeLista(40) !== 30) F("1 · el pie o el plazo del perfil no caen al más cercano de la lista");
+  // ⚠ ACTA (30-oct-2026, goal «financiamiento por defecto a 30 años») · el financiamiento por defecto de todo el sitio pasó a pie 20 % y 30 años (deptos/estandar.ts › PLAZO_POR_DEFECTO); sin plazo, la lista cae en 30.
+  if (ex.pieDeLista(12) !== 10 || ex.pieDeLista(13) !== 15 || ex.pieDeLista(null) !== 20 || ex.pieDeLista(80) !== 50 || ex.plazoDeLista(18) !== 20 || ex.plazoDeLista(null) !== 30 || ex.plazoDeLista(26) !== 25 || ex.plazoDeLista(40) !== 30) F("1 · el pie o el plazo del perfil no caen al más cercano de la lista");
   if (ex.filtrosDePerfil({ comunas: [], dormitorios: [2], precioMinUf: null, precioMaxUf: 4000, piePct: null, plazoAnios: null }) !== null) F("1 · sin comuna el perfil igual abre");
   if (ex.filtrosDePerfil({ comunas: ["Santiago"], dormitorios: [2], precioMinUf: null, precioMaxUf: null, piePct: null, plazoAnios: null }) !== null) F("1 · sin tope el perfil igual abre");
   if (JSON.stringify(ex.PIES_EXPLORAR) !== "[10,15,20,25,30,40,50]" || JSON.stringify(ex.PLAZOS_EXPLORAR) !== "[15,20,25,30]") F("1 · los chips no ofrecen pie de 10 a 50 % y plazo de 15 a 30 años");
@@ -179,7 +180,9 @@ export async function runExplorarTier(): Promise<{ hard: number }> {
   const iQuieto = pag.indexOf("{mapaQuieto}"), iHeader = pag.indexOf("<HeaderFranco");
   if (iQuieto < 0 || iHeader < 0 || iQuieto > iHeader || /mapaQuieto/.test(cli)) F("5 · el mapa quieto no se dibuja antes del mapa real");
   // ⚠ ACTA (28-oct-2026) · los avisos del mapa van por `cb.current` y el contenedor se esconde con la lista.
-  if (!/g\.maps\.event\.addListenerOnce\(map, "tilesloaded", \(\) => cb\.current\.onEstado\("teselas"\)\);/.test(codigo("src/app/explorar/mapa-explorar.tsx")) || !/\.ex-pagina:has\(\.ex-mapa-wrap\[data-mapa="teselas"\]\) > \.ex-mapa-quieto \{ opacity: 0; \}/.test(leer("src/app/explorar/explorar.css")) || !/<div className="ex-mapa-wrap" data-mapa=\{mapa\} aria-hidden=\{vista === "lista" \? true : undefined\}>/.test(cli)) F("5 · el mapa quieto no se va cuando el real dibujó sus teselas (o se va antes)");
+  // ⚠ ACTA (30-oct-2026, recorrido real) · la lista es una hoja (teléfono) o un panel a la derecha (PC) SOBRE el mapa, que sigue a la
+  // vista y en PC se usa: el contenedor ya no se esconde (EXPLORAR-RECORRIDO §5).
+  if (!/g\.maps\.event\.addListenerOnce\(map, "tilesloaded", \(\) => cb\.current\.onEstado\("teselas"\)\);/.test(codigo("src/app/explorar/mapa-explorar.tsx")) || !/\.ex-pagina:has\(\.ex-mapa-wrap\[data-mapa="teselas"\]\) > \.ex-mapa-quieto \{ opacity: 0; \}/.test(leer("src/app/explorar/explorar.css")) || !/<div className="ex-mapa-wrap" data-mapa=\{mapa\}>/.test(cli)) F("5 · el mapa quieto no se va cuando el real dibujó sus teselas (o se va antes)");
 
   // ── 6 · las cifras del pin y los agrupados ──
   // ⚠ ACTA (28-oct-2026, Explorar como portal) · la píldora, el título de la hoja, «Revisado con…», «Visto anoche» y el detalle
@@ -215,7 +218,9 @@ export async function runExplorarTier(): Promise<{ hard: number }> {
   const rc = codigo("src/app/api/explorar/recalcular/route.ts");
   if (!/const s = sondaDeCandidato\(c, \{ piePct: Number\(b\.piePct\), plazoAnios: Number\(b\.plazoAnios\) \}, cfg\);/.test(rc) || !/!esPiePopup\(b\.piePct\) \|\| !esPlazoPopup\(b\.plazoAnios\)/.test(rc)) F("7 · el recálculo no va por la sonda con el pie y el plazo validados");
   const ed = codigo("src/lib/avisos/estandar-deptos.ts");
-  if (!/export function sondaDeCandidato\(/.test(ed) || !/const s = sondaDeCandidato\(c, \{ piePct: pie, plazoAnios: PLAZO_DEPTOS \}, cfg, asOf\);/.test(ed)) F("7 · el estándar de 25 años y el recálculo no comparten la sonda");
+  // ⚠ ACTA (30-oct-2026, goal «financiamiento por defecto a 30 años») · el financiamiento por defecto de todo el sitio pasó a pie 20 % y 30 años (deptos/estandar.ts › PLAZO_POR_DEFECTO); las columnas *_25
+  // siguen siendo el mismo aviso a 25 años, con su propia constante (PLAZO_COLUMNAS_25), para la opción de 25 de Filtros.
+  if (!/export function sondaDeCandidato\(/.test(ed) || !/const s = sondaDeCandidato\(c, \{ piePct: pie, plazoAnios: PLAZO_COLUMNAS_25 \}, cfg, asOf\);/.test(ed)) F("7 · el estándar de 25 años y el recálculo no comparten la sonda");
 
   // ── 8 · la medición ──
   if (srv) {
@@ -356,3 +361,6 @@ export async function runExplorarTier(): Promise<{ hard: number }> {
 if (require.main === module) {
   runExplorarTier().then((r) => process.exit(r.hard ? 1 : 0));
 }
+
+// ACTA DE MUTACIÓN (30-oct-2026, goal del recorrido real). Los predicados reescritos, 3 de 3 en ROJO (runner `mutar-recorrido.cjs` en el scratchpad de la sesión cb466df3; cada archivo restaurado byte a byte): X1 la lista
+// sin plazo cae en 25 · X2 con la lista el mapa se esconde · X3 las columnas de 25 se evalúan a 30.

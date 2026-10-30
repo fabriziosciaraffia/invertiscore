@@ -117,12 +117,16 @@ export async function runPuertaETier(): Promise<{ hard: number }> {
     } else F("2 · la lista no carga");
     const mapa = codigo("src/app/explorar/mapa-explorar.tsx");
     if (!/if \(sinCifrasRef\.current\) \{\s*marcador\(\{ lat: p\.lat, lng: p\.lng \}, elegido \? iconoElegido\(\) : iconoPunto\(ROJO\)/.test(mapa) || !/sinCifras=\{sinCuenta\}/.test(cli)) F("2 · sin cuenta, con zoom, el pin dice algo más que el punto");
-    if (!/\{!sinCuenta && <button type="button" className="ex-boton ex-boton-suave"[^>]*data-explorar="mi-busqueda"/.test(cli) || !/\{!sinCuenta && <span className="ex-boton ex-boton-suave">\{PORTAL_COPY\.miBusqueda\}<\/span>\}/.test(codigo("src/app/explorar/esqueleto.tsx"))) F("2 · sin cuenta aparece «Mi búsqueda»");
-    // Pie y plazo en 20 % y 25 años; lo que depende del flujo pide registro.
-    const f30 = ab.filtrosAbiertos({ ...po.FILTROS_GLOBALES, pie: 30, plazo: 30, flujoPositivo: true, modalidad: "str" } as po.FiltrosPortal);
-    if (f30.pie !== 20 || f30.plazo !== 25 || f30.flujoPositivo || f30.modalidad !== "str") F(`2 · sin cuenta los supuestos no quedan en 20 % y 25 años (o la modalidad no se respeta): ${JSON.stringify(f30)}`);
+    // ⚠ ACTA (30-oct-2026, goal del recorrido real de Fabrizio) · «Mi búsqueda» se mudó adentro de Filtros (decisión de Fabrizio): sin
+    // cuenta la hoja la recibe en null y no la dibuja; el esqueleto ya no la tiene.
+    if (!/miBusqueda=\{sinCuenta \? null : \{ activa: enMiBusqueda, alUsar: miBusqueda \}\}/.test(cli) || !/\{miBusqueda && \(\s*<button type="button" className="ex-mi-busqueda"/.test(codigo("src/app/explorar/hoja-filtros.tsx")) || /mi-busqueda|miBusqueda/.test(codigo("src/app/explorar/esqueleto.tsx"))) F("2 · sin cuenta aparece «Mi búsqueda»");
+    // Pie y plazo en el financiamiento por defecto; lo que depende del flujo pide registro.
+    // ⚠ ACTA (30-oct-2026, goal del recorrido real de Fabrizio) · el financiamiento por defecto pasó a pie 20 % y 30 años.
+    const f30 = ab.filtrosAbiertos({ ...po.FILTROS_GLOBALES, pie: 30, plazo: 20, flujoPositivo: true, modalidad: "str" } as po.FiltrosPortal);
+    if (f30.pie !== 20 || f30.plazo !== 30 || f30.flujoPositivo || f30.modalidad !== "str") F(`2 · sin cuenta los supuestos no quedan en 20 % y 30 años (o la modalidad no se respeta): ${JSON.stringify(f30)}`);
     if (ab.ordenAbierto("flujo") !== "puntaje" || ab.ordenAbierto("caprate") !== "puntaje" || ab.ordenAbierto("precio") !== "precio") F("2 · sin cuenta se ordena por el flujo o el cap rate sin registrarse");
-    if (!/if \(sinCuenta && ORDENES_CON_CIFRAS\.includes\(o\)\) \{ setMenuOrden\(false\); pedirRegistro\("orden"/.test(cli) || !/const f = sinCuenta \? filtrosAbiertos\(f0\) : f0;/.test(cli)) F("2 · sin cuenta, ordenar por el flujo o cambiar pie y plazo no pide registro");
+    // ⚠ ACTA (30-oct-2026, goal del recorrido real de Fabrizio) · «Ordenar» vive en la lista (un select), sin menú que cerrar.
+    if (!/if \(sinCuenta && ORDENES_CON_CIFRAS\.includes\(o\)\) \{ pedirRegistro\("orden"/.test(cli) || !/alOrden=\{cambiarOrden\}/.test(cli) || !/const f = sinCuenta \? filtrosAbiertos\(f0\) : f0;/.test(cli)) F("2 · sin cuenta, ordenar por el flujo o cambiar pie y plazo no pide registro");
     const hojaF = codigo("src/app/explorar/hoja-filtros.tsx");
     if (!/\{alPedirRegistro \? \(\s*<div className="ex-dos">\s*<button type="button" className="ex-campo ex-campo-cerrado" onClick=\{\(\) => alPedirRegistro\("pie-plazo", b\)\}/.test(hojaF) || !/if \(alPedirRegistro && e\.target\.checked\) \{ alPedirRegistro\("flujo", b\); return; \}/.test(hojaF)) F("2 · sin cuenta, pie, plazo o «Solo flujo positivo» se cambian sin registro");
   }
@@ -146,7 +150,10 @@ export async function runPuertaETier(): Promise<{ hard: number }> {
     if (/Estás dentro|estas-dentro|\/dashboard/.test(hoja)) F("3 · la hoja pasa por «Estás dentro» o por el dashboard");
     const cli = codigo("src/app/explorar/explorar-cliente.tsx");
     if (!/const r = await conTopeYReintento\(async \(senal\) => \{\s*const res = await fetch\("\/api\/deptos\/alta"/.test(cli) || !/const c = await fetch\("\/api\/explorar\/cuenta"/.test(cli)) F("3 · al volver de Google o del enlace, el alta no corre o la cuenta no se refresca (el regalo no estaría en el saldo)");
-    if (!/if \(v\.motivo === "analizar" && it && !cuenta\.analizados\[it\.avisoId\]\) pedirAnalisis\(it\);/.test(cli) || !/if \(it\) \{ setCarrusel\(cercanos\(visibles, it\.avisoId\)\.map\(\(p\) => p\.avisoId\)\); setSel\(it\.avisoId\); \}/.test(cli)) F("3 · al volver no se abre el mismo pin con el pop-up de analizar");
+    // ⚠ ACTA (30-oct-2026, goal del recorrido real de Fabrizio) · al volver se abre el mismo pin, con su tarjeta desbloqueada y la
+    // banda del regalo; el pop-up de «Analizar este» NO se abre solo (EXPLORAR-RECORRIDO §7).
+    const efectoVuelta = cli.slice(cli.indexOf("const v = vuelta.current;"), cli.indexOf("}, [listaVuelta, universo]);"));
+    if (!/if \(it\) \{ setCarrusel\(cercanos\(visibles, it\.avisoId\)\.map\(\(p\) => p\.avisoId\)\); setSel\(it\.avisoId\); \}/.test(efectoVuelta) || !/if \(it && \(v\.motivo === "analizar" \|\| v\.motivo === "guardar"\)\) setRecien\(\{ avisoId: it\.avisoId, regalo: usaRegalo\(cuenta\.saldo\) \}\);/.test(efectoVuelta) || /pedirAnalisis|setConfirmar/.test(efectoVuelta)) F("3 · al volver no se abre el mismo pin con su tarjeta desbloqueada (o se abre el pop-up solo)");
     if (!/!usaRegalo\(cuenta\.saldo\) \? lineaTicketConSaldo\(/.test(cli) || !/const usaRegalo = \(s: EstadoSaldo\): boolean => s\.tipo === "regalo" \|\| \(s\.tipo === "con" && !!s\.proximoRegalo\);/.test(cli)) F("3 · con el regalo el pop-up habla también del ticket (ofertas de a una)");
     if (!/if \(v\.motivo === "guardar" && it && !guardados\.has\(it\.avisoId\)\) void alternarGuardado\(it\.avisoId, "tarjeta"\);/.test(cli) || !/if \(v\.motivo === "pie-plazo"\) setHojaFiltros\(true\);/.test(cli)) F("3 · al volver no se hace lo que había tocado (guardar, pie y plazo)");
     // LO QUE CAZÓ EL QA (29-oct-2026, local): con las imágenes de la calle de los cercanos ocupando la red, el chunk de la hoja
@@ -295,3 +302,7 @@ export async function runPuertaETier(): Promise<{ hard: number }> {
 if (require.main === module) {
   runPuertaETier().then((r) => process.exit(r.hard ? 1 : 0));
 }
+
+// ACTA DE MUTACIÓN (30-oct-2026, goal del recorrido real). Los predicados reescritos, 5 de 5 en ROJO (runner `mutar-recorrido.cjs` en el scratchpad de la sesión cb466df3; cada archivo restaurado byte a byte): E1 «Mi
+// búsqueda» sin cuenta · E2 sin cuenta a 25 años · E3 sin cuenta ordenar por el flujo no pide registro · E4 la vuelta abre el
+// pop-up · E5 la lista ordena sin pasar por la página.
