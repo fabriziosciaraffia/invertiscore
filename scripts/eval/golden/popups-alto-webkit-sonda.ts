@@ -22,7 +22,9 @@
 // márgenes de antes— y está bien: con las líneas compactas, los márgenes viejos caben igual; no son lo que sostiene la regla.
 // Sale con 1 si algo falla, con 2 si no pudo correr (sin Playwright, sin servidor). Nada escribe: todo lo que no es GET
 // se corta.
-// Uso: PLAYWRIGHT_DIR=<carpeta con playwright 1.60 y su WebKit> node --import tsx scripts/eval/golden/popups-alto-webkit-sonda.ts [--base http://localhost:3000] [--alto 740]
+// Uso: PLAYWRIGHT_DIR=<carpeta con playwright 1.60 y su WebKit> node --import tsx scripts/eval/golden/popups-alto-webkit-sonda.ts [--base http://localhost:3000] [--alto 740] [--compartir <token>]
+// Un preview protegido (30-oct-2026): `--compartir` con el token `_vercel_share` de un enlace para compartir; se abre una vez y
+// la cookie que deja vale para el resto.
 // ─────────────────────────────────────────────────────────────────────────────
 import { createRequire } from "node:module";
 import { join } from "node:path";
@@ -31,6 +33,7 @@ const arg = (k: string) => { const i = process.argv.indexOf(k); return i > 0 ? p
 const BASE = (arg("--base") ?? "http://localhost:3000").replace(/\/$/, "");
 const ANCHO = 390;
 const ALTO = Number(arg("--alto") ?? 740);
+const COMPARTIR = arg("--compartir");
 // ⚠ ACTA (28-oct-2026, Explorar como portal) · el aviso E (e, e0) se retiró con el mapa cerrado; entra la línea del plan (p, p0).
 const ESTADOS = ["a", "a0", "d1", "d1t", "d2", "p", "p0"] as const;
 
@@ -98,6 +101,7 @@ async function main(): Promise<void> {
     const ctx = await browser.newContext({ ...iphone, viewport: { width: ANCHO, height: ALTO } });
     await ctx.route("**/*", (ruta: any) => (ruta.request().method() === "GET" && !/posthog|sentry|vercel\.live|facebook/.test(ruta.request().url()) ? ruta.continue() : ruta.abort()));
     const page = await ctx.newPage();
+    if (COMPARTIR) await page.goto(`${BASE}/robots.txt?_vercel_share=${encodeURIComponent(COMPARTIR)}`, { waitUntil: "load", timeout: 60_000 });
     for (const e of ESTADOS) {
       const url = `${BASE}/dev/popups?estado=${e}`;
       const res = await page.goto(url, { waitUntil: "load", timeout: 120_000 }).catch(() => null);
@@ -120,7 +124,8 @@ async function main(): Promise<void> {
       if (e === "a" || e === "a0") ok(m.titulo === 1, `LÍNEAS · «No te quedan análisis.» ocupa ${m.titulo} líneas`);
       // ⚠ ACTA (30-oct-2026, goal del recorrido real) · el pop-up lleva la imagen del depto a la izquierda de la tarjeta gris
       // (decisión de Fabrizio) y a 390 px sus líneas ya no caben en una: se envuelven, hasta dos cada una, y ninguna se corta
-      // (ANCHO, arriba). ALTO sigue igual: el panel entero en 390 × 740, sin scroll.
+      // (ANCHO, arriba). ALTO sigue igual: el panel entero en 390 × 740, sin scroll. Medido VERDE en el preview del 30-oct, a 740
+      // y a 664: el más alto sigue siendo d2, con 586 px (antes 549).
       if (e.startsWith("a") || e.startsWith("d")) {
         ok(m.nombre >= 1 && m.nombre <= 2, `LÍNEAS · comuna · tipología · m² · precio ocupa ${m.nombre} líneas`);
         if (e !== "d2") ok(m.linea >= 1 && m.linea <= 2, `LÍNEAS · veredicto · flujo ocupa ${m.linea} líneas`);
