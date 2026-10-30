@@ -2,7 +2,7 @@
 
 // ─────────────────────────────────────────────────────────────────────────────
 // «GUARDADOS» EN EL DASHBOARD (28-oct-2026, goal «Explorar como portal»): una fila plegada con los deptos que la persona
-// guardó con el corazón en Explorar. Cada uno con su línea, su veredicto y su flujo (pie 20 % y 25 años), «Ver en el mapa»
+// guardó con el corazón en Explorar. Cada uno con su línea, su veredicto y su flujo (el financiamiento por defecto: pie 20 % y 30 años), «Ver en el mapa»
 // —o su informe, si ya lo analizó— y «Quitar». «Comparar» para los que marque (de 2 a 4): la tabla lado a lado, ahí mismo.
 // Las reglas y el copy en lib/explorar/guardados.ts.
 // ─────────────────────────────────────────────────────────────────────────────

@@ -10,7 +10,7 @@
 // 4.». La del precio se ofrece solo si el chip de abajo tiene más de 10 (`MINIMO_SALIDA_PRECIO`): con menos, bajar el precio
 // cambia la búsqueda por casi nada.
 //
-// La cuenta es la de /deptos (`deptos_conteo`: la evaluación de anoche a 25 años, ventana de 7 días, sus comunas, sus
+// La cuenta es la de /deptos (`deptos_conteo`: la evaluación de anoche con el plazo por defecto, ventana de 7 días, sus comunas, sus
 // dormitorios y el rango del semanal), con SU pie: pie 30 % o más cuenta los Comprar a pie 30 %; menos, a pie 20 %. La
 // comuna y el chip de abajo se cuentan con esa misma vara.
 // Puro: lo prueba el tier PERFIL-OFERTA.

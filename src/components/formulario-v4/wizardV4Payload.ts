@@ -19,6 +19,7 @@ import { getCostosDefault } from "@/lib/engines/short-term-engine";
 import { valorMercadoRefDeSugerencia } from "@/lib/valor-mercado";
 import type { MuestraArriendo } from "@/lib/arriendo-referencia";
 import { PREMIO_ARRIENDO_NUEVO } from "@/lib/obra-nueva";
+import { PLAZO_POR_DEFECTO } from "@/lib/deptos/estandar";
 
 export interface SubmitContext {
   ufCLP: number;
@@ -142,7 +143,7 @@ export function buildLtrPayload(a: WizardV4Answers, ctx: SubmitContext) {
     // «Otra fuente» (27-sep-2026): con su monto, `piePct` ya es ese monto (para el banco es pie);
     // si es un crédito, su cuota entra al flujo del mes. Sin monto, nada de esto viaja.
     ...camposOtraFuente(a, ctx.ufCLP),
-    plazoCredito: Number(a.plazoCredito) || 25,
+    plazoCredito: Number(a.plazoCredito) || PLAZO_POR_DEFECTO,
     tasaInteres: leerNum(a.tasaInteres, DEC.tasa) || 4.72,
     tasaMercado: ctx.tasaMercado,
     esNuevo: a.tipoPropiedad === "nuevo",
@@ -254,7 +255,7 @@ export function buildStrPayload(a: WizardV4Answers, ctx: SubmitContext) {
     ...camposOtraFuente(a, ctx.ufCLP),
     tasaInteres: leerNum(a.tasaInteres, DEC.tasa) || 4.72,
     tasaMercado: ctx.tasaMercado,
-    plazoCredito: Number(a.plazoCredito) || 25,
+    plazoCredito: Number(a.plazoCredito) || PLAZO_POR_DEFECTO,
     modoGestion: a.modoGestion ?? "auto",
     comisionAdministrador:
       a.modoGestion === "administrador" ? leerNum(a.comisionStrPct, DEC.comisionAdmin) / 100 || 0.2 : 0.2,

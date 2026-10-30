@@ -108,7 +108,7 @@ export async function leerOrigenGuia(admin: SupabaseClient, analysisId: string, 
 
 /**
  * EL ORIGEN SINTÉTICO (16-oct-2026, la puerta B): la cuenta que nace en /deptos no tiene informe del que sacar su tasa,
- * su pie y su plazo. Se buscan con los de su perfil manual (20 % y 25 años si no los cambió) y la TASA DE MERCADO: lo
+ * su pie y su plazo. Se buscan con los de su perfil manual (el financiamiento por defecto si no los cambió) y la TASA DE MERCADO: lo
  * mismo con que /deptos le contó cuántos convienen. Solo para quien no tiene ningún informe (perfil-busqueda-servidor.ts
  * › soloManual); el lugar y el depto no existen (no hay parecidos que buscar), así que van en cero.
  */

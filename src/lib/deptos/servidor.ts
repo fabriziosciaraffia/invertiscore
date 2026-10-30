@@ -1,13 +1,14 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // /deptos del lado del servidor (16-oct-2026): los conteos de la noche (RPC `deptos_conteo`), los primeros deptos con lo
 // último que se supo de su ficha (RPC `deptos_candidatos`) y la elección pendiente por correo (`deptos_pendientes`).
-// Sin consultas en vivo por aviso: todo sale de la evaluación de la noche (estándar de 25 años, estandar-deptos.ts).
+// Sin consultas en vivo por aviso: todo sale de la evaluación de la noche, con el plazo por defecto (deptos/estandar.ts).
 // ─────────────────────────────────────────────────────────────────────────────
 import { randomBytes } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { reportarFalloQuery } from "@/lib/observabilidad";
 import { comunasVecinas } from "@/lib/comunas-vecinas";
 import { COMUNAS_DISPONIBLES } from "@/lib/comunas-disponibles";
+import { PLAZO_DEPTOS } from "./estandar";
 import { tipologiaDe } from "@/lib/lo-que-sigue/perfil";
 import { condicionDe, type CondicionDepto } from "@/lib/guia/linea-depto";
 import { MEMORIA_SEMANAL_MS, VENTANA_SEMANAL_DIAS } from "@/lib/guia/semanal";
@@ -35,7 +36,8 @@ export async function responderDeptos(admin: SupabaseClient, v: Ok, ahora: Date 
  * tipologías a la vez, una comuna nueva, antes del primer cron), se cuenta una vez con la misma RPC y se guarda. Una
  * guardada vieja se sigue leyendo: el número cambia una vez por noche.
  */
-export const PREFIJO_CONTEO = "deptos_conteo:";
+// (30-oct-2026) La clave lleva el plazo: los conteos guardados a 25 años no se leen como si fueran de 30.
+export const PREFIJO_CONTEO = `deptos_conteo_p${PLAZO_DEPTOS}:`;
 
 /** La fila de `config` de una búsqueda: «deptos_conteo:2|3000-4000» (las tipologías, ordenadas). */
 export function claveConteo(tipologias: ReadonlyArray<{ id: string }>, rango: { id: string }): string {
@@ -63,7 +65,7 @@ export function conteoGuardado(valor: string | null | undefined): PorComuna | nu
 
 /** La RPC, para estas comunas: las que no trae quedan en cero (así se sabe que se contaron). */
 async function contarEnVivo(admin: SupabaseClient, comunas: string[], dorms: number[], rango: { min: number | null; max: number }, ahora: Date): Promise<PorComuna> {
-  const { data, error } = await admin.rpc("deptos_conteo", { comunas, dorms, uf_min: rango.min ?? 0, uf_max: rango.max, desde: desdeVentana(ahora) });
+  const { data, error } = await admin.rpc("deptos_conteo", { comunas, dorms, uf_min: rango.min ?? 0, uf_max: rango.max, desde: desdeVentana(ahora), plazo: PLAZO_DEPTOS });
   if (error) throw new Error(`deptos_conteo: ${error.message}`);
   const out: PorComuna = Object.fromEntries(comunas.map((c) => [c, [0, 0, 0] as [number, number, number]]));
   for (const f of (data ?? []) as Array<{ comuna: string; total: number; comprar_20: number; comprar_30: number }>) {
@@ -136,7 +138,7 @@ export async function guardarConteosDeLaNoche(admin: SupabaseClient, ahora: Date
 export async function rangoConMasPublicados(admin: SupabaseClient, comuna: string, dorms: number[], ahora: Date = new Date()): Promise<string> {
   const conteos = await Promise.all(
     RANGOS_UF.map(async (r) => {
-      const { data, error } = await admin.rpc("deptos_conteo", { comunas: [comuna], dorms, uf_min: r.min ?? 0, uf_max: r.max, desde: desdeVentana(ahora) });
+      const { data, error } = await admin.rpc("deptos_conteo", { comunas: [comuna], dorms, uf_min: r.min ?? 0, uf_max: r.max, desde: desdeVentana(ahora), plazo: PLAZO_DEPTOS });
       reportarFalloQuery(error, { ruta: RUTA, operacion: "rango-de-la-comuna" });
       const total = ((data ?? []) as Array<{ total: number }>).reduce((s, f) => s + (Number(f.total) || 0), 0);
       return { id: r.id, total };
@@ -170,7 +172,7 @@ export const CLAVE_RESUMEN_NOCHE = "deptos_resumen_noche";
 
 export async function calcularResumenDeLaNoche(admin: SupabaseClient, ahora: Date = new Date()): Promise<ResumenNoche | null> {
   const { data, error } = await admin.rpc("deptos_conteo", {
-    comunas: [...COMUNAS_DISPONIBLES], dorms: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], uf_min: 0, uf_max: 1e9, desde: desdeVentana(ahora),
+    comunas: [...COMUNAS_DISPONIBLES], dorms: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], uf_min: 0, uf_max: 1e9, desde: desdeVentana(ahora), plazo: PLAZO_DEPTOS,
   });
   reportarFalloQuery(error, { ruta: RUTA, operacion: "resumen-noche" });
   if (error || !data) return null;
@@ -237,18 +239,19 @@ export interface PrimerDepto {
 export const MAX_PRIMEROS = 5;
 
 /**
- * Los primeros deptos de un perfil, de la evaluación de la noche: los que convienen con su pie a 25 años, por puntaje,
+ * Los primeros deptos de un perfil, de la evaluación de la noche: los que convienen con su pie y su plazo (sin plazo, el
+ * por defecto: 30 años desde el 30-oct-2026), por puntaje,
  * PRIMERO los que tienen la ficha chequeada publicada en la última semana —la memoria con que arma el semanal—, con el día
  * y la hora en que se vieron («Visto publicado el 14 de octubre a las 03:12»); después, los demás, por confirmar. Sin
  * fichas: lo que se sabe.
  */
 export async function primerosDeptos(
   admin: SupabaseClient,
-  p: { comunas: string[]; dorms: number[]; ufMin: number; ufMax: number; pie: number },
+  p: { comunas: string[]; dorms: number[]; ufMin: number; ufMax: number; pie: number; plazo: number },
   ahora: Date = new Date(),
 ): Promise<PrimerDepto[]> {
   const { data, error } = await admin.rpc("deptos_candidatos", {
-    comunas: p.comunas, dorms: p.dorms, uf_min: p.ufMin, uf_max: p.ufMax, desde: desdeVentana(ahora), pie: p.pie >= 30 ? 30 : 20, max_filas: 40,
+    comunas: p.comunas, dorms: p.dorms, uf_min: p.ufMin, uf_max: p.ufMax, desde: desdeVentana(ahora), pie: p.pie >= 30 ? 30 : 20, max_filas: 40, plazo: p.plazo >= 30 ? 30 : 25,
   });
   reportarFalloQuery(error, { ruta: RUTA, operacion: "primeros" });
   const filas = (data ?? []) as Array<{

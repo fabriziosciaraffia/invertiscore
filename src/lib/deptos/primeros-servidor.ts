@@ -113,8 +113,10 @@ export async function primerosDeLaCuenta(admin: SupabaseClient, userId: string, 
   });
   if (faltan.length > 0 || !rango) return vacio("ninguno");
   const pie = (perfil.piePct ?? PIE_DEPTOS) >= 30 ? 30 : PIE_DEPTOS;
+  // El plazo de la persona (el elegido o el de su informe); sin plazo, el por defecto. La noche tiene 25 y 30 años.
+  const plazo = perfil.plazoAnios == null ? PLAZO_DEPTOS : perfil.plazoAnios >= 30 ? 30 : 25;
   const buscar = (comunas: string[]) => primerosDeptos(admin, {
-    comunas, dorms: perfil.dormitorios, ufMin: rango.ufMin, ufMax: rango.ufMax, pie,
+    comunas, dorms: perfil.dormitorios, ufMin: rango.ufMin, ufMax: rango.ufMax, pie, plazo,
   }, ahora);
   const propias = perfil.comunas.map(comunaDeAviso);
   const deLaNoche = await buscar(propias);
@@ -122,7 +124,7 @@ export async function primerosDeLaCuenta(admin: SupabaseClient, userId: string, 
   const vecinas = deLaNoche.length === 0 ? await buscar(comunasVecinas(propias).filter((c) => !propias.includes(c))) : [];
   const elegidos = deLaNoche.length ? deLaNoche : vecinas;
   if (elegidos.length === 0) return vacio("ninguno");
-  const combinacion = { piePct: pie, plazoAnios: PLAZO_DEPTOS };
+  const combinacion = { piePct: pie, plazoAnios: plazo };
   // «Analizar este» desde ya: los de la noche quedan en la fila pendiente del día, con lo que hace falta para validarlos.
   let origenId: string | null = null;
   let enSeleccion = false;

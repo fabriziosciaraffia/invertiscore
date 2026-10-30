@@ -3,7 +3,7 @@
 // rango de precio, y Franco responde AL INSTANTE con la evaluación de la noche (sin calcular en vivo).
 // LA RESPUESTA ES UN NÚMERO (16-oct-2026, segunda pasada: la única meta de la página es que dejen el correo): «29 de 1.008
 // convienen». Desde el 17-oct-2026, antes del número la etiqueta «Si buscas Santiago · 2D · UF 3.000 a 4.000» y debajo
-// la nota chica «con pie 20 % y 25 años». Con cero, con
+// la nota chica con el financiamiento por defecto. Con cero, con
 // qué sí en una línea corta —con pie 30 %, o en qué comuna vecina— y aun así el registro: «te aviso cuando aparezca uno».
 // La modalidad ya no se pregunta acá: va en «Estás dentro», con arriendo tradicional por defecto.
 // Puro: lo prueba el tier PUERTA-B. Los conteos los trae la RPC `deptos_conteo` (mismo universo que el correo semanal)
@@ -96,7 +96,7 @@ export interface ConteoComuna { comuna: string; total: number; comprar20: number
 
 export interface RespuestaDeptos {
   total: number;
-  /** Los que convienen con el estándar (pie 20 %, 25 años). */
+  /** Los que convienen con el financiamiento por defecto (pie 20 %, 30 años: deptos/estandar.ts). */
   convienen: number;
   /** El número: «29 de 1.008». null si esta semana no hubo avisos así. */
   cifra: string | null;
@@ -230,7 +230,7 @@ export function respuestaDeptos(
   return { total, convienen: 0, cifra, titular, resto, nota, alternativa, conPie30, vecinas: vecinasQueDan, registro: DEPTOS_COPY.correo.tituloSinDeptos };
 }
 
-/** El perfil manual con que nace la cuenta (columnas de `perfil_busqueda`): los chips, con pie 20 % y 25 años. LA MODALIDAD
+/** El perfil manual con que nace la cuenta (columnas de `perfil_busqueda`): los chips, con el financiamiento por defecto (pie 20 % y 30 años). LA MODALIDAD
  *  NO SE ESCRIBE POR DEFECTO (24-oct-2026, mockup 3b): /deptos ya no la pregunta, así que la cuenta nace sin contestarla y
  *  el perfil del dashboard se la pregunta («¿Cómo lo arriendas?», lib/casa/reglas.ts › preguntasPendientes). Sin respuesta,
  *  todo sigue en renta larga (perfil-busqueda.ts). Solo una elección explícita de renta corta se guarda. */

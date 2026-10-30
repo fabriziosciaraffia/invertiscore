@@ -126,7 +126,7 @@ export interface DatosLanding {
   ultimoAnalisis: { etiqueta: string; veredicto: Veredicto; comuna: string; createdAt: string } | null;
   ejemplos: EjemploLanding[];
   /** EL TÍTULO DEL HERO (30-oct-2026, el hero limpio de 7c-landing-limpia): cuántos convienen hoy, el número único de todo el
-   *  sitio (convienenHoy: el universo del mapa de Explorar con pie 20 % y 25 años). El mapa del hero y sus grupos se
+   *  sitio (convienenHoy: el universo del mapa de Explorar con el financiamiento por defecto (pie 20 % y 30 años)). El mapa del hero y sus grupos se
    *  retiraron con él. null si la lectura falló: el título sale sin cifra. */
   convienen: number | null;
   /** Cuántos deptos en venta revisó Franco anoche (`revisados` del resumen de la noche, `deptos_resumen_noche`): «+21.000».

@@ -111,13 +111,13 @@ export function lineaSaldo(e: EstadoSaldo): string | null {
   return e.tipo === "con" ? CASA.con.titulo(e.n) : e.tipo === "plan" ? CASA.plan.titulo : e.tipo === "regalo" ? CASA.regalo.titulo : null;
 }
 
-/** «Providencia · 2 dormitorios · UF 3.000 a 4.000 · Pie 20 % · 25 años»: la frase del perfil abierto. */
+/** «Providencia · 2 dormitorios · UF 3.000 a 4.000 · Pie 20 % · 30 años»: la frase del perfil abierto. */
 export function frasePerfil(p: { linea: string; piePct: number | null; plazoAnios: number | null }): string {
   const pct = (n: number) => String(Math.round(n * 10) / 10).replace(".", ",");
   return [p.linea, p.piePct != null ? CASA.perfil.pie(pct(p.piePct)) : null, p.plazoAnios != null ? CASA.perfil.plazo(p.plazoAnios) : null].filter(Boolean).join(" · ");
 }
 
-/** «Providencia · 2D · UF 3.000 a 4.000 · 20 % · 25 años»: la línea corta de la fila plegada. */
+/** «Providencia · 2D · UF 3.000 a 4.000 · 20 % · 30 años»: la línea corta de la fila plegada. */
 export function lineaCorta(p: { comunas: string[]; dormitorios: number[]; rango: string | null; piePct: number | null; plazoAnios: number | null }): string {
   const dorms = p.dormitorios.length === 0 ? null : `${[...p.dormitorios].sort((a, b) => a - b).map((d) => (d === 0 ? "S" : String(d))).join("+")}D`;
   const pie = p.piePct != null ? `${String(Math.round(p.piePct * 10) / 10).replace(".", ",")} %` : null;

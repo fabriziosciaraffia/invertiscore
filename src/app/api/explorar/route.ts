@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { captureApiError } from "@/lib/observabilidad";
 import { COMUNAS_DISPONIBLES } from "@/lib/comunas-disponibles";
+import { PIE_POR_DEFECTO, PLAZO_POR_DEFECTO } from "@/lib/deptos/estandar";
 import { PIES_EXPLORAR, PLAZOS_EXPLORAR } from "@/lib/explorar/explorar";
 import { claveUniverso, universoDeLaNoche as esDeLaNoche } from "@/lib/explorar/portal";
 import { respuestaUniverso, universoCalculado, type RespuestaUniverso } from "@/lib/explorar/portal-servidor";
@@ -32,7 +33,7 @@ export async function GET(request: Request) {
   if (!user) return NextResponse.json({ error: "sin-sesion" }, { status: 401 });
   const sp = new URL(request.url).searchParams;
   const modalidad = sp.get("m") === "str" ? "str" : "ltr";
-  const pie = Number(sp.get("p") ?? 20), plazo = Number(sp.get("z") ?? 25);
+  const pie = Number(sp.get("p") ?? PIE_POR_DEFECTO), plazo = Number(sp.get("z") ?? PLAZO_POR_DEFECTO);
   if (!(PIES_EXPLORAR as readonly number[]).includes(pie) || !(PLAZOS_EXPLORAR as readonly number[]).includes(plazo)) return NextResponse.json({ error: "combinacion" }, { status: 400 });
   const q = { modalidad, pie, plazo } as const;
   try {

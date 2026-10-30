@@ -10,6 +10,7 @@ import { PLANTILLAS_SUPABASE } from "./supabase-plantillas";
 import { correoRecordatorioPack } from "@/lib/lo-que-sigue/recordatorio";
 import { correoSemanal, correoSemanalVacio, type DatosCorreoSemanal } from "./correo-semanal";
 import { correoInmediato, correoPreguntaYa } from "./correo-inmediato";
+import { PLAZO_POR_DEFECTO } from "@/lib/deptos/estandar";
 
 export interface EntradaCatalogo {
   id: string;
@@ -80,7 +81,7 @@ export const CATALOGO_CORREOS: EntradaCatalogo[] = [
       { boton: "Sumar Providencia a mi búsqueda", url: `${SITIO}/api/semanal/clic?t=muestra&ir=ajustar&que=comuna:Providencia` },
     ] } }) },
   // El correo del día (16-oct-2026, la puerta B): a la cuenta nueva de /deptos, dentro de la hora; es el semanal de esa semana.
-  { id: "del_dia", tipo: "semanal", nombre: "Correo del día · los primeros deptos", cuando: "Dentro de la hora del registro por /deptos, a toda cuenta nueva: sus primeros deptos con la ficha chequeada, la hora en que Franco los vio publicados y el regalo (es el semanal de esa semana)", render: () => correoSemanal({ ...SEMANAL_MUESTRA("tarjetas", { saldo: 1, conRegalo: false }), plazoAnios: 25, presentacion: true, delDia: { publicadosAl: "hoy a las 14:32" }, regaloAltaVence: "2026-11-15T15:00:00Z" }) },
+  { id: "del_dia", tipo: "semanal", nombre: "Correo del día · los primeros deptos", cuando: "Dentro de la hora del registro por /deptos, a toda cuenta nueva: sus primeros deptos con la ficha chequeada, la hora en que Franco los vio publicados y el regalo (es el semanal de esa semana)", render: () => correoSemanal({ ...SEMANAL_MUESTRA("tarjetas", { saldo: 1, conRegalo: false }), plazoAnios: PLAZO_POR_DEFECTO, presentacion: true, delDia: { publicadosAl: "hoy a las 14:32" }, regaloAltaVence: "2026-11-15T15:00:00Z" }) },
   { id: "del_dia_vacio", tipo: "semanal", nombre: "Correo del día · sin deptos todavía", cuando: "Dentro de la hora del registro por /deptos, cuando ningún depto publicado convenía: «Te aviso cuando aparezca uno», con el regalo", render: () => correoSemanalVacio({ nombre: "Camila", presentacion: true, urlPerfil: `${SITIO}/dashboard#perfil`, urlBaja: `${SITIO}/semanal/baja`, delDia: true, regaloAltaVence: "2026-11-15T15:00:00Z" }) },
   { id: "aviso_inmediato", tipo: "aviso_inmediato", nombre: "Aviso inmediato", cuando: "El día que aparece un aviso nuevo que da Comprar con el perfil de quien dijo «Quiero comprar ya» y sigue publicado (uno por día; sin saldo: compra el suelto)", render: () => correoInmediato({ nombre: "Camila", busca: "2 dormitorios, Ñuñoa, hasta UF 4.500", piePct: 20, plazoAnios: 30, deptos: [SEMANAL_MUESTRA("tarjetas", { saldo: 0, conRegalo: false }).deptos[0]], saldo: 0, urlBoton: `${SITIO}/semanal`, urlComprar: `${SITIO}/checkout?product=single&origen=inmediato`, urlBaja: `${SITIO}/semanal/baja?tipo=inmediato` }) },
   { id: "pregunta_horizonte", tipo: "pregunta_horizonte", nombre: "¿Cuándo piensas comprar? (a los 60 días del «Quiero comprar ya»)", cuando: "A los 60 días de responder «Quiero comprar ya» sin comprar; sin respuesta, quedan solo el semanal", render: () => correoPreguntaYa({ nombre: "Camila", urlRespuesta: (h) => `${SITIO}/api/inmediato/horizonte?t=muestra&h=${h}` }) },

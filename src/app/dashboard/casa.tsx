@@ -10,7 +10,7 @@
 // se arma con esto.». Todo se guarda junto, con «Guardar» (PUT /api/perfil-busqueda), y la página se vuelve a pedir
 // para que la selección diga lo nuevo. Sistema de /deptos: Inter, píldoras, el rojo solo en lo pendiente y el error.
 // AL GUARDAR (24-oct-2026, recorrido de Fabrizio): los campos y las preguntas se pliegan, la fila vuelve a su línea con el
-// resumen completo («Providencia · 2D · UF 4.000 a 6.000 · 20 % · 25 años · Arriendo tradicional · Quiero comprar ya»), la
+// resumen completo («Providencia · 2D · UF 4.000 a 6.000 · 20 % · 30 años · Arriendo tradicional · Quiero comprar ya»), la
 // etiqueta de las pendientes se va y «Guardado.» se ve dos segundos en la fila. «Guardar» solo está a la vista cuando hay
 // algo que guardar. Al abrir de nuevo: la frase con «Editar» y las preguntas ya contestadas, editables.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -20,6 +20,7 @@ import "./casa.css";
 import "@/app/deptos/deptos.css";
 import { botonOcupado } from "@/lib/carga-global";
 import { COMUNAS_DISPONIBLES } from "@/lib/comunas-disponibles";
+import { PLAZO_POR_DEFECTO } from "@/lib/deptos/estandar";
 import type { Horizonte, Modalidad } from "@/lib/perfil-busqueda";
 import { ajusteDeParametro, queCambioAjuste, SEMANAL_VACIO } from "@/lib/guia/semanal";
 import { etiquetaPendientes, type PreguntaPendiente } from "@/lib/casa/reglas";
@@ -67,8 +68,8 @@ export function valorDePerfil(p: Pick<PerfilEditable, "comunas" | "dormitorios" 
   return { valor: { comunas: p.comunas, tipologia: t?.id ?? "", rango: r?.id ?? RANGO_ACTUAL }, tipologiaExtra, rangoExtra };
 }
 
-/** «Providencia · 2 dormitorios · UF 3.000 a 4.000 · Pie 20 % · 25 años» (la frase) y «Providencia · 2D · UF 3.000 a
- *  4.000 · 20 % · 25 años» (la línea corta de la fila plegada). */
+/** «Providencia · 2 dormitorios · UF 3.000 a 4.000 · Pie 20 % · 30 años» (la frase) y «Providencia · 2D · UF 3.000 a
+ *  4.000 · 20 % · 30 años» (la línea corta de la fila plegada). */
 export function textosDelPerfil(p: PerfilEditable): { frase: string; corta: string } {
   const c = valorDePerfil(p);
   const t = TIPOLOGIAS_DEPTOS.find((x) => x.id === c.valor.tipologia);
@@ -84,7 +85,7 @@ export function textosDelPerfil(p: PerfilEditable): { frase: string; corta: stri
 /** Cuánto se ve «Guardado.» en la fila del perfil. */
 export const GUARDADO_VISIBLE_MS = 2000;
 
-/** La fila cerrada del perfil: «Providencia · 2D · UF 4.000 a 6.000 · 20 % · 25 años · Arriendo tradicional · Quiero
+/** La fila cerrada del perfil: «Providencia · 2D · UF 4.000 a 6.000 · 20 % · 30 años · Arriendo tradicional · Quiero
  *  comprar ya». Cómo lo arrienda y cuándo piensa comprar, solo si ya lo dijo (`dichas`). */
 export function resumenDeFila(p: PerfilEditable, dichas: { modalidad: boolean; cuando: boolean }): string {
   return [
@@ -282,7 +283,7 @@ export function PerfilBusquedaCasa({ inicial, pendientes, modalidadRespondida }:
               </label>
               <label className="dp-campo-b" htmlFor="casa-plazo">
                 <span className="dp-etq">{CASA.perfil.plazoEtiqueta}</span>
-                <select id="casa-plazo" className="dp-select" data-campo="plazo" value={p.plazoAnios ?? 25} onChange={(e) => { const v = Number(e.target.value); setP((x) => ({ ...x, plazoAnios: v })); }}>
+                <select id="casa-plazo" className="dp-select" data-campo="plazo" value={p.plazoAnios ?? PLAZO_POR_DEFECTO} onChange={(e) => { const v = Number(e.target.value); setP((x) => ({ ...x, plazoAnios: v })); }}>
                   {plazos.map((x) => <option key={x} value={x}>{CASA.perfil.plazo(x)}</option>)}
                 </select>
               </label>

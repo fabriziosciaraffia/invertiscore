@@ -11,6 +11,7 @@ import { comunaDeAviso } from "@/lib/guia/semanal-candidatos";
 import { rangoSemanal, VENTANA_SEMANAL_DIAS } from "@/lib/guia/semanal";
 import { reportarFalloQuery } from "@/lib/observabilidad";
 import type { ConteoComuna } from "@/lib/deptos/respuesta";
+import { PLAZO_DEPTOS } from "@/lib/deptos/estandar";
 import type { PerfilBusqueda } from "@/lib/perfil-busqueda";
 import { avisoSinOferta, chipDeAbajo, type AvisoSinOferta } from "./sin-oferta";
 
@@ -28,8 +29,8 @@ export async function contarSinOferta(admin: SupabaseClient, userId: string, per
   const desde = new Date(ahora.getTime() - VENTANA_SEMANAL_DIAS * 864e5).toISOString().replace("Z", "");
   const abajo = chipDeAbajo(rango);
   const [suyo, deAbajo] = await Promise.all([
-    admin.rpc("deptos_conteo", { comunas: [...comunas, ...vecinas], dorms: perfil.dormitorios, uf_min: rango.ufMin, uf_max: rango.ufMax, desde }),
-    abajo ? admin.rpc("deptos_conteo", { comunas, dorms: perfil.dormitorios, uf_min: abajo.min ?? 0, uf_max: abajo.max, desde }) : Promise.resolve({ data: [], error: null }),
+    admin.rpc("deptos_conteo", { comunas: [...comunas, ...vecinas], dorms: perfil.dormitorios, uf_min: rango.ufMin, uf_max: rango.ufMax, desde, plazo: PLAZO_DEPTOS }),
+    abajo ? admin.rpc("deptos_conteo", { comunas, dorms: perfil.dormitorios, uf_min: abajo.min ?? 0, uf_max: abajo.max, desde, plazo: PLAZO_DEPTOS }) : Promise.resolve({ data: [], error: null }),
   ]);
   reportarFalloQuery(suyo.error, { ruta: "lib/casa/sin-oferta", operacion: "deptos-conteo", userId });
   reportarFalloQuery(deAbajo.error, { ruta: "lib/casa/sin-oferta", operacion: "deptos-conteo-chip-de-abajo", userId });

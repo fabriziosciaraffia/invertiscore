@@ -9,7 +9,7 @@ import { universoDeLaNocheCacheado } from "@/lib/explorar/portal-cache";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/explorar/abierto?m=ltr|str[&c=Ñuñoa] (29-oct-2026, la puerta E): el universo del mapa SIN CUENTA. Siempre con pie
-// 20 % y 25 años (decisión de Fabrizio: sin cuenta, pie y plazo piden registro); la modalidad sí se elige.
+// el financiamiento por defecto, 20 % y 30 años (decisión de Fabrizio: sin cuenta, pie y plazo piden registro); la modalidad sí se elige.
 //   · SIN CIFRAS: el flujo y el arriendo no viajan (abierto.ts › sinCifras). De ellos salen el flujo, el cap rate y la
 //     cuota, que sin cuenta se ven borrosos con un relleno fijo.
 //   · Arriendo tradicional: todo Gran Santiago, de la misma caché de diez minutos que con cuenta.

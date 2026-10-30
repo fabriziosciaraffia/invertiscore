@@ -13,7 +13,7 @@ import { avisosDeOtraVersion, avisosEvaluables, avisosPendientes, sinDespublicad
 // Los avisos evaluados con el motor (30-sep-2026): cada semana, los avisos de venta vistos en los
 // últimos 7 días pasan por la MISMA entrada del wizard (evaluar-aviso.ts) con el perfil estándar —pie
 // 20% y 30%, 30 años, tasa de mercado— y quedan en `avisos_evaluados` con sus sugerencias (fuente y
-// muestra) y su resultado; desde el 16-oct-2026, también el estándar de /deptos —pie 20% y 30%, 25 años— en
+// muestra) y su resultado; desde el 16-oct-2026, también el mismo aviso a 25 años —pie 20% y 30%, la opción de 25 de Filtros; hasta el 30-oct-2026, el estándar de /deptos— en
 // sus columnas _25 (estandar-deptos.ts). Es la base de «Por dónde seguir buscando» (los tres
 // parecidos): una guía de búsqueda, NO el portafolio de Franco, que es otra cosa y no se mezcla.
 //
@@ -113,7 +113,7 @@ export async function GET(request: Request) {
         // los arriendos sospechosos de 861 a 1.280. Queda en arriendo-segmentado.ts, apagado.
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { sug, ...evaluada } = await evaluarAviso(sb, a, cfg, { segmentar: false });
-        // El estándar de /deptos (16-oct-2026): el mismo aviso a 25 años, con la sonda y lo que la fila resolvió.
+        // El mismo aviso a 25 años (16-oct-2026; columnas *_25), con la sonda y lo que la fila resolvió.
         const fila = { ...evaluada, ...(evaluada.arriendo ? evaluarEstandar25(candidatoDeEvaluacion(a, evaluada), cfg) : ESTANDAR25_VACIO) };
         if (!fila.arriendo) sinArriendo++;
         // Sugerencia que cayó a la comuna porque el radio no respondió (aun reintentando): se escribe,

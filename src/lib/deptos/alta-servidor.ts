@@ -4,7 +4,7 @@
 // ahora verifica y da de alta en un solo pedido (POST /api/deptos/entrar; entrada.ts). Lee lo que la persona eligió en
 // /deptos (deptos_pendientes) y:
 //   · CUENTA NUEVA —el correo no tenía cuenta al pedir el código y la cuenta nació después (tipoDeAlta)—: la cuenta nace
-//     con ese perfil manual (comunas, tipología, rango, modalidad, pie 20 % y 25 años), su regalo (regalo-alta.ts), la
+//     con ese perfil manual (comunas, tipología, rango, modalidad y el financiamiento por defecto (pie 20 % y 30 años)), su regalo (regalo-alta.ts), la
 //     puerta B en la atribución, sin el correo de bienvenida (su bienvenida es el correo del día) y el correo del día en
 //     cola, con la primera vuelta en el momento;
 //   · CUENTA QUE YA EXISTÍA: nada se duplica ni se pisa; devuelve las comunas que su perfil no tiene, para preguntarle si

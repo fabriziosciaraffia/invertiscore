@@ -1,8 +1,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// El estándar de /deptos (16-oct-2026, decisión de Fabrizio): pie 20 % y plazo 25 años, con la tasa de mercado. La
+// LAS COLUMNAS DE 25 AÑOS (16-oct-2026; hasta el 30-oct-2026 fueron el estándar de /deptos, que pasó a 30 años con todo el
+// sitio: deptos/estandar.ts › PLAZO_POR_DEFECTO). Pie 20 % y 30 %, plazo 25 años, con la tasa de mercado. La
 // evaluación de cada noche sigue con su perfil (pie 20 % y 30 %, 30 años: evaluar-aviso.ts › PLAZO_ESTANDAR); esto es el
-// MISMO aviso a 25 años, con pie 20 % y 30 %, para que la respuesta al instante de /deptos («de 412 deptos 2D, 9
-// convienen con pie 20 % y 25 años») salga de la evaluación de la noche y no de un cálculo en vivo.
+// MISMO aviso a 25 años, con pie 20 % y 30 %, para que la opción de 25 años de Filtros salga de la evaluación de la noche y no
+// de un cálculo en vivo (hasta el 30-oct-2026 también salía de acá la respuesta al instante de /deptos).
 //
 // Con la SONDA del motor (sondaConPatch) y el contexto que la fila ya resolvió (contextoDeFila): la misma cuenta con que
 // el semanal recalcula un candidato con los números de la persona, así lo que /deptos cuenta y lo que el correo manda
@@ -12,7 +13,7 @@
 import { sondaConPatch } from "@/lib/analysis";
 import { avisoDeCandidato, contextoDeFila, type CandidatoGuia } from "@/lib/guia/guia-servidor";
 import { payloadDeAviso, respuestasDeAviso, type AvisoParaEvaluar, type FilaEvaluacion } from "./evaluar-aviso";
-import { PIES_DEPTOS, PLAZO_DEPTOS } from "@/lib/deptos/estandar";
+import { PIES_DEPTOS, PLAZO_COLUMNAS_25 } from "@/lib/deptos/estandar";
 
 export { PIE_DEPTOS, PIES_DEPTOS, PLAZO_DEPTOS } from "@/lib/deptos/estandar";
 
@@ -59,7 +60,7 @@ export function sondaDeCandidato(c: CandidatoGuia, combo: { piePct: number; plaz
 export function evaluarEstandar25(c: CandidatoGuia, cfg: { uf: number; tasa: number }, asOf: Date = new Date()): FilaEstandar25 {
   const out: Record<string, string | number | null> = {};
   for (const pie of PIES_DEPTOS) {
-    const s = sondaDeCandidato(c, { piePct: pie, plazoAnios: PLAZO_DEPTOS }, cfg, asOf);
+    const s = sondaDeCandidato(c, { piePct: pie, plazoAnios: PLAZO_COLUMNAS_25 }, cfg, asOf);
     if (!s) return ESTANDAR25_VACIO;
     out[`veredicto_${pie}_25`] = s.veredicto;
     out[`score_${pie}_25`] = s.score;

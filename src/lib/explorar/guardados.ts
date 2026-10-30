@@ -2,12 +2,13 @@
 // LOS GUARDADOS EN EL DASHBOARD (28-oct-2026, goal «Explorar como portal»): los deptos que la persona guardó con el corazón
 // en Explorar aparecen en el dashboard en una fila plegada «Guardados», con «Comparar» para los que marque (de 2 a 4,
 // lado a lado). La parte pura: cada depto en una fila y la tabla de la comparación, con los supuestos de la vista global
-// (pie 20 % y 25 años, arriendo tradicional: el número de anoche). La lectura vive en guardados-servidor.ts.
+// (el financiamiento por defecto, arriendo tradicional: el número de anoche). La lectura vive en guardados-servidor.ts.
 // ─────────────────────────────────────────────────────────────────────────────
 import { lineaDepto, type CondicionDepto } from "@/lib/guia/linea-depto";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 import { capRatePct, flujoTexto, pctUno, ufPorM2 } from "./explorar";
 import { urlDePortal, FILTROS_GLOBALES } from "./portal";
+import { PIE_POR_DEFECTO, PLAZO_POR_DEFECTO } from "@/lib/deptos/estandar";
 
 export interface DeptoGuardado {
   avisoId: string;
@@ -33,7 +34,7 @@ const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
 
 export const GUARDADOS_COPY = {
   titulo: "Guardados",
-  sub: "Con pie 20 % y 25 años, arriendo tradicional",
+  sub: `Con pie ${PIE_POR_DEFECTO} % y ${PLAZO_POR_DEFECTO} años, arriendo tradicional`,
   comparar: (n: number) => (n >= COMPARAR_MIN_GUARDADOS ? `Comparar ${n}` : "Comparar"),
   marca: `Marca de ${COMPARAR_MIN_GUARDADOS} a ${COMPARAR_MAX_GUARDADOS} para compararlos.`,
   verEnMapa: "Ver en el mapa",

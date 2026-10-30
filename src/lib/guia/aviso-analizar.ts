@@ -55,7 +55,7 @@ export const AVISO_ANALIZAR = {
 
 // ── EL POP-UP RECALCULA (23-oct-2026, mockups D1 y D2 de `docs/puerta-b-mockups/4-ticket-y-popups.html`, decisión de Fabrizio) ──
 // Como se abre: la tarjeta gris del depto (comuna · tipología · m² · precio, el veredicto y el flujo, qué incluye el
-// informe), «Con pie de 20 % y plazo de 25 años · Cambiar», el dividendo y el retorno, qué gasta, «Analizar». Al tocar
+// informe), «Con pie de 20 % y plazo de 30 años · Cambiar», el dividendo y el retorno, qué gasta, «Analizar». Al tocar
 // Cambiar: los selectores de pie y plazo, el veredicto se recalcula al tiro y, si cambia, la tarjeta del cambio, la casilla
 // «Guardar … como mi perfil de búsqueda» y «Analizar igual» si empeora. Las listas, el texto del cambio y la ruta de
 // recálculo son los de Explorar (lib/explorar/explorar.ts, una sola API desde el 23-oct-2026); acá viven el copy del

@@ -20,6 +20,7 @@ import { DEC, decPie, PIE_RAZON_OPCIONES } from "./wizardV4Nodes";
 import { BarraCta, ChoiceTile, FieldLabel, FuenteLine, LinkBtn, PrimaryBtn, Segmented, TileTexto } from "./ui";
 import { NumericInput, convertirUnidad, decimalesUtiles } from "./NumericInput";
 import { formatNumeroCL } from "@/lib/numero-cl";
+import { PLAZO_POR_DEFECTO } from "@/lib/deptos/estandar";
 import {
   convertirPieTexto,
   cuotaCLP,
@@ -213,16 +214,16 @@ export function PieScreen({ answers, data, patchAnswers, answer }: ScreenProps) 
   }
 
   // Lo que financia el banco con «otra fuente»: sobre el pie que ve el banco, con la tasa y el
-  // plazo elegidos o —si todavía no se eligieron: la tasa viene después— los de hoy a 25 años.
+  // plazo elegidos o —si todavía no se eligieron: la tasa viene después— la de hoy con el plazo por defecto.
   const pUF = precioUF(answers);
   const efectivo = pieEfectivoPct(answers, data.ufCLP);
   const tasaElegida = leerNum(answers.tasaInteres, DEC.tasa);
   const plazoElegido = Number(answers.plazoCredito) || 0;
   const cuotaBanco =
     otraPct > 0 && pUF > 0 && data.ufCLP > 0
-      ? calcDividendo(pUF, efectivo, plazoElegido || 25, tasaElegida || data.tasaMercado, data.ufCLP)
+      ? calcDividendo(pUF, efectivo, plazoElegido || PLAZO_POR_DEFECTO, tasaElegida || data.tasaMercado, data.ufCLP)
       : 0;
-  const supuestoCuota = tasaElegida > 0 && plazoElegido > 0 ? "" : ", a 25 años con la tasa de mercado de hoy";
+  const supuestoCuota = tasaElegida > 0 && plazoElegido > 0 ? "" : `, a ${PLAZO_POR_DEFECTO} años con la tasa de mercado de hoy`;
 
   const onUnidad = (u: PieUnidad) => {
     // F1 (fix pie-cero): el toggle CONVIERTE el monto a la nueva unidad —nunca lo vacía: ese
@@ -514,7 +515,7 @@ export function TasaFixScreen({ answers, data, patchAnswers, answer }: ScreenPro
 const PLAZOS = ["15", "20", "25", "30"];
 
 export function PlazoScreen({ answers, data, patchAnswers, answer }: ScreenProps) {
-  const plazo = answers.plazoCredito || "25";
+  const plazo = answers.plazoCredito || String(PLAZO_POR_DEFECTO);
   // LA CUOTA EN VIVO (27-sep-2026): se mueve con el slider, en esta misma pantalla. Antes
   // aparecía en la siguiente, como reacción: el plazo se elegía sin ver lo que costaba.
   const conPlazo = { ...answers, plazoCredito: plazo };

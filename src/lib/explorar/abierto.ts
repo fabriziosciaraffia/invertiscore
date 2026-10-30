@@ -3,7 +3,7 @@
 // puras; el servidor está en portal-servidor.ts y la ruta /api/explorar/abierto, la pantalla en src/app/explorar.
 //   · SIN CUENTA SE VE el mapa, los grupos, los filtros y la lista. El flujo, el arriendo, el cap rate y la UF por m² NO
 //     VIAJAN al navegador (`sinCifras`): la tarjeta y la lista los muestran borrosos con un relleno fijo, no con el valor.
-//   · DECISIONES DE FABRIZIO (29-oct-2026): pie y plazo quedan en 20 % y 25 años (tocarlos abre el registro); la modalidad
+//   · DECISIONES DE FABRIZIO (29-oct-2026): pie y plazo quedan en el financiamiento por defecto —20 % y 30 años desde el 30-oct-2026— (tocarlos abre el registro); la modalidad
 //     sí se cambia; lo que depende del flujo («Solo flujo positivo», ordenar por mayor flujo o cap rate) se ve y pide
 //     registro; «Avísame de nuevos» abre la hoja hablando del regalo, sin línea de depto.
 //   · LA HOJA DE REGISTRO (estado D) sale de lo que se tocó (`PedidoRegistro`) y, al terminar el alta, se hace eso mismo: la
@@ -14,6 +14,7 @@
 import { perfilManualDeElecciones, RANGOS_UF, validarElecciones, type EleccionesDeptos } from "@/lib/deptos/respuesta";
 import { lineaDepto } from "@/lib/guia/linea-depto";
 import { DESDE_LANDING } from "./puertas-landing";
+import { PIE_POR_DEFECTO, PLAZO_POR_DEFECTO } from "@/lib/deptos/estandar";
 import { perfilDeFiltros, urlDePortal, validarPortal, type FiltrosPortal, type ModalidadPortal, type OrdenPortal, type PinMapa, type UniversoCompacto } from "./portal";
 
 const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
@@ -32,9 +33,9 @@ export const detalleExplorar = (d: string | null | undefined): string => (d === 
 export const origenDeDetalle = (d: string): OrigenExplorar => (d === "explorar:landing" ? "landing" : "directo");
 
 // ── LOS SUPUESTOS SIN CUENTA ─────────────────────────────────────────────────
-export const PIE_ABIERTO = 20 as const;
-export const PLAZO_ABIERTO = 25 as const;
-/** Sin cuenta: pie 20 % y 25 años, y sin «Solo flujo positivo» (pide registro); la modalidad y lo demás, como vengan. */
+export const PIE_ABIERTO = PIE_POR_DEFECTO;
+export const PLAZO_ABIERTO = PLAZO_POR_DEFECTO;
+/** Sin cuenta: el financiamiento por defecto (pie 20 % y 30 años, deptos/estandar.ts), y sin «Solo flujo positivo» (pide registro); la modalidad y lo demás, como vengan. */
 export function filtrosAbiertos(f: FiltrosPortal): FiltrosPortal {
   return f.pie === PIE_ABIERTO && f.plazo === PLAZO_ABIERTO && !f.flujoPositivo ? f : { ...f, pie: PIE_ABIERTO, plazo: PLAZO_ABIERTO, flujoPositivo: false };
 }
@@ -106,7 +107,7 @@ export function eleccionesDePin(pin: Pick<PinMapa, "comuna" | "dormitorios" | "p
 }
 
 /** El perfil (columnas de `perfil_busqueda`) desde los filtros activos, para «Avísame de nuevos» sin cuenta: lo mismo que
- *  guarda «Avísame» con cuenta (perfilDeFiltros), con pie 20 % y 25 años. null sin comunas (o más de ocho). */
+ *  guarda «Avísame» con cuenta (perfilDeFiltros), con el financiamiento por defecto. null sin comunas (o más de ocho). */
 export function perfilFilaDeFiltros(f: FiltrosPortal): Record<string, unknown> | null {
   const r = perfilDeFiltros(filtrosAbiertos(f));
   if (!r.ok) return null;

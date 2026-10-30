@@ -9,7 +9,7 @@
 //
 //   · LOS FILTROS DEL DASHBOARD: el perfil de la persona (comunas, tipología, rango, pie y plazo), para el mapa de su
 //     selección (lib/casa/mapa-casa-servidor.ts).
-//   · SOLO LOS COMPRAR: el pin es un depto que da Comprar con ese pie y ese plazo según la evaluación de anoche (a 25 años
+//   · SOLO LOS COMPRAR: el pin es un depto que da Comprar con ese pie y ese plazo según la evaluación de anoche (a 25 o 30 años
 //     las columnas del estándar de /deptos; a 30, las de la noche: por eso el chip de pie y plazo ofrece esas cuatro
 //     combinaciones y no otras). `soloComprar` es la segunda red, después del SQL.
 //   · ANALIZAR ES LO ÚNICO QUE GASTA: «Analizar este» abre el mismo aviso antes de gastar que la selección.
@@ -77,13 +77,13 @@ const COMUNAS_OK = new Set<string>(COMUNAS_DISPONIBLES as readonly string[]);
 const esPie = (p: unknown): p is PieExplorar => (PIES_EXPLORAR as readonly number[]).includes(Number(p));
 const esPlazo = (p: unknown): p is PlazoExplorar => (PLAZOS_EXPLORAR as readonly number[]).includes(Number(p));
 
-/** El pie de la lista más cercano al de la persona (sin pie, el estándar de 20 %) y el plazo (sin plazo, 25 años). */
+/** El pie de la lista más cercano al de la persona y el plazo; sin pie o sin plazo, el financiamiento por defecto (deptos/estandar.ts). */
 const masCercano = <T extends number>(lista: readonly T[], v: number): T => lista.reduce((a, b) => (Math.abs(b - v) < Math.abs(a - v) ? b : a));
 export function pieDeLista(piePct: number | null | undefined): PieExplorar { return piePct == null ? (PIE_DEPTOS as PieExplorar) : masCercano(PIES_EXPLORAR, piePct); }
 export function plazoDeLista(plazoAnios: number | null | undefined): PlazoExplorar { return plazoAnios == null ? (PLAZO_DEPTOS as PlazoExplorar) : masCercano(PLAZOS_EXPLORAR, plazoAnios); }
 /** El pie y el plazo de la NOCHE más cercanos (para contar rápido sin calcular: el botón del dashboard). */
 export function pieDeLaNoche(piePct: number | null | undefined): (typeof PIES_NOCHE)[number] { return piePct != null && piePct >= 30 ? 30 : 20; }
-export function plazoDeLaNoche(plazoAnios: number | null | undefined): (typeof PLAZOS_NOCHE)[number] { return plazoAnios != null && plazoAnios >= 30 ? 30 : 25; }
+export function plazoDeLaNoche(plazoAnios: number | null | undefined): (typeof PLAZOS_NOCHE)[number] { return plazoAnios == null ? PLAZO_DEPTOS : plazoAnios >= 30 ? 30 : 25; }
 
 /** El id de tipología de un dormitorio del perfil (4 o más → «4»). */
 export const tipologiaDeDorm = (d: number): string => (d >= 4 ? "4" : String(Math.max(0, Math.round(d))));
@@ -232,7 +232,7 @@ export const EXPLORAR_COPY = {
   guardarPerfil: (pie: number, plazo: number) => `Guardar ${pie} % y ${plazo} años como mi perfil de búsqueda`,
   pie: "Pie",
   plazo: "Plazo",
-  /** En el pop-up: «Con pie de 20 % y plazo de 25 años». */
+  /** En el pop-up: «Con pie de 20 % y plazo de 30 años» (los de la persona; sin ellos, el financiamiento por defecto). */
   conPieYPlazo: (pie: number, plazo: number) => ({ antes: "Con pie de ", pie: `${pie} %`, medio: " y plazo de ", plazo: `${plazo} años` }),
   recalculando: "Recalculando…",
 } as const;

@@ -14,6 +14,7 @@ import { decimalesUtiles, formatNumeroCL, parseNumeroCL, type Decimales } from "
 import { redondearPiePct } from "@/lib/analysis/pie-input-data";
 import { DEC, decPie, type PieUnidad, type WizardV4Answers } from "./wizardV4Nodes";
 import { PREMIO_ARRIENDO_NUEVO } from "@/lib/obra-nueva";
+import { PLAZO_POR_DEFECTO } from "@/lib/deptos/estandar";
 
 export { fmtCLP, fmtUF };
 
@@ -152,7 +153,7 @@ export function tasaPct(a: WizardV4Answers, fallback = 4.72): number {
 
 /** Plazo en años. */
 export function plazoAnios(a: WizardV4Answers): number {
-  return Number(a.plazoCredito) || 25;
+  return Number(a.plazoCredito) || PLAZO_POR_DEFECTO;
 }
 
 /**
