@@ -15,7 +15,7 @@
 //     azul con «✓ Analizado»; los aparecidos en las últimas 24 horas, «Nuevo hoy».
 // ─────────────────────────────────────────────────────────────────────────────
 import { COMUNAS_DISPONIBLES } from "@/lib/comunas-disponibles";
-import { PIE_POR_DEFECTO, PLAZO_POR_DEFECTO } from "@/lib/deptos/estandar";
+import { PIE_POR_DEFECTO, PLAZO_POR_DEFECTO, tasaElegidaDe } from "@/lib/deptos/estandar";
 import { MAX_COMUNAS_PERFIL, TIPOLOGIAS_DEPTOS } from "@/lib/deptos/respuesta";
 import { PLAN_ANALISIS_MES, PLAN_PRECIO_CLP, RUTA_PLAN } from "@/lib/planes";
 import { tipologiaDe } from "@/lib/lo-que-sigue/perfil";
@@ -39,6 +39,8 @@ export interface FiltrosPortal {
   ufMax: number | null;
   pie: PieExplorar;
   plazo: PlazoExplorar;
+  /** La tasa elegida (30-oct-2026, con cuenta): una de TASAS_ELEGIBLES; null = «la de hoy», la del motor. */
+  tasa: number | null;
   modalidad: ModalidadPortal;
   flujoPositivo: boolean;
   publicados: Publicados;
@@ -48,7 +50,7 @@ export interface FiltrosPortal {
 
 /** LA VISTA GLOBAL: lo que abre /explorar sin nada en la URL. Los supuestos del número de anoche. */
 export const FILTROS_GLOBALES: FiltrosPortal = {
-  comunas: [], tipologias: [], ufMin: null, ufMax: null, pie: PIE_POR_DEFECTO, plazo: PLAZO_POR_DEFECTO, modalidad: "ltr", flujoPositivo: false, publicados: "todos", zona: null,
+  comunas: [], tipologias: [], ufMin: null, ufMax: null, pie: PIE_POR_DEFECTO, plazo: PLAZO_POR_DEFECTO, tasa: null, modalidad: "ltr", flujoPositivo: false, publicados: "todos", zona: null,
 };
 export const ORDEN_POR_DEFECTO: OrdenPortal = "puntaje";
 export const ORDENES: ReadonlyArray<{ id: OrdenPortal; etiqueta: string }> = [
@@ -101,6 +103,7 @@ export function validarPortal(f: Partial<Record<keyof FiltrosPortal, unknown>> |
     ufMin, ufMax,
     pie: esPie(f.pie) ? (Number(f.pie) as PieExplorar) : g.pie,
     plazo: esPlazo(f.plazo) ? (Number(f.plazo) as PlazoExplorar) : g.plazo,
+    tasa: tasaElegidaDe(f.tasa),
     modalidad: f.modalidad === "str" ? "str" : "ltr",
     flujoPositivo: f.flujoPositivo === true,
     publicados: f.publicados === "7d" || f.publicados === "hoy" ? f.publicados : "todos",
@@ -108,8 +111,8 @@ export function validarPortal(f: Partial<Record<keyof FiltrosPortal, unknown>> |
   };
 }
 
-/** Los filtros y el orden en la URL (`?c=Ñuñoa,Santiago&t=1,2&d=1500&h=3000&p=30&z=25&m=str&f=1&pub=7d&o=flujo`). Solo lo
- *  que no es global; sin nada, la vista global. */
+/** Los filtros y el orden en la URL (`?c=Ñuñoa,Santiago&t=1,2&d=1500&h=3000&p=30&z=25&ta=4.5&m=str&f=1&pub=7d&o=flujo`).
+ *  Solo lo que no es global; sin nada, la vista global. Sin `ta`, la tasa de hoy. */
 export function portalDeUrl(sp: { get(k: string): string | null }): { filtros: FiltrosPortal; orden: OrdenPortal } {
   const lista = (k: string) => (sp.get(k) ?? "").split(",").map((x) => x.trim()).filter(Boolean);
   const zona = lista("zona").map(Number);
@@ -117,7 +120,7 @@ export function portalDeUrl(sp: { get(k: string): string | null }): { filtros: F
   return {
     filtros: validarPortal({
       comunas: lista("c"), tipologias: lista("t"), ufMin: sp.get("d"), ufMax: sp.get("h"), pie: sp.get("p") ?? undefined, plazo: sp.get("z") ?? undefined,
-      modalidad: sp.get("m"), flujoPositivo: sp.get("f") === "1", publicados: sp.get("pub"), zona: zona.length === 4 ? zona : null,
+      tasa: sp.get("ta"), modalidad: sp.get("m"), flujoPositivo: sp.get("f") === "1", publicados: sp.get("pub"), zona: zona.length === 4 ? zona : null,
     }),
     orden: ORDENES_OK.has(o as OrdenPortal) ? (o as OrdenPortal) : ORDEN_POR_DEFECTO,
   };
@@ -131,6 +134,7 @@ export function urlDePortal(f: FiltrosPortal, orden: OrdenPortal = ORDEN_POR_DEF
   if (f.ufMax != null) p.set("h", String(f.ufMax));
   if (f.pie !== FILTROS_GLOBALES.pie) p.set("p", String(f.pie));
   if (f.plazo !== FILTROS_GLOBALES.plazo) p.set("z", String(f.plazo));
+  if (f.tasa != null) p.set("ta", String(f.tasa));
   if (f.modalidad === "str") p.set("m", "str");
   if (f.flujoPositivo) p.set("f", "1");
   if (f.publicados !== "todos") p.set("pub", f.publicados);
@@ -142,15 +146,17 @@ export function urlDePortal(f: FiltrosPortal, orden: OrdenPortal = ORDEN_POR_DEF
 /** Cuántos filtros hay puestos («Filtros · 5»): cada grupo de la hoja cuenta uno; la zona del mapa también. */
 export function filtrosActivos(f: FiltrosPortal): number {
   const g = FILTROS_GLOBALES;
-  return [f.comunas.length > 0, f.tipologias.length > 0, f.ufMin != null || f.ufMax != null, f.pie !== g.pie || f.plazo !== g.plazo, f.modalidad !== g.modalidad, f.flujoPositivo, f.publicados !== g.publicados, f.zona != null].filter(Boolean).length;
+  return [f.comunas.length > 0, f.tipologias.length > 0, f.ufMin != null || f.ufMax != null, f.pie !== g.pie || f.plazo !== g.plazo || f.tasa != null, f.modalidad !== g.modalidad, f.flujoPositivo, f.publicados !== g.publicados, f.zona != null].filter(Boolean).length;
 }
 export const esVistaGlobal = (f: FiltrosPortal): boolean => filtrosActivos(f) === 0;
 
 // ── EL UNIVERSO ──────────────────────────────────────────────────────────────
-/** Lo que hay que traer del servidor para unos filtros: la modalidad, el pie y el plazo. El resto se filtra acá. */
-export const claveUniverso = (f: { modalidad: ModalidadPortal; pie: number; plazo: number }): string => `${f.modalidad}-${f.pie}-${f.plazo}`;
-/** Arriendo tradicional con un pie y un plazo de la noche: todo Gran Santiago sale de sus columnas, en un pedido. */
-export const universoDeLaNoche = (f: { modalidad: ModalidadPortal; pie: number; plazo: number }): boolean => f.modalidad === "ltr" && esCombinacionDeLaNoche(f as { pie: PieExplorar; plazo: PlazoExplorar });
+/** Lo que hay que traer del servidor para unos filtros: la modalidad, el pie, el plazo y la tasa elegida (30-oct-2026: con
+ *  `-t4.5` al final; sin ella, la de hoy). El resto se filtra acá. */
+export const claveUniverso = (f: { modalidad: ModalidadPortal; pie: number; plazo: number; tasa?: number | null }): string => `${f.modalidad}-${f.pie}-${f.plazo}${f.tasa != null ? `-t${f.tasa}` : ""}`;
+/** Arriendo tradicional con un pie y un plazo de la noche y la tasa de hoy: todo Gran Santiago sale de sus columnas, en un
+ *  pedido. Con otra tasa, se calcula (30-oct-2026): la noche evaluó con la del motor. */
+export const universoDeLaNoche = (f: { modalidad: ModalidadPortal; pie: number; plazo: number; tasa?: number | null }): boolean => f.modalidad === "ltr" && f.tasa == null && esCombinacionDeLaNoche(f as { pie: PieExplorar; plazo: PlazoExplorar });
 /** Las comunas que hay que calcular cuando el universo no es de la noche: las elegidas o todas. */
 export const comunasACalcular = (f: Pick<FiltrosPortal, "comunas">): string[] => (f.comunas.length ? [...f.comunas] : [...(COMUNAS_DISPONIBLES as readonly string[])]);
 
@@ -315,6 +321,8 @@ export const COMO_SE_CALCULA = {
     despues: " cuando su nota de 1 a 100 llega a 70, o cuando el arriendo lo paga solo sin estar caro para su zona. Y nunca tiene señales graves, como perder mucha plata todos los meses. Algunos te piden poner un poco cada mes: ",
   },
   cuanto: (sinCuenta: boolean) => (sinCuenta ? "con tu cuenta gratis, cada tarjeta te dice cuánto." : "cada tarjeta te dice cuánto."),
+  /** Con una tasa elegida (30-oct-2026), tras «Puedes cambiar ese perfil en Filtros.»: la elegida y la de hoy. */
+  tuTasa: (elegida: number, hoy: number | null) => ` Ahora el mapa calcula con tu tasa, ${tasaTexto(elegida)} %${hoy != null ? `; la de hoy es ${tasaTexto(hoy)} %` : ""}.`,
   boton: "Entendido",
 } as const;
 
@@ -346,7 +354,7 @@ export const etiquetaFiltros = (f: FiltrosPortal): string => (filtrosActivos(f) 
 // ── «MI BÚSQUEDA» Y «AVÍSAME DE NUEVOS» ─────────────────────────────────────
 /** «Mi búsqueda»: el perfil de la persona aplicado de una vez —comunas, tipología, rango, pie, plazo y modalidad—, sobre la
  *  vista global (lo demás vuelve a su valor). null si el perfil no tiene con qué buscar. */
-export function filtrosDeMiBusqueda(p: Pick<PerfilBusqueda, "comunas" | "dormitorios" | "precioMinUf" | "precioMaxUf" | "piePct" | "plazoAnios" | "modalidad"> | null | undefined): FiltrosPortal | null {
+export function filtrosDeMiBusqueda(p: (Pick<PerfilBusqueda, "comunas" | "dormitorios" | "precioMinUf" | "precioMaxUf" | "piePct" | "plazoAnios" | "modalidad"> & { tasaPct?: number | null }) | null | undefined): FiltrosPortal | null {
   if (!p) return null;
   const comunas = p.comunas.filter((c) => COMUNAS_OK.has(c));
   const tipologias = Array.from(new Set(p.dormitorios.map(tipologiaDeDorm)));
@@ -356,7 +364,7 @@ export function filtrosDeMiBusqueda(p: Pick<PerfilBusqueda, "comunas" | "dormito
     ufMin: p.precioMinUf != null && p.precioMinUf > 0 ? p.precioMinUf : null,
     // El tope que guarda «Avísame» sin «hasta» (TOPE_PERFIL_UF) es «cualquier precio», no un filtro.
     ufMax: p.precioMaxUf != null && p.precioMaxUf > 0 && p.precioMaxUf < TOPE_PERFIL_UF ? p.precioMaxUf : null,
-    pie: pieDeLista(p.piePct), plazo: plazoDeLista(p.plazoAnios), modalidad: p.modalidad === "str" ? "str" : "ltr",
+    pie: pieDeLista(p.piePct), plazo: plazoDeLista(p.plazoAnios), tasa: p.tasaPct ?? null, modalidad: p.modalidad === "str" ? "str" : "ltr",
   });
 }
 
@@ -372,16 +380,16 @@ export const TOPE_PERFIL_UF = 60000;
 /** «Avísame de nuevos»: los filtros activos como perfil de búsqueda (lo que recibe PUT /api/perfil-busqueda). El perfil
  *  necesita entre una y ocho comunas: con todas (o con más de ocho) no se puede guardar y lo dice. La zona del mapa, el
  *  flujo positivo y la fecha de publicación no son parte del perfil. */
-export function perfilDeFiltros(f: FiltrosPortal): { ok: true; cambios: { comunas: string[]; dormitorios: number[]; precioMinUf: number | null; precioMaxUf: number; piePct: number; plazoAnios: number; modalidad: ModalidadPortal } } | { ok: false; motivo: "comunas" } {
+export function perfilDeFiltros(f: FiltrosPortal): { ok: true; cambios: { comunas: string[]; dormitorios: number[]; precioMinUf: number | null; precioMaxUf: number; piePct: number; plazoAnios: number; tasaPct: number | null; modalidad: ModalidadPortal } } | { ok: false; motivo: "comunas" } {
   if (f.comunas.length === 0 || f.comunas.length > MAX_COMUNAS_PERFIL) return { ok: false, motivo: "comunas" };
   const ufMax = f.ufMax != null && f.ufMax >= 500 ? Math.min(f.ufMax, TOPE_PERFIL_UF) : TOPE_PERFIL_UF;
   const ufMin = f.ufMin != null && f.ufMin >= 500 && f.ufMin < ufMax ? f.ufMin : null;
-  return { ok: true, cambios: { comunas: [...f.comunas], dormitorios: dormitoriosDePerfil(f.tipologias), precioMinUf: ufMin, precioMaxUf: ufMax, piePct: f.pie, plazoAnios: f.plazo, modalidad: f.modalidad } };
+  return { ok: true, cambios: { comunas: [...f.comunas], dormitorios: dormitoriosDePerfil(f.tipologias), precioMinUf: ufMin, precioMaxUf: ufMax, piePct: f.pie, plazoAnios: f.plazo, tasaPct: f.tasa, modalidad: f.modalidad } };
 }
 
 /** Una búsqueda en una línea, para la confirmación: «Ñuñoa y Santiago · 1D y 2D · UF 1.500 a 3.000 · pie 20 % · 30 años ·
  *  arriendo tradicional». */
-export function lineaBusqueda(b: { comunas: readonly string[]; dormitorios: readonly number[]; precioMinUf: number | null; precioMaxUf: number | null; piePct: number | null; plazoAnios: number | null; modalidad: ModalidadPortal | null }): string {
+export function lineaBusqueda(b: { comunas: readonly string[]; dormitorios: readonly number[]; precioMinUf: number | null; precioMaxUf: number | null; piePct: number | null; plazoAnios: number | null; tasaPct?: number | null; modalidad: ModalidadPortal | null }): string {
   const y = (xs: readonly string[]) => (xs.length <= 1 ? xs[0] ?? "" : `${xs.slice(0, -1).join(", ")} y ${xs[xs.length - 1]}`);
   const tipos = TIPOLOGIAS_DEPTOS.filter((t) => t.dorms.some((d) => b.dormitorios.includes(d))).map((t) => t.chip);
   const todas = tipos.length === TIPOLOGIAS_DEPTOS.length;
@@ -394,6 +402,7 @@ export function lineaBusqueda(b: { comunas: readonly string[]; dormitorios: read
     precio,
     b.piePct != null ? `pie ${b.piePct} %` : null,
     b.plazoAnios != null ? `${b.plazoAnios} años` : null,
+    b.tasaPct != null ? `tasa ${tasaTexto(b.tasaPct)} %` : null,
     b.modalidad === "str" ? "renta corta" : "arriendo tradicional",
   ].filter(Boolean).join(" · ");
 }
@@ -438,6 +447,13 @@ export const PORTAL_COPY = {
   /** Mientras se calcula una combinación que la noche no tiene, o la renta corta. */
   calculando: "Calculando…",
   calculandoComunas: (hechas: number, total: number) => `Calculando… ${hechas} de ${total} comunas`,
+  /** Con una tasa elegida (30-oct-2026): lo que dice abajo mientras calcula. */
+  calculandoTasa: "Calculando con tu tasa…",
+  calculandoTasaComunas: (hechas: number, total: number) => `Calculando con tu tasa… ${hechas} de ${total} comunas`,
+  /** La primera opción de la tasa: la de hoy, que sigue al motor. */
+  tasaHoy: (t: number | null) => (t != null ? `La de hoy (${tasaTexto(t)} %)` : "La de hoy"),
+  /** La tasa elegida, cerrada (sin cuenta) o en la línea: «4,5 % · la elegiste». */
+  tasaElegida: (t: number) => `${tasaTexto(t)} % · la elegiste`,
   error: "No pudimos traer los deptos. Intenta de nuevo.",
   reintentar: "Reintentar",
   sinMapa: "El mapa no cargó, pero la lista es la misma.",
@@ -479,12 +495,19 @@ export const EVENTOS_PORTAL = {
   planVisto: "explorar_plan_visto",
   /** Abrió «¿Cómo se calcula?» (30-oct-2026), con y sin cuenta. */
   comoSeCalcula: "explorar_como_se_calcula",
+  /** Eligió una tasa (30-oct-2026), en Filtros o en el pop-up: la elegida, o «la de hoy». */
+  tasa: "explorar_tasa",
 } as const;
+
+/** «explorar_tasa» (30-oct-2026): la tasa elegida (null = la de hoy), la de hoy y dónde se eligió. */
+export function propsDeTasa(elegida: number | null, hoy: number | null, donde: "filtros" | "popup"): Record<string, unknown> {
+  return { tasa: elegida, la_de_hoy: elegida == null, tasa_hoy: hoy, tasa_usada: elegida ?? hoy, donde };
+}
 
 /** Las propiedades de los filtros y el orden en un evento. */
 export function propsDeFiltros(f: FiltrosPortal, orden: OrdenPortal): Record<string, unknown> {
   return {
-    comunas: f.comunas, tipologias: f.tipologias, uf_min: f.ufMin, uf_max: f.ufMax, pie: f.pie, plazo: f.plazo, modalidad: f.modalidad,
+    comunas: f.comunas, tipologias: f.tipologias, uf_min: f.ufMin, uf_max: f.ufMax, pie: f.pie, plazo: f.plazo, tasa: f.tasa, modalidad: f.modalidad,
     flujo_positivo: f.flujoPositivo, publicados: f.publicados, zona: !!f.zona, orden, filtros_activos: filtrosActivos(f), global: esVistaGlobal(f),
   };
 }
@@ -496,6 +519,7 @@ export function filtrosCambiados(a: FiltrosPortal, b: FiltrosPortal): string[] {
   if (a.tipologias.join() !== b.tipologias.join()) out.push("tipologia");
   if (a.ufMin !== b.ufMin || a.ufMax !== b.ufMax) out.push("precio");
   if (a.pie !== b.pie || a.plazo !== b.plazo) out.push("pie_plazo");
+  if (a.tasa !== b.tasa) out.push("tasa");
   if (a.modalidad !== b.modalidad) out.push("modalidad");
   if (a.flujoPositivo !== b.flujoPositivo) out.push("flujo");
   if (a.publicados !== b.publicados) out.push("publicados");

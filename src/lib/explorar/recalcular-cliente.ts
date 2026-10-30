@@ -7,12 +7,13 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import type { Recalculo } from "./explorar";
 
-export async function recalcularAviso(avisoId: string, combo: { piePct: number; plazoAnios: number }): Promise<Recalculo | null> {
+export async function recalcularAviso(avisoId: string, combo: { piePct: number; plazoAnios: number; tasaPct?: number | null }): Promise<Recalculo | null> {
   try {
     const res = await fetch("/api/explorar/recalcular", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ avisoId, piePct: combo.piePct, plazoAnios: combo.plazoAnios }),
+      // La tasa elegida (30-oct-2026); null = la de hoy.
+      body: JSON.stringify({ avisoId, piePct: combo.piePct, plazoAnios: combo.plazoAnios, tasaPct: combo.tasaPct ?? null }),
     });
     if (!res.ok) return null;
     const d = (await res.json().catch(() => null)) as Partial<Recalculo> | null;

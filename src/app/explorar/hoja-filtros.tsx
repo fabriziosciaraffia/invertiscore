@@ -14,7 +14,8 @@ import { useEffect, useRef, useState } from "react";
 import { COMUNAS_DISPONIBLES } from "@/lib/comunas-disponibles";
 import { COMUNAS_DESTACADAS, TIPOLOGIAS_DEPTOS } from "@/lib/deptos/respuesta";
 import { PIES_EXPLORAR, PLAZOS_EXPLORAR } from "@/lib/explorar/explorar";
-import { botonVer, FILTROS_GLOBALES, PORTAL_COPY, PUBLICADOS, validarPortal, type FiltrosPortal, type TasaDelMotor } from "@/lib/explorar/portal";
+import { botonVer, FILTROS_GLOBALES, PORTAL_COPY, PUBLICADOS, tasaTexto, validarPortal, type FiltrosPortal, type TasaDelMotor } from "@/lib/explorar/portal";
+import { TASAS_ELEGIBLES } from "@/lib/deptos/estandar";
 
 const H = PORTAL_COPY.hoja;
 const DESTACADAS = COMUNAS_DESTACADAS as readonly string[];
@@ -153,8 +154,19 @@ export function HojaFiltros({ filtros, tasa, miBusqueda = null, contar, asegurar
                 </label>
               </div>
             )}
-            {tasa && (
-              <div className="ex-campo ex-campo-fijo" data-explorar="tasa"><span>{PORTAL_COPY.tasa}</span><b>{PORTAL_COPY.tasaFija(tasa.tasa)}</b></div>
+            {/* LA TASA (30-oct-2026): con cuenta, «La de hoy (X %)» —sigue al motor— o una de la lista; sin cuenta, la de hoy,
+                cerrada: tocarla abre el registro, como el pie y el plazo. */}
+            {alPedirRegistro ? (
+              <button type="button" className="ex-campo ex-campo-cerrado ex-campo-fijo" onClick={() => alPedirRegistro("pie-plazo", b)} data-explorar="tasa">
+                <span>{PORTAL_COPY.tasa}</span><b>{tasa ? PORTAL_COPY.tasaFija(tasa.tasa) : PORTAL_COPY.tasaHoy(null)}</b>
+              </button>
+            ) : (
+              <label className="ex-campo"><span>{PORTAL_COPY.tasa}</span>
+                <select value={b.tasa ?? ""} onChange={(e) => poner({ tasa: e.target.value === "" ? null : Number(e.target.value) })} aria-label={PORTAL_COPY.tasa} data-explorar="tasa">
+                  <option value="">{PORTAL_COPY.tasaHoy(tasa?.tasa ?? null)}</option>
+                  {TASAS_ELEGIBLES.map((t) => <option key={t} value={t}>{tasaTexto(t)} %</option>)}
+                </select>
+              </label>
             )}
           </section>
         </div>

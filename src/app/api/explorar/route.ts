@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { captureApiError } from "@/lib/observabilidad";
 import { COMUNAS_DISPONIBLES } from "@/lib/comunas-disponibles";
-import { PIE_POR_DEFECTO, PLAZO_POR_DEFECTO } from "@/lib/deptos/estandar";
+import { PIE_POR_DEFECTO, PLAZO_POR_DEFECTO, tasaElegidaDe } from "@/lib/deptos/estandar";
 import { PIES_EXPLORAR, PLAZOS_EXPLORAR } from "@/lib/explorar/explorar";
 import { claveUniverso, universoDeLaNoche as esDeLaNoche } from "@/lib/explorar/portal";
 import { respuestaUniverso, universoCalculado, type RespuestaUniverso } from "@/lib/explorar/portal-servidor";
@@ -35,7 +35,10 @@ export async function GET(request: Request) {
   const modalidad = sp.get("m") === "str" ? "str" : "ltr";
   const pie = Number(sp.get("p") ?? PIE_POR_DEFECTO), plazo = Number(sp.get("z") ?? PLAZO_POR_DEFECTO);
   if (!(PIES_EXPLORAR as readonly number[]).includes(pie) || !(PLAZOS_EXPLORAR as readonly number[]).includes(plazo)) return NextResponse.json({ error: "combinacion" }, { status: 400 });
-  const q = { modalidad, pie, plazo } as const;
+  // La tasa elegida (30-oct-2026, `ta`): una de la lista; otro valor es «la de hoy». Con ella nada sale de la noche.
+  const tasa = tasaElegidaDe(sp.get("ta"));
+  if (sp.get("ta") != null && tasa == null) return NextResponse.json({ error: "tasa" }, { status: 400 });
+  const q = { modalidad, pie, plazo, tasa } as const;
   try {
     if (esDeLaNoche(q)) {
       const u = await universoDeLaNocheCacheado(pie, plazo);
@@ -50,7 +53,7 @@ export async function GET(request: Request) {
     const pines = await universoCalculado(admin, { ...q, comunas }, new Date(), cuenta);
     return NextResponse.json(respuestaUniverso(pines, { ...q, comunas }, cuenta), { headers: { "Cache-Control": "private, max-age=300" } });
   } catch (e) {
-    captureApiError(e, { ruta: "GET /api/explorar", operacion: "universo", userId: user.id, extra: { modalidad, pie, plazo } });
+    captureApiError(e, { ruta: "GET /api/explorar", operacion: "universo", userId: user.id, extra: { modalidad, pie, plazo, tasa } });
     return NextResponse.json({ error: "interno" }, { status: 500 });
   }
 }

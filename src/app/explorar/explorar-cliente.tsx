@@ -33,7 +33,7 @@ import type { EstadoSaldo } from "@/lib/casa-saldo";
 import { botonAnalizar, type Recalculo } from "@/lib/explorar/explorar";
 import { textoAnalizarIgual } from "@/lib/guia/semanal-str";
 import {
-  cercanos, claveUniverso, COMO_SE_CALCULA, comunasACalcular, deptosN, descompactar, EVENTOS_PORTAL, etiquetaFiltros, filtrar, filtrosCambiados, lineaPlan, pildoraLista,
+  cercanos, claveUniverso, COMO_SE_CALCULA, comunasACalcular, deptosN, descompactar, EVENTOS_PORTAL, etiquetaFiltros, filtrar, filtrosCambiados, lineaPlan, pildoraLista, propsDeTasa,
   lineaBusqueda, ordenar, perfilDeFiltros, PORTAL_COPY, propsDeFiltros, universoDeLaNoche, urlDePortal,
   type Caja, type FiltrosPortal, type OrdenPortal, type PinMapa, type TasaDelMotor,
 } from "@/lib/explorar/portal";
@@ -174,7 +174,7 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
   const asegurar = useCallback(async (f: FiltrosPortal) => {
     const clave = claveUniverso(f);
     // Sin cuenta, el universo sin cifras (el financiamiento por defecto): otra ruta, pública y en la caché del CDN.
-    const base = sinCuentaRef.current ? `/api/explorar/abierto?m=${f.modalidad}` : `/api/explorar?m=${f.modalidad}&p=${f.pie}&z=${f.plazo}`;
+    const base = sinCuentaRef.current ? `/api/explorar/abierto?m=${f.modalidad}` : `/api/explorar?m=${f.modalidad}&p=${f.pie}&z=${f.plazo}${f.tasa != null ? `&ta=${f.tasa}` : ""}`;
     setFallo(false);
     try {
       if (universoDeLaNoche(f)) {
@@ -265,6 +265,8 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
     // Sin cuenta, el financiamiento por defecto, y sin «Solo flujo positivo» (piden registro).
     const f = sinCuenta ? filtrosAbiertos(f0) : f0;
     const cambiados = filtrosCambiados(filtros, f);
+    // «explorar_tasa» (30-oct-2026): eligió otra tasa en Filtros (o volvió a la de hoy).
+    if (fuente === "filtros" && f.tasa !== filtros.tasa) posthog?.capture(EVENTOS_PORTAL.tasa, propsDeTasa(f.tasa, inicial.tasa?.tasa ?? null, "filtros"));
     setFiltros(f);
     setSel(null);
     setZonaPendiente(null);
@@ -351,7 +353,10 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
 
   async function analizar(it: PinMapa, eleccion?: EleccionAnalizar, igual = false) {
     if (generando) return;
-    const combinacion = eleccion?.combinacion ?? { piePct: filtros.pie, plazoAnios: filtros.plazo };
+    const combinacion = eleccion?.combinacion ?? { piePct: filtros.pie, plazoAnios: filtros.plazo, tasaPct: filtros.tasa };
+    // La tasa (30-oct-2026): la del pop-up si la tocó; si no, la de Filtros. null = la de hoy.
+    const tasaPct = combinacion.tasaPct !== undefined ? combinacion.tasaPct : filtros.tasa;
+    if (eleccion && tasaPct !== filtros.tasa) posthog?.capture(EVENTOS_PORTAL.tasa, propsDeTasa(tasaPct, inicial.tasa?.tasa ?? null, "popup"));
     setError(null);
     setGenerando(it.avisoId);
     const soltar = iniciarCarga(claveActual());
@@ -359,14 +364,14 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
     try {
       // La casilla del pop-up: el pie y el plazo nuevos quedan en el perfil (además de «Avísame de nuevos», lo único que lo escribe).
       if (eleccion?.guardarPerfil) {
-        await fetch("/api/perfil-busqueda", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ piePct: combinacion.piePct, plazoAnios: combinacion.plazoAnios }) }).catch(() => null);
+        await fetch("/api/perfil-busqueda", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ piePct: combinacion.piePct, plazoAnios: combinacion.plazoAnios, tasaPct }) }).catch(() => null);
       }
       const corta = filtros.modalidad === "str";
       for (let intento = 0; intento < 8; intento++) {
         const res = await fetch(corta ? "/api/semanal/analizar-str" : "/api/lo-que-sigue/guia/analizar", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ avisoId: it.avisoId, piePct: combinacion.piePct, plazoAnios: combinacion.plazoAnios, explorar: true, ...(igual ? { igual: true } : {}) }),
+          body: JSON.stringify({ avisoId: it.avisoId, piePct: combinacion.piePct, plazoAnios: combinacion.plazoAnios, tasaPct, explorar: true, ...(igual ? { igual: true } : {}) }),
         });
         if (res.status === 409) { await new Promise((ok) => setTimeout(ok, ESPERA_EN_CURSO_MS)); continue; }
         const d = (await res.json().catch(() => ({}))) as { id?: string; error?: string; estado?: string; porQue?: string | null; publicacion?: string | null };
@@ -393,9 +398,9 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
     setGenerando(null);
   }
 
-  const recalcular = useCallback(async (avisoId: string, combo: { piePct: number; plazoAnios: number }): Promise<Recalculo | null> => {
+  const recalcular = useCallback(async (avisoId: string, combo: { piePct: number; plazoAnios: number; tasaPct?: number | null }): Promise<Recalculo | null> => {
     try {
-      const res = await fetch("/api/explorar/recalcular", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ avisoId, piePct: combo.piePct, plazoAnios: combo.plazoAnios }) });
+      const res = await fetch("/api/explorar/recalcular", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ avisoId, piePct: combo.piePct, plazoAnios: combo.plazoAnios, tasaPct: combo.tasaPct ?? null }) });
       if (!res.ok) return null;
       const d = (await res.json()) as Recalculo;
       return d && typeof d.veredicto === "string" ? { veredicto: d.veredicto, score: d.score ?? null, flujo: d.flujo ?? null, cuota: d.cuota ?? null } : null;
@@ -492,7 +497,10 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
   }, [listaVuelta, universo]);
   const enCarrusel = carrusel.map((id) => porId.get(id)).filter((p): p is PinMapa => !!p && !caidos.includes(p.avisoId));
   // Lo de abajo: «N deptos» con el chip; mientras se calcula, el avance (antes lo decía la tarjeta del número).
-  const numeroAbajo = calculando ? (progreso ? PORTAL_COPY.calculandoComunas(progreso.hechas, progreso.total) : PORTAL_COPY.calculando) : total == null ? PORTAL_COPY.calculando : deptosN(total);
+  // Con una tasa elegida (30-oct-2026), mientras calcula: «Calculando con tu tasa…».
+  const conTasa = filtros.tasa != null;
+  const enCalculo = progreso ? (conTasa ? PORTAL_COPY.calculandoTasaComunas : PORTAL_COPY.calculandoComunas)(progreso.hechas, progreso.total) : conTasa ? PORTAL_COPY.calculandoTasa : PORTAL_COPY.calculando;
+  const numeroAbajo = calculando || total == null ? enCalculo : deptosN(total);
   const conChip = !calculando && total != null && total > 0;
   const tarjeta = vista === "mapa" && sel && enCarrusel.some((p) => p.avisoId === sel);
 
@@ -630,13 +638,13 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
         <HojaRegistro pedido={registro.pedido} filtros={registro.filtros} orden={registro.orden} origen={origen} alCerrar={() => setRegistro(null)} />
       )}
       {bienvenida && total != null && <Bienvenida n={inicial.convienen ?? inicial.n ?? total} alCerrar={() => setBienvenida(false)} />}
-      {calculo && <HojaCalculo tasa={inicial.tasa} sinCuenta={sinCuenta} alCerrar={() => setCalculo(false)} />}
+      {calculo && <HojaCalculo tasa={inicial.tasa} elegida={filtros.tasa} sinCuenta={sinCuenta} alCerrar={() => setCalculo(false)} />}
 
       {confirmar && (
         <AvisoAntesDeAnalizar
           depto={{ comuna: confirmar.it.comuna, tipologia: confirmar.it.tipologia, m2: confirmar.it.m2, precioUF: confirmar.it.precioUF, condicion: confirmar.it.condicion }}
           modalidad={filtros.modalidad}
-          combinacion={{ piePct: filtros.pie, plazoAnios: filtros.plazo }}
+          combinacion={{ piePct: filtros.pie, plazoAnios: filtros.plazo, tasaPct: filtros.tasa }}
           finanzas={{ tasa: cuenta.finanzas.tasa, uf: cuenta.finanzas.uf, arriendo: confirmar.it.arriendo }}
           uso={confirmar.sin ? { tipo: "sin" } : cuenta.saldo}
           compras={compras(confirmar.it.avisoId)}

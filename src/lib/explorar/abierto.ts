@@ -37,7 +37,8 @@ export const PIE_ABIERTO = PIE_POR_DEFECTO;
 export const PLAZO_ABIERTO = PLAZO_POR_DEFECTO;
 /** Sin cuenta: el financiamiento por defecto (pie 20 % y 30 años, deptos/estandar.ts), y sin «Solo flujo positivo» (pide registro); la modalidad y lo demás, como vengan. */
 export function filtrosAbiertos(f: FiltrosPortal): FiltrosPortal {
-  return f.pie === PIE_ABIERTO && f.plazo === PLAZO_ABIERTO && !f.flujoPositivo ? f : { ...f, pie: PIE_ABIERTO, plazo: PLAZO_ABIERTO, flujoPositivo: false };
+  // Sin cuenta, la tasa es la de hoy (30-oct-2026): elegir otra pide registro, como el pie y el plazo.
+  return f.pie === PIE_ABIERTO && f.plazo === PLAZO_ABIERTO && f.tasa == null && !f.flujoPositivo ? f : { ...f, pie: PIE_ABIERTO, plazo: PLAZO_ABIERTO, tasa: null, flujoPositivo: false };
 }
 /** Los órdenes que dependen del flujo: sin cuenta se ven y piden registro. */
 export const ORDENES_CON_CIFRAS: readonly OrdenPortal[] = ["flujo", "caprate"];

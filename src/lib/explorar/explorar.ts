@@ -20,6 +20,8 @@ import { PIE_DEPTOS, PLAZO_DEPTOS } from "@/lib/deptos/estandar";
 import { ELECCIONES_POR_DEFECTO, MAX_COMUNAS_PERFIL, RANGOS_UF, TIPOLOGIAS_DEPTOS } from "@/lib/deptos/respuesta";
 import type { EstadoSaldo } from "@/lib/casa-saldo";
 import type { CondicionDepto } from "@/lib/guia/linea-depto";
+/** «4,5», «4,07» (la tasa, en el pop-up). */
+const tasaTxt = (t: number): string => t.toLocaleString("es-CL", { maximumFractionDigits: 2 });
 
 /**
  * CUALQUIER PIE Y PLAZO (24-oct-2026, decisión de Fabrizio): los chips ofrecen pie de 10 a 50 % y plazo de 15 a 30 años.
@@ -215,13 +217,16 @@ export interface Recalculo {
 }
 
 /** Con pie 10 % este depto da Ajustar. / Flujo mensual −$45.120 de tu bolsillo. Con 20 % daba Comprar 88 y +$88.363. */
-export function textoCambio(p: { antes: { pie: number; veredicto: string; score: number | null; flujo: number | null }; despues: { pie: number; plazo: number; veredicto: string; score: number | null; flujo: number | null } }, etiqueta: (v: string) => string): { titulo: string; detalle: string; empeora: boolean } {
+export function textoCambio(p: { antes: { pie: number; plazo?: number; tasa?: number | null; veredicto: string; score: number | null; flujo: number | null }; despues: { pie: number; plazo: number; tasa?: number | null; veredicto: string; score: number | null; flujo: number | null } }, etiqueta: (v: string) => string): { titulo: string; detalle: string; empeora: boolean } {
   const d = p.despues, a = p.antes;
   const empeora = d.veredicto !== "COMPRAR" && a.veredicto === "COMPRAR";
-  const con = a.pie !== d.pie ? `pie ${d.pie} %` : `plazo ${d.plazo} años`;
+  // Solo la tasa (30-oct-2026): «Con tasa 4,5 % este depto da…» y «Con la tasa de hoy daba…».
+  const soloTasa = a.pie === d.pie && (a.plazo == null || a.plazo === d.plazo) && (a.tasa ?? null) !== (d.tasa ?? null);
+  const tasaDe = (t: number | null | undefined) => (t != null ? `tasa ${tasaTxt(t)} %` : "la tasa de hoy");
+  const con = a.pie !== d.pie ? `pie ${d.pie} %` : soloTasa ? tasaDe(d.tasa) : `plazo ${d.plazo} años`;
   const titulo = `Con ${con} este depto da ${etiqueta(d.veredicto)}${d.score != null && d.veredicto === "COMPRAR" ? ` ${d.score}` : ""}.`;
   const flujo = d.flujo == null ? "" : `Flujo mensual ${flujoTexto(d.flujo)} ${d.flujo < 0 ? "de tu bolsillo" : "te queda"}.`;
-  const antes = `Con ${a.pie} % daba ${etiqueta(a.veredicto)}${a.score != null ? ` ${a.score}` : ""}${a.flujo != null ? ` y ${flujoTexto(a.flujo)}` : ""}.`;
+  const antes = `Con ${soloTasa ? tasaDe(a.tasa) : `${a.pie} %`} daba ${etiqueta(a.veredicto)}${a.score != null ? ` ${a.score}` : ""}${a.flujo != null ? ` y ${flujoTexto(a.flujo)}` : ""}.`;
   return { titulo, detalle: [flujo, antes].filter(Boolean).join(" "), empeora };
 }
 
@@ -230,10 +235,18 @@ export const EXPLORAR_COPY = {
   /** Lo que ofrece «Cambiar» en el pop-up (24-oct-2026). */
   cambiar: "Cambiar",
   analizarIgual: "Analizar igual",
-  guardarPerfil: (pie: number, plazo: number) => `Guardar ${pie} % y ${plazo} años como mi perfil de búsqueda`,
+  /** Con una tasa elegida (30-oct-2026) la casilla la nombra; con la de hoy, como siempre. */
+  guardarPerfil: (pie: number, plazo: number, tasa: number | null = null) =>
+    tasa != null ? `Guardar ${pie} %, ${plazo} años y tasa ${tasaTxt(tasa)} % como mi perfil de búsqueda` : `Guardar ${pie} % y ${plazo} años como mi perfil de búsqueda`,
   pie: "Pie",
   plazo: "Plazo",
-  /** En el pop-up: «Con pie de 20 % y plazo de 30 años» (los de la persona; sin ellos, el financiamiento por defecto). */
-  conPieYPlazo: (pie: number, plazo: number) => ({ antes: "Con pie de ", pie: `${pie} %`, medio: " y plazo de ", plazo: `${plazo} años` }),
+  /** En el pop-up: «Con pie de 20 %, plazo de 30 años y tasa de 4,07 %» (los de la persona; sin ellos, el financiamiento por
+   *  defecto). La tasa (30-oct-2026) es la elegida o la de hoy; sin conocerla, «Con pie de 20 % y plazo de 30 años». */
+  conPieYPlazo: (pie: number, plazo: number, tasa: number | null = null) => (tasa != null
+    ? { antes: "Con pie de ", pie: `${pie} %`, medio: ", plazo de ", plazo: `${plazo} años`, fin: " y tasa de ", tasa: `${tasaTxt(tasa)} %` }
+    : { antes: "Con pie de ", pie: `${pie} %`, medio: " y plazo de ", plazo: `${plazo} años`, fin: "", tasa: "" }),
+  tasa: "Tasa",
+  /** La primera opción: la de hoy, que sigue al motor. */
+  tasaHoy: (t: number | null) => (t != null ? `La de hoy (${tasaTxt(t)} %)` : "La de hoy"),
   recalculando: "Recalculando…",
 } as const;

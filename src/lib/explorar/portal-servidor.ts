@@ -4,7 +4,7 @@
 //   · EL UNIVERSO DE LA NOCHE: arriendo tradicional con pie 20/30 % a 25/30 años sale de las columnas de la evaluación
 //     nocturna, todo Gran Santiago en UN pedido (RPC explorar_mapa, un jsonb: de a páginas de mil eran cinco pedidos y
 //     5,1 s; así, 240 ms). Es el mismo para todas las cuentas: diez minutos de caché, como el número de /deptos.
-//   · LO CALCULADO: otro pie u otro plazo, o la renta corta, por comuna. Se lee el universo liviano de esas comunas con lo
+//   · LO CALCULADO: otro pie u otro plazo, otra tasa (30-oct-2026) o la renta corta, por comuna. Se lee el universo liviano de esas comunas con lo
 //     guardado para la combinación (`avisos_evaluados.combos`, 24 horas y posterior a la evaluación de la fila), y lo que
 //     falta se calcula y se guarda. En renta corta la tarifa y la ocupación son las TÍPICAS de la celda comuna ×
 //     dormitorios (semanal-str-servidor.ts › zonasDeComuna, sin consultas al proveedor): «Estimado por zona; se mide al
@@ -53,8 +53,10 @@ export async function universoDeLaNoche(admin: SupabaseClient, pie: number, plaz
 }
 
 // ── LO CALCULADO (otro pie, otro plazo, renta corta) ─────────────────────────
-/** La clave en `combos`: «15-20» en renta larga (la misma de siempre), «str-20-25» en renta corta. */
-export const claveComboPortal = (m: ModalidadPortal, pie: number, plazo: number): string => (m === "str" ? `str-${pie}-${plazo}` : `${pie}-${plazo}`);
+/** La clave en `combos`: «15-20» en renta larga (la misma de siempre), «str-20-25» en renta corta; con una tasa elegida
+ *  (30-oct-2026) la tasa va en la clave —«20-30-t4.5», «str-20-30-t4.5»— y lo calculado con ella se guarda 24 horas aparte. */
+export const claveComboPortal = (m: ModalidadPortal, pie: number, plazo: number, tasa: number | null = null): string =>
+  `${m === "str" ? "str-" : ""}${pie}-${plazo}${tasa != null ? `-t${tasa}` : ""}`;
 
 /** Lo guardado en renta corta lleva también el ingreso mensual estimado por zona (el cap rate de la tarjeta). */
 type ComboPortal = ComboGuardado & { i?: number | null };
@@ -64,14 +66,16 @@ export interface DepsPortal {
   cfg?: { uf: number; tasa: number };
   sondaLtr?: typeof sondaDeCandidato;
   /** La renta corta de un depto con la zona de su celda: veredicto, puntaje, flujo e ingreso mensual (null si no se puede). */
-  sondaStr?: (fila: FilaRpc, combo: { piePct: number; plazoAnios: number }, cfg: { uf: number; tasa: number }, zona: ZonaStr | undefined, asOf: Date) => { v: string | null; s: number | null; f: number | null; i: number | null } | null;
+  sondaStr?: (fila: FilaRpc, combo: { piePct: number; plazoAnios: number; tasa?: number | null }, cfg: { uf: number; tasa: number }, zona: ZonaStr | undefined, asOf: Date) => { v: string | null; s: number | null; f: number | null; i: number | null } | null;
   zonas?: (comuna: string) => Promise<Map<number, ZonaStr>>;
 }
 
 const sondaStrReal: NonNullable<DepsPortal["sondaStr"]> = (fila, combo, cfg, zona, asOf) => {
   if (!zona) return null;
   const c = candidatoDeFila(fila);
-  const o = origenSinteticoStr("", { piePct: combo.piePct, plazoAnios: combo.plazoAnios, comunas: [], dormitorios: [] }, cfg);
+  const o0 = origenSinteticoStr("", { piePct: combo.piePct, plazoAnios: combo.plazoAnios, comunas: [], dormitorios: [] }, cfg);
+  // La tasa elegida va al crédito; la de mercado sigue siendo la del motor.
+  const o = combo.tasa != null ? { ...o0, tasa: combo.tasa } : o0;
   const body = cuerpoStrDeAviso(c, o, combo, cfg);
   if (!body) return null;
   const ev = evaluarStrCon(body, zona.estimacion, { uf: cfg.uf }, c.medianaComuna, asOf);
@@ -81,12 +85,12 @@ const sondaStrReal: NonNullable<DepsPortal["sondaStr"]> = (fila, combo, cfg, zon
 /** El universo de unas comunas para una combinación calculada: todos los Comprar, por puntaje. `cuenta.calculados`: cuántos
  *  se calcularon recién (el resto salió de lo guardado). */
 export async function universoCalculado(
-  admin: SupabaseClient, q: { comunas: string[]; modalidad: ModalidadPortal; pie: number; plazo: number }, ahora: Date = new Date(),
+  admin: SupabaseClient, q: { comunas: string[]; modalidad: ModalidadPortal; pie: number; plazo: number; tasa?: number | null }, ahora: Date = new Date(),
   cuenta?: { calculados: number; ms: number }, deps: DepsPortal = {},
 ): Promise<PinMapa[]> {
   const t0 = Date.now();
-  const clave = claveComboPortal(q.modalidad, q.pie, q.plazo);
-  const combo = { piePct: q.pie, plazoAnios: q.plazo };
+  const clave = claveComboPortal(q.modalidad, q.pie, q.plazo, q.tasa ?? null);
+  const combo = { piePct: q.pie, plazoAnios: q.plazo, tasa: q.tasa ?? null };
   const { data, error } = await admin.rpc("explorar_universo_liviano", { comunas: q.comunas.map(comunaDeAviso), dorms: TODOS_LOS_DORMS, uf_min: 0, uf_max: 1e9, desde: desdeVentana(ahora), clave });
   if (error) throw new Error(`explorar_universo_liviano: ${error.message}`);
   const filas = (Array.isArray(data) ? data : []) as Array<FilaUniverso & { condicion?: string | null; alta?: number | null }>;
@@ -135,7 +139,7 @@ export async function universoCalculado(
 
 /** Lo que devuelve GET /api/explorar: el universo compacto y de qué es (la clave y las comunas; vacío = Gran Santiago). */
 export interface RespuestaUniverso { clave: string; comunas: string[]; universo: UniversoCompacto; calculados: number; ms: number }
-export function respuestaUniverso(pines: PinMapa[], q: { modalidad: ModalidadPortal; pie: number; plazo: number; comunas: string[] }, cuenta = { calculados: 0, ms: 0 }): RespuestaUniverso {
+export function respuestaUniverso(pines: PinMapa[], q: { modalidad: ModalidadPortal; pie: number; plazo: number; tasa?: number | null; comunas: string[] }, cuenta = { calculados: 0, ms: 0 }): RespuestaUniverso {
   return { clave: claveUniverso(q), comunas: q.comunas, universo: compactar(pines), calculados: cuenta.calculados, ms: cuenta.ms };
 }
 

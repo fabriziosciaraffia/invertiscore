@@ -30,6 +30,7 @@ import { useRouter } from "next/navigation";
 import { claveActual, iniciarCarga } from "@/lib/carga-global";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 import { EXPLORAR_COPY, PIES_POPUP, PLAZOS_POPUP, textoCambio, type Recalculo } from "@/lib/explorar/explorar";
+import { TASAS_ELEGIBLES } from "@/lib/deptos/estandar";
 import { COMPRA_DEPTO, nombreDelDepto, type ComprasDelDepto } from "@/lib/guia/compra-desde-depto";
 import { ModalPlausibilidad } from "@/components/formulario-v4/ModalPlausibilidad";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
@@ -39,8 +40,8 @@ import { ImagenDepto, useCalle } from "@/components/guia/ImagenDepto";
 import "@/components/formulario-v4/wizard-v4.css";
 
 export interface EleccionAnalizar {
-  combinacion: { piePct: number; plazoAnios: number };
-  /** Marcó la casilla: el pie y el plazo nuevos quedan en su perfil de búsqueda. */
+  combinacion: { piePct: number; plazoAnios: number; tasaPct?: number | null };
+  /** Marcó la casilla: el pie, el plazo y la tasa nuevos quedan en su perfil de búsqueda. */
   guardarPerfil: boolean;
 }
 
@@ -53,8 +54,8 @@ export function AvisoAntesDeAnalizar({ avisoId = null, depto, combinacion, finan
   /** Renta corta (14-oct-2026): el ingreso estimado por zona va en `finanzas.arriendo`. La última línea es la de siempre,
    *  «Usa 1 de tus N análisis», sin condición (15-oct-2026). */
   modalidad?: "ltr" | "str";
-  /** El pie y el plazo con que se analiza. */
-  combinacion: { piePct: number; plazoAnios: number };
+  /** El pie y el plazo con que se analiza, y la tasa elegida (30-oct-2026; null o ausente = la de hoy, `finanzas.tasa`). */
+  combinacion: { piePct: number; plazoAnios: number; tasaPct?: number | null };
   finanzas: FinanzasAviso;
   uso: UsoAnalisis;
   /** El checkout del pack, con su origen y la vuelta a esta página. */
@@ -63,7 +64,7 @@ export function AvisoAntesDeAnalizar({ avisoId = null, depto, combinacion, finan
   alCancelar: () => void;
   /** «Cambiar» el pie y el plazo: cómo recalcular y qué daba con la combinación de apertura (el veredicto y el flujo de la
    *  tarjeta gris). Sin él, la línea del pie y el plazo va sin «Cambiar». */
-  cambio?: { recalcular: (combo: { piePct: number; plazoAnios: number }) => Promise<Recalculo | null>; base: { veredicto: string; score: number | null; flujo: number | null } } | null;
+  cambio?: { recalcular: (combo: { piePct: number; plazoAnios: number; tasaPct?: number | null }) => Promise<Recalculo | null>; base: { veredicto: string; score: number | null; flujo: number | null } } | null;
   /** Se está generando el informe: el aviso queda abierto, cargando, hasta que se abre. */
   analizando?: boolean;
   /** Sin saldo, desde la selección: el pack (principal) y el suelto (debajo), con la vuelta a este depto. */
@@ -82,14 +83,16 @@ export function AvisoAntesDeAnalizar({ avisoId = null, depto, combinacion, finan
   const router = useRouter();
   const sin = uso.tipo === "sin";
   // El cambio de pie y plazo: la combinación elegida, si está editando y qué da con ella.
-  const [combo, setCombo] = useState(combinacion);
+  const [combo, setCombo] = useState({ ...combinacion, tasaPct: combinacion.tasaPct ?? null });
   const [editando, setEditando] = useState(false);
   const [recal, setRecal] = useState<Recalculo | null>(null);
   const [recalculando, setRecalculando] = useState(false);
   const [fallo, setFallo] = useState(false);
   const [guardar, setGuardar] = useState(true);
   const pedido = useRef(0);
-  const cambiada = combo.piePct !== combinacion.piePct || combo.plazoAnios !== combinacion.plazoAnios;
+  const cambiada = combo.piePct !== combinacion.piePct || combo.plazoAnios !== combinacion.plazoAnios || combo.tasaPct !== (combinacion.tasaPct ?? null);
+  // La tasa que se ve y con que se calcula el dividendo: la elegida o la de hoy (30-oct-2026).
+  const tasaVista = combo.tasaPct ?? finanzas.tasa;
   useEffect(() => {
     if (!cambio || !cambiada) { setRecal(null); setRecalculando(false); setFallo(false); return; }
     const n = ++pedido.current;
@@ -100,15 +103,15 @@ export function AvisoAntesDeAnalizar({ avisoId = null, depto, combinacion, finan
     void cambio.recalcular(combo).then((r) => { if (pedido.current === n) { setRecal(r); setFallo(!r); setRecalculando(false); } }).catch(() => { if (pedido.current === n) { setRecal(null); setFallo(true); setRecalculando(false); } });
     // `cambio` no cambia entre renders del mismo pop-up; lo que importa es la combinación.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [combo.piePct, combo.plazoAnios, cambiada]);
+  }, [combo.piePct, combo.plazoAnios, combo.tasaPct, cambiada]);
   const comprar = (href: string) => { iniciarCarga(claveActual()); router.push(href); };
-  const da = cambio && cambiada && recal ? textoCambio({ antes: { pie: combinacion.piePct, ...cambio.base }, despues: { pie: combo.piePct, plazo: combo.plazoAnios, veredicto: recal.veredicto, score: recal.score, flujo: recal.flujo } }, (v) => etiquetaVeredicto(v, "frase")) : null;
-  const c = EXPLORAR_COPY.conPieYPlazo(combo.piePct, combo.plazoAnios);
+  const da = cambio && cambiada && recal ? textoCambio({ antes: { pie: combinacion.piePct, plazo: combinacion.plazoAnios, tasa: combinacion.tasaPct ?? null, ...cambio.base }, despues: { pie: combo.piePct, plazo: combo.plazoAnios, tasa: combo.tasaPct, veredicto: recal.veredicto, score: recal.score, flujo: recal.flujo } }, (v) => etiquetaVeredicto(v, "frase")) : null;
+  const c = EXPLORAR_COPY.conPieYPlazo(combo.piePct, combo.plazoAnios, tasaVista);
   const resumen = {
     direccion: nombreDelDepto(depto),
     modalidad: modalidad === "str" ? AVISO_ANALIZAR.modalidadCorta : AVISO_ANALIZAR.modalidad,
     // Los derivados siguen a la combinación elegida; el pop-up muestra el dividendo y el retorno bruto (el mockup).
-    derivados: derivadosAviso(depto, combo, finanzas),
+    derivados: derivadosAviso(depto, combo, { ...finanzas, tasa: tasaVista }),
   };
   const derivados = resumen.derivados.filter((x) => x.label === "Dividendo" || x.label === "Retorno bruto");
   // Qué incluye el informe: en renta corta, los dos casos (27-oct-2026): si no da, no gasta y ve la publicación igual.
@@ -159,6 +162,14 @@ export function AvisoAntesDeAnalizar({ avisoId = null, depto, combinacion, finan
                 {PLAZOS_POPUP.map((p) => <option key={p} value={p}>{p} años</option>)}
               </select>
             </label>
+            {/* La tasa (30-oct-2026): «La de hoy (X %)», que sigue al motor, o una de la lista. Una fila entera: a 390 px no cabe al lado. */}
+            <label className="av-campo av-campo-tasa">
+              <span className="av-etq">{EXPLORAR_COPY.tasa}</span>
+              <select className="av-select" data-aviso="tasa" aria-label={EXPLORAR_COPY.tasa} value={combo.tasaPct ?? ""} onChange={(e) => setCombo((x) => ({ ...x, tasaPct: e.target.value === "" ? null : Number(e.target.value) }))} disabled={analizando}>
+                <option value="">{EXPLORAR_COPY.tasaHoy(finanzas.tasa)}</option>
+                {TASAS_ELEGIBLES.map((t) => <option key={t} value={t}>{t.toLocaleString("es-CL", { maximumFractionDigits: 2 })} %</option>)}
+              </select>
+            </label>
           </div>
           {cambiada && recalculando && <p className="av-estado" role="status" aria-live="polite" data-aviso="recalculando">{EXPLORAR_COPY.recalculando}</p>}
           {cambiada && fallo && <p className="av-estado av-fallo" role="alert" data-aviso="fallo">{AVISO_ANALIZAR.sinRecalculo}</p>}
@@ -171,7 +182,7 @@ export function AvisoAntesDeAnalizar({ avisoId = null, depto, combinacion, finan
         </>
       ) : (
         <div className="av-combo" data-aviso="combo">
-          <span>{c.antes}<b>{c.pie}</b>{c.medio}<b>{c.plazo}</b></span>
+          <span>{c.antes}<b>{c.pie}</b>{c.medio}<b>{c.plazo}</b>{c.tasa && <>{c.fin}<b data-aviso="tasa-vista">{c.tasa}</b></>}</span>
           {cambio && !analizando && <button type="button" className="av-cambiar" data-modal-cambiar onClick={() => setEditando(true)}>{EXPLORAR_COPY.cambiar}</button>}
         </div>
       ))}
@@ -188,7 +199,7 @@ export function AvisoAntesDeAnalizar({ avisoId = null, depto, combinacion, finan
       {!sin && editando && cambiada && (
         <label className="av-guardar" data-aviso="guardar" data-modal-guardar>
           <input type="checkbox" checked={guardar} onChange={(e) => setGuardar(e.target.checked)} disabled={analizando} />
-          {EXPLORAR_COPY.guardarPerfil(combo.piePct, combo.plazoAnios)}
+          {EXPLORAR_COPY.guardarPerfil(combo.piePct, combo.plazoAnios, combo.tasaPct)}
         </label>
       )}
     </div>

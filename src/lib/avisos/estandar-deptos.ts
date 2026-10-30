@@ -43,10 +43,12 @@ export interface SondaDeAviso {
  * contexto de la fila con que la noche lo evaluó y con que el semanal lo recalcula, con la tasa de mercado. null sin
  * arriendo o sin la mediana comunal guardada (no se consulta nada en vivo).
  */
-export function sondaDeCandidato(c: CandidatoGuia, combo: { piePct: number; plazoAnios: number }, cfg: { uf: number; tasa: number }, asOf: Date = new Date()): SondaDeAviso | null {
+/** `combo.tasa` (30-oct-2026): la tasa elegida para el crédito; sin ella, la del motor (`cfg.tasa`). La «de mercado» sigue
+ *  siendo la del motor: es contra la que el informe compara. */
+export function sondaDeCandidato(c: CandidatoGuia, combo: { piePct: number; plazoAnios: number; tasa?: number | null }, cfg: { uf: number; tasa: number }, asOf: Date = new Date()): SondaDeAviso | null {
   const ctx = contextoDeFila(c, cfg);
   if (!ctx || !c.arriendo || c.medianaComuna == null) return null;
-  const body = payloadDeAviso(respuestasDeAviso(avisoDeCandidato(c), combo.piePct, cfg.tasa, c.arriendo.monto, { plazo: combo.plazoAnios, tasaMercado: cfg.tasa }), ctx);
+  const body = payloadDeAviso(respuestasDeAviso(avisoDeCandidato(c), combo.piePct, combo.tasa ?? cfg.tasa, c.arriendo.monto, { plazo: combo.plazoAnios, tasaMercado: cfg.tasa }), ctx);
   const s = sondaConPatch(body as never, cfg.uf, c.medianaComuna as never, asOf, {});
   return {
     veredicto: s.veredicto ?? null,

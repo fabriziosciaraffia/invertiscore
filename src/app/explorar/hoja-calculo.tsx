@@ -11,8 +11,10 @@ import { useEffect, useRef } from "react";
 import { ChipVeredicto } from "@/components/analysis/shared/ChipVeredicto";
 import { COMO_SE_CALCULA, type TasaDelMotor } from "@/lib/explorar/portal";
 
-export function HojaCalculo({ tasa, sinCuenta, alCerrar }: {
+export function HojaCalculo({ tasa, elegida = null, sinCuenta, alCerrar }: {
   tasa: TasaDelMotor | null;
+  /** La tasa elegida en Filtros (30-oct-2026); null = la de hoy. */
+  elegida?: number | null;
   sinCuenta: boolean;
   alCerrar: () => void;
 }) {
@@ -32,7 +34,7 @@ export function HojaCalculo({ tasa, sinCuenta, alCerrar }: {
       <section className="ex-calculo" role="dialog" aria-modal="true" aria-labelledby="ex-calculo-t">
         <h2 id="ex-calculo-t" className="ex-calculo-t">{c.titulo}</h2>
         <p className="ex-calculo-p" data-explorar="calculo-estandar">{c.estandar(tasa?.tasa ?? null)}</p>
-        <p className="ex-calculo-p" data-explorar="calculo-cambiar">{c.cambiar.antes}<strong>{c.cambiar.fuerte}</strong>{c.cambiar.despues(sinCuenta)}</p>
+        <p className="ex-calculo-p" data-explorar="calculo-cambiar">{c.cambiar.antes}<strong>{c.cambiar.fuerte}</strong>{c.cambiar.despues(sinCuenta)}{!sinCuenta && elegida != null && <span data-explorar="calculo-tasa">{c.tuTasa(elegida, tasa?.tasa ?? null)}</span>}</p>
         <p className="ex-calculo-p" data-explorar="calculo-conviene">{c.chip.antes}<ChipVeredicto v="COMPRAR" />{c.chip.despues}{c.cuanto(sinCuenta)}</p>
         <button ref={boton} type="button" className="ex-cta ex-calculo-ok" onClick={alCerrar} data-explorar="calculo-ok">{c.boton}</button>
       </section>
