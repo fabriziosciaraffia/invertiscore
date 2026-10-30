@@ -155,7 +155,8 @@ export function validarCambiosPerfil(b: Record<string, unknown>): { ok: true; ca
   const c: Cambios = {};
   if ("dormitorios" in b) {
     if (b.dormitorios === null) c.dormitorios = null;
-    else if (Array.isArray(b.dormitorios) && b.dormitorios.length > 0 && b.dormitorios.length <= 5 && b.dormitorios.every((d) => Number.isInteger(d) && (d as number) >= 0 && (d as number) <= 5)) c.dormitorios = Array.from(new Set(b.dormitorios as number[])).sort();
+    // Hasta seis (0 a 5): «Avísame de nuevos» con todas las tipologías manda las seis y se rechazaba (30-oct-2026, QA de la tasa).
+    else if (Array.isArray(b.dormitorios) && b.dormitorios.length > 0 && b.dormitorios.length <= 6 && b.dormitorios.every((d) => Number.isInteger(d) && (d as number) >= 0 && (d as number) <= 5)) c.dormitorios = Array.from(new Set(b.dormitorios as number[])).sort();
     else return { ok: false, error: "Dormitorios inválidos" };
   }
   if ("comunas" in b) {

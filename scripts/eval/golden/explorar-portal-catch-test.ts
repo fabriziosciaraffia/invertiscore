@@ -291,6 +291,10 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
   const pA = po.perfilDeFiltros(fA);
   if (!pA.ok || pA.cambios.comunas.join() !== "Ñuñoa,Santiago" || pA.cambios.dormitorios.join() !== "1,2" || pA.cambios.precioMinUf !== 1500 || pA.cambios.precioMaxUf !== 3000 || pA.cambios.piePct !== 30 || pA.cambios.plazoAnios !== 20 || pA.cambios.modalidad !== "str") F(`5 · los filtros activos no pasan enteros al perfil: ${JSON.stringify(pA)}`);
   else if (!validarCambiosPerfil(pA.cambios as never).ok) F("5 · lo que «Avísame» guardaría no lo acepta el perfil (validarCambiosPerfil)");
+  // ⚠ ACTA (30-oct-2026, QA de la tasa editable en el preview) · «Avísame» con todas las tipologías (dormitorios 0 a 5) daba 422:
+  // el perfil aceptaba hasta cinco dormitorios.
+  const todas = po.perfilDeFiltros({ ...G, comunas: ["Providencia"] });
+  if (!todas.ok || !validarCambiosPerfil(todas.cambios as never).ok) F("5 · «Avísame» con todas las tipologías no se puede guardar (el perfil rechaza los dormitorios)");
   if (po.perfilDeFiltros(G).ok || po.perfilDeFiltros({ ...G, comunas: (COMUNAS_DISPONIBLES as readonly string[]).slice(0, 9) }).ok) F("5 · sin comunas (o con más de ocho) igual guarda un perfil");
   try {
     const srv = require(join(RAIZ, "src/lib/explorar/portal-servidor")) as typeof import("../../../src/lib/explorar/portal-servidor");
@@ -565,3 +569,6 @@ if (require.main === module) {
 // ACTA DE MUTACIÓN (30-oct-2026, goal del recorrido real). Los predicados reescritos, 8 de 8 en ROJO (runner `mutar-recorrido.cjs` en el scratchpad de la sesión cb466df3; cada archivo restaurado byte a byte): P1 abajo dice
 // «que convienen» · P2 la píldora sin el número · P3 «Mi búsqueda» vuelve a la barra · P4 «Mi búsqueda» no cierra Filtros ·
 // P5 el esqueleto con la línea · P6 el elegido en tinta fija · P7 la lista no tapa el mapa · P8 el esqueleto con «Ordenar».
+
+// ACTA DE MUTACIÓN (30-oct-2026, QA de la tasa editable): el perfil vuelve a aceptar solo cinco dormitorios → «Avísame» con
+// todas las tipologías no se puede guardar, en ROJO; restaurado.
