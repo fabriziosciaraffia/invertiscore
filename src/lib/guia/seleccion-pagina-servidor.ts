@@ -24,7 +24,7 @@ const TOKEN = /^[0-9a-f]{20,80}$/i;
 
 export interface BloquePagina {
   origenId: string | null;
-  combinacion: { piePct: number; plazoAnios: number } | null;
+  combinacion: { piePct: number; plazoAnios: number; tasaPct?: number | null } | null;
   filas: Array<FilaPaginaSemanal<ItemSemanal>>;
   finanzas: { tasa: number | null; uf: number | null; arriendos: Record<string, number> };
   noDan: string[];

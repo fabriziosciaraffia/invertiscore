@@ -261,7 +261,9 @@ export async function prepararSeleccionStr(
   // Sin informes (16-oct-2026), el origen sintético.
   const o = perfil.completo && rango ? (await origenStrDePersona(admin, userId)) ?? (pp.soloManual ? origenSinteticoStr(userId, perfil, cfg) : null) : null;
   if (!o || !rango) return { tipo: "sin-perfil", perfil };
-  const combo: Combinacion = { piePct: perfil.piePct ?? o.piePct, plazoAnios: perfil.plazoAnios ?? o.plazoAnios };
+  // LA TASA (30-oct-2026): la elegida en su perfil; sin ella, la del motor —no la de su último informe—.
+  const combo: Combinacion = { piePct: perfil.piePct ?? o.piePct, plazoAnios: perfil.plazoAnios ?? o.plazoAnios, ...(perfil.tasaPct != null ? { tasaPct: perfil.tasaPct } : {}) };
+  const conTasa: OrigenStr = { ...o, tasa: perfil.tasaPct ?? cfg.tasa };
   const desde = new Date(Date.now() - VENTANA_SEMANAL_DIAS * 864e5).toISOString().replace("Z", "");
 
   const leerCandidatos = async (comunas: string[]): Promise<Candidato[]> => {
@@ -297,7 +299,7 @@ export async function prepararSeleccionStr(
     const r = (async () => {
       const zona = (await zonasDeComuna(admin, c.comuna)).get(celdaDormitorios(c.dormitorios));
       if (!zona) return null;
-      const body = cuerpoStrDeAviso(c, o, combo, cfg);
+      const body = cuerpoStrDeAviso(c, conTasa, combo, cfg);
       if (!body) return null;
       const med = mediciones.get(c.avisoId);
       return aplicarMedicion(evaluarStrCon(body, zona.estimacion, cfg, c.medianaComuna, asOf), med?.m, med?.informe);

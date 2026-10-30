@@ -21,6 +21,9 @@ import { leerConfigGuia } from "@/lib/guia/guia-servidor";
 import { estadoSaldo, leerSaldo, type EstadoSaldo } from "@/lib/casa-saldo";
 import { regaloAltaVivo } from "@/lib/regalo-alta-servidor";
 import { MAX_PRIMEROS, primerosDeptos, type PrimerDepto } from "./servidor";
+import { filasParaSonda } from "@/lib/explorar/servidor";
+import { candidatoDeFila } from "@/lib/guia/semanal-candidatos";
+import { sondaDeCandidato } from "@/lib/avisos/estandar-deptos";
 import { PIE_DEPTOS, PLAZO_DEPTOS } from "./estandar";
 import { faltanDelPerfil, MINUTOS_CUPO_DEL_DIA, type FaltaDelPerfil } from "@/lib/guia/del-dia";
 import { rellenarDeLaNoche } from "@/lib/guia/del-dia-servidor";
@@ -47,7 +50,7 @@ export interface PrimerosDeLaCuenta {
   /** El informe de origen de la selección (la puerta A), o null (el origen sintético de B y C). */
   origenId: string | null;
   /** El pie y el plazo con que se analiza cada uno. */
-  combinacion: { piePct: number; plazoAnios: number } | null;
+  combinacion: { piePct: number; plazoAnios: number; tasaPct?: number | null } | null;
   /** Los chips que faltan para armar una selección (la pantalla los pide en un toque). */
   faltan: FaltaDelPerfil[];
   saldo: EstadoSaldo;
@@ -79,7 +82,7 @@ export async function primerosDeLaCuenta(admin: SupabaseClient, userId: string, 
   const minutos = fila ? (ahora.getTime() - Date.parse(fila.armada_at)) / 60_000 : Infinity;
   const revisando = !!fila && fila.estado === "pendiente" && !fila.enviada_at && minutos < MINUTOS_CUPO_DEL_DIA + 15;
   const token = fila?.token ?? null;
-  const comboFila = (fila?.combinacion ?? null) as { piePct: number; plazoAnios: number } | null;
+  const comboFila = (fila?.combinacion ?? null) as { piePct: number; plazoAnios: number; tasaPct?: number | null } | null;
   const finanzasDe = (origenId: string | null, ids: string[]) => finanzasDeSeleccion(admin, origenId, ids, cfg.uf, cfg.tasa);
 
   // La fila del día ya tiene deptos: los chequeados por la cola, o los de la noche que esta misma pantalla escribió.
@@ -115,16 +118,20 @@ export async function primerosDeLaCuenta(admin: SupabaseClient, userId: string, 
   const pie = (perfil.piePct ?? PIE_DEPTOS) >= 30 ? 30 : PIE_DEPTOS;
   // El plazo de la persona (el elegido o el de su informe); sin plazo, el por defecto. La noche tiene 25 y 30 años.
   const plazo = perfil.plazoAnios == null ? PLAZO_DEPTOS : perfil.plazoAnios >= 30 ? 30 : 25;
-  const buscar = (comunas: string[]) => primerosDeptos(admin, {
-    comunas, dorms: perfil.dormitorios, ufMin: rango.ufMin, ufMax: rango.ufMax, pie, plazo,
-  }, ahora);
+  // CON UNA TASA ELEGIDA (30-oct-2026): los de la noche (evaluados con la del motor) se vuelven a evaluar con la suya y
+  // quedan los que siguen dando Comprar, con su puntaje y su flujo. La selección del día que arma la cola ya evalúa con ella.
+  const tasaPct = perfil.tasaPct ?? null;
+  const buscar = async (comunas: string[]) => {
+    const deptos = await primerosDeptos(admin, { comunas, dorms: perfil.dormitorios, ufMin: rango.ufMin, ufMax: rango.ufMax, pie, plazo }, ahora, tasaPct != null ? MAX_REEVALUAR : MAX_PRIMEROS);
+    return tasaPct != null ? (await conTasaElegida(admin, deptos, { piePct: pie, plazoAnios: plazo, tasa: tasaPct }, cfg, ahora)).slice(0, MAX_PRIMEROS) : deptos;
+  };
   const propias = perfil.comunas.map(comunaDeAviso);
   const deLaNoche = await buscar(propias);
   // Sin ninguno en sus comunas, las vecinas (como el correo del día, semanal.ts › el respaldo).
   const vecinas = deLaNoche.length === 0 ? await buscar(comunasVecinas(propias).filter((c) => !propias.includes(c))) : [];
   const elegidos = deLaNoche.length ? deLaNoche : vecinas;
   if (elegidos.length === 0) return vacio("ninguno");
-  const combinacion = { piePct: pie, plazoAnios: plazo };
+  const combinacion = { piePct: pie, plazoAnios: plazo, ...(tasaPct != null ? { tasaPct } : {}) };
   // «Analizar este» desde ya: los de la noche quedan en la fila pendiente del día, con lo que hace falta para validarlos.
   let origenId: string | null = null;
   let enSeleccion = false;
@@ -144,4 +151,21 @@ export async function primerosDeLaCuenta(admin: SupabaseClient, userId: string, 
     revisando, token: enSeleccion ? token : null, regaloVence, fuente: "noche", origenId, combinacion, faltan: [], saldo, finanzas,
     items: elegidos.map((d) => ({ ...d, enSeleccion, informeId: informes[d.avisoId] ?? null })), vecinas: deLaNoche.length === 0 && vecinas.length > 0,
   };
+}
+
+/** Cuántos de la noche se vuelven a evaluar con una tasa elegida (los que la RPC trae: los mejores 40). */
+const MAX_REEVALUAR = 40;
+
+/** Los de la noche con la tasa elegida (30-oct-2026): la sonda del motor sobre cada uno; quedan los Comprar, por puntaje. */
+async function conTasaElegida(admin: SupabaseClient, deptos: PrimerDepto[], combo: { piePct: number; plazoAnios: number; tasa: number }, cfg: { uf: number | null; tasa: number | null }, ahora: Date): Promise<PrimerDepto[]> {
+  if (deptos.length === 0 || cfg.uf == null || cfg.tasa == null) return deptos;
+  const motor = { uf: cfg.uf, tasa: cfg.tasa };
+  const filas = await filasParaSonda(admin, deptos.map((d) => d.avisoId));
+  const out: PrimerDepto[] = [];
+  for (const d of deptos) {
+    const f = filas.get(d.avisoId);
+    const s = f ? sondaDeCandidato(candidatoDeFila(f), combo, motor, ahora) : null;
+    if (s?.veredicto === "COMPRAR") out.push({ ...d, score: s.score, flujo: s.flujo });
+  }
+  return out.sort((a, b) => (b.score ?? -1) - (a.score ?? -1) || (b.flujo ?? -Infinity) - (a.flujo ?? -Infinity) || a.avisoId.localeCompare(b.avisoId));
 }

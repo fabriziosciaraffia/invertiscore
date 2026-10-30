@@ -66,7 +66,7 @@ export function SemanalLista({
 }: {
   token: string;
   origenId: string | null;
-  combinacion: { piePct: number; plazoAnios: number } | null;
+  combinacion: { piePct: number; plazoAnios: number; tasaPct?: number | null } | null;
   filas: Array<FilaPaginaSemanal<ItemSemanal>>;
   destacado: string | null;
   saldo: EstadoSaldo;
@@ -143,7 +143,7 @@ export function SemanalLista({
     if (!corta) setConfirmar({ it, sin: false, analizando: true });
     // La casilla del pop-up: la combinación elegida queda como su perfil de búsqueda antes de analizar.
     if (eleccion?.guardarPerfil) {
-      await fetch("/api/perfil-busqueda", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ piePct: conCombo.piePct, plazoAnios: conCombo.plazoAnios }) }).catch(() => null);
+      await fetch("/api/perfil-busqueda", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ piePct: conCombo.piePct, plazoAnios: conCombo.plazoAnios, tasaPct: conCombo.tasaPct ?? null }) }).catch(() => null);
     }
     let sinCredito = 0;
     // Renta corta: la medición tiene tope. Pasado, se corta la espera y se ofrece reintentar.
@@ -162,7 +162,7 @@ export function SemanalLista({
           : await fetch("/api/lo-que-sigue/guia/analizar", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ origenId, avisoId: it.avisoId, piePct: conCombo.piePct, plazoAnios: conCombo.plazoAnios, semanal: token }),
+              body: JSON.stringify({ origenId, avisoId: it.avisoId, piePct: conCombo.piePct, plazoAnios: conCombo.plazoAnios, tasaPct: conCombo.tasaPct ?? null, semanal: token }),
             });
         if (res.status === 409) {
           if (corta && Date.now() - t0 + ESPERA_EN_CURSO_MS >= MIDIENDO_TOPE_MS) { setTardo(it.avisoId); break; }

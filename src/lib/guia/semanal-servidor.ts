@@ -141,7 +141,10 @@ export async function prepararSeleccion(
     ? (await origenDePersona(admin, userId)) ?? origenSintetico(userId, perfil, cfg)
     : null;
   if (!o || !rango) return { tipo: "sin-perfil", perfil };
-  const combo: Combinacion = { piePct: perfil.piePct ?? o.piePct, plazoAnios: perfil.plazoAnios ?? o.plazoAnios };
+  // LA TASA (30-oct-2026): la elegida en su perfil, que viaja con la combinación de la selección; sin ella, la del motor
+  // —no la de su último informe (decisión de Fabrizio)—.
+  const combo: Combinacion = { piePct: perfil.piePct ?? o.piePct, plazoAnios: perfil.plazoAnios ?? o.plazoAnios, ...(perfil.tasaPct != null ? { tasaPct: perfil.tasaPct } : {}) };
+  const tasa = perfil.tasaPct ?? cfg.tasa;
 
   const desde = new Date(Date.now() - VENTANA_SEMANAL_DIAS * 864e5).toISOString().replace("Z", "");
   // Lo que ya se le avisó al momento no se repite en el semanal (05-oct-2026), ni lo de su correo del día (16-oct-2026:
@@ -177,7 +180,7 @@ export async function prepararSeleccion(
       const ctx = contextoDeFila(cc, cfg);
       // Sin la mediana guardada no se recalcula acá (sería una consulta en vivo por candidato): queda fuera.
       if (!ctx || !c.arriendo || c.medianaComuna == null) return null;
-      const body = payloadDeAviso(respuestasDeAviso(avisoDeCandidato(cc), combo.piePct, o.tasa, c.arriendo.monto, { plazo: combo.plazoAnios, tasaMercado: cfg.tasa }), ctx);
+      const body = payloadDeAviso(respuestasDeAviso(avisoDeCandidato(cc), combo.piePct, tasa, c.arriendo.monto, { plazo: combo.plazoAnios, tasaMercado: cfg.tasa }), ctx);
       const s = sondaConPatch(body as never, cfg.uf, c.medianaComuna as never, asOf, {});
       return { veredicto: s.veredicto, score: s.score != null ? Math.round(s.score) : null, flujo: s.metricas?.flujoMensual != null ? Math.round(s.metricas.flujoMensual) : null };
     })();
@@ -566,8 +569,9 @@ export async function finanzasDeSeleccion(admin: SupabaseClient, origenId: strin
     const m = Number(f.arriendo?.monto);
     if (Number.isFinite(m) && m > 0) arriendos[f.aviso_id] = m;
   }
-  // Sin informe de origen (la puerta B), la tasa con que se evaluó es la de mercado.
-  return { tasa: o?.tasa ?? (origenId ? null : tasaSinOrigen), uf, arriendos };
+  // La tasa «de hoy» del pop-up es la del motor (30-oct-2026: el semanal evalúa con ella si no eligió otra, también con un
+  // informe de origen); solo sin la del motor, la del informe.
+  return { tasa: tasaSinOrigen ?? o?.tasa ?? null, uf, arriendos };
 }
 
 const COLUMNAS_PAGINA = "id, user_id, semana, token, items, combinacion, origen_analysis_id, variante, enviada_at, perfil, items_str, estado_str, combinacion_str, origen_str_analysis_id";
@@ -1010,5 +1014,6 @@ export async function combinacionSemanal(admin: SupabaseClient, token: string, u
   if (!data || data.user_id !== userId || data.origen_analysis_id !== origenId) return null;
   if (!((data.items ?? []) as ItemSemanal[]).some((i) => i.avisoId === avisoId)) return null;
   const c = data.combinacion as Combinacion | null;
-  return c && Number.isFinite(c.piePct) && Number.isFinite(c.plazoAnios) ? { piePct: c.piePct, plazoAnios: c.plazoAnios } : null;
+  // La tasa elegida viaja con la selección (30-oct-2026); sin ella, la del motor.
+  return c && Number.isFinite(c.piePct) && Number.isFinite(c.plazoAnios) ? { piePct: c.piePct, plazoAnios: c.plazoAnios, ...(typeof c.tasaPct === "number" ? { tasaPct: c.tasaPct } : {}) } : null;
 }

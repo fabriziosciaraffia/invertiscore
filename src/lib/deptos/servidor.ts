@@ -249,6 +249,8 @@ export async function primerosDeptos(
   admin: SupabaseClient,
   p: { comunas: string[]; dorms: number[]; ufMin: number; ufMax: number; pie: number; plazo: number },
   ahora: Date = new Date(),
+  // Cuántos (30-oct-2026): con una tasa elegida se piden más, para volver a evaluarlos con ella (primeros-servidor.ts).
+  cuantos: number = MAX_PRIMEROS,
 ): Promise<PrimerDepto[]> {
   const { data, error } = await admin.rpc("deptos_candidatos", {
     comunas: p.comunas, dorms: p.dorms, uf_min: p.ufMin, uf_max: p.ufMax, desde: desdeVentana(ahora), pie: p.pie >= 30 ? 30 : 20, max_filas: 40, plazo: p.plazo >= 30 ? 30 : 25,
@@ -264,7 +266,7 @@ export async function primerosDeptos(
   const porPuntaje = (a: (typeof filas)[number], b: (typeof filas)[number]) =>
     (b.score_cron ?? -1) - (a.score_cron ?? -1) || (b.flujo ?? -Infinity) - (a.flujo ?? -Infinity) || a.id.localeCompare(b.id);
   const orden = [...filas.filter(fresco).sort(porPuntaje), ...filas.filter((f) => !fresco(f)).sort(porPuntaje)];
-  return orden.slice(0, MAX_PRIMEROS).map((f) => ({
+  return orden.slice(0, cuantos).map((f) => ({
     avisoId: f.id, comuna: f.comuna, tipologia: tipologiaDe(f.dormitorios, f.banos), m2: Math.round(Number(f.superficie_m2)), precioUF: Math.round(Number(f.precio_uf)),
     veredicto: "COMPRAR", score: f.score_cron, flujo: f.flujo, vistoAt: fresco(f) ? f.pub_at : null,
     ...(condicionDe(f.condicion) ? { condicion: condicionDe(f.condicion) } : {}),

@@ -130,15 +130,15 @@ export function PrimeraSeleccion({ encabezado = "dentro" }: {
     try {
       // La casilla: la combinación elegida queda como su perfil de búsqueda antes de analizar.
       if (eleccion?.guardarPerfil) {
-        await fetch("/api/perfil-busqueda", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ piePct: combo.piePct, plazoAnios: combo.plazoAnios }) }).catch(() => null);
+        await fetch("/api/perfil-busqueda", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ piePct: combo.piePct, plazoAnios: combo.plazoAnios, tasaPct: combo.tasaPct ?? null }) }).catch(() => null);
       }
       for (let intento = 0; intento < 8; intento++) {
         const res = await fetch("/api/lo-que-sigue/guia/analizar", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(como === "seleccion"
-            ? { origenId: datos.origenId, avisoId: it.avisoId, piePct: combo.piePct, plazoAnios: combo.plazoAnios, semanal: datos.token }
-            : { origenId: null, avisoId: it.avisoId, piePct: combo.piePct, plazoAnios: combo.plazoAnios, respaldo: true }),
+            ? { origenId: datos.origenId, avisoId: it.avisoId, piePct: combo.piePct, plazoAnios: combo.plazoAnios, tasaPct: combo.tasaPct ?? null, semanal: datos.token }
+            : { origenId: null, avisoId: it.avisoId, piePct: combo.piePct, plazoAnios: combo.plazoAnios, tasaPct: combo.tasaPct ?? null, respaldo: true }),
         });
         if (res.status === 409) { await new Promise((ok) => setTimeout(ok, ESPERA_EN_CURSO_MS)); continue; }
         const d = (await res.json().catch(() => ({}))) as { id?: string; error?: string };
