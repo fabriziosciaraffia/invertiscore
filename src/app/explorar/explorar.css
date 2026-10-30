@@ -78,6 +78,9 @@
 .ex-asa { align-self: center; width: 38px; height: 4px; border-radius: 999px; background: var(--franco-border-strong, var(--franco-border)); }
 .ex-hoja-fila { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .ex-hoja-t { display: inline-flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+/* El chip ✓ Comprar, en la letra de la página (30-oct-2026, medido en producción): con la suya —la del informe, IBM Plex— Chrome
+   bajaba sus 40 kB antes del primer pintado y el FCP subía de 1,13 a 1,42 s. La misma trampa que la capa del mapa quieto. */
+.ex-pagina .chip-v { font-family: inherit; }
 /* En el PC la barra se pierde: una píldora negra flotante, abajo al centro, espejo del botón «Mapa» de la lista. */
 .ex-pildora-lista { display: none; }
 .ex-hoja-ver { flex: none; font-size: 13px; font-weight: 500; text-decoration: underline; text-underline-offset: 3px; }

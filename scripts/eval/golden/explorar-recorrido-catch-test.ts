@@ -188,6 +188,9 @@ export async function runExplorarRecorridoTier(): Promise<{ hard: number }> {
     }
   }
   if (/ex-numero/.test(css + cli + codigo("src/app/explorar/esqueleto.tsx")) || "numeroDelMapa" in po || "lineaSupuestos" in po) F("5 · quedan la tarjeta del número o la línea de los supuestos (CSS, cliente, esqueleto o portal.ts)");
+  // ⚠ ACTA (30-oct-2026, medido en producción) · el chip va en la letra de la página: con la del informe (IBM Plex) Chrome
+  // bajaba 40 kB antes del primer pintado (FCP de 1,13 a 1,42 s).
+  if (!/^\.ex-pagina \.chip-v \{ font-family: inherit; \}/m.test(css)) F("5 · el chip ✓ Comprar de /explorar trae la letra del informe (IBM Plex se baja antes del primer pintado)");
   if (!/\.ex-pildora-lista \{ display: none; \}/.test(css) || !/\.ex-hoja \{ display: none; \}/.test(cssPC) || !/\.ex-pildora-lista \{ position: absolute; left: 50%; bottom: 24px;[^}]*border-radius: 999px;/.test(cssPC)) F("5 · la barra de abajo no es la del teléfono y la píldora la del PC");
   const modLista = cargar<{ ListaPortal: FC<Record<string, unknown>> }>("src/app/explorar/lista-portal", F);
   if (modLista) {
@@ -322,7 +325,7 @@ if (require.main === module) {
 }
 
 // ── ACTA DE MUTACIONES (30-oct-2026) ──
-// 66 de 66 en ROJO (runner `mutar-recorrido.cjs` en el scratchpad de la sesión cb466df3; cada archivo restaurado byte a byte):
+// 67 de 67 en ROJO (runner `mutar-recorrido.cjs` en el scratchpad de la sesión cb466df3; cada archivo restaurado byte a byte):
 //   §1 R1 el plazo por defecto vuelve a 25 · R2 /deptos con un literal · R3 la vista global a 25 · R4 un conteo de /deptos sin
 //      el plazo · R5 el aviso sin oferta sin el plazo · R6 la clave del conteo sin el plazo · R7 los candidatos sin el plazo ·
 //      R8 los guardados leen 25 · R9 el número de todo el sitio con otro plazo.
@@ -334,7 +337,8 @@ if (require.main === module) {
 //   §5 R22 «Ordenar» vuelve a la barra · R23 vuelve la tarjeta del número · R24 «¿Cómo se calcula?» como chip · R25 la píldora
 //      en el teléfono · R26 la píldora sin el número · R27 la barra de abajo sin el chip · R28 la lista sin su X · R29 «Ordenar»
 //      fuera de la lista · R30 no se cierra deslizando · R31 la lista no es panel en el PC · R32 con la lista el mapa no se usa ·
-//      R64 la lista vuelve adentro del cuerpo · R65 la hoja de la lista arranca más abajo (las dos por el QA en WebKit 390).
+//      R64 la lista vuelve adentro del cuerpo · R65 la hoja de la lista arranca más abajo (las dos por el QA en WebKit 390) ·
+//      R67 el chip vuelve a la letra del informe (por el FCP medido en producción).
 //   §6 R33 Filtros en un solo bloque · R34 la tasa editable · R35 «El depto» sin publicados · R36 Filtros no es panel en el PC.
 //   §7 R37 la vuelta abre el pop-up · R38 la vuelta sin marcar la tarjeta · R39 la banda sin el regalo · R40 el botón sin «usa
 //      tu regalo» · R41 sin pasar de borroso a nítido · R42 el pop-up sin la imagen · R43 la guía sin la imagen en el pop-up ·
@@ -348,4 +352,4 @@ if (require.main === module) {
 //      R63 sin la imagen quieta oscura del PC.
 // En el mismo runner, los predicados reescritos de otros tiers (cada uno con su acta en su archivo): CONVIENEN-UNO C1–C13,
 // EXPLORAR-PORTAL P1–P8, PUERTA-E E1–E5, PUERTA-B B1–B4, EXPLORAR X1–X3, DEPTOS-CONTEO D1, PERFIL-OFERTA O1–O2 y
-// PUERTA-B-DASHBOARD DB1: 103 de 103 en ROJO.
+// PUERTA-B-DASHBOARD DB1: 104 de 104 en ROJO.
