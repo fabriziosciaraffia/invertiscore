@@ -25,8 +25,9 @@ export function MapaCasa({ datos, variante = "casa", totalNoche = null }: {
   return (
     <section className="ca-mapa" data-casa="mapa" data-variante={variante} data-n={datos.nConvienen} data-seleccion={datos.seleccion.length}>
       <div className="ca-mapa-img" style={{ aspectRatio: `${ancho} / ${alto}` }}>
-        {/* La imagen va como fondo CSS: si la llave no sirve en este origen, no queda el ícono de imagen rota. */}
-        {datos.url && <div className="ca-mapa-fondo" style={{ backgroundImage: `url("${datos.url}")` }} data-casa="mapa-fondo" />}
+        {/* La imagen va como fondo CSS: si la llave no sirve en este origen, no queda el ícono de imagen rota. Las dos versiones
+            (30-oct-2026) van en variables: el tema decide cuál se aplica, solo esa se baja y cambia al momento con el tema. */}
+        {datos.url && <div className="ca-mapa-fondo" style={{ "--mapa-claro": `url("${datos.url}")`, ...(datos.urlOscuro ? { "--mapa-oscuro": `url("${datos.urlOscuro}")` } : {}) } as React.CSSProperties} data-casa="mapa-fondo" />}
         <svg viewBox={`0 0 ${ancho} ${alto}`} width="100%" height="100%" aria-label="Mapa de tu selección" role="img" data-casa="mapa-pines">
           {casa && (
             <g className="ca-mapa-gris" data-casa="grises">

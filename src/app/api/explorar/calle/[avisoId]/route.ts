@@ -8,6 +8,8 @@ import { imagenDeCalle } from "@/lib/explorar/calle-servidor";
 // cuadra. Se sirve desde Franco para que CADA IMAGEN QUEDE EN LA CACHÉ DEL CDN: se paga a Google una vez por aviso y no
 // por cada persona que la ve. Sin sesión a propósito: sin cookies la respuesta se puede guardar, y lo que se sirve es la
 // vista pública de una cuadra de un aviso que existe.
+// EN OSCURO (30-oct-2026): `?tema=oscuro` sirve el mapa chico en el estilo oscuro de Franco; la URL distinta lo guarda aparte en
+// la caché del CDN. La foto de la calle es la misma en los dos temas.
 // ─────────────────────────────────────────────────────────────────────────────
 export const dynamic = "force-dynamic";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -16,9 +18,10 @@ const CACHE = "public, max-age=604800, s-maxage=2592000, stale-while-revalidate=
 /** El mapa por un rechazo de Google (nada guardado): cinco minutos, para que la foto aparezca apenas Google responda. */
 const CACHE_SIN_DECIDIR = "public, max-age=300, s-maxage=300";
 
-export async function GET(_req: Request, { params }: { params: { avisoId: string } }) {
+export async function GET(req: Request, { params }: { params: { avisoId: string } }) {
   if (!UUID.test(params.avisoId)) return new Response(null, { status: 404 });
-  const img = await imagenDeCalle(createServiceClient(), params.avisoId, francoMapStaticStyleParams("light")).catch(() => null);
+  const tema = new URL(req.url).searchParams.get("tema") === "oscuro" ? "dark" : "light";
+  const img = await imagenDeCalle(createServiceClient(), params.avisoId, francoMapStaticStyleParams(tema)).catch(() => null);
   if (!img) return new Response(null, { status: 404, headers: { "Cache-Control": "no-store" } });
   const traer = (url: string) => fetch(url, { cache: "no-store", signal: AbortSignal.timeout(8000) }).then((x) => (x.ok && (x.headers.get("content-type") ?? "").startsWith("image/") ? x : null)).catch(() => null);
   const r = await traer(img.url);

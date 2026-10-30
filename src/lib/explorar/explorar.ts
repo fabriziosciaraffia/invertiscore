@@ -53,9 +53,10 @@ export function comboVigente(c: unknown, evaluadoAt: string | null | undefined, 
 /** El tope de «Más de UF 5.500» (el de RANGOS_UF). */
 export const UF_TOPE = 60000;
 /** El mapa quieto del primer pintado (el LCP del teléfono): una foto del mapa de Santiago con el estilo de Franco. En el
- *  teléfono va incrustada en el HTML (mapa-quieto.ts › MAPA_QUIETO_M); en escritorio, este archivo. En oscuro se invierte
- *  por CSS (sin una segunda foto). */
-export const MAPA_QUIETO = { d: "/explorar/mapa-quieto-d.webp" } as const;
+ *  teléfono va incrustada en el HTML (mapa-quieto.ts › MAPA_QUIETO_M); en escritorio, este archivo. En oscuro (30-oct-2026),
+ *  su versión con el estilo oscuro de Franco y el mismo encuadre (Static Maps registrado contra la clara): dos archivos que el
+ *  CSS pone de fondo solo con el tema oscuro, así que quien navega en claro no los baja (explorar.css › .ex-mapa-quieto). */
+export const MAPA_QUIETO = { d: "/explorar/mapa-quieto-d.webp", dOscuro: "/explorar/mapa-quieto-d-oscuro.webp", mOscuro: "/explorar/mapa-quieto-m-oscuro.webp" } as const;
 
 export interface FiltrosExplorar {
   comunas: string[];

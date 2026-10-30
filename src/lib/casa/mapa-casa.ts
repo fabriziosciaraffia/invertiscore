@@ -43,8 +43,9 @@ export function enImagen(p: PuntoMapa, e: Encuadre, o: typeof MAPA_CASA = MAPA_C
   return x >= 0 && x <= o.ancho && y >= 0 && y <= o.alto ? { x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 } : null;
 }
 
-/** La imagen de fondo: el estilo claro de Franco, sin marcadores (los dibuja el SVG de encima). null sin la llave. */
-export function urlMapaCasa(e: Encuadre, apiKey: string | undefined, o: typeof MAPA_CASA = MAPA_CASA): string | null {
+/** La imagen de fondo: el estilo de Franco, sin marcadores (los dibuja el SVG de encima). null sin la llave. Desde el
+ *  30-oct-2026 también la oscura (`tema` «dark»): otra URL, guardada aparte en la caché del navegador y de Google. */
+export function urlMapaCasa(e: Encuadre, apiKey: string | undefined, o: typeof MAPA_CASA = MAPA_CASA, tema: "light" | "dark" = "light"): string | null {
   if (!apiKey) return null;
   const partes = [
     `center=${e.lat.toFixed(5)},${e.lng.toFixed(5)}`,
@@ -52,7 +53,7 @@ export function urlMapaCasa(e: Encuadre, apiKey: string | undefined, o: typeof M
     `size=${o.ancho}x${o.alto}`,
     `scale=${o.escala}`,
     "maptype=roadmap",
-    ...francoMapStaticStyleParams("light"),
+    ...francoMapStaticStyleParams(tema),
     `key=${apiKey}`,
   ];
   return `https://maps.googleapis.com/maps/api/staticmap?${partes.join("&")}`;

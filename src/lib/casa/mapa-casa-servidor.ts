@@ -8,7 +8,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { reportarFalloQuery } from "@/lib/observabilidad";
 import { filtrosDeLaCuenta, pinesExplorar } from "@/lib/explorar/servidor";
 import { cajaParaComuna } from "@/lib/comuna-bounds";
-import { encuadrar, enImagen, urlMapaCasa, type Encuadre } from "./mapa-casa";
+import { encuadrar, enImagen, MAPA_CASA, urlMapaCasa, type Encuadre } from "./mapa-casa";
 
 const RUTA = "lib/casa/mapa-casa";
 /** Hasta cuántos grises se dibujan: más de eso es una mancha. */
@@ -18,6 +18,8 @@ export interface DatosMapaCasa {
   encuadre: Encuadre;
   /** La imagen de fondo; null sin la llave (queda el fondo plano con los pines). */
   url: string | null;
+  /** La misma imagen en el estilo oscuro (30-oct-2026): el tema decide cuál se ve. */
+  urlOscuro?: string | null;
   /** Los de la selección, numerados en su orden, con su lugar en la imagen. */
   seleccion: Array<{ n: number; avisoId: string; x: number; y: number }>;
   /** Los demás que convienen con la búsqueda, dentro de la imagen. */
@@ -81,6 +83,7 @@ export async function datosMapaCasa(
   return {
     encuadre,
     url: urlMapaCasa(encuadre, apiKey),
+    urlOscuro: urlMapaCasa(encuadre, apiKey, MAPA_CASA, "dark"),
     seleccion: seleccion.flatMap((s, i) => { const p = porId.get(s.avisoId); const q = p ? enImagen(p, encuadre) : null; return q ? [{ n: i + 1, avisoId: s.avisoId, ...q }] : []; }),
     grises,
     nSeleccion: seleccion.length,

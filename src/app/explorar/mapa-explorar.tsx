@@ -27,21 +27,27 @@ const TOPE_CARGA_MS = 12000;
 const CENTRO_SANTIAGO = { lat: -33.4489, lng: -70.6393 };
 
 const esClaro = () => typeof document !== "undefined" && document.documentElement.getAttribute("data-theme") === "light";
+/** EL MAPA EN OSCURO (30-oct-2026): el estilo oscuro de Franco (map-styles.ts: fondo oscuro, calles en gris medio, nombres
+ *  legibles, agua y parques apagados) y el fondo mientras cargan las teselas. Sigue al tema del sitio y cambia al momento. */
+const opcionesDeTema = () => (esClaro() ? { styles: francoMapStyleForTheme("light"), backgroundColor: "#F6F6F7" } : { styles: francoMapStyleForTheme("dark"), backgroundColor: "#1a1a1a" });
+/** El elegido: en tinta sobre el mapa claro; sobre el oscuro la tinta se pierde, así que va en papel con el texto en tinta.
+ *  Los rojos y el azul de los analizados se mantienen (el azul ya es el aclarado en oscuro), con su borde claro. */
+const elegidoDeTema = () => (esClaro() ? { fondo: TINTA, texto: PAPEL } : { fondo: "#F2F2F0", texto: TINTA });
 const svgUrl = (w: number, h: number, inner: string) => `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${inner}</svg>`)}`;
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
 const iconoPunto = (color: string) => ({ url: svgUrl(18, 18, `<circle cx="9" cy="9" r="7" fill="${color}" stroke="${PAPEL}" stroke-width="2"/>`), w: 18, h: 18 });
-/** El elegido sin cuenta (29-oct-2026, mockup 6-puerta-e, estado C): un punto más grande en tinta, sin texto. */
-const iconoElegido = () => ({ url: svgUrl(26, 26, `<circle cx="13" cy="13" r="11" fill="${TINTA}" stroke="${PAPEL}" stroke-width="3"/>`), w: 26, h: 26 });
-function iconoGrupo(n: number, color: string) {
+/** El elegido sin cuenta (29-oct-2026, mockup 6-puerta-e, estado C): un punto más grande, sin texto (en tinta; en oscuro, papel). */
+const iconoElegido = () => ({ url: svgUrl(26, 26, `<circle cx="13" cy="13" r="11" fill="${elegidoDeTema().fondo}" stroke="${esClaro() ? PAPEL : TINTA}" stroke-width="3"/>`), w: 26, h: 26 });
+function iconoGrupo(n: number, color: string, tinta: string = PAPEL) {
   const w = n < 10 ? 34 : n < 100 ? 40 : n < 1000 ? 48 : 56;
   const t = n.toLocaleString("es-CL");
-  return { url: svgUrl(w, w, `<circle cx="${w / 2}" cy="${w / 2}" r="${w / 2 - 1.5}" fill="${color}" stroke="${PAPEL}" stroke-width="2"/><text x="50%" y="50%" dy=".36em" text-anchor="middle" font-family="Inter, Helvetica, Arial, sans-serif" font-size="12" font-weight="600" fill="${PAPEL}">${t}</text>`), w, h: w };
+  return { url: svgUrl(w, w, `<circle cx="${w / 2}" cy="${w / 2}" r="${w / 2 - 1.5}" fill="${color}" stroke="${PAPEL}" stroke-width="2"/><text x="50%" y="50%" dy=".36em" text-anchor="middle" font-family="Inter, Helvetica, Arial, sans-serif" font-size="12" font-weight="600" fill="${tinta}">${t}</text>`), w, h: w };
 }
 /** La píldora de un pin con zoom: el texto (flujo, «✓ Analizado», «Nuevo hoy») sobre su color; el elegido, en tinta. */
-function iconoEtiqueta(texto: string, fondo: string, elegido: boolean) {
+function iconoEtiqueta(texto: string, fondo: string, elegido: boolean, tinta: string = PAPEL) {
   const w = Math.round(18 + texto.length * 6.9), h = elegido ? 30 : 26;
   const borde = elegido ? `stroke="${PAPEL}" stroke-width="2"` : `stroke="${PAPEL}" stroke-width="1"`;
-  return { url: svgUrl(w + 4, h + 4, `<rect x="2" y="2" width="${w}" height="${h}" rx="${h / 2}" fill="${fondo}" ${borde}/><text x="${(w + 4) / 2}" y="${(h + 4) / 2}" dy=".36em" text-anchor="middle" font-family="Inter, Helvetica, Arial, sans-serif" font-size="12" font-weight="600" fill="${PAPEL}">${esc(texto)}</text>`), w: w + 4, h: h + 4 };
+  return { url: svgUrl(w + 4, h + 4, `<rect x="2" y="2" width="${w}" height="${h}" rx="${h / 2}" fill="${fondo}" ${borde}/><text x="${(w + 4) / 2}" y="${(h + 4) / 2}" dy=".36em" text-anchor="middle" font-family="Inter, Helvetica, Arial, sans-serif" font-size="12" font-weight="600" fill="${tinta}">${esc(texto)}</text>`), w: w + 4, h: h + 4 };
 }
 
 export interface MapaExplorarProps {
@@ -91,11 +97,10 @@ export default function MapaExplorar({ pines, analizados, seleccionado, encuadre
       const g = (window as any).google;
       if (!g?.maps?.Map) { cb.current.onEstado("fallo"); return; }
       window.clearTimeout(tope);
-      const claro = esClaro();
       const map = new g.maps.Map(divRef.current, {
         // El zoom al centro derecho: abajo lo tapaban la hoja y la tarjeta (QA en WebKit 390, 28-oct-2026).
         center: CENTRO_SANTIAGO, zoom: 11, disableDefaultUI: true, zoomControl: true, zoomControlOptions: { position: g.maps.ControlPosition.RIGHT_CENTER }, clickableIcons: false,
-        gestureHandling: "greedy", styles: francoMapStyleForTheme(claro ? "light" : "dark"), backgroundColor: claro ? "#F6F6F7" : "#1a1a1a",
+        gestureHandling: "greedy", ...opcionesDeTema(),
       });
       mapRef.current = map;
 
@@ -127,21 +132,21 @@ export default function MapaExplorar({ pines, analizados, seleccionado, encuadre
               marcador({ lat: p.lat, lng: p.lng }, elegido ? iconoElegido() : iconoPunto(ROJO), elegido ? 20 : 2, () => cb.current.onSeleccionar(id));
             } else if (zoom >= ZOOM_ETIQUETAS || elegido) {
               const t = textoPin(p, { analizado: an.has(id), ahora });
-              const fondo = elegido ? TINTA : t.tipo === "analizado" ? azul : ROJO;
-              marcador({ lat: p.lat, lng: p.lng }, iconoEtiqueta(t.texto, fondo, elegido), elegido ? 20 : t.tipo === "analizado" ? 4 : 3, () => cb.current.onSeleccionar(id), t.texto);
+              const fondo = elegido ? elegidoDeTema().fondo : t.tipo === "analizado" ? azul : ROJO;
+              marcador({ lat: p.lat, lng: p.lng }, iconoEtiqueta(t.texto, fondo, elegido, elegido ? elegidoDeTema().texto : t.tipo === "analizado" && !esClaro() ? TINTA : PAPEL), elegido ? 20 : t.tipo === "analizado" ? 4 : 3, () => cb.current.onSeleccionar(id), t.texto);
             } else {
               marcador({ lat: p.lat, lng: p.lng }, iconoPunto(an.has(id) ? azul : ROJO), an.has(id) ? 3 : 2, () => cb.current.onSeleccionar(id));
             }
           } else {
             const pos = { lat: gr.lat, lng: gr.lng };
-            marcador(pos, iconoGrupo(gr.n, gr.analizados === gr.n ? azul : ROJO), 1, () => { propio.current = true; map.setZoom(Math.min(zoom + 2, 18)); map.panTo(pos); });
+            marcador(pos, iconoGrupo(gr.n, gr.analizados === gr.n ? azul : ROJO, gr.analizados === gr.n && !esClaro() ? TINTA : PAPEL), 1, () => { propio.current = true; map.setZoom(Math.min(zoom + 2, 18)); map.panTo(pos); });
           }
         }
         // El elegido, si quedó dentro de un grupo, igual se ve.
         const e = sel ? pinesRef.current.find((p) => p.avisoId === sel) : null;
         if (e && !(zoom >= ZOOM_ETIQUETAS) && !agruparPines(visibles, zoom, an, 56).some((gr) => gr.n === 1 && gr.ids[0] === sel)) {
           const t = textoPin(e, { analizado: an.has(e.avisoId), ahora });
-          marcador({ lat: e.lat, lng: e.lng }, sinCifrasRef.current ? iconoElegido() : iconoEtiqueta(t.texto, TINTA, true), 20, () => cb.current.onSeleccionar(e.avisoId));
+          marcador({ lat: e.lat, lng: e.lng }, sinCifrasRef.current ? iconoElegido() : iconoEtiqueta(t.texto, elegidoDeTema().fondo, true, elegidoDeTema().texto), 20, () => cb.current.onSeleccionar(e.avisoId));
         }
       };
       encuadrarRef.current = () => {
@@ -170,6 +175,18 @@ export default function MapaExplorar({ pines, analizados, seleccionado, encuadre
       cb.current.onEstado("listo");
     }).catch(() => { if (!cancelado) cb.current.onEstado("fallo"); });
     return () => { cancelado = true; window.clearTimeout(tope); };
+  }, []);
+
+  // Cambió el tema del sitio (30-oct-2026): el estilo del mapa y los pines, al momento, sin volver a cargar el mapa.
+  useEffect(() => {
+    const o = new MutationObserver(() => {
+      const map = mapRef.current;
+      if (!map) return;
+      map.setOptions(opcionesDeTema());
+      dibujarRef.current();
+    });
+    o.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => o.disconnect();
   }, []);
 
   // Cambiaron los filtros (o llegó el universo): se encuadra de nuevo, salvo con una zona elegida.

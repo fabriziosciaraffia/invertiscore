@@ -96,5 +96,6 @@ export function urlMapaChico(punto: Punto, key: string, estilo: readonly string[
   return `https://maps.googleapis.com/maps/api/staticmap?${partes.join("&")}`;
 }
 
-/** La dirección de la imagen de un aviso en Franco (la ruta la sirve desde la caché del CDN). */
-export const rutaImagenCalle = (avisoId: string): string => `/api/explorar/calle/${encodeURIComponent(avisoId)}`;
+/** La dirección de la imagen de un aviso en Franco (la ruta la sirve desde la caché del CDN). En oscuro, `?tema=oscuro`: el mapa
+ *  chico en el estilo oscuro, con su propia entrada en la caché (la foto de la calle es la misma). */
+export const rutaImagenCalle = (avisoId: string, oscuro = false): string => `/api/explorar/calle/${encodeURIComponent(avisoId)}${oscuro ? "?tema=oscuro" : ""}`;

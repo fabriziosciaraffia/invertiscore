@@ -37,8 +37,9 @@
 .ca-mapa { margin-top: 14px; background: var(--franco-card); border: 1px solid var(--franco-border); border-radius: 16px; overflow: hidden; }
 .ca-mapa-img { position: relative; background: #EBE9E3; }
 :root:not([data-theme="light"]) .ca-mapa-img { background: #2A2A2A; }
-.ca-mapa-fondo { position: absolute; inset: 0; background-size: cover; background-position: center; }
-:root:not([data-theme="light"]) .ca-mapa-fondo { filter: invert(1) hue-rotate(180deg) brightness(0.72) contrast(0.9); }
+.ca-mapa-fondo { position: absolute; inset: 0; background-size: cover; background-position: center; background-image: var(--mapa-claro); }
+/* En oscuro, su versión oscura (30-oct-2026: el estilo oscuro de Franco, no la clara invertida); solo se baja la del tema. */
+:root:not([data-theme="light"]) .ca-mapa-fondo { background-image: var(--mapa-oscuro, var(--mapa-claro)); }
 @media (min-width: 768px) { .ca-mapa { max-width: 600px; } }
 .ca-mapa-img svg { position: relative; display: block; }
 .ca-mapa-gris circle { fill: #C9C5BB; }
