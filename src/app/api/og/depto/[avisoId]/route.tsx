@@ -8,6 +8,8 @@ import { CALLE_COPY } from "@/lib/explorar/calle";
 import { COMPARTIR_COPY, contenidoVistaPrevia } from "@/lib/explorar/compartir";
 import { fichaCompartidaCacheada } from "@/lib/explorar/compartir-servidor";
 import { esAvisoId } from "@/lib/explorar/enlace-compartido";
+import { firmaCompartidoValida } from "@/lib/explorar/firma-compartido";
+import { normalizarCodigo } from "@/lib/referido";
 import { esTopeNegociar } from "@/lib/explorar/capa-negociar";
 import { NEGOCIADO_COPY } from "@/lib/precio-publicado";
 import { etiquetaVeredicto, signoVeredicto } from "@/lib/veredicto-etiqueta";
@@ -22,6 +24,8 @@ import { wordmarkSvg } from "@/lib/og/wordmark";
 // flujo, ni cap rate; todo lo que se dibuja sale de `contenidoVistaPrevia` (lo exige el tier COMPARTIR-DEPTO).
 // UN NEGOCIADO (`?n=<tope>`, 03-nov-2026): en lugar del chip Comprar, «Al precio publicado» con el chip Ajustar de la casa y
 // la línea «Conviene si lo negocias a UF 2.950»; ni el descuento ni el puntaje.
+// SOLO CON FIRMA (`f` e `i`, 03-nov-2026, firma-compartido.ts): la imagen trae cifras, así que sin la firma del servidor para
+// ese aviso y ese código no se dibuja (404): nadie la arma a mano para un aviso cualquiera.
 // La genera el servidor y queda en la caché del CDN un día (y se sirve vieja una semana mientras se rehace): la piden los
 // robots de vista previa cada vez que alguien pega el enlace. En Node (no Edge: el cálculo de renta corta es grande).
 // LAS FUENTES: Inter, la única de Explorar, como en la tarjeta del pin —la línea en 400, el precio y el chip en 600—; el
@@ -129,6 +133,7 @@ function Check({ color }: { color: string }) {
 export async function GET(req: Request, { params }: { params: { avisoId: string } }) {
   if (!esAvisoId(params.avisoId)) return new Response(null, { status: 404 });
   const sp = new URL(req.url).searchParams;
+  if (!firmaCompartidoValida(params.avisoId, normalizarCodigo(sp.get("i")), sp.get("f"))) return new Response(null, { status: 404, headers: { "Cache-Control": "public, max-age=300, s-maxage=300" } });
   const modalidad = sp.get("m") === "str" ? "str" : "ltr";
   const tope = esTopeNegociar(sp.get("n")) ? Number(sp.get("n")) : null;
   const [ficha, imagen, f] = await Promise.all([

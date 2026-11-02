@@ -9,6 +9,8 @@
 //   · `n=5` (o 10), cuando lo compartido es un depto de la capa «Si negocias» (03-nov-2026): el tope de la capa, el mismo
 //     parámetro de Filtros (portal.ts › portalDeUrl), así que el enlace abre /explorar con la capa prendida. Solo en arriendo
 //     tradicional, que es donde la capa existe.
+//   · `f=<firma>` (03-nov-2026): la firma del servidor para ese aviso y ese código (firma-compartido.ts). Sin ella, el enlace
+//     abre el pin igual, borroso, y su vista previa no trae cifras.
 //   · `desde=compartido` marca la llegada (la vista del enlace compartido, la puerta E con su detalle).
 //   · `i=CÓDIGO`, cuando quien comparte tiene cuenta: su código de invitación. El middleware lo deja en la cookie de la
 //     invitación, marcada «depto», y la cuenta que nazca en ese navegador queda con la puerta C y el detalle `depto:CÓDIGO`
@@ -21,6 +23,9 @@ import { DESDE_COMPARTIDO_LLEGADA } from "./puertas-landing";
 export const DESDE_COMPARTIDO = DESDE_COMPARTIDO_LLEGADA;
 /** El parámetro del código de invitación de quien comparte. */
 export const PARAM_INVITACION = "i";
+/** El parámetro de la firma del servidor. */
+export const PARAM_FIRMA = "f";
+const FORMA_FIRMA = /^[A-Za-z0-9_-]{16}$/;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const esAvisoId = (v: unknown): v is string => typeof v === "string" && UUID.test(v);
@@ -30,16 +35,19 @@ export interface EnlaceCompartido {
   modalidad: "ltr" | "str";
   /** El código de invitación de quien compartió (null: lo compartió alguien sin cuenta). */
   codigo: string | null;
+  /** La firma del enlace, si trae una con la forma de una (si vale lo dice el servidor: firma-compartido.ts). */
+  firma: string | null;
 }
 
-/** El enlace que viaja: `https://refranco.ai/explorar?a=<aviso>[&m=str&c=<comuna>][&n=<tope>][&i=<CÓDIGO>]&desde=compartido`. */
-export function enlaceCompartido(sitio: string, p: { avisoId: string; modalidad: "ltr" | "str"; comuna: string; codigo?: string | null; tope?: number | null }): string {
+/** El enlace que viaja: `https://refranco.ai/explorar?a=<aviso>[&m=str&c=<comuna>][&n=<tope>][&i=<CÓDIGO>][&f=<firma>]&desde=compartido`. */
+export function enlaceCompartido(sitio: string, p: { avisoId: string; modalidad: "ltr" | "str"; comuna: string; codigo?: string | null; tope?: number | null; firma?: string | null }): string {
   const q = new URLSearchParams();
   q.set("a", p.avisoId);
   if (p.modalidad === "str") { q.set("m", "str"); q.set("c", p.comuna); }
   else if (p.tope != null) q.set("n", String(p.tope));
   const codigo = normalizarCodigo(p.codigo);
   if (codigo) q.set(PARAM_INVITACION, codigo);
+  if (p.firma) q.set(PARAM_FIRMA, p.firma);
   q.set("desde", DESDE_COMPARTIDO);
   return `${sitio.replace(/\/$/, "")}/explorar?${q.toString()}`;
 }
@@ -49,7 +57,8 @@ export function compartidoDeUrl(sp: { get(k: string): string | null }): EnlaceCo
   if (sp.get("desde") !== DESDE_COMPARTIDO) return null;
   const a = sp.get("a");
   if (!esAvisoId(a)) return null;
-  return { avisoId: a.toLowerCase(), modalidad: sp.get("m") === "str" ? "str" : "ltr", codigo: normalizarCodigo(sp.get(PARAM_INVITACION)) };
+  const f = sp.get(PARAM_FIRMA);
+  return { avisoId: a.toLowerCase(), modalidad: sp.get("m") === "str" ? "str" : "ltr", codigo: normalizarCodigo(sp.get(PARAM_INVITACION)), firma: f && FORMA_FIRMA.test(f) ? f : null };
 }
 
 /** El código de invitación de un enlace compartido, para la cookie (lo lee el middleware): solo en /explorar. */
@@ -58,6 +67,7 @@ export function codigoDeEnlaceCompartido(pathname: string, search: string): stri
   return compartidoDeUrl(new URLSearchParams(search))?.codigo ?? null;
 }
 
-/** Lo que se saca de la URL apenas carga la página: la llegada y el código ya hicieron lo suyo (una recarga no vuelve a
- *  contar la vista, y quien copie la barra no arrastra el código de otro). El aviso (`a`) se queda: es el pin abierto. */
-export const PARAMS_DE_UNA_VEZ = ["desde", PARAM_INVITACION] as const;
+/** Lo que se saca de la URL apenas carga la página: la llegada, el código y la firma ya hicieron lo suyo (una recarga no
+ *  vuelve a contar la vista, y quien copie la barra no arrastra el código de otro ni su firma). El aviso (`a`) se queda: es
+ *  el pin abierto. */
+export const PARAMS_DE_UNA_VEZ = ["desde", PARAM_INVITACION, PARAM_FIRMA] as const;

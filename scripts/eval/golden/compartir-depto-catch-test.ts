@@ -22,6 +22,9 @@
 //       ese pin (el navegador espera la capa y toma el precio de hoy); la vista previa, el chip Ajustar al precio publicado y
 //       «Conviene si lo negocias a UF 2.950», sin otro número; si con los datos de hoy ya no llega dentro del tope (la ficha
 //       verifica como antes de cobrar, sin leer la ficha del aviso), la tarjeta lo dice y ofrece parecidos.
+//   8 · LOS ENLACES LLEVAN UNA FIRMA (03-nov-2026, goal de Fabrizio): la firma del servidor para el aviso y el código de quien
+//       comparte; lo nítido sin cuenta, la vista previa con cifras y su imagen, solo con ella. Un enlace armado a mano sin
+//       firma o con la de otro aviso abre el pin borroso y sin vista previa con cifras. 60 firmas por hora por sesión y por IP.
 // Verificado EN ROJO por mutación (acta al pie). Corre dentro del QUICK. Sin red ni base: 0 tokens.
 // Solo:  node --env-file=.env.local --import tsx scripts/eval/golden/compartir-depto-catch-test.ts
 // ============================================================================
@@ -35,6 +38,8 @@ import * as cp from "../../../src/lib/explorar/compartir";
 import { estaPublicado, fichaCompartida } from "../../../src/lib/explorar/compartir-servidor";
 import { cercanos, portalDeUrl, type PinMapa } from "../../../src/lib/explorar/portal";
 import type { VerificacionNegociado } from "../../../src/lib/avisos/negociar";
+import * as fc from "../../../src/lib/explorar/firma-compartido";
+import { emitirFirma, sesionDe, TOPE_FIRMAS_POR_HORA, type AlmacenFirmas } from "../../../src/lib/explorar/firmas-servidor";
 import type { PinNegociado } from "../../../src/lib/explorar/capa-negociar";
 import { AL_PRECIO_PUBLICADO } from "../../../src/lib/precio-publicado";
 import { detalleDeOrigen, detalleExplorar, origenDeLlegada } from "../../../src/lib/explorar/abierto";
@@ -189,7 +194,8 @@ export async function runCompartirDeptoTier(): Promise<{ hard: number }> {
       if (!/const f = focoRef\.current;\s*if \(f\) \{ map\.setCenter\(f\); map\.setZoom\(ZOOM_FOCO\); focoRef\.current = null; cb\.current\.onFoco\?\.\(\); return; \}\s*if \(ps\.length === 0\)/.test(mapa)) F("1 · el mapa no se centra en el foco antes de encuadrar los pines");
       if (!/useEffect\(\(\) => \{ if \(mapRef\.current && focoRef\.current\) \{ encuadrarRef\.current\(\); dibujarRef\.current\(\); \} \}, \[foco\]\);/.test(mapa)) F("1 · el foco que llega con el universo no centra el mapa (o lo centra dos veces)");
       // Lo que se usa una vez sale de la barra (la recarga no vuelve a contar la vista ni a repartir el código).
-      if (ec.PARAMS_DE_UNA_VEZ.join() !== "desde,i" || !/for \(const k of PARAMS_DE_UNA_VEZ\) u\.searchParams\.delete\(k\);/.test(cliente)) F("1 · la llegada y el código se quedan en la barra");
+      // ⚠ ACTA (03-nov-2026): la firma también sale de la barra (quien la copie no reparte la firma ni el código de otro).
+      if (ec.PARAMS_DE_UNA_VEZ.join() !== "desde,i,f" || !/for \(const k of PARAMS_DE_UNA_VEZ\) u\.searchParams\.delete\(k\);/.test(cliente)) F("1 · la llegada, el código o la firma se quedan en la barra");
       if (!/if \(!sinCuenta \|\| inicial\.n == null \|\| compartido\) return;/.test(cliente)) F("1 · la bienvenida tapa la tarjeta del depto compartido");
     }
 
@@ -280,13 +286,15 @@ export async function runCompartirDeptoTier(): Promise<{ hard: number }> {
       // Sin código (lo compartió alguien sin cuenta): la puerta E con su detalle.
       if (origenDeLlegada("compartido") !== "compartido" || detalleDeOrigen("compartido") !== "explorar:compartido" || detalleExplorar("explorar:compartido") !== "explorar:compartido" || detalleExplorar("explorar:otra") !== "explorar:directo") F("3 · sin código, el registro desde un depto compartido no queda con la E y su detalle");
       // El cliente: el código de quien tiene cuenta viaja en el enlace; sin cuenta, nunca.
-      if (!/const url = enlaceCompartido\(window\.location\.origin, \{ avisoId: p\.avisoId, modalidad: filtros\.modalidad, comuna: p\.comuna, codigo: sinCuenta \? null : codigo\.current, tope \}\);/.test(cliente)) F("3 · el enlace que se comparte no lleva el código de quien tiene cuenta");
-      if (!/if \(sinCuenta \|\| pidiendoCodigo\.current \|\| \(!sel && vista !== "lista"\)\) return;\s*pidiendoCodigo\.current = true;\s*void fetch\("\/api\/invitacion"/.test(cliente) || !/codigo\.current = typeof d\?\.codigo === "string" \? d\.codigo : null;/.test(cliente)) F("3 · el código no se pide antes de tocar «Compartir» (la hoja tiene que abrirse en el mismo toque)");
+      // ⚠ ACTA (03-nov-2026, la firma): el código de quien comparte ya no lo pide el navegador aparte: lo pone el servidor en el
+      // mismo pedido que firma (la firma lo incluye), y el enlace lleva el que vino con ella.
+      if (!/const url = enlaceCompartido\(window\.location\.origin, \{ avisoId: p\.avisoId, modalidad: filtros\.modalidad, comuna: p\.comuna, codigo: prep\.codigo, tope, firma: prep\.firma \}\);/.test(cliente)) F("3 · el enlace que se comparte no lleva el código de quien tiene cuenta");
+      if (!/const codigo = user \? \(await asegurarInvitacion\(admin, \{ userId: user\.id, conNombre: false, dispositivo: huella\.dispositivo \}\)\)\?\.codigo \?\? null : null;/.test(codigo("src/app/api/explorar/compartido/route.ts")) || !/return \{ firma: d\.firma, codigo: d\.codigo \?\? null, ver \};/.test(cliente)) F("3 · el código de quien tiene cuenta no viene del servidor con la firma");
     }
 
     // ── 4 · LA MEDICIÓN ──
     {
-      const comp = { avisoId: AVISO, modalidad: "ltr" as const, codigo: "K7M2QX" };
+      const comp = { avisoId: AVISO, modalidad: "ltr" as const, codigo: "K7M2QX", firma: null };
       const base = { ruta: "/explorar", search: `?a=${AVISO}&i=K7M2QX&desde=compartido`, referer: null, userId: null, consentimiento: null, idPostHog: null, visita: "5f0c6a8e-1111-4222-8333-944444444444", esCarga: true, cabeceras: cab({ "accept-language": "es-CL", "sec-fetch-mode": "navigate" }) };
       const ev = eventoVistaCompartido({ ...base, compartido: comp, uuidEvento: "9a1b2c3d-1111-4222-8333-944444444444", agente: NAVEGADOR });
       const principal = eventoVistaEntrada({ ...base, pagina: "explorar", agente: NAVEGADOR });
@@ -369,7 +377,8 @@ export async function runCompartirDeptoTier(): Promise<{ hard: number }> {
       if (/Comprar|84/.test(sinVer) || !sinVer.startsWith("Providencia · 2D2B · 79 m² · UF 4.591")) F(`6 · sin el Comprar de por defecto, el texto lo promete igual: «${sinVer}»`);
       if (!cp.esVistaEstandar({ pie: 20, plazo: 30, tasa: null }) || cp.esVistaEstandar({ pie: 30, plazo: 30, tasa: null }) || cp.esVistaEstandar({ pie: 20, plazo: 25, tasa: null }) || cp.esVistaEstandar({ pie: 20, plazo: 30, tasa: 4.5 })) F("6 · la vista de por defecto no es pie 20 %, 30 años y la tasa de hoy");
       // ⚠ ACTA (03-nov-2026): lo que se comparte sale del pin salvo que lo diga el servidor (otro pie, o un negociado sin cuenta).
-      if (!/const ver = !pideAlServidor\(p, filtros\) \? veredictoDelPin\(p\) : resueltos\.current\.get\(claveServidor\(p\)\) \?\? await veredictoEstandar\(p\);/.test(cliente) || !/const texto = textoCompartir\(deptoDePin\(p\), ver\);/.test(cliente)
+      // ⚠ ACTA (03-nov-2026, la firma): lo del servidor llega en el pedido firmado (`prep`), que se pide siempre.
+      if (!/const prep = resueltos\.current\.get\(claveServidor\(p\)\) \?\? await prepararEnlace\(p\);/.test(cliente) || !/const ver = !pideAlServidor\(p, filtros\) \? veredictoDelPin\(p\) : prep\.ver;/.test(cliente) || !/const texto = textoCompartir\(deptoDePin\(p\), ver\);/.test(cliente)
         || !/const claveServidor = \(p: PinMapa\) => `\$\{filtros\.modalidad\}\|\$\{filtros\.negociar \?\? TOPE_DE_LA_NOCHE\}\|\$\{p\.avisoId\}`;/.test(cliente)) F("6 · con otro pie, el texto dice el veredicto de quien comparte y no el de por defecto");
       // EL NEGOCIADO (la capa «Si negocias»): en la vista de por defecto su veredicto es Ajustar al precio publicado; el texto
       // nunca dice «Comprar» ni su puntaje (dice el precio al que conviene: §7), y el del pin que sí da, sí.
@@ -380,7 +389,7 @@ export async function runCompartirDeptoTier(): Promise<{ hard: number }> {
       const vPin = cp.veredictoDelPin(pin(AVISO));
       if (!vPin.comprar || vPin.score !== 84) F("6 · el pin que da Comprar se comparte sin su Comprar y su puntaje");
       if (cp.veredictoDelPin(pin(OTRO, { veredicto: "AJUSTA SUPUESTOS", score: 66 })).comprar) F("6 · un pin que no da Comprar (sin negociación) se comparte como Comprar");
-      if (!/if \(!pideAlServidor\(p, filtros\)\) return Promise\.resolve\(veredictoDelPin\(p\)\);/.test(cliente) || /comprar: true, score: p\.score/.test(cliente)) F("6 · en la vista de por defecto el cliente supone Comprar sin mirar el pin");
+      if (!/const ver = !pideAlServidor\(p, filtros\) \? veredictoDelPin\(p\) : prep\.ver;/.test(cliente) || /comprar: true, score: p\.score/.test(cliente) || !/const ver: VeredictoCompartido = d\.estado === "comprar" \? \{ comprar: true, score: d\.score \?\? null \}/.test(cliente)) F("6 · en la vista de por defecto el cliente supone Comprar sin mirar el pin");
       // El teléfono abre la hoja del sistema (sin ella, WhatsApp); el PC copia el enlace y lo dice.
       if (!/const telefono = typeof window\.matchMedia === "function" && window\.matchMedia\("\(pointer: coarse\)"\)\.matches;/.test(cliente) || !/const metodo: MetodoCompartir = telefono \? \(typeof navigator\.share === "function" \? "hoja" : "whatsapp"\) : "copiar";/.test(cliente)) F("6 · no se distingue el teléfono (la hoja) del PC (copiar)");
       if (!/await navigator\.share\(\{ title: ver\.comprar \? COMPARTIR_COPY\.tituloHoja : ver\.negociado \? COMPARTIR_COPY\.negociado\.tituloHoja : COMPARTIR_COPY\.tituloHojaSinVeredicto, text: texto, url \}\);/.test(cliente)) F("6 · la hoja del sistema no lleva el texto y el enlace, o titula «conviene» al que se comparte sin veredicto");
@@ -411,7 +420,8 @@ export async function runCompartirDeptoTier(): Promise<{ hard: number }> {
       // Sin cuenta su precio no viajó: lo dice el servidor (y con otro pie, también); con cuenta en la vista de por defecto, el pin.
       const sinCifras: PinNegociado = { ...negP, neg: { d: 5, p: null, s: 71, f: null } };
       if (!cp.pideAlServidor(sinCifras, ESTD) || cp.pideAlServidor(negP, ESTD) || !cp.pideAlServidor(negP, { ...ESTD, pie: 30 as const }) || cp.pideAlServidor(pin(OTRO), ESTD)) F("7 · el negociado sin cuenta no pide su precio al servidor (o lo pide el que ya lo tiene)");
-      if (!/if \(p && pideAlServidor\(p, filtros\)\) prepararCompartir\(p\);/.test(cliente) || !/d\?\.estado === "negociado" && d\.neg \? \{ comprar: false, score: null, negociado: d\.neg \}/.test(cliente) || !/const conTope = filtros\.modalidad === "str" \? "&m=str" : `&n=\$\{filtros\.negociar \?\? TOPE_DE_LA_NOCHE\}`;/.test(cliente)) F("7 · el navegador no trae del servidor (con el tope) lo que se comparte de un negociado");
+      // ⚠ ACTA (03-nov-2026, la firma): el pedido es POST, firmado, con el tope en el cuerpo; se pide al apoyar el dedo, no al abrir.
+      if (!/d\.estado === "negociado" && d\.neg \? \{ comprar: false, score: null, negociado: d\.neg \}/.test(cliente) || !/body: JSON\.stringify\(\{ a: p\.avisoId, m: filtros\.modalidad, \.\.\.\(filtros\.modalidad === "str" \? \{\} : \{ n: filtros\.negociar \?\? TOPE_DE_LA_NOCHE \}\) \}\),/.test(cliente)) F("7 · el navegador no trae del servidor (con el tope) lo que se comparte de un negociado");
       // El enlace: el tope de la capa, que abre /explorar con «Si negocias» prendido.
       const u = new URL(ec.enlaceCompartido("https://refranco.ai", { avisoId: AVISO, modalidad: "ltr", comuna: "Ñuñoa", codigo: "k7m2qx", tope: cp.topeDelEnlace(5, 4.2) }));
       if (u.searchParams.get("n") !== "5" || portalDeUrl(u.searchParams).filtros.negociar !== 5 || ec.compartidoDeUrl(u.searchParams)?.avisoId !== AVISO) F(`7 · el enlace del negociado no lleva el tope de la capa (${u.toString()})`);
@@ -430,10 +440,10 @@ export async function runCompartirDeptoTier(): Promise<{ hard: number }> {
       if (!/const CHIP_AJUSTAR = \{ fondo: "#F1E4EC", texto: "#6E4560", borde: "#DCC6D4" \};/.test(og) || !/\{v\.chip === "AJUSTA SUPUESTOS" && v\.negociado \? \(/.test(og) || !/\{NEGOCIADO_COPY\.alPublicado\}/.test(og) || !/const corte = v\.negociado \? v\.negociado\.lastIndexOf\(" a UF "\) : -1;/.test(og) || !/\{piezasNegociado\.map\(\(t, i\) => <span key=\{i\}/.test(og)
         || !/const tope = esTopeNegociar\(sp\.get\("n"\)\) \? Number\(sp\.get\("n"\)\) : null;/.test(og)) F("7 · la imagen no dibuja «Al precio publicado» con el chip Ajustar de la casa y la línea del negociado (o no lee el tope)");
       const meta = pagina.slice(pagina.indexOf("export async function generateMetadata"), pagina.indexOf("const mapaQuieto"));
-      if (!/const tope = portalDeUrl\(sp\)\.filtros\.negociar;\s*const ficha = await fichaCompartidaCacheada\(c\.avisoId, c\.modalidad, tope\)/.test(meta) || !/url: rutaVistaPrevia\(c\.avisoId, c\.modalidad, ficha\.tope \?\? null\)/.test(meta)) F("7 · los metadatos del enlace de un negociado no son los del negociado");
+      if (!/const tope = portalDeUrl\(sp\)\.filtros\.negociar;\s*const ficha = await fichaCompartidaCacheada\(c\.avisoId, c\.modalidad, tope\)/.test(meta) || !/url: rutaVistaPrevia\(c\.avisoId, c\.modalidad, ficha\.tope \?\? null, \{ f: c\.firma!, i: c\.codigo \}\)/.test(meta)) F("7 · los metadatos del enlace de un negociado no son los del negociado");
       const api = codigo("src/app/api/explorar/compartido/route.ts");
       // El texto dice el precio de la noche (como el de quien tiene cuenta): la API no verifica, que haría esperar a la hoja.
-      if (!/const tope = esTopeNegociar\(sp\.get\("n"\)\) \? Number\(sp\.get\("n"\)\) : null;/.test(api) || !/await fichaCompartida\(createServiceClient\(\), a, "ltr", \{ veredicto: true, tope, verificar: segunLaNoche \}\)/.test(api) || !/const neg = f\.estado === "negociado" && f\.neg \? \{ p: f\.neg\.p, d: f\.neg\.d \} : null;/.test(api)
+      if (!/const tope = esTopeNegociar\(b\.n\) \? Number\(b\.n\) : null;/.test(api) || !/await fichaCompartida\(admin, a, "ltr", \{ veredicto: true, tope, verificar: segunLaNoche \}\)/.test(api) || !/const neg = f\.estado === "negociado" && f\.neg \? \{ p: f\.neg\.p, d: f\.neg\.d \} : null;/.test(api)
         || !/export const segunLaNoche: VerificarNegociado = async \(\) => \(\{ estado: "sigue" \}\);/.test(codigo("src/lib/explorar/negociado-hoy.ts"))) F("7 · la API del texto no dice el negociado de la noche con el tope (o lo verifica y hace esperar a la hoja)");
       // La ficha del servidor: lo de la noche si cabe en el tope, verificado con los datos de hoy.
       const ahora = new Date("2026-11-02T15:00:00Z");
@@ -471,7 +481,9 @@ export async function runCompartirDeptoTier(): Promise<{ hard: number }> {
       if (!/return verificarNegociado\(\{ publicadoUF: aviso\.precioUF, negociadoUF, tope,/.test(nh) || !/antiguedadDelAviso\(admin, aviso, \{ leida: false, anio: null \}\)/.test(nh) || /bajarFicha|chequearPublicacion|fichaDelAviso|ensureCreditCharged|insert\(|update\(/.test(nh)) F("7 · la verificación de hoy no es la de antes de cobrar (o lee la ficha del aviso, o escribe)");
       // La página: con el tope, la ficha verificada. ⚠ ACTA (03-nov-2026, decisión de Fabrizio: «sí, sin borroso») · el precio
       // negociado de hoy viaja también SIN CUENTA —el depto del enlace se ve nítido—, pero sin el flujo a ese precio.
-      if (!/if \(tope != null && c\.modalidad === "ltr"\) \{\s*const f = await fichaCompartidaCacheada\(c\.avisoId, "ltr", tope\)/.test(pagina) || !/neg: f\?\.estado === "negociado" && f\.neg \? \(conCuenta \? f\.neg : \{ \.\.\.f\.neg, f: null \}\) : null/.test(pagina)) F("7 · la página no le dice al navegador cómo está hoy el negociado del enlace (o sin cuenta manda el flujo, o no manda el precio)");
+      // ⚠ ACTA (03-nov-2026, la firma): la regla de qué negociado viaja vive en negDelEnlace (compartir.ts), con la firma (§8).
+      if (!/if \(tope != null && c\.modalidad === "ltr" && \(conCuenta \|\| firmado\)\) \{\s*const f = await fichaCompartidaCacheada\(c\.avisoId, "ltr", tope\)/.test(pagina) || !/neg: negDelEnlace\(f, \{ conCuenta, firmado \}\)/.test(pagina)
+        || JSON.stringify(cp.negDelEnlace({ estado: "negociado", neg: NOCHE }, { conCuenta: false, firmado: true })) !== JSON.stringify({ ...NOCHE, f: null }) || cp.negDelEnlace({ estado: "negociado", neg: NOCHE }, { conCuenta: true, firmado: false })?.f !== NOCHE.f) F("7 · la página no le dice al navegador cómo está hoy el negociado del enlace (o sin cuenta manda el flujo, o no manda el precio)");
       // La tarjeta sin cuenta, con el negociado del enlace: el precio negociado nítido, sin borroso en su veredicto.
       const delEnlace: PinNegociado = { ...negP, neg: { d: 4.2, p: 2950, s: 71, f: null } };
       const tSin = renderToStaticMarkup(createElement(TarjetaPin, { pines: [delEnlace], seleccionado: AVISO, uf: 39000, analizados: {}, guardados: new Set<string>(), generando: null, error: null, alCambiar: () => {}, alCerrar: () => {}, alGuardar: () => {}, alAnalizar: () => {}, alCompartir: () => {}, sinCuenta: true }));
@@ -488,6 +500,90 @@ export async function runCompartirDeptoTier(): Promise<{ hard: number }> {
       const tituloCaido = /data-explorar="caido-titulo">([^<]*)<\/b>/.exec(caidoHtml)?.[1] ?? "";
       if (tituloCaido !== "Este depto ya no llega a Comprar con un descuento de hasta 5 %." || (caidoHtml.match(/data-explorar="parecido"/g) ?? []).length !== 1) F(`7 · la tarjeta de «ya no llega» no lo dice con el tope o no ofrece parecidos («${tituloCaido}»)`);
       if (!/tope=\{compartido\?\.tope \?\? null\}/.test(cliente)) F("7 · la tarjeta de «ya no llega» no recibe el tope del enlace");
+    }
+
+    // ── 8 · LOS ENLACES COMPARTIDOS LLEVAN UNA FIRMA (03-nov-2026) ──
+    {
+      const SECRETO = "secreto-de-prueba-de-la-firma-0123456789";
+      const vale = (a: string, c: string | null, f: string | null) => fc.firmaCompartidoValida(a, c, f, SECRETO);
+      const fA = fc.firmaCompartido(AVISO, "K7M2QX", SECRETO);
+      if (fc.LARGO_FIRMA_COMPARTIDO !== 16 || !/^[A-Za-z0-9_-]{16}$/.test(fA)) F(`8 · la firma no es corta (16 caracteres base64url): «${fA}»`);
+      if (!vale(AVISO, "K7M2QX", fA) || !vale(AVISO.toUpperCase(), "K7M2QX", fA)) F("8 · la firma no vale para su aviso");
+      const fOtro = fc.firmaCompartido(OTRO, "K7M2QX", SECRETO);
+      const fSin = fc.firmaCompartido(AVISO, null, SECRETO);
+      if (vale(AVISO, "K7M2QX", fOtro) || vale(AVISO, "K7M2QX", null) || vale(AVISO, null, fA) || vale(AVISO, "ZZZZZZ", fA) || vale(AVISO, "K7M2QX", fA.slice(0, 15)) || vale(AVISO, "K7M2QX", fSin) || fc.firmaCompartidoValida(AVISO, "K7M2QX", fA, null)) F("8 · una firma vale sin firma, con la de otro aviso, con otro código (o sin él) o sin secreto");
+      if (!vale(AVISO, null, fSin)) F("8 · la firma de quien comparte sin cuenta no vale");
+      // El enlace la lleva y se lee; una que no tiene la forma de una firma no se lee.
+      const u = new URL(ec.enlaceCompartido("https://refranco.ai", { avisoId: AVISO, modalidad: "ltr", comuna: "Ñuñoa", codigo: "K7M2QX", tope: 5, firma: fA }));
+      const ida = ec.compartidoDeUrl(u.searchParams);
+      if (u.searchParams.get("f") !== fA || ida?.firma !== fA || ida.codigo !== "K7M2QX") F(`8 · el enlace no va y vuelve con su firma (${u.toString()})`);
+      if (ec.compartidoDeUrl(new URLSearchParams(`a=${AVISO}&f=no-es-una-firma&desde=compartido`))?.firma !== null) F("8 · algo que no es una firma se lee como firma");
+      // EL ENLACE ARMADO A MANO: sin firma, o con la firma de otro aviso, sin cuenta no destapa nada.
+      const fichaNeg = { estado: "negociado" as const, neg: { d: 4.2, p: 2950, s: 71, f: -35000 } };
+      const aMano = ec.compartidoDeUrl(new URLSearchParams(`a=${AVISO}&n=5&desde=compartido`))!;
+      const conOtra = ec.compartidoDeUrl(new URLSearchParams(`a=${AVISO}&n=5&i=K7M2QX&f=${fOtro}&desde=compartido`))!;
+      for (const [que, c] of [["sin firma", aMano], ["con la firma de otro aviso", conOtra]] as const) {
+        const firmado = vale(c.avisoId, c.codigo, c.firma);
+        if (firmado || cp.negDelEnlace(fichaNeg, { conCuenta: false, firmado }) !== null) F(`8 · un enlace armado a mano ${que} destapa el precio negociado sin cuenta`);
+      }
+      const bien = ec.compartidoDeUrl(new URLSearchParams(`a=${AVISO}&n=5&i=K7M2QX&f=${fA}&desde=compartido`))!;
+      const nBien = cp.negDelEnlace(fichaNeg, { conCuenta: false, firmado: vale(bien.avisoId, bien.codigo, bien.firma) });
+      if (nBien?.p !== 2950 || nBien.f !== null) F("8 · con la firma, sin cuenta, el precio negociado no se ve nítido (o viaja el flujo)");
+      if (cp.negDelEnlace(fichaNeg, { conCuenta: true, firmado: false })?.f !== -35000) F("8 · con cuenta, la falta de firma le quita las cifras");
+      // La página: la firma decide lo nítido y la verificación de hoy; la vista previa con cifras, solo firmada.
+      if (!/const firmado = firmaCompartidoValida\(c\.avisoId, c\.codigo, c\.firma\);/.test(pagina) || !/if \(tope != null && c\.modalidad === "ltr" && \(conCuenta \|\| firmado\)\) \{/.test(pagina) || !/neg: negDelEnlace\(f, \{ conCuenta, firmado \}\)/.test(pagina)) F("8 · la página destapa el negociado sin mirar la firma");
+      const meta8 = pagina.slice(pagina.indexOf("export async function generateMetadata"), pagina.indexOf("const mapaQuieto"));
+      if (!/if \(!firmaCompartidoValida\(c\.avisoId, c\.codigo, c\.firma\)\) return METADATOS;/.test(meta8) || meta8.indexOf("firmaCompartidoValida(") > meta8.indexOf("fichaCompartidaCacheada(")) F("8 · la vista previa con cifras sale sin la firma (o lee la ficha antes de mirarla)");
+      // La imagen: sin la firma de ese aviso y ese código, 404, antes de leer nada.
+      const og8 = codigo("src/app/api/og/depto/[avisoId]/route.tsx");
+      if (!/if \(!firmaCompartidoValida\(params\.avisoId, normalizarCodigo\(sp\.get\("i"\)\), sp\.get\("f"\)\)\) return new Response\(null, \{ status: 404/.test(og8) || og8.indexOf("firmaCompartidoValida(params.avisoId") > og8.indexOf("fichaCompartidaCacheada(params.avisoId")) F("8 · la imagen con cifras sale sin la firma (o lee la ficha antes de mirarla)");
+      if (cp.rutaVistaPrevia(AVISO, "ltr", 5, { f: fA, i: "K7M2QX" }) !== `/api/og/depto/${AVISO}?n=5&f=${fA}&i=K7M2QX`) F("8 · la imagen de la vista previa no lleva la firma y el código");
+      // La API: POST, firma con el código de quien comparte (el del servidor), y pasado el tope no firma.
+      const api8 = codigo("src/app/api/explorar/compartido/route.ts");
+      if (/export async function GET/.test(api8) || !/export async function POST\(request: Request\)/.test(api8) || !/emitirFirma\(almacenFirmas\(admin\), \{ avisoId: a, codigo, sesion: sesionDe\(user\?\.id \?\? null, huella\.dispositivo\), ip: huella\.ip, conCuenta: !!user \}\)/.test(api8) || /public, max-age/.test(api8)) F("8 · la API sigue abierta por GET o en la caché, o firma sin el tope");
+      if (!/if \("error" in firma\) return NextResponse\.json\(\{ error: firma\.error \}, \{ status: firma\.error === "tope" \? 429 : 503/.test(api8) || api8.indexOf("emitirFirma(") > api8.indexOf("fichaCompartida(admin")) F("8 · pasado el tope la API da lo del aviso igual");
+      // EL TOPE: 60 por hora por sesión y por IP.
+      const almacen = () => {
+        const filas: Array<{ sesion_hash: string | null; ip_hash: string | null; t: number }> = [];
+        let ahora = Date.parse("2026-11-03T15:00:00Z");
+        const a: AlmacenFirmas & { ir: (ms: number) => void; ahora: () => Date } = {
+          async contar(campo, valor, desde) { return filas.filter((f) => f[campo] === valor && f.t >= desde.getTime()).length; },
+          async anotar(fila) { filas.push({ sesion_hash: fila.sesion_hash, ip_hash: fila.ip_hash, t: ahora }); },
+          ir: (ms) => { ahora += ms; },
+          ahora: () => new Date(ahora),
+        };
+        return a;
+      };
+      const firmar = (aviso: string) => `${aviso.slice(0, 8)}xxxxxxxx`;
+      const pedir = (al: ReturnType<typeof almacen>, sesion: string | null, ip: string | null) => emitirFirma(al, { avisoId: AVISO, codigo: null, sesion, ip, conCuenta: false }, al.ahora(), firmar);
+      if (TOPE_FIRMAS_POR_HORA !== 60) F(`8 · el tope no es 60 por hora (${TOPE_FIRMAS_POR_HORA})`);
+      const a1 = almacen();
+      let ok1 = 0;
+      for (let i = 0; i < 60; i++) if ("firma" in (await pedir(a1, "S1", "IP1"))) ok1++;
+      const r61 = await pedir(a1, "S1", "IP1");
+      if (ok1 !== 60 || !("error" in r61) || r61.error !== "tope") F(`8 · la misma sesión y la misma IP firman más de 60 por hora (${ok1} y la 61: ${JSON.stringify(r61)})`);
+      a1.ir(61 * 60_000);
+      if (!("firma" in (await pedir(a1, "S1", "IP1")))) F("8 · pasada la hora, la sesión no vuelve a firmar");
+      const a2 = almacen();
+      for (let i = 0; i < 60; i++) await pedir(a2, `S${i}`, "IP2");
+      const rIp = await pedir(a2, "S-nueva", "IP2");
+      if (!("error" in rIp) || rIp.error !== "tope") F("8 · cambiando de sesión, la misma IP firma más de 60 por hora");
+      const a3 = almacen();
+      for (let i = 0; i < 60; i++) await pedir(a3, "S3", `IP${i}`);
+      const rSes = await pedir(a3, "S3", "IP-nueva");
+      if (!("error" in rSes) || rSes.error !== "tope") F("8 · cambiando de IP, la misma sesión firma más de 60 por hora");
+      const sinHuella = await pedir(almacen(), null, null);
+      if (!("error" in sinHuella) || sinHuella.error !== "sin-huella") F("8 · sin sesión ni IP se firma igual (no hay cómo contar)");
+      if (sesionDe("u-1", "disp") === "disp" || sesionDe(null, "disp") !== "disp") F("8 · la sesión no es la cuenta (o, sin cuenta, el dispositivo)");
+      const fs8 = codigo("src/lib/explorar/firmas-servidor.ts");
+      if (!/\.select\("id", \{ count: "exact", head: true \}\)\.eq\(campo, valor\)\.gte\("creada_at", desde\.toISOString\(\)\);\s*if \(error \|\| count == null\) throw/.test(fs8)) F("8 · el tope no cuenta la última hora en la base (o un conteo que falla deja firmar)");
+      const mig = leer("supabase/migrations/20261103_firmas_compartido.sql");
+      if (!/create table if not exists public\.firmas_compartido/.test(mig) || !/alter table public\.firmas_compartido enable row level security;/.test(mig) || !/sesion_hash text,/.test(mig) || !/ip_hash text,/.test(mig)) F("8 · la tabla del tope no está en su migración (o sin RLS)");
+      // El navegador: firma al tocar, no al abrir; sin firma no comparte (y lo dice); una falla no queda guardada.
+      if (!/if \("error" in prep\) \{[\s\S]{0,320}?setToast\(prep\.error === "tope" \? COMPARTIR_COPY\.tope : COMPARTIR_COPY\.sinFirma\);\s*return;\s*\}/.test(cliente)) F("8 · sin firma el navegador comparte igual (o no lo dice)");
+      if (/fetch\("\/api\/invitacion"/.test(cliente) || /prepararCompartir\(p\);\s*\}, \[sel/.test(cliente) || !/fetch\("\/api\/explorar\/compartido", \{\s*method: "POST",/.test(cliente)) F("8 · el navegador pide firmas al abrir la tarjeta (gastaría el tope) o sin POST");
+      if (!/if \("error" in x\) estandar\.current\.delete\(clave\);/.test(cliente)) F("8 · una firma que falló queda guardada y no se puede reintentar");
+      if (!/con_firma: !!compartido\.firma/.test(codigo("src/lib/vista-entrada.ts"))) F("8 · la vista del enlace no dice si venía firmado");
     }
   } catch (e) {
     F(`el tier se cayó: ${e instanceof Error ? e.stack ?? e.message : String(e)}`);

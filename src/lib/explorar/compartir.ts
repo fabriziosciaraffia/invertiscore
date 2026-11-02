@@ -22,6 +22,8 @@
 //     al precio publicado y «Conviene si lo negocias a UF 2.950», sin otro número. Si al abrirlo ya no llega dentro del tope
 //     con los datos de hoy (compartir-servidor.ts verifica como antes de cobrar), la tarjeta lo dice y ofrece parecidos. Quien
 //     lo abre SIN CUENTA ve nítidos el precio negociado y el descuento de ese depto (el resto de la capa sigue borroso).
+//   · LA FIRMA (03-nov-2026, firma-compartido.ts): lo nítido sin cuenta y la vista previa con cifras, solo con un enlace firmado
+//     por el servidor para ese aviso (`negDelEnlace`); un enlace sin firma o con la de otro aviso abre el pin, borroso.
 // ─────────────────────────────────────────────────────────────────────────────
 import { lineaDepto, type CondicionDepto } from "@/lib/guia/linea-depto";
 import { PIE_POR_DEFECTO, PLAZO_POR_DEFECTO } from "@/lib/deptos/estandar";
@@ -139,9 +141,25 @@ export function contenidoVistaPrevia(f: Pick<FichaCompartida, "estado" | "depto"
   };
 }
 
-/** La imagen de la vista previa (la ruta la genera y la deja en la caché del CDN); la de un negociado lleva el tope (`n`). */
-export const rutaVistaPrevia = (avisoId: string, modalidad: ModalidadPortal, tope: number | null = null): string =>
-  `/api/og/depto/${encodeURIComponent(avisoId)}${modalidad === "str" ? "?m=str" : tope != null ? `?n=${tope}` : ""}`;
+/** La imagen de la vista previa (la ruta la genera y la deja en la caché del CDN); la de un negociado lleva el tope (`n`), y
+ *  todas la firma del enlace y su código (`f`, `i`): sin firma válida, la ruta no dibuja cifras. */
+export function rutaVistaPrevia(avisoId: string, modalidad: ModalidadPortal, tope: number | null = null, firma: { f: string; i: string | null } | null = null): string {
+  const q = new URLSearchParams();
+  if (modalidad === "str") q.set("m", "str");
+  else if (tope != null) q.set("n", String(tope));
+  if (firma) { q.set("f", firma.f); if (firma.i) q.set("i", firma.i); }
+  const s = q.toString();
+  return `/api/og/depto/${encodeURIComponent(avisoId)}${s ? `?${s}` : ""}`;
+}
+
+/** EL NEGOCIADO DE HOY QUE VIAJA AL NAVEGADOR con el enlace (page.tsx › compartidoDe): con cuenta, entero; sin cuenta, solo
+ *  con un enlace FIRMADO para ese aviso y sin el flujo (el precio y el descuento nítidos); sin firma, nada: la capa lo
+ *  dibuja borroso, como a cualquiera que entra sin cuenta. */
+export function negDelEnlace(f: Pick<FichaCompartida, "estado" | "neg"> | null, o: { conCuenta: boolean; firmado: boolean }): NegociadoCompartido | null {
+  if (f?.estado !== "negociado" || !f.neg) return null;
+  if (o.conCuenta) return f.neg;
+  return o.firmado ? { ...f.neg, f: null } : null;
+}
 /** Su tamaño en píxeles: la ruta la dibuja así (el diseño de 1200 × 630 a 2/3) y los metadatos lo declaran. */
 export const VISTA_PREVIA_PX = { ancho: 800, alto: 420 } as const;
 
@@ -201,6 +219,9 @@ export const COMPARTIR_COPY = {
   boton: "Compartir",
   copiado: "Enlace copiado",
   noCopiado: "No pudimos copiar el enlace.",
+  /** Las firmas (03-nov-2026): la sesión o la IP llegó a las 60 de la hora, o el servidor no pudo firmar. */
+  tope: "Compartiste muchos deptos en la última hora. Prueba en un rato.",
+  sinFirma: "No pudimos preparar el enlace. Prueba de nuevo.",
   alPrecio: "al precio publicado, según Franco",
   sinVeredicto: "míralo en el mapa de Franco",
   /** El título del mensaje en la hoja del sistema (algunas apps lo muestran sobre el texto). */
@@ -245,6 +266,8 @@ export const EVENTOS_COMPARTIR = {
   compartir: "explorar_compartir",
   /** El enlace abrió la tarjeta de «ya no está» (el navegador), con los parecidos que ofreció. */
   caido: "explorar_compartido_caido",
+  /** Tocó «Compartir» y no hubo firma (03-nov-2026): `motivo` = «tope» (60 por hora) o «sin-firma». */
+  sinFirma: "explorar_compartir_sin_firma",
 } as const;
 export type OrigenCompartir = "tarjeta" | "lista";
 export type MetodoCompartir = "hoja" | "whatsapp" | "copiar";

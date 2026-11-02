@@ -250,7 +250,7 @@ export function eventoVistaCompartido(p: Omit<Parameters<typeof eventoVistaEntra
   return eventoVistaEntrada({
     ...resto,
     pagina: "compartido",
-    extra: { aviso_id: compartido.avisoId, modalidad: compartido.modalidad, con_invitacion: !!compartido.codigo, codigo: compartido.codigo, con_sesion: !!p.userId, llegada_explorar: "compartido" },
+    extra: { aviso_id: compartido.avisoId, modalidad: compartido.modalidad, con_invitacion: !!compartido.codigo, codigo: compartido.codigo, con_firma: !!compartido.firma, con_sesion: !!p.userId, llegada_explorar: "compartido" },
   });
 }
 

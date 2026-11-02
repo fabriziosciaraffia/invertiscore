@@ -15,8 +15,9 @@ import { esRobot, robotDeVisita } from "@/lib/vista-entrada";
 import { filtrosAbiertos, ordenAbierto, origenDeLlegada, PIE_ABIERTO, PLAZO_ABIERTO } from "@/lib/explorar/abierto";
 import { llegadaDeExplorar } from "@/lib/explorar/puertas-landing";
 import { compartidoDeUrl } from "@/lib/explorar/enlace-compartido";
-import { contenidoVistaPrevia, rutaVistaPrevia, VISTA_PREVIA_PX } from "@/lib/explorar/compartir";
+import { contenidoVistaPrevia, negDelEnlace, rutaVistaPrevia, VISTA_PREVIA_PX } from "@/lib/explorar/compartir";
 import { fichaCompartida, fichaCompartidaCacheada } from "@/lib/explorar/compartir-servidor";
+import { firmaCompartidoValida } from "@/lib/explorar/firma-compartido";
 import { ExplorarCliente, type CompartidoCliente } from "./explorar-cliente";
 import { EsqueletoExplorar } from "./esqueleto";
 
@@ -54,12 +55,15 @@ export async function generateMetadata({ searchParams }: { searchParams?: Record
   for (const [k, v] of Object.entries(searchParams ?? {})) if (typeof v === "string") sp.set(k, v);
   const c = compartidoDeUrl(sp);
   if (!c || !esRobot(headers().get("user-agent"))) return METADATOS;
+  // LA FIRMA (03-nov-2026): la vista previa con cifras, solo con un enlace firmado por el servidor para ese aviso y ese código;
+  // sin firma o con la de otro aviso, la de siempre de /explorar.
+  if (!firmaCompartidoValida(c.avisoId, c.codigo, c.firma)) return METADATOS;
   // El de un negociado lleva el tope de la capa (`n`, 03-nov-2026): la ficha lo verifica con los datos de hoy.
   const tope = portalDeUrl(sp).filtros.negociar;
   const ficha = await fichaCompartidaCacheada(c.avisoId, c.modalidad, tope).catch(() => null);
   if (!ficha) return METADATOS;
   const v = contenidoVistaPrevia(ficha);
-  const imagen = { url: rutaVistaPrevia(c.avisoId, c.modalidad, ficha.tope ?? null), width: VISTA_PREVIA_PX.ancho, height: VISTA_PREVIA_PX.alto, alt: v.titulo };
+  const imagen = { url: rutaVistaPrevia(c.avisoId, c.modalidad, ficha.tope ?? null, { f: c.firma!, i: c.codigo }), width: VISTA_PREVIA_PX.ancho, height: VISTA_PREVIA_PX.alto, alt: v.titulo };
   return {
     ...METADATOS,
     title: { absolute: v.titulo },
@@ -110,14 +114,23 @@ export default async function ExplorarPage({ searchParams }: { searchParams?: Re
  * (decisión de Fabrizio, 03-nov-2026): el precio negociado y el descuento del depto del enlace se ven nítidos —el texto que
  * llegó y la vista previa ya los dicen—; el flujo a ese precio no viaja, como el resto de las cifras sin cuenta. Los demás de
  * la capa siguen borrosos.
+ * SOLO CON FIRMA (03-nov-2026, firma-compartido.ts): sin cuenta, un enlace sin firma o con la de otro aviso abre el pin como
+ * /explorar sin cuenta de siempre —borroso, y sin la verificación de hoy, que lee comparables—; los enlaces de antes de la
+ * firma siguen abriendo su pin así. Con cuenta la firma no cambia nada: la cuenta ya ve las cifras.
  */
 async function compartidoDe(sp: URLSearchParams, tope: number | null, conCuenta: boolean): Promise<CompartidoCliente | null> {
   const c = compartidoDeUrl(sp);
   if (!c) return null;
-  if (tope != null && c.modalidad === "ltr") {
+  const firmado = firmaCompartidoValida(c.avisoId, c.codigo, c.firma);
+  if (tope != null && c.modalidad === "ltr" && (conCuenta || firmado)) {
     const f = await fichaCompartidaCacheada(c.avisoId, "ltr", tope).catch(() => null);
     const estado = f?.estado === "despublicado" ? "despublicado" : f?.estado === "no-llega" ? "no-llega" : null;
-    return { avisoId: c.avisoId, estado, depto: f?.depto ?? null, tope, neg: f?.estado === "negociado" && f.neg ? (conCuenta ? f.neg : { ...f.neg, f: null }) : null };
+    return { avisoId: c.avisoId, estado, depto: f?.depto ?? null, tope, neg: negDelEnlace(f, { conCuenta, firmado }) };
+  }
+  if (tope != null && c.modalidad === "ltr") {
+    // Sin firma: lo de siempre (despublicado o no), con el tope para que el navegador espere la capa y abra el pin, borroso.
+    const f = await fichaCompartida(createServiceClient(), c.avisoId, "ltr", { veredicto: false }).catch(() => null);
+    return { avisoId: c.avisoId, estado: f?.estado === "despublicado" ? "despublicado" : null, depto: f?.depto ?? null, tope, neg: null };
   }
   const f = await fichaCompartida(createServiceClient(), c.avisoId, c.modalidad, { veredicto: false }).catch(() => null);
   return { avisoId: c.avisoId, estado: f ? (f.estado === "despublicado" ? "despublicado" : null) : null, depto: f?.depto ?? null };

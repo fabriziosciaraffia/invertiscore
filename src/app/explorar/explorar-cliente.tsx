@@ -31,6 +31,8 @@
 //     UN NEGOCIADO (03-nov-2026) se comparte con su precio negociado y su descuento, y su enlace lleva el tope de la capa: abre
 //     con «Si negocias» prendido, en ese pin, con la tarjeta de los dos veredictos —con el precio de hoy si se movió—; si con
 //     los datos de hoy ya no llega dentro del tope, la tarjeta de «ya no llega» con parecidos.
+//     LA FIRMA (03-nov-2026): el enlace lleva la firma del servidor para ese aviso y el código de quien comparte, que trae el
+//     mismo pedido (POST /api/explorar/compartido, con su tope de 60 por hora); sin firma no hay enlace, y se dice.
 // ─────────────────────────────────────────────────────────────────────────────
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
@@ -131,6 +133,10 @@ export interface CompartidoCliente {
   tope?: number | null;
   neg?: Negociacion | null;
 }
+
+/** Lo que trae el pedido de «Compartir» (POST /api/explorar/compartido): la firma, el código de quien comparte y lo que dice
+ *  el servidor del aviso; o por qué no hay firma. */
+type EnlacePreparado = { firma: string; codigo: string | null; ver: VeredictoCompartido } | { error: "tope" | "sin-firma" };
 
 /** Copia al portapapeles; sin la API (un contexto sin https, un navegador viejo), con un campo escondido. */
 async function copiarAlPortapapeles(texto: string): Promise<boolean> {
@@ -638,46 +644,41 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
   }, [focoUsado, compartido, universo, porId]);
 
   // ── COMPARTIR (02-nov-2026) ──
-  // El código de invitación de quien tiene cuenta: se pide una vez, al abrir la primera tarjeta o la lista, para que el
-  // enlace ya lo tenga al tocar «Compartir» (la hoja del sistema se abre en el mismo toque o no se abre).
-  const codigo = useRef<string | null>(null);
-  const pidiendoCodigo = useRef(false);
-  useEffect(() => {
-    if (sinCuenta || pidiendoCodigo.current || (!sel && vista !== "lista")) return;
-    pidiendoCodigo.current = true;
-    void fetch("/api/invitacion", { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d: { codigo?: string } | null) => { codigo.current = typeof d?.codigo === "string" ? d.codigo : null; })
-      .catch(() => undefined);
-  }, [sinCuenta, sel, vista]);
-  // Con otro pie, plazo o tasa, el texto dice el veredicto de por defecto (el que verá quien abra el enlace), y un negociado sin
-  // cuenta, su precio negociado (03-nov-2026: no viajó al navegador): lo dice el servidor, con el tope de la capa (o el de la
-  // noche). Se trae al abrir la tarjeta o al apoyar el dedo en «Compartir».
+  // EL ENLACE FIRMADO (03-nov-2026): un pedido trae la firma del servidor para ese aviso, el código de invitación de quien
+  // tiene cuenta (va en la firma) y lo que dice el servidor del aviso con lo de por defecto —para quien mira con otro pie,
+  // plazo o tasa, y el precio negociado de un negociado sin cuenta, que no viajó al navegador—. Se pide al apoyar el dedo en
+  // «Compartir» (la hoja del sistema se abre en el mismo toque o no se abre) y no antes: cada firma cuenta para el tope de 60
+  // por hora. Lo firmado se guarda por aviso; una falla no, para poder reintentar.
   const claveServidor = (p: PinMapa) => `${filtros.modalidad}|${filtros.negociar ?? TOPE_DE_LA_NOCHE}|${p.avisoId}`;
-  const estandar = useRef(new Map<string, Promise<VeredictoCompartido>>());
-  const resueltos = useRef(new Map<string, VeredictoCompartido>());
-  const veredictoEstandar = useCallback((p: PinMapa): Promise<VeredictoCompartido> => {
-    if (!pideAlServidor(p, filtros)) return Promise.resolve(veredictoDelPin(p));
+  const estandar = useRef(new Map<string, Promise<EnlacePreparado>>());
+  const resueltos = useRef(new Map<string, EnlacePreparado>());
+  const prepararEnlace = useCallback((p: PinMapa): Promise<EnlacePreparado> => {
     const clave = claveServidor(p);
     let v = estandar.current.get(clave);
     if (!v) {
-      const conTope = filtros.modalidad === "str" ? "&m=str" : `&n=${filtros.negociar ?? TOPE_DE_LA_NOCHE}`;
-      v = fetch(`/api/explorar/compartido?a=${encodeURIComponent(p.avisoId)}${conTope}`)
-        .then((r) => (r.ok ? r.json() : null))
-        .then((d: { estado?: string; score?: number | null; neg?: { p: number; d: number } | null } | null): VeredictoCompartido =>
-          d?.estado === "comprar" ? { comprar: true, score: d.score ?? null } : d?.estado === "negociado" && d.neg ? { comprar: false, score: null, negociado: d.neg } : { comprar: false, score: null })
-        .catch(() => ({ comprar: false, score: null }));
+      v = fetch("/api/explorar/compartido", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ a: p.avisoId, m: filtros.modalidad, ...(filtros.modalidad === "str" ? {} : { n: filtros.negociar ?? TOPE_DE_LA_NOCHE }) }),
+      })
+        .then(async (r): Promise<EnlacePreparado> => {
+          const d = (await r.json().catch(() => null)) as { firma?: string; codigo?: string | null; estado?: string; score?: number | null; neg?: { p: number; d: number } | null; error?: string } | null;
+          if (r.status === 429) return { error: "tope" };
+          if (!r.ok || !d?.firma) return { error: "sin-firma" };
+          const ver: VeredictoCompartido = d.estado === "comprar" ? { comprar: true, score: d.score ?? null } : d.estado === "negociado" && d.neg ? { comprar: false, score: null, negociado: d.neg } : { comprar: false, score: null };
+          return { firma: d.firma, codigo: d.codigo ?? null, ver };
+        })
+        .catch((): EnlacePreparado => ({ error: "sin-firma" }));
       estandar.current.set(clave, v);
-      void v.then((x) => { resueltos.current.set(clave, x); });
+      void v.then((x) => {
+        if ("error" in x) estandar.current.delete(clave);
+        else resueltos.current.set(clave, x);
+      });
     }
     return v;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filtros]);
-  const prepararCompartir = useCallback((p: PinMapa) => { void veredictoEstandar(p); }, [veredictoEstandar]);
-  useEffect(() => {
-    const p = sel ? porId.get(sel) : null;
-    if (p && pideAlServidor(p, filtros)) prepararCompartir(p);
-  }, [sel, porId, filtros, prepararCompartir]);
+  const prepararCompartir = useCallback((p: PinMapa) => { void prepararEnlace(p); }, [prepararEnlace]);
   useEffect(() => {
     if (!toast) return;
     const t = window.setTimeout(() => setToast(null), TOAST_MS);
@@ -687,18 +688,25 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
   /** «Compartir»: en el teléfono la hoja del sistema (sin ella, WhatsApp); en el PC, copia el enlace y lo dice. */
   async function compartir(p: PinMapa, origenToque: OrigenCompartir) {
     const estd = esVistaEstandar(filtros);
-    // En la vista de por defecto, el del pin (un negociado, con su precio negociado). Lo que dice el servidor —otro pie, o un
-    // negociado sin cuenta— se usa sin esperar si ya llegó; si no (rara vez: un toque muy rápido), se espera.
-    const ver = !pideAlServidor(p, filtros) ? veredictoDelPin(p) : resueltos.current.get(claveServidor(p)) ?? await veredictoEstandar(p);
+    // La firma (y lo que dice el servidor) sin esperar si ya llegó —se pidió al apoyar el dedo—; si no, se espera. Sin firma no
+    // hay enlace: el tope de la hora, o el servidor que no pudo; se dice y no se comparte nada.
+    const prep = resueltos.current.get(claveServidor(p)) ?? await prepararEnlace(p);
+    if ("error" in prep) {
+      posthog?.capture(EVENTOS_COMPARTIR.sinFirma, { motivo: prep.error, origen: origenToque, sin_cuenta: sinCuenta, aviso_id: p.avisoId, modalidad: filtros.modalidad });
+      setToast(prep.error === "tope" ? COMPARTIR_COPY.tope : COMPARTIR_COPY.sinFirma);
+      return;
+    }
+    // En la vista de por defecto, el del pin (un negociado, con su precio negociado); si no, lo que dijo el servidor.
+    const ver = !pideAlServidor(p, filtros) ? veredictoDelPin(p) : prep.ver;
     // Un negociado: el enlace lleva el tope de la capa y abre con «Si negocias» prendido.
     const tope = ver.negociado ? topeDelEnlace(filtros.negociar, ver.negociado.d) : null;
-    const url = enlaceCompartido(window.location.origin, { avisoId: p.avisoId, modalidad: filtros.modalidad, comuna: p.comuna, codigo: sinCuenta ? null : codigo.current, tope });
+    const url = enlaceCompartido(window.location.origin, { avisoId: p.avisoId, modalidad: filtros.modalidad, comuna: p.comuna, codigo: prep.codigo, tope, firma: prep.firma });
     const texto = textoCompartir(deptoDePin(p), ver);
     const telefono = typeof window.matchMedia === "function" && window.matchMedia("(pointer: coarse)").matches;
     const metodo: MetodoCompartir = telefono ? (typeof navigator.share === "function" ? "hoja" : "whatsapp") : "copiar";
     posthog?.capture(EVENTOS_COMPARTIR.compartir, {
-      origen: origenToque, sin_cuenta: sinCuenta, aviso_id: p.avisoId, modalidad: filtros.modalidad, metodo, con_codigo: !sinCuenta && !!codigo.current, vista_estandar: estd,
-      negociado: !!ver.negociado, tope_negociar: tope,
+      origen: origenToque, sin_cuenta: sinCuenta, aviso_id: p.avisoId, modalidad: filtros.modalidad, metodo, con_codigo: !!prep.codigo, vista_estandar: estd,
+      negociado: !!ver.negociado, tope_negociar: tope, con_firma: true,
       ...(sinCuenta ? { llegada_explorar: origen } : {}),
     });
     if (metodo === "hoja") {
