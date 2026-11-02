@@ -40,6 +40,8 @@ import { ELECCIONES_POR_DEFECTO, RANGOS_UF, TIPOLOGIA_POR_DEFECTO, TIPOLOGIAS_DE
 import { AvisoAntesDeAnalizar, type EleccionAnalizar } from "@/components/guia/AvisoAntesDeAnalizar";
 import { CamposBusqueda, type ValorBusqueda } from "@/components/deptos/CamposBusqueda";
 import { MapaCasa } from "@/app/dashboard/mapa-casa";
+import { LineaPuertaExplorar } from "@/components/explorar/LineaPuertaExplorar";
+import { convienenEnSeleccion, lineaConvienen } from "@/lib/explorar/puerta-correos";
 import type { PrimerosDeLaCuenta } from "@/lib/deptos/primeros-servidor";
 import type { PrimerDepto } from "@/lib/deptos/servidor";
 import "@/app/deptos/deptos.css";
@@ -247,6 +249,8 @@ export function PrimeraSeleccion({ encabezado = "dentro" }: {
               {faltanPorVer > 0 && <button type="button" className="sel-mas" onClick={() => setVerTodos(true)} data-primera="ver-mas">{PRIMERA_SELECCION.verMas(faltanPorVer)}</button>}
             </div>
           )}
+          {/* La puerta a Explorar (02-nov-2026, explorar/puerta-correos.ts): bajo la selección, la línea de los correos. */}
+          {items.length > 0 && <LineaPuertaExplorar linea={lineaConvienen(convienenEnSeleccion(items), datos.totalNoche)} consulta={datos.explorar ?? ""} donde={encabezado === "casa" ? "dashboard" : "estas_dentro"} />}
         </>
       )}
 

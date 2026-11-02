@@ -62,8 +62,11 @@ export interface PrimerosDeLaCuenta {
   /** El mapa de la selección: quieto en «Estás dentro» (`mapa=1`, 24-oct-2026), el de la casa con los grises para el
    *  respaldo del dashboard (`mapa=casa`, 28-oct-2026). Lo pone la ruta. */
   mapa?: DatosMapaCasa | null;
-  /** Cuántos convenían anoche en Santiago, para el botón del mapa de la casa. Lo pone la ruta. */
+  /** Cuántos convienen hoy en Gran Santiago (el número único de la noche): el botón del mapa de la casa y, desde el
+   *  02-nov-2026, la línea de la puerta a Explorar bajo la selección. Lo pone la ruta. */
   totalNoche?: number | null;
+  /** Los filtros de su perfil en la URL de /explorar, para el enlace de esa línea (explorar/puerta-correos.ts). Lo pone la ruta. */
+  explorar?: string | null;
 }
 
 type FilaDia = { id: string; token: string; estado: string; items: unknown; armada_at: string; enviada_at: string | null; intentos: number; combinacion: unknown; origen_analysis_id: string | null };

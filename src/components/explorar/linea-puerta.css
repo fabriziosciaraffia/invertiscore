@@ -1,0 +1,4 @@
+/* La puerta a Explorar bajo la selección (02-nov-2026, LineaPuertaExplorar.tsx): texto discreto, el enlace en tinta. */
+.puerta-explorar { margin: 14px 0 0; font-size: 13px; line-height: 1.5; color: var(--franco-text-secondary); }
+.puerta-explorar a { color: var(--franco-text); font-weight: 500; text-decoration: underline; text-underline-offset: 3px; }
+.puerta-explorar a:hover { text-decoration-thickness: 2px; }

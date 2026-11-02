@@ -5,7 +5,10 @@ import { COOKIE_DISPOSITIVO } from "@/lib/dispositivo";
 import { COOKIE_INVITACION } from "@/lib/referido";
 import { vincularInvitacion } from "@/lib/referido-servidor";
 import { InvitaAlguien } from "@/components/invitacion/InvitaAlguien";
-import { cargarSeleccionPagina, deptosDelMapa, hayDeptos } from "@/lib/guia/seleccion-pagina-servidor";
+import { bloquesEnOrden, cargarSeleccionPagina, deptosDelMapa, hayDeptos } from "@/lib/guia/seleccion-pagina-servidor";
+import { convienenEnSeleccion, lineaConvienen } from "@/lib/explorar/puerta-correos";
+import { consultaExplorar } from "@/lib/explorar/puerta-correos-filtros";
+import { LineaPuertaExplorar } from "@/components/explorar/LineaPuertaExplorar";
 import { hrefEntrar } from "@/lib/entrar/entrada";
 import { ticketDeCuentaDisponible } from "@/lib/lo-que-sigue/ticket-cuenta-servidor";
 import { esPuerta } from "@/lib/atribucion-puerta";
@@ -183,6 +186,12 @@ export default async function DashboardPage({
     leerConfigGuia(admin).catch(() => null),
   ]);
   const totalNoche = portada.noche?.convienen ?? null;
+  // LA PUERTA A EXPLORAR (02-nov-2026, explorar/puerta-correos.ts): bajo la selección, la línea de los correos con el número
+  // único de la noche y el enlace con los filtros de su perfil (el del primer bloque que se dibuja). Sin selección con deptos
+  // la dibuja la primera selección (PrimeraSeleccion), que es la que se muestra.
+  const bloques = hayDeptos(sel) ? bloquesEnOrden(sel) : [];
+  const lineaPuerta = bloques.length > 0 ? lineaConvienen(convienenEnSeleccion(bloques.flatMap((b) => b.filas.map((f) => f.reemplazo ?? f.item))), totalNoche) : null;
+  const consultaPuerta = bloques[0]?.bloque === "corto" ? consultaExplorar(perfilPersona.perfilStr, { modalidad: "str" }) : consultaExplorar(perfilPersona.perfilLtr ?? perfilPersona.perfil, { modalidad: "ltr" });
   const lineaSel = [lineaBusqueda({ comunas: pb.comunas, dormitorios: pb.dormitorios, precioMinUf: pb.precioMinUf, precioMaxUf: pb.precioMaxUf }), lineaRenueva(pb.horizonte)].filter(Boolean).join(" · ");
 
   // «INFORMES REALIZADOS», plegados al final: la misma lista de siempre (archive.tsx), por fecha, con búsqueda y filtros en
@@ -248,6 +257,7 @@ export default async function DashboardPage({
           <AvisoSinOferta aviso={sinOferta} />
           {mapa && <MapaCasa datos={mapa} totalNoche={totalNoche} />}
           <SeleccionEnCasa sel={sel} autoAnalizar={autoAnalizar} primera={!hayDeptos(sel)} />
+          <LineaPuertaExplorar linea={lineaPuerta} consulta={consultaPuerta} donde="dashboard" />
         </section>
 
         {/* 5 · plegados: el perfil, los guardados de Explorar y los informes */}
