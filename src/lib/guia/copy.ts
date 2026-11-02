@@ -5,6 +5,8 @@
 // «oportunidad» (VEDADAS_GUIA). El tier GUIA-BUSQUEDA fija cada frase y barre las vedadas.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import type { SupuestaPor } from "./edad-edificio";
+
 /** Palabras que no describen a los parecidos: quedan para el portafolio, que es otra cosa. */
 export const VEDADAS_GUIA = ["portafolio", "exclusivo", "oportunidad"] as const;
 
@@ -64,7 +66,12 @@ export const GUIA_SALDO = {
  */
 export const INFORME_DE_AVISO = {
   origen: "Este análisis sale de un aviso publicado.",
-  antiguedadSupuesta: "El aviso no dice la antigüedad; Franco supuso 25 años, lo más prudente.",
+  // La nota de la antigüedad supuesta (03-nov-2026, goal «la edad del edificio»): dice por qué se supuso —la ficha se leyó y
+  // no trae el año, o no se pudo leer—, sin «lo más prudente». Con el año conocido, no hay nota (guia/edad-edificio.ts).
+  antiguedadSupuesta: {
+    "no-dice": "La publicación no dice la antigüedad; Franco supuso 25 años.",
+    "no-leida": "No pudimos leer la antigüedad; Franco supuso 25 años.",
+  } satisfies Record<SupuestaPor, string>,
   boton: "Mandármelo por correo",
   conviene: "Este depto conviene con tus números.",
   bajada: "Franco te manda el aviso al correo para que lo veas.",

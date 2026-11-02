@@ -20,6 +20,7 @@ import { FinCapitulos } from "@/components/lo-que-sigue/FinCapitulos";
 import { getCapRefComuna } from "@/lib/cap-rate-hallazgo";
 import { derivarCifraClaveLtr } from "@/lib/cifra-clave";
 import { buildFichaLtr } from "@/lib/ficha-depto";
+import { edadDelInforme } from "@/lib/guia/edad-edificio";
 import { formatDireccionDisplay } from "@/lib/format-direccion";
 import { DocumentoFrame, PortadaInforme } from "./portada/PortadaInforme";
 import { condicionDeInput, useComparablesCercanos } from "./portada/useComparablesCercanos";
@@ -222,6 +223,7 @@ export function SubjectCardGrid({
         comuna: comunaPortada,
         ufValue: valorUF,
         moneda: currency,
+        edad: edadDelInforme(inputData),
       })
     : null;
   // Coords para el mapa de portada (misma fuente que zoneCenter, ya derivada arriba).

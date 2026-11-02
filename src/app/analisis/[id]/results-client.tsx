@@ -34,6 +34,7 @@ import { almacenSesion, marcarRecienDentro, useRecienDentro } from "@/lib/lo-que
 import { PARAM_RECIEN_DENTRO } from "@/lib/guia/del-dia";
 import { hasAiV2 } from "@/lib/prosa-guardada";
 import type { PublicacionPortada } from "@/lib/guia/publicacion-portada";
+import { supuestaDelInforme } from "@/lib/guia/edad-edificio";
 
 
 // El valor de la UF llega siempre como prop desde el server (`ufValue`) y se
@@ -645,7 +646,7 @@ export function PremiumResults({
             onInformeVisible={onInformeVisible}
             despuesDeLaCard={bannerLqs ? <BannerRegistro ctx={ctxLqs} next={nextLqs} perfil={perfilLqs} pasoInicial={recienDentro ? "dentro" : "oferta"} /> : undefined}
             trasPortada={inputData?.origenAviso && analysisId ? (
-              <InformeDeAviso analysisId={analysisId} veredicto={resolvedVeredicto} antiguedad={inputData.origenAviso.antiguedad} esDueno={isLoggedIn && !isSharedView && !isSharedLink} />
+              <InformeDeAviso analysisId={analysisId} veredicto={resolvedVeredicto} supuesta={supuestaDelInforme(inputData)} esDueno={isLoggedIn && !isSharedView && !isSharedLink} />
             ) : marcaReanalisis ? (
               <InformeDeReanalisis reanalisis={marcaReanalisis} modalidad="ltr" />
             ) : undefined}

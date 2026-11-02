@@ -17,6 +17,8 @@
 // TODOS los montos respetan el toggle CLP/UF, incluidos cuotas del pie, amoblamiento y tarifa,
 // que antes quedaban en pesos. El precio por m² va en UF en los dos modos.
 // Campo sin dato se OMITE (nunca «No aplica»).
+// LA EDAD DEL EDIFICIO (03-nov-2026): con el año conocido (un informe que salió de un aviso), «Usado · 75 años, edificio de
+// 1951» y la fuente en la línea chica («según la ficha» / «según otro aviso del edificio», guia/edad-edificio.ts).
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { AnalisisInput, FullAnalysisResult } from "./types";
@@ -26,6 +28,7 @@ import {
   resolverProcedenciaArriendo,
   respaldoArriendo,
 } from "./arriendo-referencia";
+import { estadoUsado, fuenteEdad, type EdadEdificio } from "./guia/edad-edificio";
 
 export type EtiquetaProcedencia = "sugerido" | "declarado" | "estimada" | "definida";
 
@@ -87,7 +90,9 @@ function entregaFutura(fechaEntrega: string | undefined): string | null {
   return `${mes.charAt(0).toUpperCase()}${mes.slice(1)} ${a}`;
 }
 
-const antiguedadTxt = (anios: number) => (anios > 0 ? ` · ${anios} ${anios === 1 ? "año" : "años"}` : "");
+/** La fila «Estado» de un usado: la edad, con el año y su fuente cuando se conocen. */
+const filaUsado = (anios: number, edad: EdadEdificio | null | undefined): FilaFicha =>
+  ({ k: "Estado", v: estadoUsado(anios, edad ?? null), ...(edad ? { sub: fuenteEdad(edad) } : {}) });
 
 /** Estacionamiento del input LTR: "no"/"" → nada; "si" → «Sí»; un número → ese número. */
 function estacionamientoTxt(v: unknown): string | null {
@@ -114,6 +119,8 @@ export function buildFichaLtr(p: {
   comuna: string;
   ufValue: number;
   moneda: "CLP" | "UF";
+  /** El año del edificio y su fuente, si el informe salió de un aviso que lo conocía (edadDelInforme). */
+  edad?: EdadEdificio | null;
 }): FichaDepto {
   const { input, ufValue, moneda } = p;
   const m = (clp: number) => montoFicha(clp, ufValue, moneda);
@@ -124,7 +131,7 @@ export function buildFichaLtr(p: {
   const depto: FilaFicha[] = [
     { k: "Tipología", v: `${input.dormitorios}D · ${input.banos}B` },
     { k: "Superficie", v: `${ES(input.superficie)} m²` },
-    { k: "Estado", v: esNuevo ? (futura ? "Nuevo · en verde" : "Nuevo") : `Usado${antiguedadTxt(Number(input.antiguedad) || 0)}` },
+    esNuevo ? { k: "Estado", v: futura ? "Nuevo · en verde" : "Nuevo" } : filaUsado(Number(input.antiguedad) || 0, p.edad),
   ];
   const entrega = futura ? entregaFutura(input.fechaEntrega) : null;
   if (entrega) depto.push({ k: "Entrega", v: entrega });
@@ -196,6 +203,8 @@ export function buildFichaStr(p: {
   direccion: string;
   comuna: string;
   moneda: "CLP" | "UF";
+  /** El año del edificio y su fuente (edadDelInforme), como en renta larga. */
+  edad?: EdadEdificio | null;
 }): FichaDepto {
   const inp = p.input ?? {};
   const num = (k: string): number => (typeof inp[k] === "number" && Number.isFinite(inp[k] as number) ? (inp[k] as number) : 0);
@@ -212,7 +221,7 @@ export function buildFichaStr(p: {
   const banos = num("banos");
   if (dorm > 0 || banos > 0) depto.push({ k: "Tipología", v: `${dorm}D · ${banos}B` });
   if (superficie > 0) depto.push({ k: "Superficie", v: `${ES(superficie)} m²` });
-  depto.push({ k: "Estado", v: esNuevo ? "Nuevo" : `Usado${antiguedadTxt(num("antiguedad"))}` });
+  depto.push(esNuevo ? { k: "Estado", v: "Nuevo" } : filaUsado(num("antiguedad"), p.edad));
   const huespedes = num("capacidadHuespedes");
   if (huespedes > 0) depto.push({ k: "Huéspedes", v: String(huespedes) });
 

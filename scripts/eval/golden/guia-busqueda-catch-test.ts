@@ -99,7 +99,10 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
     [GUIA.analizar, "Analizar este"],
     [GUIA.antiguedad, "Calculado con una antigüedad prudente de 25 años; el informe usa la real si el aviso la tiene."],
     [INFORME_DE_AVISO.origen, "Este análisis sale de un aviso publicado."],
-    [INFORME_DE_AVISO.antiguedadSupuesta, "El aviso no dice la antigüedad; Franco supuso 25 años, lo más prudente."],
+    // ⚠ ACTA (03-nov-2026, decisión de Fabrizio · goal «la edad del edificio», tier EDAD-EDIFICIO): la nota dice por qué se
+    // supuso —la ficha se leyó y no trae el año, o no se pudo leer— y «lo más prudente» sale de la frase.
+    [INFORME_DE_AVISO.antiguedadSupuesta["no-dice"], "La publicación no dice la antigüedad; Franco supuso 25 años."],
+    [INFORME_DE_AVISO.antiguedadSupuesta["no-leida"], "No pudimos leer la antigüedad; Franco supuso 25 años."],
     // ⚠ ACTA (27-oct-2026, decisión de Fabrizio · tier PUBLICACION-PORTADA): el enlace a la publicación va en la portada y el
     // botón deja de ser «Quiero verlo»: es «Mandármelo por correo».
     [INFORME_DE_AVISO.boton, "Mandármelo por correo"],
@@ -113,7 +116,7 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
   const vedada = new RegExp(VEDADAS_GUIA.map((w) => w.replace(/o$/, "[oa]s?")).join("|"), "i");
   if (VEDADAS_GUIA.join(",") !== "portafolio,exclusivo,oportunidad") F("1 · la lista de palabras vedadas cambió");
   // Las frases con dato (funciones) se barren con un ejemplo.
-  const textos = [...Object.values(GUIA).map((x) => (typeof x === "function" ? x("persona@correo.cl") : x)), ...Object.values(INFORME_DE_AVISO).map((x) => (typeof x === "function" ? (x as (...a: string[]) => string)("persona@correo.cl", "hoy", "El depto de Ñuñoa que analizaste") : x)), ...Object.values(DESPUES_DE_PAGAR.fraseVeredicto), DESPUES_DE_PAGAR.cuerpo];
+  const textos = [...Object.values(GUIA).map((x) => (typeof x === "function" ? x("persona@correo.cl") : x)), ...Object.values(INFORME_DE_AVISO).flatMap((x) => (typeof x === "function" ? [(x as (...a: string[]) => string)("persona@correo.cl", "hoy", "El depto de Ñuñoa que analizaste")] : typeof x === "object" ? Object.values(x) : [x])), ...Object.values(DESPUES_DE_PAGAR.fraseVeredicto), DESPUES_DE_PAGAR.cuerpo];
   for (const t of textos) if (vedada.test(t)) F(`1 · una palabra vedada describe a los parecidos: «${t}»`);
   for (const f of ["src/components/guia/GuiaBusqueda.tsx", "src/components/guia/InformeDeAviso.tsx", "src/app/api/lo-que-sigue/guia/route.ts"]) {
     const s = sinComentarios(leer(f));

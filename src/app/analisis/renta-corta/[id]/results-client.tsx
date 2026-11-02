@@ -58,6 +58,7 @@ import type { SimulacionStr } from "@/lib/analysis/simular-str";
 import type { ZonaStr } from "@/lib/zona-str";
 import { derivarCifraClaveStr } from "@/lib/cifra-clave";
 import { buildFichaStr } from "@/lib/ficha-depto";
+import { edadDelInforme, supuestaDelInforme } from "@/lib/guia/edad-edificio";
 import { formatDireccionDisplay } from "@/lib/format-direccion";
 import { useRecienDentro } from "@/lib/lo-que-sigue/recien-dentro";
 import { DocumentoFrame, PortadaInforme } from "@/components/analysis/portada/PortadaInforme";
@@ -259,6 +260,7 @@ export function STRResultsClient({
     direccion: direccionPortada,
     comuna,
     moneda: currency,
+    edad: edadDelInforme(inputData),
   });
   const latPortada = typeof inputData?.lat === "number" ? (inputData.lat as number) : null;
   const lngPortada = typeof inputData?.lng === "number" ? (inputData.lng as number) : null;
@@ -395,7 +397,7 @@ export function STRResultsClient({
         {/* De qué aviso salió (15-oct-2026): «Analizar este» del semanal; como en renta larga, «Quiero verlo». */}
         {origenAviso && analysisId && (
           <SeccionInforme id="origen-aviso" tono="paper">
-            <InformeDeAviso analysisId={analysisId} veredicto={veredicto} antiguedad={origenAviso.antiguedad} esDueno={!!userId && !isSharedView} modalidad="str" />
+            <InformeDeAviso analysisId={analysisId} veredicto={veredicto} supuesta={supuestaDelInforme(inputData)} esDueno={!!userId && !isSharedView} modalidad="str" />
           </SeccionInforme>
         )}
         {/* El re-análisis al precio recomendado (21-oct-2026, lib/reanalisis.ts): lo dice arriba, con el original. */}

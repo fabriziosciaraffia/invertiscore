@@ -123,7 +123,10 @@ export interface AnalisisInput {
     tasaElegida?: number; tasaMercado?: number;
     /** EL PRECIO NEGOCIADO (02-nov-2026, «Analizar a UF 2.950» de Explorar): el informe se hizo a ese precio y lo dice la portada
      *  («Analizado a UF 2.950, un 4,2 % bajo el precio publicado»), con los dos precios. */
-    precioNegociado?: { publicadoUF: number; negociadoUF: number; descuentoPct: number } };
+    precioNegociado?: { publicadoUF: number; negociadoUF: number; descuentoPct: number };
+    /** LA EDAD DEL EDIFICIO (03-nov-2026): el año y de dónde salió —la ficha de este aviso u otro aviso del edificio—, que el
+     *  informe dice; o, con 25 supuestos, por qué: la ficha leída no lo trae o no se pudo leer (guia/edad-edificio.ts). */
+    edad?: { anio: number; fuente: "ficha" | "edificio" }; supuestaPor?: "no-dice" | "no-leida" };
 }
 
 // ─── Métricas sobre capital propio (pie cero · fase 1-2) ─────────────────────

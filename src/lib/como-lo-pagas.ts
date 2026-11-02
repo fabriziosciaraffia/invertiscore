@@ -27,6 +27,7 @@
 
 import type { HallazgoDistanciaVeredicto, HallazgoPuestaAPunto, HallazgoSobreprecio, PosicionEnComuna, Veredicto } from "./types";
 import { recomendacionFranco } from "./mix-a-comprar";
+import { fuenteEdad, type EdadEdificio } from "./guia/edad-edificio";
 import { bandaDeDescuento, ETIQUETA_BANDA, BANDA_TOPE_ARGUMENTOS_PCT, type BandaDescuento } from "./banda-esfuerzo";
 import { etiquetaVeredicto } from "./veredicto-etiqueta";
 import { caminoMasFacil, combinacionTexto, pctCamino, pieSeExploro } from "./ajustar-sin-camino";
@@ -99,6 +100,8 @@ export interface CapexPagas {
   antiguedadAnios: number;
   superficieUtilM2: number;
   intro: Seg[];
+  /** La línea chica de la edad (03-nov-2026): «Edificio de 1951, según la ficha.» Solo con el año conocido. */
+  fuenteEdad: string | null;
 }
 
 export interface ModeloComoLoPagas {
@@ -140,6 +143,8 @@ export interface EntradaComoLoPagas {
   /** La línea de la alternativa de comunas (LTR). STR: null hasta que el motor la calcule. */
   alternativa: string | null;
   capex: HallazgoPuestaAPunto["valor"] | null;
+  /** El año del edificio y su fuente, si el informe salió de un aviso que lo conocía (guia/edad-edificio.ts › edadDelInforme). */
+  edad?: EdadEdificio | null;
   /** UF→CLP del análisis, para las cifras en pesos de la copia. */
   valorUF: number;
 }
@@ -389,6 +394,7 @@ function capexDe(e: EntradaComoLoPagas): CapexPagas | null {
     antiguedadAnios: c.antiguedadAnios,
     superficieUtilM2: c.superficieUtilM2,
     intro,
+    fuenteEdad: e.edad ? `Edificio de ${e.edad.anio}, ${fuenteEdad(e.edad)}.` : null,
   };
 }
 

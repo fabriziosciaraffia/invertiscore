@@ -156,10 +156,12 @@ export function DemoCliente() {
           </>
         )}
 
-        {rotulo("El informe que sale de un aviso · antigüedad supuesta")}
-        <div className="doc-dictamen" style={{ padding: "18px 0" }}><InformeDeAviso analysisId={ctx.analysisId} veredicto={v} antiguedad="supuesta" esDueno demo /></div>
+        {rotulo("El informe que sale de un aviso · la publicación no dice la antigüedad")}
+        <div className="doc-dictamen" style={{ padding: "18px 0" }}><InformeDeAviso analysisId={ctx.analysisId} veredicto={v} supuesta="no-dice" esDueno demo /></div>
+        {rotulo("El informe que sale de un aviso · no pudimos leer la antigüedad")}
+        <div className="doc-dictamen" style={{ padding: "18px 0" }}><InformeDeAviso analysisId={ctx.analysisId} veredicto={v} supuesta="no-leida" esDueno demo /></div>
         {rotulo("El informe que sale de un aviso · con el año de la ficha")}
-        <div className="doc-dictamen" style={{ padding: "18px 0" }}><InformeDeAviso analysisId={ctx.analysisId} veredicto={v} antiguedad="ficha" esDueno demo /></div>
+        <div className="doc-dictamen" style={{ padding: "18px 0" }}><InformeDeAviso analysisId={ctx.analysisId} veredicto={v} supuesta={null} esDueno demo /></div>
         {rotulo("El correo a la persona · «Quiero verlo»")}
         <iframe title="Correo de Quiero verlo" srcDoc={correoInteres} style={{ width: "100%", height: 760, border: "1px solid var(--doc-line, #DAD6CC)", borderRadius: 16, background: "#fff" }} />
 

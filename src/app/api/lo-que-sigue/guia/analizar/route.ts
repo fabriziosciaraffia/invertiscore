@@ -17,7 +17,7 @@ import { createAnonPipelineClient } from "@/lib/api-helpers/anon-cap";
 import { guardarPerfil, perfilDesdeLtr } from "@/lib/lo-que-sigue/perfil";
 import { leerConfigGuia, leerOrigenGuia, origenSintetico, type OrigenGuia } from "@/lib/guia/guia-servidor";
 import type { Combinacion } from "@/lib/guia/seleccion";
-import { antiguedadDelAviso, cuerpoDelAviso, fichaDelAviso, leerAvisoGuia } from "@/lib/guia/analizar-servidor";
+import { antiguedadDelAviso, cuerpoDelAviso, fichaDelAviso, leerAvisoGuia, lecturaAnioDe, type LecturaAnio } from "@/lib/guia/analizar-servidor";
 import { analizarAvisoDeGuia } from "@/lib/guia/analizar-una-vez";
 import { chequearPublicacion } from "@/lib/guia/publicacion";
 import { almacenPublicacion, bajarFicha } from "@/lib/guia/ficha-servidor";
@@ -140,7 +140,7 @@ export async function POST(request: Request) {
     espejoAE = ae.espejo;
     waitUntil(ae.envio);
     // La red: la ficha se chequea de nuevo ANTES de cualquier cobro (publicacion.ts). La misma lectura trae el año.
-    let anioLeido: number | null = null;
+    let lecturaAnio: LecturaAnio = { leida: false, anio: null };
     let plausibleFallo: Response | null = null;
     // El precio negociado verificado con los datos de hoy (02-nov-2026): la respuesta si se movió o ya no llega, y la mediana
     // con que se verificó, que es la que usa el informe.
@@ -151,7 +151,7 @@ export async function POST(request: Request) {
         const ficha = await fichaDelAviso(admin, b.avisoId!);
         if (!ficha) return "sin-chequeo";
         const c = await chequearPublicacion(ficha, "clic", almacenPublicacion(admin), bajarFicha, { forzar: true });
-        anioLeido = c.lectura?.leida ? c.lectura.anio : null;
+        lecturaAnio = lecturaAnioDe(c.lectura);
         return c.estado;
       },
       async alDespublicar() {
@@ -166,7 +166,7 @@ export async function POST(request: Request) {
         if (negociadoUF != null && !precioNegociadoValido(negociadoUF, aviso.precioUF, Number(b.topeNegociar))) return { ok: false, status: 400, error: "precio-negociado" };
         const precioNegociado = negociadoUF != null ? { publicadoUF, negociadoUF, descuentoPct: Math.round((1 - negociadoUF / publicadoUF) * 1000) / 10 } : null;
         const [cfg, ufValue] = await Promise.all([leerConfigGuia(admin), getUFValue()]);
-        const antiguedad = await antiguedadDelAviso(admin, aviso, anioLeido);
+        const antiguedad = await antiguedadDelAviso(admin, aviso, lecturaAnio);
         // LA TASA (30-oct-2026): la elegida en el pop-up o la de la selección; sin ella, la del motor —también desde el semanal
         // con un informe de origen (decisión de Fabrizio: no la del último informe)—. La guía sigue con la de su informe.
         const tasaElegida = "tasaPct" in b ? tasaElegidaDe(b.tasaPct) : (combinacion.tasaPct ?? null);

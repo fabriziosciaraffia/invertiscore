@@ -12,6 +12,7 @@ import { getCostosDefault } from "@/lib/engines/short-term-engine";
 import { origenConTasaSubsidio } from "@/lib/lo-que-sigue/precarga";
 import { calcTasaConSubsidio } from "@/lib/constants/subsidio";
 import type { PedidoReanalisis } from "@/lib/reanalisis";
+import { edadDelInforme } from "@/lib/guia/edad-edificio";
 import type { Antiguedad, NodeId, WizardV4Answers } from "./wizardV4Nodes";
 
 const num = (v: unknown): number | null => {
@@ -62,6 +63,9 @@ export function respuestasDesdeInforme(input: Record<string, unknown> | null | u
   a.tipoPropiedad = nuevo ? "nuevo" : "usado";
   const ant = num(i.antiguedad);
   if (!nuevo) a.antiguedad = antiguedadDeAnios(ant ?? 5);
+  // La edad real del edificio (03-nov-2026): si el informe la conocía (la ficha del aviso u otro aviso del edificio), vuelve
+  // tal cual y manda mientras la persona no cambie la banda (aniosDelUsado). Sin ella, la banda, como siempre.
+  if (!nuevo && ant !== null && edadDelInforme(i)) a.antiguedadAnios = ant;
   if (nuevo) {
     a.estadoVenta = i.estadoVenta === "futura" ? "futura" : "inmediata";
     const fe = typeof i.fechaEntrega === "string" ? /^(\d{4})-(\d{1,2})$/.exec(i.fechaEntrega) : null;

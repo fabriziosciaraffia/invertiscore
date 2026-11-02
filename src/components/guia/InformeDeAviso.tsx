@@ -6,6 +6,8 @@
 // El toque registra el interés y, si el aviso sigue publicado, le manda el aviso a su correo al
 // instante (POST /api/lo-que-sigue/quiero-verlo, 01-oct-2026); el bloque confirma en el mismo lugar.
 // Si se despublicó, lo dice en vez de confirmar.
+// LA ANTIGÜEDAD SUPUESTA (03-nov-2026): la nota dice por qué —la publicación no dice el año, o no pudimos leerla— (`supuesta`,
+// guia/edad-edificio.ts › supuestaDelInforme). Con el año conocido no hay nota: lo dice la ficha de la portada.
 // EN BANNER (17-oct-2026, decisión de Fabrizio: es lo que la persona pagó y pasaba desapercibido): el material del banner
 // del informe, texto blanco, un botón. Al tocar, el botón gira con «Mandando el aviso…»; después el bloque dice «Listo: te
 // lo mandamos a [correo]» con el visto; si falla, «No pudimos mandarlo.» y «Reintentar». Sin recargar la página. Los
@@ -21,12 +23,13 @@ import { INFORME_DE_AVISO } from "@/lib/guia/copy";
 import { cuandoSeEnvio, dicesQueConviene, estadoTrasRespuesta, sePuedeTocar, type EstadoQuieroVerlo } from "@/lib/guia/quiero-verlo-estado";
 import { botonOcupado } from "@/lib/carga-global";
 import { ConfirmacionEnviado } from "./ConfirmacionEnviado";
+import type { SupuestaPor } from "@/lib/guia/edad-edificio";
 import "./guia.css";
 
 /** `demo`: en /dev/lo-que-sigue el toque confirma sin registrar ni mandar el correo. */
 /** `modalidad` (15-oct-2026): también en el informe de renta corta hecho desde un aviso del semanal; mismo botón, misma
  *  ruta y mismo correo. */
-export function InformeDeAviso({ analysisId, veredicto, antiguedad, esDueno, demo = false, modalidad = "ltr" }: { analysisId: string; veredicto: string; antiguedad: "ficha" | "supuesta" | "nuevo"; esDueno: boolean; demo?: boolean; modalidad?: "ltr" | "str" }) {
+export function InformeDeAviso({ analysisId, veredicto, supuesta, esDueno, demo = false, modalidad = "ltr" }: { analysisId: string; veredicto: string; supuesta: SupuestaPor | null; esDueno: boolean; demo?: boolean; modalidad?: "ltr" | "str" }) {
   const posthog = usePostHog();
   const [estado, setEstado] = useState<EstadoQuieroVerlo>({ tipo: "quieto" });
 
@@ -46,7 +49,7 @@ export function InformeDeAviso({ analysisId, veredicto, antiguedad, esDueno, dem
   return (
     <div className="qv" data-informe-de-aviso>
       <p className="qv-origen">{INFORME_DE_AVISO.origen}</p>
-      {antiguedad === "supuesta" && <p className="qv-nota">{INFORME_DE_AVISO.antiguedadSupuesta}</p>}
+      {supuesta && <p className="qv-nota" data-antiguedad-supuesta={supuesta}>{INFORME_DE_AVISO.antiguedadSupuesta[supuesta]}</p>}
       {esDueno && (
         <div className="qv-banda" data-qv={estado.tipo} aria-live="polite">
           {estado.tipo === "listo" ? (

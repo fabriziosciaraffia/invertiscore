@@ -25,6 +25,7 @@ import { resolveSeriePlusvalia } from "@/lib/plusvalia-hallazgo";
 import { buildPatrimonioSeriesSTR } from "@/lib/patrimonio-series-str";
 import { fraseReparto } from "@/lib/reparto-ingreso";
 import { conApellido } from "@/components/analysis/CapitulosInversion";
+import { edadDelInforme } from "@/lib/guia/edad-edificio";
 
 /**
  * LA INVERSIÓN · STR — los seis capítulos del CONGELADO (T1 · 04-sep-2026):
@@ -618,6 +619,7 @@ export function CapitulosInversionStr({
     // Las comunas alternativas de STR quedan para cuando el motor STR las calcule (§12).
     alternativa: null,
     capex: capexStr?.valor ?? null,
+    edad: edadDelInforme(inputData),
     valorUF,
   });
   const filaIV: FilaHallazgo = {

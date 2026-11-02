@@ -4,6 +4,9 @@
 // tasa; o la combinación ajustada que mostró la guía). La antigüedad: la que dio la ficha en la lectura
 // que chequeó la publicación (publicacion.ts), o la del edificio si se conoce; sin ella, 25 años
 // supuestos, y el informe lo dice (`origenAviso.antiguedad = "supuesta"`).
+// LA EDAD REAL (03-nov-2026, goal «la edad del edificio»): con año, el motor recibe la edad tal cual (no la banda) y
+// `origenAviso.edad` guarda el año y la fuente —la ficha de este aviso u otro aviso del edificio— para que el informe lo
+// diga; sin año, `origenAviso.supuestaPor` dice si la ficha se leyó y no lo trae o si no se pudo leer (edad-edificio.ts).
 // ─────────────────────────────────────────────────────────────────────────────
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { arriendoParaEvaluar, contextoDeSugerencias, payloadDeAviso, respuestasDeAviso, sugerenciasDeAviso } from "@/lib/avisos/evaluar-aviso";
@@ -11,8 +14,25 @@ import type { AnalisisInput } from "@/lib/types";
 import { aniosDesde, claveEdificio } from "./ficha-anio";
 import { avisoDeCandidato, type CandidatoGuia, type OrigenGuia } from "./guia-servidor";
 import { distanciaM, type Combinacion } from "./seleccion";
+import type { EdadEdificio, SupuestaPor } from "./edad-edificio";
 
 export type OrigenAntiguedad = "ficha" | "supuesta" | "nuevo";
+/** La edad con que se analiza: los años (null = 25 supuestos), de dónde salió, el año y su fuente, o por qué se supuso. */
+export interface AntiguedadAviso {
+  anios: number | null;
+  origen: OrigenAntiguedad;
+  edad?: EdadEdificio | null;
+  supuestaPor?: SupuestaPor | null;
+}
+/** La lectura de la ficha al tocar: `leida` = la ficha nueva respondió 200 (se pudo mirar si dice el año); `anio`, el que dijo. */
+export interface LecturaAnio {
+  leida: boolean;
+  anio: number | null;
+}
+/** La lectura que dejó `chequearPublicacion`, como la necesita la edad (sin lectura = no se pudo leer). */
+export function lecturaAnioDe(l: { leida: true; motivo: string; anio: number | null } | { leida: false } | null | undefined): LecturaAnio {
+  return l?.leida ? { leida: l.motivo === "publicado", anio: l.anio } : { leida: false, anio: null };
+}
 
 /** El aviso, con su evaluación guardada. null si no está activo o no fue evaluado. */
 export async function leerAvisoGuia(admin: SupabaseClient, avisoId: string, o: OrigenGuia): Promise<CandidatoGuia | null> {
@@ -57,13 +77,18 @@ export async function fichaDelAviso(admin: SupabaseClient, avisoId: string): Pro
 }
 
 /** Los años del edificio: los de la ficha recién leída, o los del edificio si se conocen, o null (25 supuestos).
- *  No sale a la fuente: la única lectura es la que chequeó la publicación. */
-export async function antiguedadDelAviso(admin: SupabaseClient, c: CandidatoGuia, anioLeido: number | null): Promise<{ anios: number | null; origen: OrigenAntiguedad }> {
+ *  No sale a la fuente: la única lectura es la que chequeó la publicación. Con año, el año y su fuente: «edificio» solo si lo
+ *  dio OTRO aviso (`anios_edificio` guarda el aviso cuya ficha lo dijo). Sin año, por qué: la ficha leída no lo dice, o no se
+ *  pudo leer. */
+export async function antiguedadDelAviso(admin: SupabaseClient, c: CandidatoGuia, lectura: LecturaAnio, ahora: Date = new Date()): Promise<AntiguedadAviso> {
   if (c.condicion === "nuevo") return { anios: 0, origen: "nuevo" };
-  if (c.antiguedadAnios != null) return { anios: c.antiguedadAnios, origen: "ficha" };
-  if (anioLeido != null) return { anios: aniosDesde(anioLeido), origen: "ficha" };
-  const { data } = await admin.from("anios_edificio").select("anio").eq("edificio", claveEdificio(c)).maybeSingle();
-  return typeof data?.anio === "number" ? { anios: aniosDesde(data.anio), origen: "ficha" } : { anios: null, origen: "supuesta" };
+  if (c.antiguedadAnios != null) return { anios: c.antiguedadAnios, origen: "ficha", edad: { anio: ahora.getFullYear() - c.antiguedadAnios, fuente: "ficha" } };
+  if (lectura.anio != null) return { anios: aniosDesde(lectura.anio, ahora), origen: "ficha", edad: { anio: lectura.anio, fuente: "ficha" } };
+  const { data } = await admin.from("anios_edificio").select("anio, aviso_id").eq("edificio", claveEdificio(c)).maybeSingle();
+  if (typeof data?.anio === "number") {
+    return { anios: aniosDesde(data.anio, ahora), origen: "ficha", edad: { anio: data.anio, fuente: data.aviso_id === c.avisoId ? "ficha" : "edificio" } };
+  }
+  return { anios: null, origen: "supuesta", supuestaPor: lectura.leida ? "no-dice" : "no-leida" };
 }
 
 /** El body del informe, como el del wizard, más `origenAviso`. null si el aviso no tiene arriendo. */
@@ -71,7 +96,7 @@ export async function cuerpoDelAviso(
   c: CandidatoGuia,
   o: OrigenGuia,
   combo: Combinacion,
-  antiguedad: { anios: number | null; origen: OrigenAntiguedad },
+  antiguedad: AntiguedadAviso,
   cfg: { uf: number; tasa: number },
 ): Promise<AnalisisInput | null> {
   const a = avisoDeCandidato(c, antiguedad.anios);
@@ -82,6 +107,11 @@ export async function cuerpoDelAviso(
     respuestasDeAviso(a, combo.piePct, o.tasa, arriendo.monto, { plazo: combo.plazoAnios, tasaMercado: cfg.tasa }),
     contextoDeSugerencias(arriendo, arr, vta, cfg),
   ) as unknown as AnalisisInput;
-  body.origenAviso = { avisoId: c.avisoId, antiguedad: antiguedad.origen, origenAnalysisId: o.analysisId ?? undefined };
+  body.origenAviso = { avisoId: c.avisoId, antiguedad: antiguedad.origen, origenAnalysisId: o.analysisId ?? undefined, ...camposDeEdad(antiguedad) };
   return body;
+}
+
+/** Lo que `origenAviso` guarda de la edad: el año y su fuente, o por qué se supuso. Nada de esto lo lee el motor. */
+export function camposDeEdad(a: AntiguedadAviso): { edad?: EdadEdificio; supuestaPor?: SupuestaPor } {
+  return { ...(a.edad ? { edad: a.edad } : {}), ...(a.origen === "supuesta" && a.supuestaPor ? { supuestaPor: a.supuestaPor } : {}) };
 }

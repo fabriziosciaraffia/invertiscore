@@ -46,6 +46,7 @@ import { buildPatrimonioSeries } from "@/lib/patrimonio-series";
 import { PatrimonioBarras, BarraApiladaB, SeriePlusvalia, GlosaIndicador } from "./shared";
 import { TE_QUEDA_DESPUES_CUOTAS, cierreCuotas, cuotasSeVen, tramosCuotas } from "@/lib/obra-nueva";
 import { TramosCuotas } from "@/components/analysis/shared/TramosCuotas";
+import { edadDelInforme } from "@/lib/guia/edad-edificio";
 /**
  * LA INVERSIÓN — cinco capítulos (contrato CONGELADO 02-sep-2026, T3).
  *
@@ -470,6 +471,7 @@ export function CapitulosInversion({
     caeA: sens?.valor.veredictoSobrePrecioMaximo ?? null,
     alternativa: lineaAlternativa,
     capex: capexV,
+    edad: edadDelInforme(inputData),
     valorUF,
   });
   const filaIII: FilaHallazgo = {

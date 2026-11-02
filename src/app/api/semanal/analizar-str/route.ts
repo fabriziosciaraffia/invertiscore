@@ -16,7 +16,7 @@ import {
 import { createAnonPipelineClient } from "@/lib/api-helpers/anon-cap";
 import { guardarPerfil, perfilDesdeStr } from "@/lib/lo-que-sigue/perfil";
 import { leerConfigGuia } from "@/lib/guia/guia-servidor";
-import { antiguedadDelAviso, fichaDelAviso, leerAvisoGuia } from "@/lib/guia/analizar-servidor";
+import { antiguedadDelAviso, camposDeEdad, fichaDelAviso, leerAvisoGuia, lecturaAnioDe, type LecturaAnio } from "@/lib/guia/analizar-servidor";
 import { chequearPublicacion } from "@/lib/guia/publicacion";
 import { almacenPublicacion, bajarFicha } from "@/lib/guia/ficha-servidor";
 import { itemsVigentes, seleccionPorToken } from "@/lib/guia/semanal-servidor";
@@ -105,7 +105,7 @@ export async function POST(request: Request) {
     espejoAE = ae.espejo;
     waitUntil(ae.envio);
 
-    let anioLeido: number | null = null;
+    let lecturaAnio: LecturaAnio = { leida: false, anio: null };
     // La medición fina y la config con que se hizo: con ellas se reevalúan los parecidos si no da.
     let medida: { estimacion: Extract<AirbnbEstimateResponse, { success: true }>; cfg: { uf: number; tasa: number } } | null = null;
     let plausibleFallo: Response | null = null;
@@ -123,7 +123,7 @@ export async function POST(request: Request) {
         const ficha = await fichaDelAviso(admin, avisoId);
         if (!ficha) return "sin-chequeo";
         const c = await chequearPublicacion(ficha, "clic", almacenPublicacion(admin), bajarFicha, { forzar: true });
-        anioLeido = c.lectura?.leida ? c.lectura.anio : null;
+        lecturaAnio = lecturaAnioDe(c.lectura);
         publicacion = ficha.url;
         return c.estado;
       },
@@ -138,7 +138,7 @@ export async function POST(request: Request) {
         const aviso = await leerAvisoGuia(admin, avisoId, o);
         if (!aviso) return { ok: false, status: 404, error: "aviso" };
         const [cfg, ufValue] = await Promise.all([leerConfigGuia(admin), getUFValue()]);
-        const antiguedad = await antiguedadDelAviso(admin, aviso, anioLeido);
+        const antiguedad = await antiguedadDelAviso(admin, aviso, lecturaAnio);
         // La dirección, como en el wizard: el punto del aviso por la geocodificación inversa. Sin dirección no hay medición.
         const lugar = await reverseGeocode(aviso.lat, aviso.lng);
         if (!lugar?.direccion) return { ok: false, status: 422, error: "sin-direccion" };
@@ -147,7 +147,7 @@ export async function POST(request: Request) {
         const body = cuerpoStrDeAviso(aviso, { ...o, tasa: tasaElegida ?? cfg.tasa }, combo, cfg, { antiguedadAnios: antiguedad.anios, direccion: lugar.direccion });
         if (!body) return { ok: false, status: 422, error: "sin-arriendo" };
         // De qué aviso salió (15-oct-2026): como en renta larga, el informe ofrece «Quiero verlo». Y la tasa elegida.
-        body.origenAviso = { avisoId, antiguedad: antiguedad.origen, origenAnalysisId: o.analysisId ?? undefined, desde, ...(tasaElegida != null ? { tasaElegida, tasaMercado: cfg.tasa } : {}) };
+        body.origenAviso = { avisoId, antiguedad: antiguedad.origen, origenAnalysisId: o.analysisId ?? undefined, desde, ...(tasaElegida != null ? { tasaElegida, tasaMercado: cfg.tasa } : {}), ...camposDeEdad(antiguedad) };
         if (Number.isFinite(body.piePct)) body.piePct = redondearPiePct(body.piePct);
         const plausible = guardPlausibilidad(desdeBodyStr(body, ufValue), { userId: user.id, ruta: RUTA });
         if (!plausible.ok) { plausibleFallo = plausible.response; return { ok: false, status: 422, error: "plausibilidad" }; }

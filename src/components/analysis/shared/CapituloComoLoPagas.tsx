@@ -163,6 +163,11 @@ export function CapituloComoLoPagas({ modelo, valorUF }: { modelo: ModeloComoLoP
               <Segs segs={m.capex.intro} />
             </p>
           </VProsa>
+          {m.capex.fuenteEdad && (
+            <p data-fuente-edad style={{ margin: "6px 0 0", fontSize: 11.5, lineHeight: 1.45, color: "var(--doc-tx3)" }}>
+              {m.capex.fuenteEdad}
+            </p>
+          )}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginTop: 12 }}>
             <Kpi k={m.capex.montoMinUF != null && m.capex.montoMaxUF != null ? "Rango estimado" : "Inversión"} v={m.capex.montoMinUF != null && m.capex.montoMaxUF != null ? `UF ${miles(m.capex.montoMinUF)}–${miles(m.capex.montoMaxUF)}` : `UF ${miles(m.capex.montoUF)}`} />
             <Kpi k="Por m²" v={<>{pct1(m.capex.ufM2)} <small style={{ fontSize: 12, fontWeight: 500, color: "var(--doc-tx3)" }}>UF/m²</small></>} />
