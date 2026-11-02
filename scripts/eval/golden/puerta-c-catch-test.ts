@@ -172,7 +172,9 @@ export async function runPuertaCTier(): Promise<{ hard: number }> {
       if (ida?.codigo !== "K7M2QX" || ida.visitaMs !== Math.floor(t0 / 1000) * 1000 || leerCookieInvitacion("no-es-un-codigo.123") !== null) F("1 · la cookie no va y vuelve con el código y la hora");
       if (DIAS_COOKIE_INVITACION !== 30 || VIDA_COOKIE_INVITACION_S !== 30 * 86400) F("1 · la cookie no dura 30 días");
       const mw = leer("src/middleware.ts");
-      if (!/if \(invitacion && !request\.cookies\.has\(COOKIE_INVITACION\)\) \{\s*res\.cookies\.set\(COOKIE_INVITACION, valorCookieInvitacion\(invitacion, Date\.now\(\)\), \{ path: "\/", maxAge: VIDA_COOKIE_INVITACION_S,/.test(mw)) F("1 · el middleware no deja la cookie de la invitación (o pisa la primera, o la usada)");
+      // ⚠ ACTA (02-nov-2026, COMPARTIR-DEPTO) · la cookie lleva también por dónde llegó la invitación (el enlace de un depto
+      // compartido la marca «depto»): la regla —no pisar la primera ni la usada— es la misma.
+      if (!/if \(invitacion && !request\.cookies\.has\(COOKIE_INVITACION\)\) \{\s*res\.cookies\.set\(COOKIE_INVITACION, valorCookieInvitacion\(invitacion, Date\.now\(\), deDepto \? "depto" : "enlace"\), \{ path: "\/", maxAge: VIDA_COOKIE_INVITACION_S,/.test(mw)) F("1 · el middleware no deja la cookie de la invitación (o pisa la primera, o la usada)");
       if (!/"\/i\/:path\*"/.test(mw)) F("1 · el middleware no corre en /i/");
       // UNA INVITACIÓN POR NAVEGADOR (visto en el QA, 16-oct-2026): la cobrada queda «usada» —no se borra—, porque el
       // `router.refresh()` de la misma página volvía a pedir /i/CÓDIGO y el middleware la dejaba de nuevo.
@@ -261,7 +263,10 @@ export async function runPuertaCTier(): Promise<{ hard: number }> {
         || pos(alta, "vincularInvitacion(") > pos(alta, "guardarAtribucion(") || !ord.includes("despues(seguro(() => piezas.atribucion(puerta.puerta)));") || pos(ord, "piezas.esPrueba()]);") > ord.lastIndexOf("despues(seguro(() => piezas.atribucion(puerta.puerta)));")) F("2 · /deptos y la página del invitado no cobran el código antes de la puerta B (o la invitada queda en B)");
       if (!/if \(cookieInv\) await vincularInvitacion\(admin, \{ userId: user\.id, creadaAt: user\.created_at, cookie: cookieInv, huella: huellaDeRequest\(request\) \}\);\s*waitUntil\(guardarAtribucion\(admin, user\.id, \{ puerta: "A", puerta_detalle: "ticket"/.test(sinComentarios(leer("src/app/api/lo-que-sigue/pack/route.ts")))) F("2 · el ticket no cobra el código");
       if (!/if \(cookieInv\) \{\s*await vincularInvitacion\(admin, \{/.test(sinComentarios(leer("src/app/dashboard/page.tsx"))) || !/const admin = createServiceClient\(\);/.test(sinComentarios(leer("src/app/dashboard/page.tsx")))) F("2 · el dashboard no es red del código");
-      if (!/if \(nueva\) await fijarPuertaReferido\(admin, p\.userId, `\$\{PREFIJO_DETALLE_INVITACION\}\$\{invitacion\.codigo\}`\);/.test(leer("src/lib/referido-servidor.ts"))) F("2 · la cuenta invitada no queda con la puerta C");
+      // ⚠ ACTA (02-nov-2026, COMPARTIR-DEPTO) · el detalle sale de `detalleDeInvitacion` (`invitacion:CÓDIGO` por el enlace de
+      // siempre, `depto:CÓDIGO` por un depto compartido); el comportamiento lo prueba la línea de arriba (la cookie de siempre
+      // sigue dando `invitacion:`) y COMPARTIR-DEPTO §3 (la del depto da `depto:`).
+      if (!/if \(nueva\) await fijarPuertaReferido\(admin, p\.userId, detalleDeInvitacion\(invitacion\.codigo, inv\.via\)\);/.test(leer("src/lib/referido-servidor.ts"))) F("2 · la cuenta invitada no queda con la puerta C");
       if (!/sb\.rpc\("fijar_puerta_referido", \{ p_user_id: userId, p_detalle: detalle\.slice\(0, 60\) \}\)/.test(leer("src/lib/attribution.ts"))) F("2 · la puerta C del referido no pasa por la RPC que pisa");
     }
 
@@ -472,10 +477,13 @@ export async function runPuertaCTier(): Promise<{ hard: number }> {
         F("5 · la página emite la visita sin mirar el consentimiento, la cookie de PostHog, si el enlace es de prueba o el código");
       if (/capture\(\s*["'`]invitacion_vista/.test(sinComentarios(leer("src/app/i/[codigo]/invitacion-cliente.tsx")))) F("5 · el navegador también manda invitacion_vista: cada visita contaría dos veces");
       // El panel: la cohorte de la puerta C («Referidos por semana», el mismo SQL del insight 7aJ56Uij) lee las visitas.
+      // ⚠ ACTA (02-nov-2026, COMPARTIR-DEPTO) · el enlace de un depto compartido desde Explorar también lleva el código: los
+      // invitados por esa vía no abrieron /i/, así que `registro_por_visita` divide los invitados POR ENLACE (no todos) por
+      // las visitas a /i/; los del depto tienen su propia tasa (`registro_por_depto`, la fija COMPARTIR-DEPTO §4).
       const doc = leer("docs/posthog-activacion-por-puerta.md");
       const sec = doc.slice(pos(doc, "## La cohorte de la puerta C"));
       if (!/where event = 'invitacion_vista'\s+and timestamp >= now\(\) - interval 30 week\s+and toString\(properties\.origen\) = 'servidor'\s+and toString\(properties\.modo\) = 'invitado'\s+and toString\(properties\.invitador_prueba\) != 'true'/.test(sec)
-        || !/if\(visitas = 0, null, round\(invitados_nuevos \/ visitas, 3\)\) as registro_por_visita/.test(sec) || !/from vis full outer join reg on vis\.semana = reg\.semana/.test(sec))
+        || !/if\(visitas = 0, null, round\(invitados_por_enlace \/ visitas, 3\)\) as registro_por_visita/.test(sec) || !/from vis full outer join reg on vis\.semana = reg\.semana/.test(sec))
         F("5 · la cohorte de la puerta C del panel no lee las visitas (invitacion_vista del servidor, de invitados, sin enlaces de prueba)");
     }
   } catch (e) {

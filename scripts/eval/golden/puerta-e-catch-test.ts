@@ -166,7 +166,9 @@ export async function runPuertaETier(): Promise<{ hard: number }> {
     // quedaba en cola y la hoja tardaba segundos en abrir; y una foto que Google no entrega dejaba la imagen rota.
     if (!/function tocarPin\(avisoId: string\) \{\s*if \(sinCuenta\) void import\("\.\/hoja-registro"\);/.test(cli)) F("3 · sin cuenta la hoja de registro no se precarga al tocar un pin (abre tarde)");
     const rutaImg = codigo("src/app/api/explorar/calle/[avisoId]/route.ts");
-    if (!/const m = img\.respaldo \? await traer\(img\.respaldo\) : null;/.test(rutaImg) || !/"Cache-Control": CACHE_SIN_DECIDIR, "X-Calle": "mapa"/.test(rutaImg) || !/respaldo: urlMapaChico\(\{ lat: Number\(fila\.lat\), lng: Number\(fila\.lng\) \}, keyMapa, estilo\)/.test(codigo("src/lib/explorar/calle-servidor.ts"))) F("3 · si la foto de la calle no llega, la tarjeta queda con la imagen rota (sin el mapa chico de respaldo)");
+    // ⚠ ACTA (02-nov-2026, COMPARTIR-DEPTO) · `imagenDeCalle` acepta el tamaño (la vista previa de un depto compartido pide la
+    // imagen grande); el respaldo es el mismo mapa chico, con ese tamaño si se pidió.
+    if (!/const m = img\.respaldo \? await traer\(img\.respaldo\) : null;/.test(rutaImg) || !/"Cache-Control": CACHE_SIN_DECIDIR, "X-Calle": "mapa"/.test(rutaImg) || !/respaldo: urlMapaChico\(\{ lat: Number\(fila\.lat\), lng: Number\(fila\.lng\) \}, keyMapa, estilo, lado\?\.mapa\)/.test(codigo("src/lib/explorar/calle-servidor.ts"))) F("3 · si la foto de la calle no llega, la tarjeta queda con la imagen rota (sin el mapa chico de respaldo)");
     // ESCAPE CIERRA LA HOJA (QA del 29-oct-2026): el primer Escape cerraba la tarjeta de abajo y no la hoja; el listener de la
     // hoja, re-registrado a cada render, se quitaba en medio del mismo evento. Va una vez, en captura, y corta el evento.
     if (!/const esc = \(e: KeyboardEvent\) => \{\s*if \(e\.key !== "Escape"\) return;\s*e\.stopImmediatePropagation\(\);\s*if \(!ocupadoRef\.current\) cerrarRef\.current\(\);\s*\};\s*window\.addEventListener\("keydown", esc, true\);\s*return \(\) => window\.removeEventListener\("keydown", esc, true\);\s*\}, \[\]\);/.test(hoja)) F("3 · Escape no cierra la hoja de registro a la primera (el listener se re-registra a cada render)");
@@ -237,7 +239,9 @@ export async function runPuertaETier(): Promise<{ hard: number }> {
     const roto = { getItem: () => { throw new Error("x"); }, setItem: () => { throw new Error("x"); } };
     if (!ab.bienvenidaVista(roto)) F("5 · con el almacenamiento bloqueado la bienvenida sale a cada carga");
     const cli = codigo("src/app/explorar/explorar-cliente.tsx");
-    if (!/if \(!sinCuenta \|\| inicial\.n == null\) return;[\s\S]{0,200}if \(bienvenidaVista\(almacen\)\) return;\s*marcarBienvenida\(almacen\);\s*setBienvenida\(true\);/.test(cli)) F("5 · la bienvenida no se marca vista al mostrarse (o sale con cuenta)");
+    // ⚠ ACTA (02-nov-2026, COMPARTIR-DEPTO) · por un depto compartido la bienvenida no sale (taparía la tarjeta que se abre
+    // sola): la condición suma `compartido`, y lo demás es igual.
+    if (!/if \(!sinCuenta \|\| inicial\.n == null \|\| compartido\) return;[\s\S]{0,200}if \(bienvenidaVista\(almacen\)\) return;\s*marcarBienvenida\(almacen\);\s*setBienvenida\(true\);/.test(cli)) F("5 · la bienvenida no se marca vista al mostrarse (o sale con cuenta)");
     const modB = cargar<{ Bienvenida: FC<{ n: number; alCerrar: () => void }> }>("src/app/explorar/bienvenida");
     if (modB) {
       const b = dibujar(createElement(modB.Bienvenida, { n: 4807, alCerrar() {} }));

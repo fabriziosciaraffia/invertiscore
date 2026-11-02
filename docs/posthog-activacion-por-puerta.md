@@ -20,6 +20,10 @@
 | `explorar_abierto_vista` | el middleware al servir `/explorar` SIN sesión (`src/lib/vista-entrada.ts`), desde el 29-oct-2026 | llegó al mapa sin cuenta; lo de toda vista de entrada (abajo) y `llegada_explorar` (landing · directo: el botón y el mapa del hero de la landing llevan `?desde=landing`). Con sesión no sale: esa la cuenta `explorar_vista` |
 | `explorar_bienvenida_vista` · `explorar_pin` · `explorar_registro_abierto` · `explorar_regalo_usado` | el navegador en `/explorar` sin cuenta (`explorar-cliente.tsx`), desde el 29-oct-2026 | el embudo de la puerta E: vio la bienvenida (una vez por navegador), tocó un pin (`sin_cuenta` = true), abrió la hoja de registro (`motivo`: analizar · guardar · avisame · orden · flujo · pie-plazo) y usó el regalo en un «Analizar este». Todos llevan `llegada_explorar`, salvo el regalo (ya con cuenta: su llegada es la de la cuenta) |
 | `explorar_registro_hecho` | el servidor al terminar el alta de una cuenta con puerta E (`src/lib/deptos/alta-servidor.ts`), una vez por cuenta | se registró desde el mapa; lleva `regalo` y `llegada_explorar` |
+| `explorar_compartir` | el navegador en `/explorar`, con y sin cuenta, al tocar «Compartir» en la tarjeta de un pin o en una fila de la lista, desde el 02-nov-2026 (`explorar-cliente.tsx`) | compartió un depto; lleva `origen` (tarjeta · lista), `sin_cuenta`, `aviso_id`, `modalidad`, `metodo` (hoja: la del sistema en el teléfono · whatsapp: el teléfono sin hoja · copiar: el PC), `con_codigo` (el enlace llevó su código de invitación) y `vista_estandar` (miraba con el financiamiento por defecto; si no, el texto llevó el veredicto de por defecto); sin cuenta, `llegada_explorar` |
+| `explorar_compartido_vista` | el middleware al servir `/explorar?a=…&desde=compartido`, con y sin sesión (`src/lib/vista-entrada.ts` › `eventoVistaCompartido`), desde el 02-nov-2026 | abrió el enlace de un depto compartido; lo de toda vista de entrada (abajo: robots de vista previa fuera, escáneres con `robot` = true) y `aviso_id`, `modalidad`, `con_invitacion` y `codigo` (el código de quien lo compartió, si tenía cuenta), `con_sesion` y `llegada_explorar` = compartido. Mismo id de persona que la vista del mapa, otro uuid. Sin sesión sale además `explorar_abierto_vista` con `llegada_explorar` = compartido: una cuenta los enlaces abiertos, la otra las llegadas al mapa sin cuenta |
+| `explorar_compartido_caido` | el navegador, cuando el enlace abre un depto que ya no está (desde el 02-nov-2026) | el aviso compartido ya no estaba: `estado` (despublicado · no-da), `parecidos` (cuántos ofreció la tarjeta), `aviso_id`, `modalidad`, `sin_cuenta` |
+| `referido_vinculado` | el servidor al cobrar el código de una invitación al registrarse (`src/lib/referido-servidor.ts`) | la cuenta quedó ligada a quien invitó; lleva `estado`, `codigo`, `con_nombre` y, desde el 02-nov-2026, `via`: `enlace` (el /i/CÓDIGO de siempre) o `depto` (el código venía en el enlace de un depto compartido desde Explorar; la cuenta queda con `puerta_detalle` = `depto:CÓDIGO`) |
 | `landing_explorar_click` · `landing_cta_focus` | el navegador en la landing (`src/components/landing-v14/eventos.ts`), desde el 29-oct-2026 | las dos puertas del hero, por separado: el botón «Verlos en el mapa →» (`landing_explorar_click`, con `origen` = hero, antes el de la tarjeta de la puerta E; va a `/explorar?desde=landing`, así que la cuenta que nace de ahí es la E «desde la landing») y el foco en el campo de dirección (`landing_cta_focus`, con `ubicacion` = hero · cierre · metodologia; elegir una dirección es `landing_direccion_elegida`; el campo sigue siendo la puerta A). `landing_mapa_click` (un toque en el mapa del hero) existió del 29 al 30-oct-2026 y se retiró con el mapa |
 | `landing_viewed` · `deptos_vista` | el middleware al servir `/` y `/deptos` (`src/lib/vista-entrada.ts`), desde el 20-oct-2026; antes, el navegador | llegó a la landing o a /deptos. Toda vista de entrada lleva `pagina`, los `utm_*`, `canal` (pagado · organico, la regla de `canalDeUtm`), `con_fbclid` (y el `fbclid` con «si»), `con_gclid`, `referente`, `consentimiento`, `prueba` (modo prueba de la medición), `origen` = servidor y el agente (`$raw_user_agent`: sin él PostHog marca todo evento del servidor como robot, `Automation / no_user_agent`). Con o sin consentimiento; sin «si», un id por visita y sin perfil de persona; el navegador arranca PostHog con el mismo id (`Server-Timing`) |
 
@@ -81,7 +85,7 @@ with base as (
   having t_reg > toDateTime('2000-01-02') and t_reg >= now() - interval 26 week
 )
 select toStartOfWeek(t_reg, 1) as semana,
-  multiIf(puerta = 'A', 'A · informe', puerta = 'B', 'B · selección', puerta = 'C' and startsWith(detalle, 'invitacion:'), 'C · invitación', puerta = 'C', 'C · compartido', puerta = 'D', 'D · orgánico', puerta = 'E' and detalle = 'explorar:landing', 'E · Explorar desde la landing', puerta = 'E', 'E · Explorar directo', puerta = 'antes', 'Antes de las puertas', 'sin puerta') as puerta,
+  multiIf(puerta = 'A', 'A · informe', puerta = 'B', 'B · selección', puerta = 'C' and startsWith(detalle, 'depto:'), 'C · depto compartido', puerta = 'C' and startsWith(detalle, 'invitacion:'), 'C · invitación', puerta = 'C', 'C · compartido', puerta = 'D', 'D · orgánico', puerta = 'E' and detalle = 'explorar:landing', 'E · Explorar desde la landing', puerta = 'E' and detalle = 'explorar:compartido', 'E · depto compartido sin invitación', puerta = 'E', 'E · Explorar directo', puerta = 'antes', 'Antes de las puertas', 'sin puerta') as puerta,
   count() as registrados,
   countIf(t_sel > toDateTime('2000-01-02') and t_sel < t_reg + interval 1 hour) as vieron_seleccion_1h,
   countIf(arrayExists(x -> x >= t_reg and x < t_reg + interval 1 hour, analisis)) as analizaron_1h,
@@ -96,7 +100,12 @@ order by semana desc, puerta
 ```
 
 Una cuenta registrada hace menos de 30 días todavía puede entrar en la columna de 30 días: la fila se lee como «hasta
-hoy». `primera_seleccion_vista` existe desde el 20-oct-2026: las semanas anteriores lo tienen en cero.
+hoy».
+
+**El depto compartido (02-nov-2026).** La C se parte en tres: `depto:CÓDIGO` («C · depto compartido», el código venía en
+el enlace de un depto compartido desde Explorar), `invitacion:CÓDIGO` («C · invitación», el /i/CÓDIGO de siempre) y lo
+demás («C · compartido», un informe compartido o un `?ref=`). La E suma «E · depto compartido sin invitación»: el enlace
+lo compartió alguien sin cuenta (sin código), y la cuenta nació desde el mapa con `explorar:compartido`. `primera_seleccion_vista` existe desde el 20-oct-2026: las semanas anteriores lo tienen en cero.
 
 La tabla «Activación por semana · por puerta» (e6MrN1ws) lleva la misma rama de la E desde el 29-oct-2026.
 
@@ -187,8 +196,23 @@ with vis as (
     and toString(properties.prueba) != 'true'
   group by semana
 ),
+vd as (
+  select toStartOfWeek(timestamp, 1) as semana,
+    count() as visitas_depto,
+    uniq(toString(properties.aviso_id)) as deptos_abiertos
+  from events
+  where event = 'explorar_compartido_vista'
+    and timestamp >= now() - interval 30 week
+    and toString(properties.origen) = 'servidor'
+    and toString(properties.con_invitacion) = 'true'
+    and toString(properties.con_sesion) != 'true'
+    and toString(properties.robot) != 'true'
+    and toString(properties.prueba) != 'true'
+  group by semana
+),
 v as (
-  select person_id, any(distinct_id) as invitado, min(timestamp) as t, argMin(toString(properties.estado), timestamp) as estado
+  select person_id, any(distinct_id) as invitado, min(timestamp) as t, argMin(toString(properties.estado), timestamp) as estado,
+    argMin(coalesce(toString(properties.via), ''), timestamp) as via
   from events
   where event = 'referido_vinculado' and timestamp >= now() - interval 30 week and coalesce(person.properties.test_account, false) = false
     and person_id not in (select id from persons where properties.test_account = true)
@@ -209,6 +233,8 @@ p as (
 reg as (
   select toStartOfWeek(v.t, 1) as semana,
     countIf(v.estado = 'pendiente') as invitados_nuevos,
+    countIf(v.estado = 'pendiente' and v.via != 'depto') as invitados_por_enlace,
+    countIf(v.estado = 'pendiente' and v.via = 'depto') as invitados_por_depto,
     countIf(v.estado = 'pendiente' and arrayExists(x -> x >= v.t and x < v.t + interval 30 day, a.ts)) as analizaron_en_30_dias,
     countIf(p.resultado = 'referido_premiado') as premios_pagados,
     countIf(p.motivo = 'mismo_dispositivo') as mismo_dispositivo,
@@ -216,24 +242,50 @@ reg as (
     countIf(v.estado = 'cuenta_previa') as ya_tenian_cuenta
   from v left join a on a.person_id = v.person_id left join p on p.invitado = v.invitado
   group by semana
+),
+base as (
+  select greatest(coalesce(vis.semana, toDate('1970-01-01')), coalesce(reg.semana, toDate('1970-01-01'))) as semana,
+    coalesce(vis.visitas, 0) as visitas,
+    coalesce(vis.enlaces_abiertos, 0) as enlaces_abiertos,
+    coalesce(reg.invitados_nuevos, 0) as invitados_nuevos,
+    coalesce(reg.invitados_por_enlace, 0) as invitados_por_enlace,
+    coalesce(reg.invitados_por_depto, 0) as invitados_por_depto,
+    coalesce(reg.analizaron_en_30_dias, 0) as analizaron_en_30_dias,
+    coalesce(reg.premios_pagados, 0) as premios_pagados,
+    coalesce(reg.mismo_dispositivo, 0) as mismo_dispositivo,
+    coalesce(reg.sobre_el_tope, 0) as sobre_el_tope,
+    coalesce(reg.ya_tenian_cuenta, 0) as ya_tenian_cuenta
+  from vis full outer join reg on vis.semana = reg.semana
 )
-select greatest(coalesce(vis.semana, toDate('1970-01-01')), coalesce(reg.semana, toDate('1970-01-01'))) as semana,
-  coalesce(vis.visitas, 0) as visitas,
-  coalesce(vis.enlaces_abiertos, 0) as enlaces_abiertos,
-  coalesce(reg.invitados_nuevos, 0) as invitados_nuevos,
-  if(visitas = 0, null, round(invitados_nuevos / visitas, 3)) as registro_por_visita,
-  coalesce(reg.analizaron_en_30_dias, 0) as analizaron_en_30_dias,
+select greatest(coalesce(base.semana, toDate('1970-01-01')), coalesce(vd.semana, toDate('1970-01-01'))) as semana,
+  coalesce(base.visitas, 0) as visitas,
+  coalesce(base.enlaces_abiertos, 0) as enlaces_abiertos,
+  coalesce(base.invitados_nuevos, 0) as invitados_nuevos,
+  coalesce(base.invitados_por_enlace, 0) as invitados_por_enlace,
+  if(visitas = 0, null, round(invitados_por_enlace / visitas, 3)) as registro_por_visita,
+  coalesce(vd.visitas_depto, 0) as visitas_depto,
+  coalesce(vd.deptos_abiertos, 0) as deptos_abiertos,
+  coalesce(base.invitados_por_depto, 0) as invitados_por_depto,
+  if(visitas_depto = 0, null, round(invitados_por_depto / visitas_depto, 3)) as registro_por_depto,
+  coalesce(base.analizaron_en_30_dias, 0) as analizaron_en_30_dias,
   if(invitados_nuevos = 0, null, round(analizaron_en_30_dias / invitados_nuevos, 3)) as activacion,
-  coalesce(reg.premios_pagados, 0) as premios_pagados,
-  coalesce(reg.mismo_dispositivo, 0) as mismo_dispositivo,
-  coalesce(reg.sobre_el_tope, 0) as sobre_el_tope,
-  coalesce(reg.ya_tenian_cuenta, 0) as ya_tenian_cuenta
-from vis full outer join reg on vis.semana = reg.semana
+  coalesce(base.premios_pagados, 0) as premios_pagados,
+  coalesce(base.mismo_dispositivo, 0) as mismo_dispositivo,
+  coalesce(base.sobre_el_tope, 0) as sobre_el_tope,
+  coalesce(base.ya_tenian_cuenta, 0) as ya_tenian_cuenta
+from base full outer join vd on base.semana = vd.semana
 order by semana desc
 ```
 
 Un dispositivo anotado en `invitaciones.dispositivos` NO es una visita: lo anota también pedir el enlace desde el
 dashboard («Invita a alguien») o al compartir un informe. Las visitas se cuentan solo con `invitacion_vista`.
+
+> **02-nov-2026 · el depto compartido, aparte.** Desde el goal «Compartir un depto desde Explorar» el enlace de un depto
+> lleva el código de quien lo comparte. La tabla separa los dos caminos: `visitas` y `registro_por_visita` son del enlace
+> genérico (/i/CÓDIGO: `invitados_por_enlace` / visitas), y `visitas_depto` (las `explorar_compartido_vista` del servidor
+> con código, sin sesión, sin robots ni pruebas), `invitados_por_depto` (los `referido_vinculado` con `via` = depto) y
+> `registro_por_depto` (invitados por depto / visitas de depto de la misma semana), de los deptos compartidos.
+> `invitados_nuevos` sigue siendo la suma. Antes del 02-nov-2026 no hay `via`: esos vínculos cuentan como enlace.
 
 ## El embudo pagado contra orgánico (HogQL)
 
