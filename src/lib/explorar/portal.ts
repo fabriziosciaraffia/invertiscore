@@ -347,7 +347,7 @@ export { AL_PRECIO_PUBLICADO };
 
 /** «4.770 deptos» (la barra de abajo y la cabecera de la lista, con el chip ✓ Comprar al lado); sin ninguno, la frase. */
 export function deptosN(n: number): string {
-  if (n === 0) return "Ninguno conviene con estos filtros";
+  if (n === 0) return `Ninguno conviene ${AL_PRECIO_PUBLICADO} con estos filtros`;
   return n === 1 ? "1 depto" : `${miles(n)} deptos`;
 }
 
@@ -479,7 +479,7 @@ export const PORTAL_COPY = {
     `No pudimos traer los deptos de ${comunas.length > 3 ? `${comunas.length} comunas` : comunas.length <= 1 ? comunas[0] ?? "" : `${comunas.slice(0, -1).join(", ")} y ${comunas[comunas.length - 1]}`}. Los demás ya están en el mapa.`,
   reintentar: "Reintentar",
   sinMapa: "El mapa no cargó, pero la lista es la misma.",
-  vacia: "Con estos filtros ninguno conviene hoy. Prueba con otra comuna, otro precio u otro pie.",
+  vacia: `Con estos filtros ninguno conviene hoy ${AL_PRECIO_PUBLICADO}. Prueba con otra comuna, otro precio u otro pie.`,
   /** Filtros en dos bloques (30-oct-2026): el depto y el financiamiento; la tasa, fija por ahora (la del motor). */
   elDepto: "El depto",
   tuFinanciamiento: "Tu financiamiento",
@@ -523,7 +523,7 @@ export const PORTAL_COPY = {
     tasa: {
       delMes: "promedio del mes",
       fuente: "Promedio de los créditos hipotecarios en UF, según el Banco Central",
-      fuenteTooltip: "Es la tasa promedio de los créditos hipotecarios en UF que publica el Banco Central. Franco la usa cada noche para calcular los que convienen.",
+      fuenteTooltip: `Es la tasa promedio de los créditos hipotecarios en UF que publica el Banco Central. Franco la usa cada noche para calcular los que convienen ${AL_PRECIO_PUBLICADO}.`,
       usarDelMes: "Usar la del mes",
       extremo: (t: number) => `${t.toLocaleString("es-CL", { minimumFractionDigits: 1, maximumFractionDigits: 2 })} %`,
     },

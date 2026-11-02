@@ -4,7 +4,7 @@
 //
 //   1 · «AL PRECIO PUBLICADO»: «conviene» y «✓ Comprar» quieren decir a ese precio, y se dice —«¿Cómo se calcula?», la
 //       bienvenida, el pop-up («Comprar 84 al precio publicado»), la barra de abajo, la lista y la tarjeta—. Todo chip de Comprar
-//       con número al precio publicado lo dice al lado.
+//       con número al precio publicado lo dice al lado, y todo el copy de Explorar que dice «conviene» dice a qué precio.
 //   2 · LOS CHIPS SON EL DE LA CASA: todo veredicto que se nombra en Explorar, la lista, Filtros y el pop-up es ChipVeredicto
 //       (`chip-v`), con su puntaje adentro; ningún chip inventado.
 //   3 · LOS NEGOCIADOS VAN APARTE: nunca se suman a «convienen» (el número, la lista, el botón de Filtros: «Ver 201 + 48 si
@@ -162,6 +162,28 @@ export async function runExplorarNegociarTier(): Promise<{ hard: number }> {
     for (const c of conNumero) if (!c.despues.startsWith("al precio publicado")) F(`1 · un chip «${texto(c.chip)}» no dice «al precio publicado» al lado: «${c.despues.slice(0, 60)}»`);
     const cab = texto(hLista.match(/<h2[^>]*data-explorar="titulo-lista"[^>]*>[\s\S]*?<\/h2>/)?.[0] ?? "");
     if (!/^2 deptos ✓ Comprar al precio publicado/.test(cab)) F(`1 · el título de la lista no dice «al precio publicado»: «${cab}»`);
+    // Todo el copy de Explorar que dice «conviene» dice a qué precio («al precio publicado», o «si negocias» en la capa): también
+    // la barra y la lista sin ninguno y el tooltip de la tasa. Fuera, con su razón: el nombre de la pestaña, el tooltip del
+    // financiamiento (copy del goal: habla de «a ti», no del precio) y el paso 1 de la bienvenida, cuyo título ya lo dice.
+    const FUERA = ["PORTAL_COPY.pestana", "PORTAL_COPY.v2.financiamiento.tooltip", "BIENVENIDA_COPY.paso1"];
+    const textos: [string, string][] = [["deptosN(0)", po.deptosN(0)]];
+    const recorrer = (o: object, ruta: string) => {
+      for (const [k, v] of Object.entries(o)) {
+        const r = `${ruta}.${k}`;
+        if (typeof v === "string") textos.push([r, v]);
+        else if (typeof v === "function") {
+          try { const x = (v as (...a: unknown[]) => unknown)(4.07, 20, 30); if (typeof x === "string") textos.push([`${r}()`, x]); } catch { /* otra firma */ }
+        } else if (v && typeof v === "object") recorrer(v, r);
+      }
+    };
+    recorrer(po.COMO_SE_CALCULA, "COMO_SE_CALCULA");
+    recorrer(po.PORTAL_COPY, "PORTAL_COPY");
+    recorrer(cn.NEGOCIAR_COPY, "NEGOCIAR_COPY");
+    recorrer(BIENVENIDA_COPY, "BIENVENIDA_COPY");
+    const conConviene = textos.filter(([, t]) => /convien/i.test(t));
+    if (conConviene.length < 6) F(`1 · el barrido del copy encontró ${conConviene.length} textos con «conviene» (se esperaban 6 o más: no se pudo medir)`);
+    for (const r of FUERA) if (!conConviene.some(([x]) => x === r)) F(`1 · la excepción ${r} ya no dice «conviene» (o no existe): sácala de la lista`);
+    for (const [r, t] of conConviene) if (!FUERA.includes(r) && !/al precio publicado|si negocias/i.test(t)) F(`1 · ${r} dice «conviene» sin «al precio publicado»: «${t.slice(0, 90)}»`);
     // En el código: todo ChipVeredicto con puntaje en Explorar y el pop-up es el de VeredictoDelPin (que dice la frase) o el del
     // negociado (que dice «Si consigues»).
     for (const p of ["src/app/explorar/explorar-cliente.tsx", "src/app/explorar/tarjeta-pin.tsx", "src/app/explorar/lista-portal.tsx", "src/app/explorar/hoja-filtros.tsx", "src/components/guia/AvisoAntesDeAnalizar.tsx"]) {
@@ -388,8 +410,8 @@ if (require.main === module) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ACTA DE MUTACIONES (02-nov-2026, meta-runner que restaura byte a byte): 61 mutaciones a este tier y 26 a los predicados
-// reescritos de otros nueve tiers, 87 de 87 en ROJO y cada una por su invariante.
+// ACTA DE MUTACIONES (02-nov-2026, meta-runner que restaura byte a byte): 66 mutaciones a este tier y 26 a los predicados
+// reescritos de otros nueve tiers, 92 de 92 en ROJO y cada una por su invariante.
 //   §1 N1-N8: «¿Cómo se calcula?», la barra del teléfono, la píldora del PC, la tarjeta, la lista (y un chip nuevo con número),
 //      la bienvenida, el pop-up y el título de la lista sin «al precio publicado».
 //   §2 N9-N13: un chip inventado en la ayuda de Filtros y en la tarjeta del negociado, el chip de la casa sin el puntaje, la
@@ -408,6 +430,9 @@ if (require.main === module) {
 //   §7 N52-N54 · §8 N55-N56 · §9 N57-N61: el perfil sin resumen, sin plazo o sin tooltip; el chip sin medir o sin el tope; la capa
 //      con cualquier tasa, el precio negociado viajando sin cuenta, la tarjeta y el mapa sin cuenta con cifras, la ruta abierta
 //      sin quitarlas.
+//   §1 N62-N66 (el mismo día, después del rebase): la barra sin ninguno, la lista vacía y el tooltip de la tasa sin «al precio
+//      publicado» (los tres se habían escapado: el §1 nombraba superficies y estas no estaban), un texto nuevo con «convienen»
+//      en el copy, y una excepción que ya no existe.
 // Dos trampas del instrumento, cazadas antes de mutar: `[^>]*` se corta en el «=>» de un onChange (el slider no se leía) y
 // `cuerpo()` solo corta en declaraciones de primer nivel (el de «contar» se tragaba «contarNegociados»). Y un `{}` como
 // candidato no prueba que la noche no calcula: `negociarCandidato` corta solo si no hay arriendo; por eso el espía (Proxy).
