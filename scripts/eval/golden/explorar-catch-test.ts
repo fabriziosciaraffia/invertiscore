@@ -235,7 +235,7 @@ export async function runExplorarTier(): Promise<{ hard: number }> {
   // ⚠ ACTA (26-oct-2026) · la vista lleva además `robot` (vista-entrada.ts › robotDeVisita; tier PAUTA-ARREGLOS §3).
   // ⚠ ACTA (28-oct-2026, Explorar como portal) · la vista de entrada sale por eventoPortalVista (los filtros y el orden); los
   // cambios los deja el navegador (los filtros se aplican ahí, sin pedir nada): EXPLORAR-PORTAL §10.
-  if (!/void capturarServidor\(eventoPortalVista\(\{ userId: user\.id, filtros, orden, n, robot: robotDeVisita\(headers\(\)\.get\("user-agent"\), headers\(\)\) \}\)\)/.test(codigo("src/app/explorar/page.tsx"))) F("8 · la página no deja «explorar_vista»");
+  if (!/void capturarServidor\(eventoPortalVista\(\{ userId: user\.id, filtros, orden, n, robot: robotDeVisita\(headers\(\)\.get\("user-agent"\), headers\(\)\), llegada: llegadaDeExplorar\(sp\.get\("desde"\)\) \}\)\)/.test(codigo("src/app/explorar/page.tsx"))) F("8 · la página no deja «explorar_vista»");
   if (!/posthog\?\.capture\(EVENTOS_PORTAL\.vista, \{ \.\.\.propsDeFiltros\(f, o\), n, fuente \}\)/.test(cli)) F("8 · cambiar un filtro no deja «explorar_vista»");
   if (textoOrigenArchivo("explorar") !== "Desde Explorar" || origenDeInforme({ avisoId: "x", desde: "explorar" }, new Set()) !== "explorar") F("8 · el archivo no dice «Desde Explorar»");
 
@@ -370,3 +370,5 @@ if (require.main === module) {
 // sin plazo cae en 25 · X2 con la lista el mapa se esconde · X3 las columnas de 25 se evalúan a 30.
 
 // ACTA DE MUTACIÓN (30-oct-2026, goal «la tasa editable en Filtros»): X1 y X2 —la ruta del mapa y el recálculo sin la tasa—, en ROJO (runner `mutar-tasa.cjs` en el scratchpad de la sesión cb466df3; cada archivo restaurado byte a byte).
+
+// ACTA DE MUTACIÓN (02-nov-2026, goal «la puerta a Explorar en los correos»): X1 —la página sin «explorar_vista», con la llegada en la vista—, en ROJO (runner `mutar-puerta.cjs` en el scratchpad de la sesión cb466df3; cada archivo restaurado byte a byte).

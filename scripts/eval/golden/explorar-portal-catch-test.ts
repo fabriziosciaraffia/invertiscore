@@ -448,7 +448,7 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
   const props = po.propsDeFiltros(fA, "flujo");
   if (props.orden !== "flujo" || props.modalidad !== "str" || props.pie !== 30 || JSON.stringify(props.comunas) !== '["Ñuñoa","Santiago"]' || props.global !== false) F(`10 · «explorar_vista» no lleva los filtros y el orden: ${JSON.stringify(props)}`);
   if (!/posthog\?\.capture\(EVENTOS_PORTAL\.vista, \{ \.\.\.propsDeFiltros\(f, o\), n, fuente \}\)/.test(cli) || !/posthog\?\.capture\(EVENTOS_PORTAL\.filtro, \{ cambiados,/.test(cli) || !/posthog\?\.capture\(EVENTOS_PORTAL\.pin,/.test(cli) || !/posthog\?\.capture\(EVENTOS_PORTAL\.planVisto,/.test(cli)) F("10 · el navegador no deja explorar_vista, explorar_filtro, explorar_pin o explorar_plan_visto");
-  if (!/void capturarServidor\(eventoPortalVista\(\{ userId: user\.id, filtros, orden, n, robot: robotDeVisita\(headers\(\)\.get\("user-agent"\), headers\(\)\) \}\)\)/.test(pag)) F("10 · la página no deja «explorar_vista» al entrar");
+  if (!/void capturarServidor\(eventoPortalVista\(\{ userId: user\.id, filtros, orden, n, robot: robotDeVisita\(headers\(\)\.get\("user-agent"\), headers\(\)\), llegada: llegadaDeExplorar\(sp\.get\("desde"\)\) \}\)\)/.test(pag)) F("10 · la página no deja «explorar_vista» al entrar");
   if (!/eventoPortal\(EVENTOS_PORTAL\.guardar,/.test(codigo("src/app/api/explorar/guardados/route.ts")) || !/eventoPortal\(EVENTOS_PORTAL\.avisame,/.test(rAv)) F("10 · guardar y «Avísame» no dejan su evento");
   if (!/if \(desdeExplorar\) waitUntil\(capturarServidor\(eventoExplorarAnaliza\(/.test(codigo("src/app/api/semanal/analizar-str/route.ts")) || !/if \(desdeExplorar\) \{\s*waitUntil\(capturarServidor\(eventoExplorarAnaliza\(/.test(codigo("src/app/api/lo-que-sigue/guia/analizar/route.ts"))) F("10 · analizar desde Explorar (renta larga o corta) no deja «explorar_analiza»");
   if (po.filtrosCambiados(G, fA).join() !== "comunas,tipologia,precio,pie_plazo,modalidad,flujo,publicados") F(`10 · qué cambió: ${po.filtrosCambiados(G, fA).join()}`);
@@ -572,3 +572,5 @@ if (require.main === module) {
 
 // ACTA DE MUTACIÓN (30-oct-2026, QA de la tasa editable): el perfil vuelve a aceptar solo cinco dormitorios → «Avísame» con
 // todas las tipologías no se puede guardar, en ROJO; restaurado.
+
+// ACTA DE MUTACIÓN (02-nov-2026, goal «la puerta a Explorar en los correos»): X2 —la página sin «explorar_vista», con la llegada en la vista—, en ROJO (runner `mutar-puerta.cjs` en el scratchpad de la sesión cb466df3; cada archivo restaurado byte a byte).

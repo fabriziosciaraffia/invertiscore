@@ -136,7 +136,9 @@ export async function runRespaldoMapaTier(): Promise<{ hard: number }> {
     // Mutación: M5 la ruta no arma el mapa de la casa.
     {
       const ruta = codigo("src/app/api/deptos/primeros/route.ts");
-      if (!/const conMapa = \(pideMapa === "1" \|\| pideMapa === "casa"\)/.test(ruta) || !/\{ grises: pideMapa === "casa" \}/.test(ruta) || !/conMapa && pideMapa === "casa" \? portadaDeptos\(\)/.test(ruta)) F("3 · la ruta no arma el mapa de la casa para el respaldo");
+      // Reescrito el 02-nov-2026 (la puerta a Explorar): el número de la noche se lee siempre que hay deptos —también para la
+      // línea bajo la selección de «Estás dentro»—, así que el mapa de la casa lo tiene por `conDeptos`, no por su variante.
+      if (!/const conMapa = \(pideMapa === "1" \|\| pideMapa === "casa"\) && conDeptos;/.test(ruta) || !/\{ grises: pideMapa === "casa" \}/.test(ruta) || !/      conDeptos \? portadaDeptos\(\) : Promise\.resolve\(null\),/.test(ruta)) F("3 · la ruta no arma el mapa de la casa para el respaldo");
       const ps = codigo("src/components/deptos/PrimeraSeleccion.tsx");
       if (!/qs\.set\("mapa", encabezado === "dentro" \? "1" : "casa"\);/.test(ps) || !/<MapaCasa datos=\{datos\.mapa\} variante=\{encabezado === "casa" \? "casa" : "seleccion"\} totalNoche=\{datos\.totalNoche \?\? null\} \/>/.test(ps)) F("3 · el respaldo de la casa no dibuja el mapa del dashboard");
     }
@@ -187,3 +189,5 @@ if (require.main === module) {
 }
 
 // ACTA DE MUTACIÓN (30-oct-2026, goal «la tasa editable en Filtros»): X5 —el respaldo no manda la tasa—, en ROJO (runner `mutar-tasa.cjs` en el scratchpad de la sesión cb466df3; cada archivo restaurado byte a byte).
+
+// ACTA DE MUTACIÓN (02-nov-2026, goal «la puerta a Explorar en los correos»): X3 y X4 —el mapa de la casa sin grises y sin el número, ahora leído por `conDeptos`—, en ROJO (runner `mutar-puerta.cjs` en el scratchpad de la sesión cb466df3; cada archivo restaurado byte a byte).
