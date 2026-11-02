@@ -33,6 +33,17 @@ export const LARGO_CODIGO = 6;
 export const CODIGO_INVITACION = /^[A-HJKMNP-Z2-9]{6}$/;
 /** Lo que queda en `user_attribution.puerta_detalle`: la cohorte del panel se corta por este prefijo. */
 export const PREFIJO_DETALLE_INVITACION = "invitacion:";
+/**
+ * EL DEPTO COMPARTIDO (02-nov-2026, lib/explorar/enlace-compartido.ts): el enlace de un depto de Explorar lleva el código de
+ * quien lo comparte. La invitación vale igual que la de /i/CÓDIGO —los dos ganan un análisis, con las mismas reglas—, pero
+ * la cuenta queda con el detalle `depto:CÓDIGO`, y así el panel separa los registros que vienen de un depto compartido de
+ * los del enlace genérico. La cookie lo recuerda con una tercera parte: `CÓDIGO.<segundos>.d`.
+ */
+export const PREFIJO_DETALLE_DEPTO = "depto:";
+export type ViaInvitacion = "enlace" | "depto";
+const MARCA_DEPTO = "d";
+/** El detalle de la puerta C según por dónde llegó la invitación. */
+export const detalleDeInvitacion = (codigo: string, via: ViaInvitacion): string => `${via === "depto" ? PREFIJO_DETALLE_DEPTO : PREFIJO_DETALLE_INVITACION}${codigo}`;
 
 /** El código de una URL o de lo que alguien tipeó, en mayúsculas; null si no es un código. */
 export function normalizarCodigo(v: unknown): string | null {
@@ -48,18 +59,18 @@ export function generarCodigo(azar: (n: number) => number): string {
   return c;
 }
 
-/** Lo que guarda la cookie: el código y cuándo se abrió el enlace (segundos). */
-export function valorCookieInvitacion(codigo: string, ahoraMs: number): string {
-  return `${codigo}.${Math.floor(ahoraMs / 1000)}`;
+/** Lo que guarda la cookie: el código, cuándo se abrió el enlace (segundos) y, si vino de un depto compartido, la marca. */
+export function valorCookieInvitacion(codigo: string, ahoraMs: number, via: ViaInvitacion = "enlace"): string {
+  return `${codigo}.${Math.floor(ahoraMs / 1000)}${via === "depto" ? `.${MARCA_DEPTO}` : ""}`;
 }
 
-export function leerCookieInvitacion(v: string | null | undefined): { codigo: string; visitaMs: number | null } | null {
+export function leerCookieInvitacion(v: string | null | undefined): { codigo: string; visitaMs: number | null; via: ViaInvitacion } | null {
   if (!v) return null;
-  const [c, t] = v.split(".");
+  const [c, t, marca] = v.split(".");
   const codigo = normalizarCodigo(c);
   if (!codigo) return null;
   const s = Number(t);
-  return { codigo, visitaMs: Number.isFinite(s) && s > 0 ? s * 1000 : null };
+  return { codigo, visitaMs: Number.isFinite(s) && s > 0 ? s * 1000 : null, via: marca === MARCA_DEPTO ? "depto" : "enlace" };
 }
 
 export const rutaInvitacion = (codigo: string) => `/i/${codigo}`;

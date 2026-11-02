@@ -13,7 +13,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import { perfilManualDeElecciones, RANGOS_UF, validarElecciones, type EleccionesDeptos } from "@/lib/deptos/respuesta";
 import { lineaDepto } from "@/lib/guia/linea-depto";
-import { DESDE_LANDING } from "./puertas-landing";
+import { DESDE_COMPARTIDO_LLEGADA, DESDE_LANDING } from "./puertas-landing";
 import { PIE_POR_DEFECTO, PLAZO_POR_DEFECTO } from "@/lib/deptos/estandar";
 import { perfilDeFiltros, urlDePortal, validarPortal, type FiltrosPortal, type ModalidadPortal, type OrdenPortal, type PinMapa, type UniversoCompacto } from "./portal";
 
@@ -22,15 +22,19 @@ const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
 // ── LA LLEGADA (landing o directo) ───────────────────────────────────────────
 /** El hero de la landing lleva a /explorar con `?desde=landing`: así se separan, en el panel por puerta, las visitas que
  *  llegan desde la landing de las que llegan directo. */
-export type OrigenExplorar = "landing" | "directo";
+// «compartido» (02-nov-2026): llegó por el enlace de un depto que alguien compartió desde Explorar (enlace-compartido.ts). Si
+// el enlace traía el código de quien lo compartió, la cuenta queda con la puerta C (`depto:CÓDIGO`, la C manda); si lo
+// compartió alguien sin cuenta, con la E y el detalle «explorar:compartido».
+export type OrigenExplorar = "landing" | "compartido" | "directo";
 // Lo de la landing vive en un módulo sin dependencias (la landing es un cliente liviano: LCP en el teléfono).
 export { DESDE_LANDING, HERO_MAPA, HREF_DESDE_LANDING, pisoDeMiles } from "./puertas-landing";
-export const origenDeLlegada = (desde: string | null | undefined): OrigenExplorar => (desde === DESDE_LANDING ? "landing" : "directo");
-/** El detalle de la puerta E en la atribución: «explorar:landing» o «explorar:directo». */
+export const origenDeLlegada = (desde: string | null | undefined): OrigenExplorar => (desde === DESDE_LANDING ? "landing" : desde === DESDE_COMPARTIDO_LLEGADA ? "compartido" : "directo");
+/** El detalle de la puerta E en la atribución: «explorar:landing», «explorar:compartido» o «explorar:directo». */
 export const detalleDeOrigen = (o: OrigenExplorar): string => `explorar:${o}`;
+const DETALLES_E = new Set(["explorar:landing", "explorar:compartido"]);
 /** Normaliza un detalle que llega de afuera (lo elegido, la candidata del navegador). */
-export const detalleExplorar = (d: string | null | undefined): string => (d === "explorar:landing" ? d : "explorar:directo");
-export const origenDeDetalle = (d: string): OrigenExplorar => (d === "explorar:landing" ? "landing" : "directo");
+export const detalleExplorar = (d: string | null | undefined): string => (d && DETALLES_E.has(d) ? d : "explorar:directo");
+export const origenDeDetalle = (d: string): OrigenExplorar => (d === "explorar:landing" ? "landing" : d === "explorar:compartido" ? "compartido" : "directo");
 
 // ── LOS SUPUESTOS SIN CUENTA ─────────────────────────────────────────────────
 export const PIE_ABIERTO = PIE_POR_DEFECTO;

@@ -15,11 +15,13 @@ export const HREF_DESDE_LANDING = `/explorar?desde=${DESDE_LANDING}`;
 /** El enlace de los correos (02-nov-2026, puerta-correos.ts) aterriza con `?desde=correo`: la vista queda con la llegada
  *  «correo», aparte de la landing y de lo directo. */
 export const DESDE_CORREO = "correo";
+/** El enlace de un depto compartido desde Explorar (02-nov-2026, enlace-compartido.ts) aterriza con `?desde=compartido`. */
+export const DESDE_COMPARTIDO_LLEGADA = "compartido";
 
-/** De dónde llegó a /explorar, por `desde`: la landing, un correo o directo. La lee la vista con y sin cuenta. */
-export type LlegadaExplorar = "landing" | "correo" | "directo";
+/** De dónde llegó a /explorar, por `desde`: la landing, un correo, un depto compartido o directo. La lee la vista con y sin cuenta. */
+export type LlegadaExplorar = "landing" | "correo" | "compartido" | "directo";
 export const llegadaDeExplorar = (desde: string | null | undefined): LlegadaExplorar =>
-  desde === DESDE_LANDING ? "landing" : desde === DESDE_CORREO ? "correo" : "directo";
+  desde === DESDE_LANDING ? "landing" : desde === DESDE_CORREO ? "correo" : desde === DESDE_COMPARTIDO_LLEGADA ? "compartido" : "directo";
 
 /** Lo revisado anoche, hacia abajo a miles: «+21.000» con 21.247 revisados. Nunca promete más de lo medido. */
 export const pisoDeMiles = (n: number) => Math.floor(n / 1000) * 1000;

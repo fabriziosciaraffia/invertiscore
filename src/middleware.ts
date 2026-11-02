@@ -2,8 +2,9 @@ import { updateSession } from "@/lib/supabase/middleware";
 import { NextRequest, NextResponse } from "next/server";
 import type { NextFetchEvent } from "next/server";
 import {
-  CABECERA_VISITA, cuentaDeCookieDeSesion, enviarVista, esCargaDePagina, esVisitaDePrueba, eventoVistaEntrada, idDeLaVisita, idPostHogDeCookies, origenDeExplorar, paginaDeEntrada, serverTimingDeVisita,
+  CABECERA_VISITA, cuentaDeCookieDeSesion, enviarVista, esCargaDePagina, esVisitaDePrueba, eventoVistaCompartido, eventoVistaEntrada, idDeLaVisita, idPostHogDeCookies, origenDeExplorar, paginaDeEntrada, serverTimingDeVisita,
 } from "@/lib/vista-entrada";
+import { codigoDeEnlaceCompartido, compartidoDeUrl } from "@/lib/explorar/enlace-compartido";
 import { COOKIE_FBC, COOKIE_PRUEBA, VIDA_FBC_S, VIDA_PRUEBA_S, cookiesDeLlegada } from "@/lib/meta/cookies";
 import { COOKIE_DISPOSITIVO, VIDA_DISPOSITIVO_S, dispositivoValido } from "@/lib/dispositivo";
 import { COOKIE_INVITACION, VIDA_COOKIE_INVITACION_S, normalizarCodigo, valorCookieInvitacion } from "@/lib/referido";
@@ -19,7 +20,9 @@ const SOLO_MEDICION = new Set(["/", "/demo", "/metodologia"]);
  * `fbclid` de la URL) aunque el pixel no alcance a cargar, y prende o apaga el modo prueba de los eventos del
  * servidor (`?meta_prueba=1|0`). Y el dispositivo (16-oct-2026, src/lib/dispositivo.ts): el id para el tope de regalos.
  * Y la invitación (16-oct-2026, la puerta C, src/lib/referido.ts): abrir «/i/CÓDIGO» deja el código 30 días, con la hora;
- * se cobra al registrarse, venga por donde venga. Si el navegador ya tiene una (o la usó: «usada»), se queda esa.
+ * se cobra al registrarse, venga por donde venga. Si el navegador ya tiene una (o la usó: «usada»), se queda esa. Desde el
+ * 02-nov-2026 también el enlace de un depto compartido desde Explorar con el código de quien lo compartió
+ * (`/explorar?…&i=CÓDIGO&desde=compartido`, lib/explorar/enlace-compartido.ts): la misma cookie, marcada «depto».
  */
 function conMedicion(request: NextRequest, res: NextResponse): NextResponse {
   const c = cookiesDeLlegada({
@@ -36,9 +39,11 @@ function conMedicion(request: NextRequest, res: NextResponse): NextResponse {
   if (!dispositivoValido(request.cookies.get(COOKIE_DISPOSITIVO)?.value)) {
     res.cookies.set(COOKIE_DISPOSITIVO, crypto.randomUUID(), { path: "/", maxAge: VIDA_DISPOSITIVO_S, sameSite: "lax", httpOnly: true, secure: request.nextUrl.protocol === "https:" });
   }
-  const invitacion = request.nextUrl.pathname.startsWith("/i/") ? normalizarCodigo(request.nextUrl.pathname.slice(3).split("/")[0]) : null;
+  const enlace = request.nextUrl.pathname.startsWith("/i/") ? normalizarCodigo(request.nextUrl.pathname.slice(3).split("/")[0]) : null;
+  const deDepto = enlace ? null : codigoDeEnlaceCompartido(request.nextUrl.pathname, request.nextUrl.search);
+  const invitacion = enlace ?? deDepto;
   if (invitacion && !request.cookies.has(COOKIE_INVITACION)) {
-    res.cookies.set(COOKIE_INVITACION, valorCookieInvitacion(invitacion, Date.now()), { path: "/", maxAge: VIDA_COOKIE_INVITACION_S, sameSite: "lax", httpOnly: true, secure: request.nextUrl.protocol === "https:" });
+    res.cookies.set(COOKIE_INVITACION, valorCookieInvitacion(invitacion, Date.now(), deDepto ? "depto" : "enlace"), { path: "/", maxAge: VIDA_COOKIE_INVITACION_S, sameSite: "lax", httpOnly: true, secure: request.nextUrl.protocol === "https:" });
   }
   return res;
 }
@@ -51,10 +56,32 @@ function conMedicion(request: NextRequest, res: NextResponse): NextResponse {
 function conVista(request: NextRequest, res: NextResponse, event: NextFetchEvent | undefined, visita: string | null, persona: { id: string } | null = null): NextResponse {
   const pagina = paginaDeEntrada(request.nextUrl.pathname);
   if (!pagina || !visita) return res;
-  // /explorar (la puerta E): la vista de la entrada es solo SIN SESIÓN; con sesión la emite la página a nombre de la cuenta.
-  if (pagina === "explorar" && persona) return res;
   const consentimiento = consentimientoDeCookie(request.headers.get("cookie"));
   const idPostHog = idPostHogDeCookies(request.cookies.getAll(), process.env.NEXT_PUBLIC_POSTHOG_KEY);
+  // EL ENLACE DE UN DEPTO COMPARTIDO (02-nov-2026, vista-entrada.ts › eventoVistaCompartido): su vista, con o sin sesión,
+  // además de la del mapa. Con sesión, a nombre de la cuenta.
+  const compartido = pagina === "explorar" ? compartidoDeUrl(request.nextUrl.searchParams) : null;
+  if (compartido && event) {
+    const ev = eventoVistaCompartido({
+      compartido,
+      uuidEvento: crypto.randomUUID(),
+      ruta: request.nextUrl.pathname,
+      search: request.nextUrl.search,
+      referer: request.headers.get("referer"),
+      userId: persona?.id ?? null,
+      consentimiento,
+      idPostHog,
+      visita,
+      esCarga: esCargaDePagina(request.headers),
+      agente: request.headers.get("user-agent"),
+      cabeceras: request.headers,
+      prueba: esVisitaDePrueba(request.nextUrl.search, request.cookies.get(COOKIE_PRUEBA)?.value),
+      cuentaDeSesion: persona?.id ?? null,
+    });
+    if (ev) event.waitUntil(enviarVista(ev).catch(() => false));
+  }
+  // /explorar (la puerta E): la vista de la entrada es solo SIN SESIÓN; con sesión la emite la página a nombre de la cuenta.
+  if (pagina === "explorar" && persona) return res;
   res.headers.append("Server-Timing", serverTimingDeVisita(idDeLaVisita({ userId: null, consentimiento, idPostHog, visita }).id));
   if (pagina === "invitacion") return res;
   const ev = eventoVistaEntrada({

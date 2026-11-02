@@ -17,11 +17,14 @@ import { canalDeUtm } from "@/lib/canal";
 import { llegadaDeExplorar, type LlegadaExplorar } from "@/lib/explorar/puertas-landing";
 import { conPermiso, type Consentimiento } from "@/lib/consentimiento";
 import { agenteDelEvento, enviarCaptura, esRobot, type DepsEnvio, type EventoServidor } from "@/lib/posthog-captura";
+import type { EnlaceCompartido } from "@/lib/explorar/enlace-compartido";
 
 // Los robots se reconocen en el único punto de envío (posthog-captura.ts); acá se reexporta para las páginas.
 export { esRobot };
 
-export type PaginaEntrada = "landing" | "deptos" | "invitacion" | "explorar";
+// «compartido» (02-nov-2026): el enlace de un depto compartido desde Explorar (/explorar?a=…&desde=compartido). No es una ruta
+// propia —paginaDeEntrada no la devuelve—: el middleware emite su vista ADEMÁS de la del mapa (eventoVistaCompartido).
+export type PaginaEntrada = "landing" | "deptos" | "invitacion" | "explorar" | "compartido";
 
 /** El evento de vista de cada página: los nombres de siempre, para que los paneles sigan leyéndolos. /explorar (29-oct-2026,
  *  la puerta E) emite la suya SOLO SIN SESIÓN, con la llegada (`llegada`: landing o directo); con sesión la emite la página a
@@ -31,6 +34,7 @@ export const EVENTO_VISTA: Record<PaginaEntrada, string> = {
   deptos: "deptos_vista",
   invitacion: "invitacion_vista",
   explorar: "explorar_abierto_vista",
+  compartido: "explorar_compartido_vista",
 };
 
 /** De dónde llegó a /explorar: la tarjeta de la landing lleva `?desde=landing` (abierto.ts › HREF_DESDE_LANDING) y, desde
@@ -199,6 +203,9 @@ export function eventoVistaEntrada(p: {
   cuentaDeSesion?: string | null;
   /** Lo propio de la página (la invitación: su código, el modo…). */
   extra?: Record<string, unknown>;
+  /** El id del EVENTO cuando no es la visita: una segunda vista de la misma carga (la del enlace compartido) lleva el mismo
+   *  id de persona que la primera pero su propio uuid; con el mismo, PostHog se quedaría con una sola. */
+  uuidEvento?: string;
 }): EventoServidor | null {
   if (!p.esCarga || esRobot(p.agente)) return null;
   const robot = robotDeVisita(p.agente, p.cabeceras);
@@ -207,7 +214,7 @@ export function eventoVistaEntrada(p: {
   return {
     event: EVENTO_VISTA[p.pagina],
     distinctId: id,
-    uuid: p.visita,
+    uuid: p.uuidEvento ?? p.visita,
     ...(p.cuentaDeSesion ? { cuentaDeSesion: p.cuentaDeSesion } : {}),
     properties: {
       pagina: p.pagina,
@@ -227,6 +234,24 @@ export function eventoVistaEntrada(p: {
       $geoip_disable: true,
     },
   };
+}
+
+/**
+ * LA VISTA DEL ENLACE DE UN DEPTO COMPARTIDO (02-nov-2026, goal «Compartir un depto desde Explorar»): toda carga de
+ * /explorar con `desde=compartido` deja `explorar_compartido_vista`, con y sin sesión, como cualquier vista de entrada —los
+ * UTM, el consentimiento, el agente; las vistas previas (WhatsApp, el rastreador de Meta) no cuentan y los escáneres salen
+ * marcados `robot`—, con el aviso, la modalidad, si traía código de invitación y si la persona ya tenía sesión. Sin sesión
+ * sale además la vista del mapa (`explorar_abierto_vista`, con la llegada «compartido»): son dos preguntas distintas, cuántos
+ * abrieron un depto compartido y cuántos llegaron al mapa sin cuenta, y cada panel lee la suya. Mismo id de persona que la
+ * visita, otro uuid de evento.
+ */
+export function eventoVistaCompartido(p: Omit<Parameters<typeof eventoVistaEntrada>[0], "pagina" | "extra" | "uuidEvento"> & { compartido: EnlaceCompartido; uuidEvento: string }): EventoServidor | null {
+  const { compartido, ...resto } = p;
+  return eventoVistaEntrada({
+    ...resto,
+    pagina: "compartido",
+    extra: { aviso_id: compartido.avisoId, modalidad: compartido.modalidad, con_invitacion: !!compartido.codigo, codigo: compartido.codigo, con_sesion: !!p.userId, llegada_explorar: "compartido" },
+  });
 }
 
 /** La cabecera que le pasa el id al navegador: `franco-visita;desc="<id>"` (se agrega a `Server-Timing`). */

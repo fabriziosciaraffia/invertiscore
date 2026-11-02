@@ -8,7 +8,8 @@
 //       /auth/callback (enlace y Google), el alta de /deptos y de la página del invitado, el ticket, el dashboard como
 //       red—, la cookie de la invitación liga la cuenta a quien invitó. Una fila por invitado (su clave es la cuenta): una
 //       cuenta, una invitación. La cuenta que ya existía queda anotada como `cuenta_previa` y no cuenta. La nueva queda
-//       con la puerta C (`fijarPuertaReferido`).
+//       con la puerta C (`fijarPuertaReferido`): `invitacion:CÓDIGO` por el enlace de siempre, `depto:CÓDIGO` si la
+//       invitación vino en el enlace de un depto compartido desde Explorar (02-nov-2026).
 //   3 · EL PREMIO (`pagarPremioReferido`): cuando el invitado, con sesión, contesta el «cuándo». Mismo dispositivo, tope de
 //       cinco, o el análisis más (60 días) y el correo a quien invitó. El lugar entre los cinco lo guarda el índice único
 //       (invitador, premio_n): dos premios a la vez no pasan de cinco.
@@ -24,7 +25,7 @@ import { nombreReal } from "@/lib/welcome";
 import type { Huella } from "@/lib/regalo-alta-servidor";
 import {
   COOKIE_INVITACION, cuentaNuevaParaInvitacion, INVITACION_USADA, VIDA_COOKIE_INVITACION_S, decidirPremio, DIAS_VIGENCIA_PREMIO_REFERIDO, FUENTE_PREMIO_REFERIDO, generarCodigo,
-  leerCookieInvitacion, nombreInvitacion, normalizarCodigo, PREFIJO_DETALLE_INVITACION, TOPE_PREMIOS_REFERIDO, type DecisionPremio, type EstadoReferido,
+  detalleDeInvitacion, leerCookieInvitacion, nombreInvitacion, normalizarCodigo, TOPE_PREMIOS_REFERIDO, type DecisionPremio, type EstadoReferido,
 } from "@/lib/referido";
 
 const RUTA = "lib/referido";
@@ -167,10 +168,12 @@ export async function vincularInvitacion(
       reportarFalloQuery(error, { ruta: RUTA, operacion: "vincular", userId: p.userId });
       return "fallo";
     }
-    if (nueva) await fijarPuertaReferido(admin, p.userId, `${PREFIJO_DETALLE_INVITACION}${invitacion.codigo}`);
+    // El detalle dice por dónde llegó (02-nov-2026): el enlace de siempre (`invitacion:CÓDIGO`) o un depto compartido desde
+    // Explorar (`depto:CÓDIGO`). El premio y sus reglas son los mismos.
+    if (nueva) await fijarPuertaReferido(admin, p.userId, detalleDeInvitacion(invitacion.codigo, inv.via));
     void capturarServidor({
       event: "referido_vinculado", distinctId: p.userId, uuid: uuidDeterminista(`referido_vinculado:${p.userId}`),
-      properties: { estado, invitador: invitacion.userId, codigo: invitacion.codigo, con_nombre: invitacion.conNombre },
+      properties: { estado, invitador: invitacion.userId, codigo: invitacion.codigo, con_nombre: invitacion.conNombre, via: inv.via },
     }).catch(() => {});
     return estado;
   } catch (e) {
