@@ -4,7 +4,8 @@
 import { unstable_cache } from "next/cache";
 import { createServiceClient } from "@/lib/supabase/service";
 import { compactar, type TasaDelMotor, type UniversoCompacto } from "./portal";
-import { universoDeLaNoche } from "./portal-servidor";
+import { negociablesDeLaNoche, universoDeLaNoche } from "./portal-servidor";
+import { compactarNegociados, type NegociadosCompactos } from "./capa-negociar";
 
 const cacheado = unstable_cache(
   async (pie: number, plazo: number): Promise<UniversoCompacto> => compactar(await universoDeLaNoche(createServiceClient(), pie, plazo)),
@@ -14,6 +15,17 @@ const cacheado = unstable_cache(
 
 export function universoDeLaNocheCacheado(pie: number, plazo: number): Promise<UniversoCompacto> {
   return cacheado(pie >= 30 ? 30 : 20, plazo >= 30 ? 30 : 25);
+}
+
+/** LA CAPA «SI NEGOCIAS» (02-nov-2026, capa-negociar.ts): la misma caché de diez minutos que el universo de la noche, por pie.
+ *  Nunca entra en el número de «convienen»: es otra entrada. */
+const negociablesCache = unstable_cache(
+  async (pie: number): Promise<NegociadosCompactos> => compactarNegociados(await negociablesDeLaNoche(createServiceClient(), pie)),
+  ["explorar-negociar-v1"],
+  { revalidate: 600 },
+);
+export function negociablesCacheados(pie: number): Promise<NegociadosCompactos> {
+  return negociablesCache(pie >= 30 ? 30 : 20);
 }
 
 const tasaCacheada = unstable_cache(

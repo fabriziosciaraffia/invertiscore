@@ -167,7 +167,8 @@ export function marcarBienvenida(a: Almacen, ahora: number = Date.now()): void {
 
 export const BIENVENIDA_COPY = {
   revisados: "Revisados por Franco",
-  titulo: "Deptos en venta que convienen como inversión hoy.",
+  // «Al precio publicado» (02-nov-2026): conviene quiere decir a ese precio, y se dice.
+  titulo: "Deptos en venta que convienen como inversión hoy, al precio publicado.",
   paso1: "Toca uno en el mapa para ver por qué conviene.",
   paso2: { antes: "Regístrate gratis y ", fuerte: "te regalamos el análisis completo", despues: " del que más te interese." },
   boton: "Ver el mapa",

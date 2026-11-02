@@ -29,10 +29,11 @@ const CLASE: Record<Veredicto, "c" | "a" | "b"> = { COMPRAR: "c", "AJUSTA SUPUES
 
 export type VarianteChipVeredicto = "normal" | "sobre-fondo";
 
-export function ChipVeredicto({ v, variante = "normal" }: { v: Veredicto; variante?: VarianteChipVeredicto }) {
+/** `puntaje` (02-nov-2026, Explorar: «✓ Comprar · 71»): el número dentro del mismo chip. Sin él, el chip de siempre. */
+export function ChipVeredicto({ v, variante = "normal", puntaje = null }: { v: Veredicto; variante?: VarianteChipVeredicto; puntaje?: number | null }) {
   return (
-    <span className={`chip-v ${CLASE[v] ?? "a"}${variante === "sobre-fondo" ? " sobre" : ""}`} data-veredicto={v}>
-      {signoVeredicto(v)} {etiquetaVeredicto(v, "frase")}
+    <span className={`chip-v ${CLASE[v] ?? "a"}${variante === "sobre-fondo" ? " sobre" : ""}`} data-veredicto={v} data-puntaje={puntaje ?? undefined}>
+      {signoVeredicto(v)} {etiquetaVeredicto(v, "frase")}{puntaje != null ? ` · ${puntaje}` : ""}
     </span>
   );
 }

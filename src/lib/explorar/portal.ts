@@ -14,6 +14,7 @@
 //   · EL PIN (C): lejos, grupos con número; con zoom, el flujo mensual («+$142 mil»); los ya analizados por la cuenta en
 //     azul con «✓ Analizado»; los aparecidos en las últimas 24 horas, «Nuevo hoy».
 // ─────────────────────────────────────────────────────────────────────────────
+import { AL_PRECIO_PUBLICADO } from "@/lib/precio-publicado";
 import { COMUNAS_DISPONIBLES } from "@/lib/comunas-disponibles";
 import { PIE_POR_DEFECTO, PLAZO_POR_DEFECTO, tasaElegidaDe } from "@/lib/deptos/estandar";
 import { MAX_COMUNAS_PERFIL, TIPOLOGIAS_DEPTOS } from "@/lib/deptos/respuesta";
@@ -46,11 +47,19 @@ export interface FiltrosPortal {
   publicados: Publicados;
   /** «Buscar en esta zona»: la caja del mapa al tocarlo. */
   zona: Caja | null;
+  /** «Si negocias el precio» (02-nov-2026, capa-negociar.ts): el tope de descuento de la capa (5 o 10 %); null = apagado. No
+   *  filtra: suma una capa aparte, que nunca entra en «convienen». */
+  negociar: TopeNegociar | null;
 }
+
+/** Los topes de «Si negocias el precio», en % del precio publicado (la noche calcula hasta el mayor: avisos/negociar.ts). */
+export const TOPES_NEGOCIAR = [5, 10] as const;
+export type TopeNegociar = (typeof TOPES_NEGOCIAR)[number];
+const topeNegociarDe = (x: unknown): TopeNegociar | null => (x != null && x !== "" && (TOPES_NEGOCIAR as readonly number[]).includes(Number(x)) ? (Number(x) as TopeNegociar) : null);
 
 /** LA VISTA GLOBAL: lo que abre /explorar sin nada en la URL. Los supuestos del número de anoche. */
 export const FILTROS_GLOBALES: FiltrosPortal = {
-  comunas: [], tipologias: [], ufMin: null, ufMax: null, pie: PIE_POR_DEFECTO, plazo: PLAZO_POR_DEFECTO, tasa: null, modalidad: "ltr", flujoPositivo: false, publicados: "todos", zona: null,
+  comunas: [], tipologias: [], ufMin: null, ufMax: null, pie: PIE_POR_DEFECTO, plazo: PLAZO_POR_DEFECTO, tasa: null, modalidad: "ltr", flujoPositivo: false, publicados: "todos", zona: null, negociar: null,
 };
 export const ORDEN_POR_DEFECTO: OrdenPortal = "puntaje";
 export const ORDENES: ReadonlyArray<{ id: OrdenPortal; etiqueta: string }> = [
@@ -108,6 +117,7 @@ export function validarPortal(f: Partial<Record<keyof FiltrosPortal, unknown>> |
     flujoPositivo: f.flujoPositivo === true,
     publicados: f.publicados === "7d" || f.publicados === "hoy" ? f.publicados : "todos",
     zona: caja(f.zona),
+    negociar: topeNegociarDe(f.negociar),
   };
 }
 
@@ -121,6 +131,7 @@ export function portalDeUrl(sp: { get(k: string): string | null }): { filtros: F
     filtros: validarPortal({
       comunas: lista("c"), tipologias: lista("t"), ufMin: sp.get("d"), ufMax: sp.get("h"), pie: sp.get("p") ?? undefined, plazo: sp.get("z") ?? undefined,
       tasa: sp.get("ta"), modalidad: sp.get("m"), flujoPositivo: sp.get("f") === "1", publicados: sp.get("pub"), zona: zona.length === 4 ? zona : null,
+      negociar: sp.get("n"),
     }),
     orden: ORDENES_OK.has(o as OrdenPortal) ? (o as OrdenPortal) : ORDEN_POR_DEFECTO,
   };
@@ -139,6 +150,7 @@ export function urlDePortal(f: FiltrosPortal, orden: OrdenPortal = ORDEN_POR_DEF
   if (f.flujoPositivo) p.set("f", "1");
   if (f.publicados !== "todos") p.set("pub", f.publicados);
   if (f.zona) p.set("zona", f.zona.join(","));
+  if (f.negociar != null) p.set("n", String(f.negociar));
   if (orden !== ORDEN_POR_DEFECTO) p.set("o", orden);
   return p.toString();
 }
@@ -313,7 +325,7 @@ export const COMO_SE_CALCULA = {
   enlace: "¿Cómo se calcula?",
   titulo: "¿Cómo se calcula?",
   estandar: (tasa: number | null) =>
-    `Cada noche Franco revisa los deptos en venta de Santiago y calcula cuáles convienen con un perfil de búsqueda estándar: pie de ${PIE_POR_DEFECTO} %, crédito a ${PLAZO_POR_DEFECTO} años y ${
+    `Cada noche Franco revisa los deptos en venta de Santiago y calcula cuáles convienen ${AL_PRECIO_PUBLICADO} con un perfil de búsqueda estándar: pie de ${PIE_POR_DEFECTO} %, crédito a ${PLAZO_POR_DEFECTO} años y ${
       tasa != null && tasa > 0 ? `tasa de ${tasaTexto(tasa)} %, el promedio` : "la tasa promedio"
     } de los créditos hipotecarios según el Banco Central.`,
   cambiar: { antes: "Puedes cambiar ese perfil en ", fuerte: "Filtros", despues: (sinCuenta: boolean) => (sinCuenta ? ", registrándote gratis con tu correo." : ".") },
@@ -322,10 +334,16 @@ export const COMO_SE_CALCULA = {
     despues: " cuando su nota de 1 a 100 llega a 70, o cuando el arriendo lo paga solo sin estar caro para su zona. Y nunca tiene señales graves, como perder mucha plata todos los meses. Algunos te piden poner un poco cada mes: ",
   },
   cuanto: (sinCuenta: boolean) => (sinCuenta ? "con tu cuenta gratis, cada tarjeta te dice cuánto." : "cada tarjeta te dice cuánto."),
+  /** EL TOOLTIP DE LA ⓘ EN EL TELÉFONO (02-nov-2026, mockup 8, estado A; decisión de Fabrizio: el primer toque lo muestra, tocarlo
+   *  abre la hoja): con el pie, el plazo y la tasa con que calcula el mapa. */
+  tooltip: (pie: number, plazo: number, tasa: number | null) => `¿Cómo se calcula? Con pie ${pie} %, ${plazo} años${tasa != null && tasa > 0 ? ` y tasa ${tasaTexto(tasa)} %` : ""}. Toca para ver cómo decide Franco.`,
   /** Con una tasa elegida (30-oct-2026), tras «Puedes cambiar ese perfil en Filtros.»: la elegida y la de hoy. */
   tuTasa: (elegida: number, hoy: number | null) => ` Ahora el mapa calcula con tu tasa, ${tasaTexto(elegida)} %${hoy != null ? `; la de hoy es ${tasaTexto(hoy)} %` : ""}.`,
   boton: "Entendido",
 } as const;
+
+/** «Al precio publicado» (02-nov-2026): la regla general vive en lib/precio-publicado.ts, sin dependencias. */
+export { AL_PRECIO_PUBLICADO };
 
 /** «4.770 deptos» (la barra de abajo y la cabecera de la lista, con el chip ✓ Comprar al lado); sin ninguno, la frase. */
 export function deptosN(n: number): string {
@@ -486,7 +504,44 @@ export const PORTAL_COPY = {
     error: "No pudimos guardar tu búsqueda. Intenta de nuevo.",
   },
   pestana: "Explorar · los deptos que convienen",
+  /** FILTROS V2 (02-nov-2026, mockup 8, estado B): cada grupo es una tarjeta con título, una línea de ayuda y una ⓘ. */
+  v2: {
+    perfil: {
+      titulo: "Aplicar mi perfil de búsqueda",
+      tooltip: "Es la búsqueda con la que Franco arma tu selección semanal. Al aplicarla, el mapa muestra solo lo que calza con ella. La editas en tu Dashboard.",
+      aplicar: "Aplicar",
+      aplicado: "Aplicado",
+    },
+    depto: {
+      ayuda: "Qué estás buscando. Cambia cuáles aparecen.",
+      tooltip: "Con esto eliges qué deptos aparecen en el mapa: dónde, de qué tamaño, a qué precio y para qué arriendo. No cambia cómo los calcula Franco.",
+    },
+    financiamiento: {
+      ayuda: "Con qué crédito lo calculamos. Cambia el flujo y el veredicto.",
+      tooltip: "Con estos números Franco calcula si cada depto te conviene a ti. No cambian cuáles aparecen: cambian el flujo mensual y el veredicto.",
+    },
+    tasa: {
+      delMes: "promedio del mes",
+      fuente: "Promedio de los créditos hipotecarios en UF, según el Banco Central",
+      fuenteTooltip: "Es la tasa promedio de los créditos hipotecarios en UF que publica el Banco Central. Franco la usa cada noche para calcular los que convienen.",
+      usarDelMes: "Usar la del mes",
+      extremo: (t: number) => `${t.toLocaleString("es-CL", { minimumFractionDigits: 1, maximumFractionDigits: 2 })} %`,
+    },
+    otros: "Otros",
+    queEs: (grupo: string) => `Qué es ${grupo}`,
+  },
 } as const;
+
+/** EL RESUMEN DEL PERFIL EN FILTROS (02-nov-2026, mockup 8): «Providencia · 2D · UF 4.000–6.000 · pie 20 % · 30 años · tasa del mes»,
+ *  antes de aplicarlo. Las comunas, de a dos («Ñuñoa y Macul»; con más, «Ñuñoa, Macul y 2 más»). */
+export function resumenPerfil(f: FiltrosPortal): string {
+  const comunas = f.comunas.length === 0 ? "Todo Gran Santiago" : f.comunas.length === 1 ? f.comunas[0] : f.comunas.length === 2 ? `${f.comunas[0]} y ${f.comunas[1]}` : `${f.comunas[0]}, ${f.comunas[1]} y ${f.comunas.length - 2} más`;
+  const tipos = f.tipologias.map((id) => (id === "4" ? "4D+" : TIPOLOGIAS_DEPTOS.find((t) => t.id === id)?.chip ?? id));
+  const tipologia = tipos.length === 0 ? null : tipos.length === 1 ? tipos[0] : `${tipos.slice(0, -1).join(", ")} y ${tipos[tipos.length - 1]}`;
+  const precio = f.ufMin != null && f.ufMax != null ? `UF ${miles(f.ufMin)}–${miles(f.ufMax)}` : f.ufMax != null ? `hasta UF ${miles(f.ufMax)}` : f.ufMin != null ? `desde UF ${miles(f.ufMin)}` : null;
+  const tasa = f.tasa == null ? "tasa del mes" : `tasa ${tasaTexto(f.tasa)} %`;
+  return [comunas, tipologia, precio, `pie ${f.pie} %`, `${f.plazo} años`, tasa, f.modalidad === "str" ? "renta corta" : null].filter(Boolean).join(" · ");
+}
 
 /** Los eventos de Explorar (PostHog). «explorar_vista» y «explorar_analiza» también salen del servidor. */
 export const EVENTOS_PORTAL = {
@@ -501,6 +556,8 @@ export const EVENTOS_PORTAL = {
   comoSeCalcula: "explorar_como_se_calcula",
   /** Eligió una tasa (30-oct-2026), en Filtros o en el pop-up: la elegida, o «la de hoy». */
   tasa: "explorar_tasa",
+  /** Movió el slider de la tasa en Filtros (02-nov-2026, Filtros v2), al soltarlo: la tasa a la que llegó. */
+  tasaSlider: "explorar_tasa_slider",
 } as const;
 
 /** «explorar_tasa» (30-oct-2026): la tasa elegida (null = la de hoy), la de hoy y dónde se eligió. */
@@ -512,7 +569,7 @@ export function propsDeTasa(elegida: number | null, hoy: number | null, donde: "
 export function propsDeFiltros(f: FiltrosPortal, orden: OrdenPortal): Record<string, unknown> {
   return {
     comunas: f.comunas, tipologias: f.tipologias, uf_min: f.ufMin, uf_max: f.ufMax, pie: f.pie, plazo: f.plazo, tasa: f.tasa, modalidad: f.modalidad,
-    flujo_positivo: f.flujoPositivo, publicados: f.publicados, zona: !!f.zona, orden, filtros_activos: filtrosActivos(f), global: esVistaGlobal(f),
+    flujo_positivo: f.flujoPositivo, publicados: f.publicados, zona: !!f.zona, negociar: f.negociar, orden, filtros_activos: filtrosActivos(f), global: esVistaGlobal(f),
   };
 }
 
@@ -528,5 +585,6 @@ export function filtrosCambiados(a: FiltrosPortal, b: FiltrosPortal): string[] {
   if (a.flujoPositivo !== b.flujoPositivo) out.push("flujo");
   if (a.publicados !== b.publicados) out.push("publicados");
   if ((a.zona ?? []).join() !== (b.zona ?? []).join()) out.push("zona");
+  if (a.negociar !== b.negociar) out.push("negociar");
   return out;
 }

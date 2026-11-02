@@ -11,6 +11,9 @@
 // las flechas del teclado. RECIÉN REGISTRADA desde un pin: la tarjeta de ese pin vuelve desbloqueada —las cifras pasan de
 // borrosas a nítidas— con la banda «Listo, ya tienes tu cuenta…» y el botón «Analizar este · usa tu regalo»; el pop-up lo
 // abre la persona, no se abre solo.
+// FILTROS V2 Y «SI NEGOCIAS» (02-nov-2026, mockup 8, estado C): el veredicto es el chip de la casa (ChipVeredicto) con su puntaje
+// y «al precio publicado». Un NEGOCIADO muestra los dos veredictos con sus chips —«Al precio publicado [Ajustar]» y «Si consigues
+// UF 2.950 (−4,2 %) [✓ Comprar · 71]»— y el botón «Analizar a UF 2.950».
 // ─────────────────────────────────────────────────────────────────────────────
 import { useEffect, useRef } from "react";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
@@ -22,6 +25,10 @@ import { capRatePct, flujoTexto, pctUno, ufPorM2 } from "@/lib/explorar/explorar
 import { PORTAL_COPY, type PinMapa } from "@/lib/explorar/portal";
 import { ImagenDepto, useCalle } from "@/components/guia/ImagenDepto";
 import { ABIERTO_COPY, BORROSO } from "@/lib/explorar/abierto";
+import { ChipVeredicto } from "@/components/analysis/shared/ChipVeredicto";
+import { conCifrasNegociado, esNegociado, NEGOCIAR_COPY, type PinNegociado } from "@/lib/explorar/capa-negociar";
+import { AL_PRECIO_PUBLICADO } from "@/lib/precio-publicado";
+import type { Veredicto } from "@/lib/types";
 
 const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
 
@@ -48,8 +55,34 @@ export function Borroso({ texto }: { texto: string }) {
   return <b className="ex-borroso" aria-hidden="true" data-explorar="borroso">{texto}</b>;
 }
 
-/** «Comprar · 84»: el veredicto (el color de la tríada) y el puntaje. */
+/** «Comprar · 84»: el veredicto (el color de la tríada) y el puntaje, en texto (la etiqueta accesible de la fila). */
 export const veredictoConPuntaje = (p: Pick<PinMapa, "veredicto" | "score">): string => `${etiquetaVeredicto(p.veredicto, "frase")}${p.score != null ? ` · ${p.score}` : ""}`;
+
+/** EL VEREDICTO DE UN DEPTO (02-nov-2026): el chip de la casa con su puntaje y, para los que convienen, «al precio publicado». */
+export function VeredictoDelPin({ p }: { p: PinMapa }) {
+  return (
+    <>
+      <ChipVeredicto v={p.veredicto as Veredicto} puntaje={p.score} /> <span className="ex-publicado" data-explorar="al-precio-publicado">{AL_PRECIO_PUBLICADO}</span>
+    </>
+  );
+}
+
+/** LOS DOS VEREDICTOS DE UN NEGOCIADO (02-nov-2026, mockup 8, estado C): al precio publicado da Ajustar; si consigue el precio
+ *  negociado, Comprar con su puntaje. Los dos, chips de la casa. */
+export function VeredictosNegociado({ p }: { p: PinNegociado }) {
+  // Sin cuenta el precio negociado no viaja: el precio y el descuento van borrosos, como el flujo del resto.
+  const siConsigues = conCifrasNegociado(p) ? NEGOCIAR_COPY.siConsigues(p.neg.p, p.neg.d) : null;
+  return (
+    <>
+      <span className="ex-linea2 ex-dos-v" data-explorar="veredicto-publicado">{NEGOCIAR_COPY.alPublicado} <ChipVeredicto v="AJUSTA SUPUESTOS" /></span>
+      {siConsigues ? (
+        <span className="ex-linea2 ex-dos-v" data-explorar="veredicto-negociado">{siConsigues.antes} <strong>{siConsigues.precio}</strong> {siConsigues.despues} <ChipVeredicto v="COMPRAR" puntaje={p.neg.s} /></span>
+      ) : (
+        <span className="ex-linea2 ex-dos-v" data-explorar="veredicto-negociado">{NEGOCIAR_COPY.consigues} <Borroso texto={NEGOCIAR_COPY.borroso.precio} /> <Borroso texto={NEGOCIAR_COPY.borroso.descuento} /> <ChipVeredicto v="COMPRAR" puntaje={p.neg.s} /></span>
+      )}
+    </>
+  );
+}
 
 export function TarjetaPin({ pines, seleccionado, uf, analizados, guardados, generando, error, alCambiar, alCerrar, alGuardar, alAnalizar, sinCuenta = false, recien = null }: {
   /** Los cercanos, el tocado primero. */
@@ -139,19 +172,19 @@ export function TarjetaPin({ pines, seleccionado, uf, analizados, guardados, gen
                     <span className="ex-ojo" data-explorar="linea">{lineaDepto(p)}</span>
                     <Corazon guardado={guardados.has(p.avisoId)} alTocar={() => alGuardar(p.avisoId)} />
                   </div>
-                  <b className="ex-precio" data-explorar="precio">UF {miles(p.precioUF)}</b>
-                  {sinCuenta ? (
+                  <b className="ex-precio" data-explorar="precio">UF {miles(p.precioUF)}{esNegociado(p) && <span className="ex-publicado"> {NEGOCIAR_COPY.publicado}</span>}</b>
+                  {esNegociado(p) ? (
+                    <VeredictosNegociado p={p} />
+                  ) : sinCuenta ? (
                     <>
-                      <span className="ex-linea2" data-explorar="veredicto"><b className="ex-ver">{veredictoConPuntaje(p)}</b></span>
+                      <span className="ex-linea2" data-explorar="veredicto"><VeredictoDelPin p={p} /></span>
                       <span className="ex-linea2" data-explorar="flujo-oculto">{ABIERTO_COPY.flujo} <Borroso texto={BORROSO.flujo} /> {ABIERTO_COPY.alMes}</span>
                       <span className="ex-linea3" data-explorar="cifras">{ABIERTO_COPY.capRate} <Borroso texto={BORROSO.capRate} /> · <Borroso texto={BORROSO.porM2} /></span>
                     </>
                   ) : (
                     <>
-                      <span className="ex-linea2" data-explorar="veredicto">
-                        <b className="ex-ver">{veredictoConPuntaje(p)}</b>
-                        {p.flujo != null && <> · <b className={neg ? "ex-neg" : undefined}>{flujoTexto(p.flujo)}</b> {PORTAL_COPY.alMes}</>}
-                      </span>
+                      <span className="ex-linea2" data-explorar="veredicto"><VeredictoDelPin p={p} /></span>
+                      {p.flujo != null && <span className="ex-linea2" data-explorar="flujo"><b className={neg ? "ex-neg" : undefined}>{flujoTexto(p.flujo)}</b> {PORTAL_COPY.alMes}</span>}
                       <span className="ex-linea3" data-explorar="cifras">
                         {[cap != null ? `${PORTAL_COPY.capRate} ${pctUno(cap)}` : null, m2 != null ? `${miles(m2)} ${PORTAL_COPY.porM2}` : null].filter(Boolean).join(" · ")}
                       </span>
@@ -165,7 +198,7 @@ export function TarjetaPin({ pines, seleccionado, uf, analizados, guardados, gen
                 <EnlaceCarga href={`/analisis/${informe}`} className="ex-cta ex-cta-enlace" data-explorar="ver-informe">{PORTAL_COPY.analizado} · {PORTAL_COPY.verInforme}</EnlaceCarga>
               ) : (
                 <button type="button" className="ex-cta" onClick={() => alAnalizar(p)} disabled={!!generando} {...botonOcupado(generando === p.avisoId)} data-explorar="analizar">
-                  {generando === p.avisoId ? GUIA.analizando : nueva && recien.regalo ? PORTAL_COPY.vuelta.analizarRegalo : PORTAL_COPY.analizar}
+                  {generando === p.avisoId ? GUIA.analizando : esNegociado(p) && conCifrasNegociado(p) ? NEGOCIAR_COPY.analizarA(p.neg.p) : nueva && recien.regalo ? PORTAL_COPY.vuelta.analizarRegalo : PORTAL_COPY.analizar}
                 </button>
               )}
               {error?.avisoId === p.avisoId && <p className="ex-error" role="alert">{error.texto}</p>}

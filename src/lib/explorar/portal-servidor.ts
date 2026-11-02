@@ -30,6 +30,7 @@ import { validarCambiosPerfil } from "@/lib/perfil-busqueda";
 import type { EventoServidor } from "@/lib/posthog-servidor";
 import type { MotivoRobot } from "@/lib/vista-entrada";
 import type { LlegadaExplorar } from "./puertas-landing";
+import { negociadoDeFila, type PinNegociado } from "./capa-negociar";
 import { comboVigente, VIDA_COMBO_MS, type ComboGuardado } from "./explorar";
 import { filasParaSonda, guardarCombos, informesDeExplorar, type FilaUniverso } from "./servidor";
 import {
@@ -51,6 +52,15 @@ export async function universoDeLaNoche(admin: SupabaseClient, pie: number, plaz
   if (error) throw new Error(`explorar_mapa: ${error.message}`);
   const filas = (Array.isArray(data) ? data : []) as FilaMapa[];
   return filas.map(([id, comuna, lat, lng, m2, dormitorios, banos, precio, score, flujo, arriendo, condicion, alta]) => pinDeFila({ id, comuna, lat, lng, m2, dormitorios, banos, precio, score, flujo, arriendo, condicion, alta }));
+}
+
+// ── LOS QUE CONVIENEN SI NEGOCIAS (02-nov-2026, capa-negociar.ts) ──────────
+/** Todo Gran Santiago, los que dan Ajustar con ese pie (a 30 años) y llegan a Comprar con un descuento que la noche guardó
+ *  (RPC explorar_negociar, hasta el tope de la noche). El tope elegido se aplica en el navegador. Un pedido. */
+export async function negociablesDeLaNoche(admin: SupabaseClient, pie: number, ahora: Date = new Date()): Promise<PinNegociado[]> {
+  const { data, error } = await admin.rpc("explorar_negociar", { comunas: [...(COMUNAS_DISPONIBLES as readonly string[])].map(comunaDeAviso), desde: desdeVentana(ahora), pie: pie >= 30 ? 30 : 20 });
+  if (error) throw new Error(`explorar_negociar: ${error.message}`);
+  return (Array.isArray(data) ? (data as unknown[][]) : []).map(negociadoDeFila);
 }
 
 // ── LO CALCULADO (otro pie, otro plazo, renta corta) ─────────────────────────

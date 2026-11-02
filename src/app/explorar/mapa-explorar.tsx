@@ -8,14 +8,20 @@
 // las últimas 24 horas dicen «Nuevo hoy» (portal.ts › textoPin); el elegido, en tinta. Tocar un grupo acerca; tocar un pin
 // abre su tarjeta; tocar el mapa la cierra. Cuando LA PERSONA mueve el mapa (no el encuadre automático), avisa la caja para
 // «Buscar en esta zona». Usa `google.maps.Marker` como el resto del sitio (AdvancedMarkerElement exige un Map ID).
+// LA CAPA «SI NEGOCIAS» (02-nov-2026, capa-negociar.ts): los negociados se agrupan y se dibujan APARTE, con el pin relleno en el
+// color del chip Ajustar (la ciruela de la tríada) y el número en blanco —nunca el rojo de los que convienen—; con zoom, el pin
+// dice el descuento («−4,2 %»). Debajo de los que convienen.
 // ─────────────────────────────────────────────────────────────────────────────
 import { useEffect, useRef } from "react";
 import { loadGoogleMaps } from "@/lib/loadGoogleMaps";
 import { francoMapStyleForTheme } from "@/lib/map-styles";
 import { agruparPines } from "@/lib/explorar/explorar";
 import { textoPin, type Caja, type PinMapa } from "@/lib/explorar/portal";
+import { NEGOCIAR_COPY, type PinNegociado } from "@/lib/explorar/capa-negociar";
 
 const ROJO = "#C8323C";
+/** El color del chip Ajustar (la ciruela de la tríada): el de los negociados, que al precio publicado dan Ajustar. */
+const CIRUELA = "#6E4560";
 const AZUL_CLARO = "#2B558F";
 const AZUL_OSCURO = "#8DB0E3";
 const TINTA = "#0F0F0F";
@@ -52,6 +58,8 @@ function iconoEtiqueta(texto: string, fondo: string, elegido: boolean, tinta: st
 
 export interface MapaExplorarProps {
   pines: PinMapa[];
+  /** La capa «Si negocias» (vacía si está apagada): aparte, en el color de Ajustar. */
+  negociados?: PinNegociado[];
   analizados: ReadonlySet<string>;
   seleccionado: string | null;
   /** Cambia cuando cambian los filtros (no la zona): el mapa se vuelve a encuadrar sobre los pines. */
@@ -69,18 +77,19 @@ export interface MapaExplorarProps {
   sinCifras?: boolean;
 }
 
-export default function MapaExplorar({ pines, analizados, seleccionado, encuadre, conZona, onSeleccionar, onTocarMapa, onMovido, onEstado, sinCifras = false }: MapaExplorarProps) {
+export default function MapaExplorar({ pines, negociados = [], analizados, seleccionado, encuadre, conZona, onSeleccionar, onTocarMapa, onMovido, onEstado, sinCifras = false }: MapaExplorarProps) {
   const divRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mapRef = useRef<any>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const marcadoresRef = useRef<any[]>([]);
   const pinesRef = useRef(pines);
+  const negociadosRef = useRef(negociados);
   const analizadosRef = useRef(analizados);
   const selRef = useRef(seleccionado);
   const cb = useRef({ onSeleccionar, onTocarMapa, onMovido, onEstado });
   const sinCifrasRef = useRef(sinCifras);
-  pinesRef.current = pines; analizadosRef.current = analizados; selRef.current = seleccionado; sinCifrasRef.current = sinCifras;
+  pinesRef.current = pines; negociadosRef.current = negociados; analizadosRef.current = analizados; selRef.current = seleccionado; sinCifrasRef.current = sinCifras;
   cb.current = { onSeleccionar, onTocarMapa, onMovido, onEstado };
   const dibujarRef = useRef<() => void>(() => {});
   const encuadrarRef = useRef<() => void>(() => {});
@@ -142,6 +151,27 @@ export default function MapaExplorar({ pines, analizados, seleccionado, encuadre
             marcador(pos, iconoGrupo(gr.n, gr.analizados === gr.n ? azul : ROJO, gr.analizados === gr.n && !esClaro() ? TINTA : PAPEL), 1, () => { propio.current = true; map.setZoom(Math.min(zoom + 2, 18)); map.panTo(pos); });
           }
         }
+        // LA CAPA «SI NEGOCIAS» (02-nov-2026): sus propios grupos y pines, en ciruela con el número en blanco, debajo de los que
+        // convienen. Con zoom, el descuento; el elegido, en tinta como cualquier elegido. Sin cuenta, puntos.
+        const negs = caja ? negociadosRef.current.filter((p) => caja.contains({ lat: p.lat, lng: p.lng })) : negociadosRef.current;
+        const negPorId = new Map(negs.map((p) => [p.avisoId, p]));
+        for (const gr of agruparPines(negs, zoom, new Set<string>(), zoom >= ZOOM_ETIQUETAS ? 44 : 56)) {
+          if (gr.n === 1) {
+            const id = gr.ids[0];
+            const p = negPorId.get(id);
+            if (!p) continue;
+            const elegido = id === sel;
+            // Sin cuenta, como el resto: puntos sin número (el descuento no viaja); el elegido, el de siempre.
+            if (sinCifrasRef.current) marcador({ lat: p.lat, lng: p.lng }, elegido ? iconoElegido() : iconoPunto(CIRUELA), elegido ? 20 : 1, () => cb.current.onSeleccionar(id));
+            else if (zoom >= ZOOM_ETIQUETAS || elegido) {
+              const texto = NEGOCIAR_COPY.pin(p.neg.d);
+              marcador({ lat: p.lat, lng: p.lng }, iconoEtiqueta(texto, elegido ? elegidoDeTema().fondo : CIRUELA, elegido, elegido ? elegidoDeTema().texto : PAPEL), elegido ? 20 : 1, () => cb.current.onSeleccionar(id), texto);
+            } else marcador({ lat: p.lat, lng: p.lng }, iconoPunto(CIRUELA), 1, () => cb.current.onSeleccionar(id));
+          } else {
+            const pos = { lat: gr.lat, lng: gr.lng };
+            marcador(pos, iconoGrupo(gr.n, CIRUELA, PAPEL), 0, () => { propio.current = true; map.setZoom(Math.min(zoom + 2, 18)); map.panTo(pos); });
+          }
+        }
         // El elegido, si quedó dentro de un grupo, igual se ve.
         const e = sel ? pinesRef.current.find((p) => p.avisoId === sel) : null;
         if (e && !(zoom >= ZOOM_ETIQUETAS) && !agruparPines(visibles, zoom, an, 56).some((gr) => gr.n === 1 && gr.ids[0] === sel)) {
@@ -196,10 +226,10 @@ export default function MapaExplorar({ pines, analizados, seleccionado, encuadre
     const map = mapRef.current;
     if (!map) return;
     dibujarRef.current();
-    const p = seleccionado ? pines.find((x) => x.avisoId === seleccionado) : null;
+    const p = seleccionado ? pines.find((x) => x.avisoId === seleccionado) ?? negociados.find((x) => x.avisoId === seleccionado) : null;
     const c = map.getBounds();
     if (p && c && !c.contains({ lat: p.lat, lng: p.lng })) { propio.current = true; map.panTo({ lat: p.lat, lng: p.lng }); }
-  }, [seleccionado, pines, analizados]);
+  }, [seleccionado, pines, negociados, analizados]);
 
   return <div ref={divRef} className="ex-mapa" data-explorar="mapa" aria-label="Mapa de los deptos que convienen" role="application" />;
 }

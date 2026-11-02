@@ -18,6 +18,11 @@
 //     para ver este depto», el corazón, «Avísame de nuevos», pie y plazo, «Solo flujo positivo» y ordenar por flujo o cap rate
 //     abren la hoja de registro (hoja-registro.tsx), y al terminar el alta se hace eso mismo, en el mismo pin
 //     (abierto.ts › accionDeVuelta). Con Google o el enlace del correo, el alta corre acá al volver.
+//   · FILTROS V2 Y «SI NEGOCIAS EL PRECIO» (02-nov-2026, mockup 8-filtros-v2-negociar.html): arriba, «Filtros», el chip «Si negocias
+//     el precio» con su interruptor (prendido dice el tope) y «¿Cómo se calcula?» —en el teléfono, la ⓘ con su tooltip; tocarlo abre
+//     la hoja—. Con el chip prendido, los que dan Ajustar al precio publicado y llegan a Comprar con un descuento van en su CAPA
+//     APARTE (capa-negociar.ts): su pin en el color de Ajustar, su cuenta («1.654 más si negocias hasta 5 %», nunca sumada a los que
+//     convienen), después de los ✓ Comprar en la lista, y los dos veredictos en la tarjeta y el pop-up con «Analizar a UF 2.950».
 // ─────────────────────────────────────────────────────────────────────────────
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
@@ -42,7 +47,13 @@ import type { RespuestaUniverso } from "@/lib/explorar/portal-servidor";
 import { TarjetaPin } from "./tarjeta-pin";
 import { ChipVeredicto, ChipVeredictoTokens } from "@/components/analysis/shared/ChipVeredicto";
 import {
-  accionDeVuelta, bienvenidaVista, EVENTOS_ABIERTO, filtrosAbiertos, marcarBienvenida, ORDENES_CON_CIFRAS,
+  capaNegociarDisponible, conCifrasNegociado, descompactarNegociados, esNegociado, EVENTO_NEGOCIAR, filtrarNegociados, NEGOCIAR_COPY, ordenarNegociados, propsNegociar,
+  TOPE_NEGOCIAR_POR_DEFECTO, type NegociadosCompactos, type PinNegociado, type TopeNegociar,
+} from "@/lib/explorar/capa-negociar";
+import { AL_PRECIO_PUBLICADO } from "@/lib/precio-publicado";
+import { Info } from "./info";
+import {
+  accionDeVuelta, bienvenidaVista, EVENTOS_ABIERTO, filtrosAbiertos, marcarBienvenida, ORDENES_CON_CIFRAS, PIE_ABIERTO,
   type MotivoRegistro, type OrigenExplorar, type PedidoRegistro,
 } from "@/lib/explorar/abierto";
 import { claveDeDestino } from "@/lib/deptos/respuesta";
@@ -163,6 +174,12 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
   const [recien, setRecien] = useState<{ avisoId: string; regalo: boolean } | null>(null);
   const vivo = useRef(true);
   const uf = cuenta.finanzas.uf;
+  // LA CAPA «SI NEGOCIAS» (02-nov-2026): por pie, lo que guardó la noche; el último tope elegido vuelve al prender el chip.
+  const [negociados, setNegociados] = useState<Record<number, PinNegociado[]>>({});
+  const negociadosRef = useRef(negociados);
+  negociadosRef.current = negociados;
+  const enCursoNeg = useRef(new Set<number>());
+  const ultimoTope = useRef<TopeNegociar>(inicial.filtros.negociar ?? TOPE_NEGOCIAR_POR_DEFECTO);
 
   // ── el universo ──
   const universoPara = useCallback((f: FiltrosPortal, us: Record<string, Universo>, parcial = false): PinMapa[] | null => {
@@ -237,6 +254,24 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
     }
   }, []);
 
+  /** Trae la capa «Si negocias» de un pie (con la noche: pie 20 % o 30 %, 30 años, la tasa del motor), una vez. */
+  const asegurarNegociados = useCallback(async (f: FiltrosPortal) => {
+    if (f.negociar == null || !capaNegociarDisponible(f)) return;
+    const pie = sinCuentaRef.current ? PIE_ABIERTO : f.pie;
+    if (negociadosRef.current[pie] || enCursoNeg.current.has(pie)) return;
+    enCursoNeg.current.add(pie);
+    try {
+      const res = await fetch(sinCuentaRef.current ? "/api/explorar/abierto/negociar" : `/api/explorar/negociar?p=${pie}`, { cache: "default" });
+      if (!res.ok) throw new Error(String(res.status));
+      const d = (await res.json()) as { negociados: NegociadosCompactos };
+      if (vivo.current) setNegociados((ns) => ({ ...ns, [pie]: descompactarNegociados(d.negociados) }));
+    } catch {
+      // Sin la capa, el mapa sigue con los que convienen: la capa es aparte.
+    } finally {
+      enCursoNeg.current.delete(pie);
+    }
+  }, []);
+
   // El universo de la vista con que se entró: el de la noche, con la página quieta (el LCP es el mapa quieto); uno calculado,
   // enseguida. El mapa interactivo, también con la página quieta.
   useEffect(() => {
@@ -245,6 +280,7 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
     const cancelar = cuandoLaPaginaEsteQuieta(() => {
       setMapaListo(true);
       if (universoDeLaNoche(inicial.filtros)) void asegurar(inicial.filtros);
+      void asegurarNegociados(inicial.filtros);
     });
     return () => { vivo.current = false; cancelar(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -254,6 +290,16 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
   const fallidasAqui = fallidas && fallidas.clave === claveUniverso(filtros) ? fallidas.comunas.filter((c) => comunasACalcular(filtros).includes(c)) : [];
   const universo = universoPara(filtros, universos) ?? (progreso == null && fallidasAqui.length > 0 ? universoPara(filtros, universos, true) : null);
   const visibles = useMemo(() => (universo ? ordenar(filtrar(universo, filtros).filter((p) => !caidos.includes(p.avisoId)), orden, uf) : []), [universo, filtros, orden, uf, caidos]);
+  // La capa «Si negocias»: los de la noche con este pie, que pasan los filtros y el tope, sin los que ya convienen. Aparte siempre.
+  const capa = filtros.negociar != null && capaNegociarDisponible(filtros);
+  const negociadosDelPie = negociados[sinCuenta ? PIE_ABIERTO : filtros.pie];
+  const idsComprar = useMemo(() => new Set((universo ?? []).map((p) => p.avisoId)), [universo]);
+  const visiblesNeg = useMemo(
+    () => (capa && negociadosDelPie && filtros.negociar != null ? ordenarNegociados(filtrarNegociados(negociadosDelPie, filtros, filtros.negociar, idsComprar).filter((p) => !caidos.includes(p.avisoId))) : []),
+    [capa, negociadosDelPie, filtros, idsComprar, caidos],
+  );
+  /** Los dos, para la tarjeta (se desliza entre los cercanos de cualquiera de las dos capas). */
+  const todos = useMemo((): PinMapa[] => (visiblesNeg.length ? [...visibles, ...visiblesNeg] : visibles), [visibles, visiblesNeg]);
   // Antes de que llegue el universo, el número que contó el servidor (solo para los filtros con que se entró).
   const total = universo ? visibles.length : filtros === inicial.filtros ? inicial.n : null;
   const calculando = !universo && (progreso != null || !universoDeLaNoche(filtros));
@@ -262,6 +308,15 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
   const contar = useCallback((f: FiltrosPortal): number | null => {
     const u = universoPara(f, universosRef.current);
     return u ? filtrar(u, f).filter((p) => !caidos.includes(p.avisoId)).length : null;
+  }, [universoPara, caidos]);
+  /** Cuántos sumaría la capa «Si negocias» con unos filtros (el botón «Ver 201 + 48 si negocias»): 0 si no hay capa con ellos,
+   *  null mientras llega. */
+  const contarNegociados = useCallback((f: FiltrosPortal): number | null => {
+    if (f.negociar == null || !capaNegociarDisponible(f)) return 0;
+    const ns = negociadosRef.current[sinCuentaRef.current ? PIE_ABIERTO : f.pie];
+    if (!ns) return null;
+    const u = universoPara(f, universosRef.current);
+    return filtrarNegociados(ns, f, f.negociar, new Set((u ?? []).map((p) => p.avisoId))).filter((p) => !caidos.includes(p.avisoId)).length;
   }, [universoPara, caidos]);
 
   // ── los cambios ──
@@ -272,17 +327,21 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
     posthog?.capture(EVENTOS_PORTAL.vista, { ...propsDeFiltros(f, o), n, fuente });
 
   /** Aplica unos filtros: la URL, el universo que falte y la medición. No toca el perfil. */
-  function aplicar(f0: FiltrosPortal, fuente: "filtros" | "mi_busqueda" | "zona" | "limpiar") {
+  function aplicar(f0: FiltrosPortal, fuente: "filtros" | "mi_busqueda" | "zona" | "limpiar" | "negociar") {
     // Sin cuenta, el financiamiento por defecto, y sin «Solo flujo positivo» (piden registro).
     const f = sinCuenta ? filtrosAbiertos(f0) : f0;
     const cambiados = filtrosCambiados(filtros, f);
     // «explorar_tasa» (30-oct-2026): eligió otra tasa en Filtros (o volvió a la de hoy).
     if (fuente === "filtros" && f.tasa !== filtros.tasa) posthog?.capture(EVENTOS_PORTAL.tasa, propsDeTasa(f.tasa, inicial.tasa?.tasa ?? null, "filtros"));
+    // «explorar_negociar» (02-nov-2026): prendió o apagó la capa en Filtros, o cambió el tope (el chip lo mide alternarNegociar).
+    if (fuente === "filtros" && f.negociar !== filtros.negociar) posthog?.capture(EVENTO_NEGOCIAR, propsNegociar(f.negociar, "filtros", contarNegociados(f)));
+    if (f.negociar != null) ultimoTope.current = f.negociar;
     setFiltros(f);
     setSel(null);
     setZonaPendiente(null);
     ponerEnUrl(f, orden);
     void asegurar(f);
+    void asegurarNegociados(f);
     const n = contar(f);
     if (fuente === "filtros" && cambiados.length) posthog?.capture(EVENTOS_PORTAL.filtro, { cambiados, ...propsDeFiltros(f, orden), n });
     vistaCambio(f, orden, fuente, n);
@@ -293,6 +352,14 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
     setOrden(o);
     ponerEnUrl(filtros, o);
     vistaCambio(filtros, o, "orden", universo ? visibles.length : null);
+  }
+  /** EL CHIP «SI NEGOCIAS EL PRECIO» (02-nov-2026): prende la capa con el último tope (5 % la primera vez) o la apaga. Sin capa con
+   *  estos supuestos (otra tasa, pie, plazo o renta corta), abre Filtros, que lo dice. */
+  function alternarNegociar() {
+    if (!capaNegociarDisponible(filtros)) { setHojaFiltros(true); return; }
+    const f = { ...filtros, negociar: filtros.negociar == null ? ultimoTope.current : null };
+    posthog?.capture(EVENTO_NEGOCIAR, propsNegociar(f.negociar, "chip", contarNegociados(f)));
+    aplicar(f, "negociar");
   }
   function miBusqueda() {
     setHojaFiltros(false);
@@ -327,7 +394,7 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
     // cercanos ocupen la red (QA en local, 29-oct-2026: el chunk quedaba detrás de ocho imágenes y la hoja tardaba segundos).
     if (sinCuenta) void import("./hoja-registro");
     posthog?.capture(EVENTOS_PORTAL.pin, { aviso_id: avisoId, modalidad: filtros.modalidad, ...(sinCuenta ? { sin_cuenta: true, llegada_explorar: origen } : {}) });
-    setCarrusel(cercanos(visibles, avisoId).map((p) => p.avisoId));
+    setCarrusel(cercanos(todos, avisoId).map((p) => p.avisoId));
     setSel(avisoId);
     setError(null);
   }
@@ -382,7 +449,8 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
         const res = await fetch(corta ? "/api/semanal/analizar-str" : "/api/lo-que-sigue/guia/analizar", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ avisoId: it.avisoId, piePct: combinacion.piePct, plazoAnios: combinacion.plazoAnios, tasaPct, explorar: true, ...(igual ? { igual: true } : {}) }),
+          // Un negociado (02-nov-2026): el precio negociado y el tope elegido; la ruta lo acepta con el piso del tope.
+          body: JSON.stringify({ avisoId: it.avisoId, piePct: combinacion.piePct, plazoAnios: combinacion.plazoAnios, tasaPct, explorar: true, ...(esNegociado(it) && conCifrasNegociado(it) && filtros.negociar != null ? { precioNegociadoUF: it.neg.p, topeNegociar: filtros.negociar } : {}), ...(igual ? { igual: true } : {}) }),
         });
         if (res.status === 409) { await new Promise((ok) => setTimeout(ok, ESPERA_EN_CURSO_MS)); continue; }
         const d = (await res.json().catch(() => ({}))) as { id?: string; error?: string; estado?: string; porQue?: string | null; publicacion?: string | null };
@@ -446,7 +514,7 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [universo]);
 
-  const porId = useMemo(() => new Map((universo ?? []).map((p) => [p.avisoId, p])), [universo]);
+  const porId = useMemo(() => new Map<string, PinMapa>(todos.map((p) => [p.avisoId, p])), [todos]);
 
   // ── LA VUELTA DEL ALTA (con cuenta) ──
   // Con Google o el enlace del correo, la URL trae `entro`: el alta corre acá (la misma de /deptos), se espera el regalo y se
@@ -519,13 +587,21 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
     <div className="ex" data-explorar="cliente" data-vista={vista} data-calculando={calculando ? "1" : undefined}>
       {/* ── la fila de arriba: «Filtros» y, a la derecha y en texto, «¿Cómo se calcula?» (30-oct-2026) ── */}
       <ChipVeredictoTokens />
+      {/* La barra de arriba (02-nov-2026, mockup 8, estado A): «Filtros», el chip «Si negocias el precio» con su interruptor —prendido
+          dice el tope— y, a la derecha, «¿Cómo se calcula?»: en el PC con el texto, en el teléfono la ⓘ con su tooltip (tocarlo abre
+          la hoja). */}
       <div className="ex-barra" role="toolbar" aria-label="Filtros">
         <button type="button" className="ex-boton" data-activo={etiquetaFiltros(filtros) !== PORTAL_COPY.filtros ? "1" : undefined} data-explorar="filtros" onClick={() => setHojaFiltros(true)}>
           <span aria-hidden="true">☰</span> {etiquetaFiltros(filtros)}
         </button>
+        <button type="button" role="switch" aria-checked={capa} className="ex-chip-neg" data-on={capa ? "1" : undefined} data-sin-capa={capaNegociarDisponible(filtros) ? undefined : "1"} data-explorar="negociar-chip" onClick={alternarNegociar}>
+          <span>{capa && filtros.negociar != null ? NEGOCIAR_COPY.chipOn(filtros.negociar) : NEGOCIAR_COPY.chip}</span>
+          <span className="ex-sw" aria-hidden="true" />
+        </button>
         <button type="button" className="ex-como" data-explorar="como-se-calcula" onClick={abrirCalculo}>
           <span className="ex-como-i" aria-hidden="true">ⓘ</span> {COMO_SE_CALCULA.enlace}
         </button>
+        <Info clase="ex-como-movil" marca="como-se-calcula-i" etiqueta={COMO_SE_CALCULA.enlace} texto={COMO_SE_CALCULA.tooltip(filtros.pie, filtros.plazo, filtros.tasa ?? inicial.tasa?.tasa ?? null)} alTocarTooltip={abrirCalculo} />
       </div>
       {aviso && (
         <p className="ex-aviso" role="status" data-explorar="aviso">
@@ -547,6 +623,7 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
           {mapaListo && mapa !== "fallo" && (
             <MapaExplorar
               pines={visibles}
+              negociados={visiblesNeg}
               analizados={analizadosSet}
               seleccionado={tarjeta ? sel : null}
               encuadre={`${claveUniverso(filtros)}|${filtros.comunas.join()}|${filtros.tipologias.join()}|${filtros.ufMin}|${filtros.ufMax}|${filtros.flujoPositivo}|${filtros.publicados}|${universo ? "1" : "0"}`}
@@ -588,12 +665,16 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
               <button type="button" className="ex-hoja" data-explorar="hoja" onClick={() => setVista("lista")}>
                 <span className="ex-asa" aria-hidden="true" />
                 <span className="ex-hoja-fila">
-                  <span className="ex-hoja-t" data-explorar="titulo-hoja">{numeroAbajo}{conChip && <> <ChipVeredicto v="COMPRAR" /></>}</span>
+                  <span className="ex-hoja-cuentas">
+                    <span className="ex-hoja-t" data-explorar="titulo-hoja">{numeroAbajo}{conChip && <> <ChipVeredicto v="COMPRAR" /> <span className="ex-publicado" data-explorar="al-precio-publicado">{AL_PRECIO_PUBLICADO}</span></>}</span>
+                    {capa && visiblesNeg.length > 0 && filtros.negociar != null && <span className="ex-hoja-neg" data-explorar="cuenta-negociar">{NEGOCIAR_COPY.mas(visiblesNeg.length, filtros.negociar)}</span>}
+                  </span>
                   <span className="ex-hoja-ver">{PORTAL_COPY.verLista}</span>
                 </span>
               </button>
               <button type="button" className="ex-pildora-lista" data-explorar="ver-lista" onClick={() => setVista("lista")}>
-                {conChip ? pildoraLista(total!) : `${PORTAL_COPY.verLista} · ${numeroAbajo}`}{conChip && <> <ChipVeredicto v="COMPRAR" variante="sobre-fondo" /></>}
+                {conChip ? pildoraLista(total!) : `${PORTAL_COPY.verLista} · ${numeroAbajo}`}{conChip && <> <ChipVeredicto v="COMPRAR" variante="sobre-fondo" /> <span className="ex-publicado">{AL_PRECIO_PUBLICADO}</span></>}
+                {capa && visiblesNeg.length > 0 && filtros.negociar != null && <>{" "}<span className="ex-pildora-neg" data-explorar="cuenta-negociar-pc">· {NEGOCIAR_COPY.mas(visiblesNeg.length, filtros.negociar)}</span></>}
               </button>
             </>
           )}
@@ -603,6 +684,8 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
         {vista === "lista" && (
           <ListaPortal
             pines={visibles}
+            negociados={visiblesNeg}
+            tope={capa ? filtros.negociar : null}
             total={total}
             calculando={calculando}
             orden={orden}
@@ -623,9 +706,11 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
         <HojaFiltros
           filtros={filtros}
           tasa={inicial.tasa}
-          miBusqueda={sinCuenta ? null : { activa: enMiBusqueda, alUsar: miBusqueda }}
+          miBusqueda={sinCuenta ? null : { activa: enMiBusqueda, alUsar: miBusqueda, perfil: cuenta.miBusqueda }}
           contar={contar}
-          asegurar={(f) => void asegurar(f)}
+          contarNegociados={contarNegociados}
+          asegurar={(f) => { void asegurar(f); void asegurarNegociados(f); }}
+          alMoverTasa={(t) => posthog?.capture(EVENTOS_PORTAL.tasaSlider, propsDeTasa(t, inicial.tasa?.tasa ?? null, "filtros"))}
           alAplicar={(f) => { setHojaFiltros(false); aplicar(f, "filtros"); }}
           alCerrar={() => setHojaFiltros(false)}
           alPedirRegistro={sinCuenta ? (motivo, f) => {
@@ -654,6 +739,7 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
       {confirmar && (
         <AvisoAntesDeAnalizar
           depto={{ comuna: confirmar.it.comuna, tipologia: confirmar.it.tipologia, m2: confirmar.it.m2, precioUF: confirmar.it.precioUF, condicion: confirmar.it.condicion }}
+          negociado={esNegociado(confirmar.it) && conCifrasNegociado(confirmar.it) ? { precioUF: confirmar.it.neg.p, descuentoPct: confirmar.it.neg.d, score: confirmar.it.neg.s } : null}
           modalidad={filtros.modalidad}
           combinacion={{ piePct: filtros.pie, plazoAnios: filtros.plazo, tasaPct: filtros.tasa }}
           finanzas={{ tasa: cuenta.finanzas.tasa, uf: cuenta.finanzas.uf, arriendo: confirmar.it.arriendo }}
@@ -664,7 +750,7 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
           rutaCompra={compras(confirmar.it.avisoId).pack.href}
           analizando={!!confirmar.analizando}
           planLinea={plan}
-          cambio={filtros.modalidad === "str" ? null : { recalcular: (combo) => recalcular(confirmar.it.avisoId, combo), base: { veredicto: confirmar.it.veredicto, score: confirmar.it.score, flujo: confirmar.it.flujo } }}
+          cambio={filtros.modalidad === "str" || esNegociado(confirmar.it) ? null : { recalcular: (combo) => recalcular(confirmar.it.avisoId, combo), base: { veredicto: confirmar.it.veredicto, score: confirmar.it.score, flujo: confirmar.it.flujo } }}
           alAnalizar={(eleccion) => void analizar(confirmar.it, eleccion)}
           alCancelar={() => { if (!confirmar.analizando) setConfirmar(null); }}
           avisoId={confirmar.it.avisoId}

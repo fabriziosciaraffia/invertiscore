@@ -35,6 +35,8 @@ import { COMPRA_DEPTO, nombreDelDepto, type ComprasDelDepto } from "@/lib/guia/c
 import { ModalPlausibilidad } from "@/components/formulario-v4/ModalPlausibilidad";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { AVISO_ANALIZAR, bloqueaAnalizar, derivadosAviso, lineaVeredicto, textoUso, type FinanzasAviso, type UsoAnalisis } from "@/lib/guia/aviso-analizar";
+import { NEGOCIADO_COPY } from "@/lib/precio-publicado";
+import { ChipVeredicto } from "@/components/analysis/shared/ChipVeredicto";
 import type { CondicionDepto } from "@/lib/guia/linea-depto";
 import { ImagenDepto, useCalle } from "@/components/guia/ImagenDepto";
 import "@/components/formulario-v4/wizard-v4.css";
@@ -45,7 +47,12 @@ export interface EleccionAnalizar {
   guardarPerfil: boolean;
 }
 
-export function AvisoAntesDeAnalizar({ avisoId = null, depto, combinacion, finanzas, uso, rutaCompra, alAnalizar, alCancelar, modalidad = "ltr", analizando = false, compras = null, ticketConSaldo = null, cambio = null, ticketVence = null, planLinea = null }: {
+export function AvisoAntesDeAnalizar({ avisoId = null, depto, combinacion, finanzas, uso, rutaCompra, alAnalizar, alCancelar, modalidad = "ltr", analizando = false, compras = null, ticketConSaldo = null, cambio = null, ticketVence = null, planLinea = null, negociado = null }: {
+  /** UN NEGOCIADO DE EXPLORAR (02-nov-2026, mockup 8): el precio que hay que conseguir, el descuento y el puntaje a ese precio. La
+   *  tarjeta dice los dos veredictos («Al precio publicado [Ajustar]» y «Si consigues UF 2.950 (−4,2 %) [✓ Comprar · 71]»), el
+   *  dividendo y el retorno son a ese precio y el botón dice «Analizar a UF 2.950». Sin «Cambiar»: la noche lo calculó con este
+   *  pie y este plazo. */
+  negociado?: { precioUF: number; descuentoPct: number; score: number | null } | null;
   /** El aviso (30-oct-2026, recorrido real de Fabrizio): su foto de la calle, o el mapa chico, va a la izquierda de la tarjeta
    *  gris, en todas partes. Sin él, la tarjeta sola. */
   avisoId?: string | null;
@@ -111,7 +118,7 @@ export function AvisoAntesDeAnalizar({ avisoId = null, depto, combinacion, finan
     direccion: nombreDelDepto(depto),
     modalidad: modalidad === "str" ? AVISO_ANALIZAR.modalidadCorta : AVISO_ANALIZAR.modalidad,
     // Los derivados siguen a la combinación elegida; el pop-up muestra el dividendo y el retorno bruto (el mockup).
-    derivados: derivadosAviso(depto, combo, { ...finanzas, tasa: tasaVista }),
+    derivados: derivadosAviso(negociado ? { ...depto, precioUF: negociado.precioUF } : depto, combo, { ...finanzas, tasa: tasaVista }),
   };
   const derivados = resumen.derivados.filter((x) => x.label === "Dividendo" || x.label === "Retorno bruto");
   // Qué incluye el informe: en renta corta, los dos casos (27-oct-2026): si no da, no gasta y ve la publicación igual.
@@ -120,7 +127,8 @@ export function AvisoAntesDeAnalizar({ avisoId = null, depto, combinacion, finan
   const linea = editando ? null : lineaVeredicto(cambio ? (cambiada && recal ? recal : cambio.base) : null);
   // NUNCA SE COBRA SIN EL VEREDICTO RECALCULADO: con otra combinación, hasta que llegue (aviso-analizar.ts).
   const bloqueado = bloqueaAnalizar({ sin, esBase: !cambiada, recalculando, evaluacion: recal });
-  const analizar = da?.empeora ? EXPLORAR_COPY.analizarIgual : AVISO_ANALIZAR.analizar;
+  const analizar = negociado ? NEGOCIADO_COPY.analizarA(negociado.precioUF) : da?.empeora ? EXPLORAR_COPY.analizarIgual : AVISO_ANALIZAR.analizar;
+  const siConsigues = negociado ? NEGOCIADO_COPY.siConsigues(negociado.precioUF, negociado.descuentoPct) : null;
 
   const conTicket = sin && !!compras?.pack.ticket;
   const tipos = useCalle(avisoId ? [avisoId] : []);
@@ -134,7 +142,12 @@ export function AvisoAntesDeAnalizar({ avisoId = null, depto, combinacion, finan
       {avisoId && <ImagenDepto avisoId={avisoId} tipo={tipos[avisoId]} clase="av-img" />}
       <div className="av-tarjeta">
         {sin ? <p className="av-nombre" data-aviso="depto">{resumen.direccion}</p> : <h2 id="modal-plausibilidad-titulo" className="av-nombre" data-aviso="depto">{resumen.direccion}</h2>}
-        {linea && <span className="av-linea" data-aviso="veredicto">{linea}</span>}
+        {negociado && siConsigues ? (
+          <>
+            <span className="av-linea" data-aviso="veredicto-publicado">{NEGOCIADO_COPY.alPublicado} <ChipVeredicto v="AJUSTA SUPUESTOS" /></span>
+            <span className="av-linea" data-aviso="veredicto-negociado">{siConsigues.antes} <b>{siConsigues.precio}</b> {siConsigues.despues} <ChipVeredicto v="COMPRAR" puntaje={negociado.score} /></span>
+          </>
+        ) : linea && <span className="av-linea" data-aviso="veredicto">{linea}</span>}
         <span className={modalidad === "str" ? "av-incluye av-incluye-corta" : "av-incluye"} data-aviso="incluye">{incluye.antes}<b>{incluye.fuerte}</b>{incluye.despues}</span>
       </div>
       </div>

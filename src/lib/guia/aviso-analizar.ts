@@ -14,6 +14,7 @@ import { TRES_COPY, TRES_PRECIO_CLP } from "@/lib/tres-analisis";
 import { PACK_PRECIO_CLP, PACK_UNITARIO_CLP } from "@/lib/lo-que-sigue/oferta-pack";
 import { REGALO_COPY } from "@/lib/regalo-alta";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
+import { AL_PRECIO_PUBLICADO } from "@/lib/precio-publicado";
 
 const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
 
@@ -61,10 +62,11 @@ export const AVISO_ANALIZAR = {
 // recálculo son los de Explorar (lib/explorar/explorar.ts, una sola API desde el 23-oct-2026); acá viven el copy del
 // cuerpo, la línea del veredicto y la regla de NUNCA COBRAR SIN EL VEREDICTO RECALCULADO. Lo fija el tier PUERTA-B-MOCKUPS.
 
-/** «Comprar 88 · flujo +$88.363 te queda» (la segunda línea de la tarjeta gris). */
+/** «Comprar 88 al precio publicado · flujo +$88.363 te queda» (la segunda línea de la tarjeta gris). «Al precio publicado»
+ *  (02-nov-2026, goal «Filtros v2 y negociar»): el veredicto es a ese precio, y se dice. */
 export function lineaVeredicto(e: { veredicto: string | null | undefined; score: number | null | undefined; flujo: number | null | undefined } | null): string | null {
   if (!e?.veredicto) return null;
-  const v = `${etiquetaVeredicto(e.veredicto, "frase")}${e.score != null ? ` ${e.score}` : ""}`;
+  const v = `${etiquetaVeredicto(e.veredicto, "frase")}${e.score != null ? ` ${e.score}` : ""} ${AL_PRECIO_PUBLICADO}`;
   return e.flujo == null ? v : `${v} · flujo ${textoFlujo(e.flujo)}`;
 }
 
