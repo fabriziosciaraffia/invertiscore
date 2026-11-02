@@ -141,10 +141,38 @@ export interface DatosCorreoSemanal {
   explorar?: PuertaExplorarCorreo | null;
 }
 
-/** La línea de la puerta a Explorar, con su enlace (la misma en el semanal, el correo del día y el aviso inmediato). */
+/**
+ * LA CARD DE LA TRÍADA (02-nov-2026, pedido de Fabrizio: «es casi un CTA para llevar a Explorar; falta destacarlo», y después
+ * «todo el texto que alude a Explorar en una card de tríada»): la línea y «Míralos todos en el mapa» juntas, sobre el
+ * degradado azul → ciruela → rojo del hero de la landing y del botón «Explorar los N de Santiago» del dashboard, con los
+ * colores de la tríada (COLOR_VEREDICTO). La línea en blanco (pasa AA sobre los tres: 5,3 a 7,8) y el enlace como botón
+ * blanco con letra en tinta. Donde el correo no pinta degradados (Outlook de escritorio) queda el azul de la tríada (`bgcolor`).
+ * La misma en el semanal, el correo del día, el aviso inmediato y el vacío.
+ */
+const DEGRADADO_TRIADA = `linear-gradient(100deg, ${COLOR_VEREDICTO.COMPRAR} 0%, ${COLOR_VEREDICTO["AJUSTA SUPUESTOS"]} 52%, ${COLOR_VEREDICTO["BUSCAR OTRA"]} 100%)`;
+function cardTriada(e: PuertaExplorarCorreo, arriba: number, abajo: number): string {
+  return `<tr><td style="padding: ${arriba}px 0 ${abajo}px 0;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+    <td bgcolor="${COLOR_VEREDICTO.COMPRAR}" style="padding: 20px 22px; border-radius: 16px; background-color: ${COLOR_VEREDICTO.COMPRAR}; background-image: ${DEGRADADO_TRIADA};" data-correo="explorar">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr><td style="padding: 0 0 14px 0; font-family: ${FUENTE_UI}; font-size: 16px; line-height: 1.5; font-weight: 600; color: #FFFFFF;" data-correo="explorar-linea">${escaparHtml(e.linea)}</td></tr>
+        <tr><td>
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+            <td bgcolor="#FFFFFF" style="border-radius: 999px; background-color: #FFFFFF;" data-correo="explorar-boton">
+              <a href="${e.url}" style="display: inline-block; padding: 12px 24px; font-family: ${FUENTE_UI}; font-size: 15px; font-weight: 600; color: ${TINTA}; text-decoration: none; border-radius: 999px;" data-correo="explorar-enlace">${escaparHtml(PUERTA_EXPLORAR.enlace)}</a>
+            </td>
+          </tr></table>
+        </td></tr>
+      </table>
+    </td>
+  </tr></table>
+</td></tr>`;
+}
+
+/** La puerta a Explorar en el semanal, el correo del día y el aviso inmediato: la card de la tríada. */
 function lineaPuerta(e: PuertaExplorarCorreo | null | undefined): string {
   if (!e) return "";
-  return `<tr><td style="padding: 2px 0 18px 0; font-family: ${FUENTE_UI}; font-size: 15px; line-height: 1.6; color: ${TINTA_2};" data-correo="explorar">${escaparHtml(e.linea)} <a href="${e.url}" style="color: ${TINTA}; font-weight: 600; text-decoration: underline;" data-correo="explorar-enlace">${escaparHtml(PUERTA_EXPLORAR.enlace)}</a></td></tr>`;
+  return cardTriada(e, 4, 18);
 }
 
 export interface EnlaceInvitarCorreo {
@@ -405,11 +433,9 @@ export function correoSemanalVacio(d: {
     filas.push(parrafo(escaparHtml(d.salidas.linea), ` color: ${TINTA}; padding-top: 6px;`));
     botones.forEach((b, i) => filas.push(botonSalida(b.boton, b.url, i === botones.length - 1, `data-ajuste="1"`)));
   }
-  // La puerta a Explorar (02-nov-2026): la línea y «Míralos todos en el mapa», una salida más, a la vista global.
-  if (d.explorar) {
-    filas.push(`<tr><td style="padding: 0 0 10px 0; font-family: ${FUENTE_UI}; font-size: 15px; line-height: 1.6; color: ${TINTA};" data-correo="explorar">${escaparHtml(d.explorar.linea)}</td></tr>`);
-    filas.push(botonSalida(PUERTA_EXPLORAR.enlace, d.explorar.url, true, `data-correo="explorar-enlace"`));
-  }
+  // La puerta a Explorar (02-nov-2026): una salida más, a la vista global, en la card de la tríada (las otras salidas son de
+  // contorno).
+  if (d.explorar) filas.push(cardTriada(d.explorar, 4, 22));
   filas.push(parrafo(escaparHtml(d.delDia ? DEL_DIA.vacioPerfil : SEMANAL_VACIO.perfil)));
   filas.push(`<tr><td style="padding: 4px 0 24px 0; font-family: ${FUENTE_UI}; font-size: 15px; font-weight: 600;"><a href="${d.urlPerfil}" style="color: ${TINTA}; text-decoration: underline;">${escaparHtml(SEMANAL_VACIO.boton)}</a></td></tr>`);
   const html = `<!DOCTYPE html>
