@@ -179,6 +179,7 @@ import { runTasaEditableTier } from "./tasa-editable-catch-test";
 import { runExplorarCorreosTier } from "./explorar-correos-catch-test";
 import { runExplorarNegociarTier } from "./explorar-negociar-catch-test";
 import { runCompartirDeptoTier } from "./compartir-depto-catch-test";
+import { runEdadEdificioTier } from "./edad-edificio-catch-test";
 import { runPautaArreglosTier } from "./pauta-arreglos-catch-test";
 import { runCuentasPruebaTier } from "./cuentas-prueba-catch-test";
 import { runDeptosConteoTier } from "./deptos-conteo-catch-test";
@@ -768,6 +769,10 @@ function printSeed(r: SeedReport) {
   // mapa centrado), la vista previa sin cifras más allá del chip, el registro desde el enlace acredita a los dos (C · depto),
   // la vista y el botón medidos, y el que ya no está ofrece parecidos. ──
   totalHard += (await runCompartirDeptoTier()).hard;
+  // Tier EDAD-EDIFICIO (03-nov-2026, 0 tokens): con el año de la ficha o de otro aviso del edificio, el motor recibe la edad real
+  // (un edificio de 1951 entra con 75 años y usa el tramo de más de 25) y el informe la dice con el año y la fuente; sin año, la
+  // nota distingue «La publicación no dice la antigüedad» de «No pudimos leer la antigüedad». ──
+  totalHard += (await runEdadEdificioTier()).hard;
   // Tier PAUTA-ARREGLOS (26-oct-2026, 0 tokens): las cuentas de prueba y @refranco.ai fuera de los correos, la selección
   // diaria del «Ya» también en renta corta, los escáneres marcados robot en las vistas, «explorar_pin» y «explorar_aviso», y
   // el resumen de la noche y la selección diaria MEDIDOS bajo 2 s contra la base. ──
