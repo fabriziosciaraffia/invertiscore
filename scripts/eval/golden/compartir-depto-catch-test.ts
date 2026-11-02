@@ -21,7 +21,7 @@
 // Solo:  node --env-file=.env.local --import tsx scripts/eval/golden/compartir-depto-catch-test.ts
 // ============================================================================
 import "./als-de-next";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import React, { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -200,13 +200,27 @@ export async function runCompartirDeptoTier(): Promise<{ hard: number }> {
       const og = codigo("src/app/api/og/depto/[avisoId]/route.tsx");
       if (/score|flujo|arriendo|capRate|cap rate|puntaje/i.test(og)) F("2 · la imagen de la vista previa lee el puntaje, el flujo, el arriendo o el cap rate");
       if (!/const v = contenidoVistaPrevia\(ficha\);/.test(og) || !/\{v\.linea\}/.test(og) || !/\{v\.precio\}/.test(og) || !/\{v\.chip \? \(/.test(og)) F("2 · la imagen no dibuja la línea, el precio y el chip de contenidoVistaPrevia");
-      // La caché se FIJA (set), no se suma a la de Next (medido en el preview: con `headers` quedaba «immutable, max-age=31536000» delante).
-      if (!/respuesta\.headers\.set\("Cache-Control", CACHE\);\s*return respuesta;/.test(og) || !/const CACHE = "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800";/.test(og)) F("2 · la imagen no queda en la caché del CDN (o hereda el «immutable» de un año)");
-      // El peso (medido en el preview: 589 kB a 1200 × 630; WhatsApp se salta las de más de ~300 kB): sale a 800 × 420.
+      // La caché es la PROPIA, en la respuesta que sale, no sumada a la de Next (medido en el preview: con `headers` en las
+      // opciones de ImageResponse quedaba «immutable, max-age=31536000» delante).
+      if (!/return new Response\(new Uint8Array\(jpeg \?\? png\), \{ headers: \{ "Content-Type": jpeg \? "image\/jpeg" : "image\/png", "Cache-Control": CACHE \} \}\);/.test(og) || !/const CACHE = "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800";/.test(og)) F("2 · la imagen no queda en la caché del CDN (o hereda el «immutable» de un año)");
+      // El peso (medido en el preview: 589 kB a 1200 × 630; a 800 × 420, de 308 a 530 kB en PNG y 44 kB en JPEG; WhatsApp se
+      // salta las de más de ~300 kB): sale a 800 × 420 y en JPEG, con una calidad que no la infla.
       if (!/const ESCALA = 2 \/ 3;/.test(og) || !/\{ width: ANCHO, height: ALTO, fonts \}/.test(og) || !/const ANCHO = e\(1200\);\s*const ALTO = e\(630\);/.test(og)) F("2 · la imagen de la vista previa no sale a 800 × 420 (pesa de más para WhatsApp)");
+      const calidad = Number(/const CALIDAD_JPEG = (\d+);/.exec(og)?.[1] ?? NaN);
+      if (!/const png = Buffer\.from\(await respuesta\.arrayBuffer\(\)\);\s*const jpeg = await aJpeg\(png\);/.test(og) || !/return await sharp\(png\)\.jpeg\(\{ quality: CALIDAD_JPEG, mozjpeg: true \}\)\.toBuffer\(\);/.test(og) || !(calidad >= 60 && calidad <= 85)) F(`2 · la imagen no sale en JPEG (o con una calidad que la infla: ${calidad})`);
       if (!/fichaCompartidaCacheada\(params\.avisoId, modalidad\)/.test(og)) F("2 · la imagen no comprueba en el servidor cómo está el depto");
+      // LAS FUENTES (02-nov-2026, Fabrizio: «habíamos simplificado»): la de Explorar, Inter —la línea en 400, el precio y el chip
+      // en 600, como la tarjeta del pin—, nunca las del informe; en TTF estático que la función lee de public/fonts.
+      const familias = [...og.matchAll(/fontFamily: ([^,}]+)/g)].map((m) => m[1].trim());
+      if (familias.length < 5 || familias.some((x) => x !== "INTER") || !/const INTER = "Inter";/.test(og) || /JetBrains|Source Serif|Plex/i.test(og)
+        || !/const FUENTES = \{ regular: "Inter-Regular-es\.ttf", semibold: "Inter-SemiBold-es\.ttf" \} as const;/.test(og)
+        || !/\{ name: INTER, data: f\.regular, weight: 400 as const, style: "normal" as const \}/.test(og) || !/\{ name: INTER, data: f\.semibold, weight: 600 as const, style: "normal" as const \}/.test(og)
+        || !existsSync(join(RAIZ, "public", "fonts", "Inter-Regular-es.ttf")) || !existsSync(join(RAIZ, "public", "fonts", "Inter-SemiBold-es.ttf"))) F(`2 · la imagen no va en Inter, la fuente de Explorar (familias: ${familias.join(", ")})`);
+      if (!/fontFamily: INTER, fontWeight: 600, fontSize: e\(\d+\)[^}]*\}\}>\{v\.precio\}<\/div>/.test(og) || !/fontFamily: INTER, fontWeight: 600, fontSize: e\(\d+\) \}\}>\s*<Check/.test(og) || !/fontFamily: INTER, fontWeight: 400, fontSize: e\(\d+\)[^}]*\}\}>\{v\.linea\}<\/div>/.test(og)) F("2 · el precio y el chip no van en Inter 600 y la línea en 400, como la tarjeta del pin");
       // Los metadatos: los de contenidoVistaPrevia, solo para los robots de vista previa.
       const meta = pagina.slice(pagina.indexOf("export async function generateMetadata"), pagina.indexOf("const mapaQuieto"));
+      // Los metadatos declaran el tamaño con que sale (WhatsApp y las redes reservan el lugar con él).
+      if (cp.VISTA_PREVIA_PX.ancho !== Math.round(1200 * 2 / 3) || cp.VISTA_PREVIA_PX.alto !== Math.round(630 * 2 / 3) || !/width: VISTA_PREVIA_PX\.ancho, height: VISTA_PREVIA_PX\.alto, alt: v\.titulo/.test(meta)) F("2 · los metadatos declaran otro tamaño que el de la imagen");
       if (!/if \(!c \|\| !esRobot\(headers\(\)\.get\("user-agent"\)\)\) return METADATOS;/.test(meta)) F("2 · los metadatos del depto se leen también para las personas (el primer byte esperaría la ficha)");
       if (/score|flujo|arriendo/.test(meta) || !/const v = contenidoVistaPrevia\(ficha\);/.test(meta) || !/openGraph: \{ title: v\.titulo, description: v\.descripcion,/.test(meta) || !/images: \[imagen\]/.test(meta)) F("2 · los metadatos no son los de contenidoVistaPrevia (o traen otra cifra)");
       if (cp.rutaVistaPrevia(AVISO, "ltr") !== `/api/og/depto/${AVISO}` || cp.rutaVistaPrevia(AVISO, "str") !== `/api/og/depto/${AVISO}?m=str`) F("2 · la imagen de la vista previa no es la del depto");
@@ -427,3 +441,8 @@ if (require.main === module) {
 //   N1 el negociado se comparte como Comprar · N2 la vista de por defecto supone Comprar al preparar · N3 ídem al tocar ·
 //   N4 la tarjeta de «no conviene» dice «ya no» · N5 la hoja titula «conviene» al que va sin veredicto · N6 el título sin
 //   veredicto dice que conviene · N7 la fila del negociado sin «Compartir».
+// LA IMAGEN EN JPEG Y EN INTER (02-nov-2026, medido en el preview tras el rebase: doce avisos a 800 × 420 pesaron de 308 a
+// 530 kB en PNG; y Fabrizio: «ojo con las fuentes… habíamos simplificado»): V7 reescrita (la caché en la respuesta nueva) y
+// 11 nuevas, 13 de 13 en ROJO con V3, V8 y V9: V10 sale en PNG · V11 el JPEG con calidad 100 · V12 los metadatos declaran
+// 1200 × 630 · V13 la constante del tamaño con otro · V14 la línea en JetBrains Mono · V15 el precio en 400 · V16 el chip
+// en Source Serif · V17 Inter 600 sin registrar · V18 las TTF del informe.

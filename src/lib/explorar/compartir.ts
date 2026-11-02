@@ -98,6 +98,8 @@ export function contenidoVistaPrevia(f: Pick<FichaCompartida, "estado" | "depto"
 
 /** La imagen de la vista previa (la ruta la genera y la deja en la caché del CDN). */
 export const rutaVistaPrevia = (avisoId: string, modalidad: ModalidadPortal): string => `/api/og/depto/${encodeURIComponent(avisoId)}${modalidad === "str" ? "?m=str" : ""}`;
+/** Su tamaño en píxeles: la ruta la dibuja así (el diseño de 1200 × 630 a 2/3) y los metadatos lo declaran. */
+export const VISTA_PREVIA_PX = { ancho: 800, alto: 420 } as const;
 
 /**
  * LOS PARECIDOS QUE SÍ DAN, cuando el depto compartido ya no está: de los que convienen hoy (el universo a la vista), los de

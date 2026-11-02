@@ -15,7 +15,7 @@ import { esRobot, robotDeVisita } from "@/lib/vista-entrada";
 import { filtrosAbiertos, ordenAbierto, origenDeLlegada, PIE_ABIERTO, PLAZO_ABIERTO } from "@/lib/explorar/abierto";
 import { llegadaDeExplorar } from "@/lib/explorar/puertas-landing";
 import { compartidoDeUrl } from "@/lib/explorar/enlace-compartido";
-import { contenidoVistaPrevia, rutaVistaPrevia } from "@/lib/explorar/compartir";
+import { contenidoVistaPrevia, rutaVistaPrevia, VISTA_PREVIA_PX } from "@/lib/explorar/compartir";
 import { fichaCompartida, fichaCompartidaCacheada } from "@/lib/explorar/compartir-servidor";
 import { ExplorarCliente, type CompartidoCliente } from "./explorar-cliente";
 import { EsqueletoExplorar } from "./esqueleto";
@@ -57,7 +57,7 @@ export async function generateMetadata({ searchParams }: { searchParams?: Record
   const ficha = await fichaCompartidaCacheada(c.avisoId, c.modalidad).catch(() => null);
   if (!ficha) return METADATOS;
   const v = contenidoVistaPrevia(ficha);
-  const imagen = { url: rutaVistaPrevia(c.avisoId, c.modalidad), width: 1200, height: 630, alt: v.titulo };
+  const imagen = { url: rutaVistaPrevia(c.avisoId, c.modalidad), width: VISTA_PREVIA_PX.ancho, height: VISTA_PREVIA_PX.alto, alt: v.titulo };
   return {
     ...METADATOS,
     title: { absolute: v.titulo },

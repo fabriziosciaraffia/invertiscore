@@ -19,17 +19,23 @@ import { wordmarkSvg } from "@/lib/og/wordmark";
 // flujo, ni cap rate; todo lo que se dibuja sale de `contenidoVistaPrevia` (lo exige el tier COMPARTIR-DEPTO).
 // La genera el servidor y queda en la caché del CDN un día (y se sirve vieja una semana mientras se rehace): la piden los
 // robots de vista previa cada vez que alguien pega el enlace. En Node (no Edge: el cálculo de renta corta es grande).
-// LAS FUENTES: las TTF de public/fonts, leídas del disco; si la función no las trae, de refranco.ai (son estáticas y
-// públicas). Satori no lee woff2: por eso el chip va en JetBrains Mono, la de los veredictos.
+// LAS FUENTES: Inter, la única de Explorar, como en la tarjeta del pin —la línea en 400, el precio y el chip en 600—; el
+// wordmark va dibujado. Satori no lee woff2 ni fuentes variables: van en TTF estático, sacadas del subconjunto español que
+// ya sirve el sitio (public/fonts/inter-normal-es.woff2 → Inter-Regular-es.ttf e Inter-SemiBold-es.ttf), leídas del disco;
+// si la función no las trae, de refranco.ai (son estáticas y públicas).
 // EL TAMAÑO (medido en el preview, 02-nov-2026): a 1200 × 630 la imagen pesaba 589 kB —la foto de la calle no comprime en
 // PNG— y WhatsApp suele saltarse las vistas previas de más de ~300 kB. Va a 800 × 420 (la proporción 1,91:1 de las redes;
 // sobre el mínimo de 600 × 315 de la tarjeta grande): el diseño es el de 1200 × 630, escalado entero con `e()`.
+// Y SALE EN JPEG (medido en el preview, 02-nov-2026, tras el rebase): aun a 800 × 420 el PNG pesó de 308 a 530 kB en doce
+// avisos —la foto manda—; el mismo, en JPEG de calidad 82, 44 kB contra 354. ImageResponse solo da PNG: lo convierte sharp.
 // ─────────────────────────────────────────────────────────────────────────────
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
 const CACHE = "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800";
+/** La calidad del JPEG: la foto de la calle se ve igual y pesa una octava parte del PNG. */
+const CALIDAD_JPEG = 82;
 /** El diseño se dibujó a 1200 × 630; sale a 800 × 420. */
 const ESCALA = 2 / 3;
 const e = (n: number) => Math.round(n * ESCALA);
@@ -46,7 +52,8 @@ const MUTED = "#6B6B72";
 const BORDE = "#DDDDE1";
 const CHIP_COMPRAR = { fondo: "#2B558F", texto: "#FFFFFF" };
 
-const FUENTES = { serif: "SourceSerif4-Bold.ttf", mono: "JetBrainsMono-Regular.ttf", monoBold: "JetBrainsMono-Bold.ttf" } as const;
+const FUENTES = { regular: "Inter-Regular-es.ttf", semibold: "Inter-SemiBold-es.ttf" } as const;
+const INTER = "Inter";
 let fuentesCache: Promise<Record<keyof typeof FUENTES, ArrayBuffer | null>> | null = null;
 
 async function fuente(nombre: string): Promise<ArrayBuffer | null> {
@@ -64,11 +71,11 @@ async function fuente(nombre: string): Promise<ArrayBuffer | null> {
 function fuentes() {
   if (!fuentesCache) {
     fuentesCache = (async () => {
-      const [serif, mono, monoBold] = await Promise.all([fuente(FUENTES.serif), fuente(FUENTES.mono), fuente(FUENTES.monoBold)]);
-      return { serif, mono, monoBold };
+      const [regular, semibold] = await Promise.all([fuente(FUENTES.regular), fuente(FUENTES.semibold)]);
+      return { regular, semibold };
     })();
     // Una falla no se guarda: el próximo pedido vuelve a intentar.
-    void fuentesCache.then((f) => { if (!f.serif || !f.mono || !f.monoBold) fuentesCache = null; });
+    void fuentesCache.then((f) => { if (!f.regular || !f.semibold) fuentesCache = null; });
   }
   return fuentesCache;
 }
@@ -93,6 +100,16 @@ async function imagenComoDato(avisoId: string): Promise<{ src: string; tipo: "fo
   return mapa ? { src: mapa, tipo: "mapa" } : null;
 }
 
+/** EL PNG A JPEG (sharp viene con @vercel/og). Null si sharp no carga o falla: se sirve el PNG. */
+async function aJpeg(png: Buffer): Promise<Buffer | null> {
+  try {
+    const { default: sharp } = await import("sharp");
+    return await sharp(png).jpeg({ quality: CALIDAD_JPEG, mozjpeg: true }).toBuffer();
+  } catch {
+    return null;
+  }
+}
+
 /** El ✓ del chip, dibujado: no depende de que la fuente traiga el carácter. */
 function Check({ color }: { color: string }) {
   return (
@@ -114,9 +131,8 @@ export async function GET(req: Request, { params }: { params: { avisoId: string 
   const v = contenidoVistaPrevia(ficha);
   const wordmark = `data:image/svg+xml,${encodeURIComponent(wordmarkSvg(TINTA, 0.28))}`;
   const fonts = [
-    ...(f.serif ? [{ name: "Source Serif 4", data: f.serif, weight: 700 as const, style: "normal" as const }] : []),
-    ...(f.mono ? [{ name: "JetBrains Mono", data: f.mono, weight: 400 as const, style: "normal" as const }] : []),
-    ...(f.monoBold ? [{ name: "JetBrains Mono", data: f.monoBold, weight: 700 as const, style: "normal" as const }] : []),
+    ...(f.regular ? [{ name: INTER, data: f.regular, weight: 400 as const, style: "normal" as const }] : []),
+    ...(f.semibold ? [{ name: INTER, data: f.semibold, weight: 600 as const, style: "normal" as const }] : []),
   ];
 
   const respuesta = new ImageResponse(
@@ -127,10 +143,10 @@ export async function GET(req: Request, { params }: { params: { avisoId: string 
             // eslint-disable-next-line @next/next/no-img-element
             <img src={imagen.src} width={ALTO} height={ALTO} alt="" style={{ width: ALTO, height: ALTO, objectFit: "cover" }} />
           ) : (
-            <div style={{ display: "flex", width: ALTO, height: ALTO, alignItems: "center", justifyContent: "center", fontFamily: "JetBrains Mono", fontSize: e(30), color: SECUNDARIO }}>{ficha.depto.comuna}</div>
+            <div style={{ display: "flex", width: ALTO, height: ALTO, alignItems: "center", justifyContent: "center", fontFamily: INTER, fontSize: e(30), color: SECUNDARIO }}>{ficha.depto.comuna}</div>
           )}
           {imagen?.tipo === "foto" ? (
-            <div style={{ position: "absolute", left: e(24), bottom: e(24), display: "flex", padding: `${e(6)}px ${e(14)}px`, borderRadius: e(8), backgroundColor: "rgba(0,0,0,0.55)", color: "#FFFFFF", fontFamily: "JetBrains Mono", fontSize: e(22) }}>
+            <div style={{ position: "absolute", left: e(24), bottom: e(24), display: "flex", padding: `${e(6)}px ${e(14)}px`, borderRadius: e(8), backgroundColor: "rgba(0,0,0,0.55)", color: "#FFFFFF", fontFamily: INTER, fontSize: e(22) }}>
               {CALLE_COPY.etiqueta}
             </div>
           ) : null}
@@ -139,18 +155,18 @@ export async function GET(req: Request, { params }: { params: { avisoId: string 
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={wordmark} width={e(212)} height={e(36)} alt="" />
           <div style={{ display: "flex", flexDirection: "column" }}>
-            <div style={{ display: "flex", fontFamily: "JetBrains Mono", fontSize: e(28), lineHeight: 1.35, color: SECUNDARIO }}>{v.linea}</div>
-            <div style={{ display: "flex", marginTop: e(16), fontFamily: "Source Serif 4", fontWeight: 700, fontSize: e(84), lineHeight: 1, letterSpacing: "-0.02em" }}>{v.precio}</div>
+            <div style={{ display: "flex", fontFamily: INTER, fontWeight: 400, fontSize: e(30), lineHeight: 1.35, color: SECUNDARIO }}>{v.linea}</div>
+            <div style={{ display: "flex", marginTop: e(14), fontFamily: INTER, fontWeight: 600, fontSize: e(76), lineHeight: 1.05, letterSpacing: "-0.02em" }}>{v.precio}</div>
             {v.chip ? (
               <div style={{ display: "flex", marginTop: e(30) }}>
-                <div style={{ display: "flex", alignItems: "center", padding: `${e(12)}px ${e(28)}px ${e(12)}px ${e(22)}px`, borderRadius: 999, backgroundColor: CHIP_COMPRAR.fondo, color: CHIP_COMPRAR.texto, fontFamily: "JetBrains Mono", fontWeight: 700, fontSize: e(34) }}>
+                <div style={{ display: "flex", alignItems: "center", padding: `${e(12)}px ${e(28)}px ${e(12)}px ${e(22)}px`, borderRadius: 999, backgroundColor: CHIP_COMPRAR.fondo, color: CHIP_COMPRAR.texto, fontFamily: INTER, fontWeight: 600, fontSize: e(34) }}>
                   <Check color={CHIP_COMPRAR.texto} />
                   Comprar
                 </div>
               </div>
             ) : null}
           </div>
-          <div style={{ display: "flex", fontFamily: "JetBrains Mono", fontSize: e(22), lineHeight: 1.4, color: MUTED }}>
+          <div style={{ display: "flex", fontFamily: INTER, fontWeight: 400, fontSize: e(24), lineHeight: 1.4, color: MUTED }}>
             {v.chip ? COMPARTIR_COPY.vistaPrevia.pie : v.descripcion}
           </div>
         </div>
@@ -158,7 +174,9 @@ export async function GET(req: Request, { params }: { params: { avisoId: string 
     ),
     { width: ANCHO, height: ALTO, fonts },
   );
-  // La caché se FIJA (no se agrega): con `headers` en las opciones, Next la sumaba a su «immutable, max-age=31536000».
-  respuesta.headers.set("Cache-Control", CACHE);
-  return respuesta;
+  // Sale en JPEG (o en el PNG si sharp no carga), en una respuesta nueva con la caché propia: con `headers` en las opciones
+  // de ImageResponse, Next la sumaba a su «immutable, max-age=31536000».
+  const png = Buffer.from(await respuesta.arrayBuffer());
+  const jpeg = await aJpeg(png);
+  return new Response(new Uint8Array(jpeg ?? png), { headers: { "Content-Type": jpeg ? "image/jpeg" : "image/png", "Cache-Control": CACHE } });
 }
