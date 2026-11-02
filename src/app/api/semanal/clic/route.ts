@@ -14,6 +14,8 @@ import { waitUntil } from "@vercel/functions";
 import { EVENTOS_META, idSemanalClic } from "@/lib/meta/ids";
 import { conEspejo, contextoDeRequest, emitirEventoMeta } from "@/lib/meta/servidor";
 import type { EventoEspejo } from "@/lib/meta/espejo";
+import { esCorreoConPuerta, EVENTO_PUERTA_EXPLORAR, propsPuertaExplorar } from "@/lib/explorar/puerta-correos";
+import { rutaExplorarDesdeCorreo } from "@/lib/explorar/puerta-correos-filtros";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/semanal/clic (02-oct-2026): todo enlace del correo semanal pasa por acá. Mide el clic
@@ -28,6 +30,9 @@ import type { EventoEspejo } from "@/lib/meta/espejo";
 // Desde el 19-oct-2026 el depto se reconoce en los DOS bloques (deptoDelClic) y `semanal_clic` lleva su bloque.
 // UNA SOLA PÁGINA (21-oct-2026, recorrido real de Fabrizio por la puerta B): el clic sigue midiéndose igual, pero aterriza
 // en el dashboard, en la selección, con el depto clicado arriba (hrefSeleccion); /semanal ya no es una página propia.
+// LA PUERTA A EXPLORAR (02-nov-2026, explorar/puerta-correos.ts): `ir=explorar` es la línea «Míralos todos en el mapa». Se
+// mide aparte de los deptos (`destino: "explorar"` y `explorar_enlace_clic` con el correo de `de=`) y aterriza en /explorar
+// con los filtros de `q=` validados de nuevo y `desde=correo`, la llegada de la vista.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const TOKEN = /^[0-9a-f]{20,80}$/i;
@@ -39,14 +44,16 @@ export async function GET(request: Request) {
   const ir = url.searchParams.get("ir");
   let espejoSC: EventoEspejo | null = null;
   const volver = (ruta: string) => conEspejo(NextResponse.redirect(new URL(ruta, url.origin), 302), [espejoSC], request);
-  if (!TOKEN.test(t)) return volver("/dashboard");
+  // Sin una selección que reconocer (un enlace reenviado a medias, la muestra del catálogo), «Míralos todos» igual lleva al mapa.
+  const sinSeleccion = () => volver(ir === "explorar" ? rutaExplorarDesdeCorreo(url.searchParams.get("q")) : "/dashboard");
+  if (!TOKEN.test(t)) return sinSeleccion();
 
   const admin = createServiceClient();
   const sel = await seleccionPorToken(admin, t);
-  if (!sel) return volver("/dashboard");
+  if (!sel) return sinSeleccion();
   // El depto en los dos bloques (19-oct-2026): antes solo en el de renta larga, y un clic en renta corta quedaba sin depto.
   const { avisoId, bloque } = deptoDelClic(sel, a);
-  const destino = ir === "comprar" ? "comprar" : ir === "tres" ? "tres" : ir === "perfil" ? "perfil" : ir === "ajustar" ? "ajustar" : avisoId ? "depto" : "seleccion";
+  const destino = ir === "comprar" ? "comprar" : ir === "tres" ? "tres" : ir === "perfil" ? "perfil" : ir === "ajustar" ? "ajustar" : ir === "explorar" ? "explorar" : avisoId ? "depto" : "seleccion";
 
   if (sel.fuente === "inmediato") {
     // Con `await` (13-oct-2026): con `void` la respuesta salía antes que el evento y se podía perder.
@@ -78,6 +85,13 @@ export async function GET(request: Request) {
     await capturarServidor({ event: "entrada_por_correo", distinctId: sel.user_id, properties: { fuente: sel.fuente, ok: entro, destino } }).catch(() => {});
   }
 
+  // La puerta a Explorar (02-nov-2026): el clic propio, con de qué correo vino, y al mapa con la llegada «correo».
+  if (destino === "explorar") {
+    const de = url.searchParams.get("de");
+    const q = url.searchParams.get("q");
+    await capturarServidor({ event: EVENTO_PUERTA_EXPLORAR, distinctId: sel.user_id, properties: propsPuertaExplorar("correo", esCorreoConPuerta(de) ? de : sel.fuente === "inmediato" ? "inmediato" : "semanal", { global: !q, semana: sel.semana }) }).catch(() => {});
+    return volver(rutaExplorarDesdeCorreo(q));
+  }
   // El correo corto de la semana sin deptos (13-oct-2026) lleva a cambiar las comunas del perfil.
   if (ir === "perfil") return volver("/dashboard#perfil");
   // EL AJUSTE EN UN TOQUE (20-oct-2026): el correo vacío ofrece pie 30 % o sumar la comuna vecina; el token dice de quién es

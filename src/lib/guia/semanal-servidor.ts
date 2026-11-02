@@ -39,6 +39,8 @@ import { vistosDePersona, type Vistos } from "./vistos-servidor";
 import { textoRenueva } from "./renovacion";
 import type { Combinacion, Evaluado } from "./seleccion";
 import { condicionDe, type CondicionDepto } from "./linea-depto";
+import { convienenEnSeleccion } from "@/lib/explorar/puerta-correos";
+import { puertaExplorarCorreo } from "@/lib/explorar/puerta-correos-servidor";
 import {
   DESCUENTO_NEGOCIABLE, DIAS_VIGENCIA_REGALO, LECTURAS_POR_CORRIDA_SEMANAL, filasDePagina, rechequearAvisos, siguienteReemplazo, type FilaPaginaSemanal, MAX_CANDIDATOS_SEMANAL, MEMORIA_SEMANAL_MS, correspondeReactivacion, DIAS_ENTRE_REACTIVACIONES, queEnviarSemanal, VENTANA_SEMANAL_DIAS, elegirSemanal, esPrimerSemanal, rangoSemanal, prechequearConPresupuesto, siguienteYEstado, varianteDe, REGLA_CORTA, REGLA_LARGA, semanaDelEnvio,
   MINIMO_SEMANAL, TOPE_SIN_CONFIRMAR, parametroDeAjuste, ordenFijo,
@@ -882,6 +884,11 @@ export async function enviarSeleccion(admin: SupabaseClient, fila: FilaSeleccion
   const variante = fila.variante ?? varianteDe(fila.user_id);
   const enlaces = enlacesSemanal(sitio, fila.token);
   const invitar = await enlaceInvitarDelCorreo(admin, fila.user_id, sitio);
+  // La puerta a Explorar (02-nov-2026, explorar/puerta-correos.ts): con los filtros del perfil del primer bloque que tenga.
+  const explorar = await puertaExplorarCorreo({
+    baseClic: enlaces.boton, de: "semanal", n: convienenEnSeleccion([...deptos, ...deptosCortos]),
+    perfil: conLargo ? fila.perfil : fila.perfil_str ?? null, combo: combo, modalidad: conLargo ? "ltr" : "str",
+  });
   const correo = correoSemanal({
     variante,
     nombre: nombreReal(user.user_metadata),
@@ -905,6 +912,7 @@ export async function enviarSeleccion(admin: SupabaseClient, fila: FilaSeleccion
     urlTres: enlaces.tres,
     urlBaja: enlaces.baja,
     invitar,
+    explorar,
   });
   const r = await sendSemanalEmail(user.email, correo, fila.user_id, enlaces.baja, variante);
   if (!r.ok) {
@@ -959,6 +967,8 @@ export async function enviarSinSeleccion(admin: SupabaseClient, fila: FilaSelecc
     nombre: nombreReal(user.user_metadata), presentacion, urlPerfil: enlaces.perfil, urlBaja: enlaces.baja, invitar: await enlaceInvitarDelCorreo(admin, fila.user_id, sitio),
     casi: verdad?.casi ?? [],
     revisados: verdad?.revisados ?? null,
+    // La puerta a Explorar (02-nov-2026, decisión de Fabrizio): una salida más, a la vista global (sin perfil).
+    explorar: await puertaExplorarCorreo({ baseClic: enlaces.boton, de: "semanal_vacio", n: 0 }),
     salidas: verdad && verdad.salidas.length > 0
       ? { linea: lineaDeSalidas(verdad.salidas), botones: verdad.salidas.map((s) => ({ boton: s.boton, url: enlaces.ajuste(parametroDeAjuste(s.ajuste)) })) }
       : null,

@@ -23,6 +23,8 @@ import type { Candidato } from "./semanal-candidatos";
 import type { Combinacion, Evaluado } from "./seleccion";
 import type { EstadoPublicacion } from "./publicacion";
 import type { PerfilBusqueda } from "@/lib/perfil-busqueda";
+import { convienenEnSeleccion } from "@/lib/explorar/puerta-correos";
+import { puertaExplorarCorreo } from "@/lib/explorar/puerta-correos-servidor";
 
 const RUTA = "lib/guia/inmediato";
 const fecha = (s: string | null | undefined) => (s ? new Date(s) : null);
@@ -175,6 +177,8 @@ export async function avisarPersona(
     urlBoton: enlaces.boton,
     urlComprar: enlaces.comprar,
     urlBaja: enlaces.baja,
+    // La puerta a Explorar (02-nov-2026, explorar/puerta-correos.ts): con los filtros del perfil, en su modalidad.
+    explorar: await puertaExplorarCorreo({ baseClic: enlaces.boton, de: "inmediato", n: convienenEnSeleccion(items), perfil, combo, modalidad: modalidad === "str" ? "str" : "ltr" }),
   });
   const r = await sendInmediatoEmail(email, correo, userId, enlaces.baja);
   if (!r.ok) {

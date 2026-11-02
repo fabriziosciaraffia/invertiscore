@@ -6,7 +6,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import { INMEDIATO } from "@/lib/guia/inmediato";
 import { FUENTE_TITULO, FUENTE_UI, LEGAL, LINEA, PAPEL, TINTA, TINTA_2, TINTA_3, escaparHtml, wordmarkClaro } from "./plantilla-clara";
-import { botonRojoSemanal, parrafoSemanal, tarjetaSemanal, type DeptoCorreo } from "./correo-semanal";
+import { botonRojoSemanal, lineaPuertaSemanal, parrafoSemanal, tarjetaSemanal, type DeptoCorreo } from "./correo-semanal";
+import type { PuertaExplorarCorreo } from "@/lib/explorar/puerta-correos";
 
 export interface DatosCorreoInmediato {
   nombre: string | null;
@@ -19,6 +20,8 @@ export interface DatosCorreoInmediato {
   urlBoton: string;
   urlComprar: string;
   urlBaja: string;
+  /** La puerta a Explorar (02-nov-2026, explorar/puerta-correos.ts): después de la selección y antes del botón. */
+  explorar?: PuertaExplorarCorreo | null;
 }
 
 const pct = (n: number) => String(Math.round(n * 10) / 10).replace(".", ",");
@@ -61,6 +64,8 @@ export function correoInmediato(d: DatosCorreoInmediato): { subject: string; htm
   filas.push(parrafoSemanal(escaparHtml(INMEDIATO.intro(n, d.busca, pie, d.plazoAnios))));
   if (d.deptos.some((x) => x.tramo === "vecina")) filas.push(parrafoSemanal(escaparHtml(INMEDIATO.vecinas)));
   for (const dep of d.deptos) filas.push(tarjetaSemanal(dep));
+  const puerta = lineaPuertaSemanal(d.explorar);
+  if (puerta) filas.push(puerta);
   const conSaldo = d.saldo == null || d.saldo > 0;
   filas.push(botonRojoSemanal(conSaldo ? INMEDIATO.botonConSaldo : INMEDIATO.botonSinSaldo, conSaldo ? d.urlBoton : d.urlComprar));
   const pieHtml = `${INMEDIATO.porQue} <a href="${d.urlBaja}" style="color: ${TINTA_3}; text-decoration: underline;">${INMEDIATO.baja}</a>. ${INMEDIATO.bajaSigue}`;

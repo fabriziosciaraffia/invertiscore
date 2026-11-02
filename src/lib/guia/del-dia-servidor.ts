@@ -27,6 +27,8 @@ import type { Candidato } from "./semanal-candidatos";
 import type { Evaluado } from "./seleccion";
 import { cuandoSeVio, esCuentaNueva, LECTURAS_POR_VUELTA_DEL_DIA, pasoDelDia, REGLA_DEL_DIA } from "./del-dia";
 import { textoRenueva } from "./renovacion";
+import { convienenEnSeleccion } from "@/lib/explorar/puerta-correos";
+import { puertaExplorarCorreo } from "@/lib/explorar/puerta-correos-servidor";
 
 const RUTA = "lib/guia/del-dia";
 
@@ -194,7 +196,13 @@ async function enviarDelDia(
   const n = deptos.length + cortos.length;
   const perfil = col.perfil as Parameters<typeof textoBusca>[0] | null;
   const perfilStr = col.perfil_str as Parameters<typeof textoBusca>[0] | null;
-  const correo = n > 0 && masAntiguo
+  // La puerta a Explorar (02-nov-2026, explorar/puerta-correos.ts): con deptos, con los filtros del perfil del primer bloque;
+  // vacío, a la vista global.
+  const conDeptos = n > 0 && !!masAntiguo;
+  const explorar = await puertaExplorarCorreo(conDeptos
+    ? { baseClic: enlaces.boton, de: "del_dia", n: convienenEnSeleccion([...deptos, ...cortos]), perfil: col.combinacion ? perfil : perfilStr, combo: col.combinacion ?? col.combinacion_str, modalidad: col.combinacion ? "ltr" : "str" }
+    : { baseClic: enlaces.boton, de: "del_dia_vacio", n: 0 });
+  const correo = conDeptos
     ? correoSemanal({
         variante: "tarjetas",
         nombre,
@@ -216,9 +224,9 @@ async function enviarDelDia(
         urlBoton: enlaces.boton,
         urlTres: enlaces.tres,
         urlBaja: enlaces.baja,
+        explorar,
       })
-    : correoSemanalVacio({ nombre, presentacion: true, urlPerfil: enlaces.perfil, urlBaja: enlaces.baja, delDia: true, regaloAltaVence: regaloVence });
-  const conDeptos = n > 0 && !!masAntiguo;
+    : correoSemanalVacio({ nombre, presentacion: true, urlPerfil: enlaces.perfil, urlBaja: enlaces.baja, delDia: true, regaloAltaVence: regaloVence, explorar });
   const r = await sendSemanalEmail(user.email, correo, fila.user_id, enlaces.baja, conDeptos ? "del_dia" : "del_dia_vacio");
   if (!r.ok) {
     await admin.from("semanal_selecciones").update({ estado: "pendiente", enviada_at: null }).eq("id", fila.id);

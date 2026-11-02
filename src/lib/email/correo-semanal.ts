@@ -26,6 +26,7 @@ import { TRES_COPY } from "@/lib/tres-analisis";
 import { DEL_DIA } from "@/lib/guia/del-dia";
 import { REFERIDO_COPY } from "@/lib/referido";
 import { lineaDepto, type CondicionDepto } from "@/lib/guia/linea-depto";
+import { PUERTA_EXPLORAR, type PuertaExplorarCorreo } from "@/lib/explorar/puerta-correos";
 import { FUENTE_TITULO, FUENTE_UI, LEGAL, LINEA, PAPEL, ROJO, TINTA, TINTA_2, TINTA_3, escaparHtml, wordmarkClaro } from "./plantilla-clara";
 
 export const URL_BANDA_SEMANAL = "https://refranco.ai/email/semanal-banda-2x.jpg";
@@ -135,6 +136,15 @@ export interface DatosCorreoSemanal {
   urlBanda?: string;
   /** Invita a alguien (16-oct-2026, la puerta C): el enlace propio de la persona, en el pie. */
   invitar?: EnlaceInvitarCorreo | null;
+  /** La puerta a Explorar (02-nov-2026, explorar/puerta-correos.ts): después de la selección y antes del botón, «Estos son N
+   *  de los 6.695 deptos que convienen hoy en Gran Santiago. Míralos todos en el mapa». null: sin el número de la noche. */
+  explorar?: PuertaExplorarCorreo | null;
+}
+
+/** La línea de la puerta a Explorar, con su enlace (la misma en el semanal, el correo del día y el aviso inmediato). */
+function lineaPuerta(e: PuertaExplorarCorreo | null | undefined): string {
+  if (!e) return "";
+  return `<tr><td style="padding: 2px 0 18px 0; font-family: ${FUENTE_UI}; font-size: 15px; line-height: 1.6; color: ${TINTA_2};" data-correo="explorar">${escaparHtml(e.linea)} <a href="${e.url}" style="color: ${TINTA}; font-weight: 600; text-decoration: underline;" data-correo="explorar-enlace">${escaparHtml(PUERTA_EXPLORAR.enlace)}</a></td></tr>`;
 }
 
 export interface EnlaceInvitarCorreo {
@@ -266,6 +276,9 @@ export function correoSemanal(d: DatosCorreoSemanal): { subject: string; html: s
       filas.push(parrafo(escaparHtml(SEMANAL_STR.sinCorto)));
     }
   }
+  // La puerta a Explorar (02-nov-2026): después de la selección, antes del botón.
+  const puerta = lineaPuerta(d.explorar);
+  if (puerta) filas.push(puerta);
   const conSaldo = d.saldo == null || d.saldo > 0;
   if (d.saldo != null && d.saldo > 0 && !d.conRegalo) filas.push(parrafo(escaparHtml(SEMANAL.saldo(d.saldo)), " padding-top: 6px;"));
   filas.push(botonRojo(SEMANAL.boton, d.urlBoton));
@@ -307,6 +320,7 @@ export function correoSemanal(d: DatosCorreoSemanal): { subject: string; html: s
 export const tarjetaSemanal = tarjeta;
 export const botonRojoSemanal = botonRojo;
 export const parrafoSemanal = parrafo;
+export const lineaPuertaSemanal = lineaPuerta;
 
 /** «2 dormitorios, Ñuñoa y Macul, hasta UF 4.500»: lo que busca, en una frase. Con piso, el rango: «entre UF 3.000 y
  *  4.000». Si el rango es uno de los chips de /deptos (desde el 26-oct-2026 también el inferido de sus informes), la frase
@@ -352,6 +366,9 @@ export function correoSemanalVacio(d: {
   salidas?: { linea: string; botones: Array<{ boton: string; url: string }> } | null;
   /** Cuántos había publicados como los que busca: sin casi ni salidas, el cuerpo lo dice en vez de «no apareció ninguno». */
   revisados?: number | null;
+  /** La puerta a Explorar (02-nov-2026, decisión de Fabrizio): «Hoy convienen 6.695 deptos en Gran Santiago.» y «Míralos todos
+   *  en el mapa» como una salida más, a la vista global. null: sin el número de la noche. */
+  explorar?: PuertaExplorarCorreo | null;
 }): { subject: string; html: string } {
   const filas: string[] = [];
   const asunto = d.delDia ? DEL_DIA.vacioAsunto : SEMANAL_VACIO.asunto;
@@ -376,18 +393,22 @@ export function correoSemanalVacio(d: {
       filas.push(`<tr><td style="padding: 0 0 8px 0; font-family: ${FUENTE_UI}; font-size: 14px; line-height: 1.5; color: ${TINTA};" data-casi="1"><b>UF ${miles(c.precioUF)}</b> · ${escaparHtml(ojo)}${c.score != null ? ` · <span style="color: ${TINTA_3};">${escaparHtml(etiquetaVeredicto("AJUSTA SUPUESTOS", "frase"))} ${c.score}</span>` : ""}</td></tr>`);
     }
   }
-  if (d.salidas && botones.length > 0) {
-    filas.push(parrafo(escaparHtml(d.salidas.linea), ` color: ${TINTA}; padding-top: 6px;`));
-    // Un botón por salida, uno bajo el otro (en el correo, lado a lado se corta en el teléfono), en el orden de la línea.
-    botones.forEach((b, i) => {
-      filas.push(`<tr><td style="padding: 0 0 ${i === botones.length - 1 ? 22 : 10}px 0;">
+  // Un botón de contorno por salida, uno bajo el otro (en el correo, lado a lado se corta en el teléfono).
+  const botonSalida = (texto: string, url: string, ultimo: boolean, marca: string) => `<tr><td style="padding: 0 0 ${ultimo ? 22 : 10}px 0;">
   <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
     <td style="border: 1.5px solid ${TINTA}; border-radius: 999px;">
-      <a href="${b.url}" style="display: inline-block; padding: 12px 22px; font-family: ${FUENTE_UI}; font-size: 15px; font-weight: 600; color: ${TINTA}; text-decoration: none; border-radius: 999px;" data-ajuste="1">${escaparHtml(b.boton)}</a>
+      <a href="${url}" style="display: inline-block; padding: 12px 22px; font-family: ${FUENTE_UI}; font-size: 15px; font-weight: 600; color: ${TINTA}; text-decoration: none; border-radius: 999px;" ${marca}>${escaparHtml(texto)}</a>
     </td>
   </tr></table>
-</td></tr>`);
-    });
+</td></tr>`;
+  if (d.salidas && botones.length > 0) {
+    filas.push(parrafo(escaparHtml(d.salidas.linea), ` color: ${TINTA}; padding-top: 6px;`));
+    botones.forEach((b, i) => filas.push(botonSalida(b.boton, b.url, i === botones.length - 1, `data-ajuste="1"`)));
+  }
+  // La puerta a Explorar (02-nov-2026): la línea y «Míralos todos en el mapa», una salida más, a la vista global.
+  if (d.explorar) {
+    filas.push(`<tr><td style="padding: 0 0 10px 0; font-family: ${FUENTE_UI}; font-size: 15px; line-height: 1.6; color: ${TINTA};" data-correo="explorar">${escaparHtml(d.explorar.linea)}</td></tr>`);
+    filas.push(botonSalida(PUERTA_EXPLORAR.enlace, d.explorar.url, true, `data-correo="explorar-enlace"`));
   }
   filas.push(parrafo(escaparHtml(d.delDia ? DEL_DIA.vacioPerfil : SEMANAL_VACIO.perfil)));
   filas.push(`<tr><td style="padding: 4px 0 24px 0; font-family: ${FUENTE_UI}; font-size: 15px; font-weight: 600;"><a href="${d.urlPerfil}" style="color: ${TINTA}; text-decoration: underline;">${escaparHtml(SEMANAL_VACIO.boton)}</a></td></tr>`);

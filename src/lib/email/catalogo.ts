@@ -11,6 +11,8 @@ import { correoRecordatorioPack } from "@/lib/lo-que-sigue/recordatorio";
 import { correoSemanal, correoSemanalVacio, type DatosCorreoSemanal } from "./correo-semanal";
 import { correoInmediato, correoPreguntaYa } from "./correo-inmediato";
 import { PLAZO_POR_DEFECTO } from "@/lib/deptos/estandar";
+import { enlacePuertaCorreo, lineaConvienen, type CorreoConPuerta, type PuertaExplorarCorreo } from "@/lib/explorar/puerta-correos";
+import { consultaExplorar } from "@/lib/explorar/puerta-correos-filtros";
 
 export interface EntradaCatalogo {
   id: string;
@@ -45,8 +47,17 @@ const SEMANAL_MUESTRA = (variante: DatosCorreoSemanal["variante"], o: { saldo: n
   urlBoton: `${SITIO}/semanal`,
   urlTres: `${SITIO}/checkout?product=tres_analisis&origen=semanal`,
   urlBaja: `${SITIO}/semanal/baja`,
+  explorar: PUERTA_MUESTRA(4, "semanal"),
 });
 const EN_SIETE_DIAS = () => new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+/** La puerta a Explorar (02-nov-2026, explorar/puerta-correos.ts) con datos de muestra: el número de la noche es de muestra
+ *  (en el envío sale de convienenHoy); el enlace, con los filtros del perfil de muestra o, en el vacío, a la vista global. */
+const CONVIENEN_MUESTRA = 6695;
+const PERFIL_MUESTRA = { comunas: ["Ñuñoa", "Macul"], dormitorios: [2], precioMinUf: null, precioMaxUf: 4500, piePct: 20, plazoAnios: 30 };
+const PUERTA_MUESTRA = (n: number, de: CorreoConPuerta, global = false): PuertaExplorarCorreo => ({
+  linea: lineaConvienen(n, CONVIENEN_MUESTRA)!,
+  url: enlacePuertaCorreo(`${SITIO}/api/semanal/clic?t=muestra`, global ? "" : consultaExplorar(PERFIL_MUESTRA), de),
+});
 
 export const CATALOGO_CORREOS: EntradaCatalogo[] = [
   { id: "bienvenida", tipo: "bienvenida", nombre: "Bienvenida", cuando: "Primer análisis con sesión o primera visita al dashboard (una vez por persona)", render: () => correoBienvenida({ nombre: "Fabrizio Sciaraffia", sitio: SITIO }) },
@@ -67,13 +78,13 @@ export const CATALOGO_CORREOS: EntradaCatalogo[] = [
   // Lo ya visto no ocupa lugar (19-oct-2026): cuando no alcanzan cinco nuevos, lo ya mandado o analizado completa al final, marcado.
   { id: "semanal_vistos", tipo: "semanal", nombre: "Correo semanal · con deptos ya vistos al final", cuando: "Cuando no alcanzan cinco nuevos: lo que ya se le mandó en las últimas 4 semanas o ya analizó completa al final, marcado", render: () => {
     const m = SEMANAL_MUESTRA("tarjetas", { saldo: 1, conRegalo: false });
-    return correoSemanal({ ...m, invitar: INVITAR_MUESTRA, deptos: [
+    return correoSemanal({ ...m, invitar: INVITAR_MUESTRA, explorar: PUERTA_MUESTRA(5, "semanal"), deptos: [
       ...m.deptos.slice(0, 3),
       { ...m.deptos[3], visto: "mandado" },
       { comuna: "Ñuñoa", tipologia: "2D2B", m2: 61, precioUF: 4450, veredicto: "COMPRAR", score: 75, flujo: 5000, url: `${SITIO}/semanal`, visto: "analizado" },
     ] });
   } },
-  { id: "semanal_vacio", tipo: "semanal", nombre: "Correo semanal · sin deptos esta semana", cuando: "Los lunes, a quien no le quedó ningún depto confirmado (13-oct-2026): el correo corto con el enlace a su perfil (el primero se presenta)", render: () => correoSemanalVacio({ nombre: "Camila", presentacion: true, urlPerfil: `${SITIO}/dashboard#perfil`, urlBaja: `${SITIO}/semanal/baja`, invitar: INVITAR_MUESTRA,
+  { id: "semanal_vacio", tipo: "semanal", nombre: "Correo semanal · sin deptos esta semana", cuando: "Los lunes, a quien no le quedó ningún depto confirmado (13-oct-2026): el correo corto con el enlace a su perfil (el primero se presenta)", render: () => correoSemanalVacio({ nombre: "Camila", presentacion: true, urlPerfil: `${SITIO}/dashboard#perfil`, urlBaja: `${SITIO}/semanal/baja`, invitar: INVITAR_MUESTRA, explorar: PUERTA_MUESTRA(0, "semanal_vacio", true),
     // Las salidas del 27-oct-2026 (casa/sin-oferta.ts), de mayor a menor, cada una con su ajuste en un toque.
     salidas: { linea: "Hasta UF 3.000, 810 sí. Con pie 30 %, 7. En Providencia, 4.", botones: [
       { boton: "Buscar hasta UF 3.000", url: `${SITIO}/api/semanal/clic?t=muestra&ir=ajustar&que=rango:hasta-3000` },
@@ -81,9 +92,9 @@ export const CATALOGO_CORREOS: EntradaCatalogo[] = [
       { boton: "Sumar Providencia a mi búsqueda", url: `${SITIO}/api/semanal/clic?t=muestra&ir=ajustar&que=comuna:Providencia` },
     ] } }) },
   // El correo del día (16-oct-2026, la puerta B): a la cuenta nueva de /deptos, dentro de la hora; es el semanal de esa semana.
-  { id: "del_dia", tipo: "semanal", nombre: "Correo del día · los primeros deptos", cuando: "Dentro de la hora del registro por /deptos, a toda cuenta nueva: sus primeros deptos con la ficha chequeada, la hora en que Franco los vio publicados y el regalo (es el semanal de esa semana)", render: () => correoSemanal({ ...SEMANAL_MUESTRA("tarjetas", { saldo: 1, conRegalo: false }), plazoAnios: PLAZO_POR_DEFECTO, presentacion: true, delDia: { publicadosAl: "hoy a las 14:32" }, regaloAltaVence: "2026-11-15T15:00:00Z" }) },
-  { id: "del_dia_vacio", tipo: "semanal", nombre: "Correo del día · sin deptos todavía", cuando: "Dentro de la hora del registro por /deptos, cuando ningún depto publicado convenía: «Te aviso cuando aparezca uno», con el regalo", render: () => correoSemanalVacio({ nombre: "Camila", presentacion: true, urlPerfil: `${SITIO}/dashboard#perfil`, urlBaja: `${SITIO}/semanal/baja`, delDia: true, regaloAltaVence: "2026-11-15T15:00:00Z" }) },
-  { id: "aviso_inmediato", tipo: "aviso_inmediato", nombre: "Aviso inmediato", cuando: "El día que aparece un aviso nuevo que da Comprar con el perfil de quien dijo «Quiero comprar ya» y sigue publicado (uno por día; sin saldo: compra el suelto)", render: () => correoInmediato({ nombre: "Camila", busca: "2 dormitorios, Ñuñoa, hasta UF 4.500", piePct: 20, plazoAnios: 30, deptos: [SEMANAL_MUESTRA("tarjetas", { saldo: 0, conRegalo: false }).deptos[0]], saldo: 0, urlBoton: `${SITIO}/semanal`, urlComprar: `${SITIO}/checkout?product=single&origen=inmediato`, urlBaja: `${SITIO}/semanal/baja?tipo=inmediato` }) },
+  { id: "del_dia", tipo: "semanal", nombre: "Correo del día · los primeros deptos", cuando: "Dentro de la hora del registro por /deptos, a toda cuenta nueva: sus primeros deptos con la ficha chequeada, la hora en que Franco los vio publicados y el regalo (es el semanal de esa semana)", render: () => correoSemanal({ ...SEMANAL_MUESTRA("tarjetas", { saldo: 1, conRegalo: false }), plazoAnios: PLAZO_POR_DEFECTO, presentacion: true, delDia: { publicadosAl: "hoy a las 14:32" }, regaloAltaVence: "2026-11-15T15:00:00Z", explorar: PUERTA_MUESTRA(4, "del_dia") }) },
+  { id: "del_dia_vacio", tipo: "semanal", nombre: "Correo del día · sin deptos todavía", cuando: "Dentro de la hora del registro por /deptos, cuando ningún depto publicado convenía: «Te aviso cuando aparezca uno», con el regalo", render: () => correoSemanalVacio({ nombre: "Camila", presentacion: true, urlPerfil: `${SITIO}/dashboard#perfil`, urlBaja: `${SITIO}/semanal/baja`, delDia: true, regaloAltaVence: "2026-11-15T15:00:00Z", explorar: PUERTA_MUESTRA(0, "del_dia_vacio", true) }) },
+  { id: "aviso_inmediato", tipo: "aviso_inmediato", nombre: "Aviso inmediato", cuando: "El día que aparece un aviso nuevo que da Comprar con el perfil de quien dijo «Quiero comprar ya» y sigue publicado (uno por día; sin saldo: compra el suelto)", render: () => correoInmediato({ nombre: "Camila", busca: "2 dormitorios, Ñuñoa, hasta UF 4.500", piePct: 20, plazoAnios: 30, deptos: [SEMANAL_MUESTRA("tarjetas", { saldo: 0, conRegalo: false }).deptos[0]], saldo: 0, urlBoton: `${SITIO}/semanal`, urlComprar: `${SITIO}/checkout?product=single&origen=inmediato`, urlBaja: `${SITIO}/semanal/baja?tipo=inmediato`, explorar: PUERTA_MUESTRA(1, "inmediato") }) },
   { id: "pregunta_horizonte", tipo: "pregunta_horizonte", nombre: "¿Cuándo piensas comprar? (a los 60 días del «Quiero comprar ya»)", cuando: "A los 60 días de responder «Quiero comprar ya» sin comprar; sin respuesta, quedan solo el semanal", render: () => correoPreguntaYa({ nombre: "Camila", urlRespuesta: (h) => `${SITIO}/api/inmediato/horizonte?t=muestra&h=${h}` }) },
   { id: "premio_referido", tipo: "premio_referido", nombre: "Tu invitado entró: tienes un análisis más", cuando: "A quien invitó, cuando su invitado (cuenta nueva, otro dispositivo) contesta el «cuándo»: un análisis más vigente 60 días, hasta cinco por persona", render: () => correoPremioReferido({ nombre: "Camila", vence: "2026-12-15T15:00:00Z", pagados: 2, codigo: "K7M2QX" }) },
   { id: "plan_aumento", tipo: "plan_aumento", nombre: "Tu plan ahora trae 20 análisis al mes", cuando: "Una vez, a quien tenía el plan de 10: en el cobro de su renovación que le entrega el primer lote de 20, al mismo precio", render: () => correoPlanAumento({ nombre: "Camila", precio: "$39.990" }) },
