@@ -13,6 +13,7 @@ import { cuentaPortal, eventoPortalVista } from "@/lib/explorar/portal-servidor"
 import { convienenHoy, tasaDelMotor, universoDeLaNocheCacheado } from "@/lib/explorar/portal-cache";
 import { robotDeVisita } from "@/lib/vista-entrada";
 import { filtrosAbiertos, ordenAbierto, origenDeLlegada, PIE_ABIERTO, PLAZO_ABIERTO } from "@/lib/explorar/abierto";
+import { llegadaDeExplorar } from "@/lib/explorar/puertas-landing";
 import { ExplorarCliente } from "./explorar-cliente";
 import { EsqueletoExplorar } from "./esqueleto";
 
@@ -100,7 +101,7 @@ async function ExplorarConDatos({ consulta, user }: { consulta: string; user: Us
     tasaDelMotor(),
   ]);
   const n = universo ? filtrar(descompactar(universo), filtros).length : null;
-  void capturarServidor(eventoPortalVista({ userId: user.id, filtros, orden, n, robot: robotDeVisita(headers().get("user-agent"), headers()) })).catch(() => false);
+  void capturarServidor(eventoPortalVista({ userId: user.id, filtros, orden, n, robot: robotDeVisita(headers().get("user-agent"), headers()), llegada: llegadaDeExplorar(sp.get("desde")) })).catch(() => false);
   const a = sp.get("a");
   return (
     <ExplorarCliente

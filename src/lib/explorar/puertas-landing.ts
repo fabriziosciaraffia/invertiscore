@@ -12,6 +12,14 @@ const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
  *  que llegan desde la landing de las que llegan directo. */
 export const DESDE_LANDING = "landing";
 export const HREF_DESDE_LANDING = `/explorar?desde=${DESDE_LANDING}`;
+/** El enlace de los correos (02-nov-2026, puerta-correos.ts) aterriza con `?desde=correo`: la vista queda con la llegada
+ *  «correo», aparte de la landing y de lo directo. */
+export const DESDE_CORREO = "correo";
+
+/** De dónde llegó a /explorar, por `desde`: la landing, un correo o directo. La lee la vista con y sin cuenta. */
+export type LlegadaExplorar = "landing" | "correo" | "directo";
+export const llegadaDeExplorar = (desde: string | null | undefined): LlegadaExplorar =>
+  desde === DESDE_LANDING ? "landing" : desde === DESDE_CORREO ? "correo" : "directo";
 
 /** Lo revisado anoche, hacia abajo a miles: «+21.000» con 21.247 revisados. Nunca promete más de lo medido. */
 export const pisoDeMiles = (n: number) => Math.floor(n / 1000) * 1000;

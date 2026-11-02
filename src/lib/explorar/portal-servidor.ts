@@ -29,6 +29,7 @@ import { leerPerfilBusqueda } from "@/lib/perfil-busqueda-servidor";
 import { validarCambiosPerfil } from "@/lib/perfil-busqueda";
 import type { EventoServidor } from "@/lib/posthog-servidor";
 import type { MotivoRobot } from "@/lib/vista-entrada";
+import type { LlegadaExplorar } from "./puertas-landing";
 import { comboVigente, VIDA_COMBO_MS, type ComboGuardado } from "./explorar";
 import { filasParaSonda, guardarCombos, informesDeExplorar, type FilaUniverso } from "./servidor";
 import {
@@ -223,12 +224,14 @@ export async function guardarBusquedaComoPerfil(admin: SupabaseClient, userId: s
 }
 
 // ── LA MEDICIÓN ──────────────────────────────────────────────────────────────
-/** «explorar_vista» al entrar (la página): los filtros, el orden y si es la vista global. Los cambios los deja el navegador. */
-export function eventoPortalVista(p: { userId: string; filtros: FiltrosPortal; orden: OrdenPortal; n: number | null; robot?: MotivoRobot | null }): EventoServidor {
+/** «explorar_vista» al entrar (la página): los filtros, el orden y si es la vista global. Los cambios los deja el navegador.
+ *  `llegada_explorar` (02-nov-2026): de dónde llegó —la landing, un correo (`desde=correo`, puerta-correos.ts) o directo—, el
+ *  mismo nombre que la vista sin cuenta. */
+export function eventoPortalVista(p: { userId: string; filtros: FiltrosPortal; orden: OrdenPortal; n: number | null; robot?: MotivoRobot | null; llegada?: LlegadaExplorar }): EventoServidor {
   return {
     event: EVENTOS_PORTAL.vista,
     distinctId: p.userId,
-    properties: { ...propsDeFiltros(p.filtros, p.orden), n: p.n, fuente: "pagina", robot: !!p.robot, ...(p.robot ? { robot_motivo: p.robot } : {}) },
+    properties: { ...propsDeFiltros(p.filtros, p.orden), n: p.n, fuente: "pagina", llegada_explorar: p.llegada ?? "directo", robot: !!p.robot, ...(p.robot ? { robot_motivo: p.robot } : {}) },
   };
 }
 

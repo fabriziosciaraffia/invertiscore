@@ -14,6 +14,7 @@
 // Sin módulos de Node: lo usa el middleware, que corre en Edge. Lo prueba el tier VISTA-ENTRADA.
 // ─────────────────────────────────────────────────────────────────────────────
 import { canalDeUtm } from "@/lib/canal";
+import { llegadaDeExplorar, type LlegadaExplorar } from "@/lib/explorar/puertas-landing";
 import { conPermiso, type Consentimiento } from "@/lib/consentimiento";
 import { agenteDelEvento, enviarCaptura, esRobot, type DepsEnvio, type EventoServidor } from "@/lib/posthog-captura";
 
@@ -32,8 +33,9 @@ export const EVENTO_VISTA: Record<PaginaEntrada, string> = {
   explorar: "explorar_abierto_vista",
 };
 
-/** De dónde llegó a /explorar: la tarjeta de la landing lleva `?desde=landing` (abierto.ts › HREF_DESDE_LANDING). */
-export const origenDeExplorar = (search: string): "landing" | "directo" => (new URLSearchParams(search).get("desde") === "landing" ? "landing" : "directo");
+/** De dónde llegó a /explorar: la tarjeta de la landing lleva `?desde=landing` (abierto.ts › HREF_DESDE_LANDING) y, desde
+ *  el 02-nov-2026, el enlace de los correos `?desde=correo` (puerta-correos.ts). */
+export const origenDeExplorar = (search: string): LlegadaExplorar => llegadaDeExplorar(new URLSearchParams(search).get("desde"));
 
 /** La cabecera con que el middleware le pasa el id de la visita a la página (la de /i/ emite su vista ella). */
 export const CABECERA_VISITA = "x-franco-visita";
