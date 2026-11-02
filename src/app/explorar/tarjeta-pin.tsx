@@ -14,6 +14,8 @@
 // FILTROS V2 Y «SI NEGOCIAS» (02-nov-2026, mockup 8, estado C): el veredicto es el chip de la casa (ChipVeredicto) con su puntaje
 // y «al precio publicado». Un NEGOCIADO muestra los dos veredictos con sus chips —«Al precio publicado [Ajustar]» y «Si consigues
 // UF 2.950 (−4,2 %) [✓ Comprar · 71]»— y el botón «Analizar a UF 2.950».
+// COMPARTIR (02-nov-2026, goal «Compartir un depto desde Explorar»): junto al corazón, con y sin cuenta, el botón «Compartir»
+// (explorar-cliente.tsx › compartir: la hoja del sistema en el teléfono, copiar el enlace en el PC).
 // ─────────────────────────────────────────────────────────────────────────────
 import { useEffect, useRef } from "react";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
@@ -29,6 +31,7 @@ import { ChipVeredicto } from "@/components/analysis/shared/ChipVeredicto";
 import { conCifrasNegociado, esNegociado, NEGOCIAR_COPY, type PinNegociado } from "@/lib/explorar/capa-negociar";
 import { AL_PRECIO_PUBLICADO } from "@/lib/precio-publicado";
 import type { Veredicto } from "@/lib/types";
+import { COMPARTIR_COPY } from "@/lib/explorar/compartir";
 
 const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
 
@@ -44,6 +47,19 @@ export function Corazon({ guardado, alTocar }: { guardado: boolean; alTocar: () 
     <button type="button" className="ex-corazon" aria-pressed={guardado} aria-label={guardado ? `${PORTAL_COPY.guardado}. Quitar` : PORTAL_COPY.guardar} data-explorar="corazon" data-guardado={guardado ? "1" : undefined} onClick={(e) => { e.stopPropagation(); alTocar(); }}>
       <svg className="ex-corazon-svg" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
         <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+      </svg>
+    </button>
+  );
+}
+
+/** «Compartir» (02-nov-2026): el ícono de compartir, del mismo gris que el corazón; su nombre es «Compartir». `alPreparar`
+ *  (al apoyar el dedo o el mouse) adelanta lo que el texto necesite antes del toque: la hoja del sistema tiene que abrirse en
+ *  el mismo toque, sin esperas, o el teléfono no la abre. */
+export function BotonCompartir({ alTocar, alPreparar }: { alTocar: () => void; alPreparar?: () => void }) {
+  return (
+    <button type="button" className="ex-compartir" aria-label={COMPARTIR_COPY.boton} title={COMPARTIR_COPY.boton} data-explorar="compartir" onPointerDown={alPreparar} onClick={(e) => { e.stopPropagation(); alTocar(); }}>
+      <svg className="ex-compartir-svg" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
+        <path d="M12 3.5v11M7.5 8 12 3.5 16.5 8M6 12.5v6A1.5 1.5 0 0 0 7.5 20h9a1.5 1.5 0 0 0 1.5-1.5v-6" />
       </svg>
     </button>
   );
@@ -84,7 +100,7 @@ export function VeredictosNegociado({ p }: { p: PinNegociado }) {
   );
 }
 
-export function TarjetaPin({ pines, seleccionado, uf, analizados, guardados, generando, error, alCambiar, alCerrar, alGuardar, alAnalizar, sinCuenta = false, recien = null }: {
+export function TarjetaPin({ pines, seleccionado, uf, analizados, guardados, generando, error, alCambiar, alCerrar, alGuardar, alAnalizar, alCompartir, alPrepararCompartir, sinCuenta = false, recien = null }: {
   /** Los cercanos, el tocado primero. */
   pines: PinMapa[];
   seleccionado: string;
@@ -98,6 +114,9 @@ export function TarjetaPin({ pines, seleccionado, uf, analizados, guardados, gen
   alGuardar: (avisoId: string) => void;
   /** Con cuenta, «Analizar este»; sin cuenta, «Regístrate gratis para ver este depto» (abre la hoja de registro). */
   alAnalizar: (p: PinMapa) => void;
+  /** «Compartir» (02-nov-2026), con y sin cuenta. */
+  alCompartir: (p: PinMapa) => void;
+  alPrepararCompartir?: (p: PinMapa) => void;
   /** Sin cuenta (estado C del mockup 6-puerta-e): el flujo, el cap rate y la UF por m² van borrosos y el botón pide registro. */
   sinCuenta?: boolean;
   /** Recién registrada desde este pin (30-oct-2026): su tarjeta se desbloquea con la banda; `regalo`, si tiene el análisis de regalo. */
@@ -170,7 +189,10 @@ export function TarjetaPin({ pines, seleccionado, uf, analizados, guardados, gen
                 <div className="ex-tarjeta-datos">
                   <div className="ex-tarjeta-cab">
                     <span className="ex-ojo" data-explorar="linea">{lineaDepto(p)}</span>
-                    <Corazon guardado={guardados.has(p.avisoId)} alTocar={() => alGuardar(p.avisoId)} />
+                    <span className="ex-iconos">
+                      <BotonCompartir alTocar={() => alCompartir(p)} alPreparar={alPrepararCompartir ? () => alPrepararCompartir(p) : undefined} />
+                      <Corazon guardado={guardados.has(p.avisoId)} alTocar={() => alGuardar(p.avisoId)} />
+                    </span>
                   </div>
                   <b className="ex-precio" data-explorar="precio">UF {miles(p.precioUF)}{esNegociado(p) && <span className="ex-publicado"> {NEGOCIAR_COPY.publicado}</span>}</b>
                   {esNegociado(p) ? (

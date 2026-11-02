@@ -11,6 +11,8 @@
 // LA CAPA «SI NEGOCIAS» (02-nov-2026, capa-negociar.ts): los negociados se agrupan y se dibujan APARTE, con el pin relleno en el
 // color del chip Ajustar (la ciruela de la tríada) y el número en blanco —nunca el rojo de los que convienen—; con zoom, el pin
 // dice el descuento («−4,2 %»). Debajo de los que convienen; lejos, el grupo que un rojo tapa se corre a su borde (satélite).
+// EL ENLACE DE UN DEPTO COMPARTIDO (02-nov-2026): con `foco`, el primer encuadre no abarca los pines sino que se centra en el
+// depto, de cerca (ZOOM_FOCO, con su etiqueta), una vez; después los filtros encuadran como siempre.
 // ─────────────────────────────────────────────────────────────────────────────
 import { useEffect, useRef } from "react";
 import { loadGoogleMaps } from "@/lib/loadGoogleMaps";
@@ -27,6 +29,8 @@ const AZUL_OSCURO = "#8DB0E3";
 const TINTA = "#0F0F0F";
 const PAPEL = "#FFFFFF";
 const ZOOM_MAX_ENCUADRE = 15;
+/** El zoom con que se abre un depto compartido: de cuadra, con las etiquetas de los pines (ZOOM_ETIQUETAS). */
+export const ZOOM_FOCO = 16;
 /** Desde este zoom cada pin dice su flujo (antes, grupos y puntos). */
 export const ZOOM_ETIQUETAS = 15;
 const TOPE_CARGA_MS = 12000;
@@ -75,9 +79,12 @@ export interface MapaExplorarProps {
   onEstado: (estado: "listo" | "teselas" | "fallo") => void;
   /** Sin cuenta (29-oct-2026, la puerta E): con zoom, cada pin es solo el punto —el flujo no viaja al navegador—. */
   sinCifras?: boolean;
+  /** El punto donde centrarse en el próximo encuadre (el depto de un enlace compartido); `onFoco` avisa que se usó. */
+  foco?: { lat: number; lng: number } | null;
+  onFoco?: () => void;
 }
 
-export default function MapaExplorar({ pines, negociados = [], analizados, seleccionado, encuadre, conZona, onSeleccionar, onTocarMapa, onMovido, onEstado, sinCifras = false }: MapaExplorarProps) {
+export default function MapaExplorar({ pines, negociados = [], analizados, seleccionado, encuadre, conZona, onSeleccionar, onTocarMapa, onMovido, onEstado, sinCifras = false, foco = null, onFoco }: MapaExplorarProps) {
   const divRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mapRef = useRef<any>(null);
@@ -87,10 +94,11 @@ export default function MapaExplorar({ pines, negociados = [], analizados, selec
   const negociadosRef = useRef(negociados);
   const analizadosRef = useRef(analizados);
   const selRef = useRef(seleccionado);
-  const cb = useRef({ onSeleccionar, onTocarMapa, onMovido, onEstado });
+  const cb = useRef({ onSeleccionar, onTocarMapa, onMovido, onEstado, onFoco });
   const sinCifrasRef = useRef(sinCifras);
-  pinesRef.current = pines; negociadosRef.current = negociados; analizadosRef.current = analizados; selRef.current = seleccionado; sinCifrasRef.current = sinCifras;
-  cb.current = { onSeleccionar, onTocarMapa, onMovido, onEstado };
+  const focoRef = useRef(foco);
+  pinesRef.current = pines; negociadosRef.current = negociados; analizadosRef.current = analizados; selRef.current = seleccionado; sinCifrasRef.current = sinCifras; focoRef.current = foco;
+  cb.current = { onSeleccionar, onTocarMapa, onMovido, onEstado, onFoco };
   const dibujarRef = useRef<() => void>(() => {});
   const encuadrarRef = useRef<() => void>(() => {});
   // Los movimientos que hace el propio mapa (encuadrar, acercar a un grupo) no son «la persona movió el mapa».
@@ -191,6 +199,9 @@ export default function MapaExplorar({ pines, negociados = [], analizados, selec
       encuadrarRef.current = () => {
         const ps = pinesRef.current;
         propio.current = true;
+        // El depto de un enlace compartido: centrado y de cerca, una vez.
+        const f = focoRef.current;
+        if (f) { map.setCenter(f); map.setZoom(ZOOM_FOCO); focoRef.current = null; cb.current.onFoco?.(); return; }
         if (ps.length === 0) { map.setCenter(CENTRO_SANTIAGO); map.setZoom(11); return; }
         const b = new g.maps.LatLngBounds();
         for (const p of ps) b.extend({ lat: p.lat, lng: p.lng });
@@ -228,8 +239,10 @@ export default function MapaExplorar({ pines, negociados = [], analizados, selec
     return () => o.disconnect();
   }, []);
 
-  // Cambiaron los filtros (o llegó el universo): se encuadra de nuevo, salvo con una zona elegida.
+  // Cambiaron los filtros (o llegó el universo): se encuadra de nuevo, salvo con una zona elegida. Llegó un foco (el depto
+  // compartido, cuando el universo dice dónde está): se centra en él.
   useEffect(() => { if (mapRef.current) { if (!conZona) encuadrarRef.current(); dibujarRef.current(); } }, [encuadre, conZona]);
+  useEffect(() => { if (mapRef.current && focoRef.current) { encuadrarRef.current(); dibujarRef.current(); } }, [foco]);
   // Cambiaron los pines a la vista o el elegido: se redibuja; el elegido, si está fuera, se trae a la vista.
   useEffect(() => {
     const map = mapRef.current;

@@ -9,6 +9,7 @@
 // existe solo acá— y «Avísame de nuevos». Se dibujan de a tandas a medida que se baja: con todo Gran Santiago son miles.
 // FILTROS V2 Y «SI NEGOCIAS» (02-nov-2026, mockup 8): la cabecera dice «al precio publicado» y, con la capa prendida, su cuenta
 // aparte; los negociados van DESPUÉS de los ✓ Comprar, con su título y los dos veredictos (chips de la casa).
+// Cada fila lleva «Compartir» junto al corazón (02-nov-2026, con y sin cuenta).
 // ─────────────────────────────────────────────────────────────────────────────
 import { Fragment, useEffect, useRef, useState } from "react";
 import { ChipVeredicto } from "@/components/analysis/shared/ChipVeredicto";
@@ -18,14 +19,14 @@ import { deptosN, ORDENES, PORTAL_COPY, type OrdenPortal, type PinMapa } from "@
 import { BORROSO } from "@/lib/explorar/abierto";
 import { esNegociado, NEGOCIAR_COPY, type PinNegociado } from "@/lib/explorar/capa-negociar";
 import { AL_PRECIO_PUBLICADO } from "@/lib/precio-publicado";
-import { Borroso, Corazon, ImagenDepto, VeredictoDelPin, VeredictosNegociado } from "./tarjeta-pin";
+import { Borroso, BotonCompartir, Corazon, ImagenDepto, VeredictoDelPin, VeredictosNegociado } from "./tarjeta-pin";
 
 const TANDA = 30;
 /** Cuánto hay que deslizar hacia abajo (px) para cerrar la hoja en el teléfono. */
 const CIERRE_DESLIZANDO_PX = 90;
 const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
 
-export function ListaPortal({ pines, negociados = [], tope = null, total, calculando, orden, analizados, guardados, alOrden, alAbrir, alGuardar, alAvisame, alCerrar, sinCuenta = false }: {
+export function ListaPortal({ pines, negociados = [], tope = null, total, calculando, orden, analizados, guardados, alOrden, alAbrir, alGuardar, alCompartir, alPrepararCompartir, alAvisame, alCerrar, sinCuenta = false }: {
   pines: PinMapa[];
   /** La capa «Si negocias» (vacía si está apagada): va después de los que convienen. */
   negociados?: PinNegociado[];
@@ -40,6 +41,9 @@ export function ListaPortal({ pines, negociados = [], tope = null, total, calcul
   alOrden: (o: OrdenPortal) => void;
   alAbrir: (avisoId: string) => void;
   alGuardar: (avisoId: string) => void;
+  /** «Compartir» (02-nov-2026), en cada fila. */
+  alCompartir: (p: PinMapa) => void;
+  alPrepararCompartir?: (p: PinMapa) => void;
   alAvisame: () => void;
   /** Cierra la lista: la X, el botón «Mapa», deslizar hacia abajo, Escape o tocar fuera (en el teléfono). */
   alCerrar: () => void;
@@ -127,6 +131,7 @@ export function ListaPortal({ pines, negociados = [], tope = null, total, calcul
                         )}
                       </span>
                     </button>
+                    <BotonCompartir alTocar={() => alCompartir(p)} alPreparar={alPrepararCompartir ? () => alPrepararCompartir(p) : undefined} />
                     <Corazon guardado={guardados.has(p.avisoId)} alTocar={() => alGuardar(p.avisoId)} />
                   </li>
                   </Fragment>

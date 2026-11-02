@@ -11,10 +11,13 @@ import { MAPA_QUIETO_M } from "@/lib/explorar/mapa-quieto";
 import { cuantosConvienen, descompactar, filtrar, portalDeUrl, PORTAL_COPY, universoDeLaNoche } from "@/lib/explorar/portal";
 import { cuentaPortal, eventoPortalVista } from "@/lib/explorar/portal-servidor";
 import { tasaDelMotor, universoDeLaNocheCacheado } from "@/lib/explorar/portal-cache";
-import { robotDeVisita } from "@/lib/vista-entrada";
+import { esRobot, robotDeVisita } from "@/lib/vista-entrada";
 import { filtrosAbiertos, ordenAbierto, origenDeLlegada, PIE_ABIERTO, PLAZO_ABIERTO } from "@/lib/explorar/abierto";
 import { llegadaDeExplorar } from "@/lib/explorar/puertas-landing";
-import { ExplorarCliente } from "./explorar-cliente";
+import { compartidoDeUrl } from "@/lib/explorar/enlace-compartido";
+import { contenidoVistaPrevia, rutaVistaPrevia } from "@/lib/explorar/compartir";
+import { fichaCompartida, fichaCompartidaCacheada } from "@/lib/explorar/compartir-servidor";
+import { ExplorarCliente, type CompartidoCliente } from "./explorar-cliente";
 import { EsqueletoExplorar } from "./esqueleto";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -36,8 +39,33 @@ import { EsqueletoExplorar } from "./esqueleto";
 // Y no cubre la pantalla entera: una imagen del tamaño del viewport Chrome la toma por fondo y no la cuenta como LCP.
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const metadata: Metadata = { title: PORTAL_COPY.pestana, robots: { index: false, follow: false } };
+const METADATOS: Metadata = { title: PORTAL_COPY.pestana, robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
+
+/**
+ * LA VISTA PREVIA DE UN DEPTO COMPARTIDO (02-nov-2026, lib/explorar/compartir.ts): con `?a=…&desde=compartido`, el título
+ * y la imagen que leen WhatsApp y las redes son los del depto —la línea, el precio y el chip ✓ Comprar, sin más cifras—, y
+ * la imagen la genera /api/og/depto. SOLO PARA LOS ROBOTS DE VISTA PREVIA (los que reconoce `esRobot`: WhatsApp, Meta,
+ * Telegram, Slack…): a una persona estos metadatos no le sirven, y en Next 14 los metadatos se esperan antes de mandar el
+ * primer byte, así que leer la ficha le costaría el LCP del mapa quieto. Sin robot, los de siempre, sin esperar nada.
+ */
+export async function generateMetadata({ searchParams }: { searchParams?: Record<string, string | string[] | undefined> }): Promise<Metadata> {
+  const sp = new URLSearchParams();
+  for (const [k, v] of Object.entries(searchParams ?? {})) if (typeof v === "string") sp.set(k, v);
+  const c = compartidoDeUrl(sp);
+  if (!c || !esRobot(headers().get("user-agent"))) return METADATOS;
+  const ficha = await fichaCompartidaCacheada(c.avisoId, c.modalidad).catch(() => null);
+  if (!ficha) return METADATOS;
+  const v = contenidoVistaPrevia(ficha);
+  const imagen = { url: rutaVistaPrevia(c.avisoId, c.modalidad), width: 1200, height: 630, alt: v.titulo };
+  return {
+    ...METADATOS,
+    title: { absolute: v.titulo },
+    description: v.descripcion,
+    openGraph: { title: v.titulo, description: v.descripcion, siteName: "Franco", locale: "es_CL", type: "website", images: [imagen] },
+    twitter: { card: "summary_large_image", title: v.titulo, description: v.descripcion, images: [imagen.url] },
+  };
+}
 
 // DECODIFICACIÓN SINCRÓNICA (28-oct-2026, medido en producción): con `decoding="async"` el mapa quieto se pintaba un cuadro
 // DESPUÉS del primer pintado (observado: FCP 820 ms, LCP 831 ms) y la simulación de Lighthouse le sumaba al LCP todo el JS que
@@ -71,6 +99,18 @@ export default async function ExplorarPage({ searchParams }: { searchParams?: Re
   );
 }
 
+/**
+ * EL DEPTO DE UN ENLACE COMPARTIDO (02-nov-2026): si sigue publicado y lo que se sabe de él, para la tarjeta de «ya no está»
+ * con sus parecidos. Si da Comprar lo decide el navegador con el universo que carga (el mismo que dibuja); acá solo se lee
+ * la fila, en paralelo con lo demás. Null sin enlace compartido o si el aviso no existe.
+ */
+async function compartidoDe(sp: URLSearchParams): Promise<CompartidoCliente | null> {
+  const c = compartidoDeUrl(sp);
+  if (!c) return null;
+  const f = await fichaCompartida(createServiceClient(), c.avisoId, c.modalidad, { veredicto: false }).catch(() => null);
+  return { avisoId: c.avisoId, estado: f ? (f.estado === "despublicado" ? "despublicado" : null) : null, depto: f?.depto ?? null };
+}
+
 /** SIN CUENTA (la puerta E): el número de anoche con el financiamiento por defecto (pie 20 % y 30 años), y nada de la persona. La vista la emite el
  *  middleware (vista-entrada.ts › «explorar_abierto_vista», con la llegada y los robots marcados). */
 async function ExplorarAbierto({ consulta }: { consulta: string }) {
@@ -81,15 +121,16 @@ async function ExplorarAbierto({ consulta }: { consulta: string }) {
   // UNA SOLA LECTURA DEL UNIVERSO (02-nov-2026): el mapa abierto y la bienvenida cuentan el mismo universo de la noche (pie
   // 20 % y 30 años). Eran dos lecturas de la misma clave en este Promise.all: con la caché vencida, dos explorar_mapa en el
   // mismo milisegundo.
-  const [noche, tasa] = await Promise.all([
+  const [noche, tasa, compartido] = await Promise.all([
     universoDeLaNocheCacheado(PIE_ABIERTO, PLAZO_ABIERTO).catch(() => null),
     tasaDelMotor(),
+    compartidoDe(sp),
   ]);
   const universo = universoDeLaNoche(filtros) ? noche : null;
   // La bienvenida dice el número de todo el sitio, aunque la URL traiga filtros; el del mapa es el filtrado.
   const convienen = cuantosConvienen(noche);
   const n = universo ? filtrar(descompactar(universo), filtros).length : null;
-  return <ExplorarCliente inicial={{ filtros, orden, n, cuenta: null, tasa, convienen }} abrir={sp.get("a")} origen={origenDeLlegada(sp.get("desde"))} />;
+  return <ExplorarCliente inicial={{ filtros, orden, n, cuenta: null, tasa, convienen }} abrir={compartido?.avisoId ?? sp.get("a")} compartido={compartido} origen={origenDeLlegada(sp.get("desde"))} />;
 }
 
 /** La cuenta y el número: lo que el esqueleto no espera. */
@@ -99,18 +140,20 @@ async function ExplorarConDatos({ consulta, user }: { consulta: string; user: Us
   const { filtros, orden } = portalDeUrl(sp);
   const admin = createServiceClient();
   const noche = universoDeLaNoche(filtros);
-  const [cuenta, universo, tasa] = await Promise.all([
+  const [cuenta, universo, tasa, compartido] = await Promise.all([
     cuentaPortal(admin, user),
     noche ? universoDeLaNocheCacheado(filtros.pie, filtros.plazo).catch(() => null) : Promise.resolve(null),
     tasaDelMotor(),
+    compartidoDe(sp),
   ]);
   const n = universo ? filtrar(descompactar(universo), filtros).length : null;
   void capturarServidor(eventoPortalVista({ userId: user.id, filtros, orden, n, robot: robotDeVisita(headers().get("user-agent"), headers()), llegada: llegadaDeExplorar(sp.get("desde")) })).catch(() => false);
-  const a = sp.get("a");
+  const a = compartido?.avisoId ?? sp.get("a");
   return (
     <ExplorarCliente
       inicial={{ filtros, orden, n, cuenta, tasa, convienen: null }}
       abrir={a}
+      compartido={compartido}
       autoAnalizar={sp.get("analizar") === "1" ? a : null}
       correo={user.email ?? null}
     />
