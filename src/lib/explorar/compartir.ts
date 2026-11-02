@@ -15,15 +15,24 @@
 //     servidor comprueba que el depto da Comprar hoy con esos supuestos.
 //   · SI YA NO ESTÁ PUBLICADO cuando se abre el enlace, la tarjeta lo dice y ofrece los parecidos que sí dan
 //     (`parecidosQueDan`); si sigue publicado pero ya no está entre los que convienen, lo mismo con su frase.
+//   · CON LA CAPA «SI NEGOCIAS» (capa-negociar.ts, el mismo 02-nov-2026): un negociado da Ajustar al precio publicado —su
+//     Comprar es al precio negociado—, así que se comparte sin veredicto (`veredictoDelPin`), y quien abre su enlace lee que no
+//     está entre los que convienen hoy al precio publicado (nunca «ya no»: no lo estuvo), con sus parecidos.
 // ─────────────────────────────────────────────────────────────────────────────
 import { lineaDepto, type CondicionDepto } from "@/lib/guia/linea-depto";
 import { PIE_POR_DEFECTO, PLAZO_POR_DEFECTO } from "@/lib/deptos/estandar";
+import { AL_PRECIO_PUBLICADO } from "@/lib/precio-publicado";
 import type { FiltrosPortal, ModalidadPortal, PinMapa } from "./portal";
 
 const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
 
 /** ¿Mira con el financiamiento por defecto? Solo entonces el veredicto y el puntaje de su pin son los que se comparten. */
 export const esVistaEstandar = (f: Pick<FiltrosPortal, "pie" | "plazo" | "tasa">): boolean => f.pie === PIE_POR_DEFECTO && f.plazo === PLAZO_POR_DEFECTO && f.tasa == null;
+
+/** EL VEREDICTO DEL PIN en la vista de por defecto: Comprar con su puntaje solo si el pin da Comprar. Un negociado de la capa
+ *  «Si negocias» da Ajustar al precio publicado y se comparte sin veredicto, como el que no da con otro pie. */
+export const veredictoDelPin = (p: Pick<PinMapa, "veredicto" | "score">): { comprar: boolean; score: number | null } =>
+  p.veredicto === "COMPRAR" ? { comprar: true, score: p.score } : { comprar: false, score: null };
 
 /** Lo que se sabe del depto para el texto, la vista previa y la tarjeta de «ya no está». */
 export interface DeptoCompartido {
@@ -142,6 +151,8 @@ export const COMPARTIR_COPY = {
   sinVeredicto: "míralo en el mapa de Franco",
   /** El título del mensaje en la hoja del sistema (algunas apps lo muestran sobre el texto). */
   tituloHoja: "Un depto que conviene, según Franco",
+  /** El de un depto que se comparte sin veredicto (un negociado, o uno que no da con el financiamiento por defecto). */
+  tituloHojaSinVeredicto: "Un depto en el mapa de Franco",
   vistaPrevia: {
     comprar: "✓ Comprar al precio publicado, según Franco.",
     noDa: "Míralo en el mapa de Franco, con los que convienen hoy.",
@@ -152,7 +163,7 @@ export const COMPARTIR_COPY = {
   /** La tarjeta del depto que ya no está, cuando se abre el enlace. */
   caido: {
     despublicado: "Este depto ya no está publicado.",
-    noDa: "Este depto ya no está entre los que convienen hoy.",
+    noDa: `Este depto no está entre los que convienen hoy ${AL_PRECIO_PUBLICADO}.`,
     parecidos: "Estos parecidos sí convienen:",
     sinParecidos: "Hoy no hay parecidos que convengan. Mira los demás en el mapa.",
     verMapa: "Ver el mapa",

@@ -66,7 +66,7 @@ import { conTopeYReintento } from "@/lib/deptos/entrada";
 import { PASO_REGALO_MS, TOPE_ESPERA_REGALO_MS } from "@/lib/deptos/alta-orden";
 import { avisarLead } from "@/lib/meta/lead-cliente";
 import {
-  aperturaCompartida, COMPARTIR_COPY, deptoDePin, esVistaEstandar, EVENTOS_COMPARTIR, mensajeCompartir, textoCompartir,
+  aperturaCompartida, COMPARTIR_COPY, deptoDePin, esVistaEstandar, EVENTOS_COMPARTIR, mensajeCompartir, textoCompartir, veredictoDelPin,
   type DeptoCompartido, type EstadoCompartido, type MetodoCompartir, type OrigenCompartir,
 } from "@/lib/explorar/compartir";
 import { enlaceCompartido, PARAMS_DE_UNA_VEZ } from "@/lib/explorar/enlace-compartido";
@@ -632,7 +632,7 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
   const estandar = useRef(new Map<string, Promise<{ comprar: boolean; score: number | null }>>());
   const resueltos = useRef(new Map<string, { comprar: boolean; score: number | null }>());
   const veredictoEstandar = useCallback((p: PinMapa): Promise<{ comprar: boolean; score: number | null }> => {
-    if (esVistaEstandar(filtros)) return Promise.resolve({ comprar: true, score: p.score });
+    if (esVistaEstandar(filtros)) return Promise.resolve(veredictoDelPin(p));
     const clave = `${filtros.modalidad}|${p.avisoId}`;
     let v = estandar.current.get(clave);
     if (!v) {
@@ -659,8 +659,9 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
   /** «Compartir»: en el teléfono la hoja del sistema (sin ella, WhatsApp); en el PC, copia el enlace y lo dice. */
   async function compartir(p: PinMapa, origenToque: OrigenCompartir) {
     const estd = esVistaEstandar(filtros);
-    // Lo ya resuelto se usa sin esperar; si todavía no llegó (rara vez: otro pie y un toque muy rápido), se espera.
-    const ver = estd ? { comprar: true, score: p.score } : resueltos.current.get(`${filtros.modalidad}|${p.avisoId}`) ?? await veredictoEstandar(p);
+    // En la vista de por defecto, el del pin (un negociado de la capa va sin veredicto). Con otro pie, lo ya resuelto se usa sin
+    // esperar; si todavía no llegó (rara vez: un toque muy rápido), se espera.
+    const ver = estd ? veredictoDelPin(p) : resueltos.current.get(`${filtros.modalidad}|${p.avisoId}`) ?? await veredictoEstandar(p);
     const url = enlaceCompartido(window.location.origin, { avisoId: p.avisoId, modalidad: filtros.modalidad, comuna: p.comuna, codigo: sinCuenta ? null : codigo.current });
     const texto = textoCompartir(deptoDePin(p), ver);
     const telefono = typeof window.matchMedia === "function" && window.matchMedia("(pointer: coarse)").matches;
@@ -671,7 +672,7 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
     });
     if (metodo === "hoja") {
       try {
-        await navigator.share({ title: COMPARTIR_COPY.tituloHoja, text: texto, url });
+        await navigator.share({ title: ver.comprar ? COMPARTIR_COPY.tituloHoja : COMPARTIR_COPY.tituloHojaSinVeredicto, text: texto, url });
       } catch (e) {
         // Cerrar la hoja no es un error; si el teléfono no la dejó abrir, el enlace queda copiado.
         if ((e as { name?: string } | null)?.name !== "AbortError") setToast((await copiarAlPortapapeles(url)) ? COMPARTIR_COPY.copiado : COMPARTIR_COPY.noCopiado);

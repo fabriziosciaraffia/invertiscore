@@ -15,7 +15,8 @@
 //       como vista de entrada, con robots marcados; el panel de referidos separa lo que viene de un depto compartido.
 //   5 · SI YA NO ESTÁ PUBLICADO, la tarjeta lo dice y ofrece los parecidos que sí dan.
 //   6 · EL BOTÓN Y EL TEXTO: «Compartir» en la tarjeta y en cada fila, con y sin cuenta; la hoja del sistema en el teléfono,
-//       copiar en el PC; el texto exacto del goal, con el veredicto de por defecto aunque quien comparte mire con otro pie.
+//       copiar en el PC; el texto exacto del goal, con el veredicto de por defecto aunque quien comparte mire con otro pie. Un
+//       negociado de la capa «Si negocias» (Ajustar al precio publicado) se comparte sin «Comprar», también en esa vista.
 // Verificado EN ROJO por mutación (acta al pie). Corre dentro del QUICK. Sin red ni base: 0 tokens.
 // Solo:  node --env-file=.env.local --import tsx scripts/eval/golden/compartir-depto-catch-test.ts
 // ============================================================================
@@ -28,6 +29,8 @@ import * as ec from "../../../src/lib/explorar/enlace-compartido";
 import * as cp from "../../../src/lib/explorar/compartir";
 import { estaPublicado, fichaCompartida } from "../../../src/lib/explorar/compartir-servidor";
 import { cercanos, type PinMapa } from "../../../src/lib/explorar/portal";
+import type { PinNegociado } from "../../../src/lib/explorar/capa-negociar";
+import { AL_PRECIO_PUBLICADO } from "../../../src/lib/precio-publicado";
 import { detalleDeOrigen, detalleExplorar, origenDeLlegada } from "../../../src/lib/explorar/abierto";
 import { llegadaDeExplorar } from "../../../src/lib/explorar/puertas-landing";
 import { leerCookieInvitacion, PREFIJO_DETALLE_DEPTO, PREFIJO_DETALLE_INVITACION, valorCookieInvitacion } from "../../../src/lib/referido";
@@ -329,6 +332,8 @@ export async function runCompartirDeptoTier(): Promise<{ hard: number }> {
       if (/\+\$120/.test(html)) F("5 · sin cuenta, los parecidos muestran el flujo");
       const vacia = renderToStaticMarkup(createElement(CompartidoCaido, { estado: "no-da", depto: DEPTO, parecidos: [], sinCuenta: false, alAbrir: () => {}, alCerrar: () => {} }));
       if (titulo(vacia) !== cp.COMPARTIR_COPY.caido.noDa || !vacia.includes(cp.COMPARTIR_COPY.caido.sinParecidos)) F("5 · sin parecidos (o si ya no conviene) la tarjeta no lo dice");
+      // El de un negociado nunca estuvo entre los que convienen al precio publicado: la frase no dice «ya no», y dice a qué precio.
+      if (/\bya no\b/i.test(cp.COMPARTIR_COPY.caido.noDa) || !cp.COMPARTIR_COPY.caido.noDa.includes(AL_PRECIO_PUBLICADO)) F(`5 · la tarjeta de «no conviene» afirma que convenía o no dice a qué precio: «${cp.COMPARTIR_COPY.caido.noDa}»`);
       if (!/alAbrir=\{tocarPin\}/.test(cliente) || !/setCaido\(\{ estado: ap\.estado, depto: ap\.depto, parecidos: ap\.parecidos \}\);/.test(cliente)) F("5 · el navegador no muestra la tarjeta de «ya no está» o tocar un parecido no abre su tarjeta");
       if (!/return \{ avisoId: c\.avisoId, estado: f \? \(f\.estado === "despublicado" \? "despublicado" : null\) : null, depto: f\?\.depto \?\? null \};/.test(pagina)) F("5 · la página no le dice al navegador que el aviso ya no está publicado");
     }
@@ -340,19 +345,31 @@ export async function runCompartirDeptoTier(): Promise<{ hard: number }> {
       const sinVer = cp.textoCompartir(DEPTO, { comprar: false, score: 84 });
       if (/Comprar|84/.test(sinVer) || !sinVer.startsWith("Providencia · 2D2B · 79 m² · UF 4.591")) F(`6 · sin el Comprar de por defecto, el texto lo promete igual: «${sinVer}»`);
       if (!cp.esVistaEstandar({ pie: 20, plazo: 30, tasa: null }) || cp.esVistaEstandar({ pie: 30, plazo: 30, tasa: null }) || cp.esVistaEstandar({ pie: 20, plazo: 25, tasa: null }) || cp.esVistaEstandar({ pie: 20, plazo: 30, tasa: 4.5 })) F("6 · la vista de por defecto no es pie 20 %, 30 años y la tasa de hoy");
-      if (!/const ver = estd \? \{ comprar: true, score: p\.score \} : resueltos\.current\.get\(`\$\{filtros\.modalidad\}\|\$\{p\.avisoId\}`\) \?\? await veredictoEstandar\(p\);/.test(cliente) || !/const texto = textoCompartir\(deptoDePin\(p\), ver\);/.test(cliente)) F("6 · con otro pie, el texto dice el veredicto de quien comparte y no el de por defecto");
+      if (!/const ver = estd \? veredictoDelPin\(p\) : resueltos\.current\.get\(`\$\{filtros\.modalidad\}\|\$\{p\.avisoId\}`\) \?\? await veredictoEstandar\(p\);/.test(cliente) || !/const texto = textoCompartir\(deptoDePin\(p\), ver\);/.test(cliente)) F("6 · con otro pie, el texto dice el veredicto de quien comparte y no el de por defecto");
+      // EL NEGOCIADO (la capa «Si negocias»): en la vista de por defecto su veredicto es Ajustar al precio publicado; el texto no
+      // puede decir «Comprar» (ni su puntaje), y el del pin que sí da, sí. El cliente lo lee del pin en los dos caminos.
+      const negociado: PinNegociado = { ...pin(OTRO), veredicto: "AJUSTA SUPUESTOS", score: 61, neg: { d: 4.2, p: 4398, s: 71, f: 15000 } };
+      const vNeg = cp.veredictoDelPin(negociado);
+      const tNeg = cp.textoCompartir(DEPTO, vNeg);
+      if (vNeg.comprar || vNeg.score != null || /Comprar|61|71/.test(tNeg)) F(`6 · un negociado se comparte como Comprar: «${tNeg}»`);
+      const vPin = cp.veredictoDelPin(pin(AVISO));
+      if (!vPin.comprar || vPin.score !== 84) F("6 · el pin que da Comprar se comparte sin su Comprar y su puntaje");
+      if (!/if \(esVistaEstandar\(filtros\)\) return Promise\.resolve\(veredictoDelPin\(p\)\);/.test(cliente) || /comprar: true/.test(cliente)) F("6 · en la vista de por defecto el cliente supone Comprar sin mirar el pin");
       // El teléfono abre la hoja del sistema (sin ella, WhatsApp); el PC copia el enlace y lo dice.
       if (!/const telefono = typeof window\.matchMedia === "function" && window\.matchMedia\("\(pointer: coarse\)"\)\.matches;/.test(cliente) || !/const metodo: MetodoCompartir = telefono \? \(typeof navigator\.share === "function" \? "hoja" : "whatsapp"\) : "copiar";/.test(cliente)) F("6 · no se distingue el teléfono (la hoja) del PC (copiar)");
-      if (!/await navigator\.share\(\{ title: COMPARTIR_COPY\.tituloHoja, text: texto, url \}\);/.test(cliente)) F("6 · la hoja del sistema no lleva el texto y el enlace");
+      if (!/await navigator\.share\(\{ title: ver\.comprar \? COMPARTIR_COPY\.tituloHoja : COMPARTIR_COPY\.tituloHojaSinVeredicto, text: texto, url \}\);/.test(cliente)) F("6 · la hoja del sistema no lleva el texto y el enlace, o titula «conviene» al que se comparte sin veredicto");
+      if (/conviene/i.test(cp.COMPARTIR_COPY.tituloHojaSinVeredicto)) F("6 · el título de la hoja sin veredicto dice que conviene");
       if (!/window\.open\(`https:\/\/wa\.me\/\?text=\$\{encodeURIComponent\(mensajeCompartir\(texto, url\)\)\}`/.test(cliente)) F("6 · sin la hoja del sistema, el teléfono no abre WhatsApp");
       if (!/setToast\(\(await copiarAlPortapapeles\(url\)\) \? COMPARTIR_COPY\.copiado : COMPARTIR_COPY\.noCopiado\);\s*\}\s*$/m.test(cliente) || !/\{toast && <p className="ex-toast" role="status" data-explorar="toast">\{toast\}<\/p>\}/.test(cliente)) F("6 · en el PC no se copia el enlace o no se dice");
       // «Compartir» en la tarjeta y en cada fila, con y sin cuenta.
       const pines = [pin(AVISO), pin(OTRO)];
       for (const sinCuenta of [true, false]) {
         const t = renderToStaticMarkup(createElement(TarjetaPin, { pines, seleccionado: AVISO, uf: 39000, analizados: {}, guardados: new Set<string>(), generando: null, error: null, alCambiar: () => {}, alCerrar: () => {}, alGuardar: () => {}, alAnalizar: () => {}, alCompartir: () => {}, sinCuenta }));
-        const l = renderToStaticMarkup(createElement(ListaPortal, { pines, total: 2, calculando: false, orden: "puntaje", uf: 39000, analizados: {}, guardados: new Set<string>(), alOrden: () => {}, alAbrir: () => {}, alGuardar: () => {}, alCompartir: () => {}, alAvisame: () => {}, alCerrar: () => {}, sinCuenta }));
+        // La lista con la capa prendida: también la fila del negociado lleva «Compartir».
+        const neg: PinNegociado = { ...pin("2f5e7c1a-0b6d-4e8f-9a3c-5d7e9f1b3c5e", { veredicto: "AJUSTA SUPUESTOS" }), neg: { d: 4.2, p: sinCuenta ? null : 4398, s: 71, f: null } };
+        const l = renderToStaticMarkup(createElement(ListaPortal, { pines, negociados: [neg], tope: 5, total: 2, calculando: false, orden: "puntaje", uf: 39000, analizados: {}, guardados: new Set<string>(), alOrden: () => {}, alAbrir: () => {}, alGuardar: () => {}, alCompartir: () => {}, alAvisame: () => {}, alCerrar: () => {}, sinCuenta }));
         const n = (s: string) => (s.match(/data-explorar="compartir"[^>]*aria-label="Compartir"|aria-label="Compartir"[^>]*data-explorar="compartir"/g) ?? []).length;
-        if (n(t) !== 2 || n(l) !== 2) F(`6 · «Compartir» no está en cada tarjeta y cada fila ${sinCuenta ? "sin" : "con"} cuenta (tarjeta ${n(t)}, lista ${n(l)})`);
+        if (n(t) !== 2 || n(l) !== 3 || !l.includes('data-explorar="fila-negociada"')) F(`6 · «Compartir» no está en cada tarjeta y cada fila ${sinCuenta ? "sin" : "con"} cuenta (tarjeta ${n(t)}, lista ${n(l)} de 3 con el negociado)`);
       }
     }
   } catch (e) {
@@ -405,3 +422,8 @@ if (require.main === module) {
 //   X1 el middleware pisa la primera cookie · X2 la invitada sin la puerta C · X3 la foto sin el mapa de respaldo · X4 la
 //   bienvenida con cuenta · X5 el registro por visita cuenta los del depto · X6 (EXPLORAR-PORTAL) el mapa chico con la llave de
 //   Street View · X7 (LECTURA-PAGINADA) la ficha lee scraped_properties sin orden ni tope. 7 de 7 en ROJO.
+// TRAS EL REBASE SOBRE FILTROS V2 Y «SI NEGOCIAS» (02-nov-2026): el runner entero otra vez sobre el código rebasado, 76 de 76 en
+// ROJO (los 62 del tier, X1–X7 y estos siete nuevos, que vigilan al negociado: Ajustar al precio publicado):
+//   N1 el negociado se comparte como Comprar · N2 la vista de por defecto supone Comprar al preparar · N3 ídem al tocar ·
+//   N4 la tarjeta de «no conviene» dice «ya no» · N5 la hoja titula «conviene» al que va sin veredicto · N6 el título sin
+//   veredicto dice que conviene · N7 la fila del negociado sin «Compartir».
