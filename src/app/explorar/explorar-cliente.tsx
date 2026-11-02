@@ -63,8 +63,9 @@ const Bienvenida = dynamic(() => import("./bienvenida").then((m) => m.Bienvenida
 const HojaCalculo = dynamic(() => import("./hoja-calculo").then((m) => m.HojaCalculo), { ssr: false, loading: () => null });
 
 const ESPERA_EN_CURSO_MS = 4000;
-/** Comunas que se calculan a la vez (otro pie u otro plazo, o renta corta). */
-const COMUNAS_A_LA_VEZ = 3;
+/** Comunas que se calculan a la vez (otro pie u otro plazo, o renta corta). De 3 a 2 el 02-nov-2026: con 12 pedidos por comuna
+ *  en el servidor eran unos 36 a la vez por persona, y la base cortaba por timeout. */
+const COMUNAS_A_LA_VEZ = 2;
 
 /** Lo que el servidor sabe de la cuenta (portal-servidor.ts › CuentaPortal), sin nada que no se pueda mostrar. */
 export interface CuentaCliente {
@@ -132,6 +133,8 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
   sinCuentaRef.current = sinCuenta;
   const [progreso, setProgreso] = useState<{ hechas: number; total: number } | null>(null);
   const [fallo, setFallo] = useState(false);
+  /** Las comunas que no cargaron en el último cálculo (02-nov-2026), con la clave del universo al que pertenecen. */
+  const [fallidas, setFallidas] = useState<{ clave: string; comunas: string[] } | null>(null);
   const [vista, setVista] = useState<"mapa" | "lista">("mapa");
   const [mapaListo, setMapaListo] = useState(false);
   const [mapa, setMapa] = useState<"cargando" | "listo" | "teselas" | "fallo">("cargando");
@@ -162,12 +165,15 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
   const uf = cuenta.finanzas.uf;
 
   // ── el universo ──
-  const universoPara = useCallback((f: FiltrosPortal, us: Record<string, Universo>): PinMapa[] | null => {
+  const universoPara = useCallback((f: FiltrosPortal, us: Record<string, Universo>, parcial = false): PinMapa[] | null => {
     const u = us[claveUniverso(f)];
     if (!u) return null;
     if (u.comunas === "todas") return u.pines;
     const hay = new Set(u.comunas);
-    return comunasACalcular(f).every((c) => hay.has(c)) ? u.pines : null;
+    const pedidas = comunasACalcular(f);
+    if (pedidas.every((c) => hay.has(c))) return u.pines;
+    // LO QUE SÍ CARGÓ (02-nov-2026): con `parcial`, si llegó alguna comuna, sus pines; las que fallaron se reintentan aparte.
+    return parcial && pedidas.some((c) => hay.has(c)) ? u.pines : null;
   }, []);
 
   /** Trae lo que falte para unos filtros: la noche entera en un pedido, o lo calculado de a una comuna. */
@@ -176,6 +182,7 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
     // Sin cuenta, el universo sin cifras (el financiamiento por defecto): otra ruta, pública y en la caché del CDN.
     const base = sinCuentaRef.current ? `/api/explorar/abierto?m=${f.modalidad}` : `/api/explorar?m=${f.modalidad}&p=${f.pie}&z=${f.plazo}${f.tasa != null ? `&ta=${f.tasa}` : ""}`;
     setFallo(false);
+    setFallidas(null);
     try {
       if (universoDeLaNoche(f)) {
         if (universosRef.current[clave] || enCurso.current.has(clave)) return;
@@ -199,6 +206,7 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
       setProgreso({ hechas, total: faltan.length });
       const cola = [...faltan];
       let errores = 0;
+      const perdidas: string[] = [];
       const trabajador = async () => {
         for (let c = cola.shift(); c; c = cola.shift()) {
           try {
@@ -215,6 +223,7 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
             });
           } catch {
             errores++;
+            perdidas.push(c);
           }
           enCurso.current.delete(`${clave}|${c}`);
           hechas++;
@@ -222,7 +231,7 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
         }
       };
       await Promise.all(Array.from({ length: Math.min(COMUNAS_A_LA_VEZ, faltan.length) }, trabajador));
-      if (vivo.current) { setProgreso(null); if (errores) setFallo(true); }
+      if (vivo.current) { setProgreso(null); if (errores) { setFallo(true); setFallidas({ clave, comunas: perdidas }); } }
     } catch {
       if (vivo.current) { setProgreso(null); setFallo(true); }
     }
@@ -241,7 +250,9 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const universo = universoPara(filtros, universos);
+  // Las comunas de ESTA vista que fallaron en su último cálculo; con alguna, el mapa muestra lo que sí llegó (02-nov-2026).
+  const fallidasAqui = fallidas && fallidas.clave === claveUniverso(filtros) ? fallidas.comunas.filter((c) => comunasACalcular(filtros).includes(c)) : [];
+  const universo = universoPara(filtros, universos) ?? (progreso == null && fallidasAqui.length > 0 ? universoPara(filtros, universos, true) : null);
   const visibles = useMemo(() => (universo ? ordenar(filtrar(universo, filtros).filter((p) => !caidos.includes(p.avisoId)), orden, uf) : []), [universo, filtros, orden, uf, caidos]);
   // Antes de que llegue el universo, el número que contó el servidor (solo para los filtros con que se entró).
   const total = universo ? visibles.length : filtros === inicial.filtros ? inicial.n : null;
@@ -553,7 +564,7 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
           )}
           {fallo && (
             <p className="ex-error ex-error-mapa" role="alert" data-explorar="error">
-              {PORTAL_COPY.error} <button type="button" className="ex-enlace" onClick={() => void asegurar(filtros)}>{PORTAL_COPY.reintentar}</button>
+              {universo && fallidasAqui.length > 0 ? PORTAL_COPY.errorComunas(fallidasAqui) : PORTAL_COPY.error} <button type="button" className="ex-enlace" onClick={() => void asegurar(filtros)}>{PORTAL_COPY.reintentar}</button>
             </p>
           )}
           {tarjeta ? (

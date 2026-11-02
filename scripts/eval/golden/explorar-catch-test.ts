@@ -309,7 +309,27 @@ export async function runExplorarTier(): Promise<{ hard: number }> {
   if (/combos/.test(codigo("src/app/api/cron/evaluar-avisos/route.ts"))) F("10 · la evaluación nocturna toca `combos` (no tenía que cambiar)");
   if (!/const \{ data, error \} = await admin\.rpc\("explorar_universo_liviano", params\);\s*if \(error\) throw/.test(srvSrc) || !/const porCalcular = filas\.filter\(\(r\) => !comboVigente\(r\.combo, r\.evaluado_at, ahora\)\);/.test(srvSrc)) F("10 · el universo no se lee en un solo pedido o no se reparte entre lo vigente y lo que falta calcular");
   if (!/returns jsonb[\s\S]{0,200}select coalesce\(jsonb_agg\(jsonb_build_object\(/.test(liviano)) F("10 · el universo liviano no devuelve un solo jsonb (el tope de mil de PostgREST lo cortaría)");
-  if (!/const PEDIDOS_A_LA_VEZ = 12;/.test(srvSrc) || (srvSrc.match(/todos\.slice\(i, i \+ PEDIDOS_A_LA_VEZ\)\.map/g) ?? []).length !== 2) F("10 · lo pesado y el guardado no se piden de a varios a la vez");
+  // ⚠ ACTA (02-nov-2026, goal de los cortes por statement_timeout, decisión de Fabrizio) · menos pedidos a la vez por persona
+  // (eran unos 36: 3 comunas × 12 lotes, y la base cortaba por timeout): lo pesado de a 3 pedidos, el guardado de a 200 avisos
+  // y de a un pedido, en segundo plano (después de responder), y el navegador pide 2 comunas a la vez. Una zona que falla
+  // hace fallar esa comuna sin guardar nada; el mapa muestra las que sí cargaron y «Reintentar» pide solo las que faltan.
+  if (!/const PEDIDOS_A_LA_VEZ = 3;/.test(srvSrc) || (srvSrc.match(/todos\.slice\(i, i \+ PEDIDOS_A_LA_VEZ\)\.map/g) ?? []).length !== 1
+    || !/const LOTE_GUARDADO = 200;/.test(srvSrc) || !/for \(const lote of lotes\(nuevos, LOTE_GUARDADO\)\) \{\s*const \{ data, error \} = await admin\.rpc\("explorar_guardar_combos"/.test(srvSrc))
+    F("10 · lo pesado no va de a 3 pedidos, o el guardado no va de a 200 avisos y de a un pedido");
+  const portalSrv = codigo("src/lib/explorar/portal-servidor.ts");
+  if (!/const leidas = await Promise\.all\(comunas\.map\(\(c\) => leer\(c\)\)\);/.test(portalSrv) || /leer\(c\)\.catch\(/.test(portalSrv)) F("10 · una zona que falla se disimula como zona vacía (y se guardan avisos sin veredicto)");
+  if (!/const guardado = guardarCombos\(admin, clave, nuevos\);\s*if \(deps\.diferir\) deps\.diferir\(guardado\.catch\(/.test(portalSrv) || !/\{ diferir: waitUntil \}\)/.test(codigo("src/app/api/explorar/route.ts")))
+    F("10 · lo calculado no se guarda en segundo plano (compite con la lectura de la comuna siguiente)");
+  const cliX = codigo("src/app/explorar/explorar-cliente.tsx");
+  if (!/const COMUNAS_A_LA_VEZ = 2;/.test(cliX)) F("10 · el navegador pide más de 2 comunas a la vez");
+  if (!/return parcial && pedidas\.some\(\(c\) => hay\.has\(c\)\) \? u\.pines : null;/.test(cliX)
+    || !/const universo = universoPara\(filtros, universos\) \?\? \(progreso == null && fallidasAqui\.length > 0 \? universoPara\(filtros, universos, true\) : null\);/.test(cliX)
+    || !/setFallidas\(\{ clave, comunas: perdidas \}\);/.test(cliX)
+    || !/\{universo && fallidasAqui\.length > 0 \? PORTAL_COPY\.errorComunas\(fallidasAqui\) : PORTAL_COPY\.error\}/.test(cliX))
+    F("10 · si fallan algunas comunas, el mapa no muestra las que sí cargaron (o el aviso no dice cuáles faltan)");
+  const errC = (await import("../../../src/lib/explorar/portal")).PORTAL_COPY.errorComunas;
+  if (errC(["Santiago"]) !== "No pudimos traer los deptos de Santiago. Los demás ya están en el mapa." || errC(["Santiago", "Ñuñoa"]) !== "No pudimos traer los deptos de Santiago y Ñuñoa. Los demás ya están en el mapa."
+    || errC(["A", "B", "C", "D"]) !== "No pudimos traer los deptos de 4 comunas. Los demás ya están en el mapa.") F("10 · el aviso de las comunas que no cargaron no es el aprobado");
   if (!liviano || /ae\.arriendo,|ae\.venta|mediana_comuna/.test(liviano)) F("10 · el universo liviano trae los jsonb de la evaluación (es lo que costaba 5,5 s), o no existe");
   if (ex.VIDA_COMBO_MS !== 24 * 3600_000) F("10 · la caché no dura 24 horas");
 
@@ -372,3 +392,9 @@ if (require.main === module) {
 // ACTA DE MUTACIÓN (30-oct-2026, goal «la tasa editable en Filtros»): X1 y X2 —la ruta del mapa y el recálculo sin la tasa—, en ROJO (runner `mutar-tasa.cjs` en el scratchpad de la sesión cb466df3; cada archivo restaurado byte a byte).
 
 // ACTA DE MUTACIÓN (02-nov-2026, goal «la puerta a Explorar en los correos»): X1 —la página sin «explorar_vista», con la llegada en la vista—, en ROJO (runner `mutar-puerta.cjs` en el scratchpad de la sesión cb466df3; cada archivo restaurado byte a byte).
+
+// ── ACTA DE MUTACIONES (02-nov-2026, goal de los cortes por statement_timeout) ──
+// §10 reescrito (menos pedidos a la vez, guardado de fondo, la zona fallida y los pines parciales): 9 de 9 en ROJO (runner `mutar-fase2.cjs` en el scratchpad de la sesión b526f69b; cada archivo restaurado byte a byte, con hash):
+// E1 lo pesado de a 12 · E2 el guardado de a 500 · E3 la zona fallida como vacía (también EXPLORAR-PORTAL §7) · E4 el
+// guardado no se difiere (también EXPLORAR-PORTAL §7) · E5 la ruta sin waitUntil · E6 tres comunas a la vez · E7 sin pines
+// parciales · E8 el aviso genérico siempre · E9 otro texto del aviso.

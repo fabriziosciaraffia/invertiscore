@@ -15,7 +15,7 @@
 //     nada acá cobra.
 // ─────────────────────────────────────────────────────────────────────────────
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { reportarFalloQuery } from "@/lib/observabilidad";
+import { captureApiWarning, reportarFalloQuery } from "@/lib/observabilidad";
 import { COMUNAS_DISPONIBLES } from "@/lib/comunas-disponibles";
 import { VENTANA_SEMANAL_DIAS } from "@/lib/guia/semanal";
 import { candidatoDeFila, comunaDeAviso, type FilaRpc } from "@/lib/guia/semanal-candidatos";
@@ -69,6 +69,10 @@ export interface DepsPortal {
   /** La renta corta de un depto con la zona de su celda: veredicto, puntaje, flujo e ingreso mensual (null si no se puede). */
   sondaStr?: (fila: FilaRpc, combo: { piePct: number; plazoAnios: number; tasa?: number | null }, cfg: { uf: number; tasa: number }, zona: ZonaStr | undefined, asOf: Date) => { v: string | null; s: number | null; f: number | null; i: number | null } | null;
   zonas?: (comuna: string) => Promise<Map<number, ZonaStr>>;
+  /** EL GUARDADO EN SEGUNDO PLANO (02-nov-2026): con `diferir` (la ruta le pasa `waitUntil`), lo calculado se guarda después
+   *  de responder, en lotes chicos y de a uno (explorar/servidor.ts › guardarCombos), y no compite con la lectura de la comuna
+   *  siguiente. Sin él (las pruebas), se espera el guardado como antes. */
+  diferir?: (p: Promise<unknown>) => void;
 }
 
 const sondaStrReal: NonNullable<DepsPortal["sondaStr"]> = (fila, combo, cfg, zona, asOf) => {
@@ -100,11 +104,13 @@ export async function universoCalculado(
     ? await Promise.all([deps.cfg ?? leerConfigGuia(admin), filasParaSonda(admin, porCalcular.map((r) => r.id))])
     : [null, new Map<string, FilaRpc>()];
   // Renta corta: la zona de cada comuna (una lectura por comuna, en paralelo; queda en memoria 30 minutos).
+  // UNA ZONA QUE FALLA NO SE DISIMULA (02-nov-2026): si la lectura falla, el pedido falla —sin guardar nada— y el navegador
+  // ofrece reintentar esa comuna. Antes se tomaba como zona vacía y cada aviso quedaba guardado 24 horas sin veredicto.
   const zonas = new Map<string, Map<number, ZonaStr>>();
   if (q.modalidad === "str" && porCalcular.length) {
     const leer = deps.zonas ?? ((c: string) => zonasDeComuna(admin, c));
     const comunas = Array.from(new Set(porCalcular.map((r) => r.comuna)));
-    const leidas = await Promise.all(comunas.map((c) => leer(c).catch(() => new Map<number, ZonaStr>())));
+    const leidas = await Promise.all(comunas.map((c) => leer(c)));
     comunas.forEach((c, i) => zonas.set(c, leidas[i]));
   }
   const sondaLtr = deps.sondaLtr ?? sondaDeCandidato;
@@ -126,7 +132,11 @@ export async function universoCalculado(
     resultado.set(r.id, c);
     nuevos.push({ avisoId: r.id, combo: c });
   }
-  if (nuevos.length) await guardarCombos(admin, clave, nuevos);
+  if (nuevos.length) {
+    const guardado = guardarCombos(admin, clave, nuevos);
+    if (deps.diferir) deps.diferir(guardado.catch((e) => captureApiWarning(e, { ruta: RUTA, operacion: "guardar-combos-fondo" })));
+    else await guardado;
+  }
   if (cuenta) { cuenta.calculados += nuevos.length; cuenta.ms += Date.now() - t0; }
   const pines: PinMapa[] = [];
   for (const r of filas) {

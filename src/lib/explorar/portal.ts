@@ -456,6 +456,9 @@ export const PORTAL_COPY = {
   /** La tasa elegida, cerrada (sin cuenta) o en la línea: «4,5 % · la elegiste». */
   tasaElegida: (t: number) => `${tasaTexto(t)} % · la elegiste`,
   error: "No pudimos traer los deptos. Intenta de nuevo.",
+  /** Algunas comunas no cargaron (02-nov-2026): el mapa muestra las que sí, y «Reintentar» pide solo las que faltan. */
+  errorComunas: (comunas: readonly string[]) =>
+    `No pudimos traer los deptos de ${comunas.length > 3 ? `${comunas.length} comunas` : comunas.length <= 1 ? comunas[0] ?? "" : `${comunas.slice(0, -1).join(", ")} y ${comunas[comunas.length - 1]}`}. Los demás ya están en el mapa.`,
   reintentar: "Reintentar",
   sinMapa: "El mapa no cargó, pero la lista es la misma.",
   vacia: "Con estos filtros ninguno conviene hoy. Prueba con otra comuna, otro precio u otro pie.",

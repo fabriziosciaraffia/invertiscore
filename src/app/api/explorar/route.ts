@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { waitUntil } from "@vercel/functions";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { captureApiError } from "@/lib/observabilidad";
@@ -50,7 +51,8 @@ export async function GET(request: Request) {
     if (comunas.length === 0 || comunas.length > MAX_COMUNAS_POR_PEDIDO) return NextResponse.json({ error: "comunas" }, { status: 400 });
     const admin = createServiceClient();
     const cuenta = { calculados: 0, ms: 0 };
-    const pines = await universoCalculado(admin, { ...q, comunas }, new Date(), cuenta);
+    // Lo calculado se guarda después de responder (02-nov-2026): no compite con la lectura de la comuna siguiente.
+    const pines = await universoCalculado(admin, { ...q, comunas }, new Date(), cuenta, { diferir: waitUntil });
     return NextResponse.json(respuestaUniverso(pines, { ...q, comunas }, cuenta), { headers: { "Cache-Control": "private, max-age=300" } });
   } catch (e) {
     captureApiError(e, { ruta: "GET /api/explorar", operacion: "universo", userId: user.id, extra: { modalidad, pie, plazo, tasa } });

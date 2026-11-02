@@ -127,10 +127,14 @@ export type FilaUniverso = {
   id: string; comuna: string; lat: number; lng: number; superficie_m2: number; dormitorios: number; banos: number | null; precio_uf: number;
   arriendo_monto: number | null; evaluado_at: string | null; combo: unknown; pub_estado: string | null; pub_at: string | null;
 };
-/** Pedidos a la vez contra la base (lo pesado y el guardado, de a 500 avisos cada uno). */
-const PEDIDOS_A_LA_VEZ = 12;
+/** Pedidos a la vez contra la base para lo pesado (de a 500 avisos cada uno). De 12 a 3 el 02-nov-2026: con el navegador
+ *  pidiendo comunas en paralelo eran unos 36 pedidos a la vez por persona, y la base se saturaba hasta cortar por timeout. */
+const PEDIDOS_A_LA_VEZ = 3;
 const LOTE = 500;
-const lotes = <T,>(xs: T[]): T[][] => Array.from({ length: Math.ceil(xs.length / LOTE) }, (_, i) => xs.slice(i * LOTE, (i + 1) * LOTE));
+/** El guardado (02-nov-2026): de a 200 avisos y de a un pedido. Un UPDATE de 500 filas tomaba hasta 5,9 s y bloqueaba esas
+ *  filas; Explorar además lo hace en segundo plano (portal-servidor.ts › DepsPortal.diferir). */
+const LOTE_GUARDADO = 200;
+const lotes = <T,>(xs: T[], n: number = LOTE): T[][] => Array.from({ length: Math.ceil(xs.length / n) }, (_, i) => xs.slice(i * n, (i + 1) * n));
 
 /** El universo de unos filtros (den lo que den), liviano, con lo guardado para esa combinación: UN solo pedido (la RPC
  *  devuelve un jsonb, no filas, así el tope de mil de PostgREST no corta; medido el 24-oct-2026: de a páginas, 2,5 s). */
@@ -155,16 +159,13 @@ export async function filasParaSonda(admin: SupabaseClient, ids: string[]): Prom
   return out;
 }
 
-/** Lo calculado, guardado en `combos` de a lotes (sin pisar las otras combinaciones). */
+/** Lo calculado, guardado en `combos` de a lotes chicos y de a uno (sin pisar las otras combinaciones). */
 export async function guardarCombos(admin: SupabaseClient, clave: string, nuevos: Array<{ avisoId: string; combo: ComboGuardado }>): Promise<number> {
   let guardados = 0;
-  const todos = lotes(nuevos);
-  for (let i = 0; i < todos.length; i += PEDIDOS_A_LA_VEZ) {
-    const respuestas = await Promise.all(todos.slice(i, i + PEDIDOS_A_LA_VEZ).map((lote) => admin.rpc("explorar_guardar_combos", { filas: lote.map((n) => ({ aviso_id: n.avisoId, combo: { [clave]: n.combo } })) })));
-    for (const { data, error } of respuestas) {
-      reportarFalloQuery(error, { ruta: RUTA, operacion: "guardar-combos" });
-      if (!error) guardados += Number(data) || 0;
-    }
+  for (const lote of lotes(nuevos, LOTE_GUARDADO)) {
+    const { data, error } = await admin.rpc("explorar_guardar_combos", { filas: lote.map((n) => ({ aviso_id: n.avisoId, combo: { [clave]: n.combo } })) });
+    reportarFalloQuery(error, { ruta: RUTA, operacion: "guardar-combos" });
+    if (!error) guardados += Number(data) || 0;
   }
   return guardados;
 }

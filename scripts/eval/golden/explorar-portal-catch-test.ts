@@ -394,6 +394,37 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
     });
     if (str.map((p) => p.avisoId).join() !== "A,C" || str[0].arriendo !== 1_200_000 || cuenta.calculados !== 2) F(`7 · la renta corta por zona: ${JSON.stringify(str.map((p) => [p.avisoId, p.score, p.arriendo]))}, calculados ${cuenta.calculados}`);
     if (!r2.some((r) => r.nombre === "explorar_universo_liviano" && r.params.clave === "str-20-25") || guardados.length !== 2 || !guardados.every((g) => Object.keys((g as { combo: object }).combo).join() === "str-20-25")) F("7 · la renta corta no se guarda bajo su propia clave (str-pie-plazo) en combos");
+    // ⚠ ACTA (02-nov-2026, goal de los cortes por statement_timeout) · UNA ZONA QUE FALLA hace fallar el pedido de esa comuna
+    // sin guardar nada (antes se tomaba como zona vacía y los avisos quedaban 24 horas sin veredicto: Santiago, 5.394 el 02-nov),
+    // y CON `diferir` la respuesta no espera al guardado (va después, sin competir con la comuna siguiente).
+    const guardadosZ: unknown[] = [];
+    const { admin: a3 } = baseFalsa({}, {
+      explorar_universo_liviano: () => ({ data: [filaU("A", null)], error: null }),
+      explorar_filas_para_sonda: (p: Record<string, unknown>) => ({ data: (p.ids as string[]).map(pesada), error: null }),
+      explorar_guardar_combos: (p: Record<string, unknown>) => { guardadosZ.push(...(p.filas as unknown[])); return { data: 1, error: null }; },
+    });
+    const lanzo = await srv.universoCalculado(a3, { comunas: ["Providencia"], modalidad: "str", pie: 20, plazo: 25 }, ahora, undefined, {
+      cfg: { uf: UF, tasa: 4.2 }, zonas: async () => { throw new Error("canceling statement due to statement timeout"); },
+      sondaStr: () => ({ v: "COMPRAR", s: 80, f: 1, i: 1 }),
+    }).then(() => false, () => true);
+    if (!lanzo || guardadosZ.length) F(`7 · una zona que falla no hace fallar el pedido (o se guardan avisos sin veredicto: ${guardadosZ.length})`);
+    let liberar: (() => void) | null = null;
+    const diferidos: Array<Promise<unknown>> = [];
+    const { admin: a4 } = baseFalsa({}, {
+      explorar_universo_liviano: () => ({ data: [filaU("A", null)], error: null }),
+      explorar_filas_para_sonda: (p: Record<string, unknown>) => ({ data: (p.ids as string[]).map(pesada), error: null }),
+      explorar_guardar_combos: () => new Promise((ok) => { liberar = () => ok({ data: 1, error: null }); }),
+    });
+    const pinesD = await Promise.race([
+      srv.universoCalculado(a4, { comunas: ["Providencia"], modalidad: "str", pie: 20, plazo: 25 }, ahora, undefined, {
+        cfg: { uf: UF, tasa: 4.2 }, zonas: async () => new Map([[1, { n: 5 } as never]]), sondaStr: () => ({ v: "COMPRAR", s: 80, f: 1, i: 1 }),
+        diferir: (p) => { diferidos.push(p); },
+      }),
+      new Promise<null>((ok) => setTimeout(() => ok(null), 2000)),
+    ]);
+    if (!pinesD || pinesD.length !== 1 || diferidos.length !== 1) F("7 · con `diferir`, la respuesta espera al guardado (o no lo deja en segundo plano)");
+    (liberar as (() => void) | null)?.();
+    await Promise.all(diferidos);
     if (srv.claveComboPortal("ltr", 15, 20) !== "15-20") F("7 · la clave de renta larga cambió (pisaría lo calculado por el pop-up)");
   } catch (e) {
     F(`7 · el universo explotó: ${(e as Error).message}`);
@@ -574,3 +605,6 @@ if (require.main === module) {
 // todas las tipologías no se puede guardar, en ROJO; restaurado.
 
 // ACTA DE MUTACIÓN (02-nov-2026, goal «la puerta a Explorar en los correos»): X2 —la página sin «explorar_vista», con la llegada en la vista—, en ROJO (runner `mutar-puerta.cjs` en el scratchpad de la sesión cb466df3; cada archivo restaurado byte a byte).
+
+// ── ACTA DE MUTACIONES (02-nov-2026, goal de los cortes por statement_timeout) ──
+// §7, la zona que falla y el guardado diferido: E3 y E4 en ROJO (runner `mutar-fase2.cjs` en el scratchpad de la sesión b526f69b; cada archivo restaurado byte a byte, con hash).
