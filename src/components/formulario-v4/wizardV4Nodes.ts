@@ -180,6 +180,10 @@ export interface WizardV4Answers {
   estacionamientos?: string;
   bodegas?: string;
   antiguedad?: Antiguedad; // solo usado
+  /** LA EDAD REAL DEL EDIFICIO (03-nov-2026), cuando se conoce: la ficha del aviso o la de otro aviso del mismo edificio.
+   *  La pregunta del wizard no la pide —la persona elige la banda—; manda solo mientras la banda elegida sea la suya
+   *  (helpers-wizard.ts › aniosDelUsado). */
+  antiguedadAnios?: number;
   estadoVenta?: EstadoVenta; // solo nuevo
   fechaEntregaMes?: string;
   fechaEntregaAnio?: string;

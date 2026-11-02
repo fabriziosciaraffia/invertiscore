@@ -7,7 +7,8 @@
 // Lo que el aviso no trae:
 //   · Antigüedad (usados): la fuente casi nunca la da. Sin año, 25 años (la banda «20+»): un Comprar
 //     que aguanta 25 años es robusto; preferimos perder una oportunidad a mostrar una mala (Fabrizio,
-//     30-sep-2026). Con año (cuando la ficha lo traiga, FASE 2), el real.
+//     30-sep-2026). Con año (la ficha del aviso u otro aviso del edificio, al analizarlo), la edad real, sin pasarla
+//     por la banda (03-nov-2026: `antiguedadAnios` en las respuestas, helpers-wizard.ts › aniosDelUsado).
 //   · Entrega (nuevos): de scraped_properties.fecha_entrega (GraphQL de la fuente). Sin dato, inmediata.
 //   · Arriendo: el sugerido por radio. El del mismo segmento de precio (arriendo-segmentado.ts) queda
 //     detrás de `segmentar` y el cron lo tiene apagado: el censo del 29-sep-2026 no lo vio desinflar
@@ -20,6 +21,7 @@ import { getSugerencias, medianaArriendoZonaM2, SUGERENCIAS_VERSION, type Sugere
 import { prefetchMedianaComunaVenta } from "@/lib/api-helpers/analisis-pipeline";
 import { buildLtrPayload, type SubmitContext } from "@/components/formulario-v4/wizardV4Payload";
 import type { Antiguedad, WizardV4Answers } from "@/components/formulario-v4/wizardV4Nodes";
+import { bandaDeAnios } from "@/components/formulario-v4/helpers-wizard";
 import { readVeredicto } from "@/lib/results-helpers";
 import { METHODOLOGY_VERSION_ACTUAL } from "@/lib/modelo-costos";
 
@@ -133,10 +135,8 @@ export interface FilaEvaluacion {
   mediana_comuna: unknown | null;
 }
 
-/** Banda de antigüedad del wizard para unos años conocidos (la misma escala que antiguedadToNumber). */
-export function bandaDeAnios(anios: number): Antiguedad {
-  return anios <= 2 ? "0-2" : anios <= 5 ? "3-5" : anios <= 10 ? "6-10" : anios <= 20 ? "11-20" : "20+";
-}
+/** Banda de antigüedad del wizard para unos años conocidos: vive con antiguedadToNumber (helpers-wizard.ts). */
+export { bandaDeAnios };
 
 export async function sugerenciasDeAviso(a: AvisoParaEvaluar): Promise<{ arr: Sugerencias; vta: Sugerencias }> {
   // `??` y no `||` (13-oct-2026): un estudio (0) buscaba comparables de 2D; con 0, sin filtro de dormitorios.
@@ -189,6 +189,8 @@ export function respuestasDeAviso(a: AvisoParaEvaluar, pie: number, tasa: number
     estacionamientos: "0",
     bodegas: "0",
     antiguedad: nuevo ? undefined : a.antiguedadAnios != null ? bandaDeAnios(a.antiguedadAnios) : ANTIGUEDAD_SUPUESTA,
+    // La edad real, cuando se conoce: el motor la usa tal cual (aniosDelUsado), no el número de la banda.
+    ...(!nuevo && a.antiguedadAnios != null ? { antiguedadAnios: a.antiguedadAnios } : {}),
     estadoVenta: nuevo ? (futura ? "futura" : "inmediata") : undefined,
     fechaEntregaMes: futura ? String(entrega!.mes).padStart(2, "0") : undefined,
     fechaEntregaAnio: futura ? String(entrega!.anio) : undefined,

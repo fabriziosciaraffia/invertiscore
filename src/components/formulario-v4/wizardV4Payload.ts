@@ -6,7 +6,7 @@
 // cliente que no se pueden llamar.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { antiguedadToNumber, cuotasDelWizard } from "./helpers-wizard";
+import { aniosDelUsado, cuotasDelWizard } from "./helpers-wizard";
 import { getGgccFallback } from "@/lib/services/market-suggestions";
 import { estimarContribuciones } from "@/lib/contribuciones";
 import { parseNumeroCL } from "@/lib/numero-cl";
@@ -63,11 +63,12 @@ export function ggccCLP(a: WizardV4Answers, ctx: SubmitContext, sup: number): nu
   return ctx.ggccSugerido ?? getGgccFallback(a.comuna ?? "", sup) ?? 0;
 }
 
-/** Datos del DFL2 del depto (29-sep-2026): superficie y años desde la recepción (0 si es nuevo). */
+/** Datos del DFL2 del depto (29-sep-2026): superficie y años desde la recepción (0 si es nuevo). Con la edad real del
+ *  edificio, esa (03-nov-2026, aniosDelUsado); si no, la de la banda. */
 export function datosDfl2(a: WizardV4Answers): { superficieM2: number; aniosDesdeRecepcion: number } {
   return {
     superficieM2: leerNum(a.superficieUtil, DEC.superficie),
-    aniosDesdeRecepcion: a.tipoPropiedad === "usado" ? antiguedadToNumber(a.antiguedad ?? "") : 0,
+    aniosDesdeRecepcion: a.tipoPropiedad === "usado" ? aniosDelUsado(a) : 0,
   };
 }
 
@@ -89,7 +90,7 @@ export function buildLtrPayload(a: WizardV4Answers, ctx: SubmitContext) {
   const precioUF = leerNum(a.precio, DEC.precioUF);
   const nEstac = intSafe(a.estacionamientos, 0);
   const nBodega = intSafe(a.bodegas, 0);
-  const antigNum = a.tipoPropiedad === "usado" ? antiguedadToNumber(a.antiguedad ?? "") : 0;
+  const antigNum = a.tipoPropiedad === "usado" ? aniosDelUsado(a) : 0;
   const esFutura = a.tipoPropiedad === "nuevo" && a.estadoVenta === "futura";
   // Las cuotas del pie (02-oct-2026): las que dijo la persona en el paso de la entrega (o el defecto), con
   // entrega futura o inmediata. Usado: sin cuotas.
@@ -210,7 +211,7 @@ export function buildStrPayload(a: WizardV4Answers, ctx: SubmitContext) {
   const supUtil = leerNum(a.superficieUtil, DEC.superficie);
   const precioUF = leerNum(a.precio, DEC.precioUF);
   const precioCompraCLP = Math.round(precioUF * ctx.ufCLP);
-  const antigNum = a.tipoPropiedad === "usado" ? antiguedadToNumber(a.antiguedad ?? "") : 0;
+  const antigNum = a.tipoPropiedad === "usado" ? aniosDelUsado(a) : 0;
   const dorm = dormitoriosNum(a);
   const costos = getCostosDefault(dorm, "basico");
   const totalOps = costosOperativosEditados(a);

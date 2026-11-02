@@ -1,4 +1,5 @@
 import { cuotasPieValidas, cuotasPorDefecto } from "@/lib/obra-nueva";
+import type { Antiguedad } from "./wizardV4Nodes";
 // Utilidades del wizard que sobrevivieron al v3 (25-sep-2026). Vivían en
 // `formulario-v3/wizardV3State.ts`, junto con el estado del wizard v3 (`/analisis/nuevo-v2`), que se
 // borró con su ruta. El v4 usa estas cinco: formato de montos, antigüedad por tramo, dividendo y
@@ -26,6 +27,23 @@ export function antiguedadToNumber(val: string): number {
     // que un usado avance con "", así que en la práctica no llega vacío.
     default: return 5;
   }
+}
+
+/** La banda del wizard en la que caen unos años conocidos (la misma escala que antiguedadToNumber). */
+export function bandaDeAnios(anios: number): Antiguedad {
+  return anios <= 2 ? "0-2" : anios <= 5 ? "3-5" : anios <= 10 ? "6-10" : anios <= 20 ? "11-20" : "20+";
+}
+
+/**
+ * LOS AÑOS DE UN USADO PARA EL MOTOR (03-nov-2026, goal «la edad del edificio»). Con la edad real (la ficha del aviso o otro
+ * aviso del edificio), esa edad, sin pasarla por la banda: un edificio de 1951 entra con 75 años y usa el tramo de más de 25
+ * de la mantención y de la puesta a punto. La banda manda cuando la persona elige: si cambia la banda en el wizard y ya no
+ * es la de la edad real, la edad real deja de valer. Sin edad real, el número de la banda (antiguedadToNumber).
+ */
+export function aniosDelUsado(a: { antiguedad?: Antiguedad; antiguedadAnios?: number }): number {
+  const real = a.antiguedadAnios;
+  if (typeof real === "number" && Number.isInteger(real) && real >= 0 && bandaDeAnios(real) === a.antiguedad) return real;
+  return antiguedadToNumber(a.antiguedad ?? "");
 }
 
 export function calcDividendo(precioUF: number, piePct: number, plazoAnos: number, tasaAnual: number, ufClp: number) {
