@@ -6,6 +6,7 @@ import { latirCron } from "@/lib/cron-heartbeat";
 import { PAGINA_POSTGREST } from "@/lib/comuna-stats";
 import { evaluarAviso, VERSION_EVALUACION } from "@/lib/avisos/evaluar-aviso";
 import { candidatoDeEvaluacion, ESTANDAR25_VACIO, evaluarEstandar25 } from "@/lib/avisos/estandar-deptos";
+import { evaluarNegociar, NEGOCIAR_VACIO } from "@/lib/avisos/negociar";
 import { guardarConteosDeLaNoche, guardarResumenDeLaNoche } from "@/lib/deptos/servidor";
 import { guardarConvienenMapa } from "@/lib/explorar/convienen-guardado";
 import { avisosDeOtraVersion, avisosEvaluables, avisosPendientes, sinDespublicados, VENTANA_VISTOS_DIAS, type EvaluacionGuardada, type FilaAviso } from "@/lib/avisos/depurar";
@@ -25,6 +26,8 @@ import { avisosDeOtraVersion, avisosEvaluables, avisosPendientes, sinDespublicad
 // del pase de usados de las 03:00) y a las 08:20 (después de la obra nueva de las 06:30): la tanda diaria
 // son unos cientos de avisos (01-oct-2026; antes corría cada hora los martes, con la tanda semanal).
 // Antes de evaluar, `cerrar_bajas()` saca lo que se dio de baja (lo anota en bajas_avisos).
+// LOS QUE CONVIENEN SI NEGOCIAS (02-nov-2026, avisos/negociar.ts): en la misma pasada, a cada aviso que da Ajustar con un pie, el
+// descuento mínimo a Comprar (negociar_20 / negociar_30); `msNegociar` en el cierre dice cuánto suma a la corrida.
 // SOLO escribe en avisos_evaluados. `?dry=1` evalúa un puñado y no escribe nada.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -103,7 +106,7 @@ export async function GET(request: Request) {
   }
 
   const cola = dry ? pendientes.slice(0, TOPE_DRY) : [...pendientes, ...otraVersion];
-  let i = 0, exitosos = 0, fallidos = 0, sinArriendo = 0, degradadas = 0;
+  let i = 0, exitosos = 0, fallidos = 0, sinArriendo = 0, degradadas = 0, msNegociar = 0, negociados = 0;
   const muestraDry: unknown[] = [];
   await Promise.all(Array.from({ length: CONCURRENCIA }, async () => {
     while (i < cola.length && Date.now() - t0 < PRESUPUESTO_MS) {
@@ -115,7 +118,13 @@ export async function GET(request: Request) {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { sug, ...evaluada } = await evaluarAviso(sb, a, cfg, { segmentar: false });
         // El mismo aviso a 25 años (16-oct-2026; columnas *_25), con la sonda y lo que la fila resolvió.
-        const fila = { ...evaluada, ...(evaluada.arriendo ? evaluarEstandar25(candidatoDeEvaluacion(a, evaluada), cfg) : ESTANDAR25_VACIO) };
+        const candidato = evaluada.arriendo ? candidatoDeEvaluacion(a, evaluada) : null;
+        // Y el descuento a Comprar de los que dan Ajustar (02-nov-2026), con lo mismo que resolvió la fila.
+        const t = Date.now();
+        const negociar = candidato ? evaluarNegociar(candidato, evaluada, cfg) : NEGOCIAR_VACIO;
+        msNegociar += Date.now() - t;
+        if (negociar.negociar_20 || negociar.negociar_30) negociados++;
+        const fila = { ...evaluada, ...(candidato ? evaluarEstandar25(candidato, cfg) : ESTANDAR25_VACIO), ...negociar };
         if (!fila.arriendo) sinArriendo++;
         // Sugerencia que cayó a la comuna porque el radio no respondió (aun reintentando): se escribe,
         // pero la corrida la cuenta como falla parcial (30-sep-2026). Ver reintento-transitorio.ts.
@@ -143,5 +152,5 @@ export async function GET(request: Request) {
   // Las degradadas se escribieron, pero cuentan como falla parcial: el cierre lo marca y alerta.
   return cerrarCron(sb, "evaluar-avisos",
     { procesados: exitosos + fallidos, exitosos: exitosos - degradadas, fallidos: fallidos + degradadas },
-    { dry, bajas, pendientes: pendientes.length, otraVersion: otraVersion.length, restantes: Math.max(0, cola.length - (exitosos + fallidos)), sinArriendo, degradadas, resumenNoche: resumen?.revisados ?? null, conteosNoche: conteos, convienenMapa, ms: Date.now() - t0, ...(dry ? { muestra: muestraDry } : {}) }, { registrar: !dry });
+    { dry, bajas, pendientes: pendientes.length, otraVersion: otraVersion.length, restantes: Math.max(0, cola.length - (exitosos + fallidos)), sinArriendo, degradadas, resumenNoche: resumen?.revisados ?? null, conteosNoche: conteos, convienenMapa, negociados, msNegociar, ms: Date.now() - t0, ...(dry ? { muestra: muestraDry } : {}) }, { registrar: !dry });
 }
