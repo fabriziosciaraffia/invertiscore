@@ -207,7 +207,7 @@ export async function runCompartirDeptoTier(): Promise<{ hard: number }> {
       // La ficha del servidor: el chip solo si el depto está en el universo de los que convienen.
       const base = baseFalsa(OPCIONES_BASE);
       const ahora = new Date("2026-11-02T15:00:00Z");
-      base.tabla("scraped_properties").push({ id: AVISO, comuna: "Providencia", lat: -33.43, lng: -70.61, superficie_m2: 79.4, dormitorios: 2, banos: 2, condicion: "usado", is_active: true, type: "venta", scraped_at: "2026-11-02T03:01:14.901", titulo: "Depto 2D2B" });
+      await base.from("scraped_properties").insert({ id: AVISO, comuna: "Providencia", lat: -33.43, lng: -70.61, superficie_m2: 79.4, dormitorios: 2, banos: 2, condicion: "usado", is_active: true, type: "venta", scraped_at: "2026-11-02T03:01:14.901", titulo: "Depto 2D2B" });
       base.tabla("avisos_evaluados").push({ aviso_id: AVISO, precio_uf: 4590.6 });
       const conPin = await fichaCompartida(base as never, AVISO, "ltr", { veredicto: true, ahora, universo: async () => [pin(AVISO, { score: 84 })] });
       const sinPin = await fichaCompartida(base as never, AVISO, "ltr", { veredicto: true, ahora, universo: async () => [pin(OTRO)] });
@@ -298,7 +298,7 @@ export async function runCompartirDeptoTier(): Promise<{ hard: number }> {
       const fresco = { is_active: true, type: "venta", scraped_at: "2026-11-02T03:00:00" };
       if (!estaPublicado(fresco, null, ahora) || estaPublicado({ ...fresco, is_active: false }, null, ahora) || estaPublicado({ ...fresco, scraped_at: "2026-10-20T03:00:00" }, null, ahora) || estaPublicado(fresco, "despublicado", ahora) || estaPublicado({ ...fresco, type: "arriendo" }, null, ahora)) F("5 · «publicado» no es la regla del mapa (activo, de venta, visto esta semana, no despublicado)");
       const db = baseFalsa(OPCIONES_BASE);
-      db.tabla("scraped_properties").push({ id: AVISO, comuna: "Providencia", lat: -33.43, lng: -70.61, superficie_m2: 79, dormitorios: 2, banos: 2, condicion: null, is_active: false, type: "venta", scraped_at: "2026-11-02T03:00:00", titulo: "" });
+      await db.from("scraped_properties").insert({ id: AVISO, comuna: "Providencia", lat: -33.43, lng: -70.61, superficie_m2: 79, dormitorios: 2, banos: 2, condicion: null, is_active: false, type: "venta", scraped_at: "2026-11-02T03:00:00", titulo: "" });
       db.tabla("avisos_evaluados").push({ aviso_id: AVISO, precio_uf: 4591 });
       let llamado = false;
       const caida = await fichaCompartida(db as never, AVISO, "ltr", { veredicto: true, ahora, universo: async () => { llamado = true; return [pin(AVISO)]; } });

@@ -255,7 +255,9 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
   // LA LLAVE DE STREET VIEW ES DE SERVIDOR (29-oct-2026): la metadata y la foto se piden desde el servidor; la pública está en
   // el HTML. Primero la de servidor; la pública solo mientras no exista. El mapa chico, con la pública.
   const srvSrc = codigo("src/lib/explorar/calle-servidor.ts");
-  if (!/export const llaveCalle = \(\): string \| undefined => process\.env\.GOOGLE_STREET_VIEW_API_KEY \|\| process\.env\.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;/.test(srvSrc) || !/urlMapaChico\(punto, keyMapa, estilo\)/.test(srvSrc) || /NEXT_PUBLIC_GOOGLE_STREET/.test(srvSrc)) F("3 · Street View no va primero con la llave de servidor (o la expone al navegador)");
+  // ⚠ ACTA (02-nov-2026, COMPARTIR-DEPTO) · `imagenDeCalle` acepta el tamaño (la vista previa de un depto compartido pide la
+  // imagen grande): el mapa chico sigue con la llave pública, ahora con `lado?.mapa`.
+  if (!/export const llaveCalle = \(\): string \| undefined => process\.env\.GOOGLE_STREET_VIEW_API_KEY \|\| process\.env\.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;/.test(srvSrc) || !/urlMapaChico\(punto, keyMapa, estilo, lado\?\.mapa\)/.test(srvSrc) || /NEXT_PUBLIC_GOOGLE_STREET/.test(srvSrc)) F("3 · Street View no va primero con la llave de servidor (o la expone al navegador)");
 
   // ── 4 · sin saldo se explora; el cobro sale al analizar ──
   if (modCli) {

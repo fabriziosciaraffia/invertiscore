@@ -56,7 +56,7 @@ export async function fichaCompartida(
 ): Promise<FichaCompartida | null> {
   if (!esAvisoId(avisoId)) return null;
   const [{ data: sp, error: e1 }, { data: ae, error: e2 }, { data: pa, error: e3 }] = await Promise.all([
-    admin.from("scraped_properties").select("id, comuna, lat, lng, superficie_m2, dormitorios, banos, condicion, is_active, type, scraped_at, titulo").eq("id", avisoId).maybeSingle(),
+    admin.from("scraped_properties").select("id, comuna, lat, lng, superficie_m2, dormitorios, banos, condicion, is_active, type, scraped_at, titulo").eq("id", avisoId).order("id").limit(1).maybeSingle(),
     admin.from("avisos_evaluados").select("aviso_id, precio_uf").eq("aviso_id", avisoId).maybeSingle(),
     admin.from("publicacion_avisos").select("estado").eq("aviso_id", avisoId).maybeSingle(),
   ]);
