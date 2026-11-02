@@ -467,10 +467,12 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
     // ⚠ ACTA (16-oct-2026, goal «la puerta B») · sin informe de origen (la cuenta de /deptos) el origen es null y no va.
     // ⚠ ACTA (28-oct-2026, Explorar como portal) · la misma ruta analiza desde Explorar: `desde` es «explorar» o «semanal».
     // ⚠ ACTA (30-oct-2026, goal «la tasa editable en Filtros») · `origenAviso` lleva además la tasa elegida, si la hubo.
-    const iOrigen = ruta.indexOf("body.origenAviso = { avisoId, antiguedad: antiguedad.origen, origenAnalysisId: o.analysisId ?? undefined, desde, ...(tasaElegida != null ? { tasaElegida, tasaMercado: cfg.tasa } : {}) };"), iBuild = ruta.indexOf("await buildShortTermAnalysisRow(");
+    // ⚠ ACTA (03-nov-2026, goal «la edad del edificio») · y la edad: el año y su fuente, o por qué se supuso (`camposDeEdad`); la
+    // nota del informe recibe ese motivo (`supuesta`) en vez del origen de la antigüedad. Lo fija el tier EDAD-EDIFICIO.
+    const iOrigen = ruta.indexOf("body.origenAviso = { avisoId, antiguedad: antiguedad.origen, origenAnalysisId: o.analysisId ?? undefined, desde, ...(tasaElegida != null ? { tasaElegida, tasaMercado: cfg.tasa } : {}), ...camposDeEdad(antiguedad) };"), iBuild = ruta.indexOf("await buildShortTermAnalysisRow(");
     if (iOrigen < 0 || iBuild < 0 || iOrigen > iBuild || !ruta.includes('const desde = desdeExplorar ? "explorar" : "semanal";')) F("11 · el informe de renta corta del semanal no guarda de qué aviso salió");
     const clienteStr = sinComentarios(leer("src/app/analisis/renta-corta/[id]/results-client.tsx"));
-    if (!/\{origenAviso && analysisId && \(\s*<SeccionInforme id="origen-aviso" tono="paper">\s*<InformeDeAviso analysisId=\{analysisId\} veredicto=\{veredicto\} antiguedad=\{origenAviso\.antiguedad\} esDueno=\{!!userId && !isSharedView\} modalidad="str" \/>/.test(clienteStr))
+    if (!/\{origenAviso && analysisId && \(\s*<SeccionInforme id="origen-aviso" tono="paper">\s*<InformeDeAviso analysisId=\{analysisId\} veredicto=\{veredicto\} supuesta=\{supuestaDelInforme\(inputData\)\} esDueno=\{!!userId && !isSharedView\} modalidad="str" \/>/.test(clienteStr))
       F("11 · el informe de renta corta no muestra «Quiero verlo»");
     const qvRuta = sinComentarios(leer("src/app/api/lo-que-sigue/quiero-verlo/route.ts"));
     if (!/const d = an \? datosDeInformeDeAviso\(an\) : null;\s*if \(!an \|\| an\.user_id !== user\.id \|\| !d\) return NextResponse\.json\(\{ error: "informe" \}, \{ status: 403 \}\);/.test(qvRuta)) F("11 · la ruta de «Quiero verlo» no lee el informe con datosDeInformeDeAviso");
