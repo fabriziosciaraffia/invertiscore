@@ -567,7 +567,10 @@ export interface ShortTermAnalysisBody {
    *  verlo». Se persiste con el resto del cuerpo en `input_data`. Desde el 28-oct-2026 también desde Explorar en renta corta. */
   origenAviso?: { avisoId: string; antiguedad: "ficha" | "supuesta" | "nuevo"; origenAnalysisId?: string; desde?: "semanal" | "guia" | "explorar";
     /** La tasa que eligió la persona (30-oct-2026) y la del motor en ese momento: la portada las dice. Sin ella, la de hoy. */
-    tasaElegida?: number; tasaMercado?: number };
+    tasaElegida?: number; tasaMercado?: number;
+    /** EL PRECIO NEGOCIADO (02-nov-2026, «Analizar a UF 2.950» de Explorar): el informe se hizo a ese precio y lo dice la portada
+     *  («Analizado a UF 2.950, un 4,2 % bajo el precio publicado»), con los dos precios. */
+    precioNegociado?: { publicadoUF: number; negociadoUF: number; descuentoPct: number } };
 }
 
 export type BuildShortTermRowResult =

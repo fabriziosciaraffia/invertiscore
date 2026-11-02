@@ -7,12 +7,14 @@
  */
 import { capturarServidor, uuidDeterminista, type EventoServidor } from "@/lib/posthog-servidor";
 
-export function eventoAnalisisCreado(p: { userId: string; analysisId: string; modalidad: string; via: string }): EventoServidor {
+/** `precioNegociado` (02-nov-2026): el informe se hizo al precio negociado de Explorar («Analizar a UF 2.950»): la marca y el
+ *  descuento van en el evento. */
+export function eventoAnalisisCreado(p: { userId: string; analysisId: string; modalidad: string; via: string; precioNegociado?: { descuentoPct: number } | null }): EventoServidor {
   return {
     event: "analisis_creado",
     distinctId: p.userId,
     uuid: uuidDeterminista(`analisis_creado-${p.analysisId}`),
-    properties: { analysis_id: p.analysisId, modalidad: p.modalidad, via: p.via },
+    properties: { analysis_id: p.analysisId, modalidad: p.modalidad, via: p.via, ...(p.precioNegociado ? { precio_negociado: true, descuento_pct: p.precioNegociado.descuentoPct } : {}) },
   };
 }
 
@@ -36,7 +38,7 @@ export function modalidadDelInforme(tipo: string | null | undefined): string {
 }
 
 /** Nunca lanza; sin cuenta no hace nada. */
-export async function capturarAnalisisCreado(p: { userId: string | null | undefined; analysisId: string | null | undefined; modalidad: string; via: string }): Promise<void> {
+export async function capturarAnalisisCreado(p: { userId: string | null | undefined; analysisId: string | null | undefined; modalidad: string; via: string; precioNegociado?: { descuentoPct: number } | null }): Promise<void> {
   if (!p.userId || !p.analysisId) return;
-  await capturarServidor(eventoAnalisisCreado({ userId: p.userId, analysisId: p.analysisId, modalidad: p.modalidad, via: p.via })).catch(() => false);
+  await capturarServidor(eventoAnalisisCreado({ userId: p.userId, analysisId: p.analysisId, modalidad: p.modalidad, via: p.via, precioNegociado: p.precioNegociado ?? null })).catch(() => false);
 }

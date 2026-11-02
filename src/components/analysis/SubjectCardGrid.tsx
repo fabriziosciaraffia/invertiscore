@@ -31,6 +31,7 @@ import type { AlternativaComunas } from "@/lib/alternativa-comunas";
 import type { PublicacionPortada } from "@/lib/guia/publicacion-portada";
 import { FRASE_RIESGO_ENTREGA, cuotasSeVen, filaPesaCuotas, fraseCuotasPortada } from "@/lib/obra-nueva";
 import { tasaDePortada } from "@/lib/guia/tasa-portada";
+import { negociadoDePortada } from "@/lib/guia/precio-negociado-portada";
 
 /**
  * Orquestador del análisis IA: Hero Verdict + Subject Card Grid 2×2 + card
@@ -272,6 +273,7 @@ export function SubjectCardGrid({
           ficha={fichaPortada}
           publicacion={publicacion}
           tasaElegida={tasaDePortada(inputData)}
+          precioNegociado={negociadoDePortada(inputData)}
           currency={currency}
           onCurrencyChange={onCurrencyChange}
           mapa={

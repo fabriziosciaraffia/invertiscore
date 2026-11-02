@@ -27,6 +27,7 @@ import { GlosaIndicador } from "@/components/analysis/shared/Glosa";
 import type { SegCuotas } from "@/lib/obra-nueva";
 import type { PublicacionPortada } from "@/lib/guia/publicacion-portada";
 import { lineaTasaPortada, type TasaPortada } from "@/lib/guia/tasa-portada";
+import { lineaNegociadoPortada, type NegociadoPortada } from "@/lib/guia/precio-negociado-portada";
 import { PUBLICACION_PORTADA } from "@/lib/guia/copy";
 
 // Etiqueta de la banda por veredicto. El COLOR ya no vive acá: sale de los tokens
@@ -82,6 +83,7 @@ export function PortadaInforme({
   ficha,
   publicacion,
   tasaElegida = null,
+  precioNegociado = null,
   currency,
   onCurrencyChange,
   mapa,
@@ -107,6 +109,9 @@ export function PortadaInforme({
   publicacion: PublicacionPortada;
   /** La tasa elegida (30-oct-2026, tasa-portada.ts): una línea chica bajo el veredicto; con la de hoy, nada. */
   tasaElegida?: TasaPortada;
+  /** El precio negociado (02-nov-2026, precio-negociado-portada.ts): el informe de «Analizar a UF 2.950» lo dice bajo el
+   *  veredicto, con los dos precios; sin él, nada. */
+  precioNegociado?: NegociadoPortada;
   currency: "CLP" | "UF";
   onCurrencyChange: (c: "CLP" | "UF") => void;
   /** Mapa de comparables (solo desktop). null = sin coords → columna no se renderiza.
@@ -170,6 +175,7 @@ export function PortadaInforme({
           <GlosaIndicador glosa="francoScore" aca={score != null ? `${score} · ${etiquetaVeredicto(veredicto)}` : undefined} />
         </p>
       )}
+      {precioNegociado && <p className="doc-hero-tasa" data-portada="precio-negociado" title={`Precio publicado: UF ${Math.round(precioNegociado.publicadoUF).toLocaleString("es-CL")}`}>{lineaNegociadoPortada(precioNegociado)}</p>}
       {tasaElegida && <p className="doc-hero-tasa" data-portada="tasa-elegida">{lineaTasaPortada(tasaElegida)}</p>}
 
       {/* Grid portada: contenido + mapa (mapa solo PC) */}

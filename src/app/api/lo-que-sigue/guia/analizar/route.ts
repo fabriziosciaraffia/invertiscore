@@ -31,6 +31,7 @@ import { leerPerfilBusqueda } from "@/lib/perfil-busqueda-servidor";
 import { capturarServidor } from "@/lib/posthog-servidor";
 import { esPiePopup, esPlazoPopup } from "@/lib/explorar/explorar";
 import { eventoExplorarAnaliza } from "@/lib/explorar/servidor";
+import { esTopeNegociar, precioNegociadoValido } from "@/lib/explorar/capa-negociar";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // «Analizar este» (30-sep-2026): el informe de un aviso de la guía, sin wizard, con un crédito del
@@ -52,6 +53,10 @@ import { eventoExplorarAnaliza } from "@/lib/explorar/servidor";
 // no tienen token que los valide. Se analizan como un aviso evaluado, igual que desde Explorar (el pie y el plazo de las
 // listas del pop-up, el origen sintético con la tasa de mercado, el crédito una vez por persona y aviso), pero cuentan como
 // la selección (`desde` = «semanal»): es la tarjeta de «Tu selección» de la casa.
+// AL PRECIO NEGOCIADO (02-nov-2026, la capa «Si negocias» de Explorar: «Analizar a UF 2.950»): solo desde Explorar, con el tope
+// elegido (5 % o 10 %). El precio tiene que estar entre el publicado menos el tope y el publicado; el informe se hace a ese precio
+// (todo lo que deriva del precio, como en el re-análisis) y queda marcado con los dos precios (`origenAviso.precioNegociado`),
+// que la portada dice. `analisis_creado` lleva la marca. El crédito, el de siempre: una vez por persona y aviso.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const maxDuration = 60;
@@ -63,13 +68,16 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "sin-sesion" }, { status: 401 });
 
-  const b = (await request.json().catch(() => ({}))) as { origenId?: string | null; avisoId?: string; piePct?: number; plazoAnios?: number; tasaPct?: unknown; semanal?: string; explorar?: boolean; respaldo?: boolean };
+  const b = (await request.json().catch(() => ({}))) as { origenId?: string | null; avisoId?: string; piePct?: number; plazoAnios?: number; tasaPct?: unknown; semanal?: string; explorar?: boolean; respaldo?: boolean; precioNegociadoUF?: unknown; topeNegociar?: unknown };
   // LA TASA ELEGIDA (30-oct-2026): la del pop-up (null = la de hoy); una que no es de la lista no se acepta.
   if (b.tasaPct != null && tasaElegidaDe(b.tasaPct) == null) return NextResponse.json({ error: "tasa" }, { status: 400 });
   const sinOrigen = typeof b.semanal === "string" && b.origenId == null;
   const desdeExplorar = b.explorar === true && b.origenId == null && typeof b.semanal !== "string";
   const desdeRespaldo = b.respaldo === true && !desdeExplorar && b.origenId == null && typeof b.semanal !== "string";
   if ((!sinOrigen && !desdeExplorar && !desdeRespaldo && (!b.origenId || !UUID.test(b.origenId))) || !b.avisoId || !UUID.test(b.avisoId)) return NextResponse.json({ error: "datos" }, { status: 400 });
+  // El precio negociado: solo desde Explorar, en UF enteras y con un tope de la lista; el piso se mide contra el aviso, abajo.
+  const negociadoUF = b.precioNegociadoUF == null ? null : Number(b.precioNegociadoUF);
+  if (negociadoUF != null && (!desdeExplorar || !Number.isInteger(negociadoUF) || negociadoUF <= 0 || !esTopeNegociar(b.topeNegociar))) return NextResponse.json({ error: "precio-negociado" }, { status: 400 });
 
   const admin = createAnonPipelineClient();
   let espejoAE: EventoEspejo | null = null;
@@ -110,6 +118,13 @@ export async function POST(request: Request) {
     if (!combo || !o) return NextResponse.json({ error: "combinacion" }, { status: 400 });
     const origen: OrigenGuia = o;
     const combinacion: Combinacion = combo;
+    // El piso del precio negociado, ANTES del evento de Meta y de leer la ficha (dos GETs del tope por hora): un precio fuera del
+    // tope no gasta nada. `preparar` lo vuelve a mirar con el aviso que usa.
+    if (negociadoUF != null) {
+      const avisoNeg = await leerAvisoGuia(admin, b.avisoId, origen);
+      if (!avisoNeg) return NextResponse.json({ error: "aviso" }, { status: 404 });
+      if (!precioNegociadoValido(negociadoUF, avisoNeg.precioUF, Number(b.topeNegociar))) return NextResponse.json({ error: "precio-negociado" }, { status: 400 });
+    }
     const desdeSemanal = typeof b.semanal === "string" || desdeRespaldo;
     const desde: "semanal" | "guia" | "explorar" = desdeExplorar ? "explorar" : desdeSemanal ? "semanal" : "guia";
     const ae = await emitirEventoMeta(admin, {
@@ -141,16 +156,21 @@ export async function POST(request: Request) {
       async preparar() {
         const aviso = await leerAvisoGuia(admin, b.avisoId!, origen);
         if (!aviso) return { ok: false, status: 404, error: "aviso" };
+        // El precio negociado, entre el publicado menos el tope elegido y el publicado (02-nov-2026).
+        const publicadoUF = Math.round(aviso.precioUF);
+        if (negociadoUF != null && !precioNegociadoValido(negociadoUF, aviso.precioUF, Number(b.topeNegociar))) return { ok: false, status: 400, error: "precio-negociado" };
+        const precioNegociado = negociadoUF != null ? { publicadoUF, negociadoUF, descuentoPct: Math.round((1 - negociadoUF / publicadoUF) * 1000) / 10 } : null;
         const [cfg, ufValue] = await Promise.all([leerConfigGuia(admin), getUFValue()]);
         const antiguedad = await antiguedadDelAviso(admin, aviso, anioLeido);
         // LA TASA (30-oct-2026): la elegida en el pop-up o la de la selección; sin ella, la del motor —también desde el semanal
         // con un informe de origen (decisión de Fabrizio: no la del último informe)—. La guía sigue con la de su informe.
         const tasaElegida = "tasaPct" in b ? tasaElegidaDe(b.tasaPct) : (combinacion.tasaPct ?? null);
         const conTasa: OrigenGuia = { ...origen, tasa: tasaElegida ?? (desde === "guia" ? origen.tasa : cfg.tasa) };
-        const body = await cuerpoDelAviso(aviso, conTasa, combinacion, antiguedad, { uf: ufValue, tasa: cfg.tasa });
+        const body = await cuerpoDelAviso(precioNegociado ? { ...aviso, precioUF: precioNegociado.negociadoUF } : aviso, conTasa, combinacion, antiguedad, { uf: ufValue, tasa: cfg.tasa });
         // De dónde salió (14-oct-2026): el dashboard lo dice en lugar de «SIN DIRECCIÓN». Y la tasa elegida: la portada la dice.
         if (body?.origenAviso) body.origenAviso.desde = desde;
         if (body?.origenAviso && tasaElegida != null) { body.origenAviso.tasaElegida = tasaElegida; body.origenAviso.tasaMercado = cfg.tasa; }
+        if (body?.origenAviso && precioNegociado) body.origenAviso.precioNegociado = precioNegociado;
         if (!body) return { ok: false, status: 422, error: "sin-arriendo" };
         if (Number.isFinite(body.piePct)) body.piePct = redondearPiePct(body.piePct);
         body.methodologyVersion = METHODOLOGY_VERSION_ACTUAL;
@@ -201,7 +221,7 @@ export async function POST(request: Request) {
             }).select("id").single();
             if (error || !data) throw new Error(`insert: ${error?.message ?? "sin fila"}`);
             const id = data.id as string;
-            waitUntil(capturarAnalisisCreado({ userId: user.id, analysisId: id, modalidad: "ltr", via: desde }));
+            waitUntil(capturarAnalisisCreado({ userId: user.id, analysisId: id, modalidad: "ltr", via: desde, precioNegociado }));
             if (desdeExplorar) {
               waitUntil(capturarServidor(eventoExplorarAnaliza({ userId: user.id, analysisId: id, avisoId: aviso.avisoId, comuna: aviso.comuna, precioUF: aviso.precioUF, m2: aviso.m2, piePct: combinacion.piePct, plazoAnios: combinacion.plazoAnios })).catch(() => false));
             }
