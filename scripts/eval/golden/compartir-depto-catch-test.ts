@@ -553,3 +553,6 @@ if (require.main === module) {
 //   llega» dice otra cosa · G19 la página no verifica · G20 sin cuenta viaja el precio de hoy · G21 los metadatos sin el tope ·
 //   G22 la API ignora el tope · G23 la verificación lee la ficha del aviso · G24 la imagen sin el chip Ajustar · G25 el que no
 //   llega sigue en la capa · G26 si la verificación falla, no llega · G27 la API del texto verifica (la hoja esperaría).
+// Y lo que el QUICK cazó en otros tiers con la verificación de hoy, 3 de 3 en ROJO: Z1 y Z2 (GUIA-BUSQUEDA §3, reescrito con
+// su acta: la antigüedad de UNA LECTURA de la ficha solo en «Analizar este») · Z3 (CONFIG-PUBLICA §6: la ficha del enlace lee
+// `config` con el cliente de service role de quien la llama; la verificación es una `function` para que el censo la siga).

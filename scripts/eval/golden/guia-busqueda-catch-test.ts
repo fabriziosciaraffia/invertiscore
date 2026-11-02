@@ -235,7 +235,13 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
     if (f.startsWith("src/lib/guia/")) continue;
     const s = sinComentarios(leer(f));
     if (/\bbajarFicha\b|\bleerFicha\(|\bchequearPublicacion\(/.test(s) && !ANALIZAR_ESTE.includes(f) && f !== "src/app/api/lo-que-sigue/quiero-verlo/route.ts") F(`3 · ${f} entra a la ficha por fuera de la guía, de «Analizar este» y de «Quiero verlo»`);
-    if (/antiguedadDelAviso\(/.test(s) && !ANALIZAR_ESTE.includes(f)) F(`3 · ${f} lee la antigüedad de la ficha y no es «Analizar este»`);
+    // ⚠ ACTA (03-nov-2026, goal «el negociado se comparte con su verdad completa») · la verificación de un negociado compartido
+    // (src/lib/explorar/negociado-hoy.ts) arma el informe con `antiguedadDelAviso` SIN LECTURA —`{ leida: false, anio: null }`:
+    // la guardada, la del edificio o los años supuestos—, sin entrar a la ficha. La regla es la de la lectura: la antigüedad
+    // DE UNA LECTURA de la ficha solo en «Analizar este»; sin lectura, la de lo guardado, en cualquier lado. Antes el predicado
+    // prohibía la llamada entera, que era la forma de la regla y no la regla.
+    const conLectura = [...s.matchAll(/antiguedadDelAviso\(([^;]*?)\)/g)].filter((m) => !/,\s*\{ leida: false, anio: null \}\s*$/.test(m[1]));
+    if (conLectura.length && !ANALIZAR_ESTE.includes(f)) F(`3 · ${f} lee la antigüedad de la ficha y no es «Analizar este»`);
   }
   const claude = leer("CLAUDE.md");
   if (!/chequeo de publicación de la guía de búsqueda/.test(claude) || !/tope global por hora/.test(claude) || !/sin reintentos/.test(claude) || !/se recuerda 24 horas/.test(claude) || !/25 años supuestos/.test(claude) || !/`TOPE_FICHAS_POR_HORA` = 30/.test(claude)) F("3 · CLAUDE.md no documenta el chequeo de publicación, sus resguardos, el tope y los 25 años supuestos");

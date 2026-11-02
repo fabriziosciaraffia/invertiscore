@@ -27,7 +27,12 @@ export type VerificarNegociado = (avisoId: string, negociadoUF: number, tope: nu
  *  el mismo toque o no se abre—. La verificación de hoy es de quien abre el enlace y de la vista previa. */
 export const segunLaNoche: VerificarNegociado = async () => ({ estado: "sigue" });
 
-export const verificarNegociadoDeHoy = (admin: SupabaseClient): VerificarNegociado => async (avisoId, negociadoUF, tope) => {
+/** La verificación de hoy, con el cliente de service role de quien la llama (lee `config`, los avisos y los comparables). */
+export function verificarNegociadoDeHoy(admin: SupabaseClient): VerificarNegociado {
+  return async (avisoId, negociadoUF, tope) => verificarConDatosDeHoy(admin, avisoId, negociadoUF, tope);
+}
+
+async function verificarConDatosDeHoy(admin: SupabaseClient, avisoId: string, negociadoUF: number, tope: number): Promise<VerificacionNegociado> {
   const [cfg, ufValue] = await Promise.all([leerConfigGuia(admin), getUFValue()]);
   const combinacion = { piePct: PIE_POR_DEFECTO, plazoAnios: PLAZO_POR_DEFECTO };
   const origen = origenSintetico("", { ...combinacion, comunas: [], dormitorios: [] }, cfg);
@@ -53,4 +58,4 @@ export const verificarNegociadoDeHoy = (admin: SupabaseClient): VerificarNegocia
     return { veredicto: readVeredicto(r) ?? null, score: r.score ?? null, flujo: r.metrics?.flujoNetoMensual ?? null };
   };
   return verificarNegociado({ publicadoUF: aviso.precioUF, negociadoUF, tope, comprarEn: (precioUF) => sondaConPatch(body, ufValue, mediana, asOf, { precio: precioUF }).veredicto === "COMPRAR", informeEn });
-};
+}
