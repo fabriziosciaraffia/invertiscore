@@ -17,9 +17,12 @@
 --   · deptos_candidatos, 3 comunas, 1-2D, UF 2.000-4.500 ......    106 ms ·  26.981 páginas  →   47 ms · 27.658
 -- LA SALIDA ES LA MISMA (verificado el 02-nov-2026 con diez juegos de argumentos, dos por función, comparando la salida
 -- completa en orden): idéntica en nueve. En guia_candidatos con 3 km, mismas 60 distancias puesto por puesto, ordenadas,
--- pero 16 puestos con otro aviso: ese ORDER BY es solo por distancia y los avisos del mismo edificio empatan, así que el
--- orden entre empatados —y cuál entra en el puesto 60— lo decide el plan, hoy también. No se agrega un desempate acá: sería
--- cambiar qué ve la guía, y esta migración no cambia resultados.
+-- pero 16 puestos con otro aviso: ese ORDER BY era solo por distancia y los avisos del mismo edificio empatan, así que el
+-- orden entre empatados —y cuál entraba en el puesto 60— lo decidía el plan.
+-- EL ÚNICO CAMBIO DE RESULTADO, A PROPÓSITO (decisión de Fabrizio, 02-nov-2026): guia_candidatos desempata por id después
+-- de la distancia (`order by distance_meters, sp.id`). Las distancias de cada puesto siguen siendo las mismas; lo que cambia
+-- es que, entre avisos a la misma distancia, el orden y el corte del puesto `max_filas` ya no dependen del plan: la misma
+-- búsqueda da siempre la misma guía.
 -- Quién las llama: el semanal (semanal-servidor.ts y semanal-str-servidor.ts, el cron semanal-armar y el de la renta
 -- corta atrasada), la guía del pack al confirmarse el pago (guia-servidor.ts), el mapa del dashboard y su conteo
 -- (explorar/servidor.ts › pinesExplorar; explorar_conteo envuelve a explorar_pines y hereda el arreglo) y /deptos
@@ -30,8 +33,9 @@
 -- sin tocar. `#variable_conflict use_variable`, como en la Fase 1: los nombres sin calificar del SELECT (comunas, desde,
 -- pie, plazo, dorms, uf_min, uf_max, max_filas, por_celda, center_lat, …) siguen siendo los parámetros.
 -- Fuera, a propósito: properties_within_radius (plpgsql con plan cache; su plan genérico usa el índice espacial y es más
--- rápido que el a medida, 28 ms contra 57 ms), explorar_filas_para_sonda (por id), estandar25_filas (solo un script) y las
--- sobrecargas que nadie llama (deptos_conteo de cinco argumentos, deptos_candidatos de siete).
+-- rápido que el a medida, 28 ms contra 57 ms), explorar_filas_para_sonda (por id) y estandar25_filas (solo un script).
+-- ANOTADAS, SIN TOCAR (decisión de Fabrizio, 02-nov-2026: ni se cambian ni se borran en este goal): las sobrecargas que el
+-- código ya no llama, deptos_conteo de cinco argumentos y deptos_candidatos de siete. Siguen en language sql.
 -- ─────────────────────────────────────────────────────────────────────────────
 
 set lock_timeout = '3s';
@@ -147,7 +151,7 @@ begin
     and ae.arriendo_sospechoso is not true
     and not exists (select 1 from publicacion_avisos pd where pd.aviso_id = sp.id and pd.estado = 'despublicado')
     and st_dwithin(sp.location, st_setsrid(st_makepoint(center_lng, center_lat), 4326)::geography, radius_meters)
-  order by distance_meters
+  order by distance_meters, sp.id
   limit max_filas;
 end;
 $$;
