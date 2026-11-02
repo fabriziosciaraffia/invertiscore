@@ -73,6 +73,53 @@ export function negociarCandidato(c: CandidatoGuia, piePct: number, cfg: { uf: n
   }
 }
 
+/** Lo que dice la verificación al analizar: el precio sigue, se movió (el nuevo, con su puntaje y su flujo) o ya no llega. */
+export type VerificacionNegociado = { estado: "sigue" } | { estado: "movido"; negociado: Negociado } | { estado: "no-llega" };
+/** Cuántos precios candidatos se verifican con el informe de verdad antes de probar el tope (cada uno lee comparables). */
+const VERIFICACIONES_MAX = 4;
+
+/**
+ * EL PRECIO NEGOCIADO, VERIFICADO ANTES DE COBRAR (02-nov-2026, decisión de Fabrizio). La noche deja el precio en el piso de
+ * Comprar con los comparables de esa noche; el informe se arma con los de hoy, y en la muestra del 02-nov (40 negociados a pie
+ * 20) 11 caían a Ajustar 68–69. Antes de cobrar: si el informe a ese precio da Comprar, sigue; si no, el descuento mínimo con
+ * los datos de hoy entre el pedido y el tope —la búsqueda con la sonda, como la noche, y cada precio candidato verificado con el
+ * informe de verdad, que es lo que se va a crear—; si ni el tope llega, no llega. Nada de esto cobra.
+ */
+export async function verificarNegociado(o: {
+  publicadoUF: number;
+  negociadoUF: number;
+  tope: number;
+  /** La sonda con los datos de hoy (rápida): ¿a este precio da Comprar? */
+  comprarEn: (precioUF: number) => boolean;
+  /** El informe de verdad a este precio, con los datos de hoy: su veredicto, su puntaje y su flujo. */
+  informeEn: (precioUF: number) => Promise<{ veredicto: string | null; score: number | null; flujo: number | null }>;
+}): Promise<VerificacionNegociado> {
+  if ((await o.informeEn(o.negociadoUF)).veredicto === "COMPRAR") return { estado: "sigue" };
+  const precioEn = (d: number) => precioRecomendadoUF(o.publicadoUF, d);
+  let lo = Math.max(0, (1 - o.negociadoUF / o.publicadoUF) * 100), hi = o.tope;
+  if (o.comprarEn(precioEn(hi))) {
+    while (hi - lo > PREC_PTS) {
+      const mid = (lo + hi) / 2;
+      if (o.comprarEn(precioEn(mid))) hi = mid;
+      else lo = mid;
+    }
+  }
+  const movido = async (d: number): Promise<VerificacionNegociado | null> => {
+    const p = precioEn(d);
+    if (!(p < o.negociadoUF)) return null;
+    const r = await o.informeEn(p);
+    return r.veredicto === "COMPRAR" ? { estado: "movido", negociado: { d, p, s: r.score != null ? Math.round(r.score) : null, f: r.flujo != null ? Math.round(r.flujo) : null } } : null;
+  };
+  // Hacia arriba de a 0,1 punto, como la noche; tras unas pocas verificaciones, el tope directo.
+  let d = Math.min(Math.ceil(hi * 10 - 1e-9) / 10, o.tope);
+  for (let i = 0; i < VERIFICACIONES_MAX && d < o.tope; i++) {
+    const v = await movido(d);
+    if (v) return v;
+    d = Math.min(Math.round((d + PREC_PTS) * 10) / 10, o.tope);
+  }
+  return (await movido(o.tope)) ?? { estado: "no-llega" };
+}
+
 /** Los dos pies de la noche: solo los que la noche da Ajustar supuestos con ese pie. */
 export function evaluarNegociar(c: CandidatoGuia, veredictos: { veredicto_20: string | null; veredicto_30: string | null }, cfg: { uf: number; tasa: number }, asOf: Date = new Date()): FilaNegociar {
   return {

@@ -47,12 +47,14 @@ export interface EleccionAnalizar {
   guardarPerfil: boolean;
 }
 
-export function AvisoAntesDeAnalizar({ avisoId = null, depto, combinacion, finanzas, uso, rutaCompra, alAnalizar, alCancelar, modalidad = "ltr", analizando = false, compras = null, ticketConSaldo = null, cambio = null, ticketVence = null, planLinea = null, negociado = null }: {
+export function AvisoAntesDeAnalizar({ avisoId = null, depto, combinacion, finanzas, uso, rutaCompra, alAnalizar, alCancelar, modalidad = "ltr", analizando = false, compras = null, ticketConSaldo = null, cambio = null, ticketVence = null, planLinea = null, negociado = null, movido = null }: {
   /** UN NEGOCIADO DE EXPLORAR (02-nov-2026, mockup 8): el precio que hay que conseguir, el descuento y el puntaje a ese precio. La
    *  tarjeta dice los dos veredictos («Al precio publicado [Ajustar]» y «Si consigues UF 2.950 (−4,2 %) [✓ Comprar · 71]»), el
    *  dividendo y el retorno son a ese precio y el botón dice «Analizar a UF 2.950». Sin «Cambiar»: la noche lo calculó con este
    *  pie y este plazo. */
   negociado?: { precioUF: number; descuentoPct: number; score: number | null } | null;
+  /** El precio negociado, verificado con los datos de hoy antes de cobrar (02-nov-2026): se movió o ya no llega. */
+  movido?: string | null;
   /** El aviso (30-oct-2026, recorrido real de Fabrizio): su foto de la calle, o el mapa chico, va a la izquierda de la tarjeta
    *  gris, en todas partes. Sin él, la tarjeta sola. */
   avisoId?: string | null;
@@ -151,6 +153,7 @@ export function AvisoAntesDeAnalizar({ avisoId = null, depto, combinacion, finan
         <span className={modalidad === "str" ? "av-incluye av-incluye-corta" : "av-incluye"} data-aviso="incluye">{incluye.antes}<b>{incluye.fuerte}</b>{incluye.despues}</span>
       </div>
       </div>
+      {movido && <p className="av-movido" data-aviso="precio-movido" role="status">{movido}</p>}
       {conTicket && ticketVence && (
         <div className="av-ticket" data-aviso="ticket" data-vence={ticketVence}>
           <div className="av-ticket-fila">

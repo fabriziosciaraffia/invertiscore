@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { tasaElegidaDe } from "@/lib/deptos/estandar";
 import { waitUntil } from "@vercel/functions";
-import { runAnalysis } from "@/lib/analysis";
+import { runAnalysis, sondaConPatch } from "@/lib/analysis";
 import { METHODOLOGY_VERSION_ACTUAL } from "@/lib/modelo-costos";
 import { getUFValue } from "@/lib/uf";
 import { readVeredicto } from "@/lib/results-helpers";
@@ -32,6 +32,7 @@ import { capturarServidor } from "@/lib/posthog-servidor";
 import { esPiePopup, esPlazoPopup } from "@/lib/explorar/explorar";
 import { eventoExplorarAnaliza } from "@/lib/explorar/servidor";
 import { esTopeNegociar, precioNegociadoValido } from "@/lib/explorar/capa-negociar";
+import { verificarNegociado } from "@/lib/avisos/negociar";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // «Analizar este» (30-sep-2026): el informe de un aviso de la guía, sin wizard, con un crédito del
@@ -141,6 +142,10 @@ export async function POST(request: Request) {
     // La red: la ficha se chequea de nuevo ANTES de cualquier cobro (publicacion.ts). La misma lectura trae el año.
     let anioLeido: number | null = null;
     let plausibleFallo: Response | null = null;
+    // El precio negociado verificado con los datos de hoy (02-nov-2026): la respuesta si se movió o ya no llega, y la mediana
+    // con que se verificó, que es la que usa el informe.
+    let negociadoFallo: Response | null = null;
+    let medianaDeHoy: Awaited<ReturnType<typeof prefetchMedianaComunaVenta>> | null = null;
     const r = await analizarAvisoDeGuia({
       async chequear() {
         const ficha = await fichaDelAviso(admin, b.avisoId!);
@@ -176,6 +181,31 @@ export async function POST(request: Request) {
         body.methodologyVersion = METHODOLOGY_VERSION_ACTUAL;
         const plausible = guardPlausibilidad(desdeBodyLtr(body, ufValue), { userId: user.id, ruta: RUTA });
         if (!plausible.ok) { plausibleFallo = plausible.response; return { ok: false, status: 422, error: "plausibilidad" }; }
+        // EL PRECIO NEGOCIADO, CON LOS DATOS DE HOY (02-nov-2026, decisión de Fabrizio): la noche lo dejó en el piso de Comprar con
+        // sus comparables; antes de reclamar y de cobrar, el informe a ese precio tiene que dar Comprar. Si no, el precio de hoy
+        // vuelve al pop-up (412, sin cobrar) o la ruta dice que ya no llega dentro del tope.
+        if (precioNegociado && negociadoUF != null) {
+          const mediana = await prefetchMedianaComunaVenta(admin, body, ufValue);
+          medianaDeHoy = mediana;
+          const asOf = new Date();
+          const informeEn = async (precioUF: number) => {
+            const c = precioUF === negociadoUF ? body : await cuerpoDelAviso({ ...aviso, precioUF }, conTasa, combinacion, antiguedad, { uf: ufValue, tasa: cfg.tasa });
+            if (!c) return { veredicto: null, score: null, flujo: null };
+            if (c !== body) { if (Number.isFinite(c.piePct)) c.piePct = redondearPiePct(c.piePct); c.methodologyVersion = METHODOLOGY_VERSION_ACTUAL; }
+            const r = runAnalysis(c, ufValue, mediana);
+            return { veredicto: readVeredicto(r) ?? null, score: r.score ?? null, flujo: r.metrics?.flujoNetoMensual ?? null };
+          };
+          const tope = Number(b.topeNegociar);
+          const v = await verificarNegociado({ publicadoUF: aviso.precioUF, negociadoUF, tope, comprarEn: (precioUF) => sondaConPatch(body, ufValue, mediana, asOf, { precio: precioUF }).veredicto === "COMPRAR", informeEn });
+          if (v.estado === "movido" && precioNegociadoValido(v.negociado.p, aviso.precioUF, tope)) {
+            negociadoFallo = NextResponse.json({ error: "precio-movido", negociado: v.negociado }, { status: 412 });
+            return { ok: false, status: 412, error: "precio-movido" };
+          }
+          if (v.estado !== "sigue") {
+            negociadoFallo = NextResponse.json({ error: "no-llega", tope }, { status: 412 });
+            return { ok: false, status: 412, error: "no-llega" };
+          }
+        }
 
         const clave = { user_id: user.id, aviso_id: aviso.avisoId };
         return { ok: true, piezas: {
@@ -207,7 +237,7 @@ export async function POST(request: Request) {
             await admin.from("guia_analisis").update({ cobrado_at: new Date().toISOString(), charge_mode: mode }).match(clave);
           },
           async crear(mode) {
-            const medianaComuna = await prefetchMedianaComunaVenta(admin, body, ufValue);
+            const medianaComuna = medianaDeHoy ?? await prefetchMedianaComunaVenta(admin, body, ufValue);
             const result = runAnalysis(body, ufValue, medianaComuna);
             const { data, error } = await admin.from("analisis").insert({
               ...filaAnalisisLtr({
@@ -251,7 +281,7 @@ export async function POST(request: Request) {
     });
 
     if (r.estado === "despublicado") return salir(NextResponse.json({ error: "despublicado" }, { status: 410 }));
-    if (r.estado === "sin-preparar") return salir(plausibleFallo ?? NextResponse.json({ error: r.error }, { status: r.status }));
+    if (r.estado === "sin-preparar") return salir(plausibleFallo ?? negociadoFallo ?? NextResponse.json({ error: r.error }, { status: r.status }));
     if (r.estado === "sin-cobro") return salir(NextResponse.json({ error: r.error }, { status: r.status }));
     if (r.estado === "en-curso") return salir(NextResponse.json({ error: "en-curso" }, { status: 409 }));
     return salir(NextResponse.json({ id: r.id, estado: r.estado }));

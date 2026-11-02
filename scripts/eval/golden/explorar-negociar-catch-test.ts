@@ -129,8 +129,8 @@ export async function runExplorarNegociarTier(): Promise<{ hard: number }> {
   const tarjeta = (pines: unknown[], sel: string, sinCuenta = false) => modTar ? dibujar(createElement(modTar.TarjetaPin, { pines, seleccionado: sel, uf: 39000, analizados: {}, guardados: new Set(), generando: null, error: null, alCambiar: NADA, alCerrar: NADA, alGuardar: NADA, alAnalizar: NADA, sinCuenta })) : "";
   const lista = (sinCuenta = false) => modLis ? dibujar(createElement(modLis.ListaPortal, { pines: [PIN, { ...PIN, avisoId: "c2", score: 80 }], negociados: [NEG], tope: 5, total: 2, calculando: false, orden: "puntaje", uf: 39000, analizados: {}, guardados: new Set(), alOrden: NADA, alAbrir: NADA, alGuardar: NADA, alAvisame: NADA, alCerrar: NADA, sinCuenta })) : "";
   const filtros = (f: po.FiltrosPortal, extra: Record<string, unknown> = {}) => modFil ? dibujar(createElement(modFil.HojaFiltros, { filtros: f, tasa: { tasa: 4.07 }, miBusqueda: { activa: false, alUsar() {}, perfil: PERFIL }, contar: () => 201, contarNegociados: () => 48, asegurar() {}, alAplicar() {}, alCerrar() {}, alPedirRegistro: null, ...extra })) : "";
-  const popup = (negociado: unknown) => modPop ? dibujarPopup(createElement(modPop.AvisoAntesDeAnalizar, {
-    depto: { comuna: "Ñuñoa", tipologia: "2D2B", m2: 58, precioUF: negociado ? 3080 : 4290, condicion: "usado" }, negociado,
+  const popup = (negociado: unknown, movido: string | null = null) => modPop ? dibujarPopup(createElement(modPop.AvisoAntesDeAnalizar, {
+    depto: { comuna: "Ñuñoa", tipologia: "2D2B", m2: 58, precioUF: negociado ? 3080 : 4290, condicion: "usado" }, negociado, movido,
     modalidad: "ltr", combinacion: { piePct: 20, plazoAnios: 30, tasaPct: null }, finanzas: { tasa: 4.07, uf: 39000, arriendo: 720000 },
     uso: { tipo: "con", n: 2, noVencen: false }, rutaCompra: "/x", alAnalizar() {}, alCancelar() {}, avisoId: "c1",
     cambio: negociado ? null : { recalcular: async () => null, base: { veredicto: "COMPRAR", score: 84, flujo: 64000 } },
@@ -414,6 +414,65 @@ export async function runExplorarNegociarTier(): Promise<{ hard: number }> {
     if (!/if \(sinCifrasRef\.current\) marcador\(\{ lat: p\.lat, lng: p\.lng \}, elegido \? iconoElegido\(\) : iconoPunto\(CIRUELA\)/.test(capaMapa)) F("9 · sin cuenta, el mapa dibuja el descuento en el pin negociado");
   }
 
+  // ── 10 · EL PRECIO NEGOCIADO SE VERIFICA CON LOS DATOS DE HOY ANTES DE COBRAR ──
+  // QA en el preview (02-nov-2026): la noche deja el precio en el piso de Comprar con sus comparables y el informe se arma con los de
+  // hoy; en 11 de 40 negociados el informe caía a Ajustar. Decisión de Fabrizio: verificar antes de cobrar y, si se movió, mostrar el
+  // precio de hoy en el pop-up. Mutaciones: N72-N78 en el acta.
+  {
+    const ng = cargar<typeof import("../../../src/lib/avisos/negociar")>("src/lib/avisos/negociar", F);
+    if (ng) {
+      // Un depto que da Comprar en el informe desde UF `umbral` hacia abajo; la sonda, algo más optimista (`umbralSonda`).
+      const caso = (umbral: number, umbralSonda: number, negociadoUF: number, tope = 5) => {
+        const llamadas: number[] = [];
+        return {
+          llamadas,
+          v: ng.verificarNegociado({
+            publicadoUF: 2000, negociadoUF, tope,
+            comprarEn: (p) => p <= umbralSonda,
+            informeEn: async (p) => { llamadas.push(p); return { veredicto: p <= umbral ? "COMPRAR" : "AJUSTA SUPUESTOS", score: p <= umbral ? 70 : 69, flujo: -1000 }; },
+          }),
+        };
+      };
+      const sigue = caso(1960, 1960, 1950);
+      const vs = await sigue.v;
+      if (vs.estado !== "sigue" || sigue.llamadas.join() !== "1950") F(`10 · con el precio de la noche dando Comprar, la verificación no sigue sola (${vs.estado}, informes a ${sigue.llamadas.join(", ")})`);
+      const mov = caso(1930, 1935, 1950);
+      const vm = await mov.v;
+      if (vm.estado !== "movido" || !(vm.negociado.p <= 1930) || !(vm.negociado.p < 1950) || !mov.llamadas.includes(vm.negociado.p)) F(`10 · el precio movido no es el que el informe de hoy verificó: ${JSON.stringify(vm)} (informes a ${mov.llamadas.join(", ")})`);
+      else if (!cn.precioNegociadoValido(vm.negociado.p, 2000, 5) || vm.negociado.s !== 70) F(`10 · el precio movido queda fuera del piso o sin su puntaje: ${JSON.stringify(vm.negociado)}`);
+      const nl = await caso(1880, 1880, 1950).v;
+      if (nl.estado !== "no-llega") F(`10 · sin llegar a Comprar dentro del tope, la verificación dice «${nl.estado}»`);
+    }
+    // La ruta: dentro de `preparar`, después de armar el cuerpo y ANTES de reclamar y de cobrar; el informe de verdad a cada precio;
+    // 412 con el precio nuevo o «no-llega»; el informe se crea con la mediana con que se verificó.
+    const post = ruta.slice(ruta.indexOf("export async function POST"));
+    const iPrep = post.indexOf("async preparar()"), iVer = post.indexOf("await verificarNegociado({"), iRec = post.indexOf("async reclamar()"), iCob = post.indexOf("async cobrar()");
+    if (iPrep < 0 || iVer < iPrep || iRec < 0 || iVer > iRec || iVer > iCob) F("10 · la ruta no verifica el precio negociado dentro de `preparar`, antes de reclamar y de cobrar");
+    if (!/if \(precioNegociado && negociadoUF != null\) \{\s*const mediana = await prefetchMedianaComunaVenta\(admin, body, ufValue\);\s*medianaDeHoy = mediana;/.test(post)) F("10 · la verificación no corre para todo precio negociado (o no guarda la mediana con que verifica)");
+    if (!/const r = runAnalysis\(c, ufValue, mediana\);/.test(post) || !/cuerpoDelAviso\(\{ \.\.\.aviso, precioUF \}, conTasa, combinacion, antiguedad,/.test(post)) F("10 · la verificación no usa el informe de verdad a cada precio");
+    if (!/negociadoFallo = NextResponse\.json\(\{ error: "precio-movido", negociado: v\.negociado \}, \{ status: 412 \}\);\s*return \{ ok: false, status: 412, error: "precio-movido" \};/.test(post)) F("10 · un precio movido no vuelve al pop-up sin cobrar");
+    if (!/if \(v\.estado !== "sigue"\) \{\s*negociadoFallo = NextResponse\.json\(\{ error: "no-llega", tope \}, \{ status: 412 \}\);\s*return \{ ok: false/.test(post)) F("10 · un precio que ya no llega no corta sin cobrar");
+    if (!/salir\(plausibleFallo \?\? negociadoFallo \?\? NextResponse\.json/.test(post)) F("10 · la respuesta del precio movido no sale de la ruta");
+    if (!/const medianaComuna = medianaDeHoy \?\? await prefetchMedianaComunaVenta\(admin, body, ufValue\);/.test(post)) F("10 · el informe no usa la mediana con que se verificó");
+    // El navegador: el precio nuevo al pop-up (y a la capa); el que ya no llega sale de la capa y el pop-up ofrece el publicado.
+    const an = cuerpo(cliente, "async function analizar(");
+    const iMov = an.indexOf('res.status === 412 && d.error === "precio-movido"'), iGen = an.indexOf("setError({ avisoId: it.avisoId, texto: GUIA.error });");
+    if (iMov < 0 || iGen < 0 || iMov > iGen) F("10 · «Analizar a UF X» no atiende el precio movido antes del error genérico");
+    if (!/setMovidos\(\(m\) => \(\{ \.\.\.m, \[it\.avisoId\]: nuevo \}\)\);\s*setConfirmar\(\{ it: \{ \.\.\.it, neg: nuevo \} as PinNegociado, sin: false, movido: NEGOCIADO_COPY\.movido\(nuevo\.p, nuevo\.d, it\.neg\.p\) \}\);/.test(an)) F("10 · el pop-up no queda con el precio nuevo y su aviso");
+    if (!/d\.error === "no-llega"[\s\S]{0,200}setNoLlegan\([\s\S]{0,80}setConfirmar\(\{ it: alPublicado, sin: false, movido: NEGOCIADO_COPY\.noLlega\(/.test(an)) F("10 · el que ya no llega no sale de la capa o el pop-up no ofrece el publicado");
+    if (!/\.map\(\(p\) => \(movidos\[p\.avisoId\] \? \{ \.\.\.p, neg: movidos\[p\.avisoId\] \} : p\)\)/.test(cliente) || !/!noLlegan\.includes\(p\.avisoId\)/.test(cliente)) F("10 · la capa no toma el precio verificado");
+    if (!/movido=\{confirmar\.movido \?\? null\}/.test(cliente)) F("10 · el pop-up no recibe el aviso del precio movido");
+    // El copy y el pop-up dibujado: el aviso en tinta, el precio nuevo en la línea y en el botón.
+    if (NEGOCIADO_COPY.movido(2648, 4.7, 2654) !== "Con los datos de hoy, llega a Comprar con UF 2.648 (−4,7 %), no con UF 2.654. No se usó ningún análisis.") F(`10 · el aviso del precio movido dice «${NEGOCIADO_COPY.movido(2648, 4.7, 2654)}»`);
+    if (NEGOCIADO_COPY.noLlega(5) !== "Con los datos de hoy ya no llega a Comprar con un descuento de hasta 5 %. No se usó ningún análisis; puedes analizarlo al precio publicado.") F(`10 · el aviso del que ya no llega dice «${NEGOCIADO_COPY.noLlega(5)}»`);
+    const hMov = popup({ precioUF: 2648, descuentoPct: 4.7, score: 70 }, NEGOCIADO_COPY.movido(2648, 4.7, 2654));
+    const aviso = texto(hMov.match(/<p[^>]*data-aviso="precio-movido"[^>]*>[\s\S]*?<\/p>/)?.[0] ?? "");
+    if (aviso !== NEGOCIADO_COPY.movido(2648, 4.7, 2654) || !/Si consigues UF 2\.648 \(−4,7 %\) ✓ Comprar · 70/.test(texto(hMov)) || !/Analizar a UF 2\.648/.test(texto(hMov))) F(`10 · el pop-up no dibuja el precio de hoy con su aviso: «${aviso || texto(hMov).slice(0, 160)}»`);
+    if (/data-aviso="precio-movido"/.test(hPopN)) F("10 · el pop-up dibuja el aviso del precio movido sin que se haya movido");
+    const regla = leer("src/components/formulario-v4/wizard-v4.css").match(/\.av-movido \{([^}]*)\}/)?.[1] ?? "";
+    if (!regla || /signal-red|#C8323C|--franco-red|--verdict-buscar|var\(--red/i.test(regla)) F("10 · el aviso del precio movido no está en tinta");
+  }
+
   for (const m of fallas) console.log(`  ✗ ${m}`);
   console.log(fallas.length === 0 ? "  ✓ EXPLORAR-NEGOCIAR: todo en orden" : `  ${fallas.length} falla(s) dura(s)`);
   return { hard: fallas.length };
@@ -429,8 +488,8 @@ if (require.main === module) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ACTA DE MUTACIONES (02-nov-2026, meta-runner que restaura byte a byte): 71 mutaciones a este tier y 26 a los predicados
-// reescritos de otros nueve tiers, 97 de 97 en ROJO y cada una por su invariante.
+// ACTA DE MUTACIONES (02-nov-2026, meta-runner que restaura byte a byte): 78 mutaciones a este tier y 26 a los predicados
+// reescritos de otros nueve tiers, 104 de 104 en ROJO y cada una por su invariante.
 //   §1 N1-N8: «¿Cómo se calcula?», la barra del teléfono, la píldora del PC, la tarjeta, la lista (y un chip nuevo con número),
 //      la bienvenida, el pop-up y el título de la lista sin «al precio publicado».
 //   §2 N9-N13: un chip inventado en la ayuda de Filtros y en la tarjeta del negociado, el chip de la casa sin el puntaje, la
@@ -455,6 +514,9 @@ if (require.main === module) {
 //   §3 N67-N71 (el mismo día, QA de los pines en el preview: en el teléfono los grupos ciruela quedaban debajo de los rojos):
 //      el satélite que no corre nada, el que corre al que ningún rojo tapa, el que no gira ante otro rojo, el grupo de la capa
 //      sin satélite en el mapa y el ancla del ícono sin el corrimiento.
+//   §10 N72-N78 (decisión de Fabrizio tras el QA: en 11 de 40 el informe a UF X caía a Ajustar): la verificación que siempre
+//      sigue, el precio movido tomado de la sonda sin el informe, la ruta sin verificar, el movido que no corta (cobraría), el
+//      informe con otra mediana que la verificada, el cliente que no atiende el precio movido y el pop-up sin su aviso.
 // Dos trampas del instrumento, cazadas antes de mutar: `[^>]*` se corta en el «=>» de un onChange (el slider no se leía) y
 // `cuerpo()` solo corta en declaraciones de primer nivel (el de «contar» se tragaba «contarNegociados»). Y un `{}` como
 // candidato no prueba que la noche no calcula: `negociarCandidato` corta solo si no hay arriendo; por eso el espía (Proxy).

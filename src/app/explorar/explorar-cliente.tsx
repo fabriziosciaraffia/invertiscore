@@ -48,9 +48,9 @@ import { TarjetaPin } from "./tarjeta-pin";
 import { ChipVeredicto, ChipVeredictoTokens } from "@/components/analysis/shared/ChipVeredicto";
 import {
   capaNegociarDisponible, conCifrasNegociado, descompactarNegociados, esNegociado, EVENTO_NEGOCIAR, filtrarNegociados, NEGOCIAR_COPY, ordenarNegociados, propsNegociar,
-  TOPE_NEGOCIAR_POR_DEFECTO, type NegociadosCompactos, type PinNegociado, type TopeNegociar,
+  TOPE_NEGOCIAR_POR_DEFECTO, type Negociacion, type NegociadosCompactos, type PinNegociado, type TopeNegociar,
 } from "@/lib/explorar/capa-negociar";
-import { AL_PRECIO_PUBLICADO } from "@/lib/precio-publicado";
+import { AL_PRECIO_PUBLICADO, NEGOCIADO_COPY } from "@/lib/precio-publicado";
 import { Info } from "./info";
 import {
   accionDeVuelta, bienvenidaVista, EVENTOS_ABIERTO, filtrosAbiertos, marcarBienvenida, ORDENES_CON_CIFRAS, PIE_ABIERTO,
@@ -155,7 +155,10 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
   const [zonaPendiente, setZonaPendiente] = useState<Caja | null>(null);
   const [sinBusqueda, setSinBusqueda] = useState(false);
   const [guardados, setGuardados] = useState<Set<string>>(() => new Set(cuenta.guardados));
-  const [confirmar, setConfirmar] = useState<{ it: PinMapa; sin: boolean; analizando?: boolean } | null>(null);
+  const [confirmar, setConfirmar] = useState<{ it: PinMapa; sin: boolean; analizando?: boolean; movido?: string } | null>(null);
+  /** El precio negociado que la ruta verificó con los datos de hoy (02-nov-2026): el nuevo, o fuera de la capa si ya no llega. */
+  const [movidos, setMovidos] = useState<Record<string, Negociacion>>({});
+  const [noLlegan, setNoLlegan] = useState<string[]>([]);
   const [noDa, setNoDa] = useState<{ it: PinMapa; porQue: string | null; publicacion: string | null; ocupado?: boolean } | null>(null);
   const [generando, setGenerando] = useState<string | null>(null);
   const [error, setError] = useState<{ avisoId: string; texto: string } | null>(null);
@@ -295,8 +298,8 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
   const negociadosDelPie = negociados[sinCuenta ? PIE_ABIERTO : filtros.pie];
   const idsComprar = useMemo(() => new Set((universo ?? []).map((p) => p.avisoId)), [universo]);
   const visiblesNeg = useMemo(
-    () => (capa && negociadosDelPie && filtros.negociar != null ? ordenarNegociados(filtrarNegociados(negociadosDelPie, filtros, filtros.negociar, idsComprar).filter((p) => !caidos.includes(p.avisoId))) : []),
-    [capa, negociadosDelPie, filtros, idsComprar, caidos],
+    () => (capa && negociadosDelPie && filtros.negociar != null ? ordenarNegociados(filtrarNegociados(negociadosDelPie, filtros, filtros.negociar, idsComprar).filter((p) => !caidos.includes(p.avisoId) && !noLlegan.includes(p.avisoId)).map((p) => (movidos[p.avisoId] ? { ...p, neg: movidos[p.avisoId] } : p))) : []),
+    [capa, negociadosDelPie, filtros, idsComprar, caidos, movidos, noLlegan],
   );
   /** Los dos, para la tarjeta (se desliza entre los cercanos de cualquiera de las dos capas). */
   const todos = useMemo((): PinMapa[] => (visiblesNeg.length ? [...visibles, ...visiblesNeg] : visibles), [visibles, visiblesNeg]);
@@ -453,7 +456,7 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
           body: JSON.stringify({ avisoId: it.avisoId, piePct: combinacion.piePct, plazoAnios: combinacion.plazoAnios, tasaPct, explorar: true, ...(esNegociado(it) && conCifrasNegociado(it) && filtros.negociar != null ? { precioNegociadoUF: it.neg.p, topeNegociar: filtros.negociar } : {}), ...(igual ? { igual: true } : {}) }),
         });
         if (res.status === 409) { await new Promise((ok) => setTimeout(ok, ESPERA_EN_CURSO_MS)); continue; }
-        const d = (await res.json().catch(() => ({}))) as { id?: string; error?: string; estado?: string; porQue?: string | null; publicacion?: string | null };
+        const d = (await res.json().catch(() => ({}))) as { id?: string; error?: string; estado?: string; porQue?: string | null; publicacion?: string | null; negociado?: Negociacion & { p: number }; tope?: number };
         if (res.ok && d.id) {
           // El embudo de la puerta E: «regalo usado» (el análisis salió con el regalo de alta).
           if (usaRegalo(cuenta.saldo)) posthog?.capture(EVENTOS_ABIERTO.regaloUsado, { aviso_id: it.avisoId, analysis_id: d.id, modalidad: filtros.modalidad });
@@ -462,6 +465,21 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
         }
         // Renta corta medida fina que no da: no se cobró; se ofrece analizar igual.
         if (res.ok && d.estado === "no-da") { setConfirmar(null); setNoDa({ it, porQue: d.porQue ?? null, publicacion: d.publicacion ?? null }); break; }
+        // EL PRECIO NEGOCIADO, VERIFICADO CON LOS DATOS DE HOY (02-nov-2026): no se cobró nada. Si se movió, el pop-up muestra el
+        // nuevo y la persona confirma; si ya no llega dentro del tope, sale de la capa y el pop-up ofrece el precio publicado.
+        if (res.status === 412 && d.error === "precio-movido" && d.negociado && esNegociado(it) && conCifrasNegociado(it)) {
+          const nuevo = d.negociado;
+          setMovidos((m) => ({ ...m, [it.avisoId]: nuevo }));
+          setConfirmar({ it: { ...it, neg: nuevo } as PinNegociado, sin: false, movido: NEGOCIADO_COPY.movido(nuevo.p, nuevo.d, it.neg.p) });
+          break;
+        }
+        if (res.status === 412 && d.error === "no-llega" && esNegociado(it)) {
+          const { neg: _neg, ...alPublicado } = it;
+          void _neg;
+          setNoLlegan((xs) => [...xs, it.avisoId]);
+          setConfirmar({ it: alPublicado, sin: false, movido: NEGOCIADO_COPY.noLlega(d.tope ?? filtros.negociar ?? TOPE_NEGOCIAR_POR_DEFECTO) });
+          break;
+        }
         if (res.status === 410 && d.error === "despublicado") { setConfirmar(null); setNoDa(null); setCaidos((xs) => [...xs, it.avisoId]); setSel(null); break; }
         if (d.error === "sin-creditos") { setNoDa(null); setConfirmar({ it, sin: true }); break; }
         setConfirmar(null);
@@ -749,6 +767,7 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
           ticketVence={cuenta.ticket && cuenta.cuentaCreadaAt ? cuandoVenceCorto(cuenta.cuentaCreadaAt) : null}
           rutaCompra={compras(confirmar.it.avisoId).pack.href}
           analizando={!!confirmar.analizando}
+          movido={confirmar.movido ?? null}
           planLinea={plan}
           cambio={filtros.modalidad === "str" || esNegociado(confirmar.it) ? null : { recalcular: (combo) => recalcular(confirmar.it.avisoId, combo), base: { veredicto: confirmar.it.veredicto, score: confirmar.it.score, flujo: confirmar.it.flujo } }}
           alAnalizar={(eleccion) => void analizar(confirmar.it, eleccion)}
