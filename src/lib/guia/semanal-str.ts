@@ -195,6 +195,15 @@ export interface ComparacionStr {
   analysisId: string | null;
 }
 
+/** A QUÉ SELECCIÓN SE ATA UNA COMPARACIÓN (02-nov-2026, decisión de Fabrizio). `comparaciones_zona_str.seleccion_id` es
+ *  llave foránea a `semanal_selecciones`: solo la selección semanal tiene esa fila. La selección diaria de renta corta
+ *  viene de `avisos_inmediatos` (seleccionPorToken › fuente "inmediato") y Explorar no tiene selección: las dos van sin
+ *  selección. Antes la diaria escribía su id de avisos_inmediatos, la llave foránea rechazaba el upsert entero y la
+ *  comparación no se guardaba (Sentry JAVASCRIPT-NEXTJS-1M). Las que se perdieron no se reconstruyen. */
+export function seleccionIdDeComparacion(sel: { fuente: "semanal" | "inmediato"; id: string } | null | undefined): string | null {
+  return sel?.fuente === "semanal" ? sel.id : null;
+}
+
 /** Lo que `preparar` entrega: el depto ya medido fino y las piezas para cobrar y crear su informe. */
 export interface MedicionPreparada {
   mostrado: { veredicto: string; score: number | null };

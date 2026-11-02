@@ -21,7 +21,7 @@ import { chequearPublicacion } from "@/lib/guia/publicacion";
 import { almacenPublicacion, bajarFicha } from "@/lib/guia/ficha-servidor";
 import { itemsVigentes, seleccionPorToken } from "@/lib/guia/semanal-servidor";
 import { celdaDormitorios, cuerpoStrDeAviso, evaluarStrCon, leerOrigenStr, origenSinteticoStr, reevaluadorConMedicion, zonasDeComuna } from "@/lib/guia/semanal-str-servidor";
-import { analizarStrDeSemanal, parecidosQueSobreviven, porQueNoDa, type ComparacionStr } from "@/lib/guia/semanal-str";
+import { analizarStrDeSemanal, parecidosQueSobreviven, porQueNoDa, seleccionIdDeComparacion, type ComparacionStr } from "@/lib/guia/semanal-str";
 import type { EstadoSaldo } from "@/lib/casa-saldo";
 import type { AirbnbEstimateResponse } from "@/lib/airbnb/types";
 import { EVENTOS_META, idAnalizarEste } from "@/lib/meta/ids";
@@ -243,9 +243,10 @@ export async function POST(request: Request) {
         };
       },
       async registrar(c: ComparacionStr) {
-        // Una por persona y aviso: la medición fina queda en caché y repetirla no es otra observación.
+        // Una por persona y aviso: la medición fina queda en caché y repetirla no es otra observación. Solo la selección
+        // semanal ata la comparación a su fila; la diaria y Explorar van sin selección (seleccionIdDeComparacion).
         const { error } = await admin.from("comparaciones_zona_str").upsert({
-          ...clave, seleccion_id: sel?.id ?? null,
+          ...clave, seleccion_id: seleccionIdDeComparacion(sel),
           zona_mostrado: c.mostrado, zona_score: c.mostradoScore,
           zona_veredicto: c.zona?.veredicto ?? null, zona_adr: c.zona?.adr ?? null, zona_ocupacion: c.zona?.ocupacion ?? null,
           fino_veredicto: c.fino.veredicto ?? "—", fino_score: c.fino.score, fino_adr: c.fino.adr, fino_ocupacion: c.fino.ocupacion,

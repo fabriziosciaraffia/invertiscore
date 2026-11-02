@@ -279,8 +279,17 @@ export async function runSemanalStrTier(): Promise<{ hard: number }> {
     const cb = b.n.registrar;
     if (cb.length !== 2 || cb[0].cambio || cb[0].cobrado || !cb[1].cobrado || cb[1].analysisId !== "informe-1") F(`4 · la comparación de un veredicto sostenido no queda registrada (antes de cobrar) y anotada como cobrada después (${JSON.stringify(cb)})`);
     // ⚠ ACTA (28-oct-2026, Explorar como portal) · desde Explorar la comparación se registra sin selección (`seleccion_id` null).
-    if (!/from\("comparaciones_zona_str"\)\.upsert\(\{\s*\.\.\.clave, seleccion_id: sel\?\.id \?\? null,\s*zona_mostrado: c\.mostrado, zona_score: c\.mostradoScore,[\s\S]*?cambio: c\.cambio, cobrado: c\.cobrado, analysis_id: c\.analysisId,[\s\S]*?\}, \{ onConflict: "user_id,aviso_id" \}\)/.test(ruta))
-      F("4 · la ruta no guarda la comparación (zona mostrada, fina, si cambió y si se cobró) por persona y aviso");
+    // ⚠ ACTA (02-nov-2026, goal de los cortes por statement_timeout; decisión de Fabrizio) · `seleccion_id` es llave foránea a
+    // semanal_selecciones, así que solo la selección SEMANAL ata la comparación; la diaria de renta corta (avisos_inmediatos,
+    // fuente "inmediato") va sin selección, como Explorar. Antes la ruta escribía `sel?.id ?? null`: la diaria mandaba su id
+    // de avisos_inmediatos, la llave foránea rechazaba la fila entera y la comparación no se guardaba (Sentry
+    // JAVASCRIPT-NEXTJS-1M). La regla vive en un ayudante puro que se prueba con sus casos, y la ruta tiene que usarlo.
+    const sid = (STR as { seleccionIdDeComparacion?: (s: { fuente: "semanal" | "inmediato"; id: string } | null | undefined) => string | null }).seleccionIdDeComparacion;
+    if (typeof sid !== "function") F("4 · falta el ayudante que decide a qué selección se ata una comparación");
+    else if (sid({ fuente: "semanal", id: "sel-1" }) !== "sel-1" || sid({ fuente: "inmediato", id: "inm-1" }) !== null || sid(null) !== null || sid(undefined) !== null)
+      F("4 · la comparación no se ata solo a la selección semanal (la diaria y Explorar tienen que ir sin selección)");
+    if (!/from\("comparaciones_zona_str"\)\.upsert\(\{\s*\.\.\.clave, seleccion_id: seleccionIdDeComparacion\(sel\),\s*zona_mostrado: c\.mostrado, zona_score: c\.mostradoScore,[\s\S]*?cambio: c\.cambio, cobrado: c\.cobrado, analysis_id: c\.analysisId,[\s\S]*?\}, \{ onConflict: "user_id,aviso_id" \}\)/.test(ruta))
+      F("4 · la ruta no guarda la comparación (zona mostrada, fina, si cambió y si se cobró) por persona y aviso, atada a su selección con seleccionIdDeComparacion");
     const mig = leer("supabase/migrations/20261014_semanal_renta_corta.sql");
     if (!/create table if not exists public\.comparaciones_zona_str \(/.test(mig) || !/cambio boolean not null,/.test(mig) || !/primary key \(user_id, aviso_id\)\s*\);\s*create index if not exists comparaciones_zona_str_medido/.test(mig) || !/revoke all on public\.comparaciones_zona_str from anon, authenticated;/.test(mig))
       F("4 · la tabla de comparaciones no existe en la migración (o la puede leer cualquiera)");
