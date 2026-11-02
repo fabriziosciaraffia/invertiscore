@@ -138,6 +138,10 @@ export async function GET(req: Request, { params }: { params: { avisoId: string 
   ]);
   if (!ficha) return new Response(null, { status: 404, headers: { "Cache-Control": "public, max-age=300, s-maxage=300" } });
   const v = contenidoVistaPrevia(ficha);
+  // La línea del negociado en dos piezas, «Conviene si lo negocias» y «a UF 2.950»: si no cabe en una línea se corta antes del
+  // precio, nunca entre «UF» y el número (medido en el preview, 03-nov-2026).
+  const corte = v.negociado ? v.negociado.lastIndexOf(" a UF ") : -1;
+  const piezasNegociado = v.negociado ? (corte > 0 ? [v.negociado.slice(0, corte), v.negociado.slice(corte + 1)] : [v.negociado]) : [];
   const wordmark = `data:image/svg+xml,${encodeURIComponent(wordmarkSvg(TINTA, 0.28))}`;
   const fonts = [
     ...(f.regular ? [{ name: INTER, data: f.regular, weight: 400 as const, style: "normal" as const }] : []),
@@ -182,7 +186,9 @@ export async function GET(req: Request, { params }: { params: { avisoId: string 
                     {`${signoVeredicto(v.chip)} ${etiquetaVeredicto(v.chip, "frase")}`}
                   </div>
                 </div>
-                <div style={{ display: "flex", marginTop: e(18), fontFamily: INTER, fontWeight: 600, fontSize: e(32), lineHeight: 1.25, color: TINTA }}>{v.negociado}</div>
+                <div style={{ display: "flex", flexWrap: "wrap", marginTop: e(18), fontFamily: INTER, fontWeight: 600, fontSize: e(32), lineHeight: 1.25, color: TINTA }}>
+                  {piezasNegociado.map((t, i) => <span key={i} style={{ marginRight: i < piezasNegociado.length - 1 ? e(9) : 0 }}>{t}</span>)}
+                </div>
               </div>
             ) : null}
           </div>

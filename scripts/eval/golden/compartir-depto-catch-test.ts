@@ -427,7 +427,7 @@ export async function runCompartirDeptoTier(): Promise<{ hard: number }> {
       if (numeros.some((x) => !permitidos.has(x)) || /%|−/.test(Object.values(v).join(" "))) F(`7 · la vista previa del negociado trae otro número: ${numeros.join(", ")}`);
       if (cp.rutaVistaPrevia(AVISO, "ltr", 5) !== `/api/og/depto/${AVISO}?n=5` || cp.rutaVistaPrevia(AVISO, "str", 5) !== `/api/og/depto/${AVISO}?m=str`) F("7 · la imagen del negociado no lleva el tope (o la de renta corta lo lleva)");
       const og = codigo("src/app/api/og/depto/[avisoId]/route.tsx");
-      if (!/const CHIP_AJUSTAR = \{ fondo: "#F1E4EC", texto: "#6E4560", borde: "#DCC6D4" \};/.test(og) || !/\{v\.chip === "AJUSTA SUPUESTOS" && v\.negociado \? \(/.test(og) || !/\{NEGOCIADO_COPY\.alPublicado\}/.test(og) || !/\{v\.negociado\}<\/div>/.test(og)
+      if (!/const CHIP_AJUSTAR = \{ fondo: "#F1E4EC", texto: "#6E4560", borde: "#DCC6D4" \};/.test(og) || !/\{v\.chip === "AJUSTA SUPUESTOS" && v\.negociado \? \(/.test(og) || !/\{NEGOCIADO_COPY\.alPublicado\}/.test(og) || !/const corte = v\.negociado \? v\.negociado\.lastIndexOf\(" a UF "\) : -1;/.test(og) || !/\{piezasNegociado\.map\(\(t, i\) => <span key=\{i\}/.test(og)
         || !/const tope = esTopeNegociar\(sp\.get\("n"\)\) \? Number\(sp\.get\("n"\)\) : null;/.test(og)) F("7 · la imagen no dibuja «Al precio publicado» con el chip Ajustar de la casa y la línea del negociado (o no lee el tope)");
       const meta = pagina.slice(pagina.indexOf("export async function generateMetadata"), pagina.indexOf("const mapaQuieto"));
       if (!/const tope = portalDeUrl\(sp\)\.filtros\.negociar;\s*const ficha = await fichaCompartidaCacheada\(c\.avisoId, c\.modalidad, tope\)/.test(meta) || !/url: rutaVistaPrevia\(c\.avisoId, c\.modalidad, ficha\.tope \?\? null\)/.test(meta)) F("7 · los metadatos del enlace de un negociado no son los del negociado");
@@ -556,3 +556,4 @@ if (require.main === module) {
 // Y lo que el QUICK cazó en otros tiers con la verificación de hoy, 3 de 3 en ROJO: Z1 y Z2 (GUIA-BUSQUEDA §3, reescrito con
 // su acta: la antigüedad de UNA LECTURA de la ficha solo en «Analizar este») · Z3 (CONFIG-PUBLICA §6: la ficha del enlace lee
 // `config` con el cliente de service role de quien la llama; la verificación es una `function` para que el censo la siga).
+// G28 (la línea del negociado en la imagen cortaba entre «UF» y el número, medido en el preview): entera, ROJO.
