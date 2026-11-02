@@ -469,8 +469,15 @@ export async function runCompartirDeptoTier(): Promise<{ hard: number }> {
       if (falla?.estado !== "negociado" || falla.neg?.p !== 2950) F("7 · si la verificación falla, la ficha no vale lo de la noche");
       const nh = codigo("src/lib/explorar/negociado-hoy.ts");
       if (!/return verificarNegociado\(\{ publicadoUF: aviso\.precioUF, negociadoUF, tope,/.test(nh) || !/antiguedadDelAviso\(admin, aviso, \{ leida: false, anio: null \}\)/.test(nh) || /bajarFicha|chequearPublicacion|fichaDelAviso|ensureCreditCharged|insert\(|update\(/.test(nh)) F("7 · la verificación de hoy no es la de antes de cobrar (o lee la ficha del aviso, o escribe)");
-      // La página: con el tope, la ficha verificada; el precio de hoy solo con cuenta.
-      if (!/if \(tope != null && c\.modalidad === "ltr"\) \{\s*const f = await fichaCompartidaCacheada\(c\.avisoId, "ltr", tope\)/.test(pagina) || !/neg: conCuenta && f\?\.estado === "negociado" \? f\.neg \?\? null : null/.test(pagina)) F("7 · la página no le dice al navegador cómo está hoy el negociado del enlace");
+      // La página: con el tope, la ficha verificada. ⚠ ACTA (03-nov-2026, decisión de Fabrizio: «sí, sin borroso») · el precio
+      // negociado de hoy viaja también SIN CUENTA —el depto del enlace se ve nítido—, pero sin el flujo a ese precio.
+      if (!/if \(tope != null && c\.modalidad === "ltr"\) \{\s*const f = await fichaCompartidaCacheada\(c\.avisoId, "ltr", tope\)/.test(pagina) || !/neg: f\?\.estado === "negociado" && f\.neg \? \(conCuenta \? f\.neg : \{ \.\.\.f\.neg, f: null \}\) : null/.test(pagina)) F("7 · la página no le dice al navegador cómo está hoy el negociado del enlace (o sin cuenta manda el flujo, o no manda el precio)");
+      // La tarjeta sin cuenta, con el negociado del enlace: el precio negociado nítido, sin borroso en su veredicto.
+      const delEnlace: PinNegociado = { ...negP, neg: { d: 4.2, p: 2950, s: 71, f: null } };
+      const tSin = renderToStaticMarkup(createElement(TarjetaPin, { pines: [delEnlace], seleccionado: AVISO, uf: 39000, analizados: {}, guardados: new Set<string>(), generando: null, error: null, alCambiar: () => {}, alCerrar: () => {}, alGuardar: () => {}, alAnalizar: () => {}, alCompartir: () => {}, sinCuenta: true }));
+      const vNegHtml = /data-explorar="veredicto-negociado">([\s\S]*?)<\/span><\/span>|data-explorar="veredicto-negociado">([\s\S]*?)$/.exec(tSin)?.[0] ?? "";
+      if (!vNegHtml.includes("UF 2.950") || /data-explorar="borroso"/.test(vNegHtml)) F("7 · sin cuenta, la tarjeta del negociado del enlace no muestra su precio nítido");
+      if (!/if \(hoy && visiblesNeg\.some\(\(p\) => p\.avisoId === ap\.avisoId && p\.neg\.p !== hoy\.p\)\)/.test(cliente)) F("7 · el negociado de hoy no reemplaza al de la capa (sin cuenta, el borroso)");
       // La apertura: con la capa, el pin del negociado; «no-llega», la tarjeta que lo dice aunque la capa de la noche lo traiga.
       const ap1 = cp.aperturaCompartida({ avisoId: AVISO, estado: null, depto: NUNOA, visibles: [pin(OTRO)], negociados: [negP] });
       const ap2 = cp.aperturaCompartida({ avisoId: AVISO, estado: "no-llega", depto: NUNOA, visibles: [pin(OTRO)], negociados: [negP] });
@@ -557,3 +564,5 @@ if (require.main === module) {
 // su acta: la antigüedad de UNA LECTURA de la ficha solo en «Analizar este») · Z3 (CONFIG-PUBLICA §6: la ficha del enlace lee
 // `config` con el cliente de service role de quien la llama; la verificación es una `function` para que el censo la siga).
 // G28 (la línea del negociado en la imagen cortaba entre «UF» y el número, medido en el preview): entera, ROJO.
+// SIN BORROSO (03-nov-2026, decisión de Fabrizio): el negociado del enlace se ve nítido sin cuenta, sin el flujo. G20 reescrita
+// (sin cuenta viaja el flujo), G29 (sigue borroso), G30 (la tarjeta dibuja borroso con precio) y G17 de nuevo: 4 de 4 en ROJO.

@@ -121,8 +121,9 @@ export interface InicialPortal {
 
 /** EL ENLACE COMPARTIDO con que se entró (page.tsx › compartidoDe): el aviso; «despublicado» si el servidor sabe que ya no
  *  está publicado (si da Comprar lo dice el universo que se carga); y el depto, para la tarjeta de «ya no está». El de un
- *  negociado (03-nov-2026) trae el tope de la capa y, verificado con los datos de hoy, «no-llega» o —con cuenta— el negociado
- *  de hoy, que reemplaza al de la noche si se movió. */
+ *  negociado (03-nov-2026) trae el tope de la capa y, verificado con los datos de hoy, «no-llega» o el negociado de hoy, que
+ *  reemplaza al de la noche: con cuenta si se movió; sin cuenta siempre, así su precio negociado se ve nítido (el flujo no
+ *  viaja). */
 export interface CompartidoCliente {
   avisoId: string;
   estado: "despublicado" | "no-llega" | null;
@@ -589,7 +590,8 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
   // Entró con un depto abierto (`a`): su tarjeta, con los cercanos, cuando llega el universo. Por un ENLACE COMPARTIDO
   // (02-nov-2026), una vez: la tarjeta de ese pin si está entre los que convienen, o la de «ya no está» con los parecidos.
   // El de un NEGOCIADO (03-nov-2026) espera también la capa «Si negocias» (el pin está en ella), salvo que el servidor ya
-  // sepa que no está o que no llega; si con los datos de hoy el precio se movió, la tarjeta dice el de hoy.
+  // sepa que no está o que no llega; si con los datos de hoy el precio se movió, la tarjeta dice el de hoy (y sin cuenta, que
+  // en la capa no trae el precio, dice el de hoy nítido: es el depto que le compartieron).
   const esperaCapa = !!compartido && compartido.tope != null && compartido.estado == null && !negociadosDelPie && !capaFallo;
   useEffect(() => {
     if (!abrir || autoAnalizar || !universo || carrusel.length) return;

@@ -106,8 +106,10 @@ export default async function ExplorarPage({ searchParams }: { searchParams?: Re
  * con sus parecidos. Si da Comprar lo decide el navegador con el universo que carga (el mismo que dibuja); acá solo se lee
  * la fila, en paralelo con lo demás. Null sin enlace compartido o si el aviso no existe.
  * EL DE UN NEGOCIADO (con el tope de la capa en la URL, 03-nov-2026): la ficha entera, verificada con los datos de hoy (la
- * misma en caché que la vista previa): «no-llega» si ya no llega dentro del tope, o el negociado de hoy —solo con cuenta: sin
- * cuenta el precio negociado no viaja al navegador y la tarjeta lo dibuja borroso, como el resto de la capa—.
+ * misma en caché que la vista previa): «no-llega» si ya no llega dentro del tope, o el negociado de hoy. TAMBIÉN SIN CUENTA
+ * (decisión de Fabrizio, 03-nov-2026): el precio negociado y el descuento del depto del enlace se ven nítidos —el texto que
+ * llegó y la vista previa ya los dicen—; el flujo a ese precio no viaja, como el resto de las cifras sin cuenta. Los demás de
+ * la capa siguen borrosos.
  */
 async function compartidoDe(sp: URLSearchParams, tope: number | null, conCuenta: boolean): Promise<CompartidoCliente | null> {
   const c = compartidoDeUrl(sp);
@@ -115,7 +117,7 @@ async function compartidoDe(sp: URLSearchParams, tope: number | null, conCuenta:
   if (tope != null && c.modalidad === "ltr") {
     const f = await fichaCompartidaCacheada(c.avisoId, "ltr", tope).catch(() => null);
     const estado = f?.estado === "despublicado" ? "despublicado" : f?.estado === "no-llega" ? "no-llega" : null;
-    return { avisoId: c.avisoId, estado, depto: f?.depto ?? null, tope, neg: conCuenta && f?.estado === "negociado" ? f.neg ?? null : null };
+    return { avisoId: c.avisoId, estado, depto: f?.depto ?? null, tope, neg: f?.estado === "negociado" && f.neg ? (conCuenta ? f.neg : { ...f.neg, f: null }) : null };
   }
   const f = await fichaCompartida(createServiceClient(), c.avisoId, c.modalidad, { veredicto: false }).catch(() => null);
   return { avisoId: c.avisoId, estado: f ? (f.estado === "despublicado" ? "despublicado" : null) : null, depto: f?.depto ?? null };

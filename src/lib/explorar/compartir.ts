@@ -20,7 +20,8 @@
 //     · UF 3.080 · Conviene si lo negocias a UF 2.950 (−4,2 %), según Franco»; el enlace lleva el tope de la capa (`n`) y abre
 //     /explorar con «Si negocias» prendido, en ese pin, con la tarjeta de los dos veredictos; la vista previa, el chip Ajustar
 //     al precio publicado y «Conviene si lo negocias a UF 2.950», sin otro número. Si al abrirlo ya no llega dentro del tope
-//     con los datos de hoy (compartir-servidor.ts verifica como antes de cobrar), la tarjeta lo dice y ofrece parecidos.
+//     con los datos de hoy (compartir-servidor.ts verifica como antes de cobrar), la tarjeta lo dice y ofrece parecidos. Quien
+//     lo abre SIN CUENTA ve nítidos el precio negociado y el descuento de ese depto (el resto de la capa sigue borroso).
 // ─────────────────────────────────────────────────────────────────────────────
 import { lineaDepto, type CondicionDepto } from "@/lib/guia/linea-depto";
 import { PIE_POR_DEFECTO, PLAZO_POR_DEFECTO } from "@/lib/deptos/estandar";
