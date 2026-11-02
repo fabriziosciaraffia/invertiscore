@@ -193,7 +193,11 @@ export async function runConvienenUnoTier(): Promise<{ hard: number }> {
   if (!/const totalNoche = portada\?\.noche\?\.convienen \?\? null;/.test(codigo("src/app/api/deptos/primeros/route.ts"))) F("3 · «Estás dentro» no lee el número de la portada");
   if (!/DEPTOS_COPY\.prueba\(portada\?\.noche\?\.revisados \?\? null, portada\?\.noche\?\.convienen \?\? null\)/.test(codigo("src/app/deptos/deptos-cliente.tsx"))) F("3 · la prueba de /deptos no lee el número de la portada");
   // La bienvenida cuenta el universo que el mapa abierto dibuja, en UNA lectura de la caché (eran dos de la misma clave).
-  if (!/const \[noche, tasa\] = await Promise\.all\(\[\s*universoDeLaNocheCacheado\(PIE_ABIERTO, PLAZO_ABIERTO\)\.catch\(\(\) => null\),/.test(abierta)
+  // ⚠ ACTA (02-nov-2026, goal «Compartir un depto desde Explorar») · el Promise.all lee además el depto del enlace compartido
+  // (`compartido`), así que el predicado ya no fija la lista entera: exige que `noche` sea la primera lectura y que haya UNA
+  // sola llamada a universoDeLaNocheCacheado en ExplorarAbierto —la regla—, que antes solo se seguía de la forma exacta.
+  if (!/const \[noche, tasa(?:, \w+)*\] = await Promise\.all\(\[\s*universoDeLaNocheCacheado\(PIE_ABIERTO, PLAZO_ABIERTO\)\.catch\(\(\) => null\),/.test(abierta)
+    || (abierta.match(/universoDeLaNocheCacheado\(/g) ?? []).length !== 1
     || !/const universo = universoDeLaNoche\(filtros\) \? noche : null;/.test(abierta) || !/const convienen = cuantosConvienen\(noche\);/.test(abierta)
     || !/<Bienvenida n=\{inicial\.convienen \?\? inicial\.n \?\? total\}/.test(cli)) F("3 · la bienvenida de /explorar no dice el número de todo el sitio");
   if ((abierta.match(/universoDeLaNocheCacheado\(/g) ?? []).length !== 1) F("3 · /explorar sin cuenta lee el universo más de una vez");
@@ -247,3 +251,9 @@ if (require.main === module) {
 // clave que la de la migración · M12 la portada no reporta la falta · M13 /explorar sin cuenta lee el universo dos veces ·
 // M14 vuelve convienenHoy · M15 la portada lee otra fila. M1 y M3 también en LANDING-MAPA §2, M1 y M7 en PUERTA-E §1, y M16
 // —lo revisado no sale del resumen— en LANDING-MAPA §2.
+
+// ── ACTA DE MUTACIONES (02-nov-2026, goal «Compartir un depto desde Explorar») ──
+// §3, el predicado de la bienvenida reescrito (el Promise.all de ExplorarAbierto lee además el depto compartido): 3 de 3 en
+// ROJO (runner `mutar-compartir.cjs` en el scratchpad de la sesión 1243824f; cada archivo restaurado byte a byte): Y1 una
+// segunda lectura del universo dentro del Promise.all (la forma de antes la dejaba pasar si la lista empezaba con `noche`) ·
+// Y2 la noche no es la primera lectura · Y3 el mapa lee el universo aparte, fuera del Promise.all.
