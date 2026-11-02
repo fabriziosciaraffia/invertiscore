@@ -238,6 +238,25 @@ export async function runExplorarNegociarTier(): Promise<{ hard: number }> {
     const capa = mapaSrc.slice(mapaSrc.indexOf("const negs ="), mapaSrc.indexOf("const e = sel ?"));
     if (capa.length < 200 || (capa.match(/CIRUELA/g) ?? []).length < 3 || /ROJO/.test(capa) || !/PAPEL/.test(capa)) F("3 · el mapa dibuja la capa negociada sin ciruela, con rojo o sin el número en blanco");
     if (mapaSrc.match(/const PAPEL = "(#[0-9A-Fa-f]{6})"/)?.[1]?.toUpperCase() !== "#FFFFFF") F("3 · el número del pin negociado no es blanco");
+    // EL SATÉLITE (QA en el preview, 02-nov-2026): lejos, el grupo de la capa que un rojo tapa se corre a su borde con el número a
+    // la vista; el que nada tapa no se mueve. Fixtures sobre la función pura, y el cableado en el mapa.
+    {
+      const fuera = (c: cn.Circulo, s: { dx: number; dy: number }, r: cn.Circulo) => Math.hypot(c.x + s.dx - r.x, c.y + s.dy - r.y) - r.r;
+      const rojo = { x: 0, y: 0, r: 28 }, mismo = { x: 0, y: 0, r: 20 };
+      const s1 = cn.satelite(mismo, [rojo]);
+      if (Math.abs(fuera(mismo, s1, rojo) - 20 * cn.SATELITE_FUERA) > 1e-6 || !(s1.dx > 0 && s1.dy > 0)) F(`3 · el grupo tapado de lleno no queda pegado al borde del rojo, abajo a la derecha: ${JSON.stringify(s1)}`);
+      const s2 = cn.satelite({ x: 100, y: 0, r: 20 }, [rojo]);
+      if (s2.dx !== 0 || s2.dy !== 0) F("3 · un grupo que ningún rojo tapa se corre");
+      const s3 = cn.satelite({ x: 28 + 20 * 0.9, y: 0, r: 20 }, [rojo]);
+      if (s3.dx !== 0 || s3.dy !== 0) F("3 · un grupo que el rojo apenas roza se corre");
+      // Otro rojo justo donde iría el satélite: gira y queda libre de los dos.
+      const otro = { x: Math.cos(Math.PI / 4) * 44, y: Math.sin(Math.PI / 4) * 44, r: 24 };
+      const s4 = cn.satelite(mismo, [rojo, otro]);
+      if ([rojo, otro].some((r) => fuera(mismo, s4, r) < 20 * cn.SATELITE_FUERA - 1e-6)) F(`3 · con otro rojo en el camino, el satélite queda tapado: ${JSON.stringify(s4)}`);
+      if (!/rojos\.push\(circulo\(gr\.lat, gr\.lng, icono\.w \/ 2\)\)/.test(mapaSrc)) F("3 · el mapa no anota los grupos rojos para el satélite");
+      if (!/iconoGrupo\(gr\.n, CIRUELA, PAPEL\);\s*marcador\(pos, icono, 0, [^\n]*, satelite\(circulo\(gr\.lat, gr\.lng, icono\.w \/ 2\), rojos\)\)/.test(capa)) F("3 · los grupos de la capa no se corren cuando un rojo los tapa");
+      if (!/anchor: new g\.maps\.Point\(icono\.w \/ 2 - corrido\.dx, icono\.h \/ 2 - corrido\.dy\)/.test(mapaSrc)) F("3 · el corrimiento no llega al ancla del ícono");
+    }
     // El interruptor del chip y la marca de la tasa, en tinta (sin el rojo).
     const css = leer("src/app/explorar/explorar.css");
     const v2 = css.slice(css.indexOf("FILTROS V2"));
@@ -410,8 +429,8 @@ if (require.main === module) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ACTA DE MUTACIONES (02-nov-2026, meta-runner que restaura byte a byte): 66 mutaciones a este tier y 26 a los predicados
-// reescritos de otros nueve tiers, 92 de 92 en ROJO y cada una por su invariante.
+// ACTA DE MUTACIONES (02-nov-2026, meta-runner que restaura byte a byte): 71 mutaciones a este tier y 26 a los predicados
+// reescritos de otros nueve tiers, 97 de 97 en ROJO y cada una por su invariante.
 //   §1 N1-N8: «¿Cómo se calcula?», la barra del teléfono, la píldora del PC, la tarjeta, la lista (y un chip nuevo con número),
 //      la bienvenida, el pop-up y el título de la lista sin «al precio publicado».
 //   §2 N9-N13: un chip inventado en la ayuda de Filtros y en la tarjeta del negociado, el chip de la casa sin el puntaje, la
@@ -433,6 +452,9 @@ if (require.main === module) {
 //   §1 N62-N66 (el mismo día, después del rebase): la barra sin ninguno, la lista vacía y el tooltip de la tasa sin «al precio
 //      publicado» (los tres se habían escapado: el §1 nombraba superficies y estas no estaban), un texto nuevo con «convienen»
 //      en el copy, y una excepción que ya no existe.
+//   §3 N67-N71 (el mismo día, QA de los pines en el preview: en el teléfono los grupos ciruela quedaban debajo de los rojos):
+//      el satélite que no corre nada, el que corre al que ningún rojo tapa, el que no gira ante otro rojo, el grupo de la capa
+//      sin satélite en el mapa y el ancla del ícono sin el corrimiento.
 // Dos trampas del instrumento, cazadas antes de mutar: `[^>]*` se corta en el «=>» de un onChange (el slider no se leía) y
 // `cuerpo()` solo corta en declaraciones de primer nivel (el de «contar» se tragaba «contarNegociados»). Y un `{}` como
 // candidato no prueba que la noche no calcula: `negociarCandidato` corta solo si no hay arriendo; por eso el espía (Proxy).

@@ -46,6 +46,32 @@ export const esNegociado = (p: PinMapa): p is PinNegociado => !!(p as Partial<Pi
 /** ¿Viajaron sus cifras? Sin cuenta, no: el precio negociado y el descuento se dibujan borrosos. */
 export const conCifrasNegociado = (p: PinNegociado): p is PinNegociado & { neg: { p: number } } => p.neg.p != null;
 
+/** Un círculo del mapa: su centro en píxeles del mundo a ese zoom (explorar.ts › proyectar) y su radio en píxeles. */
+export interface Circulo {
+  x: number;
+  y: number;
+  r: number;
+}
+/** Cuánto del radio de un grupo de la capa queda FUERA del círculo rojo que lo pisa: 0,8 deja el número entero a la vista. */
+export const SATELITE_FUERA = 0.8;
+const tapa = (c: Circulo, rojo: Circulo) => Math.hypot(c.x - rojo.x, c.y - rojo.y) < rojo.r + c.r * SATELITE_FUERA;
+/** EL SATÉLITE (02-nov-2026, QA en el preview): lejos, los grupos de la capa caen casi donde caen los rojos —se agrupan por las
+ *  mismas celdas— y, dibujados debajo, en el teléfono se tapaban enteros. El que queda tapado por un círculo rojo se corre hasta
+ *  pegarse a su borde, con el número a la vista: hacia afuera del rojo (abajo a la derecha si caen en el mismo punto) o, si ahí
+ *  lo tapa otro rojo, girando de a 45°. Se corre el ícono, no el punto: devuelve el corrimiento en píxeles ({ 0, 0 } si nada lo
+ *  tapa). */
+export function satelite(c: Circulo, rojos: readonly Circulo[]): { dx: number; dy: number } {
+  const hondura = (r: Circulo) => Math.hypot(c.x - r.x, c.y - r.y) - r.r;
+  const peor = rojos.filter((r) => tapa(c, r)).sort((a, b) => hondura(a) - hondura(b))[0];
+  if (!peor) return { dx: 0, dy: 0 };
+  const d = Math.hypot(c.x - peor.x, c.y - peor.y);
+  const base = d > 2 ? Math.atan2(c.y - peor.y, c.x - peor.x) : Math.PI / 4;
+  const lejos = peor.r + c.r * SATELITE_FUERA;
+  const en = (giro: number) => ({ x: peor.x + Math.cos(base + giro) * lejos, y: peor.y + Math.sin(base + giro) * lejos, r: c.r });
+  const libre = [0, 1, -1, 2, -2, 3, -3, 4].map((k) => en((k * Math.PI) / 4)).find((s) => !rojos.some((r) => r !== peor && tapa(s, r))) ?? en(0);
+  return { dx: libre.x - c.x, dy: libre.y - c.y };
+}
+
 /** Los pies que calcula la noche (a 30 años, con la tasa del motor). */
 export const PIES_NEGOCIAR = [PIE_POR_DEFECTO, 30] as const;
 

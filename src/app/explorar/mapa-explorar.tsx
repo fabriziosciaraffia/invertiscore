@@ -10,14 +10,14 @@
 // «Buscar en esta zona». Usa `google.maps.Marker` como el resto del sitio (AdvancedMarkerElement exige un Map ID).
 // LA CAPA «SI NEGOCIAS» (02-nov-2026, capa-negociar.ts): los negociados se agrupan y se dibujan APARTE, con el pin relleno en el
 // color del chip Ajustar (la ciruela de la tríada) y el número en blanco —nunca el rojo de los que convienen—; con zoom, el pin
-// dice el descuento («−4,2 %»). Debajo de los que convienen.
+// dice el descuento («−4,2 %»). Debajo de los que convienen; lejos, el grupo que un rojo tapa se corre a su borde (satélite).
 // ─────────────────────────────────────────────────────────────────────────────
 import { useEffect, useRef } from "react";
 import { loadGoogleMaps } from "@/lib/loadGoogleMaps";
 import { francoMapStyleForTheme } from "@/lib/map-styles";
-import { agruparPines } from "@/lib/explorar/explorar";
+import { agruparPines, proyectar } from "@/lib/explorar/explorar";
 import { textoPin, type Caja, type PinMapa } from "@/lib/explorar/portal";
-import { NEGOCIAR_COPY, type PinNegociado } from "@/lib/explorar/capa-negociar";
+import { NEGOCIAR_COPY, satelite, type Circulo, type PinNegociado } from "@/lib/explorar/capa-negociar";
 
 const ROJO = "#C8323C";
 /** El color del chip Ajustar (la ciruela de la tríada): el de los negociados, que al precio publicado dan Ajustar. */
@@ -114,8 +114,9 @@ export default function MapaExplorar({ pines, negociados = [], analizados, selec
       mapRef.current = map;
 
       const limpiar = () => { for (const m of marcadoresRef.current) m.setMap(null); marcadoresRef.current = []; };
-      const marcador = (pos: { lat: number; lng: number }, icono: { url: string; w: number; h: number }, zIndex: number, alTocar: () => void, titulo?: string) => {
-        const m = new g.maps.Marker({ position: pos, map, zIndex, title: titulo, icon: { url: icono.url, scaledSize: new g.maps.Size(icono.w, icono.h), anchor: new g.maps.Point(icono.w / 2, icono.h / 2) } });
+      // `corrido`: el ícono se dibuja corrido de su punto, en píxeles (el satélite de la capa «Si negocias»).
+      const marcador = (pos: { lat: number; lng: number }, icono: { url: string; w: number; h: number }, zIndex: number, alTocar: () => void, titulo?: string, corrido = { dx: 0, dy: 0 }) => {
+        const m = new g.maps.Marker({ position: pos, map, zIndex, title: titulo, icon: { url: icono.url, scaledSize: new g.maps.Size(icono.w, icono.h), anchor: new g.maps.Point(icono.w / 2 - corrido.dx, icono.h / 2 - corrido.dy) } });
         m.addListener("click", alTocar);
         marcadoresRef.current.push(m);
       };
@@ -131,6 +132,9 @@ export default function MapaExplorar({ pines, negociados = [], analizados, selec
         const sel = selRef.current;
         const porId = new Map(visibles.map((p) => [p.avisoId, p]));
         const ahora = new Date();
+        // Los círculos rojos de este dibujo (grupos y puntos), para correr los de la capa que tapan.
+        const rojos: Circulo[] = [];
+        const circulo = (lat: number, lng: number, r: number) => ({ ...proyectar(lat, lng, zoom), r });
         for (const gr of agruparPines(visibles, zoom, an, zoom >= ZOOM_ETIQUETAS ? 44 : 56)) {
           if (gr.n === 1) {
             const id = gr.ids[0];
@@ -139,16 +143,20 @@ export default function MapaExplorar({ pines, negociados = [], analizados, selec
             const elegido = id === sel;
             if (sinCifrasRef.current) {
               marcador({ lat: p.lat, lng: p.lng }, elegido ? iconoElegido() : iconoPunto(ROJO), elegido ? 20 : 2, () => cb.current.onSeleccionar(id));
+              if (!elegido) rojos.push(circulo(p.lat, p.lng, 9));
             } else if (zoom >= ZOOM_ETIQUETAS || elegido) {
               const t = textoPin(p, { analizado: an.has(id), ahora });
               const fondo = elegido ? elegidoDeTema().fondo : t.tipo === "analizado" ? azul : ROJO;
               marcador({ lat: p.lat, lng: p.lng }, iconoEtiqueta(t.texto, fondo, elegido, elegido ? elegidoDeTema().texto : t.tipo === "analizado" && !esClaro() ? TINTA : PAPEL), elegido ? 20 : t.tipo === "analizado" ? 4 : 3, () => cb.current.onSeleccionar(id), t.texto);
             } else {
+              rojos.push(circulo(p.lat, p.lng, 9));
               marcador({ lat: p.lat, lng: p.lng }, iconoPunto(an.has(id) ? azul : ROJO), an.has(id) ? 3 : 2, () => cb.current.onSeleccionar(id));
             }
           } else {
             const pos = { lat: gr.lat, lng: gr.lng };
-            marcador(pos, iconoGrupo(gr.n, gr.analizados === gr.n ? azul : ROJO, gr.analizados === gr.n && !esClaro() ? TINTA : PAPEL), 1, () => { propio.current = true; map.setZoom(Math.min(zoom + 2, 18)); map.panTo(pos); });
+            const icono = iconoGrupo(gr.n, gr.analizados === gr.n ? azul : ROJO, gr.analizados === gr.n && !esClaro() ? TINTA : PAPEL);
+            rojos.push(circulo(gr.lat, gr.lng, icono.w / 2));
+            marcador(pos, icono, 1, () => { propio.current = true; map.setZoom(Math.min(zoom + 2, 18)); map.panTo(pos); });
           }
         }
         // LA CAPA «SI NEGOCIAS» (02-nov-2026): sus propios grupos y pines, en ciruela con el número en blanco, debajo de los que
@@ -162,14 +170,15 @@ export default function MapaExplorar({ pines, negociados = [], analizados, selec
             if (!p) continue;
             const elegido = id === sel;
             // Sin cuenta, como el resto: puntos sin número (el descuento no viaja); el elegido, el de siempre.
-            if (sinCifrasRef.current) marcador({ lat: p.lat, lng: p.lng }, elegido ? iconoElegido() : iconoPunto(CIRUELA), elegido ? 20 : 1, () => cb.current.onSeleccionar(id));
+            if (sinCifrasRef.current) marcador({ lat: p.lat, lng: p.lng }, elegido ? iconoElegido() : iconoPunto(CIRUELA), elegido ? 20 : 1, () => cb.current.onSeleccionar(id), undefined, elegido ? undefined : satelite(circulo(p.lat, p.lng, 9), rojos));
             else if (zoom >= ZOOM_ETIQUETAS || elegido) {
               const texto = NEGOCIAR_COPY.pin(p.neg.d);
               marcador({ lat: p.lat, lng: p.lng }, iconoEtiqueta(texto, elegido ? elegidoDeTema().fondo : CIRUELA, elegido, elegido ? elegidoDeTema().texto : PAPEL), elegido ? 20 : 1, () => cb.current.onSeleccionar(id), texto);
-            } else marcador({ lat: p.lat, lng: p.lng }, iconoPunto(CIRUELA), 1, () => cb.current.onSeleccionar(id));
+            } else marcador({ lat: p.lat, lng: p.lng }, iconoPunto(CIRUELA), 1, () => cb.current.onSeleccionar(id), undefined, satelite(circulo(p.lat, p.lng, 9), rojos));
           } else {
             const pos = { lat: gr.lat, lng: gr.lng };
-            marcador(pos, iconoGrupo(gr.n, CIRUELA, PAPEL), 0, () => { propio.current = true; map.setZoom(Math.min(zoom + 2, 18)); map.panTo(pos); });
+            const icono = iconoGrupo(gr.n, CIRUELA, PAPEL);
+            marcador(pos, icono, 0, () => { propio.current = true; map.setZoom(Math.min(zoom + 2, 18)); map.panTo(pos); }, undefined, satelite(circulo(gr.lat, gr.lng, icono.w / 2), rojos));
           }
         }
         // El elegido, si quedó dentro de un grupo, igual se ve.
