@@ -156,7 +156,8 @@ export async function runPuertaBMockupsTier(): Promise<{ hard: number }> {
       const A = aviso;
       const base = { veredicto: "COMPRAR", score: 88, flujo: 88363 };
       const peor = { veredicto: "AJUSTA SUPUESTOS", score: 71, flujo: -45120 };
-      if (A.lineaVeredicto(base) !== "Comprar 88 · flujo +$88.363 te queda" || A.lineaVeredicto(peor) !== "Ajustar 71 · flujo −$45.120 de tu bolsillo" || A.lineaVeredicto(null) !== null || A.lineaVeredicto({ veredicto: null, score: null, flujo: null }) !== null) F("3 · la línea del veredicto no es «Comprar 88 · flujo +$88.363 te queda»");
+      // ⚠ ACTA (02-nov-2026, goal «Filtros v2 y negociar», tier EXPLORAR-NEGOCIAR) · «conviene» y «Comprar» quieren decir al precio publicado, y la línea lo dice.
+      if (A.lineaVeredicto(base) !== "Comprar 88 al precio publicado · flujo +$88.363 te queda" || A.lineaVeredicto(peor) !== "Ajustar 71 al precio publicado · flujo −$45.120 de tu bolsillo" || A.lineaVeredicto(null) !== null || A.lineaVeredicto({ veredicto: null, score: null, flujo: null }) !== null) F("3 · la línea del veredicto no es «Comprar 88 al precio publicado · flujo +$88.363 te queda»");
       // ⚠ ACTA (24-oct-2026, goal «los pop-ups caben en 390 × 740», decisión de Fabrizio) · la línea del enlace es UNA
       // sola y corta en todos los pop-ups: «El informe incluye el enlace a la publicación.» (la de D1 ocupaba tres líneas).
       if (`${A.AVISO_ANALIZAR.incluye.antes}${A.AVISO_ANALIZAR.incluye.fuerte}${A.AVISO_ANALIZAR.incluye.despues}` !== "El informe incluye el enlace a la publicación." || A.AVISO_ANALIZAR.incluye.fuerte !== "el enlace a la publicación") F("3 · la tarjeta gris no dice qué incluye el informe (en una línea corta)");
@@ -204,7 +205,7 @@ export async function runPuertaBMockupsTier(): Promise<{ hard: number }> {
         alAnalizar: () => {}, alCancelar: () => {}, cambio: { recalcular: async () => null, base },
       }));
       const th = textos(html);
-      if (!orden(html, ['data-modal="aviso-analizar"', "¿Analizar este depto?", 'data-aviso="depto"', "Providencia · 2D1B · 46 m² · UF 3.275", 'data-aviso="veredicto"', "Comprar 88 · flujo +$88.363 te queda", "el enlace a la publicación", 'data-aviso="combo"', "Con pie de <b>20 %</b>, plazo de <b>25 años</b> y tasa de <b data-aviso=\"tasa-vista\">4,2 %</b>", "data-modal-cambiar", "Cambiar", 'data-aviso="derivados"', "Dividendo", "Retorno bruto", "Usa tu análisis de regalo.", ">Analizar<", ">Cancelar<"]))
+      if (!orden(html, ['data-modal="aviso-analizar"', "¿Analizar este depto?", 'data-aviso="depto"', "Providencia · 2D1B · 46 m² · UF 3.275", 'data-aviso="veredicto"', "Comprar 88 al precio publicado · flujo +$88.363 te queda", "el enlace a la publicación", 'data-aviso="combo"', "Con pie de <b>20 %</b>, plazo de <b>25 años</b> y tasa de <b data-aviso=\"tasa-vista\">4,2 %</b>", "data-modal-cambiar", "Cambiar", 'data-aviso="derivados"', "Dividendo", "Retorno bruto", "Usa tu análisis de regalo.", ">Analizar<", ">Cancelar<"]))
         F(`3 · D1 no se dibuja como el mockup: ${th.slice(0, 300)}`);
       if (/data-aviso="pie"|data-aviso="guardar"|Analizar igual|Precio por m²|Renta larga|de tu perfil|disabled=""/.test(html)) F("3 · D1 muestra los selectores, la casilla, «Analizar igual», lo del wizard o el botón bloqueado antes de tocar «Cambiar»");
       // Sin `cambio` (la guía, renta corta): la línea del pie y el plazo sin «Cambiar».

@@ -144,14 +144,17 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
     // ⚠ ACTA (30-oct-2026, goal del recorrido real de Fabrizio) · arriba, solo «Filtros» y «¿Cómo se calcula?»: «Ordenar» vive en la lista
     // y «Mi búsqueda», dentro de Filtros (decisión de Fabrizio).
     if (!/data-explorar="filtros"/.test(html) || !/data-explorar="como-se-calcula"/.test(html) || /data-explorar="ordenar"|data-explorar="mi-busqueda"/.test(html)) F("1 · la fila de arriba no es «Filtros» y «¿Cómo se calcula?» (o trae Ordenar o Mi búsqueda)");
-    if (!t.includes("4.807 deptos ✓ Comprar Ver lista") || !t.includes("Ver lista · 4.807 ✓ Comprar")) F("1 · abajo no dice «4.807 deptos ✓ Comprar · Ver lista» (teléfono) y «Ver lista · 4.807 ✓ Comprar» (PC)");
+    // ⚠ ACTA (02-nov-2026, goal «Filtros v2 y negociar», tier EXPLORAR-NEGOCIAR) · abajo, el chip de Comprar va con «al precio publicado».
+    if (!t.includes("4.807 deptos ✓ Comprar al precio publicado Ver lista") || !t.includes("Ver lista · 4.807 ✓ Comprar al precio publicado")) F("1 · abajo no dice «4.807 deptos ✓ Comprar al precio publicado · Ver lista» (teléfono) y «Ver lista · 4.807 ✓ Comprar al precio publicado» (PC)");
   }
   const mb = po.filtrosDeMiBusqueda({ comunas: ["Ñuñoa", "Santiago"], dormitorios: [1, 2], precioMinUf: 1500, precioMaxUf: 3000, piePct: 30, plazoAnios: 30, modalidad: "str" });
   if (!mb || mb.comunas.join() !== "Ñuñoa,Santiago" || mb.tipologias.join() !== "1,2" || mb.ufMin !== 1500 || mb.ufMax !== 3000 || mb.pie !== 30 || mb.plazo !== 30 || mb.modalidad !== "str" || mb.zona || mb.flujoPositivo) F(`1 · «Mi búsqueda» no aplica comunas, tipología, rango, pie, plazo y modalidad de una vez: ${JSON.stringify(mb)}`);
   // El tope que «Avísame» guarda sin «hasta» vuelve como «cualquier precio» (cazado en el QA: «Mi búsqueda» filtraba h=60000).
   if (po.filtrosDeMiBusqueda({ comunas: ["Ñuñoa"], dormitorios: [2], precioMinUf: null, precioMaxUf: po.TOPE_PERFIL_UF, piePct: 20, plazoAnios: 25, modalidad: "ltr" })?.ufMax !== null) F("1 · «Mi búsqueda» convierte el tope de «cualquier precio» en un precio máximo");
   // ⚠ ACTA (30-oct-2026, goal del recorrido real de Fabrizio) · el botón vive en Filtros: la hoja se cierra y aplica el perfil.
-  if (!/function miBusqueda\(\) \{\s*setHojaFiltros\(false\);\s*if \(!cuenta\.miBusqueda\) \{ setSinBusqueda\(true\); return; \}\s*aplicar\(cuenta\.miBusqueda, "mi_busqueda"\);/.test(cli) || !/miBusqueda=\{sinCuenta \? null : \{ activa: enMiBusqueda, alUsar: miBusqueda \}\}/.test(cli) || !/onClick=\{miBusqueda\.alUsar\} data-explorar="mi-busqueda"/.test(codigo("src/app/explorar/hoja-filtros.tsx"))) F("1 · el botón «Mi búsqueda» no aplica el perfil de una vez");
+  // ⚠ ACTA (02-nov-2026, goal «Filtros v2 y negociar», tier EXPLORAR-NEGOCIAR) · el botón es «Aplicar» en la tarjeta «Aplicar mi perfil de búsqueda», que recibe además el perfil
+  // para mostrar su resumen antes de tocarlo.
+  if (!/function miBusqueda\(\) \{\s*setHojaFiltros\(false\);\s*if \(!cuenta\.miBusqueda\) \{ setSinBusqueda\(true\); return; \}\s*aplicar\(cuenta\.miBusqueda, "mi_busqueda"\);/.test(cli) || !/miBusqueda=\{sinCuenta \? null : \{ activa: enMiBusqueda, alUsar: miBusqueda, perfil: cuenta\.miBusqueda \}\}/.test(cli) || !/onClick=\{miBusqueda\.alUsar\} data-explorar="mi-busqueda"/.test(codigo("src/app/explorar/hoja-filtros.tsx"))) F("1 · el botón «Mi búsqueda» no aplica el perfil de una vez");
 
   // ── 2 · la tarjeta del pin sin las líneas retiradas ──
   if (modTar) {
@@ -367,7 +370,8 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
   if (po.botonVer(1236) !== "Ver 1.236 deptos" || po.botonVer(1) !== "Ver 1 depto" || po.botonVer(null) !== "Ver deptos") F("6 · el botón «Ver N deptos»");
   if (po.PORTAL_COPY.hoja.cortaNota !== "Estimado por zona; se mide al analizar.") F("6 · la renta corta no dice «Estimado por zona; se mide al analizar»");
   const hoja = codigo("src/app/explorar/hoja-filtros.tsx");
-  if (!/const n = contar\(b\);/.test(hoja) || !/\{botonVer\(n\)\}/.test(hoja) || !/b\.modalidad === "str" && <p className="ex-nota" data-explorar="nota-corta">\{H\.cortaNota\}<\/p>/.test(hoja)) F("6 · la hoja no cuenta «Ver N deptos» a cada toque, o la renta corta va sin su línea");
+  // ⚠ ACTA (02-nov-2026, goal «Filtros v2 y negociar», tier EXPLORAR-NEGOCIAR) · el botón separa las dos cuentas («Ver 201 + 48 si negocias»); sin negociados es «Ver N deptos».
+  if (!/const n = contar\(b\);/.test(hoja) || !/\{botonVerConNegociados\(n, m, botonVer\)\}/.test(hoja) || !/b\.modalidad === "str" && <p className="ex-nota" data-explorar="nota-corta">\{H\.cortaNota\}<\/p>/.test(hoja)) F("6 · la hoja no cuenta «Ver N deptos» a cada toque, o la renta corta va sin su línea");
   if (!/return u \? filtrar\(u, f\)/.test(cli)) F("6 · el número de la hoja no sale del universo cargado (filtrar)");
 
   // ── 7 · el universo ──

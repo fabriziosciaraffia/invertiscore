@@ -112,7 +112,8 @@ export async function runConvienenUnoTier(): Promise<{ hard: number }> {
       if (!/role="dialog"/.test(h) || !t.startsWith("¿Cómo se calcula?")) F(`2 · ${que}, la hoja no es un diálogo con su título`);
       if ((h.match(/<p\b/g) ?? []).length !== 3) F(`2 · ${que}, la hoja no lleva tres párrafos`);
       if ((h.match(/<button\b/g) ?? []).length !== 1 || !/data-explorar="calculo-ok"[^>]*>Entendido<\/button>/.test(h)) F(`2 · ${que}, la hoja no tiene un solo botón, «Entendido»`);
-      if (!t.includes("Cada noche Franco revisa los deptos en venta de Santiago y calcula cuáles convienen con un perfil de búsqueda estándar: pie de 20 %, crédito a 30 años y tasa de 4,07 %, el promedio de los créditos hipotecarios según el Banco Central."))
+      // ⚠ ACTA (02-nov-2026, goal «Filtros v2 y negociar», tier EXPLORAR-NEGOCIAR) · «calcula cuáles convienen al precio publicado» (la regla general).
+      if (!t.includes("Cada noche Franco revisa los deptos en venta de Santiago y calcula cuáles convienen al precio publicado con un perfil de búsqueda estándar: pie de 20 %, crédito a 30 años y tasa de 4,07 %, el promedio de los créditos hipotecarios según el Banco Central."))
         F(`2 · ${que}, el primer párrafo no es el del recorrido (la noche, el perfil estándar y la tasa del motor)`);
       const cambiar = sinCuenta ? "Puedes cambiar ese perfil en Filtros, registrándote gratis con tu correo." : "Puedes cambiar ese perfil en Filtros.";
       // texto() deja un espacio donde cerraba el <strong>: se junta con su puntuación antes de comparar.
@@ -129,8 +130,9 @@ export async function runConvienenUnoTier(): Promise<{ hard: number }> {
   if (/(!sinCuenta|sinCuenta) &&[^\n]*<HojaCalculo/.test(cli)) F("2 · la hoja no se monta igual con y sin cuenta");
   if (po.EVENTOS_PORTAL.comoSeCalcula !== "explorar_como_se_calcula" || !/setCalculo\(true\);\s*posthog\?\.capture\(EVENTOS_PORTAL\.comoSeCalcula, \{ sin_cuenta: sinCuenta,/.test(cli)) F("3 · abrir la hoja no deja «explorar_como_se_calcula»");
   // La bienvenida no cambia (lo pide el goal): sus textos siguen.
+  // ⚠ ACTA (02-nov-2026, goal «Filtros v2 y negociar», tier EXPLORAR-NEGOCIAR) · cambió solo para decir «al precio publicado» (lo pide ese goal).
   const ab = codigo("src/lib/explorar/abierto.ts");
-  if (!/titulo: "Deptos en venta que convienen como inversión hoy\.",/.test(ab) || !/boton: "Ver el mapa",/.test(ab)) F("2 · la bienvenida cambió");
+  if (!/titulo: "Deptos en venta que convienen como inversión hoy, al precio publicado\.",/.test(ab) || !/boton: "Ver el mapa",/.test(ab)) F("2 · la bienvenida cambió");
 
   // ── 3 · UN SOLO NÚMERO DE «CONVIENEN» ──
   const u = po.compactar(PINES);

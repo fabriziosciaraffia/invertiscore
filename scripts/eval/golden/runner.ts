@@ -177,6 +177,7 @@ import { runConvienenUnoTier } from "./convienen-uno-catch-test";
 import { runExplorarRecorridoTier } from "./explorar-recorrido-catch-test";
 import { runTasaEditableTier } from "./tasa-editable-catch-test";
 import { runExplorarCorreosTier } from "./explorar-correos-catch-test";
+import { runExplorarNegociarTier } from "./explorar-negociar-catch-test";
 import { runPautaArreglosTier } from "./pauta-arreglos-catch-test";
 import { runCuentasPruebaTier } from "./cuentas-prueba-catch-test";
 import { runDeptosConteoTier } from "./deptos-conteo-catch-test";
@@ -757,6 +758,11 @@ function printSeed(r: SeedReport) {
   // … deptos que convienen hoy en Gran Santiago. Míralos todos en el mapa»— con el número único de la noche y el enlace con los
   // filtros del perfil; el clic medido por correo y por pantalla, y la vista con la llegada «correo». ──
   totalHard += (await runExplorarCorreosTier()).hard;
+  // Tier EXPLORAR-NEGOCIAR (02-nov-2026, 0 tokens + 2 conteos): «al precio publicado» en cada superficie que dice «conviene» o
+  // muestra el chip con número, los chips de la casa, la capa «Si negocias» aparte (nunca suma a «convienen», ciruela y sin rojo,
+  // sin un Buscar otro), el informe negociado con los dos precios y el piso antes de gastar, el slider de 0,25 con «Usar la del
+  // mes» y «Aplicar mi perfil» con su resumen. ──
+  totalHard += (await runExplorarNegociarTier()).hard;
   // Tier PAUTA-ARREGLOS (26-oct-2026, 0 tokens): las cuentas de prueba y @refranco.ai fuera de los correos, la selección
   // diaria del «Ya» también en renta corta, los escáneres marcados robot en las vistas, «explorar_pin» y «explorar_aviso», y
   // el resumen de la noche y la selección diaria MEDIDOS bajo 2 s contra la base. ──

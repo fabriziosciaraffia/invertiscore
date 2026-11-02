@@ -136,7 +136,8 @@ export async function runExplorarTier(): Promise<{ hard: number }> {
   // ⚠ ACTA (28-oct-2026, RESPALDO-MAPA) · el respaldo de la casa se valida igual que Explorar, en la misma rama.
   if (!/if \(desdeExplorar \|\| desdeRespaldo\) \{[\s\S]{0,200}if \(!esPiePopup\(b\.piePct\) \|\| !esPlazoPopup\(b\.plazoAnios\)\) return NextResponse\.json\(\{ error: "combinacion" \}, \{ status: 400 \}\);/.test(an)) F("3 · desde Explorar el pie y el plazo no se validan contra las listas del pop-up");
   if (!/combo = \{ piePct: Number\(b\.piePct\), plazoAnios: Number\(b\.plazoAnios\) \};\s*o = origenSintetico\(user\.id, \{ piePct: combo\.piePct, plazoAnios: combo\.plazoAnios, comunas: pp\.perfil\.comunas, dormitorios: pp\.perfil\.dormitorios \}, await leerConfigGuia\(admin\)\);/.test(an)) F("3 · desde Explorar no se analiza con el origen sintético y la tasa de mercado");
-  if (!/const desde: "semanal" \| "guia" \| "explorar" = desdeExplorar \? "explorar" : desdeSemanal \? "semanal" : "guia";/.test(an) || !/via: desde \}\)\);/.test(an) || !/body\.origenAviso\.desde = desde;/.test(an)) F("3 · «explorar» no llega a analisis_creado (via) ni al informe (origenAviso.desde)");
+  // ⚠ ACTA (02-nov-2026, goal «Filtros v2 y negociar», tier EXPLORAR-NEGOCIAR) · `analisis_creado` lleva además la marca del precio negociado (EXPLORAR-NEGOCIAR §5).
+  if (!/const desde: "semanal" \| "guia" \| "explorar" = desdeExplorar \? "explorar" : desdeSemanal \? "semanal" : "guia";/.test(an) || !/capturarAnalisisCreado\(\{ userId: user\.id, analysisId: id, modalidad: "ltr", via: desde, precioNegociado \}\)\);/.test(an) || !/body\.origenAviso\.desde = desde;/.test(an)) F("3 · «explorar» no llega a analisis_creado (via) ni al informe (origenAviso.desde)");
   if (!/if \(desdeExplorar\) \{\s*waitUntil\(capturarServidor\(eventoExplorarAnaliza\(\{ userId: user\.id, analysisId: id, avisoId: aviso\.avisoId/.test(an)) F("3 · «explorar_analiza» no sale al crear el informe desde el mapa");
   if (!/idAnalizarEste\(b\.avisoId, desdeExplorar \? "explorar" :/.test(an)) F("3 · el AnalizarEste de Meta desde Explorar no lleva su propio id");
   // ⚠ ACTA (28-oct-2026, Explorar como portal) · en renta corta el mismo pedido va a la ruta STR (con «Analizar igual» si no da).
@@ -210,13 +211,15 @@ export async function runExplorarTier(): Promise<{ hard: number }> {
   const av = codigo("src/components/guia/AvisoAntesDeAnalizar.tsx");
   if (!/data-modal-cambiar onClick=\{\(\) => setEditando\(true\)\}>\{EXPLORAR_COPY\.cambiar\}/.test(av)) F("7 · el pop-up no tiene «Cambiar»");
   if (!/void cambio\.recalcular\(combo\)\.then/.test(av)) F("7 · al cambiar no se recalcula con el servidor");
-  if (!/const analizar = da\?\.empeora \? EXPLORAR_COPY\.analizarIgual : AVISO_ANALIZAR\.analizar;/.test(av)) F("7 · si empeora el botón no dice «Analizar igual»");
+  // ⚠ ACTA (02-nov-2026, goal «Filtros v2 y negociar», tier EXPLORAR-NEGOCIAR) · un negociado de la capa «Si negocias» dice «Analizar a UF 2.950» (sin «Cambiar»: la noche lo
+  // calculó con ese pie y plazo) y sus derivados son a ese precio; para todo lo demás, lo de siempre.
+  if (!/const analizar = negociado \? NEGOCIADO_COPY\.analizarA\(negociado\.precioUF\) : da\?\.empeora \? EXPLORAR_COPY\.analizarIgual : AVISO_ANALIZAR\.analizar;/.test(av)) F("7 · si empeora el botón no dice «Analizar igual»");
   if (!/alAnalizar\(cambio \? \{ combinacion: combo, guardarPerfil: cambiada && guardar \} : undefined\)/.test(av)) F("7 · la elección (pie, plazo, guardar) no viaja a analizar");
   if (!/data-modal-guardar>\s*<input type="checkbox" checked=\{guardar\}/.test(av) || !/\{EXPLORAR_COPY\.guardarPerfil\(combo\.piePct, combo\.plazoAnios, combo\.tasaPct\)\}/.test(av)) F("7 · falta la casilla de guardar como perfil");
   // ⚠ ACTA (30-oct-2026, goal «la tasa editable en Filtros») · la casilla nombra la tasa elegida y los derivados se calculan con la tasa que se ve.
-  if (!/derivados: derivadosAviso\(depto, combo, \{ \.\.\.finanzas, tasa: tasaVista \}\),/.test(av)) F("7 · los derivados (dividendo, retorno) no siguen al cambio");
+  if (!/derivados: derivadosAviso\(negociado \? \{ \.\.\.depto, precioUF: negociado\.precioUF \} : depto, combo, \{ \.\.\.finanzas, tasa: tasaVista \}\),/.test(av)) F("7 · los derivados (dividendo, retorno) no siguen al cambio");
   // ⚠ ACTA (28-oct-2026) · en renta corta el pop-up va sin «Cambiar», como en la selección.
-  if (!/cambio=\{filtros\.modalidad === "str" \? null : \{ recalcular: \(combo\) => recalcular\(confirmar\.it\.avisoId, combo\), base: \{ veredicto: confirmar\.it\.veredicto/.test(cli)) F("7 · el mapa no abre el pop-up con «Cambiar»");
+  if (!/cambio=\{filtros\.modalidad === "str" \|\| esNegociado\(confirmar\.it\) \? null : \{ recalcular: \(combo\) => recalcular\(confirmar\.it\.avisoId, combo\), base: \{ veredicto: confirmar\.it\.veredicto/.test(cli)) F("7 · el mapa no abre el pop-up con «Cambiar»");
   const rc = codigo("src/app/api/explorar/recalcular/route.ts");
   // ⚠ ACTA (30-oct-2026, goal «la tasa editable en Filtros») · la sonda recibe también la tasa elegida.
   if (!/const s = sondaDeCandidato\(c, \{ piePct: Number\(b\.piePct\), plazoAnios: Number\(b\.plazoAnios\), tasa \}, cfg\);/.test(rc) || !/!esPiePopup\(b\.piePct\) \|\| !esPlazoPopup\(b\.plazoAnios\)/.test(rc)) F("7 · el recálculo no va por la sonda con el pie y el plazo validados");

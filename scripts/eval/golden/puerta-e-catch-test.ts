@@ -124,7 +124,8 @@ export async function runPuertaETier(): Promise<{ hard: number }> {
     if (!/if \(sinCifrasRef\.current\) \{\s*marcador\(\{ lat: p\.lat, lng: p\.lng \}, elegido \? iconoElegido\(\) : iconoPunto\(ROJO\)/.test(mapa) || !/sinCifras=\{sinCuenta\}/.test(cli)) F("2 · sin cuenta, con zoom, el pin dice algo más que el punto");
     // ⚠ ACTA (30-oct-2026, goal del recorrido real de Fabrizio) · «Mi búsqueda» se mudó adentro de Filtros (decisión de Fabrizio): sin
     // cuenta la hoja la recibe en null y no la dibuja; el esqueleto ya no la tiene.
-    if (!/miBusqueda=\{sinCuenta \? null : \{ activa: enMiBusqueda, alUsar: miBusqueda \}\}/.test(cli) || !/\{miBusqueda && \(\s*<button type="button" className="ex-mi-busqueda"/.test(codigo("src/app/explorar/hoja-filtros.tsx")) || /mi-busqueda|miBusqueda/.test(codigo("src/app/explorar/esqueleto.tsx"))) F("2 · sin cuenta aparece «Mi búsqueda»");
+    // ⚠ ACTA (02-nov-2026, goal «Filtros v2 y negociar», tier EXPLORAR-NEGOCIAR) · «Mi búsqueda» es la tarjeta «Aplicar mi perfil de búsqueda»: sin cuenta, igual en null y sin dibujarse.
+    if (!/miBusqueda=\{sinCuenta \? null : \{ activa: enMiBusqueda, alUsar: miBusqueda, perfil: cuenta\.miBusqueda \}\}/.test(cli) || !/\{miBusqueda && \(\s*<section className="ex-card ex-card-perfil" data-explorar="card-perfil">/.test(codigo("src/app/explorar/hoja-filtros.tsx")) || /mi-busqueda|miBusqueda/.test(codigo("src/app/explorar/esqueleto.tsx"))) F("2 · sin cuenta aparece «Mi búsqueda»");
     // Pie y plazo en el financiamiento por defecto; lo que depende del flujo pide registro.
     // ⚠ ACTA (30-oct-2026, goal del recorrido real de Fabrizio) · el financiamiento por defecto pasó a pie 20 % y 30 años.
     const f30 = ab.filtrosAbiertos({ ...po.FILTROS_GLOBALES, pie: 30, plazo: 20, flujoPositivo: true, modalidad: "str" } as po.FiltrosPortal);
@@ -241,7 +242,8 @@ export async function runPuertaETier(): Promise<{ hard: number }> {
     if (modB) {
       const b = dibujar(createElement(modB.Bienvenida, { n: 4807, alCerrar() {} }));
       const tb = texto(b);
-      if (!/data-explorar="bienvenida-n">4\.807</.test(b) || !tb.includes("Revisados por Franco") || !tb.includes("Deptos en venta que convienen como inversión hoy.") || !tb.includes("Toca uno en el mapa para ver por qué conviene.") || !/Regístrate gratis y <strong>te regalamos el análisis completo<\/strong> del que más te interese\./.test(b)) F("5 · la bienvenida no dice lo del mockup");
+      // ⚠ ACTA (02-nov-2026, goal «Filtros v2 y negociar», tier EXPLORAR-NEGOCIAR) · la bienvenida dice «al precio publicado».
+      if (!/data-explorar="bienvenida-n">4\.807</.test(b) || !tb.includes("Revisados por Franco") || !tb.includes("Deptos en venta que convienen como inversión hoy, al precio publicado.") || !tb.includes("Toca uno en el mapa para ver por qué conviene.") || !/Regístrate gratis y <strong>te regalamos el análisis completo<\/strong> del que más te interese\./.test(b)) F("5 · la bienvenida no dice lo del mockup");
       if ((b.match(/<button/g) ?? []).length !== 1 || !/data-explorar="bienvenida-ok">Ver el mapa</.test(b)) F("5 · la bienvenida no tiene un solo botón «Ver el mapa»");
       if (/\bpie\b|plazo|ticket|14\.990/i.test(tb)) F("5 · la bienvenida menciona pie, plazo o el ticket");
       if (!/class="ex-bienvenida-cab ex-triada"/.test(b)) F("5 · el número de la bienvenida no va en la tríada");

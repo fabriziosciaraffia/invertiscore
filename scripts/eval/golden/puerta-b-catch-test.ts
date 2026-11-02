@@ -472,7 +472,9 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       const registro = leer("src/lib/meta/registro.ts");
       if (!/\.\.\.\(p\.puerta \? \{ puerta: p\.puerta \} : \{\}\)/.test(registro) || !/datos: datosRegistro\(\{ puerta, cuando: leido\.cuando \}\),/.test(registro)) F("7 · CompleteRegistration no lleva la puerta");
       if (!/"\/deptos"/.test(leer("src/middleware.ts"))) F("7 · /deptos no pasa por la medición de llegada (el fbclid del anuncio)");
-      if (JSON.stringify(PIES_DEPTOS) !== "[20,30]" || !/const fila = \{ \.\.\.evaluada, \.\.\.\(evaluada\.arriendo \? evaluarEstandar25\(candidatoDeEvaluacion\(a, evaluada\), cfg\) : ESTANDAR25_VACIO\) \};[\s\S]{0,600}\.upsert\(fila, \{ onConflict: "aviso_id" \}\);/.test(leer("src/app/api/cron/evaluar-avisos/route.ts")))
+// ⚠ ACTA (02-nov-2026, goal «Filtros v2 y negociar», tier EXPLORAR-NEGOCIAR) · el candidato de la fila se arma una vez y lo comparten el estándar de 25 años y el descuento a
+      // Comprar de la capa «Si negocias» (avisos/negociar.ts), que entra en la misma fila: la regla es la misma, sin arriendo no hay ninguno.
+      if (JSON.stringify(PIES_DEPTOS) !== "[20,30]" || !/const candidato = evaluada\.arriendo \? candidatoDeEvaluacion\(a, evaluada\) : null;[\s\S]{0,400}const fila = \{ \.\.\.evaluada, \.\.\.\(candidato \? evaluarEstandar25\(candidato, cfg\) : ESTANDAR25_VACIO\), \.\.\.negociar \};[\s\S]{0,600}\.upsert\(fila, \{ onConflict: "aviso_id" \}\);/.test(leer("src/app/api/cron/evaluar-avisos/route.ts")))
         F("7 · la evaluación de la noche no escribe el estándar de 25 años");
       // ⚠ ACTA (23-oct-2026, goal Explorar) · el estándar de 25 años y el recálculo del pop-up comparten la sonda (sondaDeCandidato); el plazo sigue siendo PLAZO_DEPTOS.
       const estandar = leer("src/lib/avisos/estandar-deptos.ts");

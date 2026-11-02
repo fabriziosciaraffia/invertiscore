@@ -185,11 +185,13 @@ export async function runExplorarRecorridoTier(): Promise<{ hard: number }> {
       const html = dibujar(createElement(modCli.ExplorarCliente, { inicial: { filtros: G, orden: "puntaje", n: 4807, cuenta, tasa: { tasa: 4.07 }, convienen: cuenta ? null : 4807 } }));
       const barra = html.slice(html.indexOf('class="ex-barra"'), html.indexOf('class="ex-cuerpo"'));
       const botones = barra.match(/data-explorar="[a-z-]+"/g) ?? [];
-      if (botones.join() !== 'data-explorar="filtros",data-explorar="como-se-calcula"') F(`5 · ${que}, la fila de arriba no es solo «Filtros» y «¿Cómo se calcula?»: ${botones.join(" ")}`);
+      // ⚠ ACTA (02-nov-2026, goal «Filtros v2 y negociar», tier EXPLORAR-NEGOCIAR) · la barra es «Filtros», el chip «Si negocias el precio» y «¿Cómo se calcula?» (el texto en PC, la ⓘ
+      // en el teléfono: las dos se dibujan y el CSS muestra una).
+      if (botones.join() !== 'data-explorar="filtros",data-explorar="negociar-chip",data-explorar="como-se-calcula",data-explorar="como-se-calcula-i"') F(`5 · ${que}, la fila de arriba no es «Filtros», el chip de negociar y «¿Cómo se calcula?»: ${botones.join(" ")}`);
       if (!/<button type="button" class="ex-como" data-explorar="como-se-calcula">/.test(barra)) F(`5 · ${que}, «¿Cómo se calcula?» no es un enlace de texto (va como chip)`);
       if (/data-explorar="ordenar"/.test(html)) F(`5 · ${que}, «Ordenar» aparece en la vista de mapa`);
       if (/ex-numero|data-explorar="numero"/.test(html)) F(`5 · ${que}, la tarjeta del número sigue sobre el mapa`);
-      if (!texto(html).includes("4.807 deptos ✓ Comprar Ver lista") || !texto(html).includes("Ver lista · 4.807 ✓ Comprar")) F(`5 · ${que}, abajo no dice «4.807 deptos ✓ Comprar · Ver lista» (teléfono) y «Ver lista · 4.807 ✓ Comprar» (PC)`);
+      if (!texto(html).includes("4.807 deptos ✓ Comprar al precio publicado Ver lista") || !texto(html).includes("Ver lista · 4.807 ✓ Comprar al precio publicado")) F(`5 · ${que}, abajo no dice «4.807 deptos ✓ Comprar al precio publicado · Ver lista» (teléfono) y «Ver lista · 4.807 ✓ Comprar al precio publicado» (PC)`);
     }
   }
   if (/ex-numero/.test(css + cli + codigo("src/app/explorar/esqueleto.tsx")) || "numeroDelMapa" in po || "lineaSupuestos" in po) F("5 · quedan la tarjeta del número o la línea de los supuestos (CSS, cliente, esqueleto o portal.ts)");
@@ -226,16 +228,20 @@ export async function runExplorarRecorridoTier(): Promise<{ hard: number }> {
       if (iD < 0 || iF < 0 || iD > iF) { F(`6 · ${que}, Filtros no va en dos bloques («El depto» y después «Tu financiamiento»)`); continue; }
       const depto = h.slice(iD, iF), fin = h.slice(iF);
       if (!/<h3[^>]*>El depto<\/h3>/.test(depto) || !/<h3[^>]*>Tu financiamiento<\/h3>/.test(fin)) F(`6 · ${que}, los bloques no llevan sus títulos`);
-      for (const [cosa, ok] of [["las comunas", />Comunas</.test(depto)], ["la tipología", />Tipología</.test(depto)], ["el precio", />Precio</.test(depto)], ["tradicional o renta corta", /data-explorar="tradicional"/.test(depto) && /data-explorar="renta-corta"/.test(depto)], ["solo con flujo positivo", /data-explorar="flujo-positivo"/.test(depto)], ["publicados", />Publicados</.test(depto)]] as const)
+      // ⚠ ACTA (02-nov-2026, goal «Filtros v2 y negociar», tier EXPLORAR-NEGOCIAR) · «Publicados» se mudó a «Otros», la última tarjeta (mockup 8).
+      for (const [cosa, ok] of [["las comunas", />Comunas</.test(depto)], ["la tipología", />Tipología</.test(depto)], ["el precio", />Precio</.test(depto)], ["tradicional o renta corta", /data-explorar="tradicional"/.test(depto) && /data-explorar="renta-corta"/.test(depto)], ["solo con flujo positivo", /data-explorar="flujo-positivo"/.test(depto)]] as const)
         if (!ok) F(`6 · ${que}, «El depto» no tiene ${cosa}`);
+      if (!/data-explorar="bloque-otros"[\s\S]*>Publicados</.test(fin)) F(`6 · ${que}, «Otros» no tiene publicados`);
       if (/data-explorar="(pie|plazo|tasa)"/.test(depto) || !/data-explorar="pie"/.test(fin) || !/data-explorar="plazo"/.test(fin)) F(`6 · ${que}, pie y plazo no van en «Tu financiamiento»`);
       // ⚠ ACTA (30-oct-2026, goal «la tasa editable en Filtros») · con cuenta la tasa se elige: «La de hoy (4,07 %)» —la del motor— y
       // la lista (TASA-EDITABLE); sin cuenta, cerrada con la del motor, y tocarla pide registro.
+      // ⚠ ACTA (02-nov-2026, goal «Filtros v2 y negociar», tier EXPLORAR-NEGOCIAR) · con cuenta la tasa es un slider que parte en la del motor («4,07 % · promedio del mes»); sin cuenta,
+      // cerrada con la del motor. «Usar mi búsqueda» es la tarjeta «Aplicar mi perfil de búsqueda».
       const tasaOk = sinCuenta
-        ? /<button type="button" class="ex-campo ex-campo-cerrado ex-campo-fijo" data-explorar="tasa"><span>Tasa<\/span><b>4,07 % · promedio de los bancos<\/b><\/button>/.test(fin)
-        : /<select[^>]*data-explorar="tasa"[^>]*><option value="" selected="">La de hoy \(4,07 %\)<\/option>/.test(fin);
+        ? /<button type="button" class="ex-campo ex-campo-cerrado ex-campo-fijo" data-explorar="tasa"><span>Tasa<\/span><b>4,07 % · promedio del mes<\/b><\/button>/.test(fin)
+        : /<input type="range"[^>]*data-explorar="tasa"[^>]*value="4\.07"/.test(fin) && texto(fin).includes("Tasa 4,07 % · promedio del mes");
       if (!tasaOk) F(`6 · ${que}, la tasa de «Tu financiamiento» no parte de la del motor (4,07 %)`);
-      if (sinCuenta === /data-explorar="mi-busqueda"/.test(h)) F(`6 · ${que}, «Usar mi búsqueda» ${sinCuenta ? "aparece" : "no está dentro de Filtros"}`);
+      if (sinCuenta === /data-explorar="card-perfil"/.test(h)) F(`6 · ${que}, «Aplicar mi perfil de búsqueda» ${sinCuenta ? "aparece" : "no está dentro de Filtros"}`);
     }
   }
   if (!/\.ex-filtros \{ pointer-events: auto; width: 480px;/.test(cssPC) || !/\.ex-filtros-velo \{ position: absolute; inset: 52px 0 0 0; background: none; pointer-events: none;/.test(cssPC)) F("6 · en el PC, Filtros no es un panel como el de la lista (con el mapa a la vista)");

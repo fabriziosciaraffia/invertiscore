@@ -77,12 +77,14 @@ export async function runTasaEditableTier(): Promise<{ hard: number }> {
   if (modFil) {
     const con = dibujar(createElement(modFil.HojaFiltros, { filtros: { ...G, tasa: 4.5 }, tasa: { tasa: 4.07 }, miBusqueda: { activa: false, alUsar() {} }, contar: () => 10, asegurar() {}, alAplicar() {}, alCerrar() {}, alPedirRegistro: null }));
     const fin = con.slice(con.indexOf('data-explorar="bloque-financiamiento"'));
-    const sel = fin.match(/<select[^>]*data-explorar="tasa"[^>]*>([\s\S]*?)<\/select>/);
-    const opciones = sel ? Array.from(sel[1].matchAll(/<option value="([^"]*)"[^>]*>([^<]*)<\/option>/g)).map((m) => `${m[1]}=${m[2]}`) : [];
-    if (!sel || opciones[0] !== "=La de hoy (4,07 %)" || opciones.length !== 14 || opciones[1] !== "3=3 %" || opciones[13] !== "6=6 %" || !opciones.includes("4.25=4,25 %")) F(`1 · Filtros no ofrece «La de hoy (4,07 %)» y de 3 % a 6 % de a 0,25: ${opciones.slice(0, 3).join(" | ")}…`);
-    if (!/<option value="4\.5" selected="">4,5 %<\/option>/.test(fin)) F("1 · Filtros no muestra la tasa elegida (4,5 %)");
+    // ⚠ ACTA (02-nov-2026, goal «Filtros v2 y negociar», tier EXPLORAR-NEGOCIAR) · la tasa de Filtros es un slider de 3 % a 6 % de a 0,25 con la del mes marcada y «Usar la del
+    // mes» (el paso y la marca, en EXPLORAR-NEGOCIAR §6); «La de hoy» es «4,07 % · promedio del mes» arriba.
+    const rango = fin.match(/<input[^>]*type="range"[^>]*>/)?.[0] ?? "";
+    const hoyF = dibujar(createElement(modFil.HojaFiltros, { filtros: G, tasa: { tasa: 4.07 }, miBusqueda: { activa: false, alUsar() {} }, contar: () => 10, asegurar() {}, alAplicar() {}, alCerrar() {}, alPedirRegistro: null }));
+    if (!/min="3"/.test(rango) || !/max="6"/.test(rango) || !/step="0.25"/.test(rango) || !texto(hoyF).includes("Tasa 4,07 % · promedio del mes")) F(`1 · Filtros no ofrece «la del mes (4,07 %)» y de 3 % a 6 % de a 0,25: ${rango || "sin slider"}`);
+    if (!/value="4\.5"/.test(rango) || !/data-explorar="tasa-valor">4,5 %</.test(fin)) F("1 · Filtros no muestra la tasa elegida (4,5 %)");
     const sin = dibujar(createElement(modFil.HojaFiltros, { filtros: G, tasa: { tasa: 4.07 }, miBusqueda: null, contar: () => 10, asegurar() {}, alAplicar() {}, alCerrar() {}, alPedirRegistro: () => {} }));
-    if (/<select[^>]*data-explorar="tasa"/.test(sin) || !/<button type="button" class="ex-campo ex-campo-cerrado ex-campo-fijo" data-explorar="tasa"><span>Tasa<\/span><b>4,07 % · promedio de los bancos<\/b><\/button>/.test(sin)) F("1 · sin cuenta la tasa no va cerrada, con la de hoy");
+    if (/<select[^>]*data-explorar="tasa"|type="range"/.test(sin) || !/<button type="button" class="ex-campo ex-campo-cerrado ex-campo-fijo" data-explorar="tasa"><span>Tasa<\/span><b>4,07 % · promedio del mes<\/b><\/button>/.test(sin)) F("1 · sin cuenta la tasa no va cerrada, con la de hoy");
   }
   if (!/onClick=\{\(\) => alPedirRegistro\("pie-plazo", b\)\} data-explorar="tasa"/.test(codigo("src/app/explorar/hoja-filtros.tsx"))) F("1 · sin cuenta, tocar la tasa no abre el registro");
   const modCal = cargar<{ HojaCalculo: FC<Record<string, unknown>> }>("src/app/explorar/hoja-calculo", F);
@@ -103,7 +105,7 @@ export async function runTasaEditableTier(): Promise<{ hard: number }> {
   const av = codigo("src/components/guia/AvisoAntesDeAnalizar.tsx");
   if (!/<select className="av-select" data-aviso="tasa"[^>]*value=\{combo\.tasaPct \?\? ""\} onChange=\{\(e\) => setCombo\(\(x\) => \(\{ \.\.\.x, tasaPct: e\.target\.value === "" \? null : Number\(e\.target\.value\) \}\)\)\}/.test(av) || !/<option value="">\{EXPLORAR_COPY\.tasaHoy\(finanzas\.tasa\)\}<\/option>\s*\{TASAS_ELEGIBLES\.map/.test(av)) F("1 · «Cambiar» del pop-up no deja elegir la tasa (o «La de hoy» no es la primera)");
   if (!/const cambiada = [^;]*combo\.tasaPct !== \(combinacion\.tasaPct \?\? null\);/.test(av) || !/\}, \[combo\.piePct, combo\.plazoAnios, combo\.tasaPct, cambiada\]\);/.test(av)) F("1 · cambiar la tasa en el pop-up no recalcula el veredicto (y se cobraría sin él)");
-  if (!/derivadosAviso\(depto, combo, \{ \.\.\.finanzas, tasa: tasaVista \}\)/.test(av) || !/EXPLORAR_COPY\.guardarPerfil\(combo\.piePct, combo\.plazoAnios, combo\.tasaPct\)/.test(av)) F("1 · el dividendo o la casilla del perfil no siguen a la tasa elegida");
+  if (!/derivadosAviso\(negociado \? \{ \.\.\.depto, precioUF: negociado\.precioUF \} : depto, combo, \{ \.\.\.finanzas, tasa: tasaVista \}\)/.test(av) || !/EXPLORAR_COPY\.guardarPerfil\(combo\.piePct, combo\.plazoAnios, combo\.tasaPct\)/.test(av)) F("1 · el dividendo o la casilla del perfil no siguen a la tasa elegida");
   const cambio = textoCambio({ antes: { pie: 20, plazo: 30, tasa: null, veredicto: "COMPRAR", score: 84, flujo: 1000 }, despues: { pie: 20, plazo: 30, tasa: 5.5, veredicto: "AJUSTA SUPUESTOS", score: 60, flujo: -2000 } }, (v) => (v === "COMPRAR" ? "Comprar" : "Ajustar"));
   if (!cambio.titulo.startsWith("Con tasa 5,5 % este depto da") || !cambio.detalle.includes("Con la tasa de hoy daba Comprar 84")) F(`1 · el cambio de solo la tasa no lo dice: «${cambio.titulo} ${cambio.detalle}»`);
   if (EXPLORAR_COPY.guardarPerfil(20, 30, 4.5) !== "Guardar 20 %, 30 años y tasa 4,5 % como mi perfil de búsqueda") F("1 · la casilla del perfil no nombra la tasa elegida");
@@ -213,7 +215,8 @@ export async function runTasaEditableTier(): Promise<{ hard: number }> {
   const avHoy = po.perfilDeFiltros({ ...G, comunas: ["Ñuñoa"], tasa: null });
   if (!avHoy.ok || avHoy.cambios.tasaPct !== null) F("4 · «Avísame» con la de hoy guarda un número");
   if (po.PORTAL_COPY.tasaHoy(4.07) !== "La de hoy (4,07 %)" || po.PORTAL_COPY.tasaHoy(4.2) !== "La de hoy (4,2 %)" || EXPLORAR_COPY.tasaHoy(5.1) !== "La de hoy (5,1 %)") F("4 · «La de hoy» no dice la tasa del motor que le llega");
-  if (!/onChange=\{\(e\) => poner\(\{ tasa: e\.target\.value === "" \? null : Number\(e\.target\.value\) \}\)\}/.test(codigo("src/app/explorar/hoja-filtros.tsx")) || !/<option value="">\{PORTAL_COPY\.tasaHoy\(tasa\?\.tasa \?\? null\)\}<\/option>/.test(codigo("src/app/explorar/hoja-filtros.tsx"))) F("4 · en Filtros, «La de hoy» no es vacío (guardaría el número del día)");
+  // ⚠ ACTA (02-nov-2026, goal «Filtros v2 y negociar», tier EXPLORAR-NEGOCIAR) · «La de hoy» es «Usar la del mes», que vuelve a null; el slider elige un número de la lista.
+  if (!/onChange=\{\(e\) => poner\(\{ tasa: Number\(e\.target\.value\) \}\)\}/.test(codigo("src/app/explorar/hoja-filtros.tsx")) || !/onClick=\{\(\) => poner\(\{ tasa: null \}\)\} disabled=\{b\.tasa == null\} data-explorar="tasa-del-mes"/.test(codigo("src/app/explorar/hoja-filtros.tsx"))) F("4 · en Filtros, «La de hoy» no es vacío (guardaría el número del día)");
   if (tasaElegidaDe("") !== null || tasaElegidaDe(null) !== null || tasaElegidaDe("4.07") !== null || tasaElegidaDe("4.5") !== 4.5) F("4 · una tasa que no es de la lista (la del motor, por ejemplo) se toma por elegida");
 
   // ── 5 · LA MEDICIÓN ──

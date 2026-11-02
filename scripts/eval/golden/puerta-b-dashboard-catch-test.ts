@@ -315,7 +315,8 @@ export async function runPuertaBDashboardTier(): Promise<{ hard: number }> {
   // sin «Para analizar este depto:», la oferta en una fila («Solo para cuentas nuevas · vence mañana 11:17») y una línea
   // («3 análisis por $14.990 · $4.997 cada uno», sin el $9.990 tachado), «Comprar solo 1» como botón de borde MÁS BAJO
   // (wz-btn2-bajo) y «Cancelar» como texto (wz-modal-cancelar). El alto lo mide la sonda popups-alto-webkit-sonda.ts.
-  const marcasA = ['data-aviso="sin-titulo"', "No te quedan análisis.", "Providencia · 2D1B · 46 m² · UF 3.275", "Comprar 88 · flujo +$88.363 te queda", "el enlace a la publicación", 'data-aviso="ticket"', "Solo para cuentas nuevas", "· vence mañana 11:17", "3 análisis por $14.990", " · $4.997 cada uno", "Aprovechar · 3 por $14.990", "Comprar solo 1 · $9.990", "Cancelar"];
+  // ⚠ ACTA (02-nov-2026, goal «Filtros v2 y negociar», tier EXPLORAR-NEGOCIAR) · la línea del veredicto dice «al precio publicado» (la regla general del goal).
+  const marcasA = ['data-aviso="sin-titulo"', "No te quedan análisis.", "Providencia · 2D1B · 46 m² · UF 3.275", "Comprar 88 al precio publicado · flujo +$88.363 te queda", "el enlace a la publicación", 'data-aviso="ticket"', "Solo para cuentas nuevas", "· vence mañana 11:17", "3 análisis por $14.990", " · $4.997 cada uno", "Aprovechar · 3 por $14.990", "Comprar solo 1 · $9.990", "Cancelar"];
   const posA = orden(htmlA7, marcasA);
   if (!enOrden(posA)) F(`7 · el pop-up sin saldo con el ticket no es título rojo → tarjeta gris → tarjeta roja → Aprovechar → Comprar solo 1 → Cancelar (${posA.join(",")})`);
   if (!/<h2 id="modal-plausibilidad-titulo" class="av-sin-titulo" data-aviso="sin-titulo">No te quedan análisis\.<\/h2>/.test(htmlA7)) F("7 · «No te quedan análisis.» no es el título grande en rojo");

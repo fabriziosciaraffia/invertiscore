@@ -1,0 +1,414 @@
+// ============================================================================
+// TIER EXPLORAR-NEGOCIAR — Filtros v2 y los que convienen si negocias (02-nov-2026, goal de Fabrizio; mockup
+// docs/puerta-b-mockups/8-filtros-v2-negociar.html).
+//
+//   1 · «AL PRECIO PUBLICADO»: «conviene» y «✓ Comprar» quieren decir a ese precio, y se dice —«¿Cómo se calcula?», la
+//       bienvenida, el pop-up («Comprar 84 al precio publicado»), la barra de abajo, la lista y la tarjeta—. Todo chip de Comprar
+//       con número al precio publicado lo dice al lado.
+//   2 · LOS CHIPS SON EL DE LA CASA: todo veredicto que se nombra en Explorar, la lista, Filtros y el pop-up es ChipVeredicto
+//       (`chip-v`), con su puntaje adentro; ningún chip inventado.
+//   3 · LOS NEGOCIADOS VAN APARTE: nunca se suman a «convienen» (el número, la lista, el botón de Filtros: «Ver 201 + 48 si
+//       negocias»), van después de los Comprar en la lista, y su pin es ciruela (el color de Ajustar) con el número en blanco:
+//       ni el pin, ni el interruptor, ni la marca de la tasa usan el rojo (decisión de Fabrizio, 02-nov-2026: en tinta).
+//   4 · UN BUSCAR OTRO NUNCA ENTRA: la noche calcula el descuento solo para los Ajustar (y la base lo confirma), la capa los da
+//       Ajustar y deja fuera a los que ya convienen.
+//   5 · EL INFORME NEGOCIADO LLEVA LOS DOS PRECIOS: la ruta acepta el precio con el piso del tope ANTES de gastar nada, el informe
+//       se hace a ese precio, guarda los dos y la portada dice «Analizado a UF 2.950, un 4,2 % bajo el precio publicado»;
+//       `analisis_creado` lleva la marca.
+//   6 · EL SLIDER DE LA TASA: de 3,0 a 6,0 de a 0,25, la marca y el valor de la tasa del mes, «Usar la del mes» la deja
+//       siguiendo al motor (null); `explorar_tasa_slider` al soltarlo. Con otra tasa la capa no existe y Filtros lo dice.
+//   7 · «APLICAR MI PERFIL DE BÚSQUEDA» muestra el resumen del perfil antes de tocarlo, con su tooltip.
+//   8 · LA MEDICIÓN DEL CHIP: `explorar_negociar` con el tope, desde la barra y desde Filtros.
+//   9 · LA CAPA SOLO CON LO QUE CALCULA LA NOCHE, Y SIN CUENTA BORROSA: pie 20 o 30, 30 años, la tasa del motor, renta larga; el
+//       tope mayor es el de la noche. Sin cuenta, el precio negociado y el flujo no viajan y la tarjeta los dibuja borrosos.
+// Verificado EN ROJO por mutación (acta al pie). Corre dentro del QUICK. §4 cuenta contra la base (dos conteos); lo demás, 0 tokens.
+// Solo:  node --env-file=.env.local --import tsx scripts/eval/golden/explorar-negociar-catch-test.ts
+// ============================================================================
+import "./als-de-next";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import React, { createElement, type FC } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { createClient } from "@supabase/supabase-js";
+import * as po from "../../../src/lib/explorar/portal";
+import * as cn from "../../../src/lib/explorar/capa-negociar";
+import { BIENVENIDA_COPY } from "../../../src/lib/explorar/abierto";
+import { AL_PRECIO_PUBLICADO, NEGOCIADO_COPY } from "../../../src/lib/precio-publicado";
+import { lineaVeredicto } from "../../../src/lib/guia/aviso-analizar";
+import { lineaNegociadoPortada, negociadoDePortada } from "../../../src/lib/guia/precio-negociado-portada";
+import { eventoAnalisisCreado } from "../../../src/lib/medicion-activacion";
+import { TASAS_ELEGIBLES } from "../../../src/lib/deptos/estandar";
+import { TOPE_NEGOCIAR_PCT } from "../../../src/lib/avisos/negociar-tope";
+
+(globalThis as { React?: unknown }).React = React;
+(require as unknown as { extensions: Record<string, (m: { exports: unknown }) => void> }).extensions[".css"] = (m) => { m.exports = {}; };
+const RAIZ = join(__dirname, "..", "..", "..");
+const existe = (p: string) => existsSync(join(RAIZ, p));
+const leer = (p: string) => (existe(p) ? readFileSync(join(RAIZ, p), "utf8").replace(/\r\n/g, "\n") : "");
+const sinComentarios = (s: string) =>
+  s.replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "").replace(/([^:"'`])\/\/[^\n]*$/gm, "$1");
+const codigo = (p: string) => sinComentarios(leer(p));
+const texto = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/&amp;/g, "&").replace(/&#x27;/g, "'").replace(/&quot;/g, '"').replace(/\s+/g, " ").trim();
+/** El cuerpo de una función: de su firma a la siguiente declaración de primer nivel (sin comentarios). "" si no está. */
+function cuerpo(src: string, firma: string): string {
+  const i = src.indexOf(firma);
+  if (i < 0) return "";
+  const resto = src.slice(i + firma.length);
+  const j = resto.search(/\n(?:export |async function |function |const [A-Za-z]+ = )/);
+  return src.slice(i, j < 0 ? undefined : i + firma.length + j);
+}
+/** Un elemento JSX por su marca: desde la etiqueta que abre (la que lleva `data-explorar="<marca>"`) hasta su cierre del mismo
+ *  nombre, contando anidados. "" si no está. */
+function elemento(src: string, marca: string): string {
+  const k = src.indexOf(`data-explorar="${marca}"`);
+  if (k < 0) return "";
+  const ini = src.lastIndexOf("<", k);
+  const nombre = src.slice(ini + 1).match(/^[A-Za-z]+/)?.[0];
+  if (!nombre) return "";
+  const re = new RegExp(`<${nombre}\\b|</${nombre}>`, "g");
+  re.lastIndex = ini;
+  let prof = 0;
+  for (let m = re.exec(src); m; m = re.exec(src)) {
+    if (m[0].startsWith("</")) { prof--; if (prof === 0) return src.slice(ini, m.index + m[0].length); }
+    else if (!src.slice(m.index, src.indexOf(">", m.index) + 1).endsWith("/>")) prof++;
+  }
+  return "";
+}
+function dibujar(el: React.ReactElement): string {
+  const { AppRouterContext } = require("next/dist/shared/lib/app-router-context.shared-runtime");
+  const router = { push() {}, replace() {}, refresh() {}, back() {}, forward() {}, prefetch() {} };
+  return renderToStaticMarkup(createElement(AppRouterContext.Provider, { value: router }, el));
+}
+/** El pop-up va por un portal del navegador: acá el portal se dibuja en línea (como EXPLORAR-PORTAL). */
+function dibujarPopup(el: React.ReactElement): string {
+  const rd = require("react-dom") as { createPortal: unknown };
+  const g = globalThis as { document?: unknown };
+  const portal = rd.createPortal, doc = g.document;
+  rd.createPortal = (hijo: React.ReactNode) => hijo;
+  g.document = { body: {} };
+  try { return dibujar(el); } finally { rd.createPortal = portal; if (doc === undefined) delete g.document; else g.document = doc; }
+}
+function cargar<T>(p: string, F: (m: string) => void): T | null {
+  try { return require(join(RAIZ, p)) as T; } catch (e) { F(`0 · no carga ${p}: ${(e as Error).message}`); return null; }
+}
+/** Lo que queda de un HTML sin los chips de la casa: si ahí se nombra un veredicto como chip, es un chip inventado. */
+const sinChipsDeLaCasa = (html: string) => html.replace(/<span class="chip-v [^"]*"[^>]*>[^<]*<\/span>/g, " ");
+const CHIP_INVENTADO = /[✓−✕–—-]\s*(Comprar|Ajustar|Buscar otro)/;
+/** Los chips de Comprar CON NÚMERO de un HTML y lo que viene después, hasta el cierre del elemento que los contiene. */
+function chipsComprarConNumero(html: string): Array<{ chip: string; despues: string }> {
+  const out: Array<{ chip: string; despues: string }> = [];
+  for (const m of html.matchAll(/<span class="chip-v c[^"]*" data-veredicto="COMPRAR" data-puntaje="\d+">[^<]*<\/span>/g)) {
+    const i = (m.index ?? 0) + m[0].length;
+    out.push({ chip: m[0], despues: texto(html.slice(i, i + 220)) });
+  }
+  return out;
+}
+
+const NADA = () => {};
+const PIN = { avisoId: "c1", comuna: "Ñuñoa", lat: -33.45, lng: -70.6, m2: 58, dormitorios: 2, banos: 2, tipologia: "2D2B", precioUF: 4290, veredicto: "COMPRAR", score: 84, flujo: 64000, arriendo: 720000, condicion: "usado" as const, alta: null };
+const NEG = { ...PIN, avisoId: "n1", precioUF: 3080, veredicto: "AJUSTA SUPUESTOS", score: 58, flujo: -40000, neg: { d: 4.2, p: 2950, s: 71, f: 12000 } };
+const PERFIL: po.FiltrosPortal = { ...po.FILTROS_GLOBALES, comunas: ["Providencia"], tipologias: ["2"], ufMin: 4000, ufMax: 6000, pie: 20, plazo: 30, tasa: null };
+
+export async function runExplorarNegociarTier(): Promise<{ hard: number }> {
+  const fallas: string[] = [];
+  const F = (m: string) => fallas.push(m);
+  console.log("\n─── TIER EXPLORAR-NEGOCIAR («al precio publicado» en cada superficie, los chips de la casa, la capa «Si negocias» aparte y sin rojo, nunca un Buscar otro, el informe negociado con los dos precios, el slider de 0,25 y «Usar la del mes», el perfil con su resumen · 0 tokens + 2 conteos) ───");
+
+  const cliente = codigo("src/app/explorar/explorar-cliente.tsx");
+  const tarjetaSrc = codigo("src/app/explorar/tarjeta-pin.tsx");
+  const filtrosSrc = codigo("src/app/explorar/hoja-filtros.tsx");
+  const mapaSrc = codigo("src/app/explorar/mapa-explorar.tsx");
+  const ruta = codigo("src/app/api/lo-que-sigue/guia/analizar/route.ts");
+  const modTar = cargar<{ TarjetaPin: FC<Record<string, unknown>>; VeredictosNegociado: FC<Record<string, unknown>> }>("src/app/explorar/tarjeta-pin", F);
+  const modLis = cargar<{ ListaPortal: FC<Record<string, unknown>> }>("src/app/explorar/lista-portal", F);
+  const modFil = cargar<{ HojaFiltros: FC<Record<string, unknown>> }>("src/app/explorar/hoja-filtros", F);
+  const modPop = cargar<{ AvisoAntesDeAnalizar: FC<Record<string, unknown>> }>("src/components/guia/AvisoAntesDeAnalizar", F);
+  const modPor = cargar<{ PortadaInforme: FC<Record<string, unknown>> }>("src/components/analysis/portada/PortadaInforme", F);
+
+  // Los dibujos que se miran en varias secciones.
+  const tarjeta = (pines: unknown[], sel: string, sinCuenta = false) => modTar ? dibujar(createElement(modTar.TarjetaPin, { pines, seleccionado: sel, uf: 39000, analizados: {}, guardados: new Set(), generando: null, error: null, alCambiar: NADA, alCerrar: NADA, alGuardar: NADA, alAnalizar: NADA, sinCuenta })) : "";
+  const lista = (sinCuenta = false) => modLis ? dibujar(createElement(modLis.ListaPortal, { pines: [PIN, { ...PIN, avisoId: "c2", score: 80 }], negociados: [NEG], tope: 5, total: 2, calculando: false, orden: "puntaje", uf: 39000, analizados: {}, guardados: new Set(), alOrden: NADA, alAbrir: NADA, alGuardar: NADA, alAvisame: NADA, alCerrar: NADA, sinCuenta })) : "";
+  const filtros = (f: po.FiltrosPortal, extra: Record<string, unknown> = {}) => modFil ? dibujar(createElement(modFil.HojaFiltros, { filtros: f, tasa: { tasa: 4.07 }, miBusqueda: { activa: false, alUsar() {}, perfil: PERFIL }, contar: () => 201, contarNegociados: () => 48, asegurar() {}, alAplicar() {}, alCerrar() {}, alPedirRegistro: null, ...extra })) : "";
+  const popup = (negociado: unknown) => modPop ? dibujarPopup(createElement(modPop.AvisoAntesDeAnalizar, {
+    depto: { comuna: "Ñuñoa", tipologia: "2D2B", m2: 58, precioUF: negociado ? 3080 : 4290, condicion: "usado" }, negociado,
+    modalidad: "ltr", combinacion: { piePct: 20, plazoAnios: 30, tasaPct: null }, finanzas: { tasa: 4.07, uf: 39000, arriendo: 720000 },
+    uso: { tipo: "con", n: 2, noVencen: false }, rutaCompra: "/x", alAnalizar() {}, alCancelar() {}, avisoId: "c1",
+    cambio: negociado ? null : { recalcular: async () => null, base: { veredicto: "COMPRAR", score: 84, flujo: 64000 } },
+  })) : "";
+  const hTarjetaC = tarjeta([PIN], "c1");
+  const hTarjetaN = tarjeta([NEG], "n1");
+  const hLista = lista();
+  const hFiltros = filtros({ ...po.FILTROS_GLOBALES, negociar: 5 });
+  const hPopN = popup({ precioUF: 2950, descuentoPct: 4.2, score: 71 });
+
+  // ── 1 · «AL PRECIO PUBLICADO» ──
+  // Mutaciones: M1 «¿Cómo se calcula?» sin la frase · M2 la barra de abajo sin la frase · M3 la tarjeta sin la frase · M4 un chip
+  // nuevo con número que no la dice.
+  {
+    if (AL_PRECIO_PUBLICADO !== "al precio publicado") F(`1 · la frase es «${AL_PRECIO_PUBLICADO}»`);
+    const est = po.COMO_SE_CALCULA.estandar(4.07);
+    if (!est.includes("calcula cuáles convienen al precio publicado")) F(`1 · «¿Cómo se calcula?» no dice «calcula cuáles convienen al precio publicado»: «${est.slice(0, 140)}»`);
+    if (!/convienen[^.]*, al precio publicado\.$/.test(BIENVENIDA_COPY.titulo)) F(`1 · la bienvenida no dice «al precio publicado»: «${BIENVENIDA_COPY.titulo}»`);
+    const lv = lineaVeredicto({ veredicto: "COMPRAR", score: 84, flujo: 88363 });
+    if (!lv?.startsWith("Comprar 84 al precio publicado")) F(`1 · el pop-up no dice «Comprar 84 al precio publicado»: «${lv}»`);
+    // La barra de abajo (teléfono y PC): el chip de Comprar y la frase, en el mismo elemento.
+    for (const marca of ["titulo-hoja", "ver-lista"]) {
+      const el = elemento(cliente, marca);
+      if (!/<ChipVeredicto v="COMPRAR"[^>]*\/>/.test(el) || !/\{AL_PRECIO_PUBLICADO\}/.test(el)) F(`1 · la barra de abajo («${marca}») no dice «al precio publicado» junto al chip`);
+    }
+    // Todo chip de Comprar con número, en la tarjeta y la lista (sin los negociados, que dicen «Si consigues»), lo dice al lado.
+    const conNumero = [...chipsComprarConNumero(hTarjetaC), ...chipsComprarConNumero(sinNegociadas(hLista))];
+    if (conNumero.length < 3) F(`1 · la tarjeta y la lista dibujan ${conNumero.length} chips de Comprar con número (se esperaban 3: no se pudo medir)`);
+    for (const c of conNumero) if (!c.despues.startsWith("al precio publicado")) F(`1 · un chip «${texto(c.chip)}» no dice «al precio publicado» al lado: «${c.despues.slice(0, 60)}»`);
+    const cab = texto(hLista.match(/<h2[^>]*data-explorar="titulo-lista"[^>]*>[\s\S]*?<\/h2>/)?.[0] ?? "");
+    if (!/^2 deptos ✓ Comprar al precio publicado/.test(cab)) F(`1 · el título de la lista no dice «al precio publicado»: «${cab}»`);
+    // En el código: todo ChipVeredicto con puntaje en Explorar y el pop-up es el de VeredictoDelPin (que dice la frase) o el del
+    // negociado (que dice «Si consigues»).
+    for (const p of ["src/app/explorar/explorar-cliente.tsx", "src/app/explorar/tarjeta-pin.tsx", "src/app/explorar/lista-portal.tsx", "src/app/explorar/hoja-filtros.tsx", "src/components/guia/AvisoAntesDeAnalizar.tsx"]) {
+      for (const m of codigo(p).matchAll(/<ChipVeredicto\b[^>]*\bpuntaje=\{([^}]+)\}[^>]*\/>/g)) {
+        const linea = codigo(p).slice(codigo(p).lastIndexOf("\n", m.index ?? 0), codigo(p).indexOf("\n", m.index ?? 0));
+        const ok = (m[1] === "p.score" && /\{AL_PRECIO_PUBLICADO\}/.test(linea)) || (/neg\.s|negociado\.score/.test(m[1]) && /\{siConsigues\.antes\}|\{NEGOCIAR_COPY\.consigues\}/.test(linea));
+        if (!ok) F(`1 · ${p}: un chip con número («puntaje={${m[1]}}») sin «al precio publicado» ni «Si consigues» al lado`);
+      }
+    }
+  }
+
+  // ── 2 · LOS CHIPS SON EL DE LA CASA ──
+  // Mutaciones: M5 la ayuda de Filtros con un chip inventado · M6 el chip de la casa sin el puntaje adentro.
+  {
+    const html = { tarjetaComprar: hTarjetaC, tarjetaNegociado: hTarjetaN, lista: hLista, filtros: hFiltros, popupNegociado: hPopN };
+    for (const [k, h] of Object.entries(html)) {
+      if (!h) { F(`2 · no se pudo dibujar ${k}`); continue; }
+      const resto = texto(sinChipsDeLaCasa(h));
+      if (CHIP_INVENTADO.test(resto)) F(`2 · ${k} nombra un veredicto como chip fuera de ChipVeredicto: «${resto.match(CHIP_INVENTADO)?.[0]}»`);
+      if (!/class="chip-v /.test(h)) F(`2 · ${k} no dibuja ningún chip de la casa`);
+    }
+    const ayuda = hFiltros.match(/<p[^>]*data-explorar="ayuda-negociar"[^>]*>[\s\S]*?<\/p>/)?.[0] ?? "";
+    if (!/class="chip-v a"[^>]*data-veredicto="AJUSTA SUPUESTOS"/.test(ayuda) || !/class="chip-v c"[^>]*data-veredicto="COMPRAR"/.test(ayuda)) F("2 · la ayuda de «Si negocias el precio» no lleva los chips reales de Ajustar y Comprar");
+    if (!/^Suma los deptos que al precio publicado dan − Ajustar , pero llegan a ✓ Comprar si consigues un descuento\. Se muestran aparte, con el pin en el color de Ajustar\.$/.test(texto(ayuda))) F(`2 · la ayuda de negociar dice «${texto(ayuda)}»`);
+    if (/factible|con argumentos/i.test(texto(hFiltros))) F("2 · Filtros dice «factible» o «con argumentos»");
+    const conPuntaje = renderToStaticMarkup(createElement((require(join(RAIZ, "src/components/analysis/shared/ChipVeredicto")) as { ChipVeredicto: FC<Record<string, unknown>> }).ChipVeredicto, { v: "COMPRAR", puntaje: 71 }));
+    if (!/^<span class="chip-v c" data-veredicto="COMPRAR" data-puntaje="71">✓ Comprar · 71<\/span>$/.test(conPuntaje)) F(`2 · el chip de la casa con puntaje dibuja ${conPuntaje}`);
+  }
+
+  // ── 3 · LOS NEGOCIADOS VAN APARTE Y SIN ROJO ──
+  // Mutaciones: M7 el total suma los negociados · M8 la lista los pone primero · M9 el pin del negociado en rojo · M10 la marca de la
+  // tasa en rojo · M11 el botón de Filtros suma las dos cuentas.
+  {
+    if (cn.botonVerConNegociados(201, 48, po.botonVer) !== "Ver 201 + 48 si negocias") F(`3 · el botón de Filtros dice «${cn.botonVerConNegociados(201, 48, po.botonVer)}»`);
+    if (cn.botonVerConNegociados(201, 0, po.botonVer) !== po.botonVer(201)) F("3 · sin negociados, el botón de Filtros no es el de siempre");
+    if (cn.NEGOCIAR_COPY.mas(1654, 5) !== "1.654 más si negocias hasta 5 %") F(`3 · la cuenta aparte dice «${cn.NEGOCIAR_COPY.mas(1654, 5)}»`);
+    const total = cliente.match(/const total = ([^;]+);/)?.[1] ?? "";
+    if (!total || /neg/i.test(total) || !/visibles\.length/.test(total)) F(`3 · el número de «convienen» no es solo el de los Comprar: «${total || "no está"}»`);
+    const iContar = cliente.indexOf("const contar = useCallback(");
+    const contar = iContar < 0 ? "" : cliente.slice(iContar, cliente.indexOf("}, [", iContar));
+    if (!contar || /negociad|Neg\b/i.test(contar)) F("3 · «contar» (el número de Filtros) mira la capa negociada");
+    if (!/\{NEGOCIAR_COPY\.mas\(visiblesNeg\.length, filtros\.negociar\)\}/.test(elemento(cliente, "cuenta-negociar"))) F("3 · la barra de abajo no lleva la cuenta aparte de los negociados");
+    if (/visiblesNeg/.test(elemento(cliente, "titulo-hoja"))) F("3 · el número de la barra de abajo mira los negociados");
+    // La lista: dos Comprar, el título de la capa y el negociado, en ese orden; el título cuenta 2.
+    const filas = Array.from(hLista.matchAll(/data-explorar="(fila|fila-negociada|titulo-negociar)"/g)).map((m) => m[1]);
+    if (filas.join(",") !== "fila,fila,titulo-negociar,fila-negociada") F(`3 · la lista no pone los negociados después de los Comprar, con su título: ${filas.join(",")}`);
+    if (!/^1 más si negocias hasta 5 %$/.test(texto(hLista.match(/<span[^>]*data-explorar="cuenta-negociar-lista"[^>]*>[\s\S]*?<\/span>/)?.[0] ?? ""))) F("3 · la lista no lleva la cuenta aparte de los negociados");
+    // El mapa: la capa en ciruela (el color de Ajustar), con el número en blanco; nunca ROJO.
+    const ciruela = mapaSrc.match(/const CIRUELA = "(#[0-9A-Fa-f]{6})"/)?.[1];
+    const ajusta = leer("src/app/globals.css").match(/--verdict-ajusta:(#[0-9A-Fa-f]{6})/)?.[1];
+    if (!ciruela || ciruela !== ajusta) F(`3 · el pin negociado no es el color de Ajustar (${ciruela} vs --verdict-ajusta ${ajusta})`);
+    const capa = mapaSrc.slice(mapaSrc.indexOf("const negs ="), mapaSrc.indexOf("const e = sel ?"));
+    if (capa.length < 200 || (capa.match(/CIRUELA/g) ?? []).length < 3 || /ROJO/.test(capa) || !/PAPEL/.test(capa)) F("3 · el mapa dibuja la capa negociada sin ciruela, con rojo o sin el número en blanco");
+    if (mapaSrc.match(/const PAPEL = "(#[0-9A-Fa-f]{6})"/)?.[1]?.toUpperCase() !== "#FFFFFF") F("3 · el número del pin negociado no es blanco");
+    // El interruptor del chip y la marca de la tasa, en tinta (sin el rojo).
+    const css = leer("src/app/explorar/explorar.css");
+    const v2 = css.slice(css.indexOf("FILTROS V2"));
+    for (const sel of [".ex-sw", ".ex-chip-neg", ".ex-slider-marca"]) {
+      const reglas = Array.from(v2.matchAll(/([^{}]+)\{([^}]*)\}/g)).filter((m) => m[1].includes(sel)).map((m) => m[2]).join(" ");
+      if (!reglas) F(`3 · no está el estilo de ${sel}`);
+      else if (/signal-red|#C8323C|--franco-red|--verdict-buscar/i.test(reglas)) F(`3 · ${sel} usa el rojo`);
+    }
+    // El interruptor de la tarjeta «Si negocias el precio» en Filtros (el de siempre, fuera de la sección v2), prendido en tinta.
+    const prendido = css.match(/\.ex-interruptor input:checked \{([^}]*)\}/)?.[1] ?? "";
+    if (!/background: var\(--franco-text\)/.test(prendido)) F("3 · el interruptor de Filtros, prendido, no va en tinta");
+  }
+
+  // ── 4 · UN BUSCAR OTRO NUNCA ENTRA ──
+  // Mutaciones: M12 la noche calcula también los Buscar otro · M13 el SQL de la capa no filtra por Ajustar · M14 la capa no deja
+  // fuera a los que ya convienen.
+  {
+    const ng = cargar<typeof import("../../../src/lib/avisos/negociar")>("src/lib/avisos/negociar", F);
+    if (ng) {
+      // Un candidato que anota cada lectura: si la noche lo mirara para un Buscar otro o un Comprar, lo estaría calculando. Y para
+      // un Ajustar tiene que mirarlo (si no, la regla no se midió).
+      const espia = () => { const leidas: string[] = []; return { leidas, c: new Proxy({}, { get(_, k) { leidas.push(String(k)); return undefined; } }) as never }; };
+      const noCalcula = espia();
+      try {
+        const r = ng.evaluarNegociar(noCalcula.c, { veredicto_20: "BUSCAR OTRA", veredicto_30: "COMPRAR" }, { uf: 39000, tasa: 4.07 });
+        if (r.negociar_20 !== null || r.negociar_30 !== null) F("4 · la noche guarda un descuento para un Buscar otro o un Comprar");
+      } catch { /* lo anota el espía */ }
+      if (noCalcula.leidas.length > 0) F(`4 · la noche calcula el descuento de un Buscar otro o un Comprar (leyó ${noCalcula.leidas.slice(0, 3).join(", ")})`);
+      const calcula = espia();
+      try { ng.evaluarNegociar(calcula.c, { veredicto_20: "AJUSTA SUPUESTOS", veredicto_30: null }, { uf: 39000, tasa: 4.07 }); } catch { /* basta con que lo haya leído */ }
+      if (calcula.leidas.length === 0) F("4 · la noche no calcula el descuento de un Ajustar: no se pudo medir la regla");
+    }
+    const sql = sinComentarios(leer("supabase/migrations/20261102_negociar_explorar.sql"));
+    const fn = sql.slice(sql.indexOf("function public.explorar_negociar"));
+    if (!/\(case when pie = 30 then ae\.veredicto_30 else ae\.veredicto_20 end\) = 'AJUSTA SUPUESTOS'/.test(fn)) F("4 · el SQL de la capa no se queda solo con los que dan Ajustar a ese pie");
+    if (cn.descompactarNegociados(cn.compactarNegociados([NEG as cn.PinNegociado]))[0]?.veredicto !== "AJUSTA SUPUESTOS") F("4 · un negociado no viaja como Ajustar");
+    const f = { ...po.FILTROS_GLOBALES, negociar: 5 as const };
+    const dejados = cn.filtrarNegociados([NEG as cn.PinNegociado, { ...NEG, avisoId: "n2" } as cn.PinNegociado], f, 5, new Set(["n2"])).map((p) => p.avisoId);
+    if (dejados.join() !== "n1") F(`4 · la capa no deja fuera a los que ya convienen: ${dejados.join()}`);
+    if (cn.filtrarNegociados([{ ...NEG, neg: { ...NEG.neg, d: 7.5 } } as cn.PinNegociado], f, 5).length !== 0) F("4 · la capa con tope 5 % deja entrar un descuento de 7,5 %");
+    // La base: ninguna fila con descuento que no dé Ajustar a ese pie.
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL, key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!url || !key) F("4 · sin credenciales de la base: no se pudo contar (un cero que no corrió no es un cero)");
+    else {
+      const db = createClient(url, key, { auth: { persistSession: false } });
+      for (const pie of [20, 30]) {
+        const { count, error } = await db.from("avisos_evaluados").select("aviso_id", { count: "exact", head: true }).not(`negociar_${pie}`, "is", null).or(`veredicto_${pie}.is.null,veredicto_${pie}.neq.AJUSTA SUPUESTOS`);
+        if (error || count == null) F(`4 · no se pudo contar en la base a pie ${pie}: ${error?.message ?? "sin número"}`);
+        else if (count > 0) F(`4 · la base tiene ${count} avisos con descuento a pie ${pie} que no dan Ajustar`);
+      }
+    }
+  }
+
+  // ── 5 · EL INFORME NEGOCIADO LLEVA LOS DOS PRECIOS ──
+  // Mutaciones: M15 la portada sin la línea · M16 la ruta sin el piso antes del evento · M17 el informe al precio publicado · M18 el
+  // informe sin los dos precios · M19 `analisis_creado` sin la marca.
+  {
+    const np = negociadoDePortada({ origenAviso: { precioNegociado: { publicadoUF: 3080, negociadoUF: 2950, descuentoPct: 4.2 } } });
+    if (!np || lineaNegociadoPortada(np) !== "Analizado a UF 2.950, un 4,2 % bajo el precio publicado") F(`5 · la portada dice «${np ? lineaNegociadoPortada(np) : "nada"}»`);
+    if (negociadoDePortada({ origenAviso: {} }) !== null || negociadoDePortada({ origenAviso: { precioNegociado: { publicadoUF: 3080, negociadoUF: 3080, descuentoPct: 0 } } }) !== null) F("5 · la portada dice un precio negociado que no lo es");
+    if (modPor) {
+      const portada = (precioNegociado: unknown) => renderToStaticMarkup(createElement(modPor.PortadaInforme, {
+        veredicto: "COMPRAR", score: 71, direccion: "", comuna: "Ñuñoa", modalidadLabel: "Renta larga", fecha: "2 nov 2026", titular: null, cifra: null,
+        ficha: { titulo: "Ñuñoa", sub: null, grupos: [], ufValue: 39000 }, precioNegociado, currency: "CLP", onCurrencyChange: () => {}, mapa: null,
+      }));
+      const con = portada(np);
+      const linea = con.match(/<p[^>]*data-portada="precio-negociado"[^>]*>([^<]*)<\/p>/);
+      if (!linea || linea[1] !== "Analizado a UF 2.950, un 4,2 % bajo el precio publicado" || !/title="Precio publicado: UF 3\.080"/.test(linea[0])) F(`5 · la portada no dibuja los dos precios: ${linea?.[0] ?? "sin la línea"}`);
+      if (/data-portada="precio-negociado"/.test(portada(null))) F("5 · la portada dice un precio negociado sin haberlo");
+    }
+    if (!/precioNegociado=\{negociadoDePortada\(inputData\)\}/.test(codigo("src/components/analysis/SubjectCardGrid.tsx"))) F("5 · el informe no le pasa el precio negociado a la portada");
+    // El piso: en UF enteras, bajo el publicado y no más abajo que el publicado menos el tope.
+    const piso: Array<[number, number, number, boolean]> = [[2950, 3080, 5, true], [2926, 3080, 5, true], [2925, 3080, 5, false], [3080, 3080, 5, false], [2950.5, 3080, 5, false], [2950, 3080, 7, false], [2773, 3080, 10, true], [2771, 3080, 10, false]];
+    for (const [n, p, t, esperado] of piso) if (cn.precioNegociadoValido(n, p, t) !== esperado) F(`5 · el piso acepta mal UF ${n} sobre UF ${p} con tope ${t} % (debía ser ${esperado})`);
+    // La ruta: el piso ANTES del evento de Meta y de leer la ficha; el informe al precio negociado, con los dos precios; la marca.
+    const post = ruta.slice(ruta.indexOf("export async function POST"));
+    // El bloque entero, no la mención: un `if (false)` delante o un return que no corta dejarían la llamada en su lugar.
+    const piso0 = post.match(/if \(negociadoUF != null\) \{\s*const avisoNeg = await leerAvisoGuia\(admin, b\.avisoId, origen\);\s*if \(!avisoNeg\) return NextResponse\.json\(\{ error: "aviso" \}, \{ status: 404 \}\);\s*if \(!precioNegociadoValido\(negociadoUF, avisoNeg\.precioUF, Number\(b\.topeNegociar\)\)\) return NextResponse\.json\(\{ error: "precio-negociado" \}, \{ status: 400 \}\);\s*\}/);
+    const iPiso = piso0?.index ?? -1, iMeta = post.indexOf("emitirEventoMeta("), iFicha = post.indexOf("chequearPublicacion(");
+    if (iPiso < 0 || iMeta < 0 || iFicha < 0 || iPiso > iMeta || iPiso > iFicha) F("5 · la ruta mira el piso del precio negociado después del evento o de leer la ficha (o no lo mira)");
+    if (!/negociadoUF != null && !precioNegociadoValido\(negociadoUF, aviso\.precioUF, Number\(b\.topeNegociar\)\)\) return \{ ok: false, status: 400, error: "precio-negociado" \};/.test(post)) F("5 · `preparar` no vuelve a mirar el piso con el aviso que usa");
+    if (!/cuerpoDelAviso\(precioNegociado \? \{ \.\.\.aviso, precioUF: precioNegociado\.negociadoUF \} : aviso,/.test(post)) F("5 · el informe negociado no se hace al precio negociado");
+    if (!/body\.origenAviso\.precioNegociado = precioNegociado;/.test(post) || !/precioNegociado = negociadoUF != null \? \{ publicadoUF, negociadoUF, descuentoPct:/.test(post)) F("5 · el informe negociado no guarda los dos precios");
+    if (!/capturarAnalisisCreado\(\{[^}]*\bprecioNegociado \}\)/.test(post)) F("5 · `analisis_creado` no recibe el precio negociado");
+    const ev = eventoAnalisisCreado({ userId: "u", analysisId: "a", modalidad: "ltr", via: "explorar", precioNegociado: { descuentoPct: 4.2 } }).properties as Record<string, unknown>;
+    const sin = eventoAnalisisCreado({ userId: "u", analysisId: "a", modalidad: "ltr", via: "explorar" }).properties as Record<string, unknown>;
+    if (ev.precio_negociado !== true || ev.descuento_pct !== 4.2 || "precio_negociado" in sin) F(`5 · analisis_creado no lleva la marca del precio negociado: ${JSON.stringify(ev)}`);
+    // El navegador manda el precio y el tope solo para un negociado con cifras.
+    if (!/esNegociado\(it\) && conCifrasNegociado\(it\) && filtros\.negociar != null \? \{ precioNegociadoUF: it\.neg\.p, topeNegociar: filtros\.negociar \}/.test(cuerpo(cliente, "async function analizar("))) F("5 · «Analizar a UF X» no manda el precio negociado y el tope");
+    // El pop-up y la tarjeta: los dos veredictos y el botón.
+    const pop = texto(hPopN);
+    if (!/Al precio publicado − Ajustar/.test(pop) || !/Si consigues UF 2\.950 \(−4,2 %\) ✓ Comprar · 71/.test(pop)) F(`5 · el pop-up del negociado no dice los dos veredictos: «${pop.slice(0, 200)}»`);
+    const tn = texto(hTarjetaN);
+    if (!/UF 3\.080 publicado/.test(tn) || !/Al precio publicado − Ajustar/.test(tn) || !/Si consigues UF 2\.950 \(−4,2 %\) ✓ Comprar · 71/.test(tn) || !/Analizar a UF 2\.950/.test(tn)) F(`5 · la tarjeta del negociado no dice los dos precios y «Analizar a UF 2.950»: «${tn.slice(0, 220)}»`);
+  }
+
+  // ── 6 · EL SLIDER DE LA TASA ──
+  // Mutaciones: M20 «Usar la del mes» fija la del mes en vez de seguir al motor · M21 el slider sin paso de 0,25 · M22 soltarlo no
+  // se mide.
+  {
+    const grilla = Array.from({ length: 13 }, (_, i) => 3 + i * 0.25);
+    if (JSON.stringify([...TASAS_ELEGIBLES]) !== JSON.stringify(grilla)) F(`6 · las tasas elegibles no son 3,0 a 6,0 de a 0,25: ${JSON.stringify(TASAS_ELEGIBLES)}`);
+    const rango = hFiltros.match(/<input[^>]*type="range"[^>]*>/)?.[0] ?? "";
+    if (!/min="3"/.test(rango) || !/max="6"/.test(rango) || !/step="0.25"/.test(rango)) F(`6 · el slider no va de 3 a 6 de a 0,25: ${rango || "sin slider"}`);
+    if (texto(hFiltros.match(/<span[^>]*data-explorar="tasa-valor"[^>]*>[\s\S]*?<\/span>\s*<\/span>/)?.[0] ?? "") !== "4,07 % · promedio del mes") F("6 · arriba no dice «4,07 % · promedio del mes»");
+    if (!/data-explorar="tasa-marca"/.test(hFiltros)) F("6 · el slider no lleva la marca de la tasa del mes");
+    if (!/<button[^>]*disabled=""[^>]*data-explorar="tasa-del-mes"/.test(hFiltros)) F("6 · «Usar la del mes» se puede tocar estando ya en la del mes");
+    const otra = filtros({ ...po.FILTROS_GLOBALES, tasa: 4.25, negociar: 5 });
+    if (!/data-explorar="tasa-valor"[^>]*>4,25 %</.test(otra) || /<button[^>]*disabled=""[^>]*data-explorar="tasa-del-mes"/.test(otra)) F("6 · con otra tasa, arriba no dice esa tasa o «Usar la del mes» no se puede tocar");
+    if (!/data-explorar="sin-capa"/.test(otra) || /data-explorar="sin-capa"/.test(hFiltros)) F("6 · con otra tasa, Filtros no dice que la capa no se muestra (o lo dice con la del mes)");
+    const usar = elemento(filtrosSrc, "tasa-del-mes");
+    if (!/onClick=\{\(\) => poner\(\{ tasa: null \}\)\}/.test(usar)) F("6 · «Usar la del mes» no deja la tasa siguiendo al motor (null)");
+    const slider = (filtrosSrc.match(/<input type="range"[\s\S]*?data-explorar="tasa" \/>/) ?? [""])[0];
+    if (!/step=\{TASA_PASO\}/.test(slider) || !/const TASA_PASO = TASAS_ELEGIBLES\[1\] - TASAS_ELEGIBLES\[0\];/.test(filtrosSrc)) F("6 · el paso del slider no es el de las tasas elegibles");
+    if (!/onPointerUp=\{soltarTasa\}/.test(slider) || !/onKeyUp=\{soltarTasa\}/.test(slider) || !/const soltarTasa = \(e: \{ currentTarget: HTMLInputElement \}\) => alMoverTasa\(Number\(e\.currentTarget\.value\)\);/.test(filtrosSrc)) F("6 · soltar el slider no avisa la tasa");
+    if (po.EVENTOS_PORTAL.tasaSlider !== "explorar_tasa_slider" || !/alMoverTasa=\{\(t\) => posthog\?\.capture\(EVENTOS_PORTAL\.tasaSlider, propsDeTasa\(t,/.test(cliente)) F("6 · soltar el slider no se mide como explorar_tasa_slider");
+  }
+
+  // ── 7 · «APLICAR MI PERFIL DE BÚSQUEDA» ──
+  // Mutación: M23 la tarjeta del perfil sin el resumen.
+  {
+    if (po.resumenPerfil(PERFIL) !== "Providencia · 2D · UF 4.000–6.000 · pie 20 % · 30 años · tasa del mes") F(`7 · el resumen del perfil dice «${po.resumenPerfil(PERFIL)}»`);
+    const card = hFiltros.match(/<section[^>]*data-explorar="card-perfil"[\s\S]*?<\/section>/)?.[0] ?? "";
+    if (texto(card.match(/<span[^>]*data-explorar="perfil-resumen"[^>]*>[\s\S]*?<\/span>/)?.[0] ?? "") !== po.resumenPerfil(PERFIL)) F("7 · «Aplicar mi perfil de búsqueda» no muestra el resumen del perfil");
+    if (!/Aplicar mi perfil de búsqueda/.test(texto(card)) || !/>Aplicar</.test(card)) F("7 · la tarjeta del perfil no dice «Aplicar mi perfil de búsqueda» con su botón");
+    if (po.PORTAL_COPY.v2.perfil.tooltip !== "Es la búsqueda con la que Franco arma tu selección semanal. Al aplicarla, el mapa muestra solo lo que calza con ella. La editas en tu Dashboard.") F("7 · el tooltip del perfil cambió");
+    if (!/<Info [^>]*texto=\{V\.perfil\.tooltip\}/.test(elemento(filtrosSrc, "card-perfil"))) F("7 · la tarjeta del perfil no lleva su tooltip");
+  }
+
+  // ── 8 · LA MEDICIÓN DEL CHIP ──
+  // Mutación: M24 prender el chip no se mide.
+  {
+    if (cn.EVENTO_NEGOCIAR !== "explorar_negociar") F(`8 · el evento es «${cn.EVENTO_NEGOCIAR}»`);
+    if (JSON.stringify(cn.propsNegociar(5, "chip", 48)) !== JSON.stringify({ prendido: true, tope: 5, donde: "chip", n: 48 })) F(`8 · el evento del chip lleva ${JSON.stringify(cn.propsNegociar(5, "chip", 48))}`);
+    if (!/posthog\?\.capture\(EVENTO_NEGOCIAR, propsNegociar\(f\.negociar, "chip", contarNegociados\(f\)\)\)/.test(cliente)) F("8 · prender el chip de la barra no se mide");
+    if (!/fuente === "filtros" && f\.negociar !== filtros\.negociar\) posthog\?\.capture\(EVENTO_NEGOCIAR, propsNegociar\(f\.negociar, "filtros",/.test(cliente)) F("8 · cambiar el tope en Filtros no se mide");
+  }
+
+  // ── 9 · LA CAPA SOLO CON LO QUE CALCULA LA NOCHE, Y SIN CUENTA BORROSA ──
+  // Mutaciones: M25 la capa con cualquier tasa · M26 sin cuenta viaja el precio negociado · M27 la tarjeta sin cuenta dice el precio.
+  {
+    const g = po.FILTROS_GLOBALES;
+    const casos: Array<[Partial<po.FiltrosPortal>, boolean]> = [[{}, true], [{ pie: 30 }, true], [{ tasa: 4.5 }, false], [{ plazo: 25 }, false], [{ pie: 10 }, false], [{ modalidad: "str" }, false]];
+    for (const [c, esperado] of casos) if (cn.capaNegociarDisponible({ ...g, ...c }) !== esperado) F(`9 · la capa con ${JSON.stringify(c)} da ${!esperado} (debía ser ${esperado})`);
+    if (Math.max(...cn.TOPES_NEGOCIAR) !== TOPE_NEGOCIAR_PCT || JSON.stringify([...cn.TOPES_NEGOCIAR]) !== "[5,10]") F(`9 · los topes (${cn.TOPES_NEGOCIAR}) no terminan en el de la noche (${TOPE_NEGOCIAR_PCT})`);
+    const abierto = cn.sinCifrasNegociados(cn.compactarNegociados([NEG as cn.PinNegociado, { ...NEG, avisoId: "n2", neg: { ...NEG.neg, d: 7.5 } } as cn.PinNegociado]));
+    const [a1, a2] = abierto.filas;
+    if (a1[14] !== null || a1[16] !== null || a1[9] !== null || a1[10] !== null || a1[13] !== 5 || a2[13] !== 10 || a1[15] !== 71) F(`9 · sin cuenta viajan cifras del negociado (o el descuento no viaja como su tope): ${JSON.stringify(a1)}`);
+    if (!/sinCifrasNegociados\(await negociablesCacheados\(PIE_ABIERTO\)\)/.test(codigo("src/app/api/explorar/abierto/negociar/route.ts"))) F("9 · la ruta abierta de la capa no quita las cifras");
+    const pinAbierto = cn.descompactarNegociados(abierto)[0];
+    const hAbierta = tarjeta([pinAbierto], "n1", true);
+    const ta = texto(hAbierta);
+    if (/2\.950|4,2/.test(ta) || (hAbierta.match(/data-explorar="borroso"/g) ?? []).length < 2 || !/Si consigues/.test(ta) || !/✓ Comprar · 71/.test(ta)) F(`9 · la tarjeta sin cuenta no dibuja borrosos el precio y el descuento: «${ta.slice(0, 200)}»`);
+    const capaMapa = mapaSrc.slice(mapaSrc.indexOf("const negs ="), mapaSrc.indexOf("const e = sel ?"));
+    if (!/if \(sinCifrasRef\.current\) marcador\(\{ lat: p\.lat, lng: p\.lng \}, elegido \? iconoElegido\(\) : iconoPunto\(CIRUELA\)/.test(capaMapa)) F("9 · sin cuenta, el mapa dibuja el descuento en el pin negociado");
+  }
+
+  for (const m of fallas) console.log(`  ✗ ${m}`);
+  console.log(fallas.length === 0 ? "  ✓ EXPLORAR-NEGOCIAR: todo en orden" : `  ${fallas.length} falla(s) dura(s)`);
+  return { hard: fallas.length };
+}
+
+/** La lista sin las filas negociadas (sus chips de Comprar dicen «Si consigues», no «al precio publicado»). */
+function sinNegociadas(html: string): string {
+  return html.replace(/<li[^>]*data-explorar="fila-negociada"[\s\S]*?<\/li>/g, "");
+}
+
+if (require.main === module) {
+  runExplorarNegociarTier().then((r) => process.exit(r.hard > 0 ? 1 : 0)).catch((e) => { console.error(e); process.exit(1); });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ACTA DE MUTACIONES (02-nov-2026, meta-runner que restaura byte a byte): 61 mutaciones a este tier y 26 a los predicados
+// reescritos de otros nueve tiers, 87 de 87 en ROJO y cada una por su invariante.
+//   §1 N1-N8: «¿Cómo se calcula?», la barra del teléfono, la píldora del PC, la tarjeta, la lista (y un chip nuevo con número),
+//      la bienvenida, el pop-up y el título de la lista sin «al precio publicado».
+//   §2 N9-N13: un chip inventado en la ayuda de Filtros y en la tarjeta del negociado, el chip de la casa sin el puntaje, la
+//      ayuda sin el chip de Comprar, «factible» en los topes.
+//   §3 N14-N25: «convienen», «contar» y el botón de Filtros que suman la capa; la lista con los negociados primero; el pin y el
+//      grupo en rojo, la ciruela que no es la de Ajustar, el número que no es blanco; el chip, el interruptor y la marca de la
+//      tasa en rojo; la barra sin la cuenta aparte.
+//   §4 N26-N30: la noche que calcula los Buscar otro (o no calcula los Ajustar: el espía tiene que leer), el SQL sin el filtro
+//      de Ajustar, la capa que no deja fuera a los que convienen o ignora el tope.
+//   §5 N31-N45: la portada sin la línea, sin el publicado o sin el descuento; el informe que no le pasa el precio; el piso
+//      desactivado con un `if (false)`, sin cortar, más ancho que el tope o que acepta el publicado; el informe al precio
+//      publicado o sin los dos precios; `analisis_creado` sin la marca o sin recibirla; el navegador sin mandar el precio; el
+//      pop-up y la tarjeta del negociado sin su Comprar o sin «Analizar a UF».
+//   §6 N46-N51: «Usar la del mes» que fija la del mes, el paso de 0,01, soltar sin avisar o medido con otro evento, sin la marca,
+//      Filtros sin decir que no hay capa con otra tasa.
+//   §7 N52-N54 · §8 N55-N56 · §9 N57-N61: el perfil sin resumen, sin plazo o sin tooltip; el chip sin medir o sin el tope; la capa
+//      con cualquier tasa, el precio negociado viajando sin cuenta, la tarjeta y el mapa sin cuenta con cifras, la ruta abierta
+//      sin quitarlas.
+// Dos trampas del instrumento, cazadas antes de mutar: `[^>]*` se corta en el «=>» de un onChange (el slider no se leía) y
+// `cuerpo()` solo corta en declaraciones de primer nivel (el de «contar» se tragaba «contarNegociados»). Y un `{}` como
+// candidato no prueba que la noche no calcula: `negociarCandidato` corta solo si no hay arriendo; por eso el espía (Proxy).
+// ─────────────────────────────────────────────────────────────────────────────
