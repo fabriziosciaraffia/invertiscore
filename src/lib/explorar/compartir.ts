@@ -15,24 +15,50 @@
 //     servidor comprueba que el depto da Comprar hoy con esos supuestos.
 //   · SI YA NO ESTÁ PUBLICADO cuando se abre el enlace, la tarjeta lo dice y ofrece los parecidos que sí dan
 //     (`parecidosQueDan`); si sigue publicado pero ya no está entre los que convienen, lo mismo con su frase.
-//   · CON LA CAPA «SI NEGOCIAS» (capa-negociar.ts, el mismo 02-nov-2026): un negociado da Ajustar al precio publicado —su
-//     Comprar es al precio negociado—, así que se comparte sin veredicto (`veredictoDelPin`), y quien abre su enlace lee que no
-//     está entre los que convienen hoy al precio publicado (nunca «ya no»: no lo estuvo), con sus parecidos.
+//   · UN DEPTO DE LA CAPA «SI NEGOCIAS» SE COMPARTE CON SU VERDAD COMPLETA (03-nov-2026, goal de Fabrizio; capa-negociar.ts): al
+//     precio publicado da Ajustar y llega a Comprar si se consigue el precio negociado. El texto: «Ñuñoa · 2D2B · 58 m² · Usado
+//     · UF 3.080 · Conviene si lo negocias a UF 2.950 (−4,2 %), según Franco»; el enlace lleva el tope de la capa (`n`) y abre
+//     /explorar con «Si negocias» prendido, en ese pin, con la tarjeta de los dos veredictos; la vista previa, el chip Ajustar
+//     al precio publicado y «Conviene si lo negocias a UF 2.950», sin otro número. Si al abrirlo ya no llega dentro del tope
+//     con los datos de hoy (compartir-servidor.ts verifica como antes de cobrar), la tarjeta lo dice y ofrece parecidos.
 // ─────────────────────────────────────────────────────────────────────────────
 import { lineaDepto, type CondicionDepto } from "@/lib/guia/linea-depto";
 import { PIE_POR_DEFECTO, PLAZO_POR_DEFECTO } from "@/lib/deptos/estandar";
 import { AL_PRECIO_PUBLICADO } from "@/lib/precio-publicado";
 import type { FiltrosPortal, ModalidadPortal, PinMapa } from "./portal";
+import { conCifrasNegociado, esNegociado, TOPE_NEGOCIAR_POR_DEFECTO, topeQueAlcanza, type TopeNegociar } from "./capa-negociar";
 
 const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
+const pct1 = (n: number) => n.toLocaleString("es-CL", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
 /** ¿Mira con el financiamiento por defecto? Solo entonces el veredicto y el puntaje de su pin son los que se comparten. */
 export const esVistaEstandar = (f: Pick<FiltrosPortal, "pie" | "plazo" | "tasa">): boolean => f.pie === PIE_POR_DEFECTO && f.plazo === PLAZO_POR_DEFECTO && f.tasa == null;
 
+/** Lo que se dice de un depto al compartirlo: Comprar con su puntaje, o —un negociado— el precio al que conviene si se negocia
+ *  y su descuento; ninguno de los dos, sin veredicto. */
+export interface VeredictoCompartido {
+  comprar: boolean;
+  score: number | null;
+  negociado?: { p: number; d: number } | null;
+}
+
 /** EL VEREDICTO DEL PIN en la vista de por defecto: Comprar con su puntaje solo si el pin da Comprar. Un negociado de la capa
- *  «Si negocias» da Ajustar al precio publicado y se comparte sin veredicto, como el que no da con otro pie. */
-export const veredictoDelPin = (p: Pick<PinMapa, "veredicto" | "score">): { comprar: boolean; score: number | null } =>
-  p.veredicto === "COMPRAR" ? { comprar: true, score: p.score } : { comprar: false, score: null };
+ *  «Si negocias» da Ajustar al precio publicado: se comparte con su precio negociado y su descuento (si viajaron: sin cuenta
+ *  los pide al servidor, `pideAlServidor`). */
+export const veredictoDelPin = (p: PinMapa): VeredictoCompartido =>
+  esNegociado(p)
+    ? { comprar: false, score: null, negociado: conCifrasNegociado(p) ? { p: p.neg.p, d: p.neg.d } : null }
+    : p.veredicto === "COMPRAR" ? { comprar: true, score: p.score } : { comprar: false, score: null };
+
+/** ¿Lo que se comparte lo dice el servidor? Con otro pie, plazo o tasa (lo de por defecto no está en el navegador), o un
+ *  negociado sin cuenta (su precio negociado no viajó). */
+export const pideAlServidor = (p: PinMapa, f: Pick<FiltrosPortal, "pie" | "plazo" | "tasa">): boolean =>
+  !esVistaEstandar(f) || (esNegociado(p) && !conCifrasNegociado(p));
+
+/** EL TOPE QUE LLEVA EL ENLACE DE UN NEGOCIADO: el de la capa de quien comparte (5 % si no la tenía prendida), y nunca menos
+ *  que el que alcanza su descuento: el enlace tiene que abrirlo dentro de la capa. */
+export const topeDelEnlace = (tope: number | null, d: number): TopeNegociar =>
+  Math.max(tope ?? TOPE_NEGOCIAR_POR_DEFECTO, topeQueAlcanza(d)) as TopeNegociar;
 
 /** Lo que se sabe del depto para el texto, la vista previa y la tarjeta de «ya no está». */
 export interface DeptoCompartido {
@@ -51,8 +77,16 @@ export const deptoDePin = (p: PinMapa): DeptoCompartido => ({
   comuna: p.comuna, tipologia: p.tipologia, m2: p.m2, ...(p.condicion ? { condicion: p.condicion } : {}), precioUF: p.precioUF, dormitorios: p.dormitorios, lat: p.lat, lng: p.lng,
 });
 
-/** Cómo está el depto hoy, con el financiamiento por defecto: da Comprar, ya no da, o ya no está publicado. */
-export type EstadoCompartido = "comprar" | "no-da" | "despublicado";
+/** Cómo está el depto hoy, con el financiamiento por defecto: da Comprar, llega a Comprar si se negocia (dentro del tope del
+ *  enlace), ya no llega dentro del tope, ya no da, o ya no está publicado. */
+export type EstadoCompartido = "comprar" | "negociado" | "no-llega" | "no-da" | "despublicado";
+/** Lo que trae un negociado: el descuento (%), el precio negociado (UF), y el puntaje y el flujo a ese precio. */
+export interface NegociadoCompartido {
+  d: number;
+  p: number;
+  s: number | null;
+  f: number | null;
+}
 
 /** Lo que el servidor sabe de un depto compartido (compartir-servidor.ts › fichaCompartida). */
 export interface FichaCompartida {
@@ -62,6 +96,10 @@ export interface FichaCompartida {
   depto: DeptoCompartido;
   /** El puntaje con el financiamiento por defecto; solo con «comprar». */
   score: number | null;
+  /** El negociado, verificado con los datos de hoy; solo con «negociado». */
+  neg?: NegociadoCompartido | null;
+  /** El tope del enlace (`n`); null si el enlace no venía de la capa. */
+  tope?: number | null;
 }
 
 /** «Providencia · 2D2B · 79 m² · UF 4.591»: la línea del depto y su precio. */
@@ -72,7 +110,8 @@ export const lineaConPrecio = (d: Pick<DeptoCompartido, "comuna" | "tipologia" |
  * publicado, según Franco». Si con el financiamiento por defecto el depto no da Comprar (quien comparte miraba con otro pie),
  * sin veredicto: el enlace va igual, y quien lo abra ve lo que Franco dice con esos supuestos.
  */
-export function textoCompartir(d: Pick<DeptoCompartido, "comuna" | "tipologia" | "m2" | "condicion" | "precioUF">, veredicto: { comprar: boolean; score: number | null }): string {
+export function textoCompartir(d: Pick<DeptoCompartido, "comuna" | "tipologia" | "m2" | "condicion" | "precioUF">, veredicto: VeredictoCompartido): string {
+  if (veredicto.negociado) return `${lineaConPrecio(d)} · ${COMPARTIR_COPY.negociado.texto(veredicto.negociado.p, veredicto.negociado.d)}`;
   if (!veredicto.comprar) return `${lineaConPrecio(d)} · ${COMPARTIR_COPY.sinVeredicto}`;
   return `${lineaConPrecio(d)} · ✓ Comprar${veredicto.score != null ? ` ${veredicto.score}` : ""} ${COMPARTIR_COPY.alPrecio}`;
 }
@@ -85,19 +124,23 @@ export const mensajeCompartir = (texto: string, url: string): string => `${texto
  * del depto, el precio y el chip ✓ Comprar (solo si da Comprar hoy); NUNCA el puntaje, el flujo, el cap rate ni el arriendo:
  * el tier COMPARTIR-DEPTO lo exige campo por campo.
  */
-export function contenidoVistaPrevia(f: Pick<FichaCompartida, "estado" | "depto">): { titulo: string; descripcion: string; linea: string; precio: string; chip: "COMPRAR" | null } {
+export function contenidoVistaPrevia(f: Pick<FichaCompartida, "estado" | "depto" | "neg">): { titulo: string; descripcion: string; linea: string; precio: string; chip: "COMPRAR" | "AJUSTA SUPUESTOS" | null; negociado: string | null } {
   const comprar = f.estado === "comprar";
+  // Un negociado (03-nov-2026): el chip Ajustar al precio publicado y el precio al que conviene; ni el descuento ni el puntaje.
+  const neg = f.estado === "negociado" && f.neg ? f.neg : null;
   return {
     titulo: lineaConPrecio(f.depto),
-    descripcion: comprar ? COMPARTIR_COPY.vistaPrevia.comprar : f.estado === "despublicado" ? COMPARTIR_COPY.vistaPrevia.despublicado : COMPARTIR_COPY.vistaPrevia.noDa,
+    descripcion: neg ? COMPARTIR_COPY.negociado.descripcion(neg.p) : comprar ? COMPARTIR_COPY.vistaPrevia.comprar : f.estado === "despublicado" ? COMPARTIR_COPY.vistaPrevia.despublicado : COMPARTIR_COPY.vistaPrevia.noDa,
     linea: lineaDepto(f.depto),
     precio: `UF ${miles(f.depto.precioUF)}`,
-    chip: comprar ? "COMPRAR" : null,
+    chip: comprar ? "COMPRAR" : neg ? "AJUSTA SUPUESTOS" : null,
+    negociado: neg ? COMPARTIR_COPY.negociado.linea(neg.p) : null,
   };
 }
 
-/** La imagen de la vista previa (la ruta la genera y la deja en la caché del CDN). */
-export const rutaVistaPrevia = (avisoId: string, modalidad: ModalidadPortal): string => `/api/og/depto/${encodeURIComponent(avisoId)}${modalidad === "str" ? "?m=str" : ""}`;
+/** La imagen de la vista previa (la ruta la genera y la deja en la caché del CDN); la de un negociado lleva el tope (`n`). */
+export const rutaVistaPrevia = (avisoId: string, modalidad: ModalidadPortal, tope: number | null = null): string =>
+  `/api/og/depto/${encodeURIComponent(avisoId)}${modalidad === "str" ? "?m=str" : tope != null ? `?n=${tope}` : ""}`;
 /** Su tamaño en píxeles: la ruta la dibuja así (el diseño de 1200 × 630 a 2/3) y los metadatos lo declaran. */
 export const VISTA_PREVIA_PX = { ancho: 800, alto: 420 } as const;
 
@@ -132,17 +175,25 @@ export function parecidosQueDan(d: DeptoCompartido, pines: readonly PinMapa[], a
   return out;
 }
 
+/** Lo que abre un enlace que no llega a su pin: el depto ya no está, ya no llega dentro del tope, o ya no conviene. */
+export type EstadoCaido = "despublicado" | "no-llega" | "no-da";
+
 /**
- * QUÉ ABRE EL ENLACE cuando llega el universo: la tarjeta de ese pin si está entre los que convienen (con los cercanos), o la
- * tarjeta de «ya no está» con los parecidos. `estado` es lo que dijo el servidor del aviso (publicado o no); si el servidor
- * no lo supo, un aviso que no está en el mapa se lee como «ya no está entre los que convienen».
+ * QUÉ ABRE EL ENLACE cuando llega el universo: la tarjeta de ese pin si está entre los que convienen (con los cercanos) o, con
+ * la capa prendida, entre los negociados; si no, la tarjeta de «ya no está» con los parecidos que sí convienen. `estado` es lo
+ * que dijo el servidor del aviso: despublicado, o que ya no llega dentro del tope con los datos de hoy —aunque la capa de la
+ * noche todavía lo traiga—; si el servidor no lo supo, un aviso que no está en el mapa se lee como «no está entre los que
+ * convienen».
  */
-export function aperturaCompartida(p: { avisoId: string; estado: EstadoCompartido | null; depto: DeptoCompartido | null; visibles: readonly PinMapa[] }):
+export function aperturaCompartida(p: { avisoId: string; estado: EstadoCompartido | null; depto: DeptoCompartido | null; visibles: readonly PinMapa[]; negociados?: readonly PinMapa[] }):
   | { tipo: "pin"; avisoId: string }
-  | { tipo: "caido"; estado: Exclude<EstadoCompartido, "comprar">; depto: DeptoCompartido | null; parecidos: PinMapa[] } {
+  | { tipo: "caido"; estado: EstadoCaido; depto: DeptoCompartido | null; parecidos: PinMapa[] } {
   if (p.visibles.some((x) => x.avisoId === p.avisoId)) return { tipo: "pin", avisoId: p.avisoId };
-  const estado = p.estado === "despublicado" ? "despublicado" : "no-da";
-  return { tipo: "caido", estado, depto: p.depto, parecidos: p.depto ? parecidosQueDan(p.depto, p.visibles, p.avisoId) : [] };
+  const caido = (estado: EstadoCaido) => ({ tipo: "caido" as const, estado, depto: p.depto, parecidos: p.depto ? parecidosQueDan(p.depto, p.visibles, p.avisoId) : [] });
+  if (p.estado === "despublicado") return caido("despublicado");
+  if (p.estado === "no-llega") return caido("no-llega");
+  if ((p.negociados ?? []).some((x) => x.avisoId === p.avisoId)) return { tipo: "pin", avisoId: p.avisoId };
+  return caido("no-da");
 }
 
 export const COMPARTIR_COPY = {
@@ -153,8 +204,19 @@ export const COMPARTIR_COPY = {
   sinVeredicto: "míralo en el mapa de Franco",
   /** El título del mensaje en la hoja del sistema (algunas apps lo muestran sobre el texto). */
   tituloHoja: "Un depto que conviene, según Franco",
-  /** El de un depto que se comparte sin veredicto (un negociado, o uno que no da con el financiamiento por defecto). */
+  /** El de un depto que se comparte sin veredicto (uno que no da con el financiamiento por defecto). */
   tituloHojaSinVeredicto: "Un depto en el mapa de Franco",
+  /** Un negociado de la capa «Si negocias» (03-nov-2026): el texto que viaja, la línea de la vista previa y su descripción. */
+  negociado: {
+    /** «Conviene si lo negocias a UF 2.950 (−4,2 %), según Franco». */
+    texto: (p: number, d: number) => `Conviene si lo negocias a UF ${miles(p)} (−${pct1(d)} %), según Franco`,
+    /** «Conviene si lo negocias a UF 2.950»: la línea de la vista previa, sin el descuento. */
+    linea: (p: number) => `Conviene si lo negocias a UF ${miles(p)}`,
+    descripcion: (p: number) => `Conviene si lo negocias a UF ${miles(p)}, según Franco.`,
+    tituloHoja: "Un depto que conviene si lo negocias, según Franco",
+    /** La línea de abajo de la imagen. */
+    pie: "Según Franco.",
+  },
   vistaPrevia: {
     comprar: "✓ Comprar al precio publicado, según Franco.",
     noDa: "Míralo en el mapa de Franco, con los que convienen hoy.",
@@ -166,6 +228,8 @@ export const COMPARTIR_COPY = {
   caido: {
     despublicado: "Este depto ya no está publicado.",
     noDa: `Este depto no está entre los que convienen hoy ${AL_PRECIO_PUBLICADO}.`,
+    /** Un negociado que con los datos de hoy ya no llega a Comprar dentro del tope del enlace. */
+    noLlega: (tope: number) => `Este depto ya no llega a Comprar con un descuento de hasta ${tope} %.`,
     parecidos: "Estos parecidos sí convienen:",
     sinParecidos: "Hoy no hay parecidos que convengan. Mira los demás en el mapa.",
     verMapa: "Ver el mapa",

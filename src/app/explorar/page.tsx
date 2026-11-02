@@ -54,10 +54,12 @@ export async function generateMetadata({ searchParams }: { searchParams?: Record
   for (const [k, v] of Object.entries(searchParams ?? {})) if (typeof v === "string") sp.set(k, v);
   const c = compartidoDeUrl(sp);
   if (!c || !esRobot(headers().get("user-agent"))) return METADATOS;
-  const ficha = await fichaCompartidaCacheada(c.avisoId, c.modalidad).catch(() => null);
+  // El de un negociado lleva el tope de la capa (`n`, 03-nov-2026): la ficha lo verifica con los datos de hoy.
+  const tope = portalDeUrl(sp).filtros.negociar;
+  const ficha = await fichaCompartidaCacheada(c.avisoId, c.modalidad, tope).catch(() => null);
   if (!ficha) return METADATOS;
   const v = contenidoVistaPrevia(ficha);
-  const imagen = { url: rutaVistaPrevia(c.avisoId, c.modalidad), width: VISTA_PREVIA_PX.ancho, height: VISTA_PREVIA_PX.alto, alt: v.titulo };
+  const imagen = { url: rutaVistaPrevia(c.avisoId, c.modalidad, ficha.tope ?? null), width: VISTA_PREVIA_PX.ancho, height: VISTA_PREVIA_PX.alto, alt: v.titulo };
   return {
     ...METADATOS,
     title: { absolute: v.titulo },
@@ -103,10 +105,18 @@ export default async function ExplorarPage({ searchParams }: { searchParams?: Re
  * EL DEPTO DE UN ENLACE COMPARTIDO (02-nov-2026): si sigue publicado y lo que se sabe de él, para la tarjeta de «ya no está»
  * con sus parecidos. Si da Comprar lo decide el navegador con el universo que carga (el mismo que dibuja); acá solo se lee
  * la fila, en paralelo con lo demás. Null sin enlace compartido o si el aviso no existe.
+ * EL DE UN NEGOCIADO (con el tope de la capa en la URL, 03-nov-2026): la ficha entera, verificada con los datos de hoy (la
+ * misma en caché que la vista previa): «no-llega» si ya no llega dentro del tope, o el negociado de hoy —solo con cuenta: sin
+ * cuenta el precio negociado no viaja al navegador y la tarjeta lo dibuja borroso, como el resto de la capa—.
  */
-async function compartidoDe(sp: URLSearchParams): Promise<CompartidoCliente | null> {
+async function compartidoDe(sp: URLSearchParams, tope: number | null, conCuenta: boolean): Promise<CompartidoCliente | null> {
   const c = compartidoDeUrl(sp);
   if (!c) return null;
+  if (tope != null && c.modalidad === "ltr") {
+    const f = await fichaCompartidaCacheada(c.avisoId, "ltr", tope).catch(() => null);
+    const estado = f?.estado === "despublicado" ? "despublicado" : f?.estado === "no-llega" ? "no-llega" : null;
+    return { avisoId: c.avisoId, estado, depto: f?.depto ?? null, tope, neg: conCuenta && f?.estado === "negociado" ? f.neg ?? null : null };
+  }
   const f = await fichaCompartida(createServiceClient(), c.avisoId, c.modalidad, { veredicto: false }).catch(() => null);
   return { avisoId: c.avisoId, estado: f ? (f.estado === "despublicado" ? "despublicado" : null) : null, depto: f?.depto ?? null };
 }
@@ -124,7 +134,7 @@ async function ExplorarAbierto({ consulta }: { consulta: string }) {
   const [noche, tasa, compartido] = await Promise.all([
     universoDeLaNocheCacheado(PIE_ABIERTO, PLAZO_ABIERTO).catch(() => null),
     tasaDelMotor(),
-    compartidoDe(sp),
+    compartidoDe(sp, filtros.negociar, false),
   ]);
   const universo = universoDeLaNoche(filtros) ? noche : null;
   // La bienvenida dice el número de todo el sitio, aunque la URL traiga filtros; el del mapa es el filtrado.
@@ -144,7 +154,7 @@ async function ExplorarConDatos({ consulta, user }: { consulta: string; user: Us
     cuentaPortal(admin, user),
     noche ? universoDeLaNocheCacheado(filtros.pie, filtros.plazo).catch(() => null) : Promise.resolve(null),
     tasaDelMotor(),
-    compartidoDe(sp),
+    compartidoDe(sp, filtros.negociar, true),
   ]);
   const n = universo ? filtrar(descompactar(universo), filtros).length : null;
   void capturarServidor(eventoPortalVista({ userId: user.id, filtros, orden, n, robot: robotDeVisita(headers().get("user-agent"), headers()), llegada: llegadaDeExplorar(sp.get("desde")) })).catch(() => false);

@@ -6,18 +6,23 @@
 // esta: lo dice, con la línea del depto que se compartió, y ofrece hasta tres parecidos que sí dan (compartir.ts ›
 // parecidosQueDan: su comuna, sus dormitorios, un precio parecido, del más cercano al más lejano). Tocar uno abre su
 // tarjeta de siempre; «Ver el mapa» la cierra. Sin cuenta, el flujo de los parecidos va borroso, como en la lista.
+// EL NEGOCIADO QUE YA NO LLEGA (03-nov-2026): el enlace de un depto de la capa «Si negocias» que con los datos de hoy ya no
+// llega a Comprar dentro del tope del enlace dice eso, con el tope, y ofrece los mismos parecidos.
 // ─────────────────────────────────────────────────────────────────────────────
 import { lineaDepto } from "@/lib/guia/linea-depto";
 import { flujoTexto } from "@/lib/explorar/explorar";
 import { BORROSO } from "@/lib/explorar/abierto";
-import { COMPARTIR_COPY, lineaConPrecio, type DeptoCompartido, type EstadoCompartido } from "@/lib/explorar/compartir";
+import { COMPARTIR_COPY, lineaConPrecio, type DeptoCompartido, type EstadoCaido } from "@/lib/explorar/compartir";
+import { TOPE_NEGOCIAR_POR_DEFECTO } from "@/lib/explorar/capa-negociar";
 import type { PinMapa } from "@/lib/explorar/portal";
 import { Borroso, ImagenDepto, veredictoConPuntaje } from "./tarjeta-pin";
 
 const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
 
-export function CompartidoCaido({ estado, depto, parecidos, sinCuenta, alAbrir, alCerrar }: {
-  estado: Exclude<EstadoCompartido, "comprar">;
+export function CompartidoCaido({ estado, tope = null, depto, parecidos, sinCuenta, alAbrir, alCerrar }: {
+  estado: EstadoCaido;
+  /** El tope del enlace de un negociado: lo dice la tarjeta de «ya no llega». */
+  tope?: number | null;
   depto: DeptoCompartido | null;
   parecidos: PinMapa[];
   sinCuenta: boolean;
@@ -25,11 +30,12 @@ export function CompartidoCaido({ estado, depto, parecidos, sinCuenta, alAbrir, 
   alCerrar: () => void;
 }) {
   const c = COMPARTIR_COPY.caido;
+  const titulo = estado === "despublicado" ? c.despublicado : estado === "no-llega" ? c.noLlega(tope ?? TOPE_NEGOCIAR_POR_DEFECTO) : c.noDa;
   return (
-    <section className="ex-tarjeta-wrap" aria-label={estado === "despublicado" ? c.despublicado : c.noDa} data-explorar="compartido-caido" data-estado={estado}>
+    <section className="ex-tarjeta-wrap" aria-label={titulo} data-explorar="compartido-caido" data-estado={estado}>
       <div className="ex-tarjeta-caja ex-caido">
         <div className="ex-caido-cab">
-          <b className="ex-caido-t" data-explorar="caido-titulo">{estado === "despublicado" ? c.despublicado : c.noDa}</b>
+          <b className="ex-caido-t" data-explorar="caido-titulo">{titulo}</b>
           <button type="button" className="ex-x ex-caido-x" aria-label={c.cerrar} onClick={alCerrar} data-explorar="caido-cerrar">×</button>
         </div>
         {depto && <span className="ex-ojo ex-caido-linea" data-explorar="caido-linea">{lineaConPrecio(depto)}</span>}

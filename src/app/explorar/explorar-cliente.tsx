@@ -28,6 +28,9 @@
 //     enlace y lo dice. El enlace lleva el código de invitación de quien tiene cuenta (pedido al abrir la primera tarjeta o
 //     la lista: la hoja tiene que abrirse en el mismo toque). EL ENLACE abre esta página en ese pin, con la tarjeta abierta y
 //     el mapa centrado; si el aviso ya no está, la tarjeta de «ya no está» con los parecidos que sí dan (compartido-caido.tsx).
+//     UN NEGOCIADO (03-nov-2026) se comparte con su precio negociado y su descuento, y su enlace lleva el tope de la capa: abre
+//     con «Si negocias» prendido, en ese pin, con la tarjeta de los dos veredictos —con el precio de hoy si se movió—; si con
+//     los datos de hoy ya no llega dentro del tope, la tarjeta de «ya no llega» con parecidos.
 // ─────────────────────────────────────────────────────────────────────────────
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
@@ -53,7 +56,7 @@ import { TarjetaPin } from "./tarjeta-pin";
 import { ChipVeredicto, ChipVeredictoTokens } from "@/components/analysis/shared/ChipVeredicto";
 import {
   capaNegociarDisponible, conCifrasNegociado, descompactarNegociados, esNegociado, EVENTO_NEGOCIAR, filtrarNegociados, NEGOCIAR_COPY, ordenarNegociados, propsNegociar,
-  TOPE_NEGOCIAR_POR_DEFECTO, type Negociacion, type NegociadosCompactos, type PinNegociado, type TopeNegociar,
+  TOPE_DE_LA_NOCHE, TOPE_NEGOCIAR_POR_DEFECTO, type Negociacion, type NegociadosCompactos, type PinNegociado, type TopeNegociar,
 } from "@/lib/explorar/capa-negociar";
 import { AL_PRECIO_PUBLICADO, NEGOCIADO_COPY } from "@/lib/precio-publicado";
 import { Info } from "./info";
@@ -66,8 +69,8 @@ import { conTopeYReintento } from "@/lib/deptos/entrada";
 import { PASO_REGALO_MS, TOPE_ESPERA_REGALO_MS } from "@/lib/deptos/alta-orden";
 import { avisarLead } from "@/lib/meta/lead-cliente";
 import {
-  aperturaCompartida, COMPARTIR_COPY, deptoDePin, esVistaEstandar, EVENTOS_COMPARTIR, mensajeCompartir, textoCompartir, veredictoDelPin,
-  type DeptoCompartido, type EstadoCompartido, type MetodoCompartir, type OrigenCompartir,
+  aperturaCompartida, COMPARTIR_COPY, deptoDePin, esVistaEstandar, EVENTOS_COMPARTIR, mensajeCompartir, pideAlServidor, textoCompartir, topeDelEnlace, veredictoDelPin,
+  type DeptoCompartido, type EstadoCaido, type MetodoCompartir, type OrigenCompartir, type VeredictoCompartido,
 } from "@/lib/explorar/compartir";
 import { enlaceCompartido, PARAMS_DE_UNA_VEZ } from "@/lib/explorar/enlace-compartido";
 import "./explorar.css";
@@ -117,11 +120,15 @@ export interface InicialPortal {
 }
 
 /** EL ENLACE COMPARTIDO con que se entró (page.tsx › compartidoDe): el aviso; «despublicado» si el servidor sabe que ya no
- *  está publicado (si da Comprar lo dice el universo que se carga); y el depto, para la tarjeta de «ya no está». */
+ *  está publicado (si da Comprar lo dice el universo que se carga); y el depto, para la tarjeta de «ya no está». El de un
+ *  negociado (03-nov-2026) trae el tope de la capa y, verificado con los datos de hoy, «no-llega» o —con cuenta— el negociado
+ *  de hoy, que reemplaza al de la noche si se movió. */
 export interface CompartidoCliente {
   avisoId: string;
-  estado: "despublicado" | null;
+  estado: "despublicado" | "no-llega" | null;
   depto: DeptoCompartido | null;
+  tope?: number | null;
+  neg?: Negociacion | null;
 }
 
 /** Copia al portapapeles; sin la API (un contexto sin https, un navegador viejo), con un campo escondido. */
@@ -219,7 +226,9 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
   // Recién registrada desde un pin (30-oct-2026): esa tarjeta vuelve desbloqueada, con su banda; el pop-up lo abre la persona.
   const [recien, setRecien] = useState<{ avisoId: string; regalo: boolean } | null>(null);
   // EL ENLACE COMPARTIDO (02-nov-2026): la tarjeta de «ya no está» y si el mapa ya se centró en el depto.
-  const [caido, setCaido] = useState<{ estado: Exclude<EstadoCompartido, "comprar">; depto: DeptoCompartido | null; parecidos: PinMapa[] } | null>(null);
+  const [caido, setCaido] = useState<{ estado: EstadoCaido; depto: DeptoCompartido | null; parecidos: PinMapa[] } | null>(null);
+  /** La capa «Si negocias» no llegó: el enlace de un negociado no la espera más (03-nov-2026). */
+  const [capaFallo, setCapaFallo] = useState(false);
   const [focoUsado, setFocoUsado] = useState(!compartido);
   const compartidoResuelto = useRef(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -318,6 +327,7 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
       if (vivo.current) setNegociados((ns) => ({ ...ns, [pie]: descompactarNegociados(d.negociados) }));
     } catch {
       // Sin la capa, el mapa sigue con los que convienen: la capa es aparte.
+      if (vivo.current) setCapaFallo(true);
     } finally {
       enCursoNeg.current.delete(pie);
     }
@@ -578,21 +588,31 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
   }, [autoAnalizar, universo]);
   // Entró con un depto abierto (`a`): su tarjeta, con los cercanos, cuando llega el universo. Por un ENLACE COMPARTIDO
   // (02-nov-2026), una vez: la tarjeta de ese pin si está entre los que convienen, o la de «ya no está» con los parecidos.
+  // El de un NEGOCIADO (03-nov-2026) espera también la capa «Si negocias» (el pin está en ella), salvo que el servidor ya
+  // sepa que no está o que no llega; si con los datos de hoy el precio se movió, la tarjeta dice el de hoy.
+  const esperaCapa = !!compartido && compartido.tope != null && compartido.estado == null && !negociadosDelPie && !capaFallo;
   useEffect(() => {
     if (!abrir || autoAnalizar || !universo || carrusel.length) return;
     if (compartido) {
-      if (compartidoResuelto.current) return;
+      if (compartidoResuelto.current || esperaCapa) return;
       compartidoResuelto.current = true;
-      const ap = aperturaCompartida({ avisoId: compartido.avisoId, estado: compartido.estado, depto: compartido.depto, visibles });
-      if (ap.tipo === "pin") { setCarrusel(cercanos(visibles, ap.avisoId).map((p) => p.avisoId)); setSel(ap.avisoId); return; }
+      if (compartido.estado === "no-llega") setNoLlegan((xs) => [...xs, compartido.avisoId]);
+      const ap = aperturaCompartida({ avisoId: compartido.avisoId, estado: compartido.estado, depto: compartido.depto, visibles, negociados: visiblesNeg });
+      if (ap.tipo === "pin") {
+        const hoy = compartido.neg;
+        if (hoy && visiblesNeg.some((p) => p.avisoId === ap.avisoId && p.neg.p !== hoy.p)) setMovidos((m) => ({ ...m, [ap.avisoId]: hoy }));
+        setCarrusel(cercanos(todos, ap.avisoId).map((p) => p.avisoId));
+        setSel(ap.avisoId);
+        return;
+      }
       setSel(null);
       setCaido({ estado: ap.estado, depto: ap.depto, parecidos: ap.parecidos });
-      posthog?.capture(EVENTOS_COMPARTIR.caido, { aviso_id: compartido.avisoId, estado: ap.estado, parecidos: ap.parecidos.length, modalidad: filtros.modalidad, sin_cuenta: sinCuenta });
+      posthog?.capture(EVENTOS_COMPARTIR.caido, { aviso_id: compartido.avisoId, estado: ap.estado, parecidos: ap.parecidos.length, modalidad: filtros.modalidad, sin_cuenta: sinCuenta, tope_negociar: compartido.tope ?? null });
       return;
     }
     if (visibles.some((p) => p.avisoId === abrir)) setCarrusel(cercanos(visibles, abrir).map((p) => p.avisoId));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [universo]);
+  }, [universo, esperaCapa]);
   // Lo que el enlace compartido trae una sola vez (la llegada y el código) sale de la barra apenas carga: una recarga no
   // vuelve a contar la vista, y quien copie la barra no reparte el código de otro.
   useEffect(() => {
@@ -609,10 +629,11 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
   // El mapa se centra en el depto compartido cuando el universo dice dónde está (o, si ya no está, donde estaba), una vez.
   const foco = useMemo(() => {
     if (focoUsado || !compartido || !universo) return null;
+    // El pin, entre los que convienen o en la capa «Si negocias».
     const p = porId.get(compartido.avisoId);
-    if (p && visibles.some((x) => x.avisoId === p.avisoId)) return { lat: p.lat, lng: p.lng };
+    if (p) return { lat: p.lat, lng: p.lng };
     return compartido.depto?.lat != null && compartido.depto.lng != null ? { lat: compartido.depto.lat, lng: compartido.depto.lng } : null;
-  }, [focoUsado, compartido, universo, porId, visibles]);
+  }, [focoUsado, compartido, universo, porId]);
 
   // ── COMPARTIR (02-nov-2026) ──
   // El código de invitación de quien tiene cuenta: se pide una vez, al abrir la primera tarjeta o la lista, para que el
@@ -627,28 +648,33 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
       .then((d: { codigo?: string } | null) => { codigo.current = typeof d?.codigo === "string" ? d.codigo : null; })
       .catch(() => undefined);
   }, [sinCuenta, sel, vista]);
-  // Con otro pie, plazo o tasa, el texto dice el veredicto de por defecto (el que verá quien abra el enlace): se trae al
-  // abrir la tarjeta o al apoyar el dedo en «Compartir».
-  const estandar = useRef(new Map<string, Promise<{ comprar: boolean; score: number | null }>>());
-  const resueltos = useRef(new Map<string, { comprar: boolean; score: number | null }>());
-  const veredictoEstandar = useCallback((p: PinMapa): Promise<{ comprar: boolean; score: number | null }> => {
-    if (esVistaEstandar(filtros)) return Promise.resolve(veredictoDelPin(p));
-    const clave = `${filtros.modalidad}|${p.avisoId}`;
+  // Con otro pie, plazo o tasa, el texto dice el veredicto de por defecto (el que verá quien abra el enlace), y un negociado sin
+  // cuenta, su precio negociado (03-nov-2026: no viajó al navegador): lo dice el servidor, con el tope de la capa (o el de la
+  // noche). Se trae al abrir la tarjeta o al apoyar el dedo en «Compartir».
+  const claveServidor = (p: PinMapa) => `${filtros.modalidad}|${filtros.negociar ?? TOPE_DE_LA_NOCHE}|${p.avisoId}`;
+  const estandar = useRef(new Map<string, Promise<VeredictoCompartido>>());
+  const resueltos = useRef(new Map<string, VeredictoCompartido>());
+  const veredictoEstandar = useCallback((p: PinMapa): Promise<VeredictoCompartido> => {
+    if (!pideAlServidor(p, filtros)) return Promise.resolve(veredictoDelPin(p));
+    const clave = claveServidor(p);
     let v = estandar.current.get(clave);
     if (!v) {
-      v = fetch(`/api/explorar/compartido?a=${encodeURIComponent(p.avisoId)}${filtros.modalidad === "str" ? "&m=str" : ""}`)
+      const conTope = filtros.modalidad === "str" ? "&m=str" : `&n=${filtros.negociar ?? TOPE_DE_LA_NOCHE}`;
+      v = fetch(`/api/explorar/compartido?a=${encodeURIComponent(p.avisoId)}${conTope}`)
         .then((r) => (r.ok ? r.json() : null))
-        .then((d: { estado?: string; score?: number | null } | null) => ({ comprar: d?.estado === "comprar", score: d?.estado === "comprar" ? d.score ?? null : null }))
+        .then((d: { estado?: string; score?: number | null; neg?: { p: number; d: number } | null } | null): VeredictoCompartido =>
+          d?.estado === "comprar" ? { comprar: true, score: d.score ?? null } : d?.estado === "negociado" && d.neg ? { comprar: false, score: null, negociado: d.neg } : { comprar: false, score: null })
         .catch(() => ({ comprar: false, score: null }));
       estandar.current.set(clave, v);
       void v.then((x) => { resueltos.current.set(clave, x); });
     }
     return v;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filtros]);
   const prepararCompartir = useCallback((p: PinMapa) => { void veredictoEstandar(p); }, [veredictoEstandar]);
   useEffect(() => {
     const p = sel ? porId.get(sel) : null;
-    if (p && !esVistaEstandar(filtros)) prepararCompartir(p);
+    if (p && pideAlServidor(p, filtros)) prepararCompartir(p);
   }, [sel, porId, filtros, prepararCompartir]);
   useEffect(() => {
     if (!toast) return;
@@ -659,20 +685,23 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
   /** «Compartir»: en el teléfono la hoja del sistema (sin ella, WhatsApp); en el PC, copia el enlace y lo dice. */
   async function compartir(p: PinMapa, origenToque: OrigenCompartir) {
     const estd = esVistaEstandar(filtros);
-    // En la vista de por defecto, el del pin (un negociado de la capa va sin veredicto). Con otro pie, lo ya resuelto se usa sin
-    // esperar; si todavía no llegó (rara vez: un toque muy rápido), se espera.
-    const ver = estd ? veredictoDelPin(p) : resueltos.current.get(`${filtros.modalidad}|${p.avisoId}`) ?? await veredictoEstandar(p);
-    const url = enlaceCompartido(window.location.origin, { avisoId: p.avisoId, modalidad: filtros.modalidad, comuna: p.comuna, codigo: sinCuenta ? null : codigo.current });
+    // En la vista de por defecto, el del pin (un negociado, con su precio negociado). Lo que dice el servidor —otro pie, o un
+    // negociado sin cuenta— se usa sin esperar si ya llegó; si no (rara vez: un toque muy rápido), se espera.
+    const ver = !pideAlServidor(p, filtros) ? veredictoDelPin(p) : resueltos.current.get(claveServidor(p)) ?? await veredictoEstandar(p);
+    // Un negociado: el enlace lleva el tope de la capa y abre con «Si negocias» prendido.
+    const tope = ver.negociado ? topeDelEnlace(filtros.negociar, ver.negociado.d) : null;
+    const url = enlaceCompartido(window.location.origin, { avisoId: p.avisoId, modalidad: filtros.modalidad, comuna: p.comuna, codigo: sinCuenta ? null : codigo.current, tope });
     const texto = textoCompartir(deptoDePin(p), ver);
     const telefono = typeof window.matchMedia === "function" && window.matchMedia("(pointer: coarse)").matches;
     const metodo: MetodoCompartir = telefono ? (typeof navigator.share === "function" ? "hoja" : "whatsapp") : "copiar";
     posthog?.capture(EVENTOS_COMPARTIR.compartir, {
       origen: origenToque, sin_cuenta: sinCuenta, aviso_id: p.avisoId, modalidad: filtros.modalidad, metodo, con_codigo: !sinCuenta && !!codigo.current, vista_estandar: estd,
+      negociado: !!ver.negociado, tope_negociar: tope,
       ...(sinCuenta ? { llegada_explorar: origen } : {}),
     });
     if (metodo === "hoja") {
       try {
-        await navigator.share({ title: ver.comprar ? COMPARTIR_COPY.tituloHoja : COMPARTIR_COPY.tituloHojaSinVeredicto, text: texto, url });
+        await navigator.share({ title: ver.comprar ? COMPARTIR_COPY.tituloHoja : ver.negociado ? COMPARTIR_COPY.negociado.tituloHoja : COMPARTIR_COPY.tituloHojaSinVeredicto, text: texto, url });
       } catch (e) {
         // Cerrar la hoja no es un error; si el teléfono no la dejó abrir, el enlace queda copiado.
         if ((e as { name?: string } | null)?.name !== "AbortError") setToast((await copiarAlPortapapeles(url)) ? COMPARTIR_COPY.copiado : COMPARTIR_COPY.noCopiado);
@@ -820,6 +849,7 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
           {caido && vista === "mapa" && !tarjeta ? (
             <CompartidoCaido
               estado={caido.estado}
+              tope={compartido?.tope ?? null}
               depto={caido.depto}
               parecidos={caido.parecidos}
               sinCuenta={sinCuenta}

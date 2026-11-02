@@ -6,6 +6,9 @@
 //   · Siempre con el financiamiento por defecto (pie 20 %, 30 años, la tasa de hoy): lo que ve quien entra sin cuenta y lo
 //     que dice la vista previa. Por eso el enlace no lleva pie, plazo ni tasa; sí la modalidad (`m=str`) y, en renta corta,
 //     la comuna del depto (`c`), que se calcula de a una comuna: sin ella la tarjeta esperaría a todo Gran Santiago.
+//   · `n=5` (o 10), cuando lo compartido es un depto de la capa «Si negocias» (03-nov-2026): el tope de la capa, el mismo
+//     parámetro de Filtros (portal.ts › portalDeUrl), así que el enlace abre /explorar con la capa prendida. Solo en arriendo
+//     tradicional, que es donde la capa existe.
 //   · `desde=compartido` marca la llegada (la vista del enlace compartido, la puerta E con su detalle).
 //   · `i=CÓDIGO`, cuando quien comparte tiene cuenta: su código de invitación. El middleware lo deja en la cookie de la
 //     invitación, marcada «depto», y la cuenta que nazca en ese navegador queda con la puerta C y el detalle `depto:CÓDIGO`
@@ -29,11 +32,12 @@ export interface EnlaceCompartido {
   codigo: string | null;
 }
 
-/** El enlace que viaja: `https://refranco.ai/explorar?a=<aviso>[&m=str&c=<comuna>][&i=<CÓDIGO>]&desde=compartido`. */
-export function enlaceCompartido(sitio: string, p: { avisoId: string; modalidad: "ltr" | "str"; comuna: string; codigo?: string | null }): string {
+/** El enlace que viaja: `https://refranco.ai/explorar?a=<aviso>[&m=str&c=<comuna>][&n=<tope>][&i=<CÓDIGO>]&desde=compartido`. */
+export function enlaceCompartido(sitio: string, p: { avisoId: string; modalidad: "ltr" | "str"; comuna: string; codigo?: string | null; tope?: number | null }): string {
   const q = new URLSearchParams();
   q.set("a", p.avisoId);
   if (p.modalidad === "str") { q.set("m", "str"); q.set("c", p.comuna); }
+  else if (p.tope != null) q.set("n", String(p.tope));
   const codigo = normalizarCodigo(p.codigo);
   if (codigo) q.set(PARAM_INVITACION, codigo);
   q.set("desde", DESDE_COMPARTIDO);

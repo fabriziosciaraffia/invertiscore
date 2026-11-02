@@ -8,6 +8,9 @@ import { CALLE_COPY } from "@/lib/explorar/calle";
 import { COMPARTIR_COPY, contenidoVistaPrevia } from "@/lib/explorar/compartir";
 import { fichaCompartidaCacheada } from "@/lib/explorar/compartir-servidor";
 import { esAvisoId } from "@/lib/explorar/enlace-compartido";
+import { esTopeNegociar } from "@/lib/explorar/capa-negociar";
+import { NEGOCIADO_COPY } from "@/lib/precio-publicado";
+import { etiquetaVeredicto, signoVeredicto } from "@/lib/veredicto-etiqueta";
 import { wordmarkSvg } from "@/lib/og/wordmark";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -17,6 +20,8 @@ import { wordmarkSvg } from "@/lib/og/wordmark";
 // derecha el wordmark, la línea del depto, el precio y el chip ✓ Comprar de la casa —solo si el servidor comprueba que da
 // Comprar hoy con el financiamiento por defecto (compartir-servidor.ts)—. SIN CIFRAS MÁS ALLÁ DEL CHIP: ni puntaje, ni
 // flujo, ni cap rate; todo lo que se dibuja sale de `contenidoVistaPrevia` (lo exige el tier COMPARTIR-DEPTO).
+// UN NEGOCIADO (`?n=<tope>`, 03-nov-2026): en lugar del chip Comprar, «Al precio publicado» con el chip Ajustar de la casa y
+// la línea «Conviene si lo negocias a UF 2.950»; ni el descuento ni el puntaje.
 // La genera el servidor y queda en la caché del CDN un día (y se sirve vieja una semana mientras se rehace): la piden los
 // robots de vista previa cada vez que alguien pega el enlace. En Node (no Edge: el cálculo de renta corta es grande).
 // LAS FUENTES: Inter, la única de Explorar, como en la tarjeta del pin —la línea en 400, el precio y el chip en 600—; el
@@ -51,6 +56,8 @@ const SECUNDARIO = "#5F5E5A";
 const MUTED = "#6B6B72";
 const BORDE = "#DDDDE1";
 const CHIP_COMPRAR = { fondo: "#2B558F", texto: "#FFFFFF" };
+/** El chip Ajustar de la casa en claro (ChipVeredicto.tsx: la ciruela de la tríada). */
+const CHIP_AJUSTAR = { fondo: "#F1E4EC", texto: "#6E4560", borde: "#DCC6D4" };
 
 const FUENTES = { regular: "Inter-Regular-es.ttf", semibold: "Inter-SemiBold-es.ttf" } as const;
 const INTER = "Inter";
@@ -121,9 +128,11 @@ function Check({ color }: { color: string }) {
 
 export async function GET(req: Request, { params }: { params: { avisoId: string } }) {
   if (!esAvisoId(params.avisoId)) return new Response(null, { status: 404 });
-  const modalidad = new URL(req.url).searchParams.get("m") === "str" ? "str" : "ltr";
+  const sp = new URL(req.url).searchParams;
+  const modalidad = sp.get("m") === "str" ? "str" : "ltr";
+  const tope = esTopeNegociar(sp.get("n")) ? Number(sp.get("n")) : null;
   const [ficha, imagen, f] = await Promise.all([
-    fichaCompartidaCacheada(params.avisoId, modalidad).catch(() => null),
+    fichaCompartidaCacheada(params.avisoId, modalidad, tope).catch(() => null),
     imagenComoDato(params.avisoId.toLowerCase()),
     fuentes(),
   ]);
@@ -157,7 +166,7 @@ export async function GET(req: Request, { params }: { params: { avisoId: string 
           <div style={{ display: "flex", flexDirection: "column" }}>
             <div style={{ display: "flex", fontFamily: INTER, fontWeight: 400, fontSize: e(30), lineHeight: 1.35, color: SECUNDARIO }}>{v.linea}</div>
             <div style={{ display: "flex", marginTop: e(14), fontFamily: INTER, fontWeight: 600, fontSize: e(76), lineHeight: 1.05, letterSpacing: "-0.02em" }}>{v.precio}</div>
-            {v.chip ? (
+            {v.chip === "COMPRAR" ? (
               <div style={{ display: "flex", marginTop: e(30) }}>
                 <div style={{ display: "flex", alignItems: "center", padding: `${e(12)}px ${e(28)}px ${e(12)}px ${e(22)}px`, borderRadius: 999, backgroundColor: CHIP_COMPRAR.fondo, color: CHIP_COMPRAR.texto, fontFamily: INTER, fontWeight: 600, fontSize: e(34) }}>
                   <Check color={CHIP_COMPRAR.texto} />
@@ -165,9 +174,20 @@ export async function GET(req: Request, { params }: { params: { avisoId: string 
                 </div>
               </div>
             ) : null}
+            {v.chip === "AJUSTA SUPUESTOS" && v.negociado ? (
+              <div style={{ display: "flex", flexDirection: "column", marginTop: e(26) }}>
+                <div style={{ display: "flex", alignItems: "center" }}>
+                  <div style={{ display: "flex", marginRight: e(14), fontFamily: INTER, fontWeight: 400, fontSize: e(28), color: SECUNDARIO }}>{NEGOCIADO_COPY.alPublicado}</div>
+                  <div style={{ display: "flex", alignItems: "center", padding: `${e(8)}px ${e(22)}px`, borderRadius: 999, border: `${e(2)}px solid ${CHIP_AJUSTAR.borde}`, backgroundColor: CHIP_AJUSTAR.fondo, color: CHIP_AJUSTAR.texto, fontFamily: INTER, fontWeight: 600, fontSize: e(30) }}>
+                    {`${signoVeredicto(v.chip)} ${etiquetaVeredicto(v.chip, "frase")}`}
+                  </div>
+                </div>
+                <div style={{ display: "flex", marginTop: e(18), fontFamily: INTER, fontWeight: 600, fontSize: e(32), lineHeight: 1.25, color: TINTA }}>{v.negociado}</div>
+              </div>
+            ) : null}
           </div>
           <div style={{ display: "flex", fontFamily: INTER, fontWeight: 400, fontSize: e(24), lineHeight: 1.4, color: MUTED }}>
-            {v.chip ? COMPARTIR_COPY.vistaPrevia.pie : v.descripcion}
+            {v.chip === "COMPRAR" ? COMPARTIR_COPY.vistaPrevia.pie : v.negociado ? COMPARTIR_COPY.negociado.pie : v.descripcion}
           </div>
         </div>
       </div>
