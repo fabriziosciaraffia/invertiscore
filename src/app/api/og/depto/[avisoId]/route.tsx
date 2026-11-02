@@ -12,7 +12,7 @@ import { wordmarkSvg } from "@/lib/og/wordmark";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/og/depto/<aviso>[?m=str] (02-nov-2026, goal «Compartir un depto desde Explorar»): LA VISTA PREVIA DEL ENLACE de
-// un depto compartido, la imagen que muestran WhatsApp y las redes (1200 × 630). Una tarjeta del depto: a la izquierda la
+// un depto compartido, la imagen que muestran WhatsApp y las redes. Una tarjeta del depto: a la izquierda la
 // vista de la calle (con su etiqueta, nunca «el edificio») o, si no hay foto que cumpla, el mapa chico con el pin; a la
 // derecha el wordmark, la línea del depto, el precio y el chip ✓ Comprar de la casa —solo si el servidor comprueba que da
 // Comprar hoy con el financiamiento por defecto (compartir-servidor.ts)—. SIN CIFRAS MÁS ALLÁ DEL CHIP: ni puntaje, ni
@@ -21,16 +21,22 @@ import { wordmarkSvg } from "@/lib/og/wordmark";
 // robots de vista previa cada vez que alguien pega el enlace. En Node (no Edge: el cálculo de renta corta es grande).
 // LAS FUENTES: las TTF de public/fonts, leídas del disco; si la función no las trae, de refranco.ai (son estáticas y
 // públicas). Satori no lee woff2: por eso el chip va en JetBrains Mono, la de los veredictos.
+// EL TAMAÑO (medido en el preview, 02-nov-2026): a 1200 × 630 la imagen pesaba 589 kB —la foto de la calle no comprime en
+// PNG— y WhatsApp suele saltarse las vistas previas de más de ~300 kB. Va a 800 × 420 (la proporción 1,91:1 de las redes;
+// sobre el mínimo de 600 × 315 de la tarjeta grande): el diseño es el de 1200 × 630, escalado entero con `e()`.
 // ─────────────────────────────────────────────────────────────────────────────
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
 const CACHE = "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800";
-const ANCHO = 1200;
-const ALTO = 630;
-/** La foto de la calle a 630 px (Street View Static llega hasta 640) y el mapa a 315 con escala 2. */
-const LADO = { foto: 630, mapa: 315 };
+/** El diseño se dibujó a 1200 × 630; sale a 800 × 420. */
+const ESCALA = 2 / 3;
+const e = (n: number) => Math.round(n * ESCALA);
+const ANCHO = e(1200);
+const ALTO = e(630);
+/** La foto de la calle al alto de la imagen y el mapa a la mitad con escala 2. */
+const LADO = { foto: ALTO, mapa: Math.round(ALTO / 2) };
 
 // Neutros del tema claro (globals.css › [data-theme="light"]) y el chip de Comprar de la casa en claro (ChipVeredicto.tsx).
 const PAPEL = "#F6F6F7";
@@ -90,7 +96,7 @@ async function imagenComoDato(avisoId: string): Promise<{ src: string; tipo: "fo
 /** El ✓ del chip, dibujado: no depende de que la fuente traiga el carácter. */
 function Check({ color }: { color: string }) {
   return (
-    <svg width="30" height="30" viewBox="0 0 24 24" style={{ marginRight: 12 }}>
+    <svg width={e(30)} height={e(30)} viewBox="0 0 24 24" style={{ marginRight: e(12) }}>
       <path d="M4.5 12.5l5 5 10-11" fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
@@ -113,7 +119,7 @@ export async function GET(req: Request, { params }: { params: { avisoId: string 
     ...(f.monoBold ? [{ name: "JetBrains Mono", data: f.monoBold, weight: 700 as const, style: "normal" as const }] : []),
   ];
 
-  return new ImageResponse(
+  const respuesta = new ImageResponse(
     (
       <div style={{ width: ANCHO, height: ALTO, display: "flex", backgroundColor: PAPEL, color: TINTA }}>
         <div style={{ width: ALTO, height: ALTO, display: "flex", position: "relative", backgroundColor: BORDE }}>
@@ -121,35 +127,38 @@ export async function GET(req: Request, { params }: { params: { avisoId: string 
             // eslint-disable-next-line @next/next/no-img-element
             <img src={imagen.src} width={ALTO} height={ALTO} alt="" style={{ width: ALTO, height: ALTO, objectFit: "cover" }} />
           ) : (
-            <div style={{ display: "flex", width: ALTO, height: ALTO, alignItems: "center", justifyContent: "center", fontFamily: "JetBrains Mono", fontSize: 30, color: SECUNDARIO }}>{ficha.depto.comuna}</div>
+            <div style={{ display: "flex", width: ALTO, height: ALTO, alignItems: "center", justifyContent: "center", fontFamily: "JetBrains Mono", fontSize: e(30), color: SECUNDARIO }}>{ficha.depto.comuna}</div>
           )}
           {imagen?.tipo === "foto" ? (
-            <div style={{ position: "absolute", left: 24, bottom: 24, display: "flex", padding: "6px 14px", borderRadius: 8, backgroundColor: "rgba(0,0,0,0.55)", color: "#FFFFFF", fontFamily: "JetBrains Mono", fontSize: 22 }}>
+            <div style={{ position: "absolute", left: e(24), bottom: e(24), display: "flex", padding: `${e(6)}px ${e(14)}px`, borderRadius: e(8), backgroundColor: "rgba(0,0,0,0.55)", color: "#FFFFFF", fontFamily: "JetBrains Mono", fontSize: e(22) }}>
               {CALLE_COPY.etiqueta}
             </div>
           ) : null}
         </div>
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-between", padding: "56px 52px 50px 56px" }}>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-between", padding: `${e(56)}px ${e(52)}px ${e(50)}px ${e(56)}px` }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={wordmark} width={212} height={36} alt="" />
+          <img src={wordmark} width={e(212)} height={e(36)} alt="" />
           <div style={{ display: "flex", flexDirection: "column" }}>
-            <div style={{ display: "flex", fontFamily: "JetBrains Mono", fontSize: 28, lineHeight: 1.35, color: SECUNDARIO }}>{v.linea}</div>
-            <div style={{ display: "flex", marginTop: 16, fontFamily: "Source Serif 4", fontWeight: 700, fontSize: 84, lineHeight: 1, letterSpacing: "-0.02em" }}>{v.precio}</div>
+            <div style={{ display: "flex", fontFamily: "JetBrains Mono", fontSize: e(28), lineHeight: 1.35, color: SECUNDARIO }}>{v.linea}</div>
+            <div style={{ display: "flex", marginTop: e(16), fontFamily: "Source Serif 4", fontWeight: 700, fontSize: e(84), lineHeight: 1, letterSpacing: "-0.02em" }}>{v.precio}</div>
             {v.chip ? (
-              <div style={{ display: "flex", marginTop: 30 }}>
-                <div style={{ display: "flex", alignItems: "center", padding: "12px 28px 12px 22px", borderRadius: 999, backgroundColor: CHIP_COMPRAR.fondo, color: CHIP_COMPRAR.texto, fontFamily: "JetBrains Mono", fontWeight: 700, fontSize: 34 }}>
+              <div style={{ display: "flex", marginTop: e(30) }}>
+                <div style={{ display: "flex", alignItems: "center", padding: `${e(12)}px ${e(28)}px ${e(12)}px ${e(22)}px`, borderRadius: 999, backgroundColor: CHIP_COMPRAR.fondo, color: CHIP_COMPRAR.texto, fontFamily: "JetBrains Mono", fontWeight: 700, fontSize: e(34) }}>
                   <Check color={CHIP_COMPRAR.texto} />
                   Comprar
                 </div>
               </div>
             ) : null}
           </div>
-          <div style={{ display: "flex", fontFamily: "JetBrains Mono", fontSize: 22, lineHeight: 1.4, color: MUTED }}>
+          <div style={{ display: "flex", fontFamily: "JetBrains Mono", fontSize: e(22), lineHeight: 1.4, color: MUTED }}>
             {v.chip ? COMPARTIR_COPY.vistaPrevia.pie : v.descripcion}
           </div>
         </div>
       </div>
     ),
-    { width: ANCHO, height: ALTO, fonts, headers: { "Cache-Control": CACHE } },
+    { width: ANCHO, height: ALTO, fonts },
   );
+  // La caché se FIJA (no se agrega): con `headers` en las opciones, Next la sumaba a su «immutable, max-age=31536000».
+  respuesta.headers.set("Cache-Control", CACHE);
+  return respuesta;
 }

@@ -197,7 +197,10 @@ export async function runCompartirDeptoTier(): Promise<{ hard: number }> {
       const og = codigo("src/app/api/og/depto/[avisoId]/route.tsx");
       if (/score|flujo|arriendo|capRate|cap rate|puntaje/i.test(og)) F("2 · la imagen de la vista previa lee el puntaje, el flujo, el arriendo o el cap rate");
       if (!/const v = contenidoVistaPrevia\(ficha\);/.test(og) || !/\{v\.linea\}/.test(og) || !/\{v\.precio\}/.test(og) || !/\{v\.chip \? \(/.test(og)) F("2 · la imagen no dibuja la línea, el precio y el chip de contenidoVistaPrevia");
-      if (!/"Cache-Control": CACHE/.test(og) || !/s-maxage=86400/.test(og)) F("2 · la imagen no queda en la caché del CDN");
+      // La caché se FIJA (set), no se suma a la de Next (medido en el preview: con `headers` quedaba «immutable, max-age=31536000» delante).
+      if (!/respuesta\.headers\.set\("Cache-Control", CACHE\);\s*return respuesta;/.test(og) || !/const CACHE = "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800";/.test(og)) F("2 · la imagen no queda en la caché del CDN (o hereda el «immutable» de un año)");
+      // El peso (medido en el preview: 589 kB a 1200 × 630; WhatsApp se salta las de más de ~300 kB): sale a 800 × 420.
+      if (!/const ESCALA = 2 \/ 3;/.test(og) || !/\{ width: ANCHO, height: ALTO, fonts \}/.test(og) || !/const ANCHO = e\(1200\);\s*const ALTO = e\(630\);/.test(og)) F("2 · la imagen de la vista previa no sale a 800 × 420 (pesa de más para WhatsApp)");
       if (!/fichaCompartidaCacheada\(params\.avisoId, modalidad\)/.test(og)) F("2 · la imagen no comprueba en el servidor cómo está el depto");
       // Los metadatos: los de contenidoVistaPrevia, solo para los robots de vista previa.
       const meta = pagina.slice(pagina.indexOf("export async function generateMetadata"), pagina.indexOf("const mapaQuieto"));
@@ -372,7 +375,7 @@ if (require.main === module) {
 }
 
 // ── ACTA DE MUTACIONES (02-nov-2026) ──
-// 65 de 65 en ROJO (runner `mutar-compartir.cjs` en el scratchpad de la sesión 1243824f; cada archivo restaurado byte a byte y
+// 67 de 67 en ROJO (runner `mutar-compartir.cjs` en el scratchpad de la sesión 1243824f; cada archivo restaurado byte a byte y
 // comparado contra el original). Dos quedaron VERDES en la primera corrida y se reescribieron sus predicados: E9 (el panel
 // aceptaba «invitados_por_depto» en cualquier lado; ahora exige el CTE de las visitas del depto, la vía y la tasa) y D7 (el
 // título de la tarjeta de «ya no está» se buscaba en todo el HTML y el aria-label lo repetía; ahora se lee el elemento).
@@ -381,7 +384,8 @@ if (require.main === module) {
 //      M8 el foco no es el pin · M9 el mapa encuadra sin el foco · M10 el efecto del foco centra dos veces · M11 la llegada y el
 //      código se quedan en la barra · M12 la bienvenida tapa la tarjeta.
 //   §2 V1 la vista previa trae el puntaje · V2 el chip aunque no dé Comprar · V3 la imagen dibuja el puntaje · V4 los metadatos
-//      también para las personas · V5 el título con el puntaje · V6 la ficha dice comprar sin mirar el universo · V7 sin caché.
+//      también para las personas · V5 el título con el puntaje · V6 la ficha dice comprar sin mirar el universo · V7 sin caché ·
+//      V8 la caché sumada al «immutable» de Next · V9 la imagen a 1200 × 630 (589 kB en el preview: V8 y V9, después del preview).
 //   §3 R1 la cookie siempre «enlace» · R2 el middleware no lee el código · R3 la cookie no recuerda la marca · R4 el cobro ignora
 //      la vía · R5 los prefijos cruzados · R6 el enlace sin el código · R7 el código no se pide · R8 se lee fuera de /explorar ·
 //      R9 sin código se pierde «explorar:compartido».
@@ -399,4 +403,5 @@ if (require.main === module) {
 //      botón no se llama «Compartir».
 // En el mismo runner, los predicados reescritos de PUERTA-C y PUERTA-E (cada uno con su acta en su archivo), contra su tier:
 //   X1 el middleware pisa la primera cookie · X2 la invitada sin la puerta C · X3 la foto sin el mapa de respaldo · X4 la
-//   bienvenida con cuenta · X5 el registro por visita cuenta los del depto. 5 de 5 en ROJO.
+//   bienvenida con cuenta · X5 el registro por visita cuenta los del depto · X6 (EXPLORAR-PORTAL) el mapa chico con la llave de
+//   Street View · X7 (LECTURA-PAGINADA) la ficha lee scraped_properties sin orden ni tope. 7 de 7 en ROJO.
