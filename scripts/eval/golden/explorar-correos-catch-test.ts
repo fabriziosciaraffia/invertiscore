@@ -2,7 +2,7 @@
 // TIER EXPLORAR-CORREOS — la puerta a Explorar en los correos y en lo que entra por /deptos (02-nov-2026, goal de Fabrizio).
 //
 //   1 · EL NÚMERO SALE DE LA FUNCIÓN ÚNICA: «Estos son N de los 6.695 deptos que convienen hoy en Gran Santiago.» lleva el
-//       número de convienenHoy (portal-cache.ts), el mismo del mapa, la landing y /deptos. Los correos lo piden a
+//       número de la noche (desde el 02-nov-2026, el que guarda el cron: convienen-guardado.ts), el mismo del mapa, la landing y /deptos. Los correos lo piden a
 //       puertaExplorarCorreo, que no lee otra cosa; las pantallas, al de la portada de /deptos, que lo lee de ahí. Sin el
 //       número, la línea no sale. N son los deptos de la selección que convienen (sin los que entran por negociar).
 //   2 · EL ENLACE ABRE /explorar CON LOS FILTROS DEL PERFIL: los de «Mi búsqueda» (filtrosDeMiBusqueda) en la URL, con el pie, el
@@ -84,7 +84,11 @@ export async function runExplorarCorreosTier(): Promise<{ hard: number }> {
   if ((await puertaExplorarCorreo({ baseClic: BASE, de: "semanal", n: 2, perfil: PERFIL }, { convienen: async () => null })) !== null) F("1 · puertaExplorarCorreo arma la línea sin el número de la noche");
   if ((await puertaExplorarCorreo({ baseClic: BASE, de: "semanal", n: 2, perfil: PERFIL }, { convienen: async () => { throw new Error("caída"); } })) !== null) F("1 · si el número falla, la línea sale igual");
   const srv = codigo("src/lib/explorar/puerta-correos-servidor.ts");
-  if (!/^import \{ convienenHoy \} from "\.\/portal-cache";$/m.test(srv) || !/const total = await \(deps\.convienen \?\? convienenHoy\)\(\)\.catch\(\(\) => null\);\n  const linea = lineaConvienen\(p\.n, total\);/.test(srv)) F("1 · puertaExplorarCorreo no lee el número de convienenHoy");
+  // ⚠ ACTA (02-nov-2026, goal de los cortes por statement_timeout, tier CONVIENEN-UNO §3) · el número ya no lo cuenta cada
+  // superficie con convienenHoy (retirado): lo cuenta el cron sobre el universo del mapa y lo guarda en config; los correos y la
+  // portada de /deptos leen esa fila (leerConvienenMapa).
+  if (!/^import \{ leerConvienenMapa \} from "\.\/convienen-guardado";$/m.test(srv) || !/^const convienenGuardado = \(\) => leerConvienenMapa\(createServiceClient\(\)\);$/m.test(srv)
+    || !/const total = await \(deps\.convienen \?\? convienenGuardado\)\(\)\.catch\(\(\) => null\);\n  const linea = lineaConvienen\(p\.n, total\);/.test(srv)) F("1 · puertaExplorarCorreo no lee el número guardado de la noche");
   // Los correos: cada envío pide la puerta y se la pasa al correo.
   const sem = codigo("src/lib/guia/semanal-servidor.ts");
   const envSel = cuerpo(sem, "export async function enviarSeleccion(");
@@ -97,8 +101,8 @@ export async function runExplorarCorreosTier(): Promise<{ hard: number }> {
   if (!/        urlBaja: enlaces\.baja,\n        explorar,\n      \}\)\n    : correoSemanalVacio\(\{ [^\n]*, explorar \}\);/.test(dd)) F("1 · el correo del día no le pasa la puerta a sus dos correos");
   const inm = cuerpo(codigo("src/lib/guia/inmediato-servidor.ts"), "export async function procesarInmediato(") || codigo("src/lib/guia/inmediato-servidor.ts");
   if (!/  const correo = correoInmediato\(\{(?:(?!\n  \}\);)[\s\S])*\n    explorar: await puertaExplorarCorreo\(\{ baseClic: enlaces\.boton, de: "inmediato", n: convienenEnSeleccion\(items\), perfil, combo, modalidad: modalidad === "str" \? "str" : "ltr" \}\),\n  \}\);/.test(inm)) F("1 · el aviso inmediato no lleva la puerta (con su perfil y su modalidad)");
-  // Las pantallas: el número de la portada de /deptos, que lee convienenHoy.
-  if (!/const \[resumen, convienen\] = await Promise\.all\(\[resumenDeLaNoche\(admin\), convienenHoy\(\)\]\);/.test(codigo("src/lib/deptos/portada.ts"))) F("1 · la portada de /deptos no lee convienenHoy");
+  // Las pantallas: el número de la portada de /deptos, que lee el número guardado (acta del 02-nov-2026, arriba).
+  if (!/const \[resumen, convienen\] = await Promise\.all\(\[resumenDeLaNoche\(admin\), leerConvienenMapa\(admin\)\]\);/.test(codigo("src/lib/deptos/portada.ts"))) F("1 · la portada de /deptos no lee el número guardado");
   const dash = codigo("src/app/dashboard/page.tsx");
   if (!/  const totalNoche = portada\.noche\?\.convienen \?\? null;\n/.test(dash) || !/const lineaPuerta = bloques\.length > 0 \? lineaConvienen\(convienenEnSeleccion\(bloques\.flatMap\(\(b\) => b\.filas\.map\(\(f\) => f\.reemplazo \?\? f\.item\)\)\), totalNoche\) : null;/.test(dash)) F("1 · el dashboard no arma la línea con el número de la portada y los deptos de la selección");
   const prim = codigo("src/app/api/deptos/primeros/route.ts");
@@ -239,3 +243,8 @@ if (require.main === module) {
 //   LA CARD DE LA TRÍADA (pedido de Fabrizio a mitad del goal): T1 sin el degradado · T2 el degradado sin la ciruela · T3 sin
 //      el azul de respaldo · T4 la línea fuera de la card · T5 el enlace sin su botón blanco · T6 la línea en tinta sobre la card.
 // En el mismo runner, los predicados reescritos de otros tiers (X1–X4, cada uno con su línea de acta en su archivo): 53 de 53.
+
+// ── ACTA DE MUTACIONES (02-nov-2026, goal de los cortes por statement_timeout) ──
+// §1 al día con el número guardado de noche (convienenHoy retirado): 3 de 3 en ROJO (runner `mutar-correos.cjs` en el
+// scratchpad de la sesión b526f69b; cada archivo restaurado byte a byte, con hash): C1 los correos dicen un número fijo · C2
+// los correos no leen el número · C3 la portada de /deptos no lee el número guardado (también en CONVIENEN-UNO).

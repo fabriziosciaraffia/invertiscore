@@ -14,6 +14,14 @@
 //       dashboard y la prueba de /deptos salen de `cuantosConvienen` sobre el universo de la vista global (`convienenHoy`);
 //       ninguna lee el `convienen` del resumen de la noche (otro universo: 4.767 contra 4.770 el 30-oct-2026), y ningún
 //       correo arma el suyo.
+// ⚠ ACTA (02-nov-2026, goal de los cortes por statement_timeout, decisión de Fabrizio) · EL NÚMERO SE CUENTA DE NOCHE Y SE
+// GUARDA: el cron de la evaluación lo cuenta con `cuantosConvienen` sobre el MISMO universo que dibuja el mapa
+// (`universoDeLaNoche` con el pie y el plazo de la vista global) y lo guarda en `config` (`explorar_convienen_mapa`,
+// `guardarConvienenMapa`); la landing y la portada de /deptos leen esa fila. `convienenHoy` se retiró: cada regeneración de
+// la portada llamaba dos veces a explorar_mapa y, con la caché vencida, la revalidación se cortaba por timeout sin llegar a
+// Sentry. Sin número guardado la landing sale sin cifra y lo reporta. /explorar sin cuenta cuenta el universo que dibuja, en
+// UNA lectura (eran dos de la misma clave). Se acepta que la landing difiera en unos pocos deptos del mapa durante el día.
+// §3 reescrito con su mutación (acta al pie).
 // Verificado EN ROJO por mutación (acta al pie). Corre dentro del QUICK.
 // Solo:  node --env-file=.env.local --import tsx scripts/eval/golden/convienen-uno-catch-test.ts
 // ============================================================================
@@ -23,6 +31,7 @@ import { join } from "node:path";
 import React, { createElement, type FC } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import * as po from "../../../src/lib/explorar/portal";
+import { COMUNAS_DISPONIBLES } from "../../../src/lib/comunas-disponibles";
 
 (globalThis as { React?: unknown }).React = React;
 (require as unknown as { extensions: Record<string, (m: { exports: unknown }) => void> }).extensions[".css"] = (m) => { m.exports = {}; };
@@ -128,19 +137,64 @@ export async function runConvienenUnoTier(): Promise<{ hard: number }> {
   if (po.cuantosConvienen(u) !== 3 || po.cuantosConvienen(po.compactar([])) !== null || po.cuantosConvienen(null) !== null) F("3 · cuantosConvienen no cuenta el universo (o inventa un cero)");
   // El número del mapa en la vista global es el mismo: la vista global no filtra nada.
   if (po.filtrar(po.descompactar(u), G).length !== po.cuantosConvienen(u)) F("3 · el número del mapa en la vista global no es el de cuantosConvienen");
-  if (!/return cuantosConvienen\(await universoDeLaNocheCacheado\(FILTROS_GLOBALES\.pie, FILTROS_GLOBALES\.plazo\)\);/.test(cache)) F("3 · convienenHoy no cuenta el universo del mapa de la vista global");
-  // Cada superficie, de esa función.
+  // ⚠ ACTA (02-nov-2026) · el número lo cuenta el cron con el universo del mapa y lo guarda (guardarConvienenMapa); las
+  // pantallas leen lo guardado. Se prueba sobre la función, con una base falsa: qué pide, qué escribe y cuándo no escribe.
+  const modCache = (() => { try { return require(join(RAIZ, "src/lib/explorar/convienen-guardado")) as typeof import("../../../src/lib/explorar/convienen-guardado"); } catch (e) { F(`3 · no carga convienen-guardado: ${(e as Error).message}`); return null; } })();
+  if (modCache) {
+    // La clave es la que siembra la migración del 02-nov-2026.
+    if (modCache.CLAVE_CONVIENEN_MAPA !== "explorar_convienen_mapa" || !leer("supabase/migrations/20261102_planes_a_medida.sql").includes(`select '${modCache.CLAVE_CONVIENEN_MAPA}',`)) F("3 · la clave del número guardado no es la que siembra la migración");
+    if (modCache.convienenMapaGuardado(JSON.stringify({ convienenMapa: 6698, calculadoAt: "2026-11-02T04:31:00Z" })) !== 6698
+      || modCache.convienenMapaGuardado(JSON.stringify({ convienenMapa: 0 })) !== null || modCache.convienenMapaGuardado("no-json") !== null || modCache.convienenMapaGuardado(null) !== null)
+      F("3 · el número guardado se lee mal (o un cero o un valor roto se leen como número)");
+    const fila = (id: string) => [id, "Santiago", -33.44, -70.65, 50, 2, 1, 3200, 74, -24804, 520000, "usado", 1_700_000_000];
+    const falsa = (rpc: { data: unknown; error: unknown }) => {
+      const pedidos: Array<Record<string, unknown>> = [];
+      const escritos: Array<Record<string, unknown>> = [];
+      const admin = {
+        rpc: async (n: string, a: Record<string, unknown>) => { pedidos.push({ n, ...a }); return rpc; },
+        from: (t: string) => ({ upsert: async (v: Record<string, unknown>) => { escritos.push({ t, ...v }); return { error: null }; } }),
+      };
+      return { admin, pedidos, escritos };
+    };
+    const ok = falsa({ data: [fila("a1"), fila("a2"), fila("a3")], error: null });
+    const nOk = await modCache.guardarConvienenMapa(ok.admin as never, new Date("2026-11-02T04:30:00Z"));
+    const p0 = ok.pedidos[0] as { n?: string; comunas?: string[]; pie?: number; plazo?: number } | undefined;
+    const e0 = ok.escritos[0] as { t?: string; key?: string; value?: string } | undefined;
+    if (nOk !== 3 || p0?.n !== "explorar_mapa" || p0.pie !== G.pie || p0.plazo !== G.plazo || p0.comunas?.length !== COMUNAS_DISPONIBLES.length)
+      F(`3 · el cron no cuenta el universo del mapa de la vista global (${JSON.stringify({ nOk, p0: p0 && { ...p0, comunas: p0.comunas?.length } })})`);
+    if (e0?.t !== "config" || e0.key !== modCache.CLAVE_CONVIENEN_MAPA || modCache.convienenMapaGuardado(e0.value) !== 3) F("3 · el cron no guarda en config el número que contó");
+    for (const [rpc, que] of [[{ data: null, error: { message: "canceling statement due to statement timeout", code: "57014" } }, "la consulta falla"], [{ data: [], error: null }, "el mapa sale vacío"]] as const) {
+      const f = falsa(rpc);
+      if ((await modCache.guardarConvienenMapa(f.admin as never)) !== null || f.escritos.length) F(`3 · si ${que}, se pisa el número guardado`);
+    }
+    // La portada lee lo guardado; sin fila, null (la frase sale sin cifra).
+    const lectura = (value: string | null) => ({
+      from: (t: string) => ({ select: () => ({ eq: (c: string, k: string) => ({ maybeSingle: async () => ({ data: value != null && t === "config" && c === "key" && k === modCache.CLAVE_CONVIENEN_MAPA ? { value } : null, error: null }) }) }) }),
+    });
+    if ((await modCache.leerConvienenMapa(lectura(JSON.stringify({ convienenMapa: 6698 })) as never)) !== 6698 || (await modCache.leerConvienenMapa(lectura(null) as never)) !== null) F("3 · la portada no lee el número guardado");
+  }
+  if (!/const convienenMapa = dry \? null : await guardarConvienenMapa\(sb\)/.test(codigo("src/app/api/cron/evaluar-avisos/route.ts"))) F("3 · el cron de la evaluación no guarda el número del mapa");
+  // Sin número guardado la falta queda en Sentry (en la landing y en la portada).
+  if (!/if \(n == null && !error\) captureApiWarning\(/.test(codigo("src/lib/explorar/convienen-guardado.ts"))) F("3 · sin número guardado, la portada no lo reporta");
   const vivo = codigo("src/lib/landing-vivo.ts");
-  // ⚠ ACTA (30-oct-2026, el hero limpio de 7c-landing-limpia) · sin el mapa del hero la landing no necesita el universo: lee el
-  // número directo de convienenHoy, como /deptos y la bienvenida.
-  if (!/convienenHoy\(\)\.then\(\(n\) => \{ if \(n == null\) aviso\("convienen", new Error\("sin el universo de la noche"\)\); return n; \}\),/.test(vivo) || /universoDeLaNocheCacheado|descompactar/.test(vivo)) F("3 · el título de la landing no sale de convienenHoy (cuantosConvienen)");
+  // La landing lee las dos filas de la noche en un pedido, el número de la del mapa, y sin él lo reporta. No calcula el universo.
+  if (!/\.from\("config"\)\.select\("key, value"\)\.in\("key", \[CLAVE_RESUMEN_NOCHE, CLAVE_CONVIENEN_MAPA\]\)/.test(vivo)
+    || !/const convienen = convienenMapaGuardado\(valor\(CLAVE_CONVIENEN_MAPA\)\);\s*if \(convienen == null\) aviso\("convienen", /.test(vivo)
+    || !/convienen: noche\.convienen,/.test(vivo)) F("3 · el título de la landing no sale del número del mapa guardado (o su falta no se reporta)");
+  if (/universoDeLaNoche|descompactar|cuantosConvienen|explorar_mapa/.test(vivo)) F("3 · la landing calcula el universo para decir el número");
   const por = codigo("src/lib/deptos/portada.ts");
-  if (!/const \[resumen, convienen\] = await Promise\.all\(\[resumenDeLaNoche\(admin\), convienenHoy\(\)\]\);\s*return resumen \? \{ revisados: resumen\.revisados, convienen \} : null;/.test(por)
-    || (por.match(/nocheDeptos\(admin\)/g) ?? []).length !== 2 || /resumen\.convienen|noche\.convienen/.test(por)) F("3 · la portada de /deptos no toma «convienen» de convienenHoy");
+  if (!/const \[resumen, convienen\] = await Promise\.all\(\[resumenDeLaNoche\(admin\), leerConvienenMapa\(admin\)\]\);\s*return resumen \? \{ revisados: resumen\.revisados, convienen \} : null;/.test(por)
+    || (por.match(/nocheDeptos\(admin\)/g) ?? []).length !== 2 || /resumen\.convienen|noche\.convienen/.test(por)) F("3 · la portada de /deptos no toma «convienen» del número del mapa guardado");
+  const retirado = archivos("src").filter((f) => /\bconvienenHoy\b/.test(codigo(f)));
+  if (retirado.length) F(`3 · vuelve convienenHoy (el número contado en cada pantalla): ${retirado.join(", ")}`);
   if (!/const totalNoche = portada\.noche\?\.convienen \?\? null;/.test(codigo("src/app/dashboard/page.tsx"))) F("3 · el botón del dashboard no lee el número de la portada");
   if (!/const totalNoche = portada\?\.noche\?\.convienen \?\? null;/.test(codigo("src/app/api/deptos/primeros/route.ts"))) F("3 · «Estás dentro» no lee el número de la portada");
   if (!/DEPTOS_COPY\.prueba\(portada\?\.noche\?\.revisados \?\? null, portada\?\.noche\?\.convienen \?\? null\)/.test(codigo("src/app/deptos/deptos-cliente.tsx"))) F("3 · la prueba de /deptos no lee el número de la portada");
-  if (!/convienenHoy\(\),/.test(abierta) || !/<Bienvenida n=\{inicial\.convienen \?\? inicial\.n \?\? total\}/.test(cli)) F("3 · la bienvenida de /explorar no dice el número de todo el sitio");
+  // La bienvenida cuenta el universo que el mapa abierto dibuja, en UNA lectura de la caché (eran dos de la misma clave).
+  if (!/const \[noche, tasa\] = await Promise\.all\(\[\s*universoDeLaNocheCacheado\(PIE_ABIERTO, PLAZO_ABIERTO\)\.catch\(\(\) => null\),/.test(abierta)
+    || !/const universo = universoDeLaNoche\(filtros\) \? noche : null;/.test(abierta) || !/const convienen = cuantosConvienen\(noche\);/.test(abierta)
+    || !/<Bienvenida n=\{inicial\.convienen \?\? inicial\.n \?\? total\}/.test(cli)) F("3 · la bienvenida de /explorar no dice el número de todo el sitio");
+  if ((abierta.match(/universoDeLaNocheCacheado\(/g) ?? []).length !== 1) F("3 · /explorar sin cuenta lee el universo más de una vez");
   // Nadie más lee el «convienen» del resumen de la noche ni arma un total propio (los correos tampoco).
   const resumenConvienen = archivos("src").filter((f) => f !== "src/lib/deptos/servidor.ts").filter((f) => {
     const s = codigo(f);
@@ -181,3 +235,13 @@ if (require.main === module) {
 // de la hoja a mano · C12 la tasa de Filtros a mano · C13 la hoja vuelve a decir la fecha de la tasa.
 
 // ACTA DE MUTACIÓN (30-oct-2026, goal «la tasa editable en Filtros»): X3 —la hoja sin la tasa elegida—, en ROJO (runner `mutar-tasa.cjs` en el scratchpad de la sesión cb466df3; cada archivo restaurado byte a byte).
+
+// ── ACTA DE MUTACIONES (02-nov-2026, goal de los cortes por statement_timeout) ──
+// §3 reescrito (el número guardado de noche): 16 de 16 en ROJO (runner `mutar-convienen-guardado.cjs` en el scratchpad de la
+// sesión b526f69b; cada archivo restaurado byte a byte, con hash). En CONVIENEN-UNO: M1 la landing lee el convienen del
+// resumen · M2 la landing no reporta la falta · M3 la landing devuelve null · M4 la landing llama a explorar_mapa · M5 la
+// portada lee el convienen del resumen · M6 el cron no guarda el número · M7 el cron cuenta otro universo (pie 30, 25 años) ·
+// M8 escribe con el mapa vacío · M9 escribe aunque la consulta falle · M10 un cero guardado se lee como número · M11 otra
+// clave que la de la migración · M12 la portada no reporta la falta · M13 /explorar sin cuenta lee el universo dos veces ·
+// M14 vuelve convienenHoy · M15 la portada lee otra fila. M1 y M3 también en LANDING-MAPA §2, M1 y M7 en PUERTA-E §1, y M16
+// —lo revisado no sale del resumen— en LANDING-MAPA §2.

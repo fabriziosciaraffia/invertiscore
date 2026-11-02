@@ -131,8 +131,12 @@ export async function runLandingMapaTier(): Promise<{ hard: number }> {
   const vivo = codigo("src/lib/landing-vivo.ts");
   // ⚠ ACTA (30-oct-2026, el hero limpio) · sin el mapa, la landing no necesita el universo: el número es convienenHoy, el único
   // de todo el sitio (tier CONVIENEN-UNO).
-  if (!/convienenHoy\(\)\.then\(\(n\) => \{ if \(n == null\) aviso\("convienen", new Error\("sin el universo de la noche"\)\); return n; \}\),/.test(vivo)) F("2 · el número del título no es el número único de «convienen» (convienenHoy)");
-  if (!/\.from\("config"\)\.select\("value"\)\.eq\("key", CLAVE_RESUMEN_NOCHE\)\.maybeSingle\(\)\)\s*\.then\(\(\{ data, error \}\) => \{ if \(error\) throw error; return resumenGuardado\(data\?\.value as string \| null \| undefined\)\?\.revisados \?\? null; \}\)/.test(vivo)) F("2 · lo revisado no sale del resumen de la noche guardado");
+  // ⚠ ACTA (02-nov-2026, goal de los cortes por statement_timeout) · el número único es el que el cron de la noche contó sobre
+  // el universo del mapa y guardó en config (CLAVE_CONVIENEN_MAPA, tier CONVIENEN-UNO §3); la landing lo lee junto con el
+  // resumen de la noche, en un solo pedido, y no calcula el universo.
+  if (!/const convienen = convienenMapaGuardado\(valor\(CLAVE_CONVIENEN_MAPA\)\);/.test(vivo) || !/convienen: noche\.convienen,/.test(vivo)) F("2 · el número del título no es el número único de «convienen» (el del mapa, guardado de noche)");
+  if (!/\.from\("config"\)\.select\("key, value"\)\.in\("key", \[CLAVE_RESUMEN_NOCHE, CLAVE_CONVIENEN_MAPA\]\)/.test(vivo)
+    || !/return \{ convienen, revisados: resumenGuardado\(valor\(CLAVE_RESUMEN_NOCHE\)\)\?\.revisados \?\? null \};/.test(vivo) || !/revisados: noche\.revisados,/.test(vivo)) F("2 · lo revisado no sale del resumen de la noche guardado");
   const heroFuente = codigo("src/components/landing-v14/HeroMapa.tsx") + codigo("src/lib/explorar/puertas-landing.ts");
   if (/\b\d{1,3}\.\d{3}\b/.test(heroFuente.replace(/0\.\d+/g, ""))) F("2 · el hero escribe una cifra a mano");
 

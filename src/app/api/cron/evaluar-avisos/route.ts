@@ -7,6 +7,7 @@ import { PAGINA_POSTGREST } from "@/lib/comuna-stats";
 import { evaluarAviso, VERSION_EVALUACION } from "@/lib/avisos/evaluar-aviso";
 import { candidatoDeEvaluacion, ESTANDAR25_VACIO, evaluarEstandar25 } from "@/lib/avisos/estandar-deptos";
 import { guardarConteosDeLaNoche, guardarResumenDeLaNoche } from "@/lib/deptos/servidor";
+import { guardarConvienenMapa } from "@/lib/explorar/convienen-guardado";
 import { avisosDeOtraVersion, avisosEvaluables, avisosPendientes, sinDespublicados, VENTANA_VISTOS_DIAS, type EvaluacionGuardada, type FilaAviso } from "@/lib/avisos/depurar";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -135,9 +136,12 @@ export async function GET(request: Request) {
   // Y el conteo de cada búsqueda de /deptos (28-oct-2026, lib/deptos/servidor.ts › conteoDeptos): /api/deptos/respuesta solo
   // lee lo guardado. Si falla queda el anterior.
   const conteos = dry ? null : await guardarConteosDeLaNoche(sb).catch(() => null);
+  // Y el número de «convienen» del mapa (02-nov-2026, explorar/convienen-guardado.ts): la landing y la portada
+  // de /deptos solo leen lo guardado. Si falla queda el anterior.
+  const convienenMapa = dry ? null : await guardarConvienenMapa(sb).catch(() => null);
 
   // Las degradadas se escribieron, pero cuentan como falla parcial: el cierre lo marca y alerta.
   return cerrarCron(sb, "evaluar-avisos",
     { procesados: exitosos + fallidos, exitosos: exitosos - degradadas, fallidos: fallidos + degradadas },
-    { dry, bajas, pendientes: pendientes.length, otraVersion: otraVersion.length, restantes: Math.max(0, cola.length - (exitosos + fallidos)), sinArriendo, degradadas, resumenNoche: resumen?.revisados ?? null, conteosNoche: conteos, ms: Date.now() - t0, ...(dry ? { muestra: muestraDry } : {}) }, { registrar: !dry });
+    { dry, bajas, pendientes: pendientes.length, otraVersion: otraVersion.length, restantes: Math.max(0, cola.length - (exitosos + fallidos)), sinArriendo, degradadas, resumenNoche: resumen?.revisados ?? null, conteosNoche: conteos, convienenMapa, ms: Date.now() - t0, ...(dry ? { muestra: muestraDry } : {}) }, { registrar: !dry });
 }

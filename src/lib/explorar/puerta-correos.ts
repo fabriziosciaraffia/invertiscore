@@ -2,7 +2,7 @@
 // LA PUERTA A EXPLORAR EN LOS CORREOS Y EN LO QUE ENTRA POR /deptos (02-nov-2026, goal de Fabrizio). Después de la selección y
 // antes del botón, una línea: «Estos son N de los 6.695 deptos que convienen hoy en Gran Santiago. Míralos todos en el mapa»,
 // con el enlace a /explorar abierto con los filtros del perfil de esa persona. El número es el ÚNICO de la noche
-// (portal-cache.ts › convienenHoy): ninguna superficie lo cuenta por su cuenta, y sin él la línea no sale.
+// (el que guarda el cron, convienen-guardado.ts): ninguna superficie lo cuenta por su cuenta, y sin él la línea no sale.
 //   · LOS CORREOS: el semanal, la selección diaria de «comprar ya» (el aviso inmediato) y el correo del día. El enlace pasa por
 //     /api/semanal/clic (`ir=explorar`), que mide el clic aparte de los deptos y aterriza en /explorar con `desde=correo`: la
 //     vista queda con la llegada «correo». Lo arma el servidor con `puertaExplorarCorreo` (puerta-correos-servidor.ts).

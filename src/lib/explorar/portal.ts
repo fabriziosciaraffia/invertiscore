@@ -212,7 +212,8 @@ export function compactar(pines: readonly PinMapa[]): UniversoCompacto {
 
 /** EL NÚMERO DE «CONVIENEN» (30-oct-2026): cuántos deptos hay en el universo que de verdad se ve en el mapa. Uno solo en
  *  todo el sitio —la landing, /explorar y su bienvenida, el botón «Explorar los N de Santiago» y la prueba de /deptos—: todos
- *  lo cuentan con esta función sobre el universo de la vista global (portal-cache.ts › convienenHoy). Null si no hay. */
+ *  lo cuentan con esta función sobre el universo de la vista global. Desde el 02-nov-2026 la landing y la portada de /deptos
+ *  leen el que contó el cron de la noche (convienen-guardado.ts). Null si no hay. */
 export const cuantosConvienen = (u: UniversoCompacto | null | undefined): number | null =>
   u && Array.isArray(u.filas) && u.filas.length > 0 ? u.filas.length : null;
 

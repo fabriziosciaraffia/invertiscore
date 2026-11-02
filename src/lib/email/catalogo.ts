@@ -51,7 +51,7 @@ const SEMANAL_MUESTRA = (variante: DatosCorreoSemanal["variante"], o: { saldo: n
 });
 const EN_SIETE_DIAS = () => new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 /** La puerta a Explorar (02-nov-2026, explorar/puerta-correos.ts) con datos de muestra: el número de la noche es de muestra
- *  (en el envío sale de convienenHoy); el enlace, con los filtros del perfil de muestra o, en el vacío, a la vista global. */
+ *  (en el envío sale del número guardado de la noche, convienen-guardado.ts); el enlace, con los filtros del perfil de muestra o, en el vacío, a la vista global. */
 const CONVIENEN_MUESTRA = 6695;
 const PERFIL_MUESTRA = { comunas: ["Ñuñoa", "Macul"], dormitorios: [2], precioMinUf: null, precioMaxUf: 4500, piePct: 20, plazoAnios: 30 };
 const PUERTA_MUESTRA = (n: number, de: CorreoConPuerta, global = false): PuertaExplorarCorreo => ({

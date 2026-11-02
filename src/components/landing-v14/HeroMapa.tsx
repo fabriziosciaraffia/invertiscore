@@ -3,8 +3,8 @@
 // hero con el mapa del 29-oct (opción 3 de 7-landing-puertas): el material de la tríada a pantalla completa, como el hero
 // anterior, sin mapa. El nombre del archivo (HeroMapa, hero-mapa.css, las clases `hm-`) quedó de ese hero.
 //
-// En orden: lo revisado anoche en chico, el título en serif con el número único de «convienen» (portal-cache.ts ›
-// convienenHoy), «Verlos en el mapa →» (blanco, a /explorar con la llegada de la landing), el separador «¿Tienes uno en la
+// En orden: lo revisado anoche en chico, el título en serif con el número único de «convienen» (el que guarda el cron de la
+// noche, explorar/convienen-guardado.ts), «Verlos en el mapa →» (blanco, a /explorar con la llegada de la landing), el separador «¿Tienes uno en la
 // mira?», el campo de dirección de siempre —con su animación— y «Franco te dice si conviene. Ver un ejemplo». En el
 // teléfono el bloque va centrado en vertical y alineado a la izquierda; en el PC, a la izquierda con un margen generoso, el
 // botón y el campo del ancho de la columna, y la derecha limpia.
@@ -20,7 +20,7 @@ import { EV } from "./eventos";
 import { HERO_MAPA, HREF_DESDE_LANDING } from "@/lib/explorar/puertas-landing";
 import "./hero-mapa.css";
 
-/** Lo que el hero lee de la noche: cuántos convienen (el número único, convienenHoy) y cuántos se revisaron. */
+/** Lo que el hero lee de la noche: cuántos convienen (el número único, guardado por el cron) y cuántos se revisaron. */
 export interface DatosHeroMapa {
   convienen: number | null;
   revisados: number | null;

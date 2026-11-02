@@ -25,7 +25,7 @@ export const llegadaDeExplorar = (desde: string | null | undefined): LlegadaExpl
 export const pisoDeMiles = (n: number) => Math.floor(n / 1000) * 1000;
 
 /** Los textos del hero, en el orden del mockup. Los números salen de la noche: `revisados` del resumen de la noche
- *  (`deptos_resumen_noche`) y `convienen`, el número único de todo el sitio (portal-cache.ts › convienenHoy). Sin el número,
+ *  (`deptos_resumen_noche`) y `convienen`, el número único de todo el sitio (el que guarda el cron, explorar/convienen-guardado.ts). Sin el número,
  *  la frase sale sin cifra: nunca una cifra escrita a mano. */
 export const HERO_MAPA = {
   ojo: (revisados: number | null) =>

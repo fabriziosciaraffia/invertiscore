@@ -3,7 +3,7 @@
 // para el mapa: los dos leen la MISMA entrada, así el número no salta cuando llegan los pines. Una falla no se guarda.
 import { unstable_cache } from "next/cache";
 import { createServiceClient } from "@/lib/supabase/service";
-import { compactar, cuantosConvienen, FILTROS_GLOBALES, type TasaDelMotor, type UniversoCompacto } from "./portal";
+import { compactar, type TasaDelMotor, type UniversoCompacto } from "./portal";
 import { universoDeLaNoche } from "./portal-servidor";
 
 const cacheado = unstable_cache(
@@ -14,19 +14,6 @@ const cacheado = unstable_cache(
 
 export function universoDeLaNocheCacheado(pie: number, plazo: number): Promise<UniversoCompacto> {
   return cacheado(pie >= 30 ? 30 : 20, plazo >= 30 ? 30 : 25);
-}
-
-/** EL NÚMERO DE «CONVIENEN» EN TODO EL SITIO (30-oct-2026): los deptos del mapa de la vista global (pie 20 %, 30 años, todo
- *  Gran Santiago), contados con `cuantosConvienen` sobre la misma entrada en caché que dibuja el mapa. Lo leen la landing, la
- *  portada de /deptos (su prueba) y, por ella, el botón del dashboard; /explorar y su bienvenida cuentan el mismo universo.
- *  Antes el dashboard y /deptos leían el resumen de la noche (`deptos_conteo`, otro universo: 4.767 contra 4.770). Null si
- *  falla: cada superficie sale sin cifra. */
-export async function convienenHoy(): Promise<number | null> {
-  try {
-    return cuantosConvienen(await universoDeLaNocheCacheado(FILTROS_GLOBALES.pie, FILTROS_GLOBALES.plazo));
-  } catch {
-    return null;
-  }
 }
 
 const tasaCacheada = unstable_cache(

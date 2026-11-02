@@ -79,7 +79,12 @@ export async function runPuertaETier(): Promise<{ hard: number }> {
     // El número es el MISMO universo que Explorar sin cuenta (pie 20 %, 25 años): la landing, la bienvenida y el mapa dicen lo mismo.
     // ⚠ ACTA (30-oct-2026, el hero limpio) · la landing toma el número de `convienenHoy`, el número único de todo el sitio, que
     // cuenta el mismo universo que Explorar sin cuenta (tier CONVIENEN-UNO).
-    if (!/convienenHoy\(\)\.then\(/.test(codigo("src/lib/landing-vivo.ts"))) F("1 · el número de la landing no sale del mismo universo que Explorar sin cuenta");
+    // ⚠ ACTA (02-nov-2026, goal de los cortes por statement_timeout) · la landing lee el número que el cron contó sobre el
+    // universo de la vista global y guardó (CLAVE_CONVIENEN_MAPA, tier CONVIENEN-UNO §3): el mismo pie y el mismo plazo que
+    // Explorar sin cuenta.
+    if (!/convienenMapaGuardado\(valor\(CLAVE_CONVIENEN_MAPA\)\)/.test(codigo("src/lib/landing-vivo.ts"))
+      || !/universoDeLaNoche\(admin, FILTROS_GLOBALES\.pie, FILTROS_GLOBALES\.plazo, ahora\)/.test(codigo("src/lib/explorar/convienen-guardado.ts"))
+      || po.FILTROS_GLOBALES.pie !== ab.PIE_ABIERTO || po.FILTROS_GLOBALES.plazo !== ab.PLAZO_ABIERTO) F("1 · el número de la landing no sale del mismo universo que Explorar sin cuenta");
     // La landing es liviana: el hero no arrastra Explorar.
     if (/explorar\/abierto|explorar\/portal/.test(codigo("src/components/landing-v14/Entrada.tsx") + codigo("src/components/landing-v14/HeroMapa.tsx")) || /^import (?!type)[^\n]*from "\.\/portal"/m.test(leer("src/lib/explorar/puertas-landing.ts"))) F("1 · el hero de la landing importa Explorar entero (pesa antes del primer pintado)");
     const real = archivos("src").filter((f) => /an[áa]lisis real\b/i.test(leer(f)));

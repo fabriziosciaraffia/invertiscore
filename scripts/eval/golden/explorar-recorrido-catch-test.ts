@@ -4,7 +4,8 @@
 //
 //   1 · EL NÚMERO CUENTA CON 30 AÑOS: una sola constante (deptos/estandar.ts › PLAZO_POR_DEFECTO = 30) que leen la vista
 //       global de /explorar —y con ella la landing, la bienvenida, /deptos, el botón del dashboard y «Estás dentro», que
-//       cuentan con convienenHoy—, el conteo de /deptos (con el plazo en la clave), la selección y los guardados.
+//       cuentan con el número que el cron guarda de noche desde el 02-nov-2026—, el conteo de /deptos (con el plazo en la
+//       clave), la selección y los guardados.
 //   2 · EL POP-UP Y EL WIZARD ABREN EN 30: el origen sintético del semanal, la guía y la selección diaria, y el wizard de la
 //       puerta A, sin plazo elegido, con la constante.
 //   3 · UN PERFIL CON 25 LO CONSERVA: el plazo elegido o inferido no se pisa (/explorar, la noche, la selección, el semanal).
@@ -124,7 +125,9 @@ export async function runExplorarRecorridoTier(): Promise<{ hard: number }> {
   if (PLAZO_DEPTOS !== PLAZO_POR_DEFECTO || PIE_DEPTOS !== PIE_POR_DEFECTO || G.plazo !== PLAZO_POR_DEFECTO || G.pie !== PIE_POR_DEFECTO || ab.PLAZO_ABIERTO !== PLAZO_POR_DEFECTO || ab.PIE_ABIERTO !== PIE_POR_DEFECTO)
     F("1 · /deptos, la vista global o /explorar sin cuenta no leen la constante del sitio");
   if (!/export const PLAZO_DEPTOS = PLAZO_POR_DEFECTO;/.test(codigo("src/lib/deptos/estandar.ts")) || !/plazo: PLAZO_POR_DEFECTO/.test(codigo("src/lib/explorar/portal.ts"))) F("1 · el plazo de /deptos o de la vista global es un literal, no la constante");
-  if (!/return cuantosConvienen\(await universoDeLaNocheCacheado\(FILTROS_GLOBALES\.pie, FILTROS_GLOBALES\.plazo\)\);/.test(codigo("src/lib/explorar/portal-cache.ts"))) F("1 · el número de todo el sitio no cuenta la vista global (con su plazo)");
+  // ⚠ ACTA (02-nov-2026, goal de los cortes por statement_timeout, tier CONVIENEN-UNO §3) · el número de todo el sitio ya no lo
+  // cuenta convienenHoy (retirado) desde la caché: lo cuenta el cron sobre la vista global (con su plazo) y lo guarda en config.
+  if (!/n = cuantosConvienen\(compactar\(await universoDeLaNoche\(admin, FILTROS_GLOBALES\.pie, FILTROS_GLOBALES\.plazo, ahora\)\)\);/.test(codigo("src/lib/explorar/convienen-guardado.ts"))) F("1 · el número de todo el sitio no cuenta la vista global (con su plazo)");
   // El conteo de /deptos: con el plazo en cada llamada y en la clave (un conteo a 25 años nunca se sirve como de 30).
   for (const p of ["src/lib/deptos/servidor.ts", "src/lib/casa/sin-oferta-servidor.ts"]) {
     const c = codigo(p);
@@ -361,3 +364,7 @@ if (require.main === module) {
 // PUERTA-B-DASHBOARD DB1: 104 de 104 en ROJO.
 
 // ACTA DE MUTACIÓN (30-oct-2026, goal «la tasa editable en Filtros»): X9 y X10 —Filtros con «La de hoy» fija y el pop-up del mapa sin la tasa—, en ROJO (runner `mutar-tasa.cjs` en el scratchpad de la sesión cb466df3; cada archivo restaurado byte a byte).
+
+// ── ACTA DE MUTACIÓN (02-nov-2026, goal de los cortes por statement_timeout) ──
+// §1, el número de todo el sitio contado por el cron sobre la vista global: R1 —el cron con otro plazo— en ROJO (runner
+// `mutar-correos.cjs` en el scratchpad de la sesión b526f69b; archivo restaurado byte a byte, con hash).

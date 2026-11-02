@@ -8,9 +8,9 @@ import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { capturarServidor } from "@/lib/posthog-servidor";
 import { MAPA_QUIETO } from "@/lib/explorar/explorar";
 import { MAPA_QUIETO_M } from "@/lib/explorar/mapa-quieto";
-import { descompactar, filtrar, portalDeUrl, PORTAL_COPY, universoDeLaNoche } from "@/lib/explorar/portal";
+import { cuantosConvienen, descompactar, filtrar, portalDeUrl, PORTAL_COPY, universoDeLaNoche } from "@/lib/explorar/portal";
 import { cuentaPortal, eventoPortalVista } from "@/lib/explorar/portal-servidor";
-import { convienenHoy, tasaDelMotor, universoDeLaNocheCacheado } from "@/lib/explorar/portal-cache";
+import { tasaDelMotor, universoDeLaNocheCacheado } from "@/lib/explorar/portal-cache";
 import { robotDeVisita } from "@/lib/vista-entrada";
 import { filtrosAbiertos, ordenAbierto, origenDeLlegada, PIE_ABIERTO, PLAZO_ABIERTO } from "@/lib/explorar/abierto";
 import { llegadaDeExplorar } from "@/lib/explorar/puertas-landing";
@@ -78,12 +78,16 @@ async function ExplorarAbierto({ consulta }: { consulta: string }) {
   const base = portalDeUrl(sp);
   const filtros = filtrosAbiertos(base.filtros);
   const orden = ordenAbierto(base.orden);
-  // La bienvenida dice el número de todo el sitio (convienenHoy), aunque la URL traiga filtros; el del mapa es el filtrado.
-  const [universo, tasa, convienen] = await Promise.all([
-    universoDeLaNoche(filtros) ? universoDeLaNocheCacheado(PIE_ABIERTO, PLAZO_ABIERTO).catch(() => null) : Promise.resolve(null),
+  // UNA SOLA LECTURA DEL UNIVERSO (02-nov-2026): el mapa abierto y la bienvenida cuentan el mismo universo de la noche (pie
+  // 20 % y 30 años). Eran dos lecturas de la misma clave en este Promise.all: con la caché vencida, dos explorar_mapa en el
+  // mismo milisegundo.
+  const [noche, tasa] = await Promise.all([
+    universoDeLaNocheCacheado(PIE_ABIERTO, PLAZO_ABIERTO).catch(() => null),
     tasaDelMotor(),
-    convienenHoy(),
   ]);
+  const universo = universoDeLaNoche(filtros) ? noche : null;
+  // La bienvenida dice el número de todo el sitio, aunque la URL traiga filtros; el del mapa es el filtrado.
+  const convienen = cuantosConvienen(noche);
   const n = universo ? filtrar(descompactar(universo), filtros).length : null;
   return <ExplorarCliente inicial={{ filtros, orden, n, cuenta: null, tasa, convienen }} abrir={sp.get("a")} origen={origenDeLlegada(sp.get("desde"))} />;
 }

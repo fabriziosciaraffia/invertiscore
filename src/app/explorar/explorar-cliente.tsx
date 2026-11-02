@@ -89,7 +89,7 @@ export interface InicialPortal {
   cuenta: CuentaCliente | null;
   /** La tasa del motor (portal-cache.ts › tasaDelMotor), para la línea bajo el número y «¿Cómo se calcula?»; null si no se leyó. */
   tasa: TasaDelMotor | null;
-  /** El número de «convienen» de todo el sitio (portal-cache.ts › convienenHoy), para la bienvenida; solo sin cuenta. */
+  /** El número de «convienen» de todo el sitio (el universo de la vista global, contado en page.tsx), para la bienvenida; solo sin cuenta. */
   convienen: number | null;
 }
 

@@ -49,7 +49,7 @@ import { capRateNetoLtrPct } from "@/lib/cap-rate-hallazgo";
 import { resolverArriendoReferencia, type ArriendoReferencia } from "@/lib/arriendo-referencia";
 import { titularMotor } from "@/lib/titular-motor";
 import { estadoRecomendacion, type EstadoRecomendacion } from "@/lib/lo-que-haria-yo";
-import { convienenHoy } from "@/lib/explorar/portal-cache";
+import { CLAVE_CONVIENEN_MAPA, convienenMapaGuardado } from "@/lib/explorar/convienen-guardado";
 import { CLAVE_RESUMEN_NOCHE, resumenGuardado } from "@/lib/deptos/servidor";
 import { metricaValorONull, type AIAnalysisV2, type AnalisisInput, type FullAnalysisResult, type Hallazgo, type HallazgoDistanciaVeredicto, type MixPalancas, type Veredicto } from "@/lib/types";
 import RESPALDO from "./landing-respaldo.json";
@@ -126,8 +126,9 @@ export interface DatosLanding {
   ultimoAnalisis: { etiqueta: string; veredicto: Veredicto; comuna: string; createdAt: string } | null;
   ejemplos: EjemploLanding[];
   /** EL TÍTULO DEL HERO (30-oct-2026, el hero limpio de 7c-landing-limpia): cuántos convienen hoy, el número único de todo el
-   *  sitio (convienenHoy: el universo del mapa de Explorar con el financiamiento por defecto (pie 20 % y 30 años)). El mapa del hero y sus grupos se
-   *  retiraron con él. null si la lectura falló: el título sale sin cifra. */
+   *  sitio: el universo del mapa de Explorar con el financiamiento por defecto (pie 20 % y 30 años). Desde el 02-nov-2026, el
+   *  que guardó el cron de la noche (explorar/convienen-guardado.ts): la landing no calcula el universo. El
+   *  mapa del hero y sus grupos se retiraron con él. null si no hay ninguno guardado: el título sale sin cifra. */
   convienen: number | null;
   /** Cuántos deptos en venta revisó Franco anoche (`revisados` del resumen de la noche, `deptos_resumen_noche`): «+21.000».
    *  Solo lo guardado: la landing no lo calcula (son 2 a 4 s). null sin resumen (la frase sale sin cifra). */
@@ -342,7 +343,7 @@ export async function leerDatosLanding(): Promise<DatosLanding> {
 
   const sb = createServiceClient();
 
-  const [ultimo, guardados, convienen, revisados] = await Promise.all([
+  const [ultimo, guardados, noche] = await Promise.all([
     (async () => {
       try {
         const noTest = filtroNoTest(await getTestAccountIds(sb));
@@ -368,18 +369,26 @@ export async function leerDatosLanding(): Promise<DatosLanding> {
       }
     })(),
     leerEjemplos(),
-    // convienenHoy no tira: devuelve null si falla, y eso se anota igual que una lectura caída.
-    convienenHoy().then((n) => { if (n == null) aviso("convienen", new Error("sin el universo de la noche")); return n; }),
-    Promise.resolve(sb.from("config").select("value").eq("key", CLAVE_RESUMEN_NOCHE).maybeSingle())
-      .then(({ data, error }) => { if (error) throw error; return resumenGuardado(data?.value as string | null | undefined)?.revisados ?? null; })
-      .catch((e) => { aviso("revisados", e); return null; }),
+    // LO DE LA NOCHE, GUARDADO (02-nov-2026): lo revisado (el resumen de la noche) y el número de «convienen» del mapa son dos
+    // filas de `config` que escribe el cron de la evaluación; se leen en un solo pedido. La landing no calcula el universo:
+    // cada regeneración llamaba a explorar_mapa dos veces y la revalidación se cortaba por timeout sin llegar a Sentry. Sin
+    // número guardado, el título sale sin cifra y la falta queda en Sentry.
+    Promise.resolve(sb.from("config").select("key, value").in("key", [CLAVE_RESUMEN_NOCHE, CLAVE_CONVIENEN_MAPA]))
+      .then(({ data, error }) => {
+        if (error) throw error;
+        const valor = (key: string) => ((data ?? []) as Array<{ key: string; value: string | null }>).find((f) => f.key === key)?.value;
+        const convienen = convienenMapaGuardado(valor(CLAVE_CONVIENEN_MAPA));
+        if (convienen == null) aviso("convienen", new Error(`sin el número del mapa guardado (config ${CLAVE_CONVIENEN_MAPA})`));
+        return { convienen, revisados: resumenGuardado(valor(CLAVE_RESUMEN_NOCHE))?.revisados ?? null };
+      })
+      .catch((e) => { aviso("noche", e); return { convienen: null, revisados: null }; }),
   ]);
 
   return {
     ultimoAnalisis: ultimo,
     ejemplos: guardados.ejemplos,
-    convienen,
-    revisados,
+    convienen: noche.convienen,
+    revisados: noche.revisados,
     degradado: degradado || guardados.degradado,
   };
 }

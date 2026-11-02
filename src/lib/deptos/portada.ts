@@ -13,18 +13,22 @@
 // es el suyo, no el del ejemplo. La frase de la noche sí viene del servidor.
 //
 // UN SOLO NÚMERO DE «CONVIENEN» (30-oct-2026): `noche.convienen` ya no es el del resumen de la noche (`deptos_conteo`, otro
-// universo: 4.767 contra los 4.770 del mapa) sino el de `convienenHoy` (explorar/portal-cache.ts), el universo que se ve en
-// el mapa. Lo leen la prueba de /deptos, el botón «Explorar los N de Santiago» del dashboard y /api/deptos/primeros.
+// universo: 4.767 contra los 4.770 del mapa) sino el del universo que se ve en el mapa. Lo leen la prueba de /deptos, el
+// botón «Explorar los N de Santiago» del dashboard y /api/deptos/primeros.
 // `revisados` sigue del resumen.
+//
+// EL NÚMERO, GUARDADO (02-nov-2026, goal de los cortes por statement_timeout): el de «convienen» es el que el cron de la
+// noche contó sobre ese mismo universo y guardó en `config` (`leerConvienenMapa`). Contarlo acá llamaba a explorar_mapa en
+// vivo en cada regeneración de esta caché (un `unstable_cache` dentro de otro se salta su propia caché).
 // ─────────────────────────────────────────────────────────────────────────────
 import { unstable_cache } from "next/cache";
 import { createServiceClient } from "@/lib/supabase/service";
 import { COMUNAS_DISPONIBLES } from "@/lib/comunas-disponibles";
-import { convienenHoy } from "@/lib/explorar/portal-cache";
+import { leerConvienenMapa } from "@/lib/explorar/convienen-guardado";
 import { ELECCIONES_POR_DEFECTO, TIPOLOGIAS_DEPTOS, validarElecciones, type RespuestaDeptos } from "./respuesta";
 import { rangoConMasPublicados, responderDeptos, resumenDeLaNoche } from "./servidor";
 
-/** Lo de la noche que muestra la portada: cuántos revisó (el resumen) y cuántos convienen (el mapa; null sin universo). */
+/** Lo de la noche que muestra la portada: cuántos revisó (el resumen) y cuántos convienen (el mapa, guardado; null sin él). */
 export interface NocheDeptos {
   revisados: number;
   convienen: number | null;
@@ -32,7 +36,7 @@ export interface NocheDeptos {
 
 /** El resumen de la noche con el número de «convienen» del mapa. Null sin resumen. */
 async function nocheDeptos(admin: ReturnType<typeof createServiceClient>): Promise<NocheDeptos | null> {
-  const [resumen, convienen] = await Promise.all([resumenDeLaNoche(admin), convienenHoy()]);
+  const [resumen, convienen] = await Promise.all([resumenDeLaNoche(admin), leerConvienenMapa(admin)]);
   return resumen ? { revisados: resumen.revisados, convienen } : null;
 }
 
