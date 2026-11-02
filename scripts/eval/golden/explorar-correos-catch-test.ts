@@ -27,7 +27,8 @@ import { llegadaDeExplorar } from "../../../src/lib/explorar/puertas-landing";
 import { origenDeExplorar } from "../../../src/lib/vista-entrada";
 import { eventoPortalVista } from "../../../src/lib/explorar/portal-servidor";
 import { puertaExplorarCorreo } from "../../../src/lib/explorar/puerta-correos-servidor";
-import { correoSemanal, correoSemanalVacio, SEMANAL } from "../../../src/lib/email/correo-semanal";
+import { COLOR_VEREDICTO, correoSemanal, correoSemanalVacio, SEMANAL } from "../../../src/lib/email/correo-semanal";
+import { ROJO, TINTA } from "../../../src/lib/email/plantilla-clara";
 import { correoInmediato } from "../../../src/lib/email/correo-inmediato";
 import { INMEDIATO } from "../../../src/lib/guia/inmediato";
 import { CATALOGO_CORREOS } from "../../../src/lib/email/catalogo";
@@ -182,8 +183,23 @@ export async function runExplorarCorreosTier(): Promise<{ hard: number }> {
   if (!pi.ok) F(`4 · en el aviso inmediato la línea no va después de la selección y antes del botón (${JSON.stringify(pi)})`);
   const vacHtml = correoSemanalVacio({ nombre: "Camila", urlPerfil: "https://refranco.ai/p", urlBaja: "https://refranco.ai/b", salidas: { linea: "Hasta UF 3.000, 810 sí.", botones: [{ boton: "Buscar hasta UF 3.000", url: "https://refranco.ai/a" }] }, explorar: { linea: "Hoy convienen 6.695 deptos en Gran Santiago.", url: `${BASE}&ir=explorar&de=semanal_vacio` } }).html;
   const iAj = vacHtml.lastIndexOf('data-ajuste="1"'), iLin = vacHtml.indexOf('data-correo="explorar"'), iBot = vacHtml.indexOf('data-correo="explorar-enlace"');
-  const botonVacio = vacHtml.slice(vacHtml.lastIndexOf("<td", iBot), vacHtml.indexOf("</a>", iBot));
-  if (!(iAj > 0 && iAj < iLin && iLin < iBot) || !/border: 1\.5px solid/.test(botonVacio) || !botonVacio.endsWith(">Míralos todos en el mapa")) F("4 · en el vacío, «Míralos todos en el mapa» no es una salida más después de las otras");
+  if (!(iAj > 0 && iAj < iLin && iLin < iBot)) F("4 · en el vacío, «Míralos todos en el mapa» no es una salida más después de las otras");
+  // LA CARD DE LA TRÍADA (02-nov-2026, pedido de Fabrizio: «es casi un CTA para llevar a Explorar», «todo el texto que alude
+  // a Explorar en una card de tríada»): en todo correo, la línea y «Míralos todos en el mapa» van JUNTAS dentro de una card con
+  // el degradado azul → ciruela → rojo de la tríada y el azul de respaldo; la línea en blanco y el enlace, botón blanco en tinta.
+  const C = COLOR_VEREDICTO, triada = `linear-gradient(100deg, ${C.COMPRAR} 0%, ${C["AJUSTA SUPUESTOS"]} 52%, ${C["BUSCAR OTRA"]} 100%)`;
+  if (C.COMPRAR !== "#2B558F" || C["AJUSTA SUPUESTOS"] !== "#6E4560" || C["BUSCAR OTRA"] !== ROJO) F("4 · los colores del correo no son los de la tríada");
+  const CIERRE_CARD = "\n    </td>\n  </tr></table>\n</td></tr>";
+  for (const [nombre, html, linea] of [["el semanal", conLinea, "LÍNEA-DE-PRUEBA"], ["el aviso inmediato", inmHtml, pc.lineaConvienen(1, 6695)!], ["el vacío", vacHtml, "Hoy convienen 6.695 deptos en Gran Santiago."]] as const) {
+    const card = html.match(/<td bgcolor="([^"]+)" style="([^"]*)" data-correo="explorar">/);
+    const i0 = card?.index ?? -1, fin = i0 >= 0 ? html.indexOf(CIERRE_CARD, i0) : -1;
+    const dentro = i0 >= 0 && fin > i0 ? html.slice(i0, fin) : "";
+    const lin = dentro.match(/<td style="([^"]*)" data-correo="explorar-linea">([^<]*)<\/td>/);
+    const bot = dentro.match(/<td bgcolor="#FFFFFF" style="[^"]*" data-correo="explorar-boton">\s*<a href="[^"]*" style="([^"]*)" data-correo="explorar-enlace">([^<]*)<\/a>/);
+    if (!card || card[1] !== C.COMPRAR || !card[2].includes(`background-color: ${C.COMPRAR};`) || !card[2].includes(`background-image: ${triada};`)) F(`4 · en ${nombre}, la puerta no va en la card de la tríada`);
+    else if (!lin || lin[2] !== linea || !/color: #FFFFFF;/.test(lin[1])) F(`4 · en ${nombre}, la línea no va dentro de la card de la tríada, en blanco`);
+    else if (!bot || bot[2] !== "Míralos todos en el mapa" || !bot[1].includes(`color: ${TINTA};`)) F(`4 · en ${nombre}, «Míralos todos en el mapa» no es el botón blanco dentro de la card`);
+  }
   if (!correoSemanalVacio({ nombre: null, urlPerfil: "p", urlBaja: "b", explorar: { linea: "Hoy convienen 6.695 deptos en Gran Santiago.", url: "u" } }).html.includes('data-correo="explorar-enlace"')) F("4 · el vacío sin otras salidas no lleva «Míralos todos»");
   for (const id of ["semanal_vacio", "del_dia_vacio", "aviso_inmediato"]) if (!(CATALOGO_CORREOS.find((x) => x.id === id)?.render?.().html ?? "").includes('data-correo="explorar"')) F(`4 · ${id} del catálogo no trae la puerta`);
   if (!/          <SeleccionEnCasa sel=\{sel\} autoAnalizar=\{autoAnalizar\} primera=\{!hayDeptos\(sel\)\} \/>\n          <LineaPuertaExplorar linea=\{lineaPuerta\} consulta=\{consultaPuerta\} donde="dashboard" \/>\n        <\/section>/.test(dash)) F("4 · en el dashboard la línea no va bajo la selección");
@@ -204,7 +220,7 @@ if (require.main === module) {
 }
 
 // ── ACTA DE MUTACIONES (02-nov-2026) ──
-// 43 de 43 en ROJO (runner `mutar-puerta.cjs` en el scratchpad de la sesión cb466df3; cada archivo restaurado byte a byte):
+// 49 de 49 en ROJO (runner `mutar-puerta.cjs` en el scratchpad de la sesión cb466df3; cada archivo restaurado byte a byte):
 //   §1 P1 la línea sin «en Gran Santiago» · P2 el singular en plural · P3 el vacío sin el número · P4 sin el número de la noche
 //      sale igual · P5 N cuenta los negociables · P6 el servidor lee otro número · P7 el servidor ignora el que lee · P8 el
 //      semanal sin la puerta · P9 el semanal cuenta los negociables · P10 el semanal vacío sin la puerta · P11 el correo del día
@@ -217,7 +233,9 @@ if (require.main === module) {
 //   §3 M1 el evento con el nombre de otro · M2 el clic sin destino propio · M3 la ruta no mide (con un `if (false)` delante:
 //      la primera versión del predicado lo dejaba pasar, se reescribió al bloque entero) · M4 la pantalla no mide · M5 la
 //      llegada sin «correo» · M6 la vista con cuenta sin llegada · M7 la página no pasa la llegada.
-//   §4 L1 la línea después del botón en el semanal · L2 en el aviso inmediato · L3 el vacío con un enlace en vez de salida ·
+//   §4 L1 la línea después del botón en el semanal · L2 en el aviso inmediato · L3 el vacío con un enlace en vez de la card ·
 //      L4 el dashboard con la línea sobre la selección · L5 «Estás dentro» sin la línea · L6 el catálogo del vacío sin la
 //      puerta · L7 el dashboard pierde su botón.
-// En el mismo runner, los predicados reescritos de otros tiers (X1–X4, cada uno con su línea de acta en su archivo): 47 de 47.
+//   LA CARD DE LA TRÍADA (pedido de Fabrizio a mitad del goal): T1 sin el degradado · T2 el degradado sin la ciruela · T3 sin
+//      el azul de respaldo · T4 la línea fuera de la card · T5 el enlace sin su botón blanco · T6 la línea en tinta sobre la card.
+// En el mismo runner, los predicados reescritos de otros tiers (X1–X4, cada uno con su línea de acta en su archivo): 53 de 53.
