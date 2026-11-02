@@ -281,3 +281,33 @@ export function estadoDeFila(largo: EstadoBloque | null, corto: EstadoBloque | n
   if (bs.includes("armada")) return "armada";
   return "sin_match";
 }
+
+/**
+ * EL BLOQUE DE RENTA CORTA CON LA ZONA FALLIDA (02-nov-2026, decisión de Fabrizio). Si la zona de una comuna falla dos
+ * veces en la misma corrida, el bloque NO es «no apareció ninguno» —eso solo se dice cuando la zona respondió y de verdad
+ * no hubo deptos—: queda pendiente, sin deptos y SIN combinación, y no aparece en ninguna parte (ni título ni texto, en el
+ * correo, en /semanal ni en el dashboard). Ningún otro camino deja esa forma —un bloque armado, o pendiente por falta de
+ * fichas, siempre lleva su combinación—, así se reconoce sin una columna nueva.
+ */
+export const esZonaFallidaStr = (f: { estado_str?: string | null; combinacion_str?: unknown }): boolean =>
+  f.estado_str === "pendiente" && f.combinacion_str == null;
+
+/** Cuánto se sigue reintentando, después del envío original del lunes (12:00 UTC), el semanal de quien solo tiene el bloque
+ *  de renta corta y su zona falló: sale atrasado apenas la zona responda; pasado esto, esa semana no sale. */
+export const HORAS_RENTA_CORTA_ATRASADA = 48;
+/** La hora del envío original del lunes (vercel.json › semanal-enviar, «0,30 12 * * 1»). */
+export const HORA_ENVIO_LUNES_UTC = 12;
+
+/** El envío original de una semana y hasta cuándo se reintenta la renta corta atrasada. */
+export function ventanaRentaCortaAtrasada(semana: string): { envio: Date; limite: Date } {
+  const envio = new Date(`${semana}T${String(HORA_ENVIO_LUNES_UTC).padStart(2, "0")}:00:00Z`);
+  return { envio, limite: new Date(envio.getTime() + HORAS_RENTA_CORTA_ATRASADA * 3600_000) };
+}
+
+/** El lunes (hora de Chile) de la semana en curso si hoy es lunes, martes o miércoles; null el resto de la semana. */
+export function lunesDeEstaSemana(ahora: Date = new Date()): string | null {
+  const chile = new Date(ahora.getTime() - 3 * 3600_000);
+  const dia = chile.getUTCDay();
+  if (dia < 1 || dia > 3) return null;
+  return new Date(Date.UTC(chile.getUTCFullYear(), chile.getUTCMonth(), chile.getUTCDate() - (dia - 1))).toISOString().slice(0, 10);
+}

@@ -63,6 +63,7 @@ export const CRONS_VARIAS_AL_DIA: ReadonlySet<string> = new Set([
   "semanal-armar", // el domingo, de 11 a 23
   "semanal-reintento", // el lunes, de 08 a 11
   "semanal-enviar", // el lunes, 12:00 y 12:30
+  "semanal-renta-corta", // cada hora, de lunes a miércoles (la renta corta atrasada, 02-nov-2026)
   "correo-del-dia", // cada 10 minutos (la cola de /deptos, 16-oct-2026)
 ]);
 

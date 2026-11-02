@@ -155,7 +155,9 @@ export async function POST(request: Request) {
           comuna: body.comuna ?? aviso.comuna, superficie: body.superficieUtil, dormitorios: body.dormitorios, esNuevo: body.tipoPropiedad === "nuevo", antiguedad: body.antiguedad,
         }, ufValue);
         // La zona recalculada con ESTE cuerpo (la comparación aísla lo que mide el proveedor) y la medición fina.
-        const zona = (await zonasDeComuna(admin, aviso.comuna)).get(celdaDormitorios(aviso.dormitorios));
+        // Si la zona falla (02-nov-2026: zonasDeComuna ahora rechaza en vez de salir vacía), se mide igual: la comparación
+        // queda sin el lado de la zona, como cuando la celda no tiene respuestas.
+        const zona = (await zonasDeComuna(admin, aviso.comuna).catch(() => null))?.get(celdaDormitorios(aviso.dormitorios));
         const zonaEv = zona ? evaluarStrCon(body, zona.estimacion, { uf: ufValue }, mercado, new Date()) : null;
         const built = await buildShortTermAnalysisRow(body, ufValue, mercado, undefined, { origen: "semanal" });
         if (!built.ok) return { ok: false, status: built.response.status, error: "medicion" };

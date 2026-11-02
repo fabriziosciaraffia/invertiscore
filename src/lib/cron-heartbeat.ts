@@ -127,6 +127,9 @@ export const CRONS_VIGILADOS: CronVigilado[] = [
   { nombre: "semanal-enviar", label: "Correo semanal: el envío (lunes)", intervaloHoras: 168, desde: "2026-10-05T12:00:00Z" },
   // El reintento de las pendientes, el lunes de 08 a 11 UTC antes del envío (13-oct-2026).
   { nombre: "semanal-reintento", label: "Correo semanal: el reintento de las pendientes (lunes)", intervaloHoras: 168, desde: "2026-10-19T08:05:00Z" },
+  // La renta corta atrasada (02-nov-2026): cada hora de lunes a miércoles; sale con su zona apenas responda, hasta 48 horas
+  // después del envío del lunes. El hueco más largo es del miércoles al lunes siguiente.
+  { nombre: "semanal-renta-corta", label: "Correo semanal: la renta corta atrasada (lunes a miércoles)", intervaloHoras: 168, desde: "2026-11-09T00:35:00Z" },
   // La cola del correo del día (16-oct-2026, la puerta B): cada 10 minutos, todo el día.
   { nombre: "correo-del-dia", label: "Correo del día: la cola de /deptos (cada 10 minutos)", intervaloHoras: 1, desde: "2026-10-16T18:00:00Z" },
   // La prosa de las páginas de comuna (20-oct-2026): el lunes a las 05:30 UTC, después de la evaluación de las 04:20.

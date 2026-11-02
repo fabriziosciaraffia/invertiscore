@@ -110,13 +110,21 @@ export async function procesarDelDia(
       : null;
     return { largo, corto };
   };
-  let g = await elegir(false);
+  // LA ZONA FALLIDA (02-nov-2026, semanal-str.ts › esZonaFallidaStr): si la zona de renta corta falló dos veces, ese bloque no
+  // va —ni título ni texto— y no cuenta para el estado (el elegido de renta corta se descarta: `corto` queda null). Con deptos
+  // de renta larga, sale ella sola; si no, la vuelta espera (la cola reintenta) y, al final de las vueltas, este correo no
+  // sale: nunca vacío por una falla nuestra. Se mira después de cada elección, porque las vecinas se leen tarde.
+  const zonaFallida = (): string[] => (prepStr?.tipo === "lista" ? prepStr.p.zonasFallidas() : []);
+  const sinZona = () => zonaFallida().length > 0;
+  const sinCortoSiFalla = (x: Awaited<ReturnType<typeof elegir>>) => (sinZona() ? { ...x, corto: null } : x);
+  let g = sinCortoSiFalla(await elegir(false));
+  const conLargoConDeptos = (x: typeof g) => (x.largo?.items.length ?? 0) > 0;
   const estadoDe = (x: typeof g) => estadoDeFila(
     x.largo?.estado ?? (pp.perfilLtr ? "sin_match" : null),
-    x.corto?.estado ?? (prepStr ? "sin_match" : null),
+    sinZona() ? null : x.corto?.estado ?? (prepStr ? "sin_match" : null),
   );
   const minutos = (ahora.getTime() - Date.parse(fila.armada_at)) / 60_000;
-  const paso = pasoDelDia({ estado: estadoDe(g), minutos, vueltas: fila.intentos + 1 });
+  const paso = pasoDelDia({ estado: sinZona() && !conLargoConDeptos(g) ? "pendiente" : estadoDe(g), minutos, vueltas: fila.intentos + 1 });
   // EL ORDEN FIJO (23-oct-2026): el orden que ya vio la persona es el que la fila tiene AHORA —la pantalla escribe los de la
   // noche (rellenarDeLaNoche) después de que la cola encoló y mientras esta vuelta corre—, no el que traía al encolarse. Visto
   // en el QA en WebKit: la primera vuelta partía con la fila vacía y mandaba el correo con los deptos 3 y 4 al revés.
@@ -128,13 +136,13 @@ export async function procesarDelDia(
   const columnas = (x: typeof g) => ({
     items: x.largo ? aItems(x.largo, previos.largo) : [],
     items_str: x.corto ? aItems(x.corto, previos.corto) : [],
-    estado_str: x.corto ? x.corto.estado : prepStr ? "sin_match" : null,
+    estado_str: sinZona() ? "pendiente" as const : x.corto ? x.corto.estado : prepStr ? "sin_match" : null,
     combinacion: prep.tipo === "lista" ? prep.p.combo : null,
     perfil: prep.tipo === "lista" ? prep.p.perfil : pp.perfilLtr,
     origen_analysis_id: prep.tipo === "lista" ? prep.p.origen.analysisId : null,
-    combinacion_str: prepStr?.tipo === "lista" ? prepStr.p.combo : null,
+    combinacion_str: !sinZona() && prepStr?.tipo === "lista" ? prepStr.p.combo : null,
     perfil_str: prepStr?.tipo === "lista" ? prepStr.p.perfil : prepStr?.perfil ?? null,
-    origen_str_analysis_id: prepStr?.tipo === "lista" ? prepStr.p.origen.analysisId : null,
+    origen_str_analysis_id: !sinZona() && prepStr?.tipo === "lista" ? prepStr.p.origen.analysisId : null,
     variante: "tarjetas",
   });
   if (paso === "esperar") {
@@ -144,6 +152,16 @@ export async function procesarDelDia(
   }
   // Se copó el cupo y pasó la hora: sale con lo que ya se vio publicado (el prechequeo de la noche u otra lectura).
   if (paso === "enviar_lo_visto") g = await elegir(true);
+  g = sinCortoSiFalla(g);
+  // Se acabaron las vueltas con la zona fallando y sin deptos de renta larga: este correo no sale (saldría vacío, diciendo
+  // que no hubo deptos cuando fue una falla nuestra). Queda un error en Sentry con quién y qué comuna.
+  if (sinZona() && !conLargoConDeptos(g)) {
+    const comunas = zonaFallida();
+    captureApiError(new Error(`correo del día sin enviar: la zona de renta corta de ${comunas.join(", ")} siguió fallando`), {
+      ruta: RUTA, operacion: "del-dia-renta-corta-sin-envio", userId: fila.user_id, tags: { comunas: comunas.join(",") }, extra: { comunas },
+    });
+    return descartar();
+  }
   return enviarDelDia(admin, fila, { ...columnas(g), estado: estadoDe(g) }, sitio, ahora, paso === "enviar_lo_visto");
 }
 

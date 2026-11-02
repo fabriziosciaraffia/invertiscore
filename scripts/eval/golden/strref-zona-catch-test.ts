@@ -141,7 +141,23 @@ export function runStrRefZonaTier(): { hard: number } {
   if (y.bruto !== Math.round((6_825_431 / 78_688_474) * 100 * 100) / 100) F("5 · el bruto es ingreso ÷ precio");
   if (Math.round(((6_825_431 - costos * 12) / 78_688_474) * 100 * 100) / 100 === y.neto) F("5 · PISO · el fixture no distingue la comisión");
   if (/comparable_listings|ttm_revenue|ttm_occupancy|ttm_avg_rate/.test(q)) F("5 · la resolución viva lee los listings realizados: la base es el estimador");
-  if (!/raw_response->percentiles/.test(q) || !/adr \* occ \* 365/.test(q)) F("5 · la resolución viva no lee el p50 de tarifa y ocupación del estimador ni proyecta adr × occ × 365 de la misma respuesta");
+  // ⚠ ACTA (02-nov-2026, goal de los cortes por statement_timeout, decisión de Fabrizio) · el p50 de tarifa y ocupación del
+  // estimador se lee de las columnas `adr_p50` y `occ_p50` (numeric, llenadas por trigger desde la misma respuesta; migraciones
+  // 20261102_airbnb_p50*.sql), no de `raw_response->percentiles`, que descomprimía la respuesta entera y se cortaba por timeout.
+  // La regla no cambia: el p50 del estimador y adr × occ × 365 de la misma respuesta. numeric porque la base tiene
+  // extra_float_digits = 0 (un double precision llegaría con 15 dígitos): la foto de las zonas dio idéntica byte a byte.
+  const selects = qCache.match(/\.from\("airbnb_estimates"\)\.select\("([^"]*)"\)/g) ?? [];
+  if (selects.length !== 2 || !selects.every((x) => x.includes(`.select("id, address, bedrooms, created_at, adr_p50, occ_p50")`)) || /raw_response/.test(qCache))
+    F(`5 · la resolución viva no lee el p50 de las columnas livianas (o vuelve a leer raw_response): ${selects.join(" | ")}`);
+  if (!/const adr = numero\(f\.adr_p50\), occ = numero\(f\.occ_p50\);/.test(qCache) || !/adr \* occ \* 365/.test(qCache)) F("5 · la resolución viva no proyecta adr × occ × 365 con el p50 de las columnas");
+  if (!/typeof v === "number" \? v : typeof v === "string" && v\.trim\(\) !== "" \? Number\(v\) : null/.test(qCache)) F("5 · si el p50 llega como texto no se convierte (o se pierde)");
+  const migNum = leer("supabase/migrations/20261102_airbnb_p50_numeric.sql"), backNum = leer("supabase/migrations/20261102_airbnb_p50_numeric_backfill.sql");
+  if (!/add column adr_p50 numeric,\s*add column occ_p50 numeric;/.test(migNum) || (migNum.match(/#>> '\{percentiles,(average_daily_rate|occupancy),p50\}'\)::numeric end;/g) ?? []).length !== 2
+    || (backNum.match(/#>> '\{percentiles,(average_daily_rate|occupancy),p50\}'\)::numeric end/g) ?? []).length !== 2 || /double precision/.test(backNum.replace(/^--.*$/gm, "")))
+    F("5 · las columnas o su llenado no son numeric (un double precision pierde el decimal 15)");
+  // EL MODO ESTRICTO (02-nov-2026): una lectura que falla lanza, solo para la zona de renta corta; el informe sigue igual.
+  if (!/if \(opts\.estricto && fallas\.length\) throw new Error/.test(qCache) || !/direccionesDeComuna\(comuna, \{ estricto: true \}\)/.test(leer("src/lib/guia/semanal-str-servidor.ts").replace(/\/\/[^\n]*/g, ""))
+    || !/direcciones = await direccionesDeComuna\(comuna\);/.test(qCache)) F("5 · la zona no usa el modo estricto (o el informe dejó de ser tolerante)");
   if (/ocupacionReferencia|occFinal|ocupacionBaseline/.test(q + s)) F("5 · la referencia mezcla la ocupación que el motor estima con tarifas de listing (doble conteo)");
 
   // 6 · cableado y BDO fuera por símbolo
@@ -183,3 +199,8 @@ if (require.main === module) {
   const { hard } = runStrRefZonaTier();
   process.exit(hard ? 1 : 0);
 }
+
+// ── ACTA DE MUTACIONES (02-nov-2026, goal de los cortes por statement_timeout) ──
+// §5 reescrito (el p50 de las columnas numeric y el modo estricto): 7 de 7 en ROJO (runner `mutar-fase2.cjs` en el scratchpad de la sesión b526f69b; cada archivo restaurado byte a byte, con hash): S1 la zona vuelve a leer
+// raw_response · S2 tarifa y ocupación cruzadas · S3 el texto pierde precisión · S4 la columna vuelve a double · S5 el
+// backfill castea a double · S6 la zona sin modo estricto (también SEMANAL-STR §1) · S7 el modo estricto no lanza.

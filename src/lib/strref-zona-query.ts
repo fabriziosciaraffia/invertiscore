@@ -36,10 +36,24 @@ function clienteAdminCache(): SupabaseClient | null {
   return createClient(url, key);
 }
 
-export async function direccionesDeComuna(comuna: string): Promise<DireccionEstimada[]> {
+/**
+ * EL MODO ESTRICTO (02-nov-2026, goal de los cortes por statement_timeout): una consulta que falla —un timeout, sin cliente— no
+ * se disimula como «menos direcciones». Con `estricto` (lo usa la zona de renta corta, semanal-str-servidor.ts ›
+ * zonasDeComuna) la función lanza, y quien la llamó decide: Explorar no guarda nada y pide reintentar. Sin él (la referencia
+ * del informe) sigue como siempre: lo que falla cuenta como muestra vacía. El 02-nov a las 12:30 UTC la lectura de Santiago
+ * se cortó, la zona salió vacía y Explorar guardó 5.394 avisos sin veredicto por 24 horas.
+ */
+export async function direccionesDeComuna(comuna: string, opts: { estricto?: boolean } = {}): Promise<DireccionEstimada[]> {
+  const fallas: string[] = [];
+  const anotar = (error: unknown, operacion: string, ctx: { tabla: string; extra: Record<string, unknown> }) => {
+    if (!error) return;
+    fallas.push(operacion);
+    reportarFalloQuery(error, { ruta: "lib/strref-zona-query", operacion, tags: { tabla: ctx.tabla }, extra: ctx.extra });
+  };
   const supabase = clienteAdminCache();
   if (!supabase) {
-    reportarFalloQuery({ message: "sin SUPABASE_SERVICE_ROLE_KEY: no se puede leer el caché de AirROI" }, { ruta: "lib/strref-zona-query", operacion: "cliente-admin", tags: { tabla: "airbnb_estimates" }, extra: { comuna } });
+    anotar({ message: "sin SUPABASE_SERVICE_ROLE_KEY: no se puede leer el caché de AirROI" }, "cliente-admin", { tabla: "airbnb_estimates", extra: { comuna } });
+    if (opts.estricto) throw new Error(`direcciones de ${comuna}: sin cliente admin`);
     return [];
   }
   // Direcciones de análisis STR persistidos en la comuna (la fila sí trae comuna): cubren las
@@ -50,21 +64,27 @@ export async function direccionesDeComuna(comuna: string): Promise<DireccionEsti
       .from("analisis").select("input_data->direccion").eq("tipo_analisis", "short-term")
       .in("comuna", comuna === "Santiago" ? ["Santiago", "Santiago Centro"] : [comuna])
       .order("id").range(off, off + PAGINA_POSTGREST - 1);
-    reportarFalloQuery(error, { ruta: "lib/strref-zona-query", operacion: "direcciones-analisis", tags: { tabla: "analisis" }, extra: { comuna, offset: off } });
+    anotar(error, "direcciones-analisis", { tabla: "analisis", extra: { comuna, offset: off } });
     if (!Array.isArray(data) || data.length === 0) break;
     for (const r of data) { const d = (r as { direccion?: unknown }).direccion; if (typeof d === "string") conocidas.add(norm(d)); }
     if (data.length < PAGINA_POSTGREST) break;
   }
   // Candidatas del caché: la dirección nombra la comuna (o el alias), o es una conocida.
-  type Fila = { id: string; address: string; bedrooms: number; created_at: string; percentiles: { occupancy?: { p50?: number }; average_daily_rate?: { p50?: number } } | null };
+  // LAS COLUMNAS LIVIANAS (02-nov-2026, migración 20261102_airbnb_p50.sql): el p50 de la tarifa y el de la ocupación se leen de
+  // `adr_p50` y `occ_p50`, que el trigger llena desde la respuesta. Leerlos de `raw_response->percentiles` obligaba a
+  // descomprimir la respuesta entera (unos 86 kB por fila): `%Santiago%` eran unos 28 MB por pedido y se cortaba por timeout.
+  // Son `numeric` (la base tiene extra_float_digits = 0: un double precision llegaría con 15 dígitos). PostgREST los entrega
+  // como número; si alguna vez llegaran como texto, `Number` hace la misma conversión que JSON.parse, sin perder precisión.
+  type Fila = { id: string; address: string; bedrooms: number; created_at: string; adr_p50: number | string | null; occ_p50: number | string | null };
+  const numero = (v: number | string | null): number | null => (typeof v === "number" ? v : typeof v === "string" && v.trim() !== "" ? Number(v) : null);
   const filas: Fila[] = [];
   const patrones = comuna === "Santiago" ? ["%Santiago%"] : [`%${comuna}%`];
   for (const patron of patrones) {
     for (let off = 0; ; off += PAGINA_POSTGREST) {
       const { data, error } = await supabase
-        .from("airbnb_estimates").select("id, address, bedrooms, created_at, percentiles:raw_response->percentiles")
+        .from("airbnb_estimates").select("id, address, bedrooms, created_at, adr_p50, occ_p50")
         .ilike("address", patron).order("id").range(off, off + PAGINA_POSTGREST - 1);
-      reportarFalloQuery(error, { ruta: "lib/strref-zona-query", operacion: "estimaciones-comuna", tags: { tabla: "airbnb_estimates" }, extra: { comuna, offset: off } });
+      anotar(error, "estimaciones-comuna", { tabla: "airbnb_estimates", extra: { comuna, offset: off } });
       if (!Array.isArray(data) || data.length === 0) break;
       filas.push(...(data as Fila[]));
       if (data.length < PAGINA_POSTGREST) break;
@@ -74,12 +94,13 @@ export async function direccionesDeComuna(comuna: string): Promise<DireccionEsti
     const lista = Array.from(conocidas);
     for (let i = 0; i < lista.length; i += 200) {
       const { data, error } = await supabase
-        .from("airbnb_estimates").select("id, address, bedrooms, created_at, percentiles:raw_response->percentiles")
+        .from("airbnb_estimates").select("id, address, bedrooms, created_at, adr_p50, occ_p50")
         .in("address", lista.slice(i, i + 200));
-      reportarFalloQuery(error, { ruta: "lib/strref-zona-query", operacion: "estimaciones-direcciones", tags: { tabla: "airbnb_estimates" }, extra: { comuna, lote: i } });
+      anotar(error, "estimaciones-direcciones", { tabla: "airbnb_estimates", extra: { comuna, lote: i } });
       if (Array.isArray(data)) filas.push(...(data as Fila[]));
     }
   }
+  if (opts.estricto && fallas.length) throw new Error(`direcciones de ${comuna}: falló la lectura (${Array.from(new Set(fallas)).join(", ")})`);
   // Una por (dirección, dormitorios), la más reciente; solo las que resuelven a ESTA comuna.
   const ultima = new Map<string, Fila>();
   for (const f of filas) {
@@ -91,7 +112,7 @@ export async function direccionesDeComuna(comuna: string): Promise<DireccionEsti
   }
   const out: DireccionEstimada[] = [];
   for (const f of Array.from(ultima.values())) {
-    const adr = f.percentiles?.average_daily_rate?.p50, occ = f.percentiles?.occupancy?.p50;
+    const adr = numero(f.adr_p50), occ = numero(f.occ_p50);
     if (typeof adr !== "number" || typeof occ !== "number" || !(adr > 0) || !(occ > 0) || occ > 1) continue;
     out.push({ comuna, dormitorios: Math.min(Math.max(Number(f.bedrooms) || 0, 0), 3), ingresoAnual: adr * occ * 365, estimateId: f.id });
   }

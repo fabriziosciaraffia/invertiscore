@@ -95,7 +95,9 @@ export async function runSemanalStrTier(): Promise<{ hard: number }> {
     if (STR.MIN_RESPUESTAS_ZONA < 3 || STR.respuestaTipica(r([5, 6]), STR.MIN_RESPUESTAS_ZONA) !== null) F(`1 · una celda con menos de 3 respuestas guardadas estima igual (${STR.MIN_RESPUESTAS_ZONA})`);
     if (STR.ingresoAnualDeEstimacion({ average_daily_rate: { p50: 50000 }, occupancy: { p50: 0.5 } }) !== 50000 * 0.5 * 365 || STR.ingresoAnualDeEstimacion({ average_daily_rate: { p50: 50000 }, occupancy: { p50: 47 } }) !== null) F("1 · el ingreso de una estimación no es tarifa p50 × ocupación p50 × 365 (o acepta una ocupación imposible)");
     // La zona sale del caché con la conversión del caché, y el cálculo es el del informe.
-    if (!/const t = respuestaTipica\(ds, MIN_RESPUESTAS_ZONA\);/.test(strSrv) || !/estimacion: estimacionDesdeCache\(fila\)/.test(strSrv) || !/const dirs = await direccionesDeComuna\(comuna\);/.test(strSrv))
+    // ⚠ ACTA (02-nov-2026, goal de los cortes por statement_timeout) · la zona lee las direcciones en modo estricto: si la
+    // lectura falla, rechaza en vez de salir vacía (§7). La regla de la respuesta típica no cambia.
+    if (!/const t = respuestaTipica\(ds, MIN_RESPUESTAS_ZONA\);/.test(strSrv) || !/estimacion: estimacionDesdeCache\(fila\)/.test(strSrv) || !/const dirs = await direccionesDeComuna\(comuna, \{ estricto: true \}\);/.test(strSrv))
       F("1 · la zona no sale de la respuesta típica guardada (direccionesDeComuna → respuestaTipica → estimacionDesdeCache)");
     if (/getAirbnbEstimate|buildShortTermAnalysisRow|api\.airroi\.com/.test(strSrv)) F("1 · el semanal de renta corta puede consultar al proveedor (getAirbnbEstimate / buildShortTermAnalysisRow en semanal-str-servidor.ts)");
     if (!/const ev = evaluarCuerpoStr\(body, cfg\.uf,/.test(strSrv) || !/= evaluarCuerpoStr\(body, ufValue, medianaComuna, airbnbResult, asOfPipeline\);/.test(pipeline))
@@ -342,6 +344,52 @@ export async function runSemanalStrTier(): Promise<{ hard: number }> {
     if (!/filas=\{sel\.corto\.filas\}/.test(corta) || !/\{\.\.\.comun\}/.test(corta) || !/destacado: sel\.destacado,/.test(pagina) || !/filas: primero\(filasCortas\),/.test(pagina) || !/destacado: a,/.test(pagina)) F("6 · en su bloque, el depto clicado no va arriba ni destacado");
   }
 
+  // ── 7 · LA ZONA FALLIDA (02-nov-2026, goal de los cortes por statement_timeout, decisión de Fabrizio) ───────────────────
+  // Si la zona de renta corta de una comuna falla, se reintenta en la misma corrida; si vuelve a fallar, el bloque de renta
+  // corta queda pendiente, sin deptos y SIN combinación, y no aparece en ninguna parte (correo, /semanal, dashboard), con la
+  // falla en Sentry. Si era su único bloque, el semanal no sale vacío: espera y se reintenta hasta 48 horas después del envío
+  // del lunes (12:00 UTC), sale atrasado una sola vez apenas la zona responda, y pasadas las 48 horas esa semana no sale, con
+  // un error en Sentry (quién y qué comuna). «No apareció ninguno» solo cuando la zona respondió y de verdad no hubo.
+  {
+    const cuerpo = (s: string, firma: string) => { const i = s.indexOf(firma); if (i < 0) return ""; const j = s.indexOf("\nexport ", i + firma.length); return s.slice(i, j < 0 ? undefined : j); };
+    const st = await import("../../../src/lib/guia/semanal-str");
+    if (!st.esZonaFallidaStr({ estado_str: "pendiente", combinacion_str: null }) || st.esZonaFallidaStr({ estado_str: "pendiente", combinacion_str: { piePct: 20, plazoAnios: 30 } })
+      || st.esZonaFallidaStr({ estado_str: "sin_match", combinacion_str: null }) || st.esZonaFallidaStr({ estado_str: null, combinacion_str: null })) F("7 · la marca de zona fallida no es «pendiente sin combinación»");
+    const v = st.ventanaRentaCortaAtrasada("2026-11-09");
+    if (v.envio.toISOString() !== "2026-11-09T12:00:00.000Z" || v.limite.toISOString() !== "2026-11-11T12:00:00.000Z") F(`7 · la ventana de la renta corta atrasada no son 48 horas desde el lunes 12:00 UTC (${v.envio.toISOString()} → ${v.limite.toISOString()})`);
+    const lunes = (iso: string) => st.lunesDeEstaSemana(new Date(iso));
+    if (lunes("2026-11-09T15:00:00Z") !== "2026-11-09" || lunes("2026-11-11T20:00:00Z") !== "2026-11-09" || lunes("2026-11-12T15:00:00Z") !== null || lunes("2026-11-09T02:00:00Z") !== null)
+      F("7 · el lunes de la semana en curso no se calcula bien (lunes a miércoles, en hora de Chile)");
+    // El reintento y la marca, en la preparación.
+    if (!/\.catch\(\(\) => zonasDeComuna\(admin, comuna\)\)\s*\.catch\(\(\) => \{ fallidas\.add\(comuna\); return new Map<number, ZonaStr>\(\); \}\);/.test(strSrv) || !/zonasFallidas: \(\) => Array\.from\(fallidas\)\.sort\(\),/.test(strSrv))
+      F("7 · la zona no se reintenta en la misma corrida (o la falla no queda anotada)");
+    // El armado: pendiente, sin deptos y sin combinación, y la falla a Sentry.
+    if (!/if \(fallidas\.length > 0\) \{\s*corto = "pendiente";\s*Object\.assign\(fila, \{ items_str: \[\], estado_str: "pendiente", combinacion_str: null, perfil_str: perfil, origen_str_analysis_id: null \}\);\s*captureApiWarning\(/.test(srv))
+      F("7 · el armado no deja el bloque pendiente sin combinación (o no reporta la falla)");
+    // No aparece: el correo (sin combinación no hay bloque), la página y el dashboard (seleccionDeFila).
+    if (!/const conCorto = fila\.estado_str != null && !!fila\.perfil_str && !!fila\.combinacion_str;/.test(srv) || !/corto: s\.estado_str == null \|\| esZonaFallidaStr\(s\) \? null : \{/.test(srv))
+      F("7 · el bloque con la zona fallida aparece en el correo, en /semanal o en el dashboard");
+    // Único bloque: espera; el cron de la renta corta atrasada lo manda una vez o, pasadas las 48 horas, lo descarta con error.
+    if (!/if \(esZonaFallidaStr\(fila\) && !conLargo\) return "esperar";/.test(srv)) F("7 · con la zona fallida como único bloque, el semanal sale vacío el lunes");
+    const atr = cuerpo(srv, "export async function reintentarRentaCortaAtrasada(");
+    if (!/if \(ahora < envio\) return cuenta;/.test(atr) || !/\.eq\("estado_str", "pendiente"\)\.is\("combinacion_str", null\)\.is\("enviada_at", null\)/.test(atr)
+      || !/if \(!esZonaFallidaStr\(nueva\)\) \{[\s\S]{0,120}const r = await enviarSeleccion\(admin, nueva, sitio\);/.test(atr)
+      || !/if \(ahora >= limite\) \{[\s\S]{0,200}await descartarSeleccion\(admin, fila\.id\);[\s\S]{0,120}captureApiError\(/.test(atr))
+      F("7 · la renta corta atrasada no sale atrasada una vez, o pasadas las 48 horas no se descarta con un error en Sentry");
+    const vj = JSON.parse(leer("vercel.json")) as { crons: Array<{ path: string; schedule: string }> };
+    const { CRONS_VIGILADOS } = await import("../../../src/lib/cron-heartbeat");
+    if (vj.crons.find((c) => c.path === "/api/cron/semanal-renta-corta")?.schedule !== "35 * * * 1-3" || !CRONS_VIGILADOS.some((c) => c.nombre === "semanal-renta-corta")
+      || !/reintentarRentaCortaAtrasada\(admin, cfg, presupuesto, SITIO, \{ hastaMs: t0 \+ PRESUPUESTO_MS \}\)/.test(sinComentarios(leer("src/app/api/cron/semanal-renta-corta/route.ts"))))
+      F("7 · el cron de la renta corta atrasada no corre cada hora de lunes a miércoles, o no está vigilado");
+    // El correo del día y la selección diaria: nunca vacío ni incompleto por una falla nuestra.
+    const dd = sinComentarios(leer("src/lib/guia/del-dia-servidor.ts"));
+    if (!/const sinCortoSiFalla = \(x: Awaited<ReturnType<typeof elegir>>\) => \(sinZona\(\) \? \{ \.\.\.x, corto: null \} : x\);/.test(dd)
+      || !/let g = sinCortoSiFalla\(await elegir\(false\)\);/.test(dd) || !/if \(paso === "enviar_lo_visto"\) g = await elegir\(true\);\s*g = sinCortoSiFalla\(g\);/.test(dd)
+      || !/estado_str: sinZona\(\) \? "pendiente" as const :/.test(dd) || !/combinacion_str: !sinZona\(\) && prepStr\?\.tipo === "lista" \? prepStr\.p\.combo : null,/.test(dd)
+      || !/if \(sinZona\(\) && !conLargoConDeptos\(g\)\) \{\s*const comunas = zonaFallida\(\);\s*captureApiError\(/.test(dd)) F("7 · el correo del día muestra el bloque con la zona fallida o sale vacío por ella");
+    if (!/if \(zonaFallida\.length > 0\) \{\s*captureApiWarning\([\s\S]{0,260}return "nada";/.test(sinComentarios(leer("src/lib/guia/inmediato-servidor.ts")))) F("7 · la selección diaria de renta corta sale incompleta con la zona fallida");
+  }
+
   if (fallas.length) {
     console.log(`  ✗ SEMANAL-STR · ${fallas.length} falla(s):`);
     for (const f of fallas) console.log(`     · ${f}`);
@@ -356,3 +404,13 @@ if (require.main === module) {
 }
 
 // ACTA DE MUTACIÓN (30-oct-2026, goal «la tasa editable en Filtros»): X7 —la renta corta del semanal sin la tasa del perfil—, en ROJO (runner `mutar-tasa.cjs` en el scratchpad de la sesión cb466df3; cada archivo restaurado byte a byte).
+
+// ── ACTA DE MUTACIONES (02-nov-2026, goal de los cortes por statement_timeout) ──
+// §7 nuevo (la zona fallida) y §1 al día con el modo estricto: 14 de 14 en ROJO (runner `mutar-fase2.cjs` en el scratchpad de la sesión b526f69b; cada archivo restaurado byte a byte, con hash): S6 la zona sin modo estricto · Z1
+// la marca sin la combinación · Z2 ventana de 24 horas · Z3 el jueves cuenta · Z4 sin reintento en la corrida · Z5 el armado
+// dice sin coincidencias · Z6 la página muestra el bloque · Z7 el lunes sale vacío · Z8 la atrasada no se manda · Z9 pasadas
+// las 48 horas no se descarta · Z10 el cron solo el lunes · Z11 el correo del día muestra el bloque · Z12 el correo del día
+// sale vacío · Z13 la selección diaria incompleta.
+// Tras el golden QUICK (PUERTA-B-MOCKUPS §4 fija la línea de items_str del correo del día): el elegido de renta corta se
+// descarta con `sinCortoSiFalla` y la zona se mira después de cada elección; Z11 y Z12 rehechos sobre la forma nueva y Z14 —el
+// elegido no se descarta— y Z15 —la última vuelta no se revisa—, en ROJO (runner `mutar-fase2-deldia.cjs`, mismo scratchpad).

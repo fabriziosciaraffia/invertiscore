@@ -9,7 +9,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { tipologiaDe } from "@/lib/lo-que-sigue/perfil";
 import { leerPerfilBusqueda } from "@/lib/perfil-busqueda-servidor";
 import { capturarServidor, uuidDeterminista } from "@/lib/posthog-servidor";
-import { reportarFalloQuery } from "@/lib/observabilidad";
+import { captureApiWarning, reportarFalloQuery } from "@/lib/observabilidad";
 import { leerSaldo } from "@/lib/casa-saldo";
 import { nombreReal } from "@/lib/welcome";
 import { sendInmediatoEmail, sendPreguntaYaEmail } from "@/lib/email";
@@ -17,7 +17,7 @@ import { textoBusca } from "@/lib/email/correo-semanal";
 import { correoInmediato, correoPreguntaYa } from "@/lib/email/correo-inmediato";
 import { RUTA_SUELTO_INMEDIATO, diaDelAviso, elegirInmediato, estadoYa, mandaSeleccionDiaria, ventanaNuevosHoras, type HorizonteCompra } from "./inmediato";
 import { avisadosAlMomento, prepararSeleccion, publicadoConPresupuesto, type ItemSemanal, type PresupuestoFichas } from "./semanal-servidor";
-import { prepararSeleccionStr } from "./semanal-str-servidor";
+import { prepararSeleccionStr, type PreparacionStr } from "./semanal-str-servidor";
 import { vistosDePersona } from "./vistos-servidor";
 import type { Candidato } from "./semanal-candidatos";
 import type { Combinacion, Evaluado } from "./seleccion";
@@ -132,9 +132,11 @@ export async function avisarPersona(
   const { data: hoy } = await admin.from("avisos_inmediatos").select("id, enviado_at").eq("user_id", userId).eq("dia", dia).maybeSingle();
   if (hoy?.enviado_at) return "ya";
 
+  // La zona de renta corta (02-nov-2026): si falló dos veces, la selección de renta corta de hoy no sale (saldría incompleta).
+  let prepStrDelDia: PreparacionStr | null = null;
   const sel = await seleccionDelDia({
     ltr: async (nuevosDesde) => { const p = await prepararSeleccion(admin, userId, cfg, { nuevosDesde, perfilLeido: lp }); return p.tipo === "lista" ? { ...p.p, vecinas: p.p.respaldo.vecinas } : null; },
-    str: async (nuevosDesde) => { const p = await prepararSeleccionStr(admin, userId, cfg, { perfilStr: lp.perfilStr, soloManual: true }, undefined, { nuevosDesde }); return p?.tipo === "lista" ? { ...p.p, vecinas: p.p.respaldo.vecinas } : null; },
+    str: async (nuevosDesde) => { const p = await prepararSeleccionStr(admin, userId, cfg, { perfilStr: lp.perfilStr, soloManual: true }, undefined, { nuevosDesde }); if (p?.tipo === "lista") prepStrDelDia = p.p; return p?.tipo === "lista" ? { ...p.p, vecinas: p.p.respaldo.vecinas } : null; },
     avisados: () => avisadosAlMomento(admin, userId),
     vistos: async () => new Set(Array.from((await vistosDePersona(admin, userId)).keys())),
     publicado: publicadoConPresupuesto(admin, presupuesto),
@@ -144,6 +146,11 @@ export async function avisarPersona(
     },
   }, ahora);
   if (!sel) return "no";
+  const zonaFallida = sel.modalidad === "str" ? ((prepStrDelDia as PreparacionStr | null)?.zonasFallidas() ?? []) : [];
+  if (zonaFallida.length > 0) {
+    captureApiWarning(new Error(`la zona de renta corta falló dos veces (${zonaFallida.join(", ")}): la selección de renta corta de hoy no sale`), { ruta: RUTA, operacion: "zona-renta-corta-fallida", userId, extra: { comunas: zonaFallida } });
+    return "nada";
+  }
   const { modalidad, prep: { perfil, origen, combo }, elegidos, deVecinas } = sel;
   // La selección diaria (24-oct-2026): si hoy no hay nuevos que convengan, no se manda nada.
   if (!mandaSeleccionDiaria(elegidos.length)) return "nada";

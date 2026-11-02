@@ -53,12 +53,16 @@ const memoZonas = new Map<string, { at: number; p: Promise<Map<number, ZonaStr>>
 /** La celda de un depto: los de 3 dormitorios o más van con los de 3, como en la referencia STR. */
 export const celdaDormitorios = (d: number) => Math.min(Math.max(Math.round(Number(d) || 0), 0), 3);
 
-/** Las zonas de una comuna, por dormitorios (0 = studio … 3 = tres o más). Sin respuestas suficientes, no hay entrada. */
+/** Las zonas de una comuna, por dormitorios (0 = studio … 3 = tres o más). Sin respuestas suficientes, no hay entrada.
+ *  UNA ZONA QUE FALLA SE RECHAZA (02-nov-2026, goal de los cortes por statement_timeout): si la lectura de las direcciones
+ *  falla, la promesa se rechaza y no queda en memoria (la próxima vez se vuelve a leer). Antes salía vacía, se recordaba
+ *  30 minutos y Explorar guardaba esos avisos sin veredicto por 24 horas. Una zona vacía DE VERDAD —menos de
+ *  MIN_RESPUESTAS_ZONA respuestas en la celda— sigue valiendo y se recuerda. */
 export function zonasDeComuna(admin: SupabaseClient, comuna: string): Promise<Map<number, ZonaStr>> {
   const ya = memoZonas.get(comuna);
   if (ya && Date.now() - ya.at < ZONAS_TTL_MS) return ya.p;
   const p = (async () => {
-    const dirs = await direccionesDeComuna(comuna);
+    const dirs = await direccionesDeComuna(comuna, { estricto: true });
     const porCelda = new Map<number, typeof dirs>();
     for (const d of dirs) {
       if (!d.estimateId) continue;
@@ -82,7 +86,7 @@ export function zonasDeComuna(admin: SupabaseClient, comuna: string): Promise<Ma
     return zonas;
   })();
   memoZonas.set(comuna, { at: Date.now(), p });
-  p.catch(() => memoZonas.delete(comuna));
+  p.catch(() => { if (memoZonas.get(comuna)?.p === p) memoZonas.delete(comuna); });
   return p;
 }
 
@@ -236,6 +240,10 @@ export interface PreparacionStr {
   respaldo: RespaldoSemanal<Candidato>;
   /** Lo ya visto (19-oct-2026): va al final, marcado, solo si faltan nuevos (semanal.ts). */
   visto: (c: Candidato) => Visto | null;
+  /** Las comunas cuya zona falló dos veces en esta preparación (02-nov-2026). Con alguna, el bloque de renta corta NO es
+   *  «no apareció ninguno»: es una falla nuestra, queda pendiente y no se muestra (marcarZonaFallida en semanal-servidor.ts).
+   *  Se lee después de elegir, porque las vecinas se leen tarde. */
+  zonasFallidas: () => string[];
 }
 
 export type PreparadaStr = { tipo: "sin-perfil"; perfil: PerfilBusqueda } | { tipo: "lista"; p: PreparacionStr };
@@ -265,6 +273,22 @@ export async function prepararSeleccionStr(
   const combo: Combinacion = { piePct: perfil.piePct ?? o.piePct, plazoAnios: perfil.plazoAnios ?? o.plazoAnios, ...(perfil.tasaPct != null ? { tasaPct: perfil.tasaPct } : {}) };
   const conTasa: OrigenStr = { ...o, tasa: perfil.tasaPct ?? cfg.tasa };
   const desde = new Date(Date.now() - VENTANA_SEMANAL_DIAS * 864e5).toISOString().replace("Z", "");
+  // LA ZONA, UNA VEZ POR COMUNA EN ESTA PREPARACIÓN, CON UN REINTENTO (02-nov-2026, decisión de Fabrizio): zonasDeComuna
+  // rechaza si la lectura falla y no lo recuerda. Acá se reintenta una vez en la misma corrida; si vuelve a fallar, la comuna
+  // queda en `zonasFallidas` (el bloque se marca pendiente y no se muestra) y no aporta deptos. Se pide una sola vez por
+  // comuna: sin esto, cada candidato la volvería a leer.
+  const zonasLocal = new Map<string, Promise<Map<number, ZonaStr>>>();
+  const fallidas = new Set<string>();
+  const zonaDe = (comuna: string): Promise<Map<number, ZonaStr>> => {
+    let z = zonasLocal.get(comuna);
+    if (!z) {
+      z = zonasDeComuna(admin, comuna)
+        .catch(() => zonasDeComuna(admin, comuna))
+        .catch(() => { fallidas.add(comuna); return new Map<number, ZonaStr>(); });
+      zonasLocal.set(comuna, z);
+    }
+    return z;
+  };
 
   const leerCandidatos = async (comunas: string[]): Promise<Candidato[]> => {
     if (comunas.length === 0) return [];
@@ -278,7 +302,7 @@ export async function prepararSeleccionStr(
     if (error) throw new Error(`${opts.nuevosDesde ? "inmediato" : "semanal"}_candidatos_str: ${error.message}`);
     const out: Candidato[] = [];
     for (const c of ((data ?? []) as FilaRpc[]).map(candidatoDeFila)) {
-      const zona = (await zonasDeComuna(admin, c.comuna)).get(celdaDormitorios(c.dormitorios));
+      const zona = (await zonaDe(c.comuna)).get(celdaDormitorios(c.dormitorios));
       if (!zona || !(c.precioUF > 0)) continue;
       out.push({ ...c, scoreCron: Math.round((zona.ingresoAnual / (c.precioUF * cfg.uf)) * 10_000) });
     }
@@ -297,7 +321,7 @@ export async function prepararSeleccionStr(
     const ya = memo.get(c.avisoId);
     if (ya) return ya;
     const r = (async () => {
-      const zona = (await zonasDeComuna(admin, c.comuna)).get(celdaDormitorios(c.dormitorios));
+      const zona = (await zonaDe(c.comuna)).get(celdaDormitorios(c.dormitorios));
       if (!zona) return null;
       const body = cuerpoStrDeAviso(c, conTasa, combo, cfg);
       if (!body) return null;
@@ -318,6 +342,7 @@ export async function prepararSeleccionStr(
         // Solo Comprar (14-oct-2026): las vecinas sí; el negociable no (REGLA_CORTA, sin evaluarConDescuento).
         vecinas: () => (vecinas ??= leerCandidatos(comunasVecinas(propias))),
       },
+      zonasFallidas: () => Array.from(fallidas).sort(),
     },
   };
 }

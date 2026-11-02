@@ -35,7 +35,8 @@ export async function GET(request: Request) {
       .select(COLUMNAS_ENVIO)
       .eq("semana", semana).eq("tipo", "semanal").in("estado", ["armada", "pendiente", "sin_match"]).is("enviada_at", null).order("armada_at").limit(500);
     if (error) throw new Error(`selecciones: ${error.message}`);
-    const cuenta = { enviada: 0, descartada: 0, ya: 0, fallida: 0 };
+    // «esperar» (02-nov-2026): quien solo tiene el bloque de renta corta y su zona falló; lo toma semanal-renta-corta.
+    const cuenta = { enviada: 0, descartada: 0, ya: 0, fallida: 0, esperar: 0 };
     const t0 = Date.now();
     let quedan = 0;
     for (const fila of (data ?? []) as FilaSeleccion[]) {

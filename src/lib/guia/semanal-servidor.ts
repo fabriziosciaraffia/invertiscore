@@ -14,7 +14,7 @@ import { payloadDeAviso, respuestasDeAviso } from "@/lib/avisos/evaluar-aviso";
 import { leerPerfilBusqueda, type PerfilDeLaPersona } from "@/lib/perfil-busqueda-servidor";
 import { FUENTE_REGALO_REACTIVACION } from "@/lib/regalo-alta";
 import { capturarServidor, uuidDeterminista } from "@/lib/posthog-servidor";
-import { reportarFalloQuery } from "@/lib/observabilidad";
+import { captureApiError, captureApiWarning, reportarFalloQuery } from "@/lib/observabilidad";
 import { guardarMetrica } from "@/lib/metrics-daily";
 import { leerSaldo } from "@/lib/casa-saldo";
 import { nombreReal } from "@/lib/welcome";
@@ -28,7 +28,7 @@ import { contarSinOferta } from "@/lib/casa/sin-oferta-servidor";
 import { lineaDeSalidas, type SalidaSinOferta } from "@/lib/casa/sin-oferta";
 import { candidatoDeFila, comunaDeAviso, type Candidato, type FilaRpc } from "./semanal-candidatos";
 import { prepararSeleccionStr, type PreparacionStr } from "./semanal-str-servidor";
-import { estadoDeFila, type EstadoBloque } from "./semanal-str";
+import { esZonaFallidaStr, estadoDeFila, lunesDeEstaSemana, ventanaRentaCortaAtrasada, type EstadoBloque } from "./semanal-str";
 import { deEstaSemana, origenDeInforme, type OrigenInforme } from "./seleccion-casa";
 import { chequearPublicacion, type EstadoPublicacion } from "./publicacion";
 import { almacenPublicacion, bajarFicha } from "./ficha-servidor";
@@ -245,6 +245,8 @@ export async function armarSeleccion(
   semana: string,
   cfg: { uf: number; tasa: number },
   presupuesto: PresupuestoFichas,
+  /** Las comunas cuya zona de renta corta falló en esta corrida (02-nov-2026; la usa el reintento de la renta corta atrasada). */
+  salida?: { zonasFallidas: string[] },
 ): Promise<"ya" | "pendiente" | "armada" | "sin_match"> {
   const { data: previa } = await admin.from("semanal_selecciones").select("estado, tipo, items, items_str").eq("user_id", userId).eq("semana", semana).maybeSingle();
   if (previa && (previa.estado !== "pendiente" || previa.tipo === "del_dia")) return "ya";
@@ -290,11 +292,24 @@ export async function armarSeleccion(
   if (prepStr?.tipo === "lista") {
     const { perfil, origen: o, combo, candidatos, evaluar, respaldo, visto } = prepStr.p;
     const g = await elegirSemanal(candidatos, evaluar, publicado, respaldo, REGLA_CORTA, visto);
-    corto = g.estado;
-    Object.assign(fila, {
-      items_str: aItems(g, undefined, previos.corto), estado_str: g.estado, combinacion_str: combo, perfil_str: perfil, origen_str_analysis_id: o.analysisId,
-      variante: varianteDe(userId),
-    });
+    // LA ZONA FALLIDA (02-nov-2026, semanal-str.ts › esZonaFallidaStr): si la zona de alguna comuna falló dos veces, el
+    // bloque queda pendiente, sin deptos y sin combinación —no aparece en ninguna parte— y la corrida siguiente lo vuelve a
+    // armar. Nunca «no apareció ninguno» por una falla nuestra.
+    const fallidas = prepStr.p.zonasFallidas();
+    if (salida) salida.zonasFallidas = fallidas;
+    if (fallidas.length > 0) {
+      corto = "pendiente";
+      Object.assign(fila, { items_str: [], estado_str: "pendiente", combinacion_str: null, perfil_str: perfil, origen_str_analysis_id: null });
+      captureApiWarning(new Error(`la zona de renta corta falló dos veces (${fallidas.join(", ")}): el bloque queda pendiente`), {
+        ruta: RUTA, operacion: "zona-renta-corta-fallida", userId, extra: { semana, comunas: fallidas },
+      });
+    } else {
+      corto = g.estado;
+      Object.assign(fila, {
+        items_str: aItems(g, undefined, previos.corto), estado_str: g.estado, combinacion_str: combo, perfil_str: perfil, origen_str_analysis_id: o.analysisId,
+        variante: varianteDe(userId),
+      });
+    }
   } else if (prepStr) {
     corto = "sin_match";
     Object.assign(fila, { items_str: [], estado_str: "sin_match", perfil_str: prepStr.perfil });
@@ -587,7 +602,8 @@ function seleccionDeFila(s: Record<string, unknown>): SeleccionPorToken {
     variante: (s.variante as "banda" | "tarjetas" | null) ?? null, enviadaAt: (s.enviada_at as string | null) ?? null,
     // Desde el 14-oct-2026 el perfil de la fila es el de renta larga (null si no lo tiene); antes, siempre había bloque.
     conLargo: s.perfil != null || items.length > 0,
-    corto: s.estado_str == null ? null : {
+    // Con la zona fallida (02-nov-2026) el bloque de renta corta no existe para la página ni para el dashboard.
+    corto: s.estado_str == null || esZonaFallidaStr(s) ? null : {
       items: (s.items_str ?? []) as ItemSemanal[],
       combinacion: (s.combinacion_str ?? null) as Combinacion | null,
       origenId: (s.origen_str_analysis_id as string | null) ?? null,
@@ -832,12 +848,16 @@ export async function descartarSeleccion(admin: SupabaseClient, id: string): Pro
   return "descartada";
 }
 
-export async function enviarSeleccion(admin: SupabaseClient, fila: FilaSeleccion, sitio: string): Promise<"enviada" | "descartada" | "ya" | "fallida"> {
+export async function enviarSeleccion(admin: SupabaseClient, fila: FilaSeleccion, sitio: string): Promise<"enviada" | "descartada" | "ya" | "fallida" | "esperar"> {
   const descartar = () => descartarSeleccion(admin, fila.id);
   // Los dos bloques (14-oct-2026): cada uno con sus deptos vigentes. El de renta larga existe si la fila tiene su perfil
   // y su combinación; el de renta corta, si tiene perfil de renta corta.
   const conLargo = !!fila.perfil && !!fila.combinacion;
   const conCorto = fila.estado_str != null && !!fila.perfil_str && !!fila.combinacion_str;
+  // LA ZONA FALLIDA (02-nov-2026): el bloque de renta corta no va (no tiene combinación, `conCorto` es false). Si era su
+  // único bloque, el envío no se pierde ni sale vacío: espera, y el cron de la renta corta atrasada lo reintenta hasta 48
+  // horas después del envío original (reintentarRentaCortaAtrasada).
+  if (esZonaFallidaStr(fila) && !conLargo) return "esperar";
   const [confirmados, deptosCortos] = await Promise.all([
     conLargo ? itemsVigentes(admin, fila.items ?? []) : Promise.resolve([] as ItemSemanal[]),
     conCorto ? itemsVigentes(admin, fila.items_str ?? []) : Promise.resolve([] as ItemSemanal[]),
@@ -1027,3 +1047,65 @@ export async function combinacionSemanal(admin: SupabaseClient, token: string, u
   // La tasa elegida viaja con la selección (30-oct-2026); sin ella, la del motor.
   return c && Number.isFinite(c.piePct) && Number.isFinite(c.plazoAnios) ? { piePct: c.piePct, plazoAnios: c.plazoAnios, ...(typeof c.tasaPct === "number" ? { tasaPct: c.tasaPct } : {}) } : null;
 }
+
+/**
+ * LA RENTA CORTA ATRASADA (02-nov-2026, decisión de Fabrizio). El semanal de quien solo tiene el bloque de renta corta y su
+ * zona falló no sale el lunes (enviarSeleccion › «esperar»): se reintenta cada hora, desde el envío original del lunes
+ * (12:00 UTC) hasta 48 horas después, y sale atrasado apenas la zona responda. Una vez enviado no se repite: la fila se toma
+ * con `enviada_at` nulo antes de mandar. Pasadas las 48 horas, si la zona sigue fallando, esa semana no sale: la fila queda
+ * descartada y un evento de Sentry de nivel error dice quién y qué comuna. Lo llama el cron semanal-renta-corta.
+ */
+export async function reintentarRentaCortaAtrasada(
+  admin: SupabaseClient,
+  cfg: { uf: number; tasa: number },
+  presupuesto: PresupuestoFichas,
+  sitio: string,
+  opts: { ahora?: Date; hastaMs?: number } = {},
+): Promise<{ semana: string | null; pendientes: number; enviadas: number; esperan: number; sinEnvio: number; fallidas: number }> {
+  const ahora = opts.ahora ?? new Date();
+  const cuenta = { semana: null as string | null, pendientes: 0, enviadas: 0, esperan: 0, sinEnvio: 0, fallidas: 0 };
+  const semana = lunesDeEstaSemana(ahora);
+  if (!semana) return cuenta;
+  cuenta.semana = semana;
+  const { envio, limite } = ventanaRentaCortaAtrasada(semana);
+  // Antes del envío original no hay nada atrasado: el armado y el reintento del lunes temprano se encargan.
+  if (ahora < envio) return cuenta;
+  const { data, error } = await admin.from("semanal_selecciones").select(COLUMNAS_ENVIO)
+    .eq("semana", semana).eq("tipo", "semanal").eq("estado", "pendiente").eq("estado_str", "pendiente").is("combinacion_str", null).is("enviada_at", null)
+    .order("armada_at").limit(500);
+  if (error) throw new Error(`renta corta atrasada: ${error.message}`);
+  const filas = ((data ?? []) as FilaSeleccion[]).filter((f) => esZonaFallidaStr(f));
+  cuenta.pendientes = filas.length;
+  for (const fila of filas) {
+    if (opts.hastaMs != null && Date.now() > opts.hastaMs) break;
+    try {
+      const salida = { zonasFallidas: [] as string[] };
+      await armarSeleccion(admin, fila.user_id, semana, cfg, presupuesto, salida);
+      const { data: rearmada, error: eRe } = await admin.from("semanal_selecciones").select(COLUMNAS_ENVIO).eq("id", fila.id).maybeSingle();
+      if (eRe || !rearmada) throw new Error(`releer la fila: ${eRe?.message ?? "sin fila"}`);
+      const nueva = rearmada as FilaSeleccion;
+      if (!esZonaFallidaStr(nueva)) {
+        // La zona respondió: sale ahora (atrasado), una sola vez.
+        const r = await enviarSeleccion(admin, nueva, sitio);
+        if (r === "enviada") cuenta.enviadas++;
+        else if (r === "fallida") cuenta.fallidas++;
+        continue;
+      }
+      if (ahora >= limite) {
+        const comunas = salida.zonasFallidas.length ? salida.zonasFallidas : ["(sin detalle)"];
+        await descartarSeleccion(admin, fila.id);
+        cuenta.sinEnvio++;
+        captureApiError(new Error(`semanal sin enviar esta semana: la zona de renta corta de ${comunas.join(", ")} falló durante ${HORAS_RENTA_CORTA_ATRASADA_TXT}`), {
+          ruta: RUTA, operacion: "renta-corta-sin-envio", userId: fila.user_id, tags: { comunas: comunas.join(",") }, extra: { semana, comunas },
+        });
+      } else {
+        cuenta.esperan++;
+      }
+    } catch (e) {
+      cuenta.fallidas++;
+      captureApiWarning(e, { ruta: RUTA, operacion: "renta-corta-atrasada", userId: fila.user_id, extra: { semana } });
+    }
+  }
+  return cuenta;
+}
+const HORAS_RENTA_CORTA_ATRASADA_TXT = "48 horas desde el envío del lunes";
