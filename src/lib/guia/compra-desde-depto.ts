@@ -12,6 +12,7 @@ import { FLOW_PRODUCTS } from "@/lib/flow-products";
 import { cuandoVenceCorto, ofertaPackVigente, PACK_PRECIO_CLP, PRODUCTO_PACK } from "@/lib/lo-que-sigue/oferta-pack";
 import { rutaTres, TRES_PRECIO_CLP, volverSeguro } from "@/lib/tres-analisis";
 import { urlCompra } from "@/lib/compra/compra";
+import type { VeredictoVisto } from "./informe-en-camino";
 
 const TOKEN = /^[0-9a-f]{20,80}$/i;
 const AVISO = /^[A-Za-z0-9_-]{1,80}$/;
@@ -87,6 +88,9 @@ export interface DeptoDelPago {
   avisoId: string;
   origenId: string | null;
   nombre: string;
+  /** El veredicto y el puntaje que mostraba su tarjeta (03-nov-2026): si el informe da otro, la vuelta lo dice antes de abrirlo
+   *  (lib/guia/informe-en-camino.ts). null si la tarjeta no traía veredicto. */
+  esperado: VeredictoVisto | null;
 }
 
 /** Saneado desde la red: lo que no tenga forma no se usa. */
@@ -94,7 +98,9 @@ export function leerDeptoDelPago(x: unknown): DeptoDelPago | null {
   if (!x || typeof x !== "object") return null;
   const r = x as Record<string, unknown>;
   if (typeof r.token !== "string" || !TOKEN.test(r.token) || typeof r.avisoId !== "string" || !AVISO.test(r.avisoId) || typeof r.nombre !== "string") return null;
-  return { token: r.token, avisoId: r.avisoId, origenId: typeof r.origenId === "string" ? r.origenId : null, nombre: r.nombre };
+  const e = r.esperado as Record<string, unknown> | null | undefined;
+  const esperado = e && typeof e === "object" && typeof e.veredicto === "string" && e.veredicto ? { veredicto: e.veredicto, score: typeof e.score === "number" && Number.isFinite(e.score) ? e.score : null } : null;
+  return { token: r.token, avisoId: r.avisoId, origenId: typeof r.origenId === "string" ? r.origenId : null, nombre: r.nombre, esperado };
 }
 
 export const COMPRA_DEPTO = {

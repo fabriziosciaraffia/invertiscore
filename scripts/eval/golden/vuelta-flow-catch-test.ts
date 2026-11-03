@@ -111,17 +111,22 @@ export function runVueltaFlowTier(): { hard: number } {
   const dep = leerDeptoDelPago({ token: TOKEN, avisoId: AVISO, origenId: null, nombre: "x" });
   if (!dep || dep.origenId !== null || leerDeptoDelPago({ token: "zz", avisoId: AVISO, nombre: "x" }) !== null || leerDeptoDelPago({ token: TOKEN, avisoId: AVISO }) !== null) F("3 · leerDeptoDelPago no sanea lo que llega");
   if (!deptoDeVolver(volverSeguro(volverAlDepto(TOKEN, AVISO))) || !analizaAlVolver(volverAlDepto(TOKEN, AVISO))) F("3 · la vuelta a un depto dejó de pedir el análisis solo");
-  if (!/async function generarDepto\(depto: DeptoDelPago, vuelta: string \| null\)/.test(ret)) F("3 · la pantalla no tiene generarDepto");
-  const gen = ret.slice(ret.indexOf("async function generarDepto("), ret.indexOf("useEffect(() => {"));
+  // ⚠ ACTA (03-nov-2026, «el informe en camino» en la vuelta del pago, tier INFORME-EN-CAMINO §7) · generarDepto ya no navega: le pasa el
+  // informe a InformeEnLaVuelta, que lo abre EN SU LUGAR (router.replace, como antes) y, a los 10 s, ofrece «Abrir informe». Y si no
+  // puede generar ya no vuelve al dashboard en silencio a intentarlo de nuevo: lo dice ahí mismo. Sin la vuelta como argumento.
+  if (!/async function generarDepto\(depto: DeptoDelPago\)/.test(ret)) F("3 · la pantalla no tiene generarDepto");
+  const iGen = ret.indexOf("async function generarDepto(");
+  const gen = iGen < 0 ? "" : ret.slice(iGen, ret.indexOf("\n  useEffect(() => {", iGen));
   if (!/fetch\("\/api\/lo-que-sigue\/guia\/analizar", \{[\s\S]*?body: JSON\.stringify\(\{ origenId: depto\.origenId, avisoId: depto\.avisoId, semanal: depto\.token \}\)/.test(gen)) F("3 · generarDepto no pide el informe del depto con su selección");
   if (!/if \(res\.status === 409\) \{ await esperar\(ESPERA_GENERAR_MS\); continue; \}/.test(gen)) F("3 · generarDepto no espera un informe en curso");
-  if (!/if \(res\.ok && d\.id\) \{ router\.replace\(`\/analisis\/\$\{d\.id\}`\); return; \}/.test(gen)) F("3 · generarDepto no abre el informe generado");
+  if (!/if \(res\.ok && d\.id\) \{ setInforme\(informeListo\(paso0, \{ id: d\.id, ruta: `\/analisis\/\$\{d\.id\}`/.test(gen) || !/try \{ if \(reemplazar\) router\.replace\(paso\.ruta\); else router\.push\(paso\.ruta\); \}/.test(codigo("src/components/guia/InformeEnCamino.tsx"))) F("3 · generarDepto no abre el informe generado");
   if (!/if \(d\.error === "sin-creditos" && sinCredito\+\+ < REINTENTOS_CREDITO_RETORNO\) \{ await esperar\(ESPERA_GENERAR_MS\); continue; \}/.test(gen)) F("3 · generarDepto no espera el crédito que el webhook otorga aparte");
-  if (!/router\.replace\(vuelta \?\? "\/dashboard"\);/.test(gen)) F("3 · si no puede generar, no vuelve al dashboard con el depto");
-  if (!/const depto = leerDeptoDelPago\(data\.depto\);\s*if \(!redirectedRef\.current && !data\.payment\.analysis_id && depto\) \{\s*redirectedRef\.current = true;\s*setRedirecting\(true\);\s*setAlDepto\(depto\);\s*void generarDepto\(depto, vuelta\);/.test(ret)) F("3 · pagado desde un depto, la pantalla no genera el informe una sola vez");
+  if (!/\}\s*fallar\("error"\);\s*\}\s*$/.test(gen) || /router\.(?:replace|push)\(/.test(gen)) F("3 · si no puede generar, no lo dice (o se va a otra página)");
+  if (!/const depto = leerDeptoDelPago\(data\.depto\);\s*if \(!redirectedRef\.current && !data\.payment\.analysis_id && depto\) \{\s*redirectedRef\.current = true;\s*setRedirecting\(true\);\s*setAlDepto\(depto\);\s*void generarDepto\(depto\);/.test(ret)) F("3 · pagado desde un depto, la pantalla no genera el informe una sola vez");
   // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockups 3b y 4) · desde un depto, el estado C: «Franco está analizando X. En unos segundos se abre el
   // informe.», la barra y cuántos le quedan (tier PUERTA-B-DASHBOARD §7).
-  if (!/\{RETORNO\.desdeDepto\.antes\}<b className="text-\[var\(--franco-text\)\]">\{alDepto\.nombre\}<\/b>\{RETORNO\.desdeDepto\.despues\}/.test(ret) || !/<p className=\{PLANO\.bajada\}>\{RETORNO\.abriendo\.cuerpo\}<\/p>/.test(ret)) F("3 · mientras genera, la pantalla no dice de qué depto");
+  // ⚠ ACTA (03-nov-2026) · el estado C lo dibuja VueltaInforme con el depto del informe en camino, que generarDepto arma con su nombre.
+  if (!/\{RETORNO\.desdeDepto\.antes\}<b className="text-\[var\(--franco-text\)\]">\{paso\.depto\}<\/b>\{RETORNO\.desdeDepto\.despues\}/.test(codigo("src/components/guia/InformeEnCamino.tsx")) || !/const paso0 = informeGenerando\(depto\.nombre, depto\.esperado\);/.test(gen) || !/<p className=\{PLANO\.bajada\}>\{RETORNO\.abriendo\.cuerpo\}<\/p>/.test(ret)) F("3 · mientras genera, la pantalla no dice de qué depto");
   if (!/: analysisId \? "Tu análisis está desbloqueado\." : RETORNO\.pagado\.uno/.test(ret) || !/<EnlaceCarga href=\{tras\.href\}[^>]*data-retorno-boton="pagado">\s*\{tras\.texto\}/.test(ret)) F("3 · sin depto, la pantalla no dice «Tienes un análisis más» con el botón al dashboard");
   } catch (e) {
     F(`3 · explotó (faltan nombreDelDepto, leerDeptoDelPago o generandoDepto): ${e instanceof Error ? e.message : String(e)}`);

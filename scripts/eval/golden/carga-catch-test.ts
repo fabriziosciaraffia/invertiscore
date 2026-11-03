@@ -134,9 +134,10 @@ const AUDITADOS: Array<[string, number]> = [
   ["src/components/lo-que-sigue/HorizontePostPago.tsx", 0],
   ["src/app/dashboard/casa.tsx", 0],
   ["src/app/dashboard/bienvenida.tsx", 1],
-  ["src/components/guia/GuiaBusqueda.tsx", 1],
   // ⚠ ACTA (03-nov-2026, «el informe en camino», tier INFORME-EN-CAMINO) · la ida al informe ya no la hacen la primera selección ni la
-  // página semanal: la hace el pop-up (InformeEnCamino), con la barra que la superficie encendió al tocar «Analizar».
+  // página semanal: la hace el pop-up (InformeEnCamino), con la barra que la superficie encendió al tocar «Analizar». Y la guía de
+  // búsqueda tampoco (segunda entrega, mismo día).
+  ["src/components/guia/GuiaBusqueda.tsx", 0],
   ["src/components/deptos/PrimeraSeleccion.tsx", 0],
   ["src/app/semanal/semanal-lista.tsx", 0],
   ["src/components/guia/InformeEnCamino.tsx", 1],
@@ -217,11 +218,14 @@ export function runCargaTier(): { hard: number } {
   if (!/setAltaEnCurso\(true\);\s*const soltar = iniciarCarga\(claveActual\(\)\);\s*try \{/.test(deptos) || !/\} finally \{\s*soltar\(\);\s*setAltaEnCurso\(false\);\s*\}/.test(deptos)) F("4 · el alta de la vuelta por el enlace o por Google no enciende la barra mientras corre (ni la suelta)");
   if (!/setYendo\(si \? "si" : "no"\);/.test(deptos)) F("4 · «Sí, agregar» no se marca yéndose");
   const guia = codigo("src/components/guia/GuiaBusqueda.tsx");
-  if (!/setGenerando\(it\.avisoId\);\s*const soltar = iniciarCarga\(claveActual\(\)\);/.test(guia) || !/abrio = true;\s*router\.push\(`\/analisis\/\$\{d\.id\}`\);/.test(guia) || !/\} finally \{\s*if \(!abrio\) soltar\(\);\s*\}/.test(guia)) F("4 · «Analizar este» de la guía no enciende la barra hasta abrir el informe (o no la suelta si no abre)");
+  // ⚠ ACTA (03-nov-2026, «el informe en camino» en la guía) · como las otras superficies: la enciende al tocar «Analizar», la suelta al
+  // salir de un intento que no dio informe y al cerrar el pop-up; con el informe listo la abre el pop-up (abajo, en el bucle).
+  const iCerrar = guia.indexOf("function cerrarInforme("), cerrarGuia = iCerrar < 0 ? "" : guia.slice(iCerrar, guia.indexOf("function reintentarInforme(", iCerrar));
+  if (!/setGenerando\(it\.avisoId\);\s*const soltar = iniciarCarga\(claveActual\(\)\);\s*soltarCarga\.current = soltar;/.test(guia) || !/\} catch \{\s*fallar\("error"\);\s*\}\s*soltar\(\);\s*setGenerando\(null\);\s*\}/.test(guia) || !/soltarCarga\.current\?\.\(\);/.test(cerrarGuia)) F("4 · «Analizar este» de la guía no enciende la barra hasta abrir el informe (o no la suelta si no abre)");
   if (!/const soltar = iniciarCarga\(claveActual\(\)\);/.test(codigo("src/components/deptos/PrimeraSeleccion.tsx"))) F("4 · «Analizar este» de la primera selección no enciende la barra");
   // ⚠ ACTA (03-nov-2026, «el informe en camino», tier INFORME-EN-CAMINO) · la barra que se encendió al tocar «Analizar» sigue encendida
   // mientras el pop-up abre el informe: en la rama del informe listo, la superficie solo la suelta si el veredicto salió distinto.
-  for (const f of ["src/app/explorar/explorar-cliente.tsx", "src/components/deptos/PrimeraSeleccion.tsx", "src/app/semanal/semanal-lista.tsx"]) {
+  for (const f of ["src/app/explorar/explorar-cliente.tsx", "src/components/deptos/PrimeraSeleccion.tsx", "src/app/semanal/semanal-lista.tsx", "src/components/guia/GuiaBusqueda.tsx"]) {
     const s = codigo(f);
     const i = s.indexOf("if (res.ok && d.id) {");
     const rama = i < 0 ? "" : s.slice(i, s.indexOf("return;", i));

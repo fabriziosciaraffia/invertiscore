@@ -22,6 +22,8 @@ import { hrefEntrar } from "@/lib/entrar/entrada";
 import { PRODUCTO_TRES, TRES_COPY, volverSeguro } from "@/lib/tres-analisis";
 import { PLANO, UI_PLANO } from "@/components/plano/plano";
 import { RETORNO, botonTrasPagar, rutaReintentar } from "@/lib/compra/compra";
+import { ABRIR_INFORME_TRAS_MS, INFORME_COPY, informeFallo, informeGenerando, informeListo, type MotivoFallo, type PasoInforme } from "@/lib/guia/informe-en-camino";
+import { InformeEnLaVuelta } from "@/components/guia/InformeEnCamino";
 
 /** Generando el informe del depto pagado: cuánto se espera entre intentos y cuántas veces se espera el crédito. */
 const ESPERA_GENERAR_MS = 2500;
@@ -59,15 +61,32 @@ function PaymentReturnContent() {
   // genérica antes de la navegación).
   const [redirecting, setRedirecting] = useState(false);
   // LA COMPRA SALIÓ DE UN DEPTO DE LA SELECCIÓN (22-oct-2026, decisión de Fabrizio; compra-desde-depto.ts): pagada, esta
-  // pantalla genera el informe de ese depto sola —«Pago confirmado. Generando el informe de Providencia · 2D2B · 59 m² ·
-  // UF 3.500…»— y lo abre. Si no puede, vuelve al dashboard con el depto arriba, que lo intenta y dice lo que pasa.
+  // pantalla genera el informe de ese depto sola —«Pago confirmado. Franco está analizando Providencia · 2D2B · 59 m² ·
+  // UF 3.500…»— y lo abre. Desde el 03-nov-2026 con la regla del informe en camino (lib/guia/informe-en-camino.ts,
+  // InformeEnLaVuelta): la barra avanza, a los 10 s «Abrir informe», el veredicto distinto se dice antes de abrirlo y, si no
+  // sale, lo dice ahí mismo con qué hacer —ya no vuelve al dashboard en silencio a intentarlo otra vez—.
   const [alDepto, setAlDepto] = useState<DeptoDelPago | null>(null);
+  const [informe, setInforme] = useState<PasoInforme | null>(null);
+  // Un informe ya hecho (el suelto, el desbloqueo): adónde se fue, para ofrecer «Abrir informe» si a los 10 s sigue acá.
+  const [destino, setDestino] = useState<string | null>(null);
+  const [conAbrir, setConAbrir] = useState(false);
   // Guard para que el push al análisis ocurra UNA sola vez: el polling puede
   // re-ejecutar checkStatus en re-renders y no queremos re-push ni loop.
   const redirectedRef = useRef(false);
 
-  async function generarDepto(depto: DeptoDelPago, vuelta: string | null) {
+  useEffect(() => {
+    if (!destino) return;
+    const t = window.setTimeout(() => setConAbrir(true), ABRIR_INFORME_TRAS_MS);
+    return () => window.clearTimeout(t);
+  }, [destino]);
+  const abrirDestino = (href: string) => { setDestino(href); router.push(href); };
+
+  async function generarDepto(depto: DeptoDelPago) {
     const esperar = (ms: number) => new Promise((ok) => setTimeout(ok, ms));
+    const paso0 = informeGenerando(depto.nombre, depto.esperado);
+    setInforme(paso0);
+    // No salió (no se cobró): se dice acá, con qué hacer.
+    const fallar = (motivo: MotivoFallo) => setInforme(informeFallo(paso0, motivo));
     // El crédito del pago puede llegar unos segundos después del «pagado» (el webhook lo otorga aparte): «sin créditos»
     // se espera unas veces, como en la selección (semanal-lista.tsx › REINTENTOS_CREDITO); «en curso» (409) también.
     let sinCredito = 0;
@@ -79,15 +98,21 @@ function PaymentReturnContent() {
           body: JSON.stringify({ origenId: depto.origenId, avisoId: depto.avisoId, semanal: depto.token }),
         });
         if (res.status === 409) { await esperar(ESPERA_GENERAR_MS); continue; }
-        const d = (await res.json().catch(() => ({}))) as { id?: string; error?: string };
-        if (res.ok && d.id) { router.replace(`/analisis/${d.id}`); return; }
+        const d = (await res.json().catch(() => ({}))) as { id?: string; error?: string; veredicto?: string | null; score?: number | null };
+        // Listo: InformeEnLaVuelta lo abre en su lugar; si con los datos de hoy salió otro veredicto, lo dice primero.
+        if (res.ok && d.id) { setInforme(informeListo(paso0, { id: d.id, ruta: `/analisis/${d.id}`, veredicto: d.veredicto ?? null, score: d.score ?? null })); return; }
         if (d.error === "sin-creditos" && sinCredito++ < REINTENTOS_CREDITO_RETORNO) { await esperar(ESPERA_GENERAR_MS); continue; }
-        break;
+        if (res.status === 410 && d.error === "despublicado") { fallar("despublicado"); return; }
+        if (d.error === "combinacion") { fallar("fuera"); return; }
+        fallar("error");
+        return;
       } catch {
-        break;
+        fallar("error");
+        return;
       }
     }
-    router.replace(vuelta ?? "/dashboard");
+    // Doce vueltas ocupadas o sin el crédito: no salió.
+    fallar("error");
   }
 
   useEffect(() => {
@@ -182,7 +207,7 @@ function PaymentReturnContent() {
               redirectedRef.current = true;
               setRedirecting(true);
               if (data.payment.product === "single" && companionStrId) {
-                router.push(`/analisis/comparativa?ltr=${data.payment.analysis_id}&str=${companionStrId}`);
+                abrirDestino(`/analisis/comparativa?ltr=${data.payment.analysis_id}&str=${companionStrId}`);
               } else if (data.payment.product === "unlock") {
                 // Fase D (decisión B): el unlock desbloqueó los DOS informes →
                 // volvemos a la comparativa. Resolvemos ltr/str por ambas_group_id
@@ -209,9 +234,9 @@ function PaymentReturnContent() {
                 } catch {
                   /* fallback al hijo abierto (comportamiento previo) */
                 }
-                router.push(target);
+                abrirDestino(target);
               } else {
-                router.push(`/analisis/${data.payment.analysis_id}`);
+                abrirDestino(`/analisis/${data.payment.analysis_id}`);
               }
             } else {
               const depto = leerDeptoDelPago(data.depto);
@@ -219,7 +244,7 @@ function PaymentReturnContent() {
                 redirectedRef.current = true;
                 setRedirecting(true);
                 setAlDepto(depto);
-                void generarDepto(depto, vuelta);
+                void generarDepto(depto);
               }
             }
           } else if (estado === "error") {
@@ -292,17 +317,19 @@ function PaymentReturnContent() {
           <div>
             {!alDepto && girando}
             <h1 className={PLANO.titulo}>{RETORNO.abriendo.titulo}</h1>
-            {alDepto ? (
-              <>
-                {/* PAGO CONFIRMADO DESDE UN DEPTO (24-oct-2026, mockup C): el depto en negrita, la barra y cuántos le quedan. */}
-                <p className={PLANO.bajada} data-retorno="al-depto">{RETORNO.desdeDepto.antes}<b className="text-[var(--franco-text)]">{alDepto.nombre}</b>{RETORNO.desdeDepto.despues}</p>
-                <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[var(--franco-border)]" role="progressbar" aria-label={RETORNO.abriendo.titulo} data-retorno-barra>
-                  <div className="h-1.5 w-3/5 rounded-full bg-[var(--signal-red)] motion-safe:animate-pulse" />
-                </div>
-                {saldo != null && saldo > 0 && <p className="mt-2 text-[12px] text-[var(--franco-text-secondary)]" data-retorno="quedan">{RETORNO.quedanOtros(saldo - 1)}</p>}
-              </>
+            {alDepto && informe ? (
+              // PAGO CONFIRMADO DESDE UN DEPTO (24-oct-2026, mockup C; 03-nov-2026, el informe en camino): el depto en negrita, la
+              // barra y cuántos le quedan; y lo que pase con el informe, acá mismo.
+              <InformeEnLaVuelta paso={informe} saldo={saldo} alReintentar={() => void generarDepto(alDepto)} />
             ) : (
-              <p className={PLANO.bajada}>{RETORNO.abriendo.cuerpo}</p>
+              <>
+                <p className={PLANO.bajada}>{RETORNO.abriendo.cuerpo}</p>
+                {destino && conAbrir && (
+                  <div className={PLANO.seccion}>
+                    <a href={destino} className={PLANO.principal} data-informe="abrir">{INFORME_COPY.abrir}</a>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}

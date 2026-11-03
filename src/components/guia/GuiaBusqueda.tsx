@@ -18,9 +18,13 @@
 // 13-oct-2026: «Analizar este» abre primero el aviso (AvisoAntesDeAnalizar: el depto y «Usa 1 de tus N
 // análisis.»), y sin análisis el mismo aviso ofrece el pack de tres y vuelve acá después de pagar. Se acabó el
 // callejón «Ya usaste tus análisis.»: si el servidor dice que no quedan, sale el aviso con el pack.
+// 03-nov-2026, EL INFORME EN CAMINO (lib/guia/informe-en-camino.ts, como Explorar, la selección y el dashboard): al tocar
+// «Analizar», el aviso no se cierra: pasa a «Generando el informe de [depto]…» con su barra y abre el informe solo; a los 10 s,
+// «Abrir informe»; el veredicto distinto al de la tarjeta se dice antes de abrirlo; y si no salió (un error, el aviso que se dio
+// de baja recién), lo dice con palabras. Cerrado con el informe listo sin abrir, la tarjeta dice «Ya lo analizaste · Ver
+// informe» y arriba queda «Tu informe de [depto] está listo · Abrirlo».
 // ─────────────────────────────────────────────────────────────────────────────
-import { useEffect, useState, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { usePostHog } from "@/lib/posthog-react";
 import { capturarLqs, EVENTOS_LQS, type ContextoLqs } from "@/lib/lo-que-sigue/eventos";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
@@ -33,6 +37,10 @@ import { RegistroEnTarjeta } from "./RegistroEnTarjeta";
 import { AvisoAntesDeAnalizar } from "./AvisoAntesDeAnalizar";
 import { usoDesdeSaldo } from "@/lib/guia/aviso-analizar";
 import { rutaTres } from "@/lib/tres-analisis";
+import { YA_ANALIZADO } from "@/lib/guia/semanal-str";
+import { nombreDelDepto } from "@/lib/guia/compra-desde-depto";
+import { alCerrarQueda, informeFallo, informeGenerando, informeListo, type MotivoFallo, type PasoInforme } from "@/lib/guia/informe-en-camino";
+import { InformeListoAviso } from "./InformeEnCamino";
 import type { EstadoSaldo } from "@/lib/casa-saldo";
 import "./guia.css";
 
@@ -55,7 +63,6 @@ const pct = (n: number) => String(Math.round(n * 100) / 100).replace(".", ",");
  *  plan y el cero; sin él, el aviso sale del número de `saldo`. */
 export function GuiaBusqueda({ analysisId, veredicto, conSesion: conSesionInicial, muestra, sinGuia = null, saldo = null, pago = null, enCasa, estado }: { analysisId: string; veredicto: string; conSesion: boolean; muestra?: RespuestaGuia; sinGuia?: ReactNode; saldo?: number | null; pago?: LlavePago | null; enCasa?: { titulo: string }; estado?: EstadoSaldo }) {
   const posthog = usePostHog();
-  const router = useRouter();
   const ctx: ContextoLqs = { analysisId, veredicto, modalidad: "ltr" };
   const [conSesion, setConSesion] = useState(conSesionInicial);
   const [r, setR] = useState<Respuesta | null>(muestra ?? null);
@@ -63,8 +70,15 @@ export function GuiaBusqueda({ analysisId, veredicto, conSesion: conSesionInicia
   const [generando, setGenerando] = useState<string | null>(null);
   const [registrando, setRegistrando] = useState<string | null>(null);
   const [error, setError] = useState<{ avisoId: string; texto: string } | null>(null);
-  // El aviso antes de gastar (13-oct-2026). `sin`: el servidor dijo que no quedan.
-  const [confirmar, setConfirmar] = useState<{ it: Item; sin: boolean } | null>(null);
+  // El aviso antes de gastar (13-oct-2026). `sin`: el servidor dijo que no quedan; `analizando`: ya se tocó «Analizar».
+  const [confirmar, setConfirmar] = useState<{ it: Item; sin: boolean; analizando?: boolean } | null>(null);
+  // DESPUÉS DE «ANALIZAR» (03-nov-2026, lib/guia/informe-en-camino.ts): lo que pasa con el informe, en el mismo pop-up; el aviso
+  // de arriba si quedó listo sin abrirse; y los analizados de esta visita («Ya lo analizaste · Ver informe»).
+  const [informe, setInforme] = useState<PasoInforme | null>(null);
+  const [listoSinAbrir, setListoSinAbrir] = useState<{ id: string; ruta: string; depto: string; t0: number } | null>(null);
+  const [informesAqui, setInformesAqui] = useState<Record<string, string>>({});
+  const ultimoAnalisis = useRef<Item | null>(null);
+  const soltarCarga = useRef<(() => void) | null>(null);
   const precarga = rutaPrecarga(analysisId);
 
   useEffect(() => {
@@ -110,10 +124,16 @@ export function GuiaBusqueda({ analysisId, veredicto, conSesion: conSesionInicia
     setError(null);
     setRegistrando(null);
     setGenerando(it.avisoId);
-    // La barra del header acompaña al botón hasta que abre el informe (22-oct-2026); si no abre, se suelta.
+    // La barra del header acompaña al pop-up hasta que abre el informe (22-oct-2026). Desde el 03-nov-2026, el pop-up queda
+    // abierto con «Generando el informe de [depto]…» (InformeEnCamino), con lo que mostró la tarjeta para decir si salió otro.
     const soltar = iniciarCarga(claveActual());
-    let resuelto = false;
-    let abrio = false;
+    soltarCarga.current = soltar;
+    ultimoAnalisis.current = it;
+    const paso0 = informeGenerando(nombreDelDepto(it), it.veredicto ? { veredicto: it.veredicto, score: it.score } : null);
+    setConfirmar({ it, sin: false, analizando: true });
+    setInforme(paso0);
+    // No salió (no se cobró): el pop-up lo dice con palabras; nunca se vuelve a la guía en silencio.
+    const fallar = (motivo: MotivoFallo) => { setConfirmar({ it, sin: false }); setInforme(informeFallo(paso0, motivo)); };
     try {
       for (let intento = 0; intento < 8; intento++) {
         const res = await fetch("/api/lo-que-sigue/guia/analizar", {
@@ -121,35 +141,59 @@ export function GuiaBusqueda({ analysisId, veredicto, conSesion: conSesionInicia
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ origenId: analysisId, avisoId: it.avisoId, piePct: r.combinacion.piePct, plazoAnios: r.combinacion.plazoAnios }),
         });
-        if (res.status === 409) { await new Promise((ok) => setTimeout(ok, 4000)); continue; }
-        const d = (await res.json().catch(() => ({}))) as { id?: string; estado?: string; error?: string };
+        if (res.status === 409) {
+          // Ocho vueltas «en curso» sin informe: se dice que falló, sin volver a cobrar (el candado lo impide).
+          if (intento === 7) { fallar("error"); break; }
+          await new Promise((ok) => setTimeout(ok, 4000));
+          continue;
+        }
+        const d = (await res.json().catch(() => ({}))) as { id?: string; estado?: string; error?: string; veredicto?: string | null; score?: number | null };
         if (res.ok && d.id) {
           capturarLqs(posthog, EVENTOS_LQS.guiaInformeCreado, ctx, { aviso_id: it.avisoId, nuevo_id: d.id, ya: d.estado === "ya-creado" });
-          abrio = true;
-          router.push(`/analisis/${d.id}`);
+          // Listo: el pop-up lo abre solo; si con los datos de hoy salió otro veredicto, lo dice primero.
+          const listo = informeListo(paso0, { id: d.id, ruta: `/analisis/${d.id}`, veredicto: d.veredicto ?? null, score: d.score ?? null });
+          setInforme(listo);
+          if (listo.paso === "distinto") { soltar(); setGenerando(null); }
           return;
         }
-        if (res.status === 401) { setConSesion(false); setGenerando(null); setRegistrando(it.avisoId); return; }
-        if (res.status === 410 && d.error === "despublicado") {
-          setError({ avisoId: it.avisoId, texto: GUIA.despublicado });
-          setGenerando(null);
-          void reemplazar();
-          return;
-        }
+        // La sesión se fue: el código en la tarjeta, y al entrar vuelve el aviso.
+        if (res.status === 401) { setInforme(null); setConfirmar(null); setConSesion(false); setGenerando(null); setRegistrando(it.avisoId); break; }
+        // Se dio de baja recién: el pop-up lo dice y, al cerrarlo, la guía se arma de nuevo sin él.
+        if (res.status === 410 && d.error === "despublicado") { fallar("despublicado"); break; }
         // Sin análisis: el aviso con el pack, no el callejón (13-oct-2026).
-        if (d.error === "sin-creditos") { setConfirmar({ it, sin: true }); setGenerando(null); return; }
-        setError({ avisoId: it.avisoId, texto: d.error === "origen" ? GUIA.otraCuenta : GUIA.error });
-        resuelto = true;
+        if (d.error === "sin-creditos") { setInforme(null); setConfirmar({ it, sin: true }); break; }
+        fallar(d.error === "origen" ? "otra-cuenta" : "error");
         break;
       }
-      // Ocho vueltas «en curso» sin informe: se dice que falló, sin volver a cobrar (el candado lo impide).
-      if (!resuelto) setError({ avisoId: it.avisoId, texto: GUIA.error });
     } catch {
-      setError({ avisoId: it.avisoId, texto: GUIA.error });
-    } finally {
-      if (!abrio) soltar();
+      fallar("error");
     }
+    soltar();
     setGenerando(null);
+  }
+
+  // Cerrar el pop-up del informe (solo cuando se puede). Si el informe quedó listo sin abrirse, la tarjeta dice «Ya lo
+  // analizaste · Ver informe» y arriba queda «Tu informe de [depto] está listo · Abrirlo». Si el aviso se dio de baja, la tarjeta
+  // lo dice un momento y la guía se arma de nuevo sin él (el servidor ya borró la guardada; el crédito no se tocó).
+  function cerrarInforme() {
+    const queda = informe ? alCerrarQueda(informe) : null;
+    const it = confirmar?.it;
+    if (queda && it && informe) {
+      setInformesAqui((m) => ({ ...m, [it.avisoId]: queda.id }));
+      setListoSinAbrir({ ...queda, t0: informe.t0 });
+    }
+    const despublicado = informe?.paso === "fallo" && informe.motivo === "despublicado";
+    soltarCarga.current?.();
+    setInforme(null);
+    setConfirmar(null);
+    setGenerando(null);
+    if (despublicado && it) { setError({ avisoId: it.avisoId, texto: GUIA.despublicado }); void reemplazar(); }
+  }
+  // Tras un fallo, «Reintentar» analiza otra vez lo mismo.
+  function reintentarInforme() {
+    const it = ultimoAnalisis.current;
+    setInforme(null);
+    if (it) void analizar(it, true);
   }
 
   // El regalo se dice (16-oct-2026): si el que se gasta es un regalo, «usa tu análisis de regalo».
@@ -181,6 +225,8 @@ export function GuiaBusqueda({ analysisId, veredicto, conSesion: conSesionInicia
             {r.radioM && <span>{GUIA.chipRadio}<b>{r.radioM / 1000} km</b></span>}
             <span data-guia-combinacion>{GUIA.chipCombinacion}<b>{pct(r.combinacion.piePct)}% · {r.combinacion.plazoAnios} años</b></span>
           </div>
+          {/* El informe quedó listo y no se abrió (03-nov-2026): el aviso queda arriba de la lista hasta que la persona lo quite. */}
+          {listoSinAbrir && <InformeListoAviso depto={listoSinAbrir.depto} ruta={listoSinAbrir.ruta} id={listoSinAbrir.id} t0={listoSinAbrir.t0} alCerrar={() => setListoSinAbrir(null)} />}
           <div className="guia-lista">
             {r.items.map((it) => {
               const neg = (it.flujo ?? 0) < 0;
@@ -208,6 +254,11 @@ export function GuiaBusqueda({ analysisId, veredicto, conSesion: conSesionInicia
                   </div>
                   {registrando === it.avisoId ? (
                     <RegistroEnTarjeta ctx={ctx} next={typeof window === "undefined" ? "/" : window.location.pathname + window.location.search} alEntrar={() => { setConSesion(true); setRegistrando(null); setConfirmar({ it, sin: false }); }} />
+                  ) : informesAqui[it.avisoId] ? (
+                    <p className="guia-acc guia-ya" data-guia="ya-analizado">
+                      <span>{YA_ANALIZADO.texto} ·</span>
+                      <EnlaceCarga href={`/analisis/${informesAqui[it.avisoId]}`}>{YA_ANALIZADO.enlace}</EnlaceCarga>
+                    </p>
                   ) : (
                     <div className="guia-acc">
                       <button type="button" className="guia-an" onClick={() => abrir(it)} disabled={!!generando} {...botonOcupado(generando === it.avisoId)}>
@@ -241,9 +292,14 @@ export function GuiaBusqueda({ analysisId, veredicto, conSesion: conSesionInicia
           finanzas={{ tasa: r.tasa ?? null, uf: r.uf ?? null, arriendo: confirmar.it.arriendo ?? null }}
           uso={confirmar.sin ? { tipo: "sin" } : uso}
           rutaCompra={rutaCompra()}
-          alAnalizar={() => { const it = confirmar.it; setConfirmar(null); void analizar(it, true); }}
-          // La guía (30-sep-2026) analiza con la combinación que mostró: sin «Cambiar» (no hay `recalcular`).
-          alCancelar={() => setConfirmar(null)}
+          analizando={!!confirmar.analizando}
+          // La guía (30-sep-2026) analiza con la combinación que mostró: sin «Cambiar» (no hay `recalcular`). El pop-up no se cierra
+          // al tocar «Analizar» (03-nov-2026): pasa al informe en camino.
+          alAnalizar={() => void analizar(confirmar.it, true)}
+          alCancelar={() => { if (!confirmar.analizando) setConfirmar(null); }}
+          informe={informe}
+          alCerrarInforme={cerrarInforme}
+          alReintentarInforme={reintentarInforme}
           avisoId={confirmar.it.avisoId}
         />
       )}

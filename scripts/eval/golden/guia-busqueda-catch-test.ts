@@ -353,11 +353,15 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
   if (!/\? "El primero va por cuenta de Franco\."/.test(resumenW) || /sin crear cuenta/.test(resumenW)) F("7 · el modal de confirmación no dice «El primero va por cuenta de Franco.» (o vuelve «sin crear cuenta»)");
   // ── 8 · el código en la tarjeta ─────────────────────────────────────────────
   if (/router\.push\(`\/registro/.test(gb)) F("8 · quien pagó sin cuenta sale de la pantalla a registrarse");
-  if (!/if \(!sesion\) \{ setError\(null\); setRegistrando\(it\.avisoId\); return; \}/.test(gb) || !/if \(res\.status === 401\) \{ setConSesion\(false\); setGenerando\(null\); setRegistrando\(it\.avisoId\); return; \}/.test(gb)) F("8 · sin sesión «Analizar este» no pide el código en la tarjeta");
+  // ⚠ ACTA (03-nov-2026, «el informe en camino» en la guía, tier INFORME-EN-CAMINO) · con la sesión vencida al analizar, el pop-up (que ya
+  // estaba en «Generando…») se cierra y la tarjeta pide el código: no queda el pop-up generando sin nada que generar.
+  if (!/if \(!sesion\) \{ setError\(null\); setRegistrando\(it\.avisoId\); return; \}/.test(gb) || !/if \(res\.status === 401\) \{ setInforme\(null\); setConfirmar\(null\); setConSesion\(false\); setGenerando\(null\); setRegistrando\(it\.avisoId\); break; \}/.test(gb)) F("8 · sin sesión «Analizar este» no pide el código en la tarjeta");
   // ⚠ ACTA (13-oct-2026, decisión de Fabrizio) · al entrar con el código sale el aviso antes de gastar de ESA tarjeta, y
   // su «Analizar» genera el informe (CORREOS-RECORRIDO §5). Antes generaba de una.
   if (!/\{registrando === it\.avisoId \? \(\s*<RegistroEnTarjeta ctx=\{ctx\} next=\{[^}]*\}[^>]*alEntrar=\{\(\) => \{ setConSesion\(true\); setRegistrando\(null\); setConfirmar\(\{ it, sin: false \}\); \}\} \/>/.test(gb)
-    || !/alAnalizar=\{\(\) => \{ const it = confirmar\.it; setConfirmar\(null\); void analizar\(it, true\); \}\}/.test(gb)) F("8 · al entrar con el código no se ofrece analizar esa tarjeta");
+    // ⚠ ACTA (03-nov-2026, «el informe en camino» en la guía) · su «Analizar» ya no cierra el aviso: lo deja en «Generando…» (tier
+    // INFORME-EN-CAMINO §1).
+    || !/alAnalizar=\{\(\) => void analizar\(confirmar\.it, true\)\}/.test(gb)) F("8 · al entrar con el código no se ofrece analizar esa tarjeta");
   const regT = sinComentarios(leer("src/components/guia/RegistroEnTarjeta.tsx"));
   if (!/signInWithOtp\(\{\s*email: c,/.test(regT) || !/verifyOtp\(\{ email: enviado, token: t, type: "email" \}\)/.test(regT) || !/await reclamarAnalisisAnonimos\(posthog, "register", \{ porCodigo: true, puerta: \{ puerta: "A", detalle: "guia" \} \}\);[\s\S]{0,260}?EVENTOS_LQS\.registroCompletado[\s\S]{0,120}?alEntrar\(\);/.test(regT)) F("8 · el registro de la tarjeta no es el registro en un paso (código, reclamo y evento antes de generar)");
   if (/router\.|window\.location\.(href|assign)/.test(regT)) F("8 · el registro de la tarjeta navega fuera de la pantalla");
@@ -453,7 +457,10 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
     // ⚠ ACTA (16-oct-2026, goal «la puerta B») · sin informe de origen (origen sintético) no hay guía guardada que rearmar.
     if (!/if \(r\.estado === "despublicado"\) return salir\(NextResponse\.json\(\{ error: "despublicado" \}, \{ status: 410 \}\)\);/.test(ruta9) || !/if \(origen\.analysisId\) await admin\.from\("guias_calculadas"\)\.delete\(\)\.eq\("analysis_id", origen\.analysisId\)/.test(ruta9)) F("9 · un despublicado al clic no responde 410 o no obliga a rearmar la guía");
     if (GUIA.despublicado !== "Este aviso ya no está publicado.") F("9 · la tarjeta no dice «Este aviso ya no está publicado.»");
-    if (!/if \(res\.status === 410 && d\.error === "despublicado"\) \{\s*setError\(\{ avisoId: it\.avisoId, texto: GUIA\.despublicado \}\);\s*setGenerando\(null\);\s*void reemplazar\(\);/.test(gb)) F("9 · la tarjeta no dice que el aviso se despublicó, o la guía no lo reemplaza");
+    // ⚠ ACTA (03-nov-2026, «el informe en camino» en la guía, tier INFORME-EN-CAMINO §4) · el despublicado lo dice primero el pop-up
+    // («Este depto se dio de baja recién. No se usó ningún análisis.»); al cerrarlo, la tarjeta lo dice y la guía se rearma sin él.
+    const cierraGuia = gb.slice(Math.max(0, gb.indexOf("function cerrarInforme(")), gb.indexOf("function reintentarInforme("));
+    if (!/if \(res\.status === 410 && d\.error === "despublicado"\) \{ fallar\("despublicado"\); break; \}/.test(gb) || !/const despublicado = informe\?\.paso === "fallo" && informe\.motivo === "despublicado";/.test(cierraGuia) || !/if \(despublicado && it\) \{ setError\(\{ avisoId: it\.avisoId, texto: GUIA\.despublicado \}\); void reemplazar\(\); \}/.test(cierraGuia)) F("9 · la tarjeta no dice que el aviso se despublicó, o la guía no lo reemplaza");
   }
   {
     // 9c · el panel: un bloqueo es rojo; un despublicado, no.

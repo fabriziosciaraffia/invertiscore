@@ -212,7 +212,9 @@ export function runReanalisisTier(): { hard: number } {
   const co = sinComentarios(leer("src/app/checkout/page.tsx"));
   if (!/\.select\("comuna, input_data"\)/.test(co) || !/const marca = leerReanalisis\(/.test(co) || !/resumenCompra\(productKey, \{ analysisId, companionStrId, comuna, reanalisis \}\)/.test(co)) F("3 · /checkout no lee el marcador del análisis atado");
   const ret = sinComentarios(leer("src/app/payments/return/page.tsx"));
-  if (!/router\.push\(`\/analisis\/\$\{data\.payment\.analysis_id\}`\);/.test(ret)) F("3 · al pagar el suelto no sigue solo al análisis");
+  // ⚠ ACTA (03-nov-2026, «el informe en camino» en la vuelta del pago, tier INFORME-EN-CAMINO §7) · sigue solo por abrirDestino, que anota
+  // adónde fue para ofrecer «Abrir informe» si a los 10 s la página sigue ahí.
+  if (!/abrirDestino\(`\/analisis\/\$\{data\.payment\.analysis_id\}`\);/.test(ret) || !/const abrirDestino = \(href: string\) => \{ setDestino\(href\); router\.push\(href\); \};/.test(ret)) F("3 · al pagar el suelto no sigue solo al análisis");
 
   // ── 4 · El informe nuevo lo dice arriba y enlaza al original; el servidor valida el marcador ──
   if (REANALISIS_COPY.linea(3131) !== "Analizado a UF 3.131, el precio que Franco recomendó negociar" || REANALISIS_COPY.original !== "Ver el informe original") F("4 · la línea del informe nuevo no es la pedida");

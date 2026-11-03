@@ -355,8 +355,15 @@ export async function runPuertaBDashboardTier(): Promise<{ hard: number }> {
   if (!/\{esPack && packCreadoAt && !packVencido && \(\s*<p className="mt-5 flex items-center justify-between gap-3" data-compra="ticket">/.test(compra)) F("7 · la etiqueta y el vencimiento aparecen sin el ticket vivo");
   if (CHECKOUT_PACK.soloNuevas !== "Solo para cuentas nuevas" || CHECKOUT_PACK.venceCorto("mañana 11:17") !== "Vence mañana 11:17" || `${CHECKOUT_PACK.primeroAlPagar.antes}X${CHECKOUT_PACK.primeroAlPagar.despues}` !== "El primero, para X, se genera al pagar.") F("7 · el copy del ticket en la compra no es el del mockup");
   // C · «Pago confirmado» desde un depto.
+  // ⚠ ACTA (03-nov-2026, «el informe en camino» en la vuelta del pago, tier INFORME-EN-CAMINO §7) · el estado C se dibuja en
+  // InformeEnCamino.tsx › VueltaInforme (con el depto del informe en camino, `paso.depto`, que es el nombre del depto del pago); la página
+  // lo monta debajo de «Pago confirmado.». La barra avanza de verdad y va en tinta, como la del pop-up.
   const ret = codigo("src/app/payments/return/page.tsx");
-  if (!/\{alDepto \? \(\s*<>[\s\S]*?<p className=\{PLANO\.bajada\} data-retorno="al-depto">\{RETORNO\.desdeDepto\.antes\}<b className="text-\[var\(--franco-text\)\]">\{alDepto\.nombre\}<\/b>\{RETORNO\.desdeDepto\.despues\}<\/p>\s*<div [^>]*role="progressbar"[^>]*data-retorno-barra>/.test(ret) || !/\{saldo != null && saldo > 0 && <p [^>]*data-retorno="quedan">\{RETORNO\.quedanOtros\(saldo - 1\)\}<\/p>\}/.test(ret)) F("7 · «Pago confirmado» desde un depto no dice «Franco está analizando X. En unos segundos se abre el informe.» con la barra y cuántos le quedan");
+  const vuelta = codigo("src/components/guia/InformeEnCamino.tsx");
+  const vi = vuelta.slice(vuelta.indexOf("export function VueltaInforme("));
+  if (!/\{alDepto && informe \? \(\s*<InformeEnLaVuelta paso=\{informe\} saldo=\{saldo\}/.test(ret) || !/const paso0 = informeGenerando\(depto\.nombre, depto\.esperado\);/.test(ret)
+    || !/\{\(paso\.paso === "generando" \|\| paso\.paso === "listo"\) && \(\s*<>\s*<p className=\{PLANO\.bajada\} data-retorno="al-depto">\{RETORNO\.desdeDepto\.antes\}<b className="text-\[var\(--franco-text\)\]">\{paso\.depto\}<\/b>\{RETORNO\.desdeDepto\.despues\}<\/p>\s*<div [^>]*role="progressbar"[^>]*data-retorno-barra/.test(vi)
+    || !/\{saldo != null && saldo > 0 && <p [^>]*data-retorno="quedan">\{RETORNO\.quedanOtros\(saldo - 1\)\}<\/p>\}/.test(vi)) F("7 · «Pago confirmado» desde un depto no dice «Franco está analizando X. En unos segundos se abre el informe.» con la barra y cuántos le quedan");
   if (`${RETORNO.desdeDepto.antes}X${RETORNO.desdeDepto.despues}` !== "Franco está analizando X. En unos segundos se abre el informe." || RETORNO.quedanOtros(2) !== "Te quedan 2 análisis para cualquier otro depto." || RETORNO.pagado.titulo !== "Pago confirmado.") F("7 · el copy de «Pago confirmado» no es el del mockup");
   // E · ⚠ ACTA (28-oct-2026, Explorar como portal) · el aviso E de Explorar sin saldo se RETIRÓ: sin saldo se explora todo y el
   // cobro sale al analizar, con el pop-up de compra de siempre (tier EXPLORAR-PORTAL §4). Acá, que no volvió.

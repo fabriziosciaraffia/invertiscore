@@ -143,7 +143,9 @@ export async function runCorreosRecorridoTier(): Promise<{ hard: number }> {
   const guia = sinComentarios(leer("src/components/guia/GuiaBusqueda.tsx"));
   if (!/className="guia-an" onClick=\{\(\) => abrir\(it\)\}/.test(guia) || !/if \(!conSesion\) \{ void analizar\(it\); return; \}\s*setError\(null\);\s*setConfirmar\(\{ it, sin: false \}\);/.test(guia)) F("5 · en la guía «Analizar este» genera sin el aviso");
   if (!/alEntrar=\{\(\) => \{ setConSesion\(true\); setRegistrando\(null\); setConfirmar\(\{ it, sin: false \}\); \}\}/.test(guia)) F("5 · en la guía, al entrar con el código se genera sin el aviso");
-  if (!/if \(d\.error === "sin-creditos"\) \{ setConfirmar\(\{ it, sin: true \}\); setGenerando\(null\); return; \}/.test(guia) || /GUIA\.sinCreditos/.test(guia)) F("5 · en la guía sigue el callejón «Ya usaste tus análisis.»");
+  // ⚠ ACTA (03-nov-2026, «el informe en camino» en la guía, tier INFORME-EN-CAMINO) · al tocar «Analizar» el pop-up pasa al informe en
+  // camino; sin análisis, deja ese paso y vuelve al aviso con el pack (y el generando se suelta al salir del intento).
+  if (!/if \(d\.error === "sin-creditos"\) \{ setInforme\(null\); setConfirmar\(\{ it, sin: true \}\); break; \}/.test(guia) || /GUIA\.sinCreditos/.test(guia)) F("5 · en la guía sigue el callejón «Ya usaste tus análisis.»");
   if (!/<AvisoAntesDeAnalizar\s+depto=\{confirmar\.it\}\s+combinacion=\{r\.combinacion\}\s+finanzas=\{\{ tasa: r\.tasa \?\? null, uf: r\.uf \?\? null, arriendo: confirmar\.it\.arriendo \?\? null \}\}\s+uso=\{confirmar\.sin \? \{ tipo: "sin" \} : uso\}\s+rutaCompra=\{rutaCompra\(\)\}/.test(guia) || !/const uso = estado \?\? usoDesdeSaldo\(saldo\);/.test(guia)) F("5 · la guía no monta el aviso con su pie y su plazo, sus datos, su saldo y su compra");
   const guiaSrv = sinComentarios(leer("src/lib/guia/guia-servidor.ts"));
   if (!/tasa: o\.tasa,\s*uf,/.test(guiaSrv) || !/arriendo: c\.arriendo\?\.monto \?\? null,/.test(guiaSrv) || !/const resultado = respuestaGuia\(o, g, cfg\.uf\);/.test(guiaSrv)) F("5 · la guía no trae la tasa, la UF y el arriendo para el aviso");

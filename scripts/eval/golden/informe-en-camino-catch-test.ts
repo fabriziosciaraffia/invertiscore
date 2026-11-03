@@ -15,6 +15,10 @@
 //       y el que salió de la selección, también. Ninguna superficie vuelve a la lista o al mapa en silencio.
 //   5 · LA MEDICIÓN: el tiempo entre «Analizar» y el informe en pantalla, y la apertura fallida aparte.
 //   6 · LA TARJETA ANALIZADA CONSERVA SU IMAGEN: la misma foto de la calle (o el mapa chico) que antes de analizar.
+//   7 · LA GUÍA DE BÚSQUEDA Y LA VUELTA DEL PAGO (mismo día, segunda entrega): la guía es una superficie más de §1-§4; la vuelta
+//       del pago desde un depto aplica la regla sin pop-up, debajo de «Pago confirmado.»: la barra avanza, lo abre en su lugar, a
+//       los 10 s «Abrir informe», el veredicto distinto se dice, y si no salió lo dice ahí mismo (ya no manda al dashboard en
+//       silencio). El suelto y el desbloqueo, que ya tienen su informe, también ofrecen «Abrir informe» a los 10 s.
 // Verificado EN ROJO por mutación (acta al pie). Corre dentro del QUICK. 0 tokens, 0 lecturas.
 // Solo:  node --env-file=.env.local --import tsx scripts/eval/golden/informe-en-camino-catch-test.ts
 // ============================================================================
@@ -73,13 +77,14 @@ const SUPERFICIES = [
   { nombre: "Explorar", archivo: "src/app/explorar/explorar-cliente.tsx", ruta: "`/analisis/${d.id}`" },
   { nombre: "la selección («Estás dentro»)", archivo: "src/components/deptos/PrimeraSeleccion.tsx", ruta: "`/analisis/${d.id}`" },
   { nombre: "el dashboard (SemanalLista)", archivo: "src/app/semanal/semanal-lista.tsx", ruta: "corta ? `/analisis/renta-corta/${d.id}` : `/analisis/${d.id}`" },
+  { nombre: "la guía de búsqueda", archivo: "src/components/guia/GuiaBusqueda.tsx", ruta: "`/analisis/${d.id}`" },
 ] as const;
 
 export async function runInformeEnCaminoTier(): Promise<{ hard: number }> {
   const fallas: string[] = [];
   const F = (m: string) => fallas.push(m);
-  console.log("\n─── TIER INFORME-EN-CAMINO (después de «Analizar»: el pop-up no se cierra, la apertura fallida avisa, el veredicto distinto se dice, el fallo con palabras, la medición, la tarjeta con su imagen · 0 tokens) ───");
-  const modPop = cargar<{ PopupInforme: FC<Record<string, unknown>>; InformeListoAviso: FC<Record<string, unknown>> }>("src/components/guia/InformeEnCamino", F);
+  console.log("\n─── TIER INFORME-EN-CAMINO (después de «Analizar»: el pop-up no se cierra, la apertura fallida avisa, el veredicto distinto se dice, el fallo con palabras, la medición, la tarjeta con su imagen, la guía y la vuelta del pago · 0 tokens) ───");
+  const modPop = cargar<{ PopupInforme: FC<Record<string, unknown>>; InformeListoAviso: FC<Record<string, unknown>>; VueltaInforme?: FC<Record<string, unknown>> }>("src/components/guia/InformeEnCamino", F);
   const modTar = cargar<{ TarjetaPin: FC<Record<string, unknown>> }>("src/app/explorar/tarjeta-pin", F);
   const pop = (paso: ie.PasoInforme, ahora: number, conReintentar = false) => (modPop ? dibujar(createElement(modPop.PopupInforme, { paso, ahora, alCerrar: NADA, alReintentar: conReintentar ? NADA : null })) : "");
   const gen = ie.informeGenerando(DEPTO, ESPERADO, T0);
@@ -97,8 +102,12 @@ export async function runInformeEnCaminoTier(): Promise<{ hard: number }> {
     // ⚠ ACTA (03-nov-2026, QA del preview) · y no sigue de largo (stopPropagation): la tarjeta de atrás se cerraba por debajo.
     if (!/if \(e\.key === "Escape"\) \{ e\.preventDefault\(\); e\.stopPropagation\(\); if \(puedeCerrar\) alCerrar\(\); \}/.test(comp) || !/const puedeCerrar = cerrable\(paso, ahora\);/.test(cuerpo(comp, "export function InformeEnCamino("))) F("1 · Escape cierra el pop-up aunque esté generando");
     // Listo, se abre solo y una sola vez (con el viaje anotado para medir).
-    const abre = bloque(comp, "useEffect(() => {\n    if (paso.paso !== \"listo\" || abierto.current === paso.id) return;");
-    if (!/if \(paso\.paso !== "listo" \|\| abierto\.current === paso\.id\) return;/.test(comp) || !/router\.push\(paso\.ruta\)/.test(abre) || !/anotarViaje\(almacen\(\), \{ id: paso\.id, t0: paso\.t0, desde: desdeDeRuta\(window\.location\.pathname\), via: "auto" \}\)/.test(abre)) F("1 · con el informe listo, el pop-up no lo abre solo (o no anota el viaje)");
+    // ⚠ ACTA (03-nov-2026, la guía y la vuelta del pago) · abrirlo y medir pasaron a useInformeEnCamino, que usan el pop-up y la
+    // vuelta del pago; el pop-up lo abre con push y la vuelta, en su lugar (`reemplazar`). Se exige el hook y que el pop-up lo use.
+    const gancho = cuerpo(comp, "export function useInformeEnCamino(");
+    const abre = bloque(gancho, "useEffect(() => {\n    if (paso.paso !== \"listo\" || abierto.current === paso.id) return;");
+    if (!/if \(paso\.paso !== "listo" \|\| abierto\.current === paso\.id\) return;\s*abierto\.current = paso\.id;/.test(abre) || !/try \{ if \(reemplazar\) router\.replace\(paso\.ruta\); else router\.push\(paso\.ruta\); \}/.test(abre) || !/anotarViaje\(almacen\(\), \{ id: paso\.id, t0: paso\.t0, desde: desde \?\? desdeDeRuta\(window\.location\.pathname\), via: "auto" \}\)/.test(abre)) F("1 · con el informe listo, el pop-up no lo abre solo (o no anota el viaje)");
+    if (!/const \{ ahora, anotar \} = useInformeEnCamino\(paso\);/.test(cuerpo(comp, "export function InformeEnCamino("))) F("1 · el pop-up no usa el gancho que abre el informe solo");
     const aviso = codigo("src/components/guia/AvisoAntesDeAnalizar.tsx");
     if (!/if \(informe\) return <InformeEnCamino paso=\{informe\} alCerrar=\{alCerrarInforme \?\? alCancelar\} alReintentar=\{alReintentarInforme\} \/>;/.test(aviso)) F("1 · el pop-up de «Analizar este» no pasa a «Generando el informe…»: se cierra o se reemplaza por otro");
     for (const s of pantallas) {
@@ -132,7 +141,8 @@ export async function runInformeEnCaminoTier(): Promise<{ hard: number }> {
       if (!/\{listoSinAbrir && (?:\(\s*<div className="ex-aviso-informe">\s*)?<InformeListoAviso depto=\{listoSinAbrir\.depto\} ruta=\{listoSinAbrir\.ruta\} id=\{listoSinAbrir\.id\} t0=\{listoSinAbrir\.t0\}/.test(s.src)) F(`2 · ${s.nombre}: el aviso «Tu informe de [depto] está listo · Abrirlo» no se dibuja`);
     }
     // La tarjeta de cada superficie lee los analizados de esta visita.
-    const [exp, pri, sem] = pantallas.map((s) => s.src);
+    const [exp, pri, sem, gui] = pantallas.map((s) => s.src);
+    if (!/\) : informesAqui\[it\.avisoId\] \? \(\s*<p className="guia-acc guia-ya" data-guia="ya-analizado">\s*<span>\{YA_ANALIZADO\.texto\} ·<\/span>\s*<EnlaceCarga href=\{`\/analisis\/\$\{informesAqui\[it\.avisoId\]\}`\}>\{YA_ANALIZADO\.enlace\}<\/EnlaceCarga>/.test(gui)) F("2 · la guía: la tarjeta no dice «Ya lo analizaste · Ver informe» con los analizados de esta visita");
     if (!/const analizadosVivos = useMemo\(\(\) => \(\{ \.\.\.cuenta\.analizados, \.\.\.analizadosAqui \}\)/.test(exp) || (exp.match(/analizados=\{analizadosVivos\}/g) ?? []).length !== 2) F("2 · Explorar: la tarjeta y la lista no leen los analizados de esta visita");
     if (!/\{it\.informeId \?\? informesAqui\[it\.avisoId\] \? \(/.test(pri)) F("2 · la selección: la tarjeta no lee los analizados de esta visita");
     if (!/const informeDe = \(it: ItemSemanal\): string \| undefined => it\.informeId \?\? informes\[it\.avisoId\] \?\? informesAqui\[it\.avisoId\];/.test(sem)) F("2 · el dashboard: la tarjeta no lee los analizados de esta visita");
@@ -159,7 +169,8 @@ export async function runInformeEnCaminoTier(): Promise<{ hard: number }> {
     // Lo que vio: lo recalculado en el pop-up si cambió el pie o el plazo; si no, la tarjeta.
     const aviso = codigo("src/components/guia/AvisoAntesDeAnalizar.tsx");
     if (!/const vista: VeredictoVisto \| null = cambio \? \(cambiada && recal \? \{ veredicto: recal\.veredicto, score: recal\.score \} : \{ veredicto: cambio\.base\.veredicto, score: cambio\.base\.score \}\) : null;/.test(aviso) || !/alAnalizar\(cambio \? \{ combinacion: combo, guardarPerfil: cambiada && guardar, vista \} : undefined\)/.test(aviso)) F("3 · el pop-up no cuenta qué veredicto vio la persona al tocar «Analizar»");
-    const [exp, pri, sem] = pantallas.map((s) => s.src);
+    const [exp, pri, sem, gui] = pantallas.map((s) => s.src);
+    if (!/informeGenerando\(nombreDelDepto\(it\), it\.veredicto \? \{ veredicto: it\.veredicto, score: it\.score \} : null\)/.test(gui)) F("3 · la guía no compara con lo que mostró la tarjeta");
     if (!/const esperado: VeredictoVisto \| null = eleccion\?\.vista \?\? \(esNegociado\(it\) && conCifrasNegociado\(it\) \? \{ veredicto: "COMPRAR", score: it\.neg\.s \} : \{ veredicto: it\.veredicto, score: it\.score \}\);/.test(exp) || !/informeGenerando\(nombreDelDepto\(it\), esperado\)/.test(exp)) F("3 · Explorar no compara con lo que mostró la tarjeta (o el negociado, a su precio)");
     if (!/informeGenerando\(nombreDelDepto\(it\), eleccion\?\.vista \?\? \{ veredicto: it\.veredicto, score: it\.score \}\)/.test(pri)) F("3 · la selección no compara con lo que mostró la tarjeta");
     if (!/informeGenerando\(nombreDelDepto\(it\), corta \? null : eleccion\?\.vista \?\? \(it\.veredicto \? \{ veredicto: it\.veredicto, score: it\.score \?\? null \} : null\)\)/.test(sem)) F("3 · el dashboard no compara con lo que mostró la tarjeta");
@@ -180,6 +191,13 @@ export async function runInformeEnCaminoTier(): Promise<{ hard: number }> {
       if (!/\} catch \{[\s\S]{0,160}fallar\("error"\)/.test(analizar) || /setError\(\{ avisoId: it\.avisoId, texto: GUIA\.error \}\)/.test(analizar)) F(`4 · ${s.nombre}: un error cierra el pop-up y lo deja como nota en la tarjeta`);
       if (!/if \(intento (?:===|>=) [^)]+\) \{ fallar\("error"\); break; \}/.test(analizar)) F(`4 · ${s.nombre}: si la ruta sigue ocupada en el último intento, vuelve en silencio`);
     }
+    // La guía (segunda entrega): entrar con otra cuenta que la del pago se dice con su qué hacer; el despublicado, al cerrarlo,
+    // rearma la guía sin él (la tarjeta lo dice mientras).
+    const o = pop(ie.informeFallo(gen, "otra-cuenta"), T0 + 3_000);
+    if (!texto(o).includes(ie.INFORME_COPY.falloTitulo) || !texto(o).includes("Esa cuenta no es la del pago. Entra con el correo con que pagaste.")) F(`4 · la cuenta que no es la del pago no se dice con qué hacer: «${texto(o)}»`);
+    const gui = pantallas[3].src;
+    if (!/fallar\(d\.error === "origen" \? "otra-cuenta" : "error"\);/.test(cuerpo(gui, "async function analizar("))) F("4 · la guía: la cuenta que no es la del pago cae en el error genérico");
+    if (!/if \(despublicado && it\) \{ setError\(\{ avisoId: it\.avisoId, texto: GUIA\.despublicado \}\); void reemplazar\(\); \}/.test(cuerpo(gui, "function cerrarInforme("))) F("4 · la guía: al cerrar el despublicado, la guía no se arma de nuevo sin él");
   }
 
   // ══ §5 · LA MEDICIÓN ═══════════════════════════════════════════════════════
@@ -193,7 +211,7 @@ export async function runInformeEnCaminoTier(): Promise<{ hard: number }> {
     if (!v || v.ms !== 9_000 || v.desde !== "explorar" || v.via !== "auto" || mem.has(ie.CLAVE_EN_CAMINO)) F(`5 · el tiempo entre «Analizar» y el informe no se cuenta (o no se consume): ${JSON.stringify(v)}`);
     ie.anotarViaje(alm, { id: "inf-1", t0: T0, desde: "explorar", via: "auto" });
     if (ie.leerViaje(alm, "inf-1", T0 + 31 * 60_000) !== null) F("5 · un viaje de hace más de media hora cuenta como la espera de «Analizar»");
-    if (ie.desdeDeRuta("/explorar") !== "explorar" || ie.desdeDeRuta("/dashboard") !== "dashboard" || ie.desdeDeRuta("/deptos") !== "seleccion" || ie.desdeDeRuta("/semanal") !== "semanal") F("5 · el «desde» de la medición no sale de la página");
+    if (ie.desdeDeRuta("/explorar") !== "explorar" || ie.desdeDeRuta("/dashboard") !== "dashboard" || ie.desdeDeRuta("/deptos") !== "seleccion" || ie.desdeDeRuta("/semanal") !== "semanal" || ie.desdeDeRuta("/payments/return") !== "guia") F("5 · el «desde» de la medición no sale de la página (la guía vive en la vuelta del pago)");
     const visto = codigo("src/lib/informe-visto.ts");
     if (!/const viaje = leerViaje\(window\.sessionStorage, args\.ids\[0\]\);\s*if \(viaje\) args\.posthog\?\.capture\(EVENTO_INFORME_ABIERTO, \{ analysis_id: args\.ids\[0\], modalidad: args\.modalidad, ms: viaje\.ms, desde: viaje\.desde, via: viaje\.via \}\);/.test(visto)) F("5 · el informe no cuenta el tiempo desde «Analizar»");
     const comp = codigo("src/components/guia/InformeEnCamino.tsx");
@@ -216,6 +234,49 @@ export async function runInformeEnCaminoTier(): Promise<{ hard: number }> {
   }
   const tar = codigo("src/app/explorar/tarjeta-pin.tsx");
   if (!/<ImagenDepto avisoId=\{p\.avisoId\} tipo=\{tipos\[p\.avisoId\]\} clase="ex-img" ajustar=\{esNegociado\(p\)\} \/>/.test(tar)) F("6 · la imagen de la tarjeta depende de otra cosa que el depto (y su clase)");
+
+  // ══ §7 · LA VUELTA DEL PAGO DESDE UN DEPTO ═════════════════════════════════
+  // Comprado desde un depto de la selección, la vuelta de Flow genera el informe sola: la misma regla, sin pop-up, debajo de
+  // «Pago confirmado.». Antes, si no salía, mandaba al dashboard sin decir nada a intentarlo de nuevo.
+  {
+    const vu = (paso: ie.PasoInforme, ahora: number, conReintentar = false) =>
+      modPop?.VueltaInforme ? dibujar(createElement(modPop.VueltaInforme, { paso, ahora, saldo: 3, alReintentar: conReintentar ? NADA : null })).replace(/<!-- -->/g, "") : "";
+    if (!modPop?.VueltaInforme) F("7 · no existe lo que se ve en la vuelta del pago (VueltaInforme)");
+    const g = vu(gen, T0 + 4_000);
+    // El depto va en negrita dentro de la frase: sin la etiqueta, para leer la frase entera.
+    const dice = texto(g.replace(/<\/?b\b[^>]*>/g, ""));
+    if (dice !== `Franco está analizando ${DEPTO}. En unos segundos se abre el informe. Te quedan 2 análisis para cualquier otro depto.` || !/role="progressbar"[^>]*aria-valuenow="30"/.test(g) || /<a |<button/.test(g)) F(`7 · generando, la vuelta no dice qué depto con la barra que avanza y cuántos le quedan (o trae una salida): «${dice}»`);
+    if (/data-informe="abrir"/.test(vu(listo, T0 + 9_000)) || !/<a href="\/analisis\/inf-1"[^>]*data-informe="abrir"[^>]*>Abrir informe<\/a>/.test(vu(listo, T0 + 10_000))) F("7 · la vuelta no ofrece «Abrir informe» a los 10 s (o lo ofrece antes)");
+    const dist = ie.informeListo(gen, { id: "inf-2", ruta: "/analisis/inf-2", veredicto: "AJUSTA SUPUESTOS", score: 68 }, T0 + 6_000);
+    const dv = vu(dist, T0 + 6_500);
+    if (!texto(dv).includes("Con los datos de hoy dio Ajustar 68, no Comprar 82. Igual puedes verlo completo.") || !/<a href="\/analisis\/inf-2"[^>]*data-informe="abrir"[^>]*>Ver el informe<\/a>/.test(dv)) F(`7 · la vuelta no dice el veredicto distinto antes de abrir: «${texto(dv)}»`);
+    const e = vu(ie.informeFallo(gen, "error"), T0 + 3_000, true);
+    if (texto(e) !== `${ie.INFORME_COPY.falloTitulo} ${ie.INFORME_COPY.falloQue} ${ie.INFORME_COPY.reintentar} Volver a los deptos` || !/data-informe="reintentar"/.test(e) || !/<a [^>]*href="\/dashboard"[^>]*>Volver a los deptos<\/a>/.test(e)) F(`7 · la vuelta no dice el fallo con palabras, «Reintentar» y la vuelta a los deptos: «${texto(e)}»`);
+    const p = vu(ie.informeFallo(gen, "despublicado"), T0 + 3_000, true);
+    if (!texto(p).includes(ie.INFORME_COPY.despublicadoTitulo) || !texto(p).includes(ie.INFORME_COPY.despublicadoQue) || /data-informe="reintentar"/.test(p) || !/>Volver a los deptos<\/a>/.test(p)) F("7 · la vuelta no dice que el depto se dio de baja (o ofrece reintentarlo)");
+    // La página: genera con lo que mostró la tarjeta, le pasa el informe a la vuelta y no se va sola a ningún lado.
+    const ret = codigo("src/app/payments/return/page.tsx");
+    const iG = ret.indexOf("async function generarDepto("), fG = iG < 0 ? -1 : ret.indexOf("\n  useEffect(() => {", iG);
+    const genera = iG < 0 || fG < 0 ? "" : ret.slice(iG, fG);
+    if (!/const paso0 = informeGenerando\(depto\.nombre, depto\.esperado\);\s*setInforme\(paso0\);/.test(genera)) F("7 · la vuelta no pasa a «generando» con el veredicto de la tarjeta");
+    if (!/if \(res\.ok && d\.id\) \{ setInforme\(informeListo\(paso0, \{ id: d\.id, ruta: `\/analisis\/\$\{d\.id\}`, veredicto: d\.veredicto \?\? null, score: d\.score \?\? null \}\)\); return; \}/.test(genera)) F("7 · la vuelta no le pasa el informe listo (ni su veredicto) a quien lo abre");
+    if (!genera || /router\.(?:push|replace)\(|window\.location/.test(genera)) F("7 · la vuelta se va sola a otra página en vez de decir qué pasó");
+    if (!/if \(res\.status === 410 && d\.error === "despublicado"\) \{ fallar\("despublicado"\); return; \}/.test(genera) || !/\} catch \{\s*fallar\("error"\);\s*return;\s*\}/.test(genera) || !/\}\s*fallar\("error"\);\s*\}\s*$/.test(genera)) F("7 · la vuelta no dice el despublicado, el error o las vueltas agotadas");
+    if (!/\{alDepto && informe \? \(\s*<InformeEnLaVuelta paso=\{informe\} saldo=\{saldo\} alReintentar=\{\(\) => void generarDepto\(alDepto\)\} \/>/.test(ret)) F("7 · la página de la vuelta no muestra lo que pasa con el informe del depto");
+    const comp = codigo("src/components/guia/InformeEnCamino.tsx");
+    if (!/const \{ ahora, anotar \} = useInformeEnCamino\(paso, \{ desde: "pago", reemplazar: true \}\);/.test(cuerpo(comp, "export function InformeEnLaVuelta("))) F("7 · la vuelta no abre el informe en su lugar (atrás lo pediría otra vez) o no se mide como «pago»");
+    // El veredicto de la tarjeta viaja con el estado del pago, saneado.
+    if (!/nombre: nombreDelDepto\(it\), esperado: it\.veredicto \? \{ veredicto: it\.veredicto, score: it\.score \?\? null \} : null \}/.test(codigo("src/app/api/payments/status/route.ts"))) F("7 · el estado del pago no trae el veredicto que mostraba la tarjeta");
+    const modC = cargar<{ leerDeptoDelPago: (x: unknown) => { esperado: ie.VeredictoVisto | null } | null }>("src/lib/guia/compra-desde-depto", F);
+    if (modC) {
+      const base = { token: "0123456789abcdef0123456789abcdef", avisoId: "a1", nombre: DEPTO };
+      const bien = modC.leerDeptoDelPago({ ...base, esperado: { veredicto: "COMPRAR", score: 82 } });
+      if (bien?.esperado?.veredicto !== "COMPRAR" || bien.esperado.score !== 82 || modC.leerDeptoDelPago({ ...base, esperado: { veredicto: 7 } })?.esperado !== null || modC.leerDeptoDelPago(base)?.esperado !== null) F("7 · el veredicto de la tarjeta se pierde o pasa sin sanear");
+    }
+    // Un informe ya hecho (el suelto, el desbloqueo): si a los 10 s sigue en «Abriendo tu análisis…», «Abrir informe».
+    if (!/const abrirDestino = \(href: string\) => \{ setDestino\(href\); router\.push\(href\); \};/.test(ret) || (ret.match(/abrirDestino\(/g) ?? []).length !== 3 || (ret.match(/router\.push\(/g) ?? []).length !== 1) F("7 · el suelto o el desbloqueo navegan sin dejar «Abrir informe» por si no abre");
+    if (!/const t = window\.setTimeout\(\(\) => setConAbrir\(true\), ABRIR_INFORME_TRAS_MS\);/.test(ret) || !/\{destino && conAbrir && \(\s*<div className=\{PLANO\.seccion\}>\s*<a href=\{destino\} className=\{PLANO\.principal\} data-informe="abrir">\{INFORME_COPY\.abrir\}<\/a>/.test(ret)) F("7 · «Abriendo tu análisis…» no ofrece «Abrir informe» a los 10 s");
+  }
 
   for (const m of fallas) console.log(`  ✗ ${m}`);
   console.log(fallas.length === 0 ? "  ✓ INFORME-EN-CAMINO: todo en orden" : `  ${fallas.length} falla(s) dura(s)`);
@@ -251,4 +312,19 @@ if (require.main === module) {
 // PRIMERA-SELECCION §7 (dos), PUERTA-B-RECORRIDO §6, CARGA §4 (la ida al informe pasó al pop-up, con la barra encendida desde
 // «Analizar»; tres), EXPLORAR §7 y EXPLORAR-NEGOCIAR §10 (dos: el error genérico y el precio movido). Fijaban el `router.push` de cada superficie, el cierre silencioso del 410 y la respuesta de la
 // ruta sin el veredicto.
+// SEGUNDA ENTREGA, LA GUÍA Y LA VUELTA DEL PAGO (03-nov-2026, `mutaciones-guia-vuelta.cjs` con el mismo meta-runner): 44 de 44 en
+// ROJO, cada una por su invariante.
+//   En este tier, 31: G1-G17, la guía como superficie de §1-§5 (cierra o navega al llegar el informe, no pasa a «Generando…», monta
+//      el pop-up sin el informe, cierra sin dejar el aviso o no lo dibuja, la tarjeta sin los analizados, no compara con la
+//      tarjeta, el despublicado en silencio, el error como nota, ocupada en el último intento, la otra cuenta como error genérico
+//      o sin su qué hacer, cerrar el despublicado sin rearmar la guía, el gancho que no abre, el pop-up que abre en su lugar, la
+//      guía medida como «pago»); V1-V14, la vuelta del pago de §7 (la barra que no avanza, «Abrir informe» antes de los 10 s, el
+//      distinto callado, sin «Reintentar», las vueltas agotadas al dashboard, el despublicado como error, sin el veredicto de la
+//      tarjeta, navegar por su cuenta, abrir con push, el estado del pago sin el veredicto, leerDeptoDelPago que lo pierde, el
+//      «Abrir informe» del suelto a los 30 s, el suelto sin anotar el destino, la página sin la vuelta).
+//   En otros tiers, 13 predicados reescritos con su acta: CORREOS-RECORRIDO §5, PUERTA-B-RECORRIDO §5, PUERTA-B-DASHBOARD §7,
+//      VUELTA-FLOW §3 (tres; su recorte de generarDepto cortaba en el primer `useEffect` del archivo, que ahora va antes: quedaba
+//      vacío), CARGA §4 (tres: la barra de la guía, su rama del informe listo y su cuenta de navegaciones, de 1 a 0), REANALISIS §3
+//      y GUIA-BUSQUEDA §8 (dos) y §9. Fijaban el `router.push` de la guía, el `router.replace(vuelta ?? "/dashboard")` de la
+//      vuelta y la nota del despublicado en la tarjeta.
 // ─────────────────────────────────────────────────────────────────────────────

@@ -59,7 +59,7 @@ async function deptoDelPago(admin: ReturnType<typeof createServiceClient>, f: { 
   if (!sel || sel.user_id !== f.user_id) return null;
   const it = sel.items.find((i) => i.avisoId === d.a);
   if (!it) return null;
-  return { token: d.t, avisoId: d.a, origenId: sel.origen_analysis_id ?? null, nombre: nombreDelDepto(it) };
+  return { token: d.t, avisoId: d.a, origenId: sel.origen_analysis_id ?? null, nombre: nombreDelDepto(it), esperado: it.veredicto ? { veredicto: it.veredicto, score: it.score ?? null } : null };
 }
 
 async function saldoDe(admin: ReturnType<typeof createServiceClient>, userId: string): Promise<{ saldo: number; ilimitado: boolean }> {

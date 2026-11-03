@@ -52,6 +52,9 @@
 .guia-an[data-presionado="1"] { opacity: 0.72; }
 .guia-an:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; }
 .guia-cr { font-size: 13px; color: var(--franco-text-tertiary); }
+/* el analizado en esta visita (03-nov-2026, el informe en camino): «Ya lo analizaste · Ver informe», como la selección */
+.guia-ya { margin-bottom: 0; min-height: 38px; gap: 6px; font-size: 14px; color: var(--franco-text-secondary); }
+.guia-ya a { font-weight: 600; color: var(--franco-text); text-decoration: underline; text-underline-offset: 4px; }
 /* renta corta (14-oct-2026): midiendo, la medición que tardó, el que no dio y los parecidos del pop-up */
 .guia-midiendo { font-size: 13.5px; line-height: 1.35; color: var(--franco-text-secondary); }
 .guia-tardo { margin-top: auto; }

@@ -1,6 +1,6 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // EL INFORME EN CAMINO (03-nov-2026, decisión de Fabrizio tras el caso de fsm@ en /explorar). Lo que pasa entre tocar «Analizar»
-// y ver el informe, igual en Explorar, la selección y el dashboard:
+// y ver el informe, igual en Explorar, la selección, el dashboard, la guía de búsqueda y la vuelta del pago:
 //   · el pop-up NO SE CIERRA: cambia a «Generando el informe de [depto]…» con una barra de avance y, cuando el informe está
 //     listo, lo abre solo;
 //   · pasados 10 segundos desde «Analizar», con el informe listo, aparece «Abrir informe» (un enlace de verdad) por si la apertura
@@ -10,6 +10,8 @@
 //   · si con los datos de hoy el veredicto salió distinto al de la tarjeta, lo dice ANTES de abrir el informe;
 //   · si el informe se creó pero no se abrió y la persona vuelve al mapa, la tarjeta dice «Ya lo analizaste · Ver informe» y
 //     arriba queda un aviso que no se cierra solo: «Tu informe de [depto] está listo · Abrirlo».
+// EN LA VUELTA DEL PAGO (03-nov-2026), comprado desde un depto, no hay pop-up: la misma regla debajo de «Pago confirmado.», y si
+// no salió lo dice ahí mismo, sin mandar al dashboard a intentarlo de nuevo.
 // LA MEDICIÓN: `analisis_informe_abierto` con el tiempo entre «Analizar» y el informe en pantalla (se lee en el informe, por
 // sessionStorage), y `analisis_apertura_fallida` cuando el informe estaba listo y la página seguía acá 10 s después.
 // Puro: sin React ni Next, para que el tier INFORME-EN-CAMINO lo pruebe entero.
@@ -24,7 +26,7 @@ export const APERTURA_FALLIDA_TRAS_MS = 10_000;
 /** La barra de avance llega al 90 % en este tiempo (lo que tarda un informe, medido: 15,6 s de promedio hasta verlo). */
 export const BARRA_AVANCE_MS = 12_000;
 
-export type DesdeInforme = "explorar" | "seleccion" | "dashboard" | "semanal" | "guia";
+export type DesdeInforme = "explorar" | "seleccion" | "dashboard" | "semanal" | "guia" | "pago";
 /** El veredicto y el puntaje que la persona vio antes de tocar «Analizar» (la tarjeta, o lo recalculado en el pop-up). */
 export interface VeredictoVisto { veredicto: string; score: number | null }
 
@@ -34,8 +36,9 @@ export type PasoInforme =
   | (Base & { paso: "listo"; id: string; ruta: string; listoEn: number })
   | (Base & { paso: "distinto"; id: string; ruta: string; listoEn: number; hoy: VeredictoVisto; esperado: VeredictoVisto })
   | (Base & { paso: "fallo"; motivo: MotivoFallo });
-/** Por qué no salió: un error, el aviso se dio de baja recién, o la selección se rearmó sin él (ninguno cobra). */
-export type MotivoFallo = "error" | "despublicado" | "fuera";
+/** Por qué no salió: un error, el aviso se dio de baja recién, la selección se rearmó sin él, o la guía es de la cuenta que pagó
+ *  y se entró con otra (ninguno cobra). */
+export type MotivoFallo = "error" | "despublicado" | "fuera" | "otra-cuenta";
 
 export const INFORME_COPY = {
   /** La cabecera del pop-up (el depto va en el título, una sola vez). */
@@ -53,6 +56,7 @@ export const INFORME_COPY = {
   despublicadoQue: "Ya no está publicado: lo sacamos de la lista. Elige otro.",
   fueraTitulo: "Este depto salió de tu selección. No se usó ningún análisis.",
   fueraQue: "La armamos de nuevo con lo de hoy. Elige otro.",
+  otraCuentaQue: "Esa cuenta no es la del pago. Entra con el correo con que pagaste.",
   /** «Con los datos de hoy dio Ajustar 68, no Comprar 82. Igual puedes verlo completo.» */
   distinto: (hoy: VeredictoVisto, antes: VeredictoVisto) =>
     `Con los datos de hoy dio ${conPuntaje(hoy)}, no ${conPuntaje(antes)}. Igual puedes verlo completo.`,
@@ -118,7 +122,8 @@ export type ViaInforme = "auto" | "boton" | "aviso";
 interface Viaje { id: string; t0: number; desde: DesdeInforme; via: ViaInforme }
 type Almacen = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 
-/** De dónde se analizó, por la página: el dashboard, «Estás dentro» (/deptos), el semanal, la guía o Explorar. */
+/** De dónde se analizó, por la página: el dashboard, «Estás dentro» (/deptos), el semanal, la guía o Explorar. La vuelta del pago
+ *  lo dice ella («pago»): en su misma página vive la guía. */
 export function desdeDeRuta(pathname: string): DesdeInforme {
   if (pathname.startsWith("/explorar")) return "explorar";
   if (pathname.startsWith("/dashboard")) return "dashboard";
@@ -151,5 +156,6 @@ export function leerViaje(almacen: Almacen | null, id: string, ahora: number = D
 export function textoFallo(motivo: MotivoFallo): { titulo: string; que: string } {
   if (motivo === "despublicado") return { titulo: INFORME_COPY.despublicadoTitulo, que: INFORME_COPY.despublicadoQue };
   if (motivo === "fuera") return { titulo: INFORME_COPY.fueraTitulo, que: INFORME_COPY.fueraQue };
+  if (motivo === "otra-cuenta") return { titulo: INFORME_COPY.falloTitulo, que: INFORME_COPY.otraCuentaQue };
   return { titulo: INFORME_COPY.falloTitulo, que: INFORME_COPY.falloQue };
 }
