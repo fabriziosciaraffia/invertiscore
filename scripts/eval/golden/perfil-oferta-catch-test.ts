@@ -109,7 +109,9 @@ export function runPerfilOfertaTier(): { hard: number } {
       // ya no busca (la selección se armó con el perfil del domingo) escondía el aviso. Lo cazó el QA del 27-oct.
       if (!/const comunasLargo = new Set\(\(perfilPersona\.perfilLtr\?\.comunas \?\? \[\]\)\.map\(comunaDeAviso\)\);/.test(pg) || !/const propiaEnSeleccion = itemsSel\.some\(\(i\) => !i\.tramo && comunasLargo\.has\(comunaDeAviso\(i\.comuna\)\)\);/.test(pg) || !/propiaEnSeleccion \? Promise\.resolve\(null\) : leerAvisoSinOferta\(admin, user\.id, perfilPersona\.perfilLtr\)/.test(pg)) F("2 · la página no lee el aviso con el perfil de renta larga (o lo lee aunque la selección traiga uno de sus comunas)");
       const sec = pg.slice(pg.indexOf('data-casa="seleccion"'), pg.indexOf("<SeleccionEnCasa"));
-      if (!/<AvisoSinOferta aviso=\{sinOferta\} \/>[\s\S]*\{mapa && <MapaCasa/.test(sec)) F("2 · el aviso no va arriba del mapa y las tarjetas, dentro de la selección");
+      // ⚠ ACTA (03-nov-2026, goal «la pasada real de /explorar») · el mapa va dentro de su columna (.ca-dos-mapa); el aviso sigue
+      // arriba del mapa y de las tarjetas, dentro de la selección.
+      if (!/<AvisoSinOferta aviso=\{sinOferta\} \/>[\s\S]*\{mapa && <div className="ca-dos-mapa"><MapaCasa/.test(sec)) F("2 · el aviso no va arriba del mapa y las tarjetas, dentro de la selección");
       const comp = sinComentarios(leer("src/app/dashboard/aviso-sin-oferta.tsx"));
       if (comp.indexOf("if (hecho)") < 0 || comp.indexOf("if (hecho)") > comp.indexOf("if (!aviso) return null;")) F("2 · el «Listo» se pierde cuando el servidor deja de mandar el aviso");
       if (!/body: JSON\.stringify\(\{ \.\.\.cambiosDeAjuste\(a, actual\.comunas\), origen: ORIGEN_SIN_OFERTA \}\)/.test(comp) || !/router\.refresh\(\);/.test(comp)) F("2 · el botón no guarda el ajuste en el perfil o no pide la página de nuevo");

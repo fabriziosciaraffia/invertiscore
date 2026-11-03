@@ -373,7 +373,10 @@ export async function runPrimeraSeleccionTier(): Promise<{ hard: number }> {
       if (PRIMERA_SELECCION.bajadaRegalo !== BAJADA || PRIMERA_SELECCION.bajada !== "Publicaciones vigentes y analizadas con tu perfil de búsqueda. Analiza el que más te interese.") F(`12 · el texto bajo el título no es el pedido: «${PRIMERA_SELECCION.bajadaRegalo}»`);
       if (/anoche|correo|pie|plazo/i.test(PRIMERA_SELECCION.bajadaRegalo + PRIMERA_SELECCION.bajada)) F("12 · el texto bajo el título dice «anoche», lo del correo, el pie o el plazo");
       const ps = sinComentarios(leer("src/components/deptos/PrimeraSeleccion.tsx"));
-      if (!/const bajada = usaRegalo \? PRIMERA_SELECCION\.bajadaRegalo : PRIMERA_SELECCION\.bajada;/.test(ps) || !/data-primera="titulo">\{titulo\}<\/h2>\s*\{datos\?\.mapa && items\.length > 0 && <div data-primera="mapa">[^\n]*<\/div>\}\s*\{!sinDeptos && <p className="dp-txt" data-primera="bajada">\{bajada\}<\/p>\}/.test(ps))
+      // ⚠ ACTA (03-nov-2026, goal «la pasada real de /explorar»): en el PC el mapa y las tarjetas van en dos columnas (.ca-dos); la
+      // bajada abre la columna de las tarjetas, justo después del mapa, y en el teléfono sigue debajo del título y del mapa, como
+      // antes. El predicado exige ese orden entero, sin nada entremedio.
+      if (!/const bajada = usaRegalo \? PRIMERA_SELECCION\.bajadaRegalo : PRIMERA_SELECCION\.bajada;/.test(ps) || !/data-primera="titulo">\{titulo\}<\/h2>\s*<div className="ca-dos" data-con-mapa=\{conMapa \? "1" : undefined\}>\s*\{conMapa && datos\?\.mapa && <div className="ca-dos-mapa" data-primera="mapa">[^\n]*<\/div>\}\s*<div className="ca-dos-tarjetas">\s*\{!sinDeptos && <p className="dp-txt" data-primera="bajada">\{bajada\}<\/p>\}/.test(ps))
         F("12 · la pantalla no dibuja ese texto justo bajo el título (con el regalo cuando lo hay)");
       // Ninguna superficie lo escribe a mano: el texto viejo no queda en ningún archivo del sitio.
       const viejo = "De la evaluación de anoche, con tu pie y tu plazo";

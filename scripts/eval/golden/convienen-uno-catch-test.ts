@@ -75,11 +75,13 @@ export async function runConvienenUnoTier(): Promise<{ hard: number }> {
   console.log("\n─── TIER CONVIENEN-UNO (la tasa del motor, «¿Cómo se calcula?» con y sin cuenta, un solo número de «convienen» · 0 tokens) ───");
 
   // ── 1 · LA TASA DEL MOTOR ──
+  // ⚠ ACTA (03-nov-2026, goal «la pasada real de /explorar») · el perfil estándar va en tres viñetas (COMO_SE_CALCULA.perfil); la
+  // tasa es la tercera. El texto exacto de la hoja lo fija EXPLORAR-PASADA §2; acá, que los números sean los del motor.
   const C = po.COMO_SE_CALCULA;
-  if (!C.estandar(4.07).includes("tasa de 4,07 %") || !C.estandar(5.3).includes("tasa de 5,3 %") || /\d+,\d+ %/.test(C.estandar(null))) F("1 · la hoja no dice la tasa que le llega (o, sin ella, inventa una)");
+  if (!C.perfil(4.07)[2].includes("tasa de 4,07 %") || !C.perfil(5.3)[2].includes("tasa de 5,3 %") || /\d+,\d+ %/.test(C.perfil(null)[2])) F("1 · la hoja no dice la tasa que le llega (o, sin ella, inventa una)");
   if (po.PORTAL_COPY.tasaFija(4.07) !== "4,07 % · promedio de los bancos" || po.PORTAL_COPY.tasaFija(5.3) !== "5,3 % · promedio de los bancos") F("1 · Filtros no dice la tasa que le llega con «promedio de los bancos»");
   // Los números del perfil estándar salen de la constante del sitio, no escritos a mano.
-  if (!/pie de \$\{PIE_POR_DEFECTO\} %, crédito a \$\{PLAZO_POR_DEFECTO\} años y \$\{/.test(codigo("src/lib/explorar/portal.ts"))) F("1 · el pie o el plazo de la hoja no salen de la constante del financiamiento por defecto");
+  if (!/`pie de \$\{PIE_POR_DEFECTO\} %`,\s*`crédito a \$\{PLAZO_POR_DEFECTO\} años`,/.test(codigo("src/lib/explorar/portal.ts"))) F("1 · el pie o el plazo de la hoja no salen de la constante del financiamiento por defecto");
   const cli = codigo("src/app/explorar/explorar-cliente.tsx");
   // La tasa la lee el servidor de la misma fila que el motor, y la página la baja en las dos ramas.
   const cache = codigo("src/lib/explorar/portal-cache.ts");
@@ -90,7 +92,8 @@ export async function runConvienenUnoTier(): Promise<{ hard: number }> {
   const pag = codigo("src/app/explorar/page.tsx");
   const abierta = pag.slice(pag.indexOf("async function ExplorarAbierto"), pag.indexOf("async function ExplorarConDatos"));
   const conCuenta = pag.slice(pag.indexOf("async function ExplorarConDatos"));
-  if (!/tasaDelMotor\(\),/.test(abierta) || !/tasaDelMotor\(\),/.test(conCuenta) || !/inicial=\{\{ filtros, orden, n, cuenta: null, tasa, convienen \}\}/.test(abierta) || !/inicial=\{\{ filtros, orden, n, cuenta, tasa, convienen: null \}\}/.test(conCuenta))
+  // ⚠ ACTA (03-nov-2026) · `inicial` lleva además los − Ajustar (nAjustar; sin cuenta, negociadosGlobal para la bienvenida).
+  if (!/tasaDelMotor\(\),/.test(abierta) || !/tasaDelMotor\(\),/.test(conCuenta) || !/inicial=\{\{ filtros, orden, n, cuenta: null, tasa, convienen, negociadosGlobal, nAjustar \}\}/.test(abierta) || !/inicial=\{\{ filtros, orden, n, cuenta, tasa, convienen: null, negociadosGlobal: null, nAjustar \}\}/.test(conCuenta))
     F("1 · la página no baja la tasa del motor con y sin cuenta");
   // ⚠ ACTA (30-oct-2026, goal «la tasa editable en Filtros») · la hoja recibe además la tasa elegida (`elegida`).
   if (!/\{calculo && <HojaCalculo tasa=\{inicial\.tasa\} elegida=\{filtros\.tasa\} sinCuenta=\{sinCuenta\} alCerrar=\{\(\) => setCalculo\(false\)\} \/>\}/.test(cli) || !/<HojaFiltros\s+filtros=\{filtros\}\s+tasa=\{inicial\.tasa\}/.test(cli)) F("1 · la hoja o Filtros no reciben la tasa que bajó la página");
@@ -99,7 +102,8 @@ export async function runConvienenUnoTier(): Promise<{ hard: number }> {
   const pintar = (cuenta: unknown, tasa: po.TasaDelMotor | null) =>
     modCli ? dibujar(createElement(modCli.ExplorarCliente, { inicial: { filtros: G, orden: "puntaje", n: 3, cuenta, tasa, convienen: cuenta ? null : 3 } })) : "";
   for (const [cuenta, que] of [[cuentaBase(), "con cuenta"], [null, "sin cuenta"]] as const) {
-    if (!/data-explorar="como-se-calcula"[^>]*>[\s\S]{0,120}¿Cómo se calcula\?/.test(pintar(cuenta, { tasa: 4.07 }))) F(`2 · ${que}, no hay «¿Cómo se calcula?» arriba`);
+    // (03-nov-2026) El botón trae antes la ⓘ del PC y la redonda del teléfono: el texto queda a menos de 200 caracteres.
+    if (!/data-explorar="como-se-calcula"[^>]*>[\s\S]{0,200}¿Cómo se calcula\?/.test(pintar(cuenta, { tasa: 4.07 }))) F(`2 · ${que}, no hay «¿Cómo se calcula?» arriba`);
   }
 
   // ── 2 · LA HOJA «¿CÓMO SE CALCULA?», CON Y SIN CUENTA ──
@@ -107,22 +111,21 @@ export async function runConvienenUnoTier(): Promise<{ hard: number }> {
   if (modHoja) {
     for (const sinCuenta of [false, true]) {
       const h = dibujar(createElement(modHoja.HojaCalculo, { tasa: { tasa: 4.07 }, sinCuenta, alCerrar: () => {} }));
-      const t = texto(h);
+      // texto() deja un espacio donde cerraba un elemento en línea: se junta con su puntuación antes de comparar.
+      const t = texto(h).replace(/ ([.,:])/g, "$1");
       const que = sinCuenta ? "sin cuenta" : "con cuenta";
       if (!/role="dialog"/.test(h) || !t.startsWith("¿Cómo se calcula?")) F(`2 · ${que}, la hoja no es un diálogo con su título`);
-      if ((h.match(/<p\b/g) ?? []).length !== 3) F(`2 · ${que}, la hoja no lleva tres párrafos`);
+      // ⚠ ACTA (03-nov-2026, goal «la pasada real de /explorar», el texto de Fabrizio) · cuatro párrafos —la noche y el perfil, dónde
+      // se cambia, los dos chips del mapa y la metodología— y el perfil en tres viñetas; la regla del veredicto (la nota de 70, las
+      // señales graves, «cada tarjeta te dice cuánto») salió de la hoja: vive en la metodología. El texto exacto, en EXPLORAR-PASADA §2.
+      if ((h.match(/<p\b/g) ?? []).length !== 4 || (h.match(/<li\b/g) ?? []).length !== 3) F(`2 · ${que}, la hoja no lleva cuatro párrafos y el perfil en tres viñetas`);
       if ((h.match(/<button\b/g) ?? []).length !== 1 || !/data-explorar="calculo-ok"[^>]*>Entendido<\/button>/.test(h)) F(`2 · ${que}, la hoja no tiene un solo botón, «Entendido»`);
-      // ⚠ ACTA (02-nov-2026, goal «Filtros v2 y negociar», tier EXPLORAR-NEGOCIAR) · «calcula cuáles convienen al precio publicado» (la regla general).
-      if (!t.includes("Cada noche Franco revisa los deptos en venta de Santiago y calcula cuáles convienen al precio publicado con un perfil de búsqueda estándar: pie de 20 %, crédito a 30 años y tasa de 4,07 %, el promedio de los créditos hipotecarios según el Banco Central."))
-        F(`2 · ${que}, el primer párrafo no es el del recorrido (la noche, el perfil estándar y la tasa del motor)`);
-      const cambiar = sinCuenta ? "Puedes cambiar ese perfil en Filtros, registrándote gratis con tu correo." : "Puedes cambiar ese perfil en Filtros.";
-      // texto() deja un espacio donde cerraba el <strong>: se junta con su puntuación antes de comparar.
-      if (!t.replace(/ ([.,])/g, "$1").includes(cambiar) || !/<strong>Filtros<\/strong>/.test(h)) F(`2 · ${que}, no dice dónde se cambia el perfil (Filtros en negrita${sinCuenta ? ", registrándose" : ""})`);
-      const cuanto = sinCuenta ? "con tu cuenta gratis, cada tarjeta te dice cuánto." : "cada tarjeta te dice cuánto.";
-      if (!t.includes(`Un depto lleva ✓ Comprar cuando su nota de 1 a 100 llega a 70, o cuando el arriendo lo paga solo sin estar caro para su zona. Y nunca tiene señales graves, como perder mucha plata todos los meses. Algunos te piden poner un poco cada mes: ${cuanto}`))
-        F(`2 · ${que}, el párrafo del chip no es el del recorrido (o promete una cifra que sin cuenta va borrosa)`);
-      if (!/data-explorar="calculo-conviene">Un depto lleva <span class="chip-v c"[^>]*data-veredicto="COMPRAR"/.test(h)) F(`2 · ${que}, «Un depto lleva» no lleva el chip ✓ Comprar de siempre`);
-      if (/revisa cada mañana|la última vez|25 años/.test(t)) F(`2 · ${que}, la hoja trae la fecha de la tasa o los 25 años`);
+      if (!t.includes("Cada noche Franco revisa todos los deptos en venta de Santiago y calcula cuáles convienen al precio publicado, con un perfil de búsqueda estándar: pie de 20 % crédito a 30 años tasa de 4,07 %, el promedio mensual de los créditos hipotecarios según el Banco Central"))
+        F(`2 · ${que}, el primer párrafo no es el pedido (la noche, el perfil estándar y la tasa del motor)`);
+      const cambiar = sinCuenta ? "Puedes cambiar ese perfil en Filtros, registrándote gratis." : "Puedes cambiar ese perfil en Filtros.";
+      if (!t.includes(cambiar) || !/<strong>Filtros<\/strong>/.test(h)) F(`2 · ${que}, no dice dónde se cambia el perfil (Filtros en negrita${sinCuenta ? ", registrándose" : ""})`);
+      if (!/data-explorar="calculo-chips">En el mapa, los deptos que convienen al precio publicado llevan <span class="chip-v c"[^>]*data-veredicto="COMPRAR"/.test(h) || !/<span class="chip-v a"[^>]*data-veredicto="AJUSTA SUPUESTOS"/.test(h)) F(`2 · ${que}, el párrafo de los chips no lleva los chips ✓ Comprar y − Ajustar de siempre`);
+      if (/revisa cada mañana|la última vez|25 años|señales graves|\b70\b/.test(t)) F(`2 · ${que}, la hoja trae la fecha de la tasa, los 25 años o la regla del veredicto`);
     }
     if (!texto(dibujar(createElement(modHoja.HojaCalculo, { tasa: { tasa: 5.3 }, sinCuenta: false, alCerrar: () => {} }))).includes("tasa de 5,3 %, el promedio")) F("2 · con otra tasa la hoja dice la misma");
   }
@@ -196,7 +199,9 @@ export async function runConvienenUnoTier(): Promise<{ hard: number }> {
   // ⚠ ACTA (02-nov-2026, goal «Compartir un depto desde Explorar») · el Promise.all lee además el depto del enlace compartido
   // (`compartido`), así que el predicado ya no fija la lista entera: exige que `noche` sea la primera lectura y que haya UNA
   // sola llamada a universoDeLaNocheCacheado en ExplorarAbierto —la regla—, que antes solo se seguía de la forma exacta.
-  if (!/const \[noche, tasa(?:, \w+)*\] = await Promise\.all\(\[\s*universoDeLaNocheCacheado\(PIE_ABIERTO, PLAZO_ABIERTO\)\.catch\(\(\) => null\),/.test(abierta)
+  // ⚠ ACTA (03-nov-2026, goal «la pasada real de /explorar») · el Promise.all lee además la capa de los − Ajustar (`capa`, para
+  // la línea aparte de la bienvenida): `noche` sigue siendo la primera lectura y la única del universo.
+  if (!/const \[noche(?:, \w+)*\] = await Promise\.all\(\[\s*universoDeLaNocheCacheado\(PIE_ABIERTO, PLAZO_ABIERTO\)\.catch\(\(\) => null\),/.test(abierta)
     || (abierta.match(/universoDeLaNocheCacheado\(/g) ?? []).length !== 1
     || !/const universo = universoDeLaNoche\(filtros\) \? noche : null;/.test(abierta) || !/const convienen = cuantosConvienen\(noche\);/.test(abierta)
     || !/<Bienvenida n=\{inicial\.convienen \?\? inicial\.n \?\? total\}/.test(cli)) F("3 · la bienvenida de /explorar no dice el número de todo el sitio");

@@ -199,8 +199,15 @@ export async function runExplorarTier(): Promise<{ hard: number }> {
   const g19 = ex.agruparPines(cerca, 19);
   if (g19.length !== 3 || g19.some((x) => x.n !== 1)) F(`6 · a zoom 19 los pines siguen agrupados: ${JSON.stringify(g19)}`);
   const mapa = codigo("src/app/explorar/mapa-explorar.tsx");
-  if (!/for \(const gr of agruparPines\(visibles, zoom, an,/.test(mapa) || !/iconoPunto\(an\.has\(id\) \? azul : ROJO\)/.test(mapa) || !/iconoGrupo\(gr\.n,/.test(mapa)) F("6 · el mapa no agrupa, o no pinta de azul los ya analizados y de rojo los que convienen");
-  if (!/const ROJO = "#C8323C";/.test(mapa) || !/const AZUL_CLARO = "#2B558F";/.test(mapa)) F("6 · los colores de los pines no son Signal Red y el azul de Comprar");
+  // ⚠ ACTA (03-nov-2026, goal «la pasada real de /explorar», decisión de Fabrizio: «Rojo en ningún pin») · los que convienen van
+  // en el azul del chip ✓ Comprar y los ya analizados en tinta con un ✓ (colores-pin.ts, dibujados por iconos-pin.ts). Hasta el
+  // 03-nov este predicado exigía los que convienen en Signal Red y los analizados en azul. Los colores los fija EXPLORAR-PASADA §5;
+  // acá, que el mapa agrupe y que cada clase vaya con la suya.
+  if (!/for \(const gr of agruparPines\(visibles, zoom, an,/.test(mapa) || !/punto\(an\.has\(id\) \? "analizado" : "comprar"\)/.test(mapa) || !/grupo\(gr\.analizados === gr\.n \? "analizado" : "comprar", gr\.n\)/.test(mapa)) F("6 · el mapa no agrupa, o no pinta en tinta los ya analizados y de azul los que convienen");
+  {
+    const cp = require(join(RAIZ, "src/lib/explorar/colores-pin")) as typeof import("../../../src/lib/explorar/colores-pin");
+    if (cp.COLORES_PIN.claro.comprar.fondo !== "#2B558F" || cp.COLORES_PIN.claro.analizado.fondo !== "#0F0F0F" || /C8323C|ROJO|signal-red/i.test(mapa)) F("6 · los colores de los pines no son el azul de Comprar y la tinta de los analizados, o el mapa usa el rojo");
+  }
 
   // ── 7 · el pop-up con «Cambiar» ──
   const tc = ex.textoCambio({ antes: { pie: 20, veredicto: "COMPRAR", score: 88, flujo: 88363 }, despues: { pie: 10, plazo: 25, veredicto: "AJUSTA SUPUESTOS", score: 61, flujo: -45120 } }, (v) => (v === "COMPRAR" ? "Comprar" : v === "AJUSTA SUPUESTOS" ? "Ajustar" : "Buscar otro"));

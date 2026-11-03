@@ -206,7 +206,9 @@ export async function runExplorarCorreosTier(): Promise<{ hard: number }> {
   }
   if (!correoSemanalVacio({ nombre: null, urlPerfil: "p", urlBaja: "b", explorar: { linea: "Hoy convienen 6.695 deptos en Gran Santiago.", url: "u" } }).html.includes('data-correo="explorar-enlace"')) F("4 · el vacío sin otras salidas no lleva «Míralos todos»");
   for (const id of ["semanal_vacio", "del_dia_vacio", "aviso_inmediato"]) if (!(CATALOGO_CORREOS.find((x) => x.id === id)?.render?.().html ?? "").includes('data-correo="explorar"')) F(`4 · ${id} del catálogo no trae la puerta`);
-  if (!/          <SeleccionEnCasa sel=\{sel\} autoAnalizar=\{autoAnalizar\} primera=\{!hayDeptos\(sel\)\} \/>\n          <LineaPuertaExplorar linea=\{lineaPuerta\} consulta=\{consultaPuerta\} donde="dashboard" \/>\n        <\/section>/.test(dash)) F("4 · en el dashboard la línea no va bajo la selección");
+  // ⚠ ACTA (03-nov-2026, goal «la pasada real de /explorar») · las tarjetas van en su columna (.ca-dos-tarjetas, en el PC a la
+  // derecha del mapa); la línea sigue bajo la selección, a lo ancho, al cierre de la sección.
+  if (!/<div className="ca-dos-tarjetas"><SeleccionEnCasa sel=\{sel\} autoAnalizar=\{autoAnalizar\} primera=\{!hayDeptos\(sel\)\} \/><\/div>\n          <\/div>\n          <LineaPuertaExplorar linea=\{lineaPuerta\} consulta=\{consultaPuerta\} donde="dashboard" \/>\n        <\/section>/.test(dash)) F("4 · en el dashboard la línea no va bajo la selección");
   if (!/\{botonExplorar\(totalNoche\)\}/.test(codigo("src/app/dashboard/mapa-casa.tsx"))) F("4 · el dashboard perdió su botón «Explorar los N de Santiago»");
   if (!/data-primera="ver-mas">\{PRIMERA_SELECCION\.verMas\(faltanPorVer\)\}<\/button>\}\n            <\/div>\n          \)\}\n\s*\{items\.length > 0 && <LineaPuertaExplorar /.test(sel) || !/donde=\{encabezado === "casa" \? "dashboard" : "estas_dentro"\}/.test(sel)) F("4 · en «Estás dentro» la línea no va bajo la selección");
 

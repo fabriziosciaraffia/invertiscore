@@ -138,7 +138,9 @@ export async function runPuertaBMockupsTier(): Promise<{ hard: number }> {
       if (/guia-av|guia-bloque|Visto publicado|Elegido para tu búsqueda/.test(html)) F("2 · la selección vuelve a las tarjetas viejas o a la marca por tarjeta");
       const psc = codigo("src/components/deptos/PrimeraSeleccion.tsx");
       if (!/\{generando === it\.avisoId \? GUIA\.analizando : textoAnalizar\(usaRegalo\)\}/.test(psc)) F("2 · el botón de la tarjeta no dice el regalo cuando lo hay (textoAnalizar(usaRegalo))");
-      if (!/<span className="sel-pin" aria-hidden="true">\{i \+ 1\}<\/span>/.test(psc) || !/data-primario=\{i === 0 \? "1" : undefined\}/.test(psc)) F("2 · las tarjetas no llevan el pin numerado, o el primero no va en tinta");
+      // ⚠ ACTA (03-nov-2026, goal «la pasada real de /explorar») · el pin numerado es PinTarjeta, en el color de su clase (el ya
+      // analizado lleva el ✓ en vez del número: lo fija EXPLORAR-PASADA §5); acá, que cada tarjeta lo lleve con su número y su clase.
+      if (!/<PinTarjeta n=\{i \+ 1\} clase=\{clasePinDeItem\(it\)\} \/>/.test(psc) || !/data-primario=\{i === 0 \? "1" : undefined\}/.test(psc)) F("2 · las tarjetas no llevan el pin numerado, o el primero no va en tinta");
       if (!/<span className="sel-v" data-veredicto=\{it\.veredicto\}>\{etiquetaVeredicto\(it\.veredicto, "frase"\)\}\{it\.score != null \? ` · \$\{it\.score\}` : ""\}<\/span>/.test(psc)) F("2 · el veredicto de la tarjeta no es «Comprar · 91» con su color");
     } catch (e) {
       F(`2 · no corrió: ${(e as Error).message}`);

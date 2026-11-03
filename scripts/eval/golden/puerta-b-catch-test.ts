@@ -665,7 +665,12 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       const conFondo = Array.from(cssD.replace(/\/\*[\s\S]*?\*\//g, "").matchAll(/([^{}]+)\{([^{}]*)\}/g))
         .filter((m) => /url\(|linear-gradient|radial-gradient/.test(m[2])).map((m) => m[1].trim());
       if (!conFondo.length || conFondo.some((sel) => !/^(html\[data-grano\] )?\.dp-banda(::before|::after)?$|^\.dp-select$/.test(sel))) F(`10 · hay otro fondo con color en la página además de la banda (${conFondo.filter((sel) => !/\.dp-banda|\.dp-select/.test(sel)).join(", ")})`);
-      if (!/\.dp-regalo \{[^}]*background: var\(--signal-red\); color: #FFFFFF;/.test(cssD) || !/\.sel-pin \{[^}]*background: var\(--signal-red\); color: #FFFFFF;/.test(cssD)) F("10 · la tarjeta del regalo o el pin de las tarjetas no van en Signal Red");
+      // ⚠ ACTA (03-nov-2026, goal «la pasada real de /explorar», decisión de Fabrizio: «Rojo en ningún pin»): el número de las
+      // tarjetas es el pin del mapa, en el color de su clase (colores-pin.ts) —azul ✓ Comprar, ciruela − Ajustar, tinta el ya
+      // analizado—; el rojo queda para la tarjeta del regalo. Hasta el 03-nov este predicado exigía el pin en Signal Red.
+      if (!/\.dp-regalo \{[^}]*background: var\(--signal-red\); color: #FFFFFF;/.test(cssD)) F("10 · la tarjeta del regalo no va en Signal Red");
+      const pinCss = Array.from(cssD.replace(/\/\*[\s\S]*?\*\//g, "").matchAll(/([^{}]+)\{([^{}]*)\}/g)).filter((m) => /\.sel-pin/.test(m[1]));
+      if (!/\[data-theme="light"\] \.sel-pin \{ background: #2B558F; color: #FFFFFF; \}/.test(cssD) || pinCss.some((m) => /signal-red|#C8323C|--verdict-buscar/i.test(m[2]))) F("10 · el pin de las tarjetas no va en el azul de ✓ Comprar, o usa el rojo");
       // Siempre hay una comuna: el select no tiene vacío que elegir y solo cambia con una comuna.
       if (!/onChange=\{\(e\) => \{ const c = e\.target\.value; if \(c\) cambiar\("comuna", \{ comunas: \[c, \.\.\.extras\.filter\(\(x\) => x !== c\)\] \}\); \}\}/.test(sinComentarios(leer("src/components/deptos/CamposBusqueda.tsx")))) F("10 · se puede soltar la comuna y quedar sin número");
       // La página del invitado: el mismo tratamiento, con su línea «Te invitaron a Franco» arriba y la dirección al final.

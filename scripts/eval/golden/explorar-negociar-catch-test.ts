@@ -127,7 +127,8 @@ export async function runExplorarNegociarTier(): Promise<{ hard: number }> {
 
   // Los dibujos que se miran en varias secciones.
   const tarjeta = (pines: unknown[], sel: string, sinCuenta = false) => modTar ? dibujar(createElement(modTar.TarjetaPin, { pines, seleccionado: sel, uf: 39000, analizados: {}, guardados: new Set(), generando: null, error: null, alCambiar: NADA, alCerrar: NADA, alGuardar: NADA, alAnalizar: NADA, sinCuenta })) : "";
-  const lista = (sinCuenta = false) => modLis ? dibujar(createElement(modLis.ListaPortal, { pines: [PIN, { ...PIN, avisoId: "c2", score: 80 }], negociados: [NEG], tope: 5, total: 2, calculando: false, orden: "puntaje", uf: 39000, analizados: {}, guardados: new Set(), alOrden: NADA, alAbrir: NADA, alGuardar: NADA, alAvisame: NADA, alCerrar: NADA, sinCuenta })) : "";
+  // (03-nov-2026) La cabecera de la lista es el desglose de la barra: dos ✓ Comprar y un − Ajustar.
+  const lista = (sinCuenta = false) => modLis ? dibujar(createElement(modLis.ListaPortal, { pines: [PIN, { ...PIN, avisoId: "c2", score: 80 }], negociados: [NEG], tope: 5, desglose: po.desgloseBarra(2, 1, 5), calculando: null, orden: "puntaje", uf: 39000, analizados: {}, guardados: new Set(), alOrden: NADA, alAbrir: NADA, alGuardar: NADA, alAvisame: NADA, alCerrar: NADA, sinCuenta })) : "";
   const filtros = (f: po.FiltrosPortal, extra: Record<string, unknown> = {}) => modFil ? dibujar(createElement(modFil.HojaFiltros, { filtros: f, tasa: { tasa: 4.07 }, miBusqueda: { activa: false, alUsar() {}, perfil: PERFIL }, contar: () => 201, contarNegociados: () => 48, asegurar() {}, alAplicar() {}, alCerrar() {}, alPedirRegistro: null, ...extra })) : "";
   const popup = (negociado: unknown, movido: string | null = null) => modPop ? dibujarPopup(createElement(modPop.AvisoAntesDeAnalizar, {
     depto: { comuna: "Ñuñoa", tipologia: "2D2B", m2: 58, precioUF: negociado ? 3080 : 4290, condicion: "usado" }, negociado, movido,
@@ -146,27 +147,33 @@ export async function runExplorarNegociarTier(): Promise<{ hard: number }> {
   // nuevo con número que no la dice.
   {
     if (AL_PRECIO_PUBLICADO !== "al precio publicado") F(`1 · la frase es «${AL_PRECIO_PUBLICADO}»`);
-    const est = po.COMO_SE_CALCULA.estandar(4.07);
+    // (03-nov-2026) El primer párrafo de la hoja es texto fijo; el perfil, sus viñetas.
+    const est = po.COMO_SE_CALCULA.estandar;
     if (!est.includes("calcula cuáles convienen al precio publicado")) F(`1 · «¿Cómo se calcula?» no dice «calcula cuáles convienen al precio publicado»: «${est.slice(0, 140)}»`);
     if (!/convienen[^.]*, al precio publicado\.$/.test(BIENVENIDA_COPY.titulo)) F(`1 · la bienvenida no dice «al precio publicado»: «${BIENVENIDA_COPY.titulo}»`);
     const lv = lineaVeredicto({ veredicto: "COMPRAR", score: 84, flujo: 88363 });
     if (!lv?.startsWith("Comprar 84 al precio publicado")) F(`1 · el pop-up no dice «Comprar 84 al precio publicado»: «${lv}»`);
-    // La barra de abajo (teléfono y PC): el chip de Comprar y la frase, en el mismo elemento.
-    for (const marca of ["titulo-hoja", "ver-lista"]) {
-      const el = elemento(cliente, marca);
-      if (!/<ChipVeredicto v="COMPRAR"[^>]*\/>/.test(el) || !/\{AL_PRECIO_PUBLICADO\}/.test(el)) F(`1 · la barra de abajo («${marca}») no dice «al precio publicado» junto al chip`);
+    // La barra de abajo (teléfono y PC): el chip de Comprar y la frase, en la misma línea.
+    // ⚠ ACTA (03-nov-2026, goal «la pasada real de /explorar») · la barra es el desglose (desglose.tsx), el mismo en el teléfono y
+    // en el PC: la línea de los ✓ Comprar dibujada dice «al precio publicado» junto al chip.
+    {
+      const modDes = cargar<{ BarraAbajo: FC<Record<string, unknown>> }>("src/app/explorar/desglose", F);
+      const hb = modDes ? dibujar(createElement(modDes.BarraAbajo, { desglose: po.desgloseBarra(10, 3, 10), calculando: null, alVerLista() {} })) : "";
+      const lc = hb.slice(hb.indexOf('data-explorar="linea-comprar"'), hb.indexOf('data-explorar="linea-ajustar"'));
+      if (!/<span class="chip-v c"[^>]*data-veredicto="COMPRAR"[^>]*>[^<]*<\/span> al precio publicado/.test(lc)) F("1 · la barra de abajo no dice «al precio publicado» junto al chip ✓ Comprar");
     }
     // Todo chip de Comprar con número, en la tarjeta y la lista (sin los negociados, que dicen «Si consigues»), lo dice al lado.
     const conNumero = [...chipsComprarConNumero(hTarjetaC), ...chipsComprarConNumero(sinNegociadas(hLista))];
     if (conNumero.length < 3) F(`1 · la tarjeta y la lista dibujan ${conNumero.length} chips de Comprar con número (se esperaban 3: no se pudo medir)`);
     for (const c of conNumero) if (!c.despues.startsWith("al precio publicado")) F(`1 · un chip «${texto(c.chip)}» no dice «al precio publicado» al lado: «${c.despues.slice(0, 60)}»`);
-    const cab = texto(hLista.match(/<h2[^>]*data-explorar="titulo-lista"[^>]*>[\s\S]*?<\/h2>/)?.[0] ?? "");
-    if (!/^2 deptos ✓ Comprar al precio publicado/.test(cab)) F(`1 · el título de la lista no dice «al precio publicado»: «${cab}»`);
+    // ⚠ ACTA (03-nov-2026) · la cabecera de la lista es el desglose: el total y la línea de los ✓ Comprar «al precio publicado».
+    const cab = texto(hLista.match(/<div[^>]*data-explorar="titulo-lista"[^>]*>[\s\S]*?<\/div>/)?.[0] ?? "");
+    if (!/^3 deptos 2 ✓ Comprar al precio publicado/.test(cab)) F(`1 · el título de la lista no dice «al precio publicado»: «${cab}»`);
     // Todo el copy de Explorar que dice «conviene» dice a qué precio («al precio publicado», o «si negocias» en la capa): también
     // la barra y la lista sin ninguno y el tooltip de la tasa. Fuera, con su razón: el nombre de la pestaña, el tooltip del
     // financiamiento (copy del goal: habla de «a ti», no del precio) y el paso 1 de la bienvenida, cuyo título ya lo dice.
     const FUERA = ["PORTAL_COPY.pestana", "PORTAL_COPY.v2.financiamiento.tooltip", "BIENVENIDA_COPY.paso1"];
-    const textos: [string, string][] = [["deptosN(0)", po.deptosN(0)]];
+    const textos: [string, string][] = [["deptosN(0)", po.deptosN(0)], ["DESGLOSE_COPY.ninguno(10)", po.DESGLOSE_COPY.ninguno(10)]];
     const recorrer = (o: object, ruta: string) => {
       for (const [k, v] of Object.entries(o)) {
         const r = `${ruta}.${k}`;
@@ -183,7 +190,9 @@ export async function runExplorarNegociarTier(): Promise<{ hard: number }> {
     const conConviene = textos.filter(([, t]) => /convien/i.test(t));
     if (conConviene.length < 6) F(`1 · el barrido del copy encontró ${conConviene.length} textos con «conviene» (se esperaban 6 o más: no se pudo medir)`);
     for (const r of FUERA) if (!conConviene.some(([x]) => x === r)) F(`1 · la excepción ${r} ya no dice «conviene» (o no existe): sácala de la lista`);
-    for (const [r, t] of conConviene) if (!FUERA.includes(r) && !/al precio publicado|si negocias/i.test(t)) F(`1 · ${r} dice «conviene» sin «al precio publicado»: «${t.slice(0, 90)}»`);
+    // ⚠ ACTA (03-nov-2026, el texto de Fabrizio en la hoja) · «Los que convienen solo con un descuento llevan − Ajustar» dice a qué
+    // precio con «con un descuento»: cuenta como «si negocias».
+    for (const [r, t] of conConviene) if (!FUERA.includes(r) && !/al precio publicado|si negocias|con un descuento/i.test(t)) F(`1 · ${r} dice «conviene» sin «al precio publicado»: «${t.slice(0, 90)}»`);
     // En el código: todo ChipVeredicto con puntaje en Explorar y el pop-up es el de VeredictoDelPin (que dice la frase) o el del
     // negociado (que dice «Si consigues»).
     for (const p of ["src/app/explorar/explorar-cliente.tsx", "src/app/explorar/tarjeta-pin.tsx", "src/app/explorar/lista-portal.tsx", "src/app/explorar/hoja-filtros.tsx", "src/components/guia/AvisoAntesDeAnalizar.tsx"]) {
@@ -207,7 +216,9 @@ export async function runExplorarNegociarTier(): Promise<{ hard: number }> {
     }
     const ayuda = hFiltros.match(/<p[^>]*data-explorar="ayuda-negociar"[^>]*>[\s\S]*?<\/p>/)?.[0] ?? "";
     if (!/class="chip-v a"[^>]*data-veredicto="AJUSTA SUPUESTOS"/.test(ayuda) || !/class="chip-v c"[^>]*data-veredicto="COMPRAR"/.test(ayuda)) F("2 · la ayuda de «Si negocias el precio» no lleva los chips reales de Ajustar y Comprar");
-    if (!/^Suma los deptos que al precio publicado dan − Ajustar , pero llegan a ✓ Comprar si consigues un descuento\. Se muestran aparte, con el pin en el color de Ajustar\.$/.test(texto(ayuda))) F(`2 · la ayuda de negociar dice «${texto(ayuda)}»`);
+    // ⚠ ACTA (03-nov-2026, goal «la pasada real de /explorar») · el grupo es «Descuento máximo para − Ajustar» y la capa se ve de
+    // entrada: la ayuda dice qué son y de cuánto descuento, sin «Suma» (ya no se prende acá).
+    if (!/^Los deptos que al precio publicado dan − Ajustar , pero llegan a ✓ Comprar si consigues un descuento de hasta:$/.test(texto(ayuda))) F(`2 · la ayuda de negociar dice «${texto(ayuda)}»`);
     if (/factible|con argumentos/i.test(texto(hFiltros))) F("2 · Filtros dice «factible» o «con argumentos»");
     const conPuntaje = renderToStaticMarkup(createElement((require(join(RAIZ, "src/components/analysis/shared/ChipVeredicto")) as { ChipVeredicto: FC<Record<string, unknown>> }).ChipVeredicto, { v: "COMPRAR", puntaje: 71 }));
     if (!/^<span class="chip-v c" data-veredicto="COMPRAR" data-puntaje="71">✓ Comprar · 71<\/span>$/.test(conPuntaje)) F(`2 · el chip de la casa con puntaje dibuja ${conPuntaje}`);
@@ -217,27 +228,32 @@ export async function runExplorarNegociarTier(): Promise<{ hard: number }> {
   // Mutaciones: M7 el total suma los negociados · M8 la lista los pone primero · M9 el pin del negociado en rojo · M10 la marca de la
   // tasa en rojo · M11 el botón de Filtros suma las dos cuentas.
   {
-    if (cn.botonVerConNegociados(201, 48, po.botonVer) !== "Ver 201 + 48 si negocias") F(`3 · el botón de Filtros dice «${cn.botonVerConNegociados(201, 48, po.botonVer)}»`);
-    if (cn.botonVerConNegociados(201, 0, po.botonVer) !== po.botonVer(201)) F("3 · sin negociados, el botón de Filtros no es el de siempre");
-    if (cn.NEGOCIAR_COPY.mas(1654, 5) !== "1.654 más si negocias hasta 5 %") F(`3 · la cuenta aparte dice «${cn.NEGOCIAR_COPY.mas(1654, 5)}»`);
+    // ⚠ ACTA (03-nov-2026, goal «la pasada real de /explorar») · las dos cuentas siguen separadas, ahora con los chips de la casa:
+    // el botón de Filtros («Ver 201 [✓ Comprar] + 48 [− Ajustar]») y la barra (una línea por clase). El número de arriba de la
+    // barra es «N deptos» del mapa —las dos clases—, y nunca se dice «convienen» de él.
+    { const v = po.botonVer(201, 48); if (v.tipo !== "cuentas" || v.comprar !== "201" || v.ajustar !== "48") F(`3 · el botón de Filtros no separa las dos cuentas: ${JSON.stringify(v)}`); }
+    { const v = po.botonVer(201, 0); if (v.tipo !== "cuentas" || v.ajustar !== null) F("3 · sin negociados, el botón de Filtros no es solo el de los ✓ Comprar"); }
+    { const d = po.desgloseBarra(6802, 3238, 10); if (d.comprar?.n !== 6802 || d.ajustar?.n !== 3238 || /convien/i.test(d.titulo)) F(`3 · la barra no separa las dos clases (o llama «convienen» a la suma): ${JSON.stringify(d)}`); }
     const total = cliente.match(/const total = ([^;]+);/)?.[1] ?? "";
     if (!total || /neg/i.test(total) || !/visibles\.length/.test(total)) F(`3 · el número de «convienen» no es solo el de los Comprar: «${total || "no está"}»`);
     const iContar = cliente.indexOf("const contar = useCallback(");
     const contar = iContar < 0 ? "" : cliente.slice(iContar, cliente.indexOf("}, [", iContar));
     if (!contar || /negociad|Neg\b/i.test(contar)) F("3 · «contar» (el número de Filtros) mira la capa negociada");
-    if (!/\{NEGOCIAR_COPY\.mas\(visiblesNeg\.length, filtros\.negociar\)\}/.test(elemento(cliente, "cuenta-negociar"))) F("3 · la barra de abajo no lleva la cuenta aparte de los negociados");
-    if (/visiblesNeg/.test(elemento(cliente, "titulo-hoja"))) F("3 · el número de la barra de abajo mira los negociados");
+    // ⚠ ACTA (03-nov-2026) · la cuenta aparte es la línea de los − Ajustar del desglose, que cuenta los que se ven en el mapa.
+    if (!/const desglose = [^;]*desgloseBarra\(total, nAjustar, /.test(cliente) || !/const nAjustar = !capa \? 0 : negociadosDelPie \? visiblesNeg\.length :/.test(cliente)) F("3 · la barra de abajo no lleva la cuenta aparte de los negociados");
     // La lista: dos Comprar, el título de la capa y el negociado, en ese orden; el título cuenta 2.
     const filas = Array.from(hLista.matchAll(/data-explorar="(fila|fila-negociada|titulo-negociar)"/g)).map((m) => m[1]);
     if (filas.join(",") !== "fila,fila,titulo-negociar,fila-negociada") F(`3 · la lista no pone los negociados después de los Comprar, con su título: ${filas.join(",")}`);
-    if (!/^1 más si negocias hasta 5 %$/.test(texto(hLista.match(/<span[^>]*data-explorar="cuenta-negociar-lista"[^>]*>[\s\S]*?<\/span>/)?.[0] ?? ""))) F("3 · la lista no lleva la cuenta aparte de los negociados");
-    // El mapa: la capa en ciruela (el color de Ajustar), con el número en blanco; nunca ROJO.
-    const ciruela = mapaSrc.match(/const CIRUELA = "(#[0-9A-Fa-f]{6})"/)?.[1];
+    const lineaAjustar = hLista.slice(hLista.indexOf('data-explorar="linea-ajustar"'));
+    if (!/^data-explorar="linea-ajustar" data-n="1"><b>1<\/b> <span class="ex-pegado"><span class="chip-v a"/.test(lineaAjustar)) F("3 · la lista no lleva la cuenta aparte de los negociados");
+    // El mapa: la capa en la ciruela del chip Ajustar (colores-pin.ts, la de --verdict-ajusta en claro), con el número en blanco;
+    // nunca el rojo. ⚠ ACTA (03-nov-2026) · los colores viven en colores-pin.ts y se dibujan por iconoPin (EXPLORAR-PASADA §5).
+    const cpin = require(join(RAIZ, "src/lib/explorar/colores-pin")) as typeof import("../../../src/lib/explorar/colores-pin");
     const ajusta = leer("src/app/globals.css").match(/--verdict-ajusta:(#[0-9A-Fa-f]{6})/)?.[1];
-    if (!ciruela || ciruela !== ajusta) F(`3 · el pin negociado no es el color de Ajustar (${ciruela} vs --verdict-ajusta ${ajusta})`);
+    if (cpin.COLORES_PIN.claro.ajustar.fondo !== ajusta) F(`3 · el pin negociado no es el color de Ajustar (${cpin.COLORES_PIN.claro.ajustar.fondo} vs --verdict-ajusta ${ajusta})`);
     const capa = mapaSrc.slice(mapaSrc.indexOf("const negs ="), mapaSrc.indexOf("const e = sel ?"));
-    if (capa.length < 200 || (capa.match(/CIRUELA/g) ?? []).length < 3 || /ROJO/.test(capa) || !/PAPEL/.test(capa)) F("3 · el mapa dibuja la capa negociada sin ciruela, con rojo o sin el número en blanco");
-    if (mapaSrc.match(/const PAPEL = "(#[0-9A-Fa-f]{6})"/)?.[1]?.toUpperCase() !== "#FFFFFF") F("3 · el número del pin negociado no es blanco");
+    if (capa.length < 200 || (capa.match(/"ajustar"/g) ?? []).length < 3 || /"comprar"|C8323C|signal-red/.test(capa)) F("3 · el mapa dibuja la capa negociada sin ciruela o con otro color");
+    if (cpin.COLORES_PIN.claro.ajustar.texto.toUpperCase() !== "#FFFFFF") F("3 · el número del pin negociado no es blanco");
     // EL SATÉLITE (QA en el preview, 02-nov-2026): lejos, el grupo de la capa que un rojo tapa se corre a su borde con el número a
     // la vista; el que nada tapa no se mueve. Fixtures sobre la función pura, y el cableado en el mapa.
     {
@@ -253,8 +269,9 @@ export async function runExplorarNegociarTier(): Promise<{ hard: number }> {
       const otro = { x: Math.cos(Math.PI / 4) * 44, y: Math.sin(Math.PI / 4) * 44, r: 24 };
       const s4 = cn.satelite(mismo, [rojo, otro]);
       if ([rojo, otro].some((r) => fuera(mismo, s4, r) < 20 * cn.SATELITE_FUERA - 1e-6)) F(`3 · con otro rojo en el camino, el satélite queda tapado: ${JSON.stringify(s4)}`);
-      if (!/rojos\.push\(circulo\(gr\.lat, gr\.lng, icono\.w \/ 2\)\)/.test(mapaSrc)) F("3 · el mapa no anota los grupos rojos para el satélite");
-      if (!/iconoGrupo\(gr\.n, CIRUELA, PAPEL\);\s*marcador\(pos, icono, 0, [^\n]*, satelite\(circulo\(gr\.lat, gr\.lng, icono\.w \/ 2\), rojos\)\)/.test(capa)) F("3 · los grupos de la capa no se corren cuando un rojo los tapa");
+      // ⚠ ACTA (03-nov-2026) · los de arriba ya no son rojos (azul ✓ Comprar): la lista se llama `arriba`; la regla es la misma.
+      if (!/arriba\.push\(circulo\(gr\.lat, gr\.lng, icono\.w \/ 2\)\)/.test(mapaSrc)) F("3 · el mapa no anota los grupos de los ✓ Comprar para el satélite");
+      if (!/const icono = grupo\("ajustar", gr\.n\);\s*marcador\(pos, icono, 0, [^\n]*, satelite\(circulo\(gr\.lat, gr\.lng, icono\.w \/ 2\), arriba\)\)/.test(capa)) F("3 · los grupos de la capa no se corren cuando un ✓ Comprar los tapa");
       if (!/anchor: new g\.maps\.Point\(icono\.w \/ 2 - corrido\.dx, icono\.h \/ 2 - corrido\.dy\)/.test(mapaSrc)) F("3 · el corrimiento no llega al ancla del ícono");
     }
     // El interruptor del chip y la marca de la tasa, en tinta (sin el rojo).
@@ -390,8 +407,11 @@ export async function runExplorarNegociarTier(): Promise<{ hard: number }> {
   // Mutación: M24 prender el chip no se mide.
   {
     if (cn.EVENTO_NEGOCIAR !== "explorar_negociar") F(`8 · el evento es «${cn.EVENTO_NEGOCIAR}»`);
-    if (JSON.stringify(cn.propsNegociar(5, "chip", 48)) !== JSON.stringify({ prendido: true, tope: 5, donde: "chip", n: 48 })) F(`8 · el evento del chip lleva ${JSON.stringify(cn.propsNegociar(5, "chip", 48))}`);
-    if (!/posthog\?\.capture\(EVENTO_NEGOCIAR, propsNegociar\(f\.negociar, "chip", contarNegociados\(f\)\)\)/.test(cliente)) F("8 · prender el chip de la barra no se mide");
+    // ⚠ ACTA (03-nov-2026, goal «la pasada real de /explorar») · el chip de la barra es «Ver solo ✓ Comprar» y se mide con
+    // «explorar_solo_comprar» al prenderlo, con el tope (EXPLORAR-PASADA §3); «explorar_negociar» queda para el descuento máximo de
+    // Filtros, con el tope elegido.
+    if (JSON.stringify(cn.propsNegociar(5, "filtros", 48)) !== JSON.stringify({ tope: 5, donde: "filtros", n: 48 })) F(`8 · el evento del descuento máximo lleva ${JSON.stringify(cn.propsNegociar(5, "filtros", 48))}`);
+    if (!/posthog\?\.capture\(EVENTO_SOLO_COMPRAR, propsSoloComprar\(filtros\.negociar,/.test(cliente)) F("8 · prender el chip de la barra no se mide");
     if (!/fuente === "filtros" && f\.negociar !== filtros\.negociar\) posthog\?\.capture\(EVENTO_NEGOCIAR, propsNegociar\(f\.negociar, "filtros",/.test(cliente)) F("8 · cambiar el tope en Filtros no se mide");
   }
 
@@ -411,7 +431,7 @@ export async function runExplorarNegociarTier(): Promise<{ hard: number }> {
     const ta = texto(hAbierta);
     if (/2\.950|4,2/.test(ta) || (hAbierta.match(/data-explorar="borroso"/g) ?? []).length < 2 || !/Si consigues/.test(ta) || !/✓ Comprar · 71/.test(ta)) F(`9 · la tarjeta sin cuenta no dibuja borrosos el precio y el descuento: «${ta.slice(0, 200)}»`);
     const capaMapa = mapaSrc.slice(mapaSrc.indexOf("const negs ="), mapaSrc.indexOf("const e = sel ?"));
-    if (!/if \(sinCifrasRef\.current\) marcador\(\{ lat: p\.lat, lng: p\.lng \}, elegido \? iconoElegido\(\) : iconoPunto\(CIRUELA\)/.test(capaMapa)) F("9 · sin cuenta, el mapa dibuja el descuento en el pin negociado");
+    if (!/if \(sinCifrasRef\.current\) marcador\(\{ lat: p\.lat, lng: p\.lng \}, punto\("ajustar", elegido\)/.test(capaMapa)) F("9 · sin cuenta, el mapa dibuja el descuento en el pin negociado");
   }
 
   // ── 10 · EL PRECIO NEGOCIADO SE VERIFICA CON LOS DATOS DE HOY ANTES DE COBRAR ──

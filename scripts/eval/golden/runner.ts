@@ -179,6 +179,7 @@ import { runTasaEditableTier } from "./tasa-editable-catch-test";
 import { runExplorarCorreosTier } from "./explorar-correos-catch-test";
 import { runExplorarNegociarTier } from "./explorar-negociar-catch-test";
 import { runCompartirDeptoTier } from "./compartir-depto-catch-test";
+import { runExplorarPasadaTier } from "./explorar-pasada-catch-test";
 import { runEdadEdificioTier } from "./edad-edificio-catch-test";
 import { runPautaArreglosTier } from "./pauta-arreglos-catch-test";
 import { runCuentasPruebaTier } from "./cuentas-prueba-catch-test";
@@ -769,6 +770,11 @@ function printSeed(r: SeedReport) {
   // mapa centrado), la vista previa sin cifras más allá del chip, el registro desde el enlace acredita a los dos (C · depto),
   // la vista y el botón medidos, y el que ya no está ofrece parecidos. ──
   totalHard += (await runCompartirDeptoTier()).hard;
+  // Tier EXPLORAR-PASADA (03-nov-2026, 0 tokens + 2 lecturas): la pasada real de Fabrizio — «¿Cómo se calcula?» abre directo y
+  // dice lo pedido, de entrada las dos clases (✓ Comprar y − Ajustar hasta 10 %) en el mismo pedido y «Ver solo ✓ Comprar» las
+  // deja en una, el desglose de la barra suma, ningún pin usa el rojo, el tooltip queda dentro de la pantalla y el dashboard va
+  // en dos columnas en el PC. ──
+  totalHard += (await runExplorarPasadaTier()).hard;
   // Tier EDAD-EDIFICIO (03-nov-2026, 0 tokens): con el año de la ficha o de otro aviso del edificio, el motor recibe la edad real
   // (un edificio de 1951 entra con 75 años y usa el tramo de más de 25) y el informe la dice con el año y la fuente; sin año, la
   // nota distingue «La publicación no dice la antigüedad» de «No pudimos leer la antigüedad». ──

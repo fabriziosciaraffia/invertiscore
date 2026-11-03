@@ -173,11 +173,15 @@ export async function runCompartirDeptoTier(): Promise<{ hard: number }> {
       if (ec.compartidoDeUrl(new URLSearchParams(`a=${AVISO}`)) !== null || ec.compartidoDeUrl(new URLSearchParams("a=no-es-un-aviso&desde=compartido")) !== null) F("1 · cualquier `a` se lee como enlace compartido");
       if (ec.compartidoDeUrl(new URLSearchParams(`a=${AVISO.toUpperCase()}&desde=compartido`))?.avisoId !== AVISO) F("1 · el aviso en mayúsculas no abre el mismo pin");
       // La página: el pin a abrir ES el del enlace, con y sin cuenta.
-      const abrirAbierto = /<ExplorarCliente inicial=\{\{ filtros, orden, n, cuenta: null, tasa, convienen \}\} abrir=\{compartido\?\.avisoId \?\? sp\.get\("a"\)\} compartido=\{compartido\}/.test(pagina);
+      // ⚠ ACTA (03-nov-2026, goal «la pasada real de /explorar») · `inicial` lleva además los − Ajustar (nAjustar, negociadosGlobal).
+      const abrirAbierto = /<ExplorarCliente inicial=\{\{ filtros, orden, n, cuenta: null, tasa, convienen, negociadosGlobal, nAjustar \}\} abrir=\{compartido\?\.avisoId \?\? sp\.get\("a"\)\} compartido=\{compartido\}/.test(pagina);
       const abrirCuenta = /const a = compartido\?\.avisoId \?\? sp\.get\("a"\);[\s\S]{0,200}abrir=\{a\}\s*compartido=\{compartido\}/.test(pagina);
       if (!abrirAbierto || !abrirCuenta) F("1 · la página no le pasa al navegador el aviso del enlace como el pin a abrir (con o sin cuenta)");
       // ⚠ ACTA (03-nov-2026, el negociado): compartidoDe recibe el tope de la capa y si hay cuenta (el precio de hoy solo viaja con ella).
-      if (!/compartidoDe\(sp, filtros\.negociar, false\),/.test(pagina) || !/compartidoDe\(sp, filtros\.negociar, true\),/.test(pagina)) F("1 · la página no lee el enlace compartido en las dos ramas (con y sin cuenta), con el tope de la capa");
+      // ⚠ ACTA (03-nov-2026, goal «la pasada real de /explorar») · desde que los filtros traen siempre un descuento máximo (10 % de
+      // entrada), el tope del enlace se lee del `n` del enlace mismo (topeDelEnlaceEnUrl), nunca de los filtros: si no, el enlace
+      // de un ✓ Comprar —sin `n`— se leería como el de un negociado.
+      if (!/const topeDelEnlaceEnUrl = \(sp: URLSearchParams\): number \| null => \(esTopeNegociar\(sp\.get\("n"\)\) \? Number\(sp\.get\("n"\)\) : null\);/.test(pagina) || !/compartidoDe\(sp, topeDelEnlaceEnUrl\(sp\), false\),/.test(pagina) || !/compartidoDe\(sp, topeDelEnlaceEnUrl\(sp\), true\),/.test(pagina) || /compartidoDe\(sp, filtros\.negociar/.test(pagina)) F("1 · la página no lee el enlace compartido en las dos ramas (con y sin cuenta), con el tope de la capa");
       // Con el universo: la tarjeta del pin, con los cercanos y él primero; o la de «ya no está».
       const vis = [pin(OTRO, { lat: -33.4301 }), pin(AVISO), pin("2a7d1c55-0000-4000-8000-000000000001", { lat: -33.5 })];
       const ap = cp.aperturaCompartida({ avisoId: AVISO, estado: null, depto: DEPTO, visibles: vis });
@@ -379,7 +383,8 @@ export async function runCompartirDeptoTier(): Promise<{ hard: number }> {
       // ⚠ ACTA (03-nov-2026): lo que se comparte sale del pin salvo que lo diga el servidor (otro pie, o un negociado sin cuenta).
       // ⚠ ACTA (03-nov-2026, la firma): lo del servidor llega en el pedido firmado (`prep`), que se pide siempre.
       if (!/const prep = resueltos\.current\.get\(claveServidor\(p\)\) \?\? await prepararEnlace\(p\);/.test(cliente) || !/const ver = !pideAlServidor\(p, filtros\) \? veredictoDelPin\(p\) : prep\.ver;/.test(cliente) || !/const texto = textoCompartir\(deptoDePin\(p\), ver\);/.test(cliente)
-        || !/const claveServidor = \(p: PinMapa\) => `\$\{filtros\.modalidad\}\|\$\{filtros\.negociar \?\? TOPE_DE_LA_NOCHE\}\|\$\{p\.avisoId\}`;/.test(cliente)) F("6 · con otro pie, el texto dice el veredicto de quien comparte y no el de por defecto");
+        // ⚠ ACTA (03-nov-2026) · el descuento máximo ya no es nulo (10 % de entrada): la clave lleva el de los filtros tal cual.
+        || !/const claveServidor = \(p: PinMapa\) => `\$\{filtros\.modalidad\}\|\$\{filtros\.negociar\}\|\$\{p\.avisoId\}`;/.test(cliente)) F("6 · con otro pie, el texto dice el veredicto de quien comparte y no el de por defecto");
       // EL NEGOCIADO (la capa «Si negocias»): en la vista de por defecto su veredicto es Ajustar al precio publicado; el texto
       // nunca dice «Comprar» ni su puntaje (dice el precio al que conviene: §7), y el del pin que sí da, sí.
       const negociado: PinNegociado = { ...pin(OTRO), veredicto: "AJUSTA SUPUESTOS", score: 61, neg: { d: 4.2, p: 4398, s: 71, f: 15000 } };
@@ -402,7 +407,7 @@ export async function runCompartirDeptoTier(): Promise<{ hard: number }> {
         const t = renderToStaticMarkup(createElement(TarjetaPin, { pines, seleccionado: AVISO, uf: 39000, analizados: {}, guardados: new Set<string>(), generando: null, error: null, alCambiar: () => {}, alCerrar: () => {}, alGuardar: () => {}, alAnalizar: () => {}, alCompartir: () => {}, sinCuenta }));
         // La lista con la capa prendida: también la fila del negociado lleva «Compartir».
         const neg: PinNegociado = { ...pin("2f5e7c1a-0b6d-4e8f-9a3c-5d7e9f1b3c5e", { veredicto: "AJUSTA SUPUESTOS" }), neg: { d: 4.2, p: sinCuenta ? null : 4398, s: 71, f: null } };
-        const l = renderToStaticMarkup(createElement(ListaPortal, { pines, negociados: [neg], tope: 5, total: 2, calculando: false, orden: "puntaje", uf: 39000, analizados: {}, guardados: new Set<string>(), alOrden: () => {}, alAbrir: () => {}, alGuardar: () => {}, alCompartir: () => {}, alAvisame: () => {}, alCerrar: () => {}, sinCuenta }));
+        const l = renderToStaticMarkup(createElement(ListaPortal, { pines, negociados: [neg], tope: 5, desglose: null, calculando: null, orden: "puntaje", uf: 39000, analizados: {}, guardados: new Set<string>(), alOrden: () => {}, alAbrir: () => {}, alGuardar: () => {}, alCompartir: () => {}, alAvisame: () => {}, alCerrar: () => {}, sinCuenta }));
         const n = (s: string) => (s.match(/data-explorar="compartir"[^>]*aria-label="Compartir"|aria-label="Compartir"[^>]*data-explorar="compartir"/g) ?? []).length;
         if (n(t) !== 2 || n(l) !== 3 || !l.includes('data-explorar="fila-negociada"')) F(`6 · «Compartir» no está en cada tarjeta y cada fila ${sinCuenta ? "sin" : "con"} cuenta (tarjeta ${n(t)}, lista ${n(l)} de 3 con el negociado)`);
       }
@@ -421,11 +426,12 @@ export async function runCompartirDeptoTier(): Promise<{ hard: number }> {
       const sinCifras: PinNegociado = { ...negP, neg: { d: 5, p: null, s: 71, f: null } };
       if (!cp.pideAlServidor(sinCifras, ESTD) || cp.pideAlServidor(negP, ESTD) || !cp.pideAlServidor(negP, { ...ESTD, pie: 30 as const }) || cp.pideAlServidor(pin(OTRO), ESTD)) F("7 · el negociado sin cuenta no pide su precio al servidor (o lo pide el que ya lo tiene)");
       // ⚠ ACTA (03-nov-2026, la firma): el pedido es POST, firmado, con el tope en el cuerpo; se pide al apoyar el dedo, no al abrir.
-      if (!/d\.estado === "negociado" && d\.neg \? \{ comprar: false, score: null, negociado: d\.neg \}/.test(cliente) || !/body: JSON\.stringify\(\{ a: p\.avisoId, m: filtros\.modalidad, \.\.\.\(filtros\.modalidad === "str" \? \{\} : \{ n: filtros\.negociar \?\? TOPE_DE_LA_NOCHE \}\) \}\),/.test(cliente)) F("7 · el navegador no trae del servidor (con el tope) lo que se comparte de un negociado");
+      if (!/d\.estado === "negociado" && d\.neg \? \{ comprar: false, score: null, negociado: d\.neg \}/.test(cliente) || !/body: JSON\.stringify\(\{ a: p\.avisoId, m: filtros\.modalidad, \.\.\.\(filtros\.modalidad === "str" \? \{\} : \{ n: filtros\.negociar \}\) \}\),/.test(cliente)) F("7 · el navegador no trae del servidor (con el tope) lo que se comparte de un negociado");
       // El enlace: el tope de la capa, que abre /explorar con «Si negocias» prendido.
       const u = new URL(ec.enlaceCompartido("https://refranco.ai", { avisoId: AVISO, modalidad: "ltr", comuna: "Ñuñoa", codigo: "k7m2qx", tope: cp.topeDelEnlace(5, 4.2) }));
       if (u.searchParams.get("n") !== "5" || portalDeUrl(u.searchParams).filtros.negociar !== 5 || ec.compartidoDeUrl(u.searchParams)?.avisoId !== AVISO) F(`7 · el enlace del negociado no lleva el tope de la capa (${u.toString()})`);
-      if (cp.topeDelEnlace(null, 4.2) !== 5 || cp.topeDelEnlace(10, 4.2) !== 10 || cp.topeDelEnlace(5, 7.5) !== 10) F("7 · el tope del enlace no es el de la capa o no alcanza el descuento");
+      // ⚠ ACTA (03-nov-2026) · sin tope, el de entrada: 10 % (antes 5 %).
+      if (cp.topeDelEnlace(null, 4.2) !== 10 || cp.topeDelEnlace(5, 4.2) !== 5 || cp.topeDelEnlace(10, 4.2) !== 10 || cp.topeDelEnlace(5, 7.5) !== 10) F("7 · el tope del enlace no es el de la capa o no alcanza el descuento");
       if (new URL(ec.enlaceCompartido("https://refranco.ai", { avisoId: AVISO, modalidad: "str", comuna: "Ñuñoa", codigo: null, tope: 5 })).searchParams.has("n")) F("7 · en renta corta el enlace lleva el tope de una capa que no existe");
       if (!/const tope = ver\.negociado \? topeDelEnlace\(filtros\.negociar, ver\.negociado\.d\) : null;/.test(cliente)) F("7 · el navegador no pone el tope en el enlace de un negociado");
       // La vista previa: el chip Ajustar al precio publicado y «Conviene si lo negocias a UF 2.950»; ningún otro número.
@@ -440,7 +446,7 @@ export async function runCompartirDeptoTier(): Promise<{ hard: number }> {
       if (!/const CHIP_AJUSTAR = \{ fondo: "#F1E4EC", texto: "#6E4560", borde: "#DCC6D4" \};/.test(og) || !/\{v\.chip === "AJUSTA SUPUESTOS" && v\.negociado \? \(/.test(og) || !/\{NEGOCIADO_COPY\.alPublicado\}/.test(og) || !/const corte = v\.negociado \? v\.negociado\.lastIndexOf\(" a UF "\) : -1;/.test(og) || !/\{piezasNegociado\.map\(\(t, i\) => <span key=\{i\}/.test(og)
         || !/const tope = esTopeNegociar\(sp\.get\("n"\)\) \? Number\(sp\.get\("n"\)\) : null;/.test(og)) F("7 · la imagen no dibuja «Al precio publicado» con el chip Ajustar de la casa y la línea del negociado (o no lee el tope)");
       const meta = pagina.slice(pagina.indexOf("export async function generateMetadata"), pagina.indexOf("const mapaQuieto"));
-      if (!/const tope = portalDeUrl\(sp\)\.filtros\.negociar;\s*const ficha = await fichaCompartidaCacheada\(c\.avisoId, c\.modalidad, tope\)/.test(meta) || !/url: rutaVistaPrevia\(c\.avisoId, c\.modalidad, ficha\.tope \?\? null, \{ f: c\.firma!, i: c\.codigo \}\)/.test(meta)) F("7 · los metadatos del enlace de un negociado no son los del negociado");
+      if (!/const tope = topeDelEnlaceEnUrl\(sp\);\s*const ficha = await fichaCompartidaCacheada\(c\.avisoId, c\.modalidad, tope\)/.test(meta) || !/url: rutaVistaPrevia\(c\.avisoId, c\.modalidad, ficha\.tope \?\? null, \{ f: c\.firma!, i: c\.codigo \}\)/.test(meta)) F("7 · los metadatos del enlace de un negociado no son los del negociado");
       const api = codigo("src/app/api/explorar/compartido/route.ts");
       // El texto dice el precio de la noche (como el de quien tiene cuenta): la API no verifica, que haría esperar a la hoja.
       if (!/const tope = esTopeNegociar\(b\.n\) \? Number\(b\.n\) : null;/.test(api) || !/await fichaCompartida\(admin, a, "ltr", \{ veredicto: true, tope, verificar: segunLaNoche \}\)/.test(api) || !/const neg = f\.estado === "negociado" && f\.neg \? \{ p: f\.neg\.p, d: f\.neg\.d \} : null;/.test(api)

@@ -10,7 +10,8 @@
 //       semana» con la línea del perfil → el mapa → las tarjetas → plegados, el perfil (con la etiqueta de pendientes) e
 //       «Informes realizados». Y el copy, frase por frase. Lo viejo (el banner, el saldo plano, casa-arriba) ya no existe.
 //   §3  EL MAPA (lib/casa/mapa-casa.ts): el encuadre hace entrar a la selección con margen; la proyección cae donde debe;
-//       la URL es cacheable y sin marcadores; dibujado de verdad: los 5 en rojo numerados en orden y los demás en gris;
+//       la URL es cacheable y sin marcadores; dibujado de verdad: los 5 numerados en orden (en el color de su clase desde el
+//       03-nov-2026; antes, en rojo) y los demás en gris;
 //       el botón a /explorar.
 //   §4  EL YA ANALIZADO COMO FILA COMPACTA EN SU POSICIÓN (dibujado de verdad con SemanalLista): no al final, no como
 //       tarjeta; tres a la vista y «Ver los N que faltan».
@@ -187,32 +188,44 @@ export async function runPuertaBDashboardTier(): Promise<{ hard: number }> {
   if (!/^https:\/\/maps\.googleapis\.com\/maps\/api\/staticmap\?center=-33\.\d{5},-70\.\d{5}&zoom=\d+&size=350x200&scale=2&maptype=roadmap&style=/.test(url) || !/&key=LLAVE$/.test(url) || /markers=/.test(url)) F("3 · la URL del mapa no es cacheable (centro a 5 decimales, zoom, tamaño, estilo, llave) o lleva marcadores");
   if (mapa.urlMapaCasa(e, "LLAVE") !== mapa.urlMapaCasa({ ...e, lat: e.lat + 0.000001 }, "LLAVE")) F("3 · la URL cambia con una milésima de grado: no se cachea");
   const { MapaCasa } = require(join(RAIZ, "src/app/dashboard/mapa-casa")) as typeof import("../../../src/app/dashboard/mapa-casa");
+  // ⚠ ACTA (03-nov-2026, goal «la pasada real de /explorar») · los datos del mapa dicen su tamaño (`ancho`, `alto`: el del
+  // teléfono; el del PC va en `pc`) y cada pin su clase (el color: colores-pin.ts).
   const datosMapa = {
+    ancho: mapa.MAPA_CASA.ancho, alto: mapa.MAPA_CASA.alto,
     encuadre: e, url: "https://maps.googleapis.com/maps/api/staticmap?x=1", urlOscuro: "https://maps.googleapis.com/maps/api/staticmap?x=2",
-    seleccion: dentro.map((q, i) => ({ n: i + 1, avisoId: `a${i + 1}`, x: q!.x, y: q!.y })),
+    seleccion: dentro.map((q, i) => ({ n: i + 1, avisoId: `a${i + 1}`, x: q!.x, y: q!.y, clase: "comprar" as const })),
     grises: [{ x: 10, y: 10 }, { x: 20, y: 20 }, { x: 30, y: 30 }], nSeleccion: 5, nConvienen: 312, nOtros: 307, desdePerfil: true, comunas: ["Providencia"],
   };
   const htmlMapa = renderToStaticMarkup(createElement(MapaCasa, { datos: datosMapa, totalNoche: 4807 }));
-  const pines = Array.from(htmlMapa.matchAll(/<g data-casa="pin" data-n="(\d)"><circle[^>]*><\/circle><text[^>]*>(\d)<\/text><\/g>/g)).map((x) => `${x[1]}${x[2]}`);
+  const pines = Array.from(htmlMapa.matchAll(/<g data-casa="pin" data-n="(\d)" data-clase="comprar"><circle[^>]*><\/circle><text[^>]*>(\d)<\/text><\/g>/g)).map((x) => `${x[1]}${x[2]}`);
   if (pines.join(",") !== "11,22,33,44,55") F(`3 · el mapa no dibuja los 5 de la selección numerados en su orden (${pines.join(",")})`);
-  if ((htmlMapa.match(/<circle/g) ?? []).length !== 8) F("3 · los demás que convienen no van en gris (3 grises + 5 rojos = 8 círculos)");
+  if ((htmlMapa.match(/<circle/g) ?? []).length !== 8) F("3 · los demás que convienen no van en gris (3 grises + 5 de la selección = 8 círculos)");
   // ⚠ ACTA (24-oct-2026, goal «Estás dentro con mapa, el perfil que se pliega y Explorar cerrado», recorrido de Fabrizio).
   if (!htmlMapa.includes("5 en tu selección · 307 más en Providencia") || !/href="\/explorar"[^>]*>Explorar los 4\.807 de Santiago</.test(htmlMapa)) F("3 · la píldora o el botón del mapa no dicen lo suyo, o el botón no va a /explorar");
-  // EL MAPA DE «ESTÁS DENTRO»: solo los pines rojos numerados —sin grises, sin píldora, sin botón de Explorar—.
+  // EL MAPA DE «ESTÁS DENTRO»: solo los pines numerados de la selección —sin grises, sin píldora, sin botón de Explorar—.
   const htmlSel = renderToStaticMarkup(createElement(MapaCasa, { datos: datosMapa, variante: "seleccion", totalNoche: 4807 }));
-  const pinesSel = Array.from(htmlSel.matchAll(/<g data-casa="pin" data-n="(\d)">/g)).map((x) => x[1]).join(",");
+  const pinesSel = Array.from(htmlSel.matchAll(/<g data-casa="pin" data-n="(\d)" data-clase="comprar">/g)).map((x) => x[1]).join(",");
   if (pinesSel !== "1,2,3,4,5" || (htmlSel.match(/<circle/g) ?? []).length !== 5 || /data-casa="grises"|mapa-pildora|explorar-boton|Explorar|href=/.test(htmlSel)) F(`1 · el mapa de «Estás dentro» no es solo la selección (pines ${pinesSel}, ${(htmlSel.match(/<circle/g) ?? []).length} círculos)`);
   const ps = codigo("src/components/deptos/PrimeraSeleccion.tsx");
   // ⚠ ACTA (28-oct-2026, RESPALDO-MAPA) · «Estás dentro» pide `mapa=1` y la casa `mapa=casa`; la variante sale del encabezado (el respaldo de la casa
   // dibuja el mapa del dashboard, con los grises; RESPALDO-MAPA §3).
-  if (!/qs\.set\("mapa", encabezado === "dentro" \? "1" : "casa"\);/.test(ps) || !/data-primera="titulo">\{titulo\}<\/h2>\s*\{datos\?\.mapa && items\.length > 0 && <div data-primera="mapa"><MapaCasa datos=\{datos\.mapa\} variante=\{encabezado === "casa" \? "casa" : "seleccion"\} totalNoche=\{datos\.totalNoche \?\? null\} \/><\/div>\}/.test(ps)) F("1 · «Estás dentro» no pide el mapa o no lo dibuja bajo el título con la variante de la selección");
-  if (!/const conMapa = \(pideMapa === "1" \|\| pideMapa === "casa"\)[\s\S]{0,200}?datosMapaCasa\(admin, user\.id, r\.items\.map\(\(i\) => \(\{ avisoId: i\.avisoId, comuna: i\.comuna \}\)\), undefined, \{ grises: pideMapa === "casa" \}\)/.test(codigo("src/app/api/deptos/primeros/route.ts"))) F("1 · la ruta de los primeros no arma el mapa sin grises");
+  // ⚠ ACTA (03-nov-2026, goal «la pasada real de /explorar») · bajo el título, el mapa abre la columna izquierda de .ca-dos (en el
+  // PC, dos columnas; en el teléfono, uno debajo del otro, como antes), y cada pin de la ruta lleva su clase (colores-pin.ts).
+  if (!/qs\.set\("mapa", encabezado === "dentro" \? "1" : "casa"\);/.test(ps) || !/const conMapa = !!datos\?\.mapa && items\.length > 0;/.test(ps) || !/data-primera="titulo">\{titulo\}<\/h2>\s*<div className="ca-dos"[^>]*>\s*\{conMapa && datos\?\.mapa && <div className="ca-dos-mapa" data-primera="mapa"><MapaCasa datos=\{datos\.mapa\} variante=\{encabezado === "casa" \? "casa" : "seleccion"\} totalNoche=\{datos\.totalNoche \?\? null\} \/><\/div>\}/.test(ps)) F("1 · «Estás dentro» no pide el mapa o no lo dibuja bajo el título con la variante de la selección");
+  if (!/const conMapa = \(pideMapa === "1" \|\| pideMapa === "casa"\)[\s\S]{0,200}?datosMapaCasa\(admin, user\.id, r\.items\.map\(\(i\) => \(\{ avisoId: i\.avisoId, comuna: i\.comuna, clase: clasePinDeItem\(i\) \}\)\), undefined, \{ grises: pideMapa === "casa", pc: [^}]+\}\)/.test(codigo("src/app/api/deptos/primeros/route.ts"))) F("1 · la ruta de los primeros no arma el mapa sin grises");
   // ⚠ ACTA (30-oct-2026, goal del recorrido real, punto 9) · la imagen lleva sus dos versiones en variables (--mapa-claro y
   // --mapa-oscuro) y el tema decide cuál se baja; la oscura es el estilo oscuro de Franco, no la clara invertida (EXPLORAR-RECORRIDO §9).
   if (!/class="ca-mapa-fondo" style="--mapa-claro:url\(&quot;https:\/\/maps\.googleapis\.com\/maps\/api\/staticmap\?x=1&quot;\);--mapa-oscuro:url\(&quot;https:\/\/maps\.googleapis\.com\/maps\/api\/staticmap\?x=2&quot;\)"/.test(htmlMapa) || renderToStaticMarkup(createElement(MapaCasa, { datos: { ...datosMapa, url: null } })).includes("ca-mapa-fondo")) F("3 · la imagen de fondo no va como fondo (o aparece sin URL)");
   const srv = codigo("src/lib/casa/mapa-casa-servidor.ts");
   if (!/const otros = explorar\.pines\.filter\(\(p\) => !enSel\.has\(p\.avisoId\)\);/.test(srv) || !/pinesExplorar\(admin, filtros\)/.test(srv) || !srv.includes('.from("scraped_properties").select("id, lat, lng").in("id", ids.slice(0, 50)).order("id").limit(50)')) F("3 · los grises no son los de Explorar menos la selección, o las coordenadas no salen de la tabla de avisos");
-  if (htmlMapa.includes("ca-mapa-rojo") && !/\.ca-mapa-rojo circle \{ fill: var\(--signal-red\)/.test(leer("src/app/dashboard/casa.css")) || !/\.ca-mapa-gris circle \{ fill: #C9C5BB; \}/.test(leer("src/app/dashboard/casa.css"))) F("3 · los pines de la selección no son rojos o los demás no son grises");
+  // ⚠ ACTA (03-nov-2026, goal «la pasada real de /explorar», decisión de Fabrizio: «Rojo en ningún pin») · los de la selección van
+  // en el color de su clase (colores-pin.ts: azul ✓ Comprar, ciruela − Ajustar, tinta el ya analizado) y los demás, en gris. Hasta
+  // el 03-nov el predicado exigía los de la selección en Signal Red (y era vacuo si la clase cambiaba de nombre: ahora se exige).
+  {
+    const cssCasa = leer("src/app/dashboard/casa.css");
+    const reglasPines = Array.from(cssCasa.replace(/\/\*[\s\S]*?\*\//g, "").matchAll(/([^{}]+)\{([^{}]*)\}/g)).filter((x) => /\.ca-mapa-pines/.test(x[1]));
+    if (!/<g class="ca-mapa-pines">/.test(htmlMapa) || /ca-mapa-rojo/.test(htmlMapa) || !/\[data-theme="light"\] \.ca-mapa-pines circle \{ fill: #2B558F; \}/.test(cssCasa) || reglasPines.some((x) => /signal-red|#C8323C|--verdict-buscar/i.test(x[2])) || !/\.ca-mapa-gris circle \{ fill: #C9C5BB; \}/.test(cssCasa)) F("3 · los pines de la selección no van en el azul de ✓ Comprar (o usan el rojo), o los demás no son grises");
+  }
 
   // ── §4 · el ya analizado como fila compacta, en su posición ────────────────
   const { SemanalLista } = require(join(RAIZ, "src/app/semanal/semanal-lista")) as typeof import("../../../src/app/semanal/semanal-lista");

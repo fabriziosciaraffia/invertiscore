@@ -149,11 +149,12 @@ export async function runNuevoUsadoTier(): Promise<{ hard: number }> {
       if (!/direccion: nombreDelDepto\(depto\),/.test(pop) || !/depto: \{ comuna: string; tipologia: string \| null; m2: number; precioUF: number; condicion\?: CondicionDepto \};/.test(pop)) F("3 · la tarjeta del pop-up no recibe la condición o no la nombra con nombreDelDepto");
       // «Estás dentro» y el dashboard.
       const ps = codigo("src/components/deptos/PrimeraSeleccion.tsx");
-      if (!/<div className="sel-ojo"><span className="sel-pin" aria-hidden="true">\{i \+ 1\}<\/span>\{lineaDepto\(it\)\}<\/div>/.test(ps)) F("3 · las tarjetas de «Estás dentro» no usan la línea del depto");
+      // ⚠ ACTA (03-nov-2026, goal «la pasada real de /explorar») · el número es PinTarjeta, en el color de su clase.
+      if (!/<div className="sel-ojo"><PinTarjeta n=\{i \+ 1\} clase=\{clasePinDeItem\(it\)\} \/>\{lineaDepto\(it\)\}<\/div>/.test(ps)) F("3 · las tarjetas de «Estás dentro» no usan la línea del depto");
       if (!/depto=\{\{ comuna: confirmar\.it\.comuna, tipologia: confirmar\.it\.tipologia, m2: confirmar\.it\.m2, precioUF: confirmar\.it\.precioUF, condicion: confirmar\.it\.condicion \}\}/.test(ps)) F("3 · «Estás dentro» no le pasa la condición al pop-up");
       if (!/depto=\{\{ comuna: confirmar\.it\.comuna, tipologia: confirmar\.it\.tipologia, m2: confirmar\.it\.m2, precioUF: confirmar\.it\.precioUF, condicion: confirmar\.it\.condicion \}\}/.test(codigo("src/app/explorar/explorar-cliente.tsx"))) F("3 · Explorar no le pasa la condición al pop-up");
       const sl = codigo("src/app/semanal/semanal-lista.tsx");
-      if (!/const ojoDe = \(it: ItemSemanal\) => lineaDepto\(it\);/.test(sl) || !/<div className="sel-ojo">\{n != null && <span className="sel-pin" aria-hidden="true">\{n\}<\/span>\}\{ojoDe\(it\)\}<\/div>/.test(sl) || !/depto=\{confirmar\.it\}/.test(sl)) F("3 · las tarjetas del dashboard no usan la línea del depto (o no le pasan el depto entero al pop-up)");
+      if (!/const ojoDe = \(it: ItemSemanal\) => lineaDepto\(it\);/.test(sl) || !/<div className="sel-ojo">\{n != null && <PinTarjeta n=\{n\} clase=\{clasePinDeItem\(it\)\} \/>\}\{ojoDe\(it\)\}<\/div>/.test(sl) || !/depto=\{confirmar\.it\}/.test(sl)) F("3 · las tarjetas del dashboard no usan la línea del depto (o no le pasan el depto entero al pop-up)");
       if (!/const ojo = escaparHtml\(lineaDepto\(d\)\);/.test(cuerpo(codigo("src/lib/email/correo-semanal.ts"), "tarjeta"))) F("3 · la tarjeta del correo no usa la línea del depto");
     }
 

@@ -97,7 +97,10 @@ export async function runPuertaETier(): Promise<{ hard: number }> {
     const s = ab.sinCifras(u);
     if (s.filas[0][9] !== null || s.filas[0][10] !== null || s.filas[0][8] !== 84 || s.filas[0][7] !== 4591) F(`2 · el universo sin cuenta trae el flujo o el arriendo (o pierde el puntaje y el precio): ${JSON.stringify(s.filas[0])}`);
     const ruta = codigo("src/app/api/explorar/abierto/route.ts");
-    if ((ruta.match(/sinCifras\(/g) ?? []).length !== 2 || /createClient\(\)|auth\.getUser/.test(ruta) || !/const q = \{ modalidad, pie: PIE_ABIERTO, plazo: PLAZO_ABIERTO \} as const;/.test(ruta)) F("2 · la ruta sin cuenta no quita las cifras en las dos ramas (o mira la sesión, o deja elegir pie y plazo)");
+    // ⚠ ACTA (03-nov-2026, goal «la pasada real de /explorar») · la rama de la noche la arma respuestaDeLaNoche con `sinCifras`
+    // (el universo y los − Ajustar sin cifras, EXPLORAR-PASADA §3); la de renta corta sigue con su sinCifras.
+    const cacheSrc = codigo("src/lib/explorar/portal-cache.ts");
+    if ((ruta.match(/sinCifras\(/g) ?? []).length !== 1 || !/respuestaDeLaNoche\(PIE_ABIERTO, PLAZO_ABIERTO, \{ sinCifras: true \}\)/.test(ruta) || !/universo: o\.sinCifras \? universoSinCifras\(u\) : u,/.test(cacheSrc) || /createClient\(\)|auth\.getUser/.test(ruta) || !/const q = \{ modalidad, pie: PIE_ABIERTO, plazo: PLAZO_ABIERTO \} as const;/.test(ruta)) F("2 · la ruta sin cuenta no quita las cifras en las dos ramas (o mira la sesión, o deja elegir pie y plazo)");
     if (!/const CACHE = "public, /.test(ruta)) F("2 · la ruta sin cuenta no es pública (no queda en el CDN)");
     if (/sinCifras|PIE_ABIERTO/.test(codigo("src/app/api/explorar/route.ts")) || !/if \(!user\) return NextResponse\.json\(\{ error: "sin-sesion" \}, \{ status: 401 \}\);/.test(codigo("src/app/api/explorar/route.ts"))) F("2 · la ruta con cifras se abrió sin sesión");
     const cli = codigo("src/app/explorar/explorar-cliente.tsx");
@@ -121,7 +124,9 @@ export async function runPuertaETier(): Promise<{ hard: number }> {
       if (cifras.some((c) => l.includes(c)) || !l.includes(ab.BORROSO.flujo)) F("2 · la lista sin cuenta dibuja el flujo (o no lo muestra borroso)");
     } else F("2 · la lista no carga");
     const mapa = codigo("src/app/explorar/mapa-explorar.tsx");
-    if (!/if \(sinCifrasRef\.current\) \{\s*marcador\(\{ lat: p\.lat, lng: p\.lng \}, elegido \? iconoElegido\(\) : iconoPunto\(ROJO\)/.test(mapa) || !/sinCifras=\{sinCuenta\}/.test(cli)) F("2 · sin cuenta, con zoom, el pin dice algo más que el punto");
+    // ⚠ ACTA (03-nov-2026, goal «la pasada real de /explorar», «Rojo en ningún pin») · el punto sin cuenta va en el azul de ✓
+    // Comprar (el elegido, el mismo azul más grande); antes, rojo (y el elegido en tinta).
+    if (!/if \(sinCifrasRef\.current\) \{\s*(?:\/\/[^\n]*\n\s*)?marcador\(\{ lat: p\.lat, lng: p\.lng \}, punto\("comprar", elegido\)/.test(mapa) || !/sinCifras=\{sinCuenta\}/.test(cli)) F("2 · sin cuenta, con zoom, el pin dice algo más que el punto");
     // ⚠ ACTA (30-oct-2026, goal del recorrido real de Fabrizio) · «Mi búsqueda» se mudó adentro de Filtros (decisión de Fabrizio): sin
     // cuenta la hoja la recibe en null y no la dibuja; el esqueleto ya no la tiene.
     // ⚠ ACTA (02-nov-2026, goal «Filtros v2 y negociar», tier EXPLORAR-NEGOCIAR) · «Mi búsqueda» es la tarjeta «Aplicar mi perfil de búsqueda»: sin cuenta, igual en null y sin dibujarse.
@@ -168,7 +173,7 @@ export async function runPuertaETier(): Promise<{ hard: number }> {
     const rutaImg = codigo("src/app/api/explorar/calle/[avisoId]/route.ts");
     // ⚠ ACTA (02-nov-2026, COMPARTIR-DEPTO) · `imagenDeCalle` acepta el tamaño (la vista previa de un depto compartido pide la
     // imagen grande); el respaldo es el mismo mapa chico, con ese tamaño si se pidió.
-    if (!/const m = img\.respaldo \? await traer\(img\.respaldo\) : null;/.test(rutaImg) || !/"Cache-Control": CACHE_SIN_DECIDIR, "X-Calle": "mapa"/.test(rutaImg) || !/respaldo: urlMapaChico\(\{ lat: Number\(fila\.lat\), lng: Number\(fila\.lng\) \}, keyMapa, estilo, lado\?\.mapa\)/.test(codigo("src/lib/explorar/calle-servidor.ts"))) F("3 · si la foto de la calle no llega, la tarjeta queda con la imagen rota (sin el mapa chico de respaldo)");
+    if (!/const m = img\.respaldo \? await traer\(img\.respaldo\) : null;/.test(rutaImg) || !/"Cache-Control": CACHE_SIN_DECIDIR, "X-Calle": "mapa"/.test(rutaImg) || !/respaldo: urlMapaChico\(\{ lat: Number\(fila\.lat\), lng: Number\(fila\.lng\) \}, keyMapa, estilo, lado\?\.mapa, pin\)/.test(codigo("src/lib/explorar/calle-servidor.ts"))) F("3 · si la foto de la calle no llega, la tarjeta queda con la imagen rota (sin el mapa chico de respaldo)");
     // ESCAPE CIERRA LA HOJA (QA del 29-oct-2026): el primer Escape cerraba la tarjeta de abajo y no la hoja; el listener de la
     // hoja, re-registrado a cada render, se quitaba en medio del mismo evento. Va una vez, en captura, y corta el evento.
     if (!/const esc = \(e: KeyboardEvent\) => \{\s*if \(e\.key !== "Escape"\) return;\s*e\.stopImmediatePropagation\(\);\s*if \(!ocupadoRef\.current\) cerrarRef\.current\(\);\s*\};\s*window\.addEventListener\("keydown", esc, true\);\s*return \(\) => window\.removeEventListener\("keydown", esc, true\);\s*\}, \[\]\);/.test(hoja)) F("3 · Escape no cierra la hoja de registro a la primera (el listener se re-registra a cada render)");

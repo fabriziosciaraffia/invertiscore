@@ -176,36 +176,40 @@ export async function runExplorarRecorridoTier(): Promise<{ hard: number }> {
     if (malas.length) F(`4 · ${f} dice 25 como supuesto: «${malas[0].trim().slice(0, 110)}»`);
   }
   for (const [f, ok] of Object.entries(VEINTICINCO_PERMITIDO)) if (!ok.patron.test(codigo(f))) F(`4 · la excepción de ${f} ya no existe (sácala de la lista: ${ok.razon})`);
-  if (/25 años/.test(JSON.stringify(po.COMO_SE_CALCULA.estandar(4.07)) + po.PORTAL_COPY.tasaFija(4.07))) F("4 · «¿Cómo se calcula?» dice 25 años");
+  if (/25 años/.test(JSON.stringify([po.COMO_SE_CALCULA.estandar, ...po.COMO_SE_CALCULA.perfil(4.07)]) + po.PORTAL_COPY.tasaFija(4.07))) F("4 · «¿Cómo se calcula?» dice 25 años");
 
   // ── 5 · LA BARRA, ABAJO Y LA LISTA ──
   const modCli = cargar<{ ExplorarCliente: FC<Record<string, unknown>> }>("src/app/explorar/explorar-cliente", F);
   if (modCli) {
     for (const [cuenta, que] of [[cuentaBase(), "con cuenta"], [null, "sin cuenta"]] as const) {
-      const html = dibujar(createElement(modCli.ExplorarCliente, { inicial: { filtros: G, orden: "puntaje", n: 4807, cuenta, tasa: { tasa: 4.07 }, convienen: cuenta ? null : 4807 } }));
+      const html = dibujar(createElement(modCli.ExplorarCliente, { inicial: { filtros: G, orden: "puntaje", n: 4807, cuenta, tasa: { tasa: 4.07 }, convienen: cuenta ? null : 4807, negociadosGlobal: null, nAjustar: 0 } }));
       const barra = html.slice(html.indexOf('class="ex-barra"'), html.indexOf('class="ex-cuerpo"'));
       const botones = barra.match(/data-explorar="[a-z-]+"/g) ?? [];
-      // ⚠ ACTA (02-nov-2026, goal «Filtros v2 y negociar», tier EXPLORAR-NEGOCIAR) · la barra es «Filtros», el chip «Si negocias el precio» y «¿Cómo se calcula?» (el texto en PC, la ⓘ
-      // en el teléfono: las dos se dibujan y el CSS muestra una).
-      if (botones.join() !== 'data-explorar="filtros",data-explorar="negociar-chip",data-explorar="como-se-calcula",data-explorar="como-se-calcula-i"') F(`5 · ${que}, la fila de arriba no es «Filtros», el chip de negociar y «¿Cómo se calcula?»: ${botones.join(" ")}`);
-      if (!/<button type="button" class="ex-como" data-explorar="como-se-calcula">/.test(barra)) F(`5 · ${que}, «¿Cómo se calcula?» no es un enlace de texto (va como chip)`);
+      // ⚠ ACTA (03-nov-2026, goal «la pasada real de /explorar») · la barra es «Filtros», el chip «Ver solo ✓ Comprar» y «¿Cómo se
+      // calcula?», UN botón que abre la hoja directo en el teléfono y en el PC (la ⓘ con tooltip del teléfono se retiró).
+      if (botones.join() !== 'data-explorar="filtros",data-explorar="solo-comprar",data-explorar="como-se-calcula"') F(`5 · ${que}, la fila de arriba no es «Filtros», el chip «Ver solo ✓ Comprar» y «¿Cómo se calcula?»: ${botones.join(" ")}`);
+      if (!/<button type="button" class="ex-como" data-explorar="como-se-calcula"/.test(barra)) F(`5 · ${que}, «¿Cómo se calcula?» no es un enlace de texto (va como chip)`);
       if (/data-explorar="ordenar"/.test(html)) F(`5 · ${que}, «Ordenar» aparece en la vista de mapa`);
       if (/ex-numero|data-explorar="numero"/.test(html)) F(`5 · ${que}, la tarjeta del número sigue sobre el mapa`);
-      if (!texto(html).includes("4.807 deptos ✓ Comprar al precio publicado Ver lista") || !texto(html).includes("Ver lista · 4.807 ✓ Comprar al precio publicado")) F(`5 · ${que}, abajo no dice «4.807 deptos ✓ Comprar al precio publicado · Ver lista» (teléfono) y «Ver lista · 4.807 ✓ Comprar al precio publicado» (PC)`);
+      // ⚠ ACTA (03-nov-2026) · abajo, el desglose, el mismo en el teléfono y en el PC (la píldora negra del PC se retiró).
+      if (!texto(html).includes("4.807 deptos 4.807 ✓ Comprar al precio publicado Ver lista") || /ex-pildora/.test(html)) F(`5 · ${que}, abajo no dice «4.807 deptos · 4.807 ✓ Comprar al precio publicado · Ver lista» en el teléfono y en el PC`);
     }
   }
   if (/ex-numero/.test(css + cli + codigo("src/app/explorar/esqueleto.tsx")) || "numeroDelMapa" in po || "lineaSupuestos" in po) F("5 · quedan la tarjeta del número o la línea de los supuestos (CSS, cliente, esqueleto o portal.ts)");
   // ⚠ ACTA (30-oct-2026, medido en producción) · el chip va en la letra de la página: con la del informe (IBM Plex) Chrome
   // bajaba 40 kB antes del primer pintado (FCP de 1,13 a 1,42 s).
   if (!/^\.ex-pagina \.chip-v \{ font-family: inherit; \}/m.test(css)) F("5 · el chip ✓ Comprar de /explorar trae la letra del informe (IBM Plex se baja antes del primer pintado)");
-  if (!/\.ex-pildora-lista \{ display: none; \}/.test(css) || !/\.ex-hoja \{ display: none; \}/.test(cssPC) || !/\.ex-pildora-lista \{ position: absolute; left: 50%; bottom: 24px;[^}]*border-radius: 999px;/.test(cssPC)) F("5 · la barra de abajo no es la del teléfono y la píldora la del PC");
+  // ⚠ ACTA (03-nov-2026) · la barra de abajo es la misma en el teléfono y en el PC (allá, flotante abajo a la izquierda, donde
+  // aparece la tarjeta del pin); la píldora negra del PC se retiró.
+  if (/\.ex-pildora/.test(css) || /\.ex-hoja \{ display: none; \}/.test(cssPC) || !/\.ex-hoja \{ left: 26px; right: auto; bottom: 20px; width: 420px;/.test(cssPC)) F("5 · la barra de abajo no es la misma en el teléfono y en el PC (o sigue la píldora)");
   const modLista = cargar<{ ListaPortal: FC<Record<string, unknown>> }>("src/app/explorar/lista-portal", F);
   if (modLista) {
-    const l = dibujar(createElement(modLista.ListaPortal, { pines: [PIN, PIN2], total: 4807, calculando: false, orden: "puntaje", uf: 39000, analizados: {}, guardados: new Set(), alOrden() {}, alAbrir() {}, alGuardar() {}, alAvisame() {}, alCerrar() {} }));
+    const l = dibujar(createElement(modLista.ListaPortal, { pines: [PIN, PIN2], desglose: po.desgloseBarra(4807, 0), calculando: null, orden: "puntaje", uf: 39000, analizados: {}, guardados: new Set(), alOrden() {}, alAbrir() {}, alGuardar() {}, alAvisame() {}, alCerrar() {} }));
     const arriba = l.slice(l.indexOf('class="ex-lista-arriba"'), l.indexOf('class="ex-lista-scroll"'));
     if (!/role="dialog"/.test(l) || !/class="ex-asa ex-lista-asa"/.test(arriba) || !/data-explorar="cerrar-lista"/.test(arriba) || !/data-explorar="volver-mapa"/.test(l)) F("5 · la lista no es una hoja con asa, X y el botón «Mapa»");
     const cab = arriba.slice(0, arriba.indexOf('class="ex-lista-acciones"'));
-    if (!/<h2[^>]*>4\.807 deptos <span class="chip-v c"[^>]*data-veredicto="COMPRAR"/.test(cab)) F("5 · arriba de la lista no dice «4.807 deptos» con el chip ✓ Comprar");
+    // ⚠ ACTA (03-nov-2026) · arriba de la lista, el mismo desglose de la barra: «4.807 deptos» y «4.807 ✓ Comprar al precio publicado».
+    if (!/<h2[^>]*>4\.807 deptos<\/h2><span class="ex-hoja-linea" data-explorar="linea-comprar"[^>]*><b>4\.807<\/b> <span class="chip-v c"[^>]*data-veredicto="COMPRAR"/.test(cab)) F("5 · arriba de la lista no dice «4.807 deptos» con el chip ✓ Comprar");
     const acciones = arriba.slice(arriba.indexOf('class="ex-lista-acciones"'));
     const iO = acciones.indexOf('data-explorar="ordenar"'), iA = acciones.search(/data-explorar="avisame"|Avísame de nuevos/);
     if (iO < 0 || iA < 0 || iO > iA) F("5 · debajo del título no va una fila con «Ordenar» y «Avísame de nuevos»");
@@ -299,7 +303,10 @@ export async function runExplorarRecorridoTier(): Promise<{ hard: number }> {
   if (JSON.stringify(francoMapStyleForTheme("dark")) === JSON.stringify(francoMapStyleForTheme("light"))) F("9 · el estilo oscuro del mapa es el claro");
   if (!/const opcionesDeTema = \(\) => \(esClaro\(\) \? \{ styles: francoMapStyleForTheme\("light"\), backgroundColor: "#F6F6F7" \} : \{ styles: francoMapStyleForTheme\("dark"\), backgroundColor: "#1a1a1a" \}\);/.test(mapa) || !/\.\.\.opcionesDeTema\(\),/.test(mapa)) F("9 · el mapa de /explorar no toma el estilo del tema");
   if (!/new MutationObserver\(\(\) => \{\s*const map = mapRef\.current;\s*if \(!map\) return;\s*map\.setOptions\(opcionesDeTema\(\)\);\s*dibujarRef\.current\(\);\s*\}\);\s*o\.observe\(document\.documentElement, \{ attributes: true, attributeFilter: \["data-theme"\] \}\);/.test(mapa)) F("9 · el mapa de /explorar no cambia al momento cuando cambia el tema");
-  if (!/const fondo = elegido \? elegidoDeTema\(\)\.fondo : t\.tipo === "analizado" \? azul : ROJO;/.test(mapa)) F("9 · los pines dejaron de ser rojos (o los analizados azules)");
+  // ⚠ ACTA (03-nov-2026, goal «la pasada real de /explorar», «Rojo en ningún pin») · los pines van en el color de su clase y de su
+  // tema (colores-pin.ts, por iconoPin): azul ✓ Comprar, tinta con ✓ el analizado; en oscuro, los del chip aclarados. Antes: rojos
+  // y azules los analizados. Lo que se dibuja lo mide EXPLORAR-PASADA §5; acá, que el tema decida el color.
+  if (!/const tema = temaPin\(\);/.test(mapa) || !/const temaPin = \(\): TemaPin => \(esClaro\(\) \? "claro" : "oscuro"\);/.test(mapa) || !/etiqueta\(t\.tipo === "analizado" \? "analizado" : "comprar", t\.texto, elegido\)/.test(mapa)) F("9 · los pines no siguen el color de su clase y del tema");
   // La imagen quieta: su versión oscura, mismo tamaño que la clara, de fondo solo en oscuro.
   try {
     const sharp = require("sharp") as (p: string) => { metadata(): Promise<{ width?: number; height?: number }> };
@@ -318,12 +325,14 @@ export async function runExplorarRecorridoTier(): Promise<{ hard: number }> {
   const e = { lat: -33.43, lng: -70.61, zoom: 13 };
   const uC = urlMapaCasa(e, "K", MAPA_CASA, "light") ?? "", uO = urlMapaCasa(e, "K", MAPA_CASA, "dark") ?? "";
   if (!uO || uO === uC || !francoMapStaticStyleParams("dark").every((p) => uO.includes(p))) F("9 · el mapa de la selección no tiene su URL oscura con el estilo oscuro");
-  if (!/urlOscuro: urlMapaCasa\(encuadre, apiKey, MAPA_CASA, "dark"\),/.test(codigo("src/lib/casa/mapa-casa-servidor.ts")) || !/"--mapa-oscuro": `url\("\$\{datos\.urlOscuro\}"\)`/.test(codigo("src/app/dashboard/mapa-casa.tsx")) || !/:root:not\(\[data-theme="light"\]\) \.ca-mapa-fondo \{ background-image: var\(--mapa-oscuro, var\(--mapa-claro\)\); \}/.test(leer("src/app/dashboard/casa.css"))) F("9 · el mapa de la selección no cambia a su versión oscura con el tema");
+  // ⚠ ACTA (03-nov-2026) · dos tamaños (teléfono y PC), cada uno con su URL oscura: `imagen(o)` la arma con sus medidas.
+  if (!/urlOscuro: urlMapaCasa\(encuadre, apiKey, o, "dark"\),/.test(codigo("src/lib/casa/mapa-casa-servidor.ts")) || !/"--mapa-oscuro": `url\("\$\{img\.urlOscuro\}"\)`/.test(codigo("src/app/dashboard/mapa-casa.tsx")) || !/:root:not\(\[data-theme="light"\]\) \.ca-mapa-fondo \{ background-image: var\(--mapa-oscuro, var\(--mapa-claro\)\); \}/.test(leer("src/app/dashboard/casa.css"))) F("9 · el mapa de la selección no cambia a su versión oscura con el tema");
   // El mapa chico de la tarjeta: otra URL (otra entrada de caché), y la ruta lo pide con el estilo oscuro.
   if (calle.rutaImagenCalle("x", true) !== `${calle.rutaImagenCalle("x")}?tema=oscuro` || calle.rutaImagenCalle("x").includes("tema")) F("9 · el mapa chico oscuro no tiene su propia URL (comparte caché con el claro)");
   const ruta = codigo("src/app/api/explorar/calle/[avisoId]/route.ts");
-  if (!/const tema = new URL\(req\.url\)\.searchParams\.get\("tema"\) === "oscuro" \? "dark" : "light";/.test(ruta) || !/francoMapStaticStyleParams\(tema\)/.test(ruta)) F("9 · la ruta de la imagen no pide el mapa chico con el estilo del tema");
-  if (!/const oscuro = useTemaOscuro\(\);/.test(codigo("src/components/guia/ImagenDepto.tsx")) || !/src=\{rutaImagenCalle\(avisoId, oscuro\)\}/.test(codigo("src/components/guia/ImagenDepto.tsx"))) F("9 · la imagen del depto no sigue al tema");
+  // ⚠ ACTA (03-nov-2026) · la ruta lee además la clase del pin (`v`): los parámetros salen de `sp`; la imagen pide los dos.
+  if (!/const tema = sp\.get\("tema"\) === "oscuro" \? "dark" : "light";/.test(ruta) || !/francoMapStaticStyleParams\(tema\)/.test(ruta)) F("9 · la ruta de la imagen no pide el mapa chico con el estilo del tema");
+  if (!/const oscuro = useTemaOscuro\(\);/.test(codigo("src/components/guia/ImagenDepto.tsx")) || !/src=\{rutaImagenCalle\(avisoId, oscuro, ajustar\)\}/.test(codigo("src/components/guia/ImagenDepto.tsx"))) F("9 · la imagen del depto no sigue al tema");
   if (!/attributeFilter: \["data-theme"\]/.test(codigo("src/lib/tema-vivo.ts")) || !/useSyncExternalStore\(suscribir, oscuroAhora, \(\) => false\)/.test(codigo("src/lib/tema-vivo.ts"))) F("9 · el tema no se lee en vivo (no cambiaría al momento)");
 
   if (fallas.length) {
