@@ -174,8 +174,14 @@ export async function runCompartirDeptoTier(): Promise<{ hard: number }> {
       if (ec.compartidoDeUrl(new URLSearchParams(`a=${AVISO.toUpperCase()}&desde=compartido`))?.avisoId !== AVISO) F("1 · el aviso en mayúsculas no abre el mismo pin");
       // La página: el pin a abrir ES el del enlace, con y sin cuenta.
       // ⚠ ACTA (03-nov-2026, goal «la pasada real de /explorar») · `inicial` lleva además los − Ajustar (nAjustar, negociadosGlobal).
-      const abrirAbierto = /<ExplorarCliente inicial=\{\{ filtros, orden, n, cuenta: null, tasa, convienen, negociadosGlobal, nAjustar \}\} abrir=\{compartido\?\.avisoId \?\? sp\.get\("a"\)\} compartido=\{compartido\}/.test(pagina);
-      const abrirCuenta = /const a = compartido\?\.avisoId \?\? sp\.get\("a"\);[\s\S]{0,200}abrir=\{a\}\s*compartido=\{compartido\}/.test(pagina);
+      // ⚠ ACTA (03-nov-2026, «una sola caché, con una sola edad») · `inicial` lleva además el sello de la noche. Y con cuenta el
+      // predicado ya no mide por vecindad (200 caracteres desde `const a`, que el sello empujó afuera): lee el elemento
+      // <ExplorarCliente> de la rama con cuenta y exige ahí `abrir={a}` y `compartido={compartido}`.
+      const abrirAbierto = /<ExplorarCliente inicial=\{\{ filtros, orden, n, cuenta: null, tasa, convienen, negociadosGlobal, nAjustar, sello: noche\?\.sello \?\? null \}\} abrir=\{compartido\?\.avisoId \?\? sp\.get\("a"\)\} compartido=\{compartido\}/.test(pagina);
+      const ramaCuenta = pagina.slice(pagina.indexOf("async function ExplorarConDatos"));
+      const iCli = ramaCuenta.indexOf("<ExplorarCliente");
+      const elCli = iCli < 0 ? "" : ramaCuenta.slice(iCli, ramaCuenta.indexOf("/>", iCli) + 2);
+      const abrirCuenta = /const a = compartido\?\.avisoId \?\? sp\.get\("a"\);/.test(ramaCuenta) && /\babrir=\{a\}/.test(elCli) && /\bcompartido=\{compartido\}/.test(elCli);
       if (!abrirAbierto || !abrirCuenta) F("1 · la página no le pasa al navegador el aviso del enlace como el pin a abrir (con o sin cuenta)");
       // ⚠ ACTA (03-nov-2026, el negociado): compartidoDe recibe el tope de la capa y si hay cuenta (el precio de hoy solo viaja con ella).
       // ⚠ ACTA (03-nov-2026, goal «la pasada real de /explorar») · desde que los filtros traen siempre un descuento máximo (10 % de

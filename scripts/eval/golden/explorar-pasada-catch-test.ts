@@ -19,12 +19,14 @@
 //       ocupa.
 //   8 · EL ESQUELETO ES LA PANTALLA DE HOY: lo que se ve mientras el servidor lee la cuenta lleva las dos barras con las clases del
 //       cliente (Filtros, «Ver solo ✓ Comprar», el botón de «¿Cómo se calcula?»; abajo, la barra calculando), sin la píldora.
+//   9 · UNA SOLA CACHÉ, CON UNA SOLA EDAD: la página, la API y la barra cuentan la misma noche en una carga (un sello firmado que
+//       la página le pasa al navegador), aunque entretanto llegue otra; en la carga siguiente cambian las tres juntas.
 // Verificado EN ROJO por mutación (acta al pie). Corre dentro del QUICK. §3 cuenta las dos clases contra la base (dos lecturas); lo
 // demás, 0 tokens.
 // Solo:  node --env-file=.env.local --import tsx scripts/eval/golden/explorar-pasada-catch-test.ts
 // ============================================================================
 import "./als-de-next";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import React, { createElement, type FC } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -47,6 +49,8 @@ const leer = (p: string) => (existe(p) ? readFileSync(join(RAIZ, p), "utf8").rep
 const sinComentarios = (s: string) =>
   s.replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "").replace(/([^:"'`])\/\/[^\n]*$/gm, "$1");
 const codigo = (p: string) => sinComentarios(leer(p));
+/** Los .ts y .tsx de una carpeta, recursivo (rutas relativas a la raíz). */
+const archivosDe = (dir: string): string[] => readdirSync(join(RAIZ, dir), { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? archivosDe(`${dir}/${e.name}`) : /\.tsx?$/.test(e.name) ? [`${dir}/${e.name}`] : []));
 const ENTIDADES: Record<string, string> = { "&amp;": "&", "&#x27;": "'", "&quot;": '"', "&lt;": "<", "&gt;": ">", "&nbsp;": " " };
 /** El texto que se lee: los bloques separan con un espacio y los elementos en línea (chips, negritas, enlaces) no. */
 const textoPlano = (html: string) => html.replace(/<\/?(?:p|li|ul|ol|h1|h2|h3|div|section|button|br)\b[^>]*>/g, " ").replace(/<[^>]+>/g, "").replace(/&[#\w]+;/g, (e) => ENTIDADES[e] ?? e).replace(/\s+/g, " ").trim();
@@ -147,7 +151,12 @@ export async function runExplorarPasadaTier(): Promise<{ hard: number }> {
   const modFil = cargar<{ HojaFiltros: FC<Record<string, unknown>> }>("src/app/explorar/hoja-filtros", F);
   const modLis = cargar<{ ListaPortal: FC<Record<string, unknown>> }>("src/app/explorar/lista-portal", F);
   const modCasa = cargar<{ MapaCasa: FC<Record<string, unknown>>; PinTarjeta: FC<Record<string, unknown>> }>("src/app/dashboard/mapa-casa", F);
-  const modCache = cargar<{ respuestaDeLaNoche: (pie: number, plazo: number, o?: { sinCifras?: boolean }, leer?: unknown) => Promise<{ universo: po.UniversoCompacto; negociados?: cn.NegociadosCompactos }> }>("src/lib/explorar/portal-cache", F);
+  type NocheT = { sello: string | null; universo: po.UniversoCompacto; negociados: cn.NegociadosCompactos | null };
+  type FuentesT = { vigente: () => Promise<number>; deSello: (n: number, pie: number, plazo: number) => Promise<{ n: number; universo: po.UniversoCompacto; negociados: cn.NegociadosCompactos | null }>; token: (n: number) => string | null; leerToken: (t: string) => number | null };
+  const modCache = cargar<{
+    respuestaDeLaNoche: (pie: number, plazo: number, o?: { sinCifras?: boolean; sello?: string | null }, leer?: (pie: number, plazo: number, sello: string | null) => Promise<NocheT>) => Promise<{ universo: po.UniversoCompacto; negociados?: cn.NegociadosCompactos; sello?: string | null }>;
+    nocheExplorar: (pie: number, plazo: number, sello?: string | null, f?: FuentesT) => Promise<NocheT>;
+  }>("src/lib/explorar/portal-cache", F);
 
   // ══ §1 · LA HOJA ABRE DIRECTO ══════════════════════════════════════════════
   {
@@ -222,26 +231,29 @@ export async function runExplorarPasadaTier(): Promise<{ hard: number }> {
     if (cn.negociadosVisibles(negs, solo, comprar).length !== 0) F("3 · «Ver solo ✓ Comprar» no deja solo los ✓ Comprar");
     if (ids(cn.negociadosVisibles(negs, { ...g, negociar: 5 }, comprar)) !== "n1") F("3 · el descuento máximo de 5 % no deja fuera a los que necesitan más");
     if (cn.negociadosVisibles(negs, { ...g, plazo: 25 }, comprar).length !== 0) F("3 · la capa se ve con un plazo que la noche no calcula");
-    // EL MISMO PEDIDO: el armado de la respuesta de la noche, con lecturas de mentira.
+    // EL MISMO PEDIDO: el armado de la respuesta de la noche, con una lectura de mentira.
+    // ⚠ ACTA (03-nov-2026, «una sola caché, con una sola edad») · la noche se lee en UNA lectura (portal-cache.ts › nocheExplorar: el
+    // universo y la capa juntos, por sello); `leer` es esa lectura. Que a 25 años no se lea la capa y que su falla no tumbe la noche
+    // se mira en nocheDeSello, donde ahora se lee.
     if (modCache) {
       const U: po.UniversoCompacto = po.compactar([PIN, { ...PIN, avisoId: "c2" }]);
       const N: cn.NegociadosCompactos = cn.compactarNegociados(negs);
-      let pidioCapa = 0;
-      const leerOk = { universo: async () => U, capa: async () => { pidioCapa++; return N; } };
+      const leerOk = async (_p: number, _z: number, s: string | null): Promise<NocheT> => ({ sello: s ?? "S", universo: U, negociados: N });
       const r1 = await modCache.respuestaDeLaNoche(20, 30, {}, leerOk);
       if (r1.universo.filas.length !== 2 || r1.negociados?.filas.length !== 3) F("3 · el pedido de la noche no trae los − Ajustar con el universo");
       const r2 = await modCache.respuestaDeLaNoche(20, 30, { sinCifras: true }, leerOk);
       if (!r2.negociados || r2.negociados.filas.some((f) => f[14] != null || f[16] != null || f[9] != null) || r2.universo.filas.some((f) => f[9] != null)) F("3 · sin cuenta, el pedido de la noche manda cifras de los − Ajustar o del universo");
-      pidioCapa = 0;
       const r3 = await modCache.respuestaDeLaNoche(20, 25, {}, leerOk);
-      if (r3.negociados || pidioCapa !== 0) F("3 · a 25 años (sin capa) el pedido igual trae o lee los − Ajustar");
-      const r4 = await modCache.respuestaDeLaNoche(20, 30, {}, { universo: async () => U, capa: async () => { throw new Error("x"); } }).catch(() => null);
+      if (r3.negociados) F("3 · a 25 años (sin capa) el pedido igual trae los − Ajustar");
+      const r4 = await modCache.respuestaDeLaNoche(20, 30, {}, async () => ({ sello: "S", universo: U, negociados: null })).catch(() => null);
       if (!r4 || r4.negociados || r4.universo.filas.length !== 2) F("3 · si la capa falla, el pedido de la noche se cae o la inventa");
       // «Convienen» no cuenta a los − Ajustar.
       if (po.cuantosConvienen(r1.universo) !== 2) F("3 · «convienen» cuenta algo más que los ✓ Comprar");
     }
-    if (!/return NextResponse\.json\(await respuestaDeLaNoche\(pie, plazo\)/.test(codigo("src/app/api/explorar/route.ts"))) F("3 · /api/explorar no manda la capa en el pedido de la noche");
-    if (!/return NextResponse\.json\(await respuestaDeLaNoche\(PIE_ABIERTO, PLAZO_ABIERTO, \{ sinCifras: true \}\)/.test(codigo("src/app/api/explorar/abierto/route.ts"))) F("3 · sin cuenta, el pedido de la noche no trae la capa sin cifras");
+    const deSello = cuerpo(codigo("src/lib/explorar/portal-cache.ts"), "const nocheDeSello = unstable_cache(");
+    if (!/capaDe\(pie, plazo\) \? leerCapa\(\)\.catch\(leerCapa\)\.catch\(\(\) => null\) : Promise\.resolve\(null\),/.test(deSello)) F("3 · la noche lee los − Ajustar a 25 años, o una falla de la capa tumba la noche (sin el reintento)");
+    if (!/return NextResponse\.json\(await respuestaDeLaNoche\(pie, plazo, \{ sello: sp\.get\("s"\) \}\)/.test(codigo("src/app/api/explorar/route.ts"))) F("3 · /api/explorar no manda la capa en el pedido de la noche (o sin el sello del pedido)");
+    if (!/return NextResponse\.json\(await respuestaDeLaNoche\(PIE_ABIERTO, PLAZO_ABIERTO, \{ sinCifras: true, sello: sp\.get\("s"\) \}\)/.test(codigo("src/app/api/explorar/abierto/route.ts"))) F("3 · sin cuenta, el pedido de la noche no trae la capa sin cifras (o sin el sello del pedido)");
     if (/negociab|negociad/i.test(codigo("src/lib/explorar/convienen-guardado.ts"))) F("3 · el número guardado de «convienen» mira a los negociados");
     // El navegador: la capa sale del mismo pedido y un solo lugar decide qué se ve.
     const asegurar = cuerpo(cliente, "const asegurar = useCallback(");
@@ -263,8 +275,12 @@ export async function runExplorarPasadaTier(): Promise<{ hard: number }> {
     }
     if (!/<Bienvenida n=\{inicial\.convienen \?\? inicial\.n \?\? total\} negociados=\{inicial\.negociadosGlobal\}/.test(cliente)) F("3 · la bienvenida no recibe los negociados de la vista global");
     // El número de «convienen» de la bienvenida lo cuenta la página sobre el universo de los ✓ Comprar, sin sumar la capa.
+    // ⚠ ACTA (03-nov-2026, «una sola caché, con una sola edad») · la página ya no cuenta en línea: cifrasDeLaNoche (cifras-noche.ts)
+    // cuenta todo de la misma noche, y la página la usa. Se exige que «convienen» salga del universo solo, y que la página lo tome de ahí.
+    const cifras = codigo("src/lib/explorar/cifras-noche.ts");
     const abierta = cuerpo(codigo("src/app/explorar/page.tsx"), "async function ExplorarAbierto(");
-    if (!/const convienen = cuantosConvienen\(noche\);/.test(abierta) || /\bconvienen\s*(?:=|:)[^,;}]*negociad/i.test(abierta)) F("3 · la página suma los negociados al número de «convienen»");
+    if (!/convienen: noche \? cuantosConvienen\(noche\.universo\) : null,/.test(cifras) || /\bconvienen\s*(?:=|:)[^,;}]*negociad/i.test(cifras + abierta)
+      || !/const \{ n, convienen, negociadosGlobal, nAjustar \} = cifrasDeLaNoche\(noche, filtros\);/.test(abierta)) F("3 · la página suma los negociados al número de «convienen»");
     // Filtros: «Descuento máximo para − Ajustar» con 5 % y 10 %, y el botón con las dos cuentas y sus chips.
     if (modFil) {
       const fil = (contarNegociados: () => number) => dibujar(createElement(modFil.HojaFiltros, { filtros: g, tasa: { tasa: 4.07 }, miBusqueda: null, contar: () => 6802, contarNegociados, asegurar: NADA, alAplicar: NADA, alCerrar: NADA, alPedirRegistro: null }));
@@ -520,6 +536,79 @@ export async function runExplorarPasadaTier(): Promise<{ hard: number }> {
     }
   }
 
+  // ══ §9 · UNA SOLA CACHÉ, CON UNA SOLA EDAD ═══════════════════
+  // Decisión de Fabrizio (03-nov-2026): las cifras de «convienen» y de los negociados que ven la página de /explorar, su API y la
+  // barra salen de una sola caché, con una sola edad; en una misma carga dicen lo mismo, y si la noche se actualiza mientras alguien
+  // navega, cambian todas juntas en la siguiente carga. Cazado en el preview: la página dijo 6.652 + 3.120 y la barra, con lo que
+  // trajo la API, 6.695 + 3.110 (dos entradas de caché que vencían por su cuenta, leídas en dos momentos). Se prueba con fuentes de
+  // mentira en las que la noche CAMBIA ENTRE la página y el pedido del mapa, y se cuentan las tres con el código de cada una.
+  {
+    const cif = cargar<typeof import("../../../src/lib/explorar/cifras-noche")>("src/lib/explorar/cifras-noche", F);
+    const sel = cargar<typeof import("../../../src/lib/explorar/sello-noche")>("src/lib/explorar/sello-noche", F);
+    if (modCache && cif && sel) {
+      const SECRETO = "secreto-solo-de-esta-prueba-0123", ahora = Date.now();
+      const A = sel.selloDeHora(ahora) - 1, B = A + 1;
+      const pinesDe = (k: number, p: string) => Array.from({ length: k }, (_, i) => ({ ...PIN, avisoId: `${p}${i}` }));
+      // Dos noches: la A (3 ✓ Comprar, 2 − Ajustar) y la B (4 y 1), como dos lecturas de la base con minutos de diferencia. En la A,
+      // la capa trae además uno que ya es ✓ Comprar («a0»): ni la página ni la barra lo cuentan como − Ajustar.
+      const NOCHES: Record<number, { universo: po.UniversoCompacto; negociados: cn.NegociadosCompactos }> = {
+        [A]: { universo: po.compactar(pinesDe(3, "a")), negociados: cn.compactarNegociados([NEG("an1", 4.2), NEG("an2", 8), NEG("a0", 5)]) },
+        [B]: { universo: po.compactar(pinesDe(4, "b")), negociados: cn.compactarNegociados([NEG("bn1", 3)]) },
+      };
+      let vigente = A;
+      const lecturas: number[] = [];
+      const fuentes: FuentesT = {
+        vigente: async () => vigente,
+        // Un sello sin noche de mentira se lee igual (vacía): así un sello que no debía leerse queda en `lecturas`, no en una excepción.
+        deSello: async (n) => { lecturas.push(n); return { n, ...(NOCHES[n] ?? { universo: po.compactar([]), negociados: null }) }; },
+        token: (n) => sel.tokenDeSello(n, SECRETO),
+        leerToken: (t) => sel.selloDeToken(t, ahora, SECRETO),
+      };
+      const leerNoche = (p: number, z: number, s: string | null) => modCache.nocheExplorar(p, z, s, fuentes);
+      const g = po.FILTROS_GLOBALES;
+      // LA BARRA: lo que el navegador cuenta con lo que le trajo la API (explorar-cliente: filtrar, negociadosVisibles, desgloseBarra).
+      const barra = (r: { universo: po.UniversoCompacto; negociados?: cn.NegociadosCompactos }) => {
+        const pines = po.descompactar(r.universo);
+        return po.desgloseBarra(po.filtrar(pines, g).length, cn.negociadosVisibles(cn.descompactarNegociados(r.negociados), g, new Set(pines.map((p) => p.avisoId))).length, g.negociar);
+      };
+      const carga = async (cambiaEntremedio: boolean) => {
+        const pagina = await leerNoche(20, 30, null);
+        const cp = cif.cifrasDeLaNoche(pagina, g);
+        if (cambiaEntremedio) vigente = B;
+        const api = await modCache.respuestaDeLaNoche(20, 30, { sello: pagina.sello }, leerNoche);
+        return { pagina, cp, api, b: barra(api) };
+      };
+      try {
+        const c1 = await carga(true);
+        const iguales = (c: typeof c1) => c.cp.n === c.b.comprar?.n && c.cp.nAjustar === c.b.ajustar?.n && c.cp.convienen === po.cuantosConvienen(c.api.universo) && c.cp.negociadosGlobal === c.b.ajustar?.n && c.api.sello === c.pagina.sello;
+        if (!iguales(c1) || c1.cp.n !== 3 || c1.cp.nAjustar !== 2) F(`9 · en la misma carga la página, la API y la barra no dicen lo mismo cuando la noche cambia entremedio (página ${c1.cp.n} + ${c1.cp.nAjustar}, barra ${c1.b.comprar?.n} + ${c1.b.ajustar?.n})`);
+        if (lecturas.join() !== `${A},${A}`) F(`9 · la página o la API leyeron la noche en más de una lectura, o de otro sello (${lecturas.join()})`);
+        // La siguiente carga: el sello nuevo, y las tres cambian juntas.
+        const c2 = await carga(false);
+        if (!iguales(c2) || c2.cp.n !== 4 || c2.cp.nAjustar !== 1) F(`9 · en la carga siguiente las tres no cambian juntas a la noche nueva (página ${c2.cp.n} + ${c2.cp.nAjustar}, barra ${c2.b.comprar?.n} + ${c2.b.ajustar?.n})`);
+        // Un sello inventado, firmado con otro secreto o de hace más de un día no se lee: se sirve el vigente.
+        lecturas.length = 0;
+        for (const t of ["123.AAAAAAAAAAAA", sel.tokenDeSello(A, "otro-secreto-que-no-es-el-0123"), sel.tokenDeSello(A - 200, SECRETO)]) await modCache.respuestaDeLaNoche(20, 30, { sello: t }, leerNoche);
+        if (lecturas.some((n) => n !== B)) F(`9 · la API lee la noche de un sello inventado, ajeno o vencido (${lecturas.join()})`);
+      } catch (e) {
+        F(`9 · la prueba de la misma carga explotó: ${(e as Error).message}`);
+      }
+    }
+    // Lo que no se prueba con fuentes de mentira: una sola entrada por sello, y el sello que viaja en cada pedido.
+    const cache = codigo("src/lib/explorar/portal-cache.ts");
+    const llaves = Array.from(cache.matchAll(/\["(explorar-[\w-]+)"\]/g)).map((m) => m[1]).sort().join();
+    if (llaves !== "explorar-noche-v2,explorar-sello-v1,explorar-tasa-motor-v2") F(`9 · la noche no vive en una sola entrada por sello (llaves de caché: ${llaves})`);
+    if (!/async \(n: number, pie: number, plazo: number\): Promise<NocheGuardada> =>/.test(cache) || !/\{ revalidate: VIDA_SELLO_S \* 2 \}/.test(cache)) F("9 · la entrada de la noche no es por sello, o se vuelve a leer mientras su sello vale");
+    const pag = codigo("src/app/explorar/page.tsx");
+    if ((pag.match(/nocheExplorar\(/g) ?? []).length !== 2 || /universoDeLaNoche\w*\(\w|negociabl/i.test(pag.replace(/universoDeLaNoche\(filtros\)/g, "")) || (pag.match(/sello: noche\?\.sello \?\? null/g) ?? []).length !== 2) F("9 · la página no lee la noche una sola vez por rama, o no le pasa su sello al navegador");
+    const cli9 = codigo("src/app/explorar/explorar-cliente.tsx");
+    const aseg = cuerpo(cli9, "const asegurar = useCallback(");
+    const asegN = cuerpo(cli9, "const asegurarNegociados = useCallback(");
+    if (!/const selloRef = useRef\(inicial\.sello\);/.test(cli9) || !/await fetch\(conSello\(base, selloRef\.current\)/.test(aseg) || !/fetch\(conSello\([^;]*selloRef\.current\)/.test(asegN) || !/if \(d\.sello\) selloRef\.current = d\.sello;/.test(aseg)) F("9 · el navegador no manda el sello de la página en el pedido de la noche o de la capa");
+    if (!/nocheExplorar\(pie, 30, sp\.get\("s"\)\)/.test(codigo("src/app/api/explorar/negociar/route.ts")) || !/nocheExplorar\(PIE_ABIERTO, PLAZO_ABIERTO, new URL\(request\.url\)\.searchParams\.get\("s"\)\)/.test(codigo("src/app/api/explorar/abierto/negociar/route.ts"))) F("9 · la capa aparte no sale de la noche del sello del pedido");
+    if (/universoDeLaNocheCacheado|negociablesCacheados/.test(archivosDe("src").map((f) => codigo(f)).join("\n"))) F("9 · alguien sigue leyendo el universo o la capa por fuera de la noche con sello");
+  }
+
   for (const m of fallas) console.log(`  ✗ ${m}`);
   console.log(fallas.length === 0 ? "  ✓ EXPLORAR-PASADA: todo en orden" : `  ${fallas.length} falla(s) dura(s)`);
   return { hard: fallas.length };
@@ -570,6 +659,18 @@ if (require.main === module) {
 // vieja, E3 el chip sin su clase, E10 sin el interruptor, E4 sin los tokens del chip, E5 el chip de otro veredicto, E6 la fila
 // vieja de abajo, E7 sin «Ver lista», E8 una clase nueva en el botón del cliente que el esqueleto no sigue; y EXPLORAR-PORTAL §12
 // (reescrito con su acta) E2b la ⓘ vieja, E3b sin el chip.
+// §9 Y LOS PREDICADOS QUE LEÍAN LAS DOS CACHÉS (mismo día, pedido de Fabrizio: «una sola caché, con una sola edad»;
+// `mutar-sello.cjs`): 40 de 40 en ROJO, cada una por su invariante y en su tier. Reemplazan a P26-P31 y P40 de arriba, que
+// mutaban la caché vieja. EXPLORAR-PASADA §3: S1 la noche sin los − Ajustar, S2 sin cuenta con cifras, S3 y S4 la capa a 25
+// años (en la respuesta y en la lectura), S5 sin el reintento de la capa, S6 y S7 las rutas sin el sello, S8 «convienen» que
+// suma la capa. §9: S9 la API que ignora el sello del pedido, S10 un sello sin firma, S11 uno sin vencer, S12 otra caché
+// aparte, S13 la entrada que se relee cada diez minutos, S14 la página sin pasar su sello, S15-S17 el navegador sin el sello
+// (en la noche, en la capa, sin tomar el de la respuesta), S18 la capa aparte sin el sello, S19 alguien que lee el universo
+// por fuera, S20 la página que lee dos veces, S21 la barra que cuenta como − Ajustar a un ✓ Comprar. Y en sus tiers, cada
+// predicado reescrito con su acta: EXPLORAR §10 (S22), EXPLORAR-PORTAL §1 y §7 (S23-S28), PUERTA-E §2 (S29-S30),
+// CONVIENEN-UNO §1 y §3 (S31-S36), EXPLORAR-NEGOCIAR §9 (S37), COMPARTIR-DEPTO §1 (S38-S40; el de con cuenta ya no mide por
+// vecindad). La primera corrida dio 39 de 40: S11 salía roja por una excepción del fixture (la fuente de mentira no tenía la
+// noche del sello vencido) y no por su invariante; ahora la fuente lee igual y el sello queda en `lecturas`.
 // FUERA DE ESTE GOAL (respuesta de Fabrizio, 03-nov-2026): «el post del día» es una imagen para redes que todavía no existe; cuando
 // exista, sus pines salen de colores-pin.ts.
 // ─────────────────────────────────────────────────────────────────────────────

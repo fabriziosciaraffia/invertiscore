@@ -307,8 +307,10 @@ export async function runExplorarTier(): Promise<{ hard: number }> {
   // ⚠ ACTA (28-oct-2026, Explorar como portal) · la página solo cuenta la combinación de la noche (de la caché); una nueva la pide
   // el navegador enseguida, de a una comuna, y el número dice «Calculando… N de M comunas» mientras tanto. Pie y plazo viven en la
   // hoja de filtros, con las listas enteras.
+  // ⚠ ACTA (03-nov-2026, «una sola caché, con una sola edad») · la noche se lee con nocheExplorar (el universo y la capa juntos, por
+  // sello); la regla es la misma: solo si la combinación es de la noche, y nada calculado en el SSR.
   const pagX = codigo("src/app/explorar/page.tsx");
-  if (!/const noche = universoDeLaNoche\(filtros\);/.test(pagX) || !/noche \? universoDeLaNocheCacheado\(filtros\.pie, filtros\.plazo\)\.catch\(\(\) => null\) : Promise\.resolve\(null\)/.test(pagX) || /universoCalculado|pinesCalculados/.test(pagX)) F("10 · la página calcula una combinación nueva en el SSR (tardaría segundos antes del primer byte)");
+  if (!/universoDeLaNoche\(filtros\) \? nocheExplorar\(filtros\.pie, filtros\.plazo\)\.catch\(\(\) => null\) : Promise\.resolve\(null\)/.test(pagX) || /universoCalculado|pinesCalculados/.test(pagX)) F("10 · la página calcula una combinación nueva en el SSR (tardaría segundos antes del primer byte)");
   if (!/if \(!universoDeLaNoche\(inicial\.filtros\)\) void asegurar\(inicial\.filtros\);/.test(cli)) F("10 · con una combinación nueva el navegador no pide los pines enseguida");
   // ⚠ ACTA (30-oct-2026, goal «la tasa editable en Filtros») · con una tasa elegida dice «Calculando con tu tasa…»; sin ella, como siempre.
   if (!/\(conTasa \? PORTAL_COPY\.calculandoTasaComunas : PORTAL_COPY\.calculandoComunas\)\(progreso\.hechas, progreso\.total\)/.test(cli)) F("10 · el mapa no dice «Calculando…» mientras calcula");

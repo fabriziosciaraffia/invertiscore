@@ -93,7 +93,8 @@ export async function runConvienenUnoTier(): Promise<{ hard: number }> {
   const abierta = pag.slice(pag.indexOf("async function ExplorarAbierto"), pag.indexOf("async function ExplorarConDatos"));
   const conCuenta = pag.slice(pag.indexOf("async function ExplorarConDatos"));
   // ⚠ ACTA (03-nov-2026) · `inicial` lleva además los − Ajustar (nAjustar; sin cuenta, negociadosGlobal para la bienvenida).
-  if (!/tasaDelMotor\(\),/.test(abierta) || !/tasaDelMotor\(\),/.test(conCuenta) || !/inicial=\{\{ filtros, orden, n, cuenta: null, tasa, convienen, negociadosGlobal, nAjustar \}\}/.test(abierta) || !/inicial=\{\{ filtros, orden, n, cuenta, tasa, convienen: null, negociadosGlobal: null, nAjustar \}\}/.test(conCuenta))
+  // ⚠ ACTA (03-nov-2026, «una sola caché, con una sola edad») · y el sello de la noche que contó esas cifras (EXPLORAR-PASADA §9).
+  if (!/tasaDelMotor\(\),/.test(abierta) || !/tasaDelMotor\(\),/.test(conCuenta) || !/inicial=\{\{ filtros, orden, n, cuenta: null, tasa, convienen, negociadosGlobal, nAjustar, sello: noche\?\.sello \?\? null \}\}/.test(abierta) || !/inicial=\{\{ filtros, orden, n, cuenta, tasa, convienen: null, negociadosGlobal: null, nAjustar, sello: noche\?\.sello \?\? null \}\}/.test(conCuenta))
     F("1 · la página no baja la tasa del motor con y sin cuenta");
   // ⚠ ACTA (30-oct-2026, goal «la tasa editable en Filtros») · la hoja recibe además la tasa elegida (`elegida`).
   if (!/\{calculo && <HojaCalculo tasa=\{inicial\.tasa\} elegida=\{filtros\.tasa\} sinCuenta=\{sinCuenta\} alCerrar=\{\(\) => setCalculo\(false\)\} \/>\}/.test(cli) || !/<HojaFiltros\s+filtros=\{filtros\}\s+tasa=\{inicial\.tasa\}/.test(cli)) F("1 · la hoja o Filtros no reciben la tasa que bajó la página");
@@ -201,20 +202,27 @@ export async function runConvienenUnoTier(): Promise<{ hard: number }> {
   // sola llamada a universoDeLaNocheCacheado en ExplorarAbierto —la regla—, que antes solo se seguía de la forma exacta.
   // ⚠ ACTA (03-nov-2026, goal «la pasada real de /explorar») · el Promise.all lee además la capa de los − Ajustar (`capa`, para
   // la línea aparte de la bienvenida): `noche` sigue siendo la primera lectura y la única del universo.
-  if (!/const \[noche(?:, \w+)*\] = await Promise\.all\(\[\s*universoDeLaNocheCacheado\(PIE_ABIERTO, PLAZO_ABIERTO\)\.catch\(\(\) => null\),/.test(abierta)
-    || (abierta.match(/universoDeLaNocheCacheado\(/g) ?? []).length !== 1
-    || !/const universo = universoDeLaNoche\(filtros\) \? noche : null;/.test(abierta) || !/const convienen = cuantosConvienen\(noche\);/.test(abierta)
+  // ⚠ ACTA (03-nov-2026, «una sola caché, con una sola edad») · la noche se lee con nocheExplorar (el universo y la capa juntos, por
+  // sello) y la cuenta cifrasDeLaNoche (cifras-noche.ts): «convienen» es cuantosConvienen del universo de esa noche, y la del mapa
+  // solo si los filtros son de la noche. La regla de una sola lectura sigue: UNA llamada, la primera del Promise.all.
+  const cifrasSrc = codigo("src/lib/explorar/cifras-noche.ts");
+  if (!/const \[noche(?:, \w+)*\] = await Promise\.all\(\[\s*nocheExplorar\(PIE_ABIERTO, PLAZO_ABIERTO\)\.catch\(\(\) => null\),/.test(abierta)
+    || (abierta.match(/nocheExplorar\(/g) ?? []).length !== 1
+    || !/const deLaNoche = !!noche && universoDeLaNoche\(filtros\);/.test(cifrasSrc) || !/convienen: noche \? cuantosConvienen\(noche\.universo\) : null,/.test(cifrasSrc)
+    || !/const \{ n, convienen, negociadosGlobal, nAjustar \} = cifrasDeLaNoche\(noche, filtros\);/.test(abierta)
     || !/<Bienvenida n=\{inicial\.convienen \?\? inicial\.n \?\? total\}/.test(cli)) F("3 · la bienvenida de /explorar no dice el número de todo el sitio");
-  if ((abierta.match(/universoDeLaNocheCacheado\(/g) ?? []).length !== 1) F("3 · /explorar sin cuenta lee el universo más de una vez");
+  if ((abierta.match(/nocheExplorar\(|universoDeLaNoche\w+\(|negociabl\w*\(/g) ?? []).length !== 1) F("3 · /explorar sin cuenta lee el universo más de una vez");
   // Nadie más lee el «convienen» del resumen de la noche ni arma un total propio (los correos tampoco).
   const resumenConvienen = archivos("src").filter((f) => f !== "src/lib/deptos/servidor.ts").filter((f) => {
     const s = codigo(f);
     return /resumenGuardado\([^)]*\)\??\.convienen|resumenDeLaNoche\([^)]*\)\)?\??\.convienen|deptos_resumen_noche/.test(s);
   });
   if (resumenConvienen.length) F(`3 · leen el «convienen» del resumen de la noche: ${resumenConvienen.join(", ")}`);
-  const correos = archivos("src/lib/email").concat(archivos("src/lib/guia")).filter((f) => /convienenHoy|resumenDeLaNoche|universoDeLaNocheCacheado|deptos_conteo/.test(codigo(f)));
+  // ⚠ ACTA (03-nov-2026, «una sola caché, con una sola edad») · la lectura de la noche ahora es nocheExplorar (portal-cache.ts):
+  // los dos barridos la buscan a ella además del nombre viejo, y la cuenta de la página vive en cifras-noche.ts.
+  const correos = archivos("src/lib/email").concat(archivos("src/lib/guia")).filter((f) => /convienenHoy|resumenDeLaNoche|universoDeLaNocheCacheado|nocheExplorar|deptos_conteo/.test(codigo(f)));
   if (correos.length) F(`3 · un correo arma su propio total de «convienen»: ${correos.join(", ")}`);
-  const otrosConteos = archivos("src").filter((f) => !/src\/lib\/explorar\/portal(-cache)?\.ts$/.test(f) && /universoDeLaNocheCacheado\([^)]*\)\s*\.then\(\(u\) => [^\n]*\.length/.test(codigo(f)));
+  const otrosConteos = archivos("src").filter((f) => !/src\/lib\/explorar\/(portal(-cache)?|cifras-noche)\.ts$/.test(f) && /(?:universoDeLaNocheCacheado|nocheExplorar)\([^)]*\)\s*\.then\(\((?:u|n|noche)\) => [^\n]*\.length/.test(codigo(f)));
   if (otrosConteos.length) F(`3 · cuentan el universo sin cuantosConvienen: ${otrosConteos.join(", ")}`);
 
   if (fallas.length) {

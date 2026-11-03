@@ -425,7 +425,9 @@ export async function runExplorarNegociarTier(): Promise<{ hard: number }> {
     const abierto = cn.sinCifrasNegociados(cn.compactarNegociados([NEG as cn.PinNegociado, { ...NEG, avisoId: "n2", neg: { ...NEG.neg, d: 7.5 } } as cn.PinNegociado]));
     const [a1, a2] = abierto.filas;
     if (a1[14] !== null || a1[16] !== null || a1[9] !== null || a1[10] !== null || a1[13] !== 5 || a2[13] !== 10 || a1[15] !== 71) F(`9 · sin cuenta viajan cifras del negociado (o el descuento no viaja como su tope): ${JSON.stringify(a1)}`);
-    if (!/sinCifrasNegociados\(await negociablesCacheados\(PIE_ABIERTO\)\)/.test(codigo("src/app/api/explorar/abierto/negociar/route.ts"))) F("9 · la ruta abierta de la capa no quita las cifras");
+    // ⚠ ACTA (03-nov-2026, «una sola caché, con una sola edad») · la capa aparte sale de la noche del sello del pedido
+    // (nocheExplorar, EXPLORAR-PASADA §9); lo que se exige acá es lo mismo: que salga sin cifras.
+    if (!/negociados: sinCifrasNegociados\(noche\.negociados\)/.test(codigo("src/app/api/explorar/abierto/negociar/route.ts"))) F("9 · la ruta abierta de la capa no quita las cifras");
     const pinAbierto = cn.descompactarNegociados(abierto)[0];
     const hAbierta = tarjeta([pinAbierto], "n1", true);
     const ta = texto(hAbierta);

@@ -124,7 +124,12 @@ export interface InicialPortal {
   negociadosGlobal: number | null;
   /** Los − Ajustar con estos filtros, contados por el servidor para el primer pintado de la barra (null: hay que esperar la capa). */
   nAjustar: number | null;
+  /** El sello de la noche que contó estas cifras (03-nov-2026, portal-cache.ts › nocheExplorar); null si no se leyó la noche. */
+  sello: string | null;
 }
+
+/** Un pedido de la noche o de la capa, con el sello de la noche que contó la página (la API lee esa misma). */
+const conSello = (url: string, sello: string | null): string => (sello ? `${url}${url.includes("?") ? "&" : "?"}s=${encodeURIComponent(sello)}` : url);
 
 /** EL ENLACE COMPARTIDO con que se entró (page.tsx › compartidoDe): el aviso; «despublicado» si el servidor sabe que ya no
  *  está publicado (si da Comprar lo dice el universo que se carga); y el depto, para la tarjeta de «ya no está». El de un
@@ -278,6 +283,10 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
   const negociadosRef = useRef(negociados);
   negociadosRef.current = negociados;
   const enCursoNeg = useRef(new Set<number>());
+  // EL SELLO DE LA NOCHE (03-nov-2026, portal-cache.ts › nocheExplorar): el de la noche que contó la página. Va en cada pedido de
+  // la noche y de la capa, así la API trae esa misma aunque entretanto haya otra: en esta carga, la página, el mapa y la barra
+  // dicen lo mismo. Si la página no lo trajo, el del primer pedido que conteste.
+  const selloRef = useRef(inicial.sello);
 
   // ── el universo ──
   const universoPara = useCallback((f: FiltrosPortal, us: Record<string, Universo>, parcial = false): PinMapa[] | null => {
@@ -299,9 +308,10 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
     if (negociadosRef.current[pie] || enCursoNeg.current.has(pie)) return;
     enCursoNeg.current.add(pie);
     try {
-      const res = await fetch(sinCuentaRef.current ? "/api/explorar/abierto/negociar" : `/api/explorar/negociar?p=${pie}`, { cache: "default" });
+      const res = await fetch(conSello(sinCuentaRef.current ? "/api/explorar/abierto/negociar" : `/api/explorar/negociar?p=${pie}`, selloRef.current), { cache: "default" });
       if (!res.ok) throw new Error(String(res.status));
-      const d = (await res.json()) as { negociados: NegociadosCompactos };
+      const d = (await res.json()) as { negociados: NegociadosCompactos; sello?: string | null };
+      if (d.sello) selloRef.current = d.sello;
       if (vivo.current) setNegociados((ns) => ({ ...ns, [pie]: descompactarNegociados(d.negociados) }));
     } catch {
       // Sin la capa, el mapa sigue con los que convienen: la capa es aparte.
@@ -331,9 +341,10 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
         if (conCapa) enCursoNeg.current.add(pieNeg);
         let trajoCapa = false;
         try {
-          const res = await fetch(base, { cache: "default" });
+          const res = await fetch(conSello(base, selloRef.current), { cache: "default" });
           if (!res.ok) throw new Error(String(res.status));
           const d = (await res.json()) as RespuestaUniverso;
+          if (d.sello) selloRef.current = d.sello;
           if (vivo.current) {
             setUniversos((us) => ({ ...us, [clave]: { comunas: "todas", pines: descompactar(d.universo) } }));
             if (conCapa && d.negociados) {

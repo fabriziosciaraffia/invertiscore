@@ -24,7 +24,7 @@ import { esEstudio } from "@/lib/avisos/estudio";
 import { VENTANA_SEMANAL_DIAS } from "@/lib/guia/semanal";
 import { PIE_POR_DEFECTO, PLAZO_POR_DEFECTO } from "@/lib/deptos/estandar";
 import { descompactar, type ModalidadPortal, type PinMapa } from "./portal";
-import { universoDeLaNocheCacheado } from "./portal-cache";
+import { nocheExplorar } from "./portal-cache";
 import { universoCalculado } from "./portal-servidor";
 import { deptoDePin, type DeptoCompartido, type FichaCompartida, type NegociadoCompartido } from "./compartir";
 import { esAvisoId } from "./enlace-compartido";
@@ -37,7 +37,7 @@ const RUTA = "lib/explorar/compartir";
 export type UniversoEstandar = (modalidad: ModalidadPortal, comuna: string) => Promise<PinMapa[]>;
 const universoReal: UniversoEstandar = async (modalidad, comuna) =>
   modalidad === "ltr"
-    ? descompactar(await universoDeLaNocheCacheado(PIE_POR_DEFECTO, PLAZO_POR_DEFECTO))
+    ? descompactar((await nocheExplorar(PIE_POR_DEFECTO, PLAZO_POR_DEFECTO)).universo)
     : universoCalculado(createServiceClient(), { comunas: [comuna], modalidad: "str", pie: PIE_POR_DEFECTO, plazo: PLAZO_POR_DEFECTO });
 
 type FilaAviso = { id: string; comuna: string | null; lat: number | null; lng: number | null; superficie_m2: number | null; dormitorios: number | null; banos: number | null; condicion: string | null; is_active: boolean | null; type: string | null; scraped_at: string | null; titulo: string | null };

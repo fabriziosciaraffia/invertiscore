@@ -11,7 +11,7 @@ import { respuestaUniverso, universoCalculado } from "@/lib/explorar/portal-serv
 import { respuestaDeLaNoche } from "@/lib/explorar/portal-cache";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// GET /api/explorar?m=ltr&p=20&z=25[&c=Ñuñoa] (28-oct-2026, Explorar como portal): el universo del mapa para una modalidad,
+// GET /api/explorar?m=ltr&p=20&z=25[&c=Ñuñoa][&s=sello] (28-oct-2026, Explorar como portal): el universo del mapa para una modalidad,
 // un pie y un plazo, compacto (portal.ts › UniversoCompacto). Los filtros de comuna, tipología, precio, flujo, fecha y zona
 // se aplican en el navegador, al instante.
 //   · Arriendo tradicional con un pie y un plazo de la noche: TODO Gran Santiago, de la caché de diez minutos (es el mismo
@@ -44,7 +44,8 @@ export async function GET(request: Request) {
   try {
     if (esDeLaNoche(q)) {
       // La misma forma que lo calculado (RespuestaUniverso): el universo va en `universo`, con su propia tabla de comunas.
-      return NextResponse.json(await respuestaDeLaNoche(pie, plazo), { headers: { "Cache-Control": "private, max-age=300" } });
+      // La noche del sello de la página que pide (`s`), la misma que contó el primer pintado (portal-cache.ts › nocheExplorar).
+      return NextResponse.json(await respuestaDeLaNoche(pie, plazo, { sello: sp.get("s") }), { headers: { "Cache-Control": "private, max-age=300" } });
     }
     const comunas = Array.from(new Set((sp.get("c") ?? "").split(",").map((x) => x.trim()).filter((c) => COMUNAS_OK.has(c))));
     if (comunas.length === 0 || comunas.length > MAX_COMUNAS_POR_PEDIDO) return NextResponse.json({ error: "comunas" }, { status: 400 });

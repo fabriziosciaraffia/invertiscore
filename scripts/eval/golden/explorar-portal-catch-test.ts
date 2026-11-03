@@ -136,8 +136,10 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
   // número de todo el sitio para la bienvenida (tier CONVIENEN-UNO).
   // ⚠ ACTA (03-nov-2026, goal «la pasada real de /explorar») · `inicial` lleva además los − Ajustar con estos filtros (`nAjustar`,
   // para el desglose del primer pintado) y, sin cuenta, los de la vista global para la bienvenida (`negociadosGlobal`).
-  if (!/const \{ filtros, orden \} = portalDeUrl\(sp\);/.test(conCuentaPag) || !/inicial=\{\{ filtros, orden, n, cuenta, tasa, convienen: null, negociadosGlobal: null, nAjustar \}\}/.test(conCuentaPag) || asignaFiltros.length !== 0) F("1 · la página no abre con portalDeUrl(sp) tal cual (o reasigna los filtros)");
-  if (!/const filtros = filtrosAbiertos\(base\.filtros\);/.test(abiertaPag) || !/inicial=\{\{ filtros, orden, n, cuenta: null, tasa, convienen, negociadosGlobal, nAjustar \}\}/.test(abiertaPag)) F("1 · sin cuenta la página no abre con el financiamiento por defecto (o le pasa una cuenta)");
+  // ⚠ ACTA (03-nov-2026, «una sola caché, con una sola edad») · y el sello de la noche que contó esas cifras (`sello`), para que la
+  // API le traiga al navegador esa misma (EXPLORAR-PASADA §9).
+  if (!/const \{ filtros, orden \} = portalDeUrl\(sp\);/.test(conCuentaPag) || !/inicial=\{\{ filtros, orden, n, cuenta, tasa, convienen: null, negociadosGlobal: null, nAjustar, sello: noche\?\.sello \?\? null \}\}/.test(conCuentaPag) || asignaFiltros.length !== 0) F("1 · la página no abre con portalDeUrl(sp) tal cual (o reasigna los filtros)");
+  if (!/const filtros = filtrosAbiertos\(base\.filtros\);/.test(abiertaPag) || !/inicial=\{\{ filtros, orden, n, cuenta: null, tasa, convienen, negociadosGlobal, nAjustar, sello: noche\?\.sello \?\? null \}\}/.test(abiertaPag)) F("1 · sin cuenta la página no abre con el financiamiento por defecto (o le pasa una cuenta)");
   if (/filtrosDeLaCuenta|filtrosDePerfil|leerPerfilBusqueda|miBusqueda/.test(pag)) F("1 · la página lee el perfil para abrir");
   if (!/const \[filtros, setFiltros\] = useState\(inicial\.filtros\);/.test(cli)) F("1 · el cliente no arranca con los filtros que mandó el servidor");
   if (modCli) {
@@ -451,14 +453,18 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
   if (!po.universoDeLaNoche({ modalidad: "ltr", pie: 30, plazo: 25 }) || po.universoDeLaNoche({ modalidad: "str", pie: 20, plazo: 25 }) || po.universoDeLaNoche({ modalidad: "ltr", pie: 15, plazo: 25 })) F("7 · qué sale de la noche y qué se calcula");
   // ⚠ ACTA (03-nov-2026, goal «la pasada real de /explorar») · la noche sale de respuestaDeLaNoche (portal-cache.ts), que lee el
   // universo de la misma caché y, con capa, los − Ajustar en el mismo pedido (EXPLORAR-PASADA §3).
+  // ⚠ ACTA (03-nov-2026, «una sola caché, con una sola edad») · respuestaDeLaNoche lee la noche con nocheExplorar (el universo y la
+  // capa juntos, en una entrada por sello: EXPLORAR-PASADA §9), con el sello que trae el pedido. La caché ya no es «diez minutos por
+  // entrada» sino un sello de diez minutos (sello-noche.ts) y su entrada, que no cambia mientras el sello vale.
   const cacheSrc = codigo("src/lib/explorar/portal-cache.ts");
-  if (!/if \(esDeLaNoche\(q\)\) \{\s*return NextResponse\.json\(await respuestaDeLaNoche\(pie, plazo\)/.test(ruta) || !/= \{ universo: universoDeLaNocheCacheado, capa: negociablesCacheados \}/.test(cacheSrc) || !/comunas\.length === 0 \|\| comunas\.length > MAX_COMUNAS_POR_PEDIDO/.test(ruta)) F("7 · la API no sirve la noche de la caché, o calcula sin acotar por comuna");
-  if (!/\["explorar-mapa-v1"\],\s*\{ revalidate: 600 \}/.test(codigo("src/lib/explorar/portal-cache.ts"))) F("7 · el universo de la noche no queda en caché diez minutos");
+  if (!/if \(esDeLaNoche\(q\)\) \{\s*return NextResponse\.json\(await respuestaDeLaNoche\(pie, plazo, \{ sello: sp\.get\("s"\) \}\)/.test(ruta) || !/= \(p, z, s\) => nocheExplorar\(p, z, s\),/.test(cacheSrc) || !/comunas\.length === 0 \|\| comunas\.length > MAX_COMUNAS_POR_PEDIDO/.test(ruta)) F("7 · la API no sirve la noche de la caché, o calcula sin acotar por comuna");
+  if (!/\["explorar-noche-v2"\],/.test(cacheSrc) || !/export const VENTANA_SELLO_S = 600;/.test(codigo("src/lib/explorar/sello-noche.ts"))) F("7 · el universo de la noche no queda en caché diez minutos");
   // LA FORMA DE LA RESPUESTA (28-oct-2026, cazado en el QA: la noche esparcía el universo en la raíz y pisaba su tabla de
   // comunas; el navegador leía `universo` y el mapa decía «0 convienen»). Las dos ramas arman RespuestaUniverso y el
   // navegador lee eso; y lo compacto ida y vuelta por JSON da los mismos pines.
   // ⚠ ACTA (03-nov-2026) · la rama de la noche la arma respuestaDeLaNoche: `universo` con su tabla y, aparte, `negociados`.
-  if (!/Promise<RespuestaUniverso> \{/.test(cacheSrc) || !/clave: claveUniverso\(q\), comunas: \[\], universo: o\.sinCifras \? universoSinCifras\(u\) : u,/.test(cacheSrc) || /\.\.\.u[,}]/.test(ruta + cacheSrc) || (cli.match(/\(await res\.json\(\)\) as RespuestaUniverso;/g) ?? []).length !== 2 || (cli.match(/descompactar\(d\.universo\)/g) ?? []).length !== 2) F("7 · la respuesta del universo no tiene la forma que lee el navegador (`universo` con su tabla de comunas)");
+  // ⚠ ACTA (03-nov-2026, «una sola caché») · el universo sale de la noche leída (`noche.universo`).
+  if (!/Promise<RespuestaUniverso> \{/.test(cacheSrc) || !/clave: claveUniverso\(q\), comunas: \[\], universo: o\.sinCifras \? universoSinCifras\(noche\.universo\) : noche\.universo,/.test(cacheSrc) || /\.\.\.u[,}]/.test(ruta + cacheSrc) || (cli.match(/\(await res\.json\(\)\) as RespuestaUniverso;/g) ?? []).length !== 2 || (cli.match(/descompactar\(d\.universo\)/g) ?? []).length !== 2) F("7 · la respuesta del universo no tiene la forma que lee el navegador (`universo` con su tabla de comunas)");
   try {
     const srv = require(join(RAIZ, "src/lib/explorar/portal-servidor")) as typeof import("../../../src/lib/explorar/portal-servidor");
     const ida = JSON.parse(JSON.stringify(srv.respuestaUniverso([PIN, { ...PIN, avisoId: "z9", comuna: "Ñuñoa" }], { modalidad: "ltr", pie: 15, plazo: 20, comunas: ["Providencia"] })));

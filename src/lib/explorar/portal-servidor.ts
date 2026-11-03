@@ -162,7 +162,8 @@ export async function universoCalculado(
  *  combinación de la noche que tiene capa (pie 20 % o 30 %, 30 años, la tasa del motor), los − AJUSTAR que llegan a Comprar
  *  negociando, en el MISMO PEDIDO (03-nov-2026: se ven de entrada); sin cuenta, sin cifras. Si la capa no se pudo leer, falta
  *  `negociados` y el mapa sigue con los ✓ Comprar. */
-export interface RespuestaUniverso { clave: string; comunas: string[]; universo: UniversoCompacto; negociados?: NegociadosCompactos; calculados: number; ms: number }
+/** `sello` (03-nov-2026): el de la noche que se leyó (portal-cache.ts › nocheExplorar); solo en la noche. */
+export interface RespuestaUniverso { clave: string; comunas: string[]; universo: UniversoCompacto; negociados?: NegociadosCompactos; sello?: string | null; calculados: number; ms: number }
 export function respuestaUniverso(pines: PinMapa[], q: { modalidad: ModalidadPortal; pie: number; plazo: number; tasa?: number | null; comunas: string[] }, cuenta = { calculados: 0, ms: 0 }): RespuestaUniverso {
   return { clave: claveUniverso(q), comunas: q.comunas, universo: compactar(pines), calculados: cuenta.calculados, ms: cuenta.ms };
 }

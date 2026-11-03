@@ -29,7 +29,8 @@ export async function GET(request: Request) {
   const q = { modalidad, pie: PIE_ABIERTO, plazo: PLAZO_ABIERTO } as const;
   try {
     if (modalidad === "ltr") {
-      return NextResponse.json(await respuestaDeLaNoche(PIE_ABIERTO, PLAZO_ABIERTO, { sinCifras: true }), { headers: { "Cache-Control": CACHE } });
+      // La noche del sello de la página que pide (`s`): el CDN la guarda por URL, así que cada sello es una entrada aparte.
+      return NextResponse.json(await respuestaDeLaNoche(PIE_ABIERTO, PLAZO_ABIERTO, { sinCifras: true, sello: sp.get("s") }), { headers: { "Cache-Control": CACHE } });
     }
     const comuna = (sp.get("c") ?? "").trim();
     if (!COMUNAS_OK.has(comuna)) return NextResponse.json({ error: "comunas" }, { status: 400 });

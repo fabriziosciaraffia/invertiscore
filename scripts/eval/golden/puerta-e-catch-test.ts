@@ -100,7 +100,9 @@ export async function runPuertaETier(): Promise<{ hard: number }> {
     // ⚠ ACTA (03-nov-2026, goal «la pasada real de /explorar») · la rama de la noche la arma respuestaDeLaNoche con `sinCifras`
     // (el universo y los − Ajustar sin cifras, EXPLORAR-PASADA §3); la de renta corta sigue con su sinCifras.
     const cacheSrc = codigo("src/lib/explorar/portal-cache.ts");
-    if ((ruta.match(/sinCifras\(/g) ?? []).length !== 1 || !/respuestaDeLaNoche\(PIE_ABIERTO, PLAZO_ABIERTO, \{ sinCifras: true \}\)/.test(ruta) || !/universo: o\.sinCifras \? universoSinCifras\(u\) : u,/.test(cacheSrc) || /createClient\(\)|auth\.getUser/.test(ruta) || !/const q = \{ modalidad, pie: PIE_ABIERTO, plazo: PLAZO_ABIERTO \} as const;/.test(ruta)) F("2 · la ruta sin cuenta no quita las cifras en las dos ramas (o mira la sesión, o deja elegir pie y plazo)");
+    // ⚠ ACTA (03-nov-2026, «una sola caché, con una sola edad») · la noche lleva además el sello del pedido, y el universo sale de la
+    // noche leída (`noche.universo`, EXPLORAR-PASADA §9); quitar las cifras es lo mismo.
+    if ((ruta.match(/sinCifras\(/g) ?? []).length !== 1 || !/respuestaDeLaNoche\(PIE_ABIERTO, PLAZO_ABIERTO, \{ sinCifras: true, sello: sp\.get\("s"\) \}\)/.test(ruta) || !/universo: o\.sinCifras \? universoSinCifras\(noche\.universo\) : noche\.universo,/.test(cacheSrc) || /createClient\(\)|auth\.getUser/.test(ruta) || !/const q = \{ modalidad, pie: PIE_ABIERTO, plazo: PLAZO_ABIERTO \} as const;/.test(ruta)) F("2 · la ruta sin cuenta no quita las cifras en las dos ramas (o mira la sesión, o deja elegir pie y plazo)");
     if (!/const CACHE = "public, /.test(ruta)) F("2 · la ruta sin cuenta no es pública (no queda en el CDN)");
     if (/sinCifras|PIE_ABIERTO/.test(codigo("src/app/api/explorar/route.ts")) || !/if \(!user\) return NextResponse\.json\(\{ error: "sin-sesion" \}, \{ status: 401 \}\);/.test(codigo("src/app/api/explorar/route.ts"))) F("2 · la ruta con cifras se abrió sin sesión");
     const cli = codigo("src/app/explorar/explorar-cliente.tsx");
