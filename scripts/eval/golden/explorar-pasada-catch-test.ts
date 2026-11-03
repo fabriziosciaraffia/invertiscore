@@ -17,6 +17,8 @@
 //   6 · EL TOOLTIP QUEDA DENTRO DE LA PANTALLA: con su ⓘ en cualquier esquina, a 320, 390 y 1440, se corre o cambia de lado.
 //   7 · EL DASHBOARD EN DOS COLUMNAS en el PC (y «Estás dentro»): el mapa a la izquierda, fijo, y su imagen pedida al tamaño que
 //       ocupa.
+//   8 · EL ESQUELETO ES LA PANTALLA DE HOY: lo que se ve mientras el servidor lee la cuenta lleva las dos barras con las clases del
+//       cliente (Filtros, «Ver solo ✓ Comprar», el botón de «¿Cómo se calcula?»; abajo, la barra calculando), sin la píldora.
 // Verificado EN ROJO por mutación (acta al pie). Corre dentro del QUICK. §3 cuenta las dos clases contra la base (dos lecturas); lo
 // demás, 0 tokens.
 // Solo:  node --env-file=.env.local --import tsx scripts/eval/golden/explorar-pasada-catch-test.ts
@@ -488,6 +490,36 @@ export async function runExplorarPasadaTier(): Promise<{ hard: number }> {
     if (!/className="ca-dos-mapa" data-primera="mapa"><MapaCasa /.test(dosP) || !/<div className="ca-dos-tarjetas">[\s\S]*data-primera="lista"/.test(dosP)) F("7 · «Estás dentro» no pone el mapa y las tarjetas en sus columnas");
   }
 
+  // ══ §8 · EL ESQUELETO ES LA PANTALLA DE HOY ═══════════════════
+  // Cazado en producción al cerrar (03-nov-2026): el esqueleto de carga —lo que se ve mientras el servidor lee la cuenta— seguía con
+  // la píldora del PC (ya sin su CSS: texto suelto sobre el mapa) y el «ⓘ ¿Cómo se calcula?» viejo, que en el teléfono salía como
+  // botón redondo MÁS el texto. Sus dos barras llevan las clases de las del cliente (leídas del cliente, no escritas acá), en orden.
+  {
+    const esq = cargar<typeof import("../../../src/app/explorar/esqueleto")>("src/app/explorar/esqueleto", F);
+    let html = "";
+    try { if (esq) html = dibujar(createElement(esq.EsqueletoExplorar as unknown as FC<Record<string, unknown>>, {})); } catch (e) { F(`8 · el esqueleto explotó: ${(e as Error).message}`); }
+    if (html) {
+      const clasesHtml = (h: string) => Array.from(h.matchAll(/class="([^"]+)"/g)).flatMap((m) => m[1].split(/\s+/));
+      // Sin repetidas: las dos caras del texto comparten `ex-como-t`.
+      const clasesJsx = (s: string) => Array.from(new Set(Array.from(s.matchAll(/className="([^"]+)"/g)).flatMap((m) => m[1].split(/\s+/))));
+      const enOrden = (lista: string[], quiero: string[]) => { let k = -1; for (const q of quiero) { const j = lista.indexOf(q, k + 1); if (j < 0) return false; k = j; } return true; };
+      const iArriba = html.indexOf('class="ex-barra"'), iCuerpo = html.indexOf('class="ex-cuerpo"'), iAbajo = html.indexOf('class="ex-hoja"');
+      const arriba = iArriba < 0 || iCuerpo < iArriba ? "" : html.slice(iArriba, iCuerpo);
+      const abajo = iAbajo < 0 ? "" : html.slice(iAbajo);
+      const cli = codigo("src/app/explorar/explorar-cliente.tsx");
+      // Arriba: «Filtros», el chip «Ver solo [✓ Comprar]» con su interruptor y el botón de «¿Cómo se calcula?» con las caras del
+      // cliente (salvo el texto del teléfono, que se mide en el navegador y a 390 no cabe).
+      const chipCli = clasesJsx(elemento(cli, "solo-comprar")).filter((c) => c.startsWith("ex-"));
+      const comoCli = clasesJsx(elemento(cli, "como-se-calcula")).filter((c) => c !== "ex-como-t-movil");
+      if (chipCli.length < 3 || comoCli.length < 4 || !enOrden(clasesHtml(arriba), ["ex-boton", ...chipCli, ...comoCli])) F("8 · la barra de arriba del esqueleto no es la del cliente (Filtros, «Ver solo ✓ Comprar», la ⓘ redonda y el texto del PC)");
+      if (!/Filtros\s*Ver solo ✓ Comprar\s*ⓘ\s*i\s*¿Cómo se calcula\?/.test(textoPlano(html)) || !/class="chip-v c"/.test(arriba) || !html.includes(CSS_CHIP_VEREDICTO.slice(0, 60))) F("8 · el esqueleto no dice «Filtros», «Ver solo [✓ Comprar]» con el chip de la casa y «¿Cómo se calcula?»");
+      // Abajo: la barra del cliente (BarraAbajo), calculando, con «Ver lista» a la derecha; sin la píldora en ninguna parte.
+      const barraCli = clasesJsx(cuerpo(codigo("src/app/explorar/desglose.tsx"), "export function BarraAbajo"));
+      if (barraCli.length < 4 || !enOrden(clasesHtml(abajo), barraCli) || !/Calculando…\s*Ver lista/.test(textoPlano(abajo))) F("8 · la barra de abajo del esqueleto no es la del cliente («Calculando…» y «Ver lista» a la derecha)");
+      if (/pildora/.test(html) || /pildora/.test(cli) || /pildora/.test(leer("src/app/explorar/explorar.css").replace(/\/\*[\s\S]*?\*\//g, ""))) F("8 · la píldora del PC sigue en /explorar (el esqueleto, el cliente o su CSS)");
+    }
+  }
+
   for (const m of fallas) console.log(`  ✗ ${m}`);
   console.log(fallas.length === 0 ? "  ✓ EXPLORAR-PASADA: todo en orden" : `  ${fallas.length} falla(s) dura(s)`);
   return { hard: fallas.length };
@@ -533,6 +565,11 @@ if (require.main === module) {
 // tier — PUERTA-B §10, PRIMERA-SELECCION §12, PUERTA-B-DASHBOARD §1 y §3, PUERTA-B-MOCKUPS §2, PERFIL-OFERTA §2, RESPALDO-MAPA §3, EXPLORAR §6,
 // EXPLORAR-PORTAL §1, §3, §6, §7 y §8, COMPARTIR-DEPTO §1, §6 y §7, PUERTA-E §2 y §3, EXPLORAR-CORREOS §4, NUEVO-USADO §3,
 // EXPLORAR-RECORRIDO §5 y §9, CONVIENEN-UNO §1, §2 y §3, EXPLORAR-NEGOCIAR §1, §2, §3, §8 y §9.
+// §8, AGREGADO AL CERRAR (mismo día: el HTML de producción traía el esqueleto viejo, con la píldora sin su CSS y el «ⓘ ¿Cómo se
+// calcula?» de antes; `mutar-esqueleto.cjs`): 12 de 12 en ROJO — E1 la píldora de vuelta en el esqueleto, E9 en el CSS, E2 la ⓘ
+// vieja, E3 el chip sin su clase, E10 sin el interruptor, E4 sin los tokens del chip, E5 el chip de otro veredicto, E6 la fila
+// vieja de abajo, E7 sin «Ver lista», E8 una clase nueva en el botón del cliente que el esqueleto no sigue; y EXPLORAR-PORTAL §12
+// (reescrito con su acta) E2b la ⓘ vieja, E3b sin el chip.
 // FUERA DE ESTE GOAL (respuesta de Fabrizio, 03-nov-2026): «el post del día» es una imagen para redes que todavía no existe; cuando
 // exista, sus pines salen de colores-pin.ts.
 // ─────────────────────────────────────────────────────────────────────────────

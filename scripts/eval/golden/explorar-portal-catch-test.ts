@@ -564,7 +564,10 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
   try {
     const { EsqueletoExplorar } = require(join(RAIZ, "src/app/explorar/esqueleto")) as typeof import("../../../src/app/explorar/esqueleto");
     const e = dibujar(createElement(EsqueletoExplorar as unknown as FC<Record<string, unknown>>, {}));
-    if (/ex-mapa-quieto|data:image/.test(e) || !texto(e).includes("Filtros ⓘ ¿Cómo se calcula?") || /Ordenar|Con pie/.test(texto(e)) || !/class="ex-mapa-wrap"/.test(e) || !/class="ex-barra"/.test(e)) F("12 · el esqueleto no trae la fila de arriba de hoy, «Filtros» y «¿Cómo se calcula?» (o repite el mapa quieto)");
+    // ⚠ ACTA (03-nov-2026, la pasada real, cazado en producción al cerrar) · el esqueleto lleva la fila de arriba de hoy: «Filtros»,
+    // «Ver solo [✓ Comprar]» y el botón de «¿Cómo se calcula?» con sus dos caras (la ⓘ del PC y la «i» del botón redondo del
+    // teléfono). Que sean las clases del cliente lo fija EXPLORAR-PASADA §8; acá, el texto.
+    if (/ex-mapa-quieto|data:image/.test(e) || !/Filtros Ver solo ✓ Comprar ⓘ i ¿Cómo se calcula\?/.test(texto(e)) || /Ordenar|Con pie/.test(texto(e)) || !/class="ex-mapa-wrap"/.test(e) || !/class="ex-barra"/.test(e)) F("12 · el esqueleto no trae la fila de arriba de hoy, «Filtros» y «¿Cómo se calcula?» (o repite el mapa quieto)");
   } catch (err) {
     F(`12 · el esqueleto explotó: ${(err as Error).message}`);
   }
