@@ -529,8 +529,8 @@ if (require.main === module) {
 // el runner ahora exige una sola), una que salía roja por una excepción y no por su mensaje (el tier ahora atrapa la falla de la
 // capa), y DOS HUECOS DEL TIER: «Ver lista a la derecha» se leía del orden del DOM y lo pone la grilla del CSS (ahora se lee la
 // grilla), y el ancho del tooltip no se probaba en una pantalla más angosta que él (ahora, 250 px).
-// PREDICADOS REESCRITOS EN OTROS TIERS (mismo día, con su acta en cada uno; `mutar-otros.cjs`): 61 de 61 en ROJO, cada uno en su
-// tier — PUERTA-B §10, PRIMERA-SELECCION §12, PUERTA-B-DASHBOARD §1 y §3, PUERTA-B-MOCKUPS §2, PERFIL-OFERTA §2, EXPLORAR §6,
+// PREDICADOS REESCRITOS EN OTROS TIERS (mismo día, con su acta en cada uno; `mutar-otros.cjs`): 62 de 62 en ROJO, cada uno en su
+// tier — PUERTA-B §10, PRIMERA-SELECCION §12, PUERTA-B-DASHBOARD §1 y §3, PUERTA-B-MOCKUPS §2, PERFIL-OFERTA §2, RESPALDO-MAPA §3, EXPLORAR §6,
 // EXPLORAR-PORTAL §1, §3, §6, §7 y §8, COMPARTIR-DEPTO §1, §6 y §7, PUERTA-E §2 y §3, EXPLORAR-CORREOS §4, NUEVO-USADO §3,
 // EXPLORAR-RECORRIDO §5 y §9, CONVIENEN-UNO §1, §2 y §3, EXPLORAR-NEGOCIAR §1, §2, §3, §8 y §9.
 // FUERA DE ESTE GOAL (respuesta de Fabrizio, 03-nov-2026): «el post del día» es una imagen para redes que todavía no existe; cuando

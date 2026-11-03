@@ -138,7 +138,9 @@ export async function runRespaldoMapaTier(): Promise<{ hard: number }> {
       const ruta = codigo("src/app/api/deptos/primeros/route.ts");
       // Reescrito el 02-nov-2026 (la puerta a Explorar): el número de la noche se lee siempre que hay deptos —también para la
       // línea bajo la selección de «Estás dentro»—, así que el mapa de la casa lo tiene por `conDeptos`, no por su variante.
-      if (!/const conMapa = \(pideMapa === "1" \|\| pideMapa === "casa"\) && conDeptos;/.test(ruta) || !/\{ grises: pideMapa === "casa" \}/.test(ruta) || !/      conDeptos \? portadaDeptos\(\) : Promise\.resolve\(null\),/.test(ruta)) F("3 · la ruta no arma el mapa de la casa para el respaldo");
+      // ⚠ ACTA (03-nov-2026, goal «la pasada real de /explorar») · el mapa de la casa pide además su imagen del PC al tamaño de su
+      // columna (la del dashboard; «Estás dentro», más angosta, la suya): la casa sigue con los grises.
+      if (!/const conMapa = \(pideMapa === "1" \|\| pideMapa === "casa"\) && conDeptos;/.test(ruta) || !/\{ grises: pideMapa === "casa", pc: pideMapa === "casa" \? MAPA_CASA_PC : MAPA_DENTRO_PC \}/.test(ruta) || !/      conDeptos \? portadaDeptos\(\) : Promise\.resolve\(null\),/.test(ruta)) F("3 · la ruta no arma el mapa de la casa para el respaldo");
       const ps = codigo("src/components/deptos/PrimeraSeleccion.tsx");
       if (!/qs\.set\("mapa", encabezado === "dentro" \? "1" : "casa"\);/.test(ps) || !/<MapaCasa datos=\{datos\.mapa\} variante=\{encabezado === "casa" \? "casa" : "seleccion"\} totalNoche=\{datos\.totalNoche \?\? null\} \/>/.test(ps)) F("3 · el respaldo de la casa no dibuja el mapa del dashboard");
     }
