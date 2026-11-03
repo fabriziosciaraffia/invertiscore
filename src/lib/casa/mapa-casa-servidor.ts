@@ -3,27 +3,38 @@
 // `scraped_properties` (la selección guarda solo lo que las tarjetas muestran), y los demás que convienen con la búsqueda
 // de la persona, de la misma RPC que el mapa de Explorar (lib/explorar/servidor.ts › pinesExplorar, con los filtros de su
 // perfil). Nada acá escribe. Si algo falla, el mapa sale sin grises (o sin pines) y el dashboard sigue.
+// DOS TAMAÑOS (03-nov-2026, la pasada real de Fabrizio): el del teléfono (MAPA_CASA) y el del PC (MAPA_CASA_PC), cada uno con su
+// encuadre, su imagen y sus pines: la imagen se pide al tamaño que ocupa y nunca se estira. Cada pin lleva su clase (el color).
 // ─────────────────────────────────────────────────────────────────────────────
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { reportarFalloQuery } from "@/lib/observabilidad";
 import { filtrosDeLaCuenta, pinesExplorar } from "@/lib/explorar/servidor";
 import { cajaParaComuna } from "@/lib/comuna-bounds";
-import { encuadrar, enImagen, MAPA_CASA, urlMapaCasa, type Encuadre } from "./mapa-casa";
+import type { ClasePin } from "@/lib/explorar/colores-pin";
+import { encuadrar, enImagen, MAPA_CASA, MAPA_CASA_PC, urlMapaCasa, type Encuadre, type MedidasMapaCasa } from "./mapa-casa";
 
 const RUTA = "lib/casa/mapa-casa";
 /** Hasta cuántos grises se dibujan: más de eso es una mancha. */
 const TOPE_GRISES = 400;
 
-export interface DatosMapaCasa {
+/** Una imagen del mapa a un tamaño: su encuadre, su URL (clara y oscura) y los pines puestos en ella. */
+export interface ImagenMapaCasa {
+  ancho: number;
+  alto: number;
   encuadre: Encuadre;
   /** La imagen de fondo; null sin la llave (queda el fondo plano con los pines). */
   url: string | null;
   /** La misma imagen en el estilo oscuro (30-oct-2026): el tema decide cuál se ve. */
   urlOscuro?: string | null;
-  /** Los de la selección, numerados en su orden, con su lugar en la imagen. */
-  seleccion: Array<{ n: number; avisoId: string; x: number; y: number }>;
+  /** Los de la selección, numerados en su orden, con su lugar en la imagen y su clase (el color del pin). */
+  seleccion: Array<{ n: number; avisoId: string; x: number; y: number; clase: ClasePin }>;
   /** Los demás que convienen con la búsqueda, dentro de la imagen. */
   grises: Array<{ x: number; y: number }>;
+}
+
+export interface DatosMapaCasa extends ImagenMapaCasa {
+  /** La del PC (03-nov-2026). Falta en los datos guardados de antes: el PC usa la del teléfono. */
+  pc?: ImagenMapaCasa;
   nSeleccion: number;
   /** Cuántos convienen con la búsqueda en total (los pines de Explorar), y cuántos de esos no están en la selección. */
   nConvienen: number;
@@ -33,12 +44,16 @@ export interface DatosMapaCasa {
   comunas: string[];
 }
 
+/** Un depto de la selección para el mapa: el aviso, su comuna y la clase de su pin (por defecto, ✓ Comprar). */
+export type DeptoDelMapa = { avisoId: string; comuna: string; clase?: ClasePin };
+
 export async function datosMapaCasa(
   admin: SupabaseClient,
   userId: string,
-  seleccion: Array<{ avisoId: string; comuna: string }>,
+  seleccion: DeptoDelMapa[],
   apiKey: string | undefined = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
-  opts: { grises?: boolean } = {},
+  /** `pc`: el tamaño de la imagen del PC (el del dashboard, o el de «Estás dentro», que es más angosta). */
+  opts: { grises?: boolean; pc?: MedidasMapaCasa } = {},
 ): Promise<DatosMapaCasa> {
   // «Estás dentro» (24-oct-2026) lleva solo la selección: sin los grises no se leen los pines de Explorar.
   const conGrises = opts.grises ?? true;
@@ -66,26 +81,36 @@ export async function datosMapaCasa(
     if (r.lat != null && r.lng != null) porId.set(r.id, { lat: Number(r.lat), lng: Number(r.lng) });
   }
   const puntosSel = seleccion.map((s) => porId.get(s.avisoId)).filter((p): p is { lat: number; lng: number } => !!p);
-  // Sin coordenadas de la selección, el encuadre es el de su primera comuna.
-  let encuadre = encuadrar(puntosSel);
-  if (puntosSel.length === 0 && seleccion[0]) {
-    const [s, w, n, e] = cajaParaComuna(seleccion[0].comuna);
-    encuadre = { ...encuadrar([{ lat: s, lng: w }, { lat: n, lng: e }]), lat: (s + n) / 2, lng: (w + e) / 2 };
-  }
   const enSel = new Set(ids);
   const otros = explorar.pines.filter((p) => !enSel.has(p.avisoId));
-  const grises: Array<{ x: number; y: number }> = [];
-  for (const p of otros) {
-    const q = enImagen(p, encuadre);
-    if (q) grises.push(q);
-    if (grises.length >= TOPE_GRISES) break;
-  }
+
+  /** La imagen a un tamaño: el encuadre que hace entrar a la selección (sin coordenadas, el de su primera comuna), la URL y los pines. */
+  const imagen = (o: MedidasMapaCasa): ImagenMapaCasa => {
+    let encuadre = encuadrar(puntosSel, o);
+    if (puntosSel.length === 0 && seleccion[0]) {
+      const [s, w, n, e] = cajaParaComuna(seleccion[0].comuna);
+      encuadre = { ...encuadrar([{ lat: s, lng: w }, { lat: n, lng: e }], o), lat: (s + n) / 2, lng: (w + e) / 2 };
+    }
+    const grises: Array<{ x: number; y: number }> = [];
+    for (const p of otros) {
+      const q = enImagen(p, encuadre, o);
+      if (q) grises.push(q);
+      if (grises.length >= TOPE_GRISES) break;
+    }
+    return {
+      ancho: o.ancho,
+      alto: o.alto,
+      encuadre,
+      url: urlMapaCasa(encuadre, apiKey, o),
+      urlOscuro: urlMapaCasa(encuadre, apiKey, o, "dark"),
+      seleccion: seleccion.flatMap((s, i) => { const p = porId.get(s.avisoId); const q = p ? enImagen(p, encuadre, o) : null; return q ? [{ n: i + 1, avisoId: s.avisoId, ...q, clase: s.clase ?? "comprar" }] : []; }),
+      grises,
+    };
+  };
+
   return {
-    encuadre,
-    url: urlMapaCasa(encuadre, apiKey),
-    urlOscuro: urlMapaCasa(encuadre, apiKey, MAPA_CASA, "dark"),
-    seleccion: seleccion.flatMap((s, i) => { const p = porId.get(s.avisoId); const q = p ? enImagen(p, encuadre) : null; return q ? [{ n: i + 1, avisoId: s.avisoId, ...q }] : []; }),
-    grises,
+    ...imagen(MAPA_CASA),
+    pc: imagen(opts.pc ?? MAPA_CASA_PC),
     nSeleccion: seleccion.length,
     nConvienen: explorar.pines.length,
     nOtros: otros.length,

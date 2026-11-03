@@ -40,12 +40,44 @@
 .ca-mapa-fondo { position: absolute; inset: 0; background-size: cover; background-position: center; background-image: var(--mapa-claro); }
 /* En oscuro, su versión oscura (30-oct-2026: el estilo oscuro de Franco, no la clara invertida); solo se baja la del tema. */
 :root:not([data-theme="light"]) .ca-mapa-fondo { background-image: var(--mapa-oscuro, var(--mapa-claro)); }
-@media (min-width: 768px) { .ca-mapa { max-width: 600px; } }
+/* LAS DOS IMÁGENES (03-nov-2026): la del teléfono (350 × 200) hasta 767 px y la del PC (566 × 420) desde 768, cada una al tamaño
+   en que se pidió —la del PC nunca más ancha que sus 566 px—; solo la que se ve se baja (el fondo de la otra no se dibuja). */
+.ca-mapa-img-d { display: none; }
+@media (min-width: 768px) {
+  .ca-mapa { max-width: 566px; }
+  .ca-mapa-img-m { display: none; }
+  .ca-mapa-img-d { display: block; }
+}
 .ca-mapa-img svg { position: relative; display: block; }
 .ca-mapa-gris circle { fill: #C9C5BB; }
 :root:not([data-theme="light"]) .ca-mapa-gris circle { fill: #6B6B72; }
-.ca-mapa-rojo circle { fill: var(--signal-red); stroke: #FFFFFF; stroke-width: 1.5; }
-.ca-mapa-rojo text { fill: #FFFFFF; font-family: var(--font-ui), Inter, sans-serif; font-size: 10px; font-weight: 600; }
+/* LOS PINES DE LA SELECCIÓN (03-nov-2026, lib/explorar/colores-pin.ts): ✓ Comprar en el azul del chip Comprar, − Ajustar en la
+   ciruela del chip, el ya analizado en tinta con un ✓ blanco. En oscuro, el azul y la ciruela aclarados con la letra oscura de su
+   tono (los del chip sobre fondo oscuro). Rojo, ninguno: hasta el 03-nov eran rojos. */
+.ca-mapa-pines circle { fill: #8DB0E3; stroke: #FFFFFF; stroke-width: 2; }
+.ca-mapa-pines text { fill: #0B1A2E; font-family: var(--font-ui), Inter, sans-serif; font-size: 10px; font-weight: 600; }
+.ca-mapa-pines [data-clase="ajustar"] circle { fill: #D8AECA; }
+.ca-mapa-pines [data-clase="ajustar"] text { fill: #2A1622; }
+[data-theme="light"] .ca-mapa-pines circle { fill: #2B558F; }
+[data-theme="light"] .ca-mapa-pines text { fill: #FFFFFF; }
+[data-theme="light"] .ca-mapa-pines [data-clase="ajustar"] circle { fill: #6E4560; }
+.ca-mapa-pines [data-clase="analizado"] circle, [data-theme="light"] .ca-mapa-pines [data-clase="analizado"] circle { fill: #0F0F0F; }
+.ca-mapa-check { fill: none; stroke: #FFFFFF; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+
+/* EN EL PC, DOS COLUMNAS (03-nov-2026, la pasada real de Fabrizio), en el dashboard y en «Estás dentro»: el mapa a la izquierda,
+   el 55 % del ancho, con su píldora y «Explorar los N de Santiago» debajo, FIJO mientras se baja por las tarjetas de la derecha.
+   En el teléfono (y hasta 1023 px), uno debajo del otro, como siempre. Sin mapa, las tarjetas a lo ancho. */
+.ca-dos-mapa { min-width: 0; }
+.ca-dos-tarjetas { min-width: 0; }
+@media (min-width: 1024px) {
+  .ca-dos[data-con-mapa="1"] { display: grid; grid-template-columns: minmax(0, 55fr) minmax(0, 45fr); gap: 24px; align-items: start; margin-top: 14px; }
+  .ca-dos[data-con-mapa="1"] > .ca-dos-mapa { position: sticky; top: 76px; }
+  .ca-dos[data-con-mapa="1"] .ca-mapa { margin-top: 0; max-width: none; }
+  .ca-dos[data-con-mapa="1"] .ca-tarjetas { margin-top: 0; }
+  /* En la columna de la derecha, las tarjetas una debajo de la otra (a lo ancho de la página iban de a tres). */
+  .ca-dos[data-con-mapa="1"] .sel-lista { grid-template-columns: minmax(0, 1fr); }
+  .ca-dos[data-con-mapa="1"] .ca-dos-tarjetas > .dp-txt:first-child { margin-top: 0; }
+}
 .ca-mapa-pildora { position: absolute; left: 12px; bottom: 12px; font-size: 12px; font-weight: 500; color: #1A1A1A; background: rgba(255, 255, 255, 0.92); border-radius: 999px; padding: 5px 10px; }
 .ca-mapa-pie { padding: 14px 16px; }
 .ca-boton-contorno { display: inline-flex; width: 100%; height: 46px; align-items: center; justify-content: center; border: 1px solid var(--franco-text); border-radius: 999px; background: var(--franco-card); color: var(--franco-text); font-size: 15px; font-weight: 600; text-decoration: none; }

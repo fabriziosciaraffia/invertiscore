@@ -13,19 +13,22 @@
 //     3,0 a 6,0 de a 0,25 (lo que se calcula: TASAS_ELEGIBLES), con una marca en la tasa del mes y su etiqueta, el valor arriba
 //     («4,07 % · promedio del mes»), la línea del Banco Central con su ⓘ y «Usar la del mes», que vuelve a la marca y la deja
 //     siguiendo al motor (null). La marca, en tinta (decisión de Fabrizio, 02-nov-2026: el rojo queda para comprar, oferta y regalo).
-//   · «Si negocias el precio»: el mismo interruptor del chip de la barra, la ayuda con los chips reales (ChipVeredicto) y los topes
-//     «Hasta 5 % de dcto.» y «Hasta 10 % de dcto.». Sin capa con estos supuestos (otra tasa, pie, plazo o renta corta), lo dice.
+//   · «Descuento máximo para [− Ajustar]» (03-nov-2026, la pasada real de Fabrizio; antes «Si negocias el precio», con su
+//     interruptor): la ayuda con los chips reales (ChipVeredicto) y los topes 5 % y 10 % (10 % de entrada). Sin interruptor: la
+//     capa se ve de entrada y lo que la esconde es «Ver solo ✓ Comprar», en la barra. Sin capa con estos supuestos (otra tasa, pie,
+//     plazo o renta corta), lo dice.
 //   · «Otros»: publicados (y la zona del mapa, si hay una).
-// El botón de abajo separa las dos cuentas: «Ver 201 + 48 si negocias». Se cuenta en el navegador sobre lo cargado (`contar`,
-// `contarNegociados`); con otro pie, otro plazo o renta corta, lo que falte se pide al tiro. NO TOCA EL PERFIL: lo elegido queda en
-// la página y en la URL. SIN CUENTA, pie, plazo, tasa y «Solo flujo positivo» piden registro (29-oct-2026, decisión de Fabrizio).
+// El botón de abajo separa las dos cuentas con los chips de la casa: «Ver 6.802 [✓ Comprar] + 3.238 [− Ajustar]». Se cuenta en el
+// navegador sobre lo cargado (`contar`, `contarNegociados`); con otro pie, otro plazo o renta corta, lo que falte se pide al tiro.
+// NO TOCA EL PERFIL: lo elegido queda en la página y en la URL. SIN CUENTA, pie, plazo, tasa y «Solo flujo positivo» piden
+// registro (29-oct-2026, decisión de Fabrizio).
 // ─────────────────────────────────────────────────────────────────────────────
 import { useEffect, useRef, useState } from "react";
 import { COMUNAS_DISPONIBLES } from "@/lib/comunas-disponibles";
 import { COMUNAS_DESTACADAS, TIPOLOGIAS_DEPTOS } from "@/lib/deptos/respuesta";
 import { PIES_EXPLORAR, PLAZOS_EXPLORAR } from "@/lib/explorar/explorar";
-import { botonVer, FILTROS_GLOBALES, PORTAL_COPY, PUBLICADOS, resumenPerfil, tasaTexto, urlDePortal, validarPortal, type FiltrosPortal, type TasaDelMotor } from "@/lib/explorar/portal";
-import { botonVerConNegociados, capaNegociarDisponible, NEGOCIAR_COPY, TOPE_NEGOCIAR_POR_DEFECTO, TOPES_NEGOCIAR } from "@/lib/explorar/capa-negociar";
+import { BOTON_VER_COPY, botonVer, FILTROS_GLOBALES, PORTAL_COPY, PUBLICADOS, resumenPerfil, tasaTexto, urlDePortal, validarPortal, type FiltrosPortal, type TasaDelMotor } from "@/lib/explorar/portal";
+import { capaNegociarDisponible, NEGOCIAR_COPY, TOPES_NEGOCIAR } from "@/lib/explorar/capa-negociar";
 import { TASAS_ELEGIBLES } from "@/lib/deptos/estandar";
 import { ChipVeredicto } from "@/components/analysis/shared/ChipVeredicto";
 import { Info } from "./info";
@@ -66,7 +69,6 @@ export function HojaFiltros({ filtros, tasa, miBusqueda = null, contar, contarNe
   const [hasta, setHasta] = useState(filtros.ufMax != null ? String(filtros.ufMax) : "");
   const [, setTick] = useState(0);
   const panel = useRef<HTMLDivElement>(null);
-  const ultimoTope = useRef(filtros.negociar ?? TOPE_NEGOCIAR_POR_DEFECTO);
   const poner = (parche: Partial<FiltrosPortal>) => setB((x) => validarPortal({ ...x, ...parche }));
   const alternar = (k: "comunas" | "tipologias", v: string) => setB((x) => validarPortal({ ...x, [k]: x[k].includes(v) ? x[k].filter((y) => y !== v) : [...x[k], v] }));
 
@@ -89,9 +91,11 @@ export function HojaFiltros({ filtros, tasa, miBusqueda = null, contar, contarNe
 
   const n = contar(b);
   const m = contarNegociados(b);
+  const ver = botonVer(n, m);
   const comunas = todas ? [...DESTACADAS, ...TODAS.filter((c) => !DESTACADAS.includes(c))] : [...DESTACADAS, ...b.comunas.filter((c) => !DESTACADAS.includes(c))];
   const chip = (activo: boolean) => (activo ? "ex-chip ex-chip-on" : "ex-chip");
-  const limpiar = () => { setB({ ...FILTROS_GLOBALES }); setDesde(""); setHasta(""); };
+  // «Ver solo ✓ Comprar» vive en la barra, no en la hoja: «Limpiar» no lo toca.
+  const limpiar = () => { setB((x) => ({ ...FILTROS_GLOBALES, soloComprar: x.soloComprar })); setDesde(""); setHasta(""); };
   const perfil = miBusqueda?.perfil ?? null;
   const perfilAplicado = !!perfil && urlDePortal(perfil) === urlDePortal(b);
   // LA TASA: la elegida o, sin elegir, la del mes (la del motor); el slider salta de a 0,25 y la marca queda en la del mes.
@@ -104,9 +108,14 @@ export function HojaFiltros({ filtros, tasa, miBusqueda = null, contar, contarNe
   return (
     <div className="ex-filtros-velo" data-explorar="hoja-filtros">
       <div className="ex-filtros ex-filtros-v2" role="dialog" aria-modal="true" aria-labelledby="ex-filtros-t" ref={panel} tabIndex={-1}>
+        {/* «Limpiar» arriba, junto a la × (03-nov-2026): abajo va solo el botón con las dos cuentas y sus chips, que a 390 no cabe
+            al lado de nada. */}
         <div className="ex-filtros-cab">
           <h2 id="ex-filtros-t" className="ex-filtros-t">{PORTAL_COPY.filtros}</h2>
-          <button type="button" className="ex-x" aria-label={PORTAL_COPY.cerrar} onClick={alCerrar}>×</button>
+          <span className="ex-filtros-cab-acc">
+            <button type="button" className="ex-enlace" onClick={limpiar} data-explorar="limpiar">{PORTAL_COPY.limpiar}</button>
+            <button type="button" className="ex-x" aria-label={PORTAL_COPY.cerrar} onClick={alCerrar}>×</button>
+          </span>
         </div>
         <div className="ex-filtros-cuerpo">
           {miBusqueda && (
@@ -226,19 +235,18 @@ export function HojaFiltros({ filtros, tasa, miBusqueda = null, contar, contarNe
           </section>
 
           <section className="ex-card" data-explorar="bloque-negociar" aria-labelledby="ex-bloque-neg">
-            <label className="ex-card-cab ex-interruptor ex-interruptor-cab">
-              <h3 id="ex-bloque-neg" className="ex-card-t">{NEGOCIAR_COPY.tituloGrupo}</h3>
-              <input type="checkbox" role="switch" checked={b.negociar != null} onChange={(e) => poner({ negociar: e.target.checked ? ultimoTope.current : null })} data-explorar="negociar" />
-            </label>
+            <div className="ex-card-cab">
+              <h3 id="ex-bloque-neg" className="ex-card-t ex-card-t-chip">{NEGOCIAR_COPY.tituloGrupo} <ChipVeredicto v="AJUSTA SUPUESTOS" /></h3>
+            </div>
             <p className="ex-ayuda" data-explorar="ayuda-negociar">
               {NEGOCIAR_COPY.ayuda.antes} <span className="ex-pegado"><ChipVeredicto v="AJUSTA SUPUESTOS" />,</span> {NEGOCIAR_COPY.ayuda.medio} <ChipVeredicto v="COMPRAR" /> {NEGOCIAR_COPY.ayuda.despues}
             </p>
-            <div className="ex-seg" role="radiogroup" aria-label={NEGOCIAR_COPY.tituloGrupo}>
+            <div className="ex-seg" role="radiogroup" aria-labelledby="ex-bloque-neg">
               {TOPES_NEGOCIAR.map((t) => (
-                <button key={t} type="button" role="radio" aria-checked={b.negociar === t} className={chip(b.negociar === t)} onClick={() => { ultimoTope.current = t; poner({ negociar: t }); }} data-explorar={`tope-${t}`}>{NEGOCIAR_COPY.tope(t)}</button>
+                <button key={t} type="button" role="radio" aria-checked={b.negociar === t} className={chip(b.negociar === t)} onClick={() => poner({ negociar: t })} data-explorar={`tope-${t}`}>{NEGOCIAR_COPY.tope(t)}</button>
               ))}
             </div>
-            {b.negociar != null && !conCapa && <p className="ex-nota" data-explorar="sin-capa">{NEGOCIAR_COPY.sinCapa}</p>}
+            {!conCapa && <p className="ex-nota" data-explorar="sin-capa">{NEGOCIAR_COPY.sinCapa}</p>}
           </section>
 
           <section className="ex-card" data-explorar="bloque-otros" aria-labelledby="ex-bloque-otros">
@@ -258,8 +266,14 @@ export function HojaFiltros({ filtros, tasa, miBusqueda = null, contar, contarNe
           </section>
         </div>
         <div className="ex-filtros-pie">
-          <button type="button" className="ex-enlace" onClick={limpiar} data-explorar="limpiar">{PORTAL_COPY.limpiar}</button>
-          <button type="button" className="ex-ver-n" onClick={() => alAplicar(b)} disabled={n === 0 && !m} data-explorar="ver-n" data-n={n ?? undefined} data-m={m ?? undefined}>{botonVerConNegociados(n, m, botonVer)}</button>
+          <button type="button" className="ex-ver-n" onClick={() => alAplicar(b)} disabled={ver.tipo === "ninguno"} data-explorar="ver-n" data-n={n ?? undefined} data-m={m ?? undefined}>
+            {ver.tipo === "contando" ? BOTON_VER_COPY.contando : ver.tipo === "ninguno" ? ver.texto : (
+              <>
+                {BOTON_VER_COPY.ver} {ver.comprar} <ChipVeredicto v="COMPRAR" variante="sobre-fondo" />
+                {ver.ajustar != null && <> {BOTON_VER_COPY.mas} {ver.ajustar} <ChipVeredicto v="AJUSTA SUPUESTOS" variante="sobre-fondo" /></>}
+              </>
+            )}
+          </button>
         </div>
       </div>
     </div>

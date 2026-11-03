@@ -30,7 +30,7 @@ import { validarCambiosPerfil } from "@/lib/perfil-busqueda";
 import type { EventoServidor } from "@/lib/posthog-servidor";
 import type { MotivoRobot } from "@/lib/vista-entrada";
 import type { LlegadaExplorar } from "./puertas-landing";
-import { negociadoDeFila, type PinNegociado } from "./capa-negociar";
+import { negociadoDeFila, type NegociadosCompactos, type PinNegociado } from "./capa-negociar";
 import { comboVigente, VIDA_COMBO_MS, type ComboGuardado } from "./explorar";
 import { filasParaSonda, guardarCombos, informesDeExplorar, type FilaUniverso } from "./servidor";
 import {
@@ -158,8 +158,11 @@ export async function universoCalculado(
   return pines.sort((a, b) => (b.score ?? -1) - (a.score ?? -1) || a.avisoId.localeCompare(b.avisoId));
 }
 
-/** Lo que devuelve GET /api/explorar: el universo compacto y de qué es (la clave y las comunas; vacío = Gran Santiago). */
-export interface RespuestaUniverso { clave: string; comunas: string[]; universo: UniversoCompacto; calculados: number; ms: number }
+/** Lo que devuelve GET /api/explorar: el universo compacto y de qué es (la clave y las comunas; vacío = Gran Santiago). Con una
+ *  combinación de la noche que tiene capa (pie 20 % o 30 %, 30 años, la tasa del motor), los − AJUSTAR que llegan a Comprar
+ *  negociando, en el MISMO PEDIDO (03-nov-2026: se ven de entrada); sin cuenta, sin cifras. Si la capa no se pudo leer, falta
+ *  `negociados` y el mapa sigue con los ✓ Comprar. */
+export interface RespuestaUniverso { clave: string; comunas: string[]; universo: UniversoCompacto; negociados?: NegociadosCompactos; calculados: number; ms: number }
 export function respuestaUniverso(pines: PinMapa[], q: { modalidad: ModalidadPortal; pie: number; plazo: number; tasa?: number | null; comunas: string[] }, cuenta = { calculados: 0, ms: 0 }): RespuestaUniverso {
   return { clave: claveUniverso(q), comunas: q.comunas, universo: compactar(pines), calculados: cuenta.calculados, ms: cuenta.ms };
 }

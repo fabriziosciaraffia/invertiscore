@@ -7,18 +7,17 @@
 // también se cierra deslizándola hacia abajo. En el PC es un panel a la derecha, encima del mapa (unos 480 px, con X), y el
 // mapa sigue a la vista y se puede usar a su izquierda. Arriba, «N deptos ✓ Comprar» y una sola fila con «Ordenar» —que
 // existe solo acá— y «Avísame de nuevos». Se dibujan de a tandas a medida que se baja: con todo Gran Santiago son miles.
-// FILTROS V2 Y «SI NEGOCIAS» (02-nov-2026, mockup 8): la cabecera dice «al precio publicado» y, con la capa prendida, su cuenta
-// aparte; los negociados van DESPUÉS de los ✓ Comprar, con su título y los dos veredictos (chips de la casa).
+// FILTROS V2 Y LOS − AJUSTAR (02-nov-2026, mockup 8; desde el 03-nov-2026 la cabecera es el desglose de la barra, desglose.tsx):
+// los negociados van DESPUÉS de los ✓ Comprar, con su título y los dos veredictos (chips de la casa).
 // Cada fila lleva «Compartir» junto al corazón (02-nov-2026, con y sin cuenta).
 // ─────────────────────────────────────────────────────────────────────────────
 import { Fragment, useEffect, useRef, useState } from "react";
-import { ChipVeredicto } from "@/components/analysis/shared/ChipVeredicto";
 import { lineaDepto } from "@/lib/guia/linea-depto";
 import { flujoTexto } from "@/lib/explorar/explorar";
-import { deptosN, ORDENES, PORTAL_COPY, type OrdenPortal, type PinMapa } from "@/lib/explorar/portal";
+import { ORDENES, PORTAL_COPY, type DesgloseBarra, type OrdenPortal, type PinMapa } from "@/lib/explorar/portal";
 import { BORROSO } from "@/lib/explorar/abierto";
 import { esNegociado, NEGOCIAR_COPY, type PinNegociado } from "@/lib/explorar/capa-negociar";
-import { AL_PRECIO_PUBLICADO } from "@/lib/precio-publicado";
+import { LineasDesglose } from "./desglose";
 import { Borroso, BotonCompartir, Corazon, ImagenDepto, VeredictoDelPin, VeredictosNegociado } from "./tarjeta-pin";
 
 const TANDA = 30;
@@ -26,14 +25,16 @@ const TANDA = 30;
 const CIERRE_DESLIZANDO_PX = 90;
 const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
 
-export function ListaPortal({ pines, negociados = [], tope = null, total, calculando, orden, analizados, guardados, alOrden, alAbrir, alGuardar, alCompartir, alPrepararCompartir, alAvisame, alCerrar, sinCuenta = false }: {
+export function ListaPortal({ pines, negociados = [], tope = null, desglose, calculando, orden, analizados, guardados, alOrden, alAbrir, alGuardar, alCompartir, alPrepararCompartir, alAvisame, alCerrar, sinCuenta = false }: {
   pines: PinMapa[];
-  /** La capa «Si negocias» (vacía si está apagada): va después de los que convienen. */
+  /** Los − Ajustar (vacía si la capa no se ve): van después de los que convienen. */
   negociados?: PinNegociado[];
-  /** El tope de la capa, para su título y su cuenta; null sin capa. */
+  /** El descuento máximo, para su título; null sin capa. */
   tope?: number | null;
-  total: number | null;
-  calculando: boolean;
+  /** El desglose de la barra de abajo (03-nov-2026): la cabecera dice lo mismo. null mientras se calcula. */
+  desglose: DesgloseBarra | null;
+  /** El texto del avance mientras se calcula; null si ya está. */
+  calculando: string | null;
   orden: OrdenPortal;
   uf: number | null;
   analizados: Record<string, string>;
@@ -84,17 +85,15 @@ export function ListaPortal({ pines, negociados = [], tope = null, total, calcul
     setArrastre(0);
   };
 
-  const titulo = calculando || total == null ? PORTAL_COPY.calculando : deptosN(total);
   return (
     <div className="ex-lista-velo" data-explorar="lista-velo" onClick={(e) => { if (e.target === e.currentTarget) alCerrar(); }}>
       <section className="ex-lista" data-explorar="lista" role="dialog" aria-labelledby="ex-lista-t" style={arrastre ? { transform: `translateY(${arrastre}px)`, transition: "none" } : undefined}>
         <div className="ex-lista-arriba" onTouchStart={alEmpezar} onTouchMove={alMover} onTouchEnd={alSoltar} onTouchCancel={alSoltar}>
           <span className="ex-asa ex-lista-asa" aria-hidden="true" />
           <div className="ex-lista-cab">
-            <h2 id="ex-lista-t" className="ex-lista-t" data-explorar="titulo-lista">
-              {titulo}{!calculando && total != null && total > 0 && <> <ChipVeredicto v="COMPRAR" /> <span className="ex-publicado" data-explorar="al-precio-publicado">{AL_PRECIO_PUBLICADO}</span></>}
-              {tope != null && negociados.length > 0 && <span className="ex-lista-neg" data-explorar="cuenta-negociar-lista">{NEGOCIAR_COPY.mas(negociados.length, tope)}</span>}
-            </h2>
+            <div className="ex-lista-t ex-hoja-cuentas" data-explorar="titulo-lista">
+              <LineasDesglose desglose={desglose} calculando={calculando} tituloComo="h2" idTitulo="ex-lista-t" />
+            </div>
             <button type="button" className="ex-x" aria-label={PORTAL_COPY.cerrar} onClick={alCerrar} data-explorar="cerrar-lista">×</button>
           </div>
           <div className="ex-lista-acciones">
@@ -108,7 +107,7 @@ export function ListaPortal({ pines, negociados = [], tope = null, total, calcul
           </div>
         </div>
         <div className="ex-lista-scroll">
-          {filas.length === 0 && !calculando ? <p className="ex-vacia" data-explorar="vacia">{PORTAL_COPY.vacia}</p> : (
+          {filas.length === 0 && calculando == null ? <p className="ex-vacia" data-explorar="vacia">{PORTAL_COPY.vacia}</p> : (
             <ul className="ex-filas">
               {filas.slice(0, hasta).map((p, i) => {
                 const neg = (p.flujo ?? 0) < 0;
@@ -116,10 +115,10 @@ export function ListaPortal({ pines, negociados = [], tope = null, total, calcul
                 return (
                   <Fragment key={p.avisoId}>
                   {/* La capa «Si negocias» empieza acá, con su título en una fila propia: después de todos los que convienen. */}
-                  {negociado && i === pines.length && tope != null && <li className="ex-lista-sep" data-explorar="titulo-negociar">{NEGOCIAR_COPY.tituloGrupo} · {NEGOCIAR_COPY.tope(tope).toLowerCase()}</li>}
+                  {negociado && i === pines.length && tope != null && <li className="ex-lista-sep" data-explorar="titulo-negociar">{NEGOCIAR_COPY.tituloLista(tope)}</li>}
                   <li className="ex-fila-l" data-explorar={negociado ? "fila-negociada" : "fila"} data-aviso={p.avisoId} data-analizado={analizados[p.avisoId] ? "1" : undefined}>
                     <button type="button" className="ex-fila-btn" onClick={() => alAbrir(p.avisoId)} aria-label={`${lineaDepto(p)} · UF ${miles(p.precioUF)}`}>
-                      <ImagenDepto avisoId={p.avisoId} tipo={undefined} clase="ex-mini" carga="lazy" />
+                      <ImagenDepto avisoId={p.avisoId} tipo={undefined} clase="ex-mini" carga="lazy" ajustar={negociado} />
                       <span className="ex-fila-datos">
                         <span className="ex-ojo">{lineaDepto(p)}</span>
                         <b className="ex-precio-l">UF {miles(p.precioUF)}{negociado && <span className="ex-publicado"> {NEGOCIAR_COPY.publicado}</span>}</b>

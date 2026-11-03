@@ -39,7 +39,8 @@ import { leerPuertaCandidata } from "@/lib/atribucion-puerta";
 import { ELECCIONES_POR_DEFECTO, RANGOS_UF, TIPOLOGIA_POR_DEFECTO, TIPOLOGIAS_DEPTOS } from "@/lib/deptos/respuesta";
 import { AvisoAntesDeAnalizar, type EleccionAnalizar } from "@/components/guia/AvisoAntesDeAnalizar";
 import { CamposBusqueda, type ValorBusqueda } from "@/components/deptos/CamposBusqueda";
-import { MapaCasa } from "@/app/dashboard/mapa-casa";
+import { MapaCasa, PinTarjeta } from "@/app/dashboard/mapa-casa";
+import { clasePinDeItem } from "@/lib/casa/mapa-casa";
 import { LineaPuertaExplorar } from "@/components/explorar/LineaPuertaExplorar";
 import { convienenEnSeleccion, lineaConvienen } from "@/lib/explorar/puerta-correos";
 import type { PrimerosDeLaCuenta } from "@/lib/deptos/primeros-servidor";
@@ -180,12 +181,17 @@ export function PrimeraSeleccion({ encabezado = "dentro" }: {
   const faltanPorVer = items.length - visibles.length;
   const titulo = tituloSeleccion(items.length);
   const bajada = usaRegalo ? PRIMERA_SELECCION.bajadaRegalo : PRIMERA_SELECCION.bajada;
+  // EN EL PC, DOS COLUMNAS (03-nov-2026, como el dashboard): el mapa a la izquierda, fijo, y a la derecha la bajada y las
+  // tarjetas (dashboard/casa.css › .ca-dos). En el teléfono, uno debajo del otro, en el mismo orden de siempre.
+  const conMapa = !!datos?.mapa && items.length > 0;
 
   return (
     <section className="dp dp-seccion" data-primera="seleccion" data-fuente={datos?.fuente} data-estado={datos ? (datos.revisando ? "revisando" : "lista") : fallo ? "error" : "cargando"}>
       {encabezado === "dentro" && <p className="dp-kicker">{PRIMERA_SELECCION.kicker}</p>}
       <h2 className={encabezado === "casa" ? "ca-plano-t" : "dp-h2"} data-primera="titulo">{titulo}</h2>
-      {datos?.mapa && items.length > 0 && <div data-primera="mapa"><MapaCasa datos={datos.mapa} variante={encabezado === "casa" ? "casa" : "seleccion"} totalNoche={datos.totalNoche ?? null} /></div>}
+      <div className="ca-dos" data-con-mapa={conMapa ? "1" : undefined}>
+      {conMapa && datos?.mapa && <div className="ca-dos-mapa" data-primera="mapa"><MapaCasa datos={datos.mapa} variante={encabezado === "casa" ? "casa" : "seleccion"} totalNoche={datos.totalNoche ?? null} /></div>}
+      <div className="ca-dos-tarjetas">
       {!sinDeptos && <p className="dp-txt" data-primera="bajada">{bajada}</p>}
 
       {!datos && !fallo && <p className="sel-estado" role="status" aria-live="polite" data-primera="cargando">{PRIMERA_SELECCION.cargando}</p>}
@@ -216,7 +222,7 @@ export function PrimeraSeleccion({ encabezado = "dentro" }: {
                 const puede = puedeAnalizarPrimero(datos, it);
                 return (
                   <article key={it.avisoId} className="sel-av" data-primera="depto" data-n={i + 1}>
-                    <div className="sel-ojo"><span className="sel-pin" aria-hidden="true">{i + 1}</span>{lineaDepto(it)}</div>
+                    <div className="sel-ojo"><PinTarjeta n={i + 1} clase={clasePinDeItem(it)} />{lineaDepto(it)}</div>
                     <div className="sel-precio">UF {miles(it.precioUF)}</div>
                     <div className="sel-dos">
                       <div>
@@ -253,6 +259,8 @@ export function PrimeraSeleccion({ encabezado = "dentro" }: {
           {items.length > 0 && <LineaPuertaExplorar linea={lineaConvienen(convienenEnSeleccion(items), datos.totalNoche)} consulta={datos.explorar ?? ""} donde={encabezado === "casa" ? "dashboard" : "estas_dentro"} />}
         </>
       )}
+      </div>
+      </div>
 
       {confirmar && datos?.combinacion && (
         <AvisoAntesDeAnalizar

@@ -4,8 +4,13 @@
 // en avisos/negociar.ts.
 //   · QUÉ SON: los que al precio publicado dan AJUSTAR y llegan a COMPRAR si se consigue un descuento, hasta el tope elegido (5 %
 //     o 10 %). Los Buscar otro nunca entran (la noche no les guarda descuento).
-//   · APARTE, SIEMPRE: su propia capa, su pin en el color del chip Ajustar con el número en blanco (nunca el rojo), su propia cuenta
-//     («1.654 más si negocias hasta 5 %»), que NUNCA se suma a «convienen»; en la lista van después de los ✓ Comprar.
+//   · APARTE, SIEMPRE: su propia capa, su pin en el color del chip Ajustar (colores-pin.ts; nunca el rojo), su propia línea en la
+//     barra («3.238 [− Ajustar] requieren negociar el precio»), que NUNCA se suma a «convienen»; en la lista van después de los
+//     ✓ Comprar.
+//   · DE ENTRADA (03-nov-2026, la pasada real de Fabrizio): se ven con los ✓ Comprar, con el descuento máximo de 10 %, con y sin
+//     cuenta, y llegan en el mismo pedido del mapa (portal-servidor.ts › respuestaDeLaNoche). El chip de la barra es el filtro
+//     «Ver solo ✓ Comprar», apagado por defecto: prendido, la capa no se ve. En Filtros, «Descuento máximo para − Ajustar», 5 % o
+//     10 %. Hasta el 03-nov la capa estaba apagada de entrada y el chip «Si negocias el precio» la prendía con 5 %.
 //   · SOLO LO QUE CALCULA LA NOCHE: arriendo tradicional, pie 20 % o 30 %, 30 años y la tasa del motor. Con otra tasa, otro pie,
 //     otro plazo o renta corta, la capa no se muestra y Filtros lo dice.
 //   · SIN CUENTA la capa existe y sus cifras van borrosas como el resto: el precio negociado y el flujo no viajan, y el descuento
@@ -13,14 +18,15 @@
 //     mapa, puntos sin número.
 // ─────────────────────────────────────────────────────────────────────────────
 import { PIE_POR_DEFECTO, PLAZO_POR_DEFECTO } from "@/lib/deptos/estandar";
-import { pasaFiltros, pinDeFila, TOPES_NEGOCIAR, type FiltrosPortal, type PinMapa, type TopeNegociar } from "./portal";
+import { pasaFiltros, pinDeFila, TOPE_NEGOCIAR_DE_ENTRADA, TOPES_NEGOCIAR, type FiltrosPortal, type PinMapa, type TopeNegociar } from "./portal";
 import { TOPE_NEGOCIAR_PCT } from "@/lib/avisos/negociar-tope";
 import { NEGOCIADO_COPY } from "@/lib/precio-publicado";
 
 // Los topes de Filtros (5 % y 10 %) viven en portal.ts (son parte de los filtros de la URL); acá se reexportan. El mayor es el
 // que calcula la noche: si se separan, la capa ofrecería un tope sin datos (lo cuida EXPLORAR-NEGOCIAR).
 export { TOPES_NEGOCIAR, type TopeNegociar };
-export const TOPE_NEGOCIAR_POR_DEFECTO: TopeNegociar = 5;
+/** El de entrada (03-nov-2026): 10 %, el de la vista global (portal.ts). Hasta el 03-nov era 5 %. */
+export const TOPE_NEGOCIAR_POR_DEFECTO: TopeNegociar = TOPE_NEGOCIAR_DE_ENTRADA;
 export const TOPE_DE_LA_NOCHE = TOPE_NEGOCIAR_PCT;
 export const esTopeNegociar = (x: unknown): x is TopeNegociar => (TOPES_NEGOCIAR as readonly number[]).includes(Number(x));
 
@@ -80,6 +86,16 @@ export function capaNegociarDisponible(f: Pick<FiltrosPortal, "modalidad" | "pie
   return f.modalidad === "ltr" && f.tasa == null && f.plazo === PLAZO_POR_DEFECTO && (PIES_NEGOCIAR as readonly number[]).includes(f.pie);
 }
 
+/** ¿Se ve la capa? Con estos supuestos existe y «Ver solo ✓ Comprar» está apagado (03-nov-2026: de entrada, sí). */
+export const capaVisible = (f: Pick<FiltrosPortal, "modalidad" | "pie" | "plazo" | "tasa" | "soloComprar">): boolean => !f.soloComprar && capaNegociarDisponible(f);
+
+/** LAS DOS CLASES DEL MAPA (03-nov-2026): los − Ajustar que se ven con unos filtros —los de la capa que pasan los filtros y el
+ *  descuento máximo, sin los que ya son ✓ Comprar—, o ninguno si la capa no se ve. Lo usan el mapa, la barra, la lista, Filtros y
+ *  la bienvenida: un solo lugar decide si se ven. */
+export function negociadosVisibles(pines: readonly PinNegociado[] | null | undefined, f: FiltrosPortal, comprar: ReadonlySet<string> = new Set(), ahora: Date = new Date()): PinNegociado[] {
+  return pines && capaVisible(f) ? filtrarNegociados(pines, f, f.negociar, comprar, ahora) : [];
+}
+
 /** Cómo viaja la capa: las comunas una vez y cada depto como un arreglo corto (como el universo de la noche). */
 export interface NegociadosCompactos {
   comunas: string[];
@@ -136,32 +152,40 @@ const pct1 = (n: number) => n.toLocaleString("es-CL", { minimumFractionDigits: 1
 
 /** Los textos de la capa. «Al precio publicado» siempre se dice: «conviene» quiere decir a ese precio. */
 export const NEGOCIAR_COPY = {
-  chip: "Si negocias el precio",
-  chipOn: (tope: number) => `Si negocias · ${tope} %`,
-  tituloGrupo: "Si negocias el precio",
+  /** EL CHIP DE LA BARRA (03-nov-2026): «Ver solo [✓ Comprar]», con el chip de la casa adentro y su interruptor. */
+  soloComprar: "Ver solo",
+  /** El grupo de Filtros: «Descuento máximo para [− Ajustar]», con el chip de la casa. */
+  tituloGrupo: "Descuento máximo para",
   /** La ayuda del grupo, en tres partes: los chips de veredicto van entre medio (ChipVeredicto). */
-  ayuda: { antes: "Suma los deptos que al precio publicado dan", medio: "pero llegan a", despues: "si consigues un descuento. Se muestran aparte, con el pin en el color de Ajustar." },
-  tope: (t: number) => `Hasta ${t} % de dcto.`,
+  ayuda: { antes: "Los deptos que al precio publicado dan", medio: "pero llegan a", despues: "si consigues un descuento de hasta:" },
+  tope: (t: number) => `${t} %`,
   /** Con otra tasa, otro pie u otro plazo, o en renta corta: la capa no existe y Filtros lo dice. */
   sinCapa: "Franco calcula los que convienen si negocias con pie 20 % o 30 %, 30 años, la tasa del mes y arriendo tradicional. Con lo que elegiste, no se muestran.",
-  /** La cuenta aparte, bajo la de los que convienen: «1.654 más si negocias hasta 5 %». */
-  mas: (n: number, tope: number) => `${miles(n)} más si negocias hasta ${tope} %`,
+  /** La bienvenida sin cuenta (03-nov-2026), bajo los que convienen: «y 3.238 más si negocias el precio». Nunca sumado a ellos. */
+  bienvenida: (n: number) => `y ${miles(n)} más si negocias el precio`,
+  /** El título de los − Ajustar en la lista, después de los ✓ Comprar. */
+  tituloLista: (tope: number) => `Requieren negociar el precio · hasta ${tope} % de dcto.`,
   // Los dos veredictos y el botón: los mismos del pop-up (precio-publicado.ts, sin dependencias: el pop-up vive también en /deptos).
   ...NEGOCIADO_COPY,
-  /** El pin con zoom: el descuento que hay que conseguir. */
-  pin: (d: number) => `−${pct1(d)} %`,
+  /** El pin con zoom (03-nov-2026): el descuento que hay que conseguir, «−4,2 % dcto.». */
+  pin: (d: number) => `−${pct1(d)} % dcto.`,
   /** Sin cuenta, lo que se dibuja borroso en lugar del precio negociado y del descuento: un relleno fijo, nunca el valor. */
   borroso: { precio: "UF 0.000", descuento: "(−0,0 %)" },
 } as const;
 
-/** EL BOTÓN DE FILTROS (02-nov-2026, mockup 8): las dos cuentas, separadas —«Ver 201 + 48 si negocias»—; sin capa, el de siempre. */
-export function botonVerConNegociados(n: number | null, m: number | null, botonVer: (n: number | null) => string): string {
-  if (n == null || !m) return botonVer(n);
-  return `Ver ${miles(n)} + ${miles(m)} si negocias`;
+// (03-nov-2026) Se retiró `botonVerConNegociados` («Ver 201 + 48 si negocias»): el botón de Filtros es portal.ts › botonVer, con
+// los dos chips de la casa. Y `chip`/`chipOn`/`mas`: el chip de la barra es «Ver solo ✓ Comprar» y la cuenta aparte es una línea
+// del desglose (portal.ts › desgloseBarra).
+
+/** La medición del descuento máximo, en Filtros: lo cambió (5 o 10). */
+export const EVENTO_NEGOCIAR = "explorar_negociar";
+export function propsNegociar(tope: TopeNegociar, donde: "filtros", n: number | null): Record<string, unknown> {
+  return { tope, donde, n };
 }
 
-/** La medición: prender el chip (con el tope) y apagarlo. */
-export const EVENTO_NEGOCIAR = "explorar_negociar";
-export function propsNegociar(tope: TopeNegociar | null, donde: "chip" | "filtros", n: number | null): Record<string, unknown> {
-  return { prendido: tope != null, tope, donde, n };
+/** «explorar_solo_comprar» (03-nov-2026): prendió «Ver solo ✓ Comprar», con el descuento máximo que tenía, cuántos ✓ Comprar
+ *  quedan y cuántos − Ajustar se dejan de ver. Al apagarlo no se mide. */
+export const EVENTO_SOLO_COMPRAR = "explorar_solo_comprar";
+export function propsSoloComprar(tope: TopeNegociar, nComprar: number | null, nAjustar: number | null, sinCuenta: boolean): Record<string, unknown> {
+  return { tope, n_comprar: nComprar, n_ajustar: nAjustar, sin_cuenta: sinCuenta };
 }

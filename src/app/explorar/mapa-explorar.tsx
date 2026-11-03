@@ -4,13 +4,17 @@
 // EL MAPA DE EXPLORAR (23-oct-2026; como portal desde el 28-oct-2026, 5b-explorar-portal.html): Google Maps con el estilo de
 // Franco (map-styles.ts), cargado DESPUÉS del primer pintado (lo monta explorar-cliente.tsx por next/dynamic, con la página
 // quieta). LEJOS, GRUPOS CON NÚMERO (explorar.ts › agruparPines, por celdas de la proyección a cada zoom); CON ZOOM, cada pin
-// dice su flujo mensual («+$142 mil»), los ya analizados por la cuenta van en azul con «✓ Analizado» y los aparecidos en
-// las últimas 24 horas dicen «Nuevo hoy» (portal.ts › textoPin); el elegido, en tinta. Tocar un grupo acerca; tocar un pin
-// abre su tarjeta; tocar el mapa la cierra. Cuando LA PERSONA mueve el mapa (no el encuadre automático), avisa la caja para
-// «Buscar en esta zona». Usa `google.maps.Marker` como el resto del sitio (AdvancedMarkerElement exige un Map ID).
-// LA CAPA «SI NEGOCIAS» (02-nov-2026, capa-negociar.ts): los negociados se agrupan y se dibujan APARTE, con el pin relleno en el
-// color del chip Ajustar (la ciruela de la tríada) y el número en blanco —nunca el rojo de los que convienen—; con zoom, el pin
-// dice el descuento («−4,2 %»). Debajo de los que convienen; lejos, el grupo que un rojo tapa se corre a su borde (satélite).
+// dice su flujo mensual («+$142 mil»), los ya analizados por la cuenta dicen «✓ Analizado» y los aparecidos en las últimas 24
+// horas, «Nuevo hoy» (portal.ts › textoPin). Tocar un grupo acerca; tocar un pin abre su tarjeta; tocar el mapa la cierra.
+// Cuando LA PERSONA mueve el mapa (no el encuadre automático), avisa la caja para «Buscar en esta zona». Usa
+// `google.maps.Marker` como el resto del sitio (AdvancedMarkerElement exige un Map ID).
+// LOS COLORES (03-nov-2026, la pasada real de Fabrizio; colores-pin.ts, uno solo para todos los mapas): ✓ Comprar en el azul del
+// chip Comprar, − Ajustar en la ciruela del chip Ajustar, los ya analizados en tinta con un ✓ blanco; el elegido, el mismo color
+// más grande y con el anillo blanco más grueso; los grupos, del color de su clase. ROJO EN NINGÚN PIN (hasta el 03-nov los que
+// convienen iban en rojo, los analizados en azul y el elegido en tinta).
+// LOS − AJUSTAR (02-nov-2026, capa-negociar.ts; de entrada desde el 03-nov): se agrupan y se dibujan APARTE; con zoom, el pin
+// dice el descuento («−4,2 % dcto.»). Debajo de los ✓ Comprar; lejos, el grupo que uno de ellos tapa se corre a su borde
+// (satélite).
 // EL ENLACE DE UN DEPTO COMPARTIDO (02-nov-2026): con `foco`, el primer encuadre no abarca los pines sino que se centra en el
 // depto, de cerca (ZOOM_FOCO, con su etiqueta), una vez; después los filtros encuadran como siempre.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -20,14 +24,8 @@ import { francoMapStyleForTheme } from "@/lib/map-styles";
 import { agruparPines, proyectar } from "@/lib/explorar/explorar";
 import { textoPin, type Caja, type PinMapa } from "@/lib/explorar/portal";
 import { NEGOCIAR_COPY, satelite, type Circulo, type PinNegociado } from "@/lib/explorar/capa-negociar";
-
-const ROJO = "#C8323C";
-/** El color del chip Ajustar (la ciruela de la tríada): el de los negociados, que al precio publicado dan Ajustar. */
-const CIRUELA = "#6E4560";
-const AZUL_CLARO = "#2B558F";
-const AZUL_OSCURO = "#8DB0E3";
-const TINTA = "#0F0F0F";
-const PAPEL = "#FFFFFF";
+import type { ClasePin, TemaPin } from "@/lib/explorar/colores-pin";
+import { iconoPin } from "@/lib/explorar/iconos-pin";
 const ZOOM_MAX_ENCUADRE = 15;
 /** El zoom con que se abre un depto compartido: de cuadra, con las etiquetas de los pines (ZOOM_ETIQUETAS). */
 export const ZOOM_FOCO = 16;
@@ -40,25 +38,7 @@ const esClaro = () => typeof document !== "undefined" && document.documentElemen
 /** EL MAPA EN OSCURO (30-oct-2026): el estilo oscuro de Franco (map-styles.ts: fondo oscuro, calles en gris medio, nombres
  *  legibles, agua y parques apagados) y el fondo mientras cargan las teselas. Sigue al tema del sitio y cambia al momento. */
 const opcionesDeTema = () => (esClaro() ? { styles: francoMapStyleForTheme("light"), backgroundColor: "#F6F6F7" } : { styles: francoMapStyleForTheme("dark"), backgroundColor: "#1a1a1a" });
-/** El elegido: en tinta sobre el mapa claro; sobre el oscuro la tinta se pierde, así que va en papel con el texto en tinta.
- *  Los rojos y el azul de los analizados se mantienen (el azul ya es el aclarado en oscuro), con su borde claro. */
-const elegidoDeTema = () => (esClaro() ? { fondo: TINTA, texto: PAPEL } : { fondo: "#F2F2F0", texto: TINTA });
-const svgUrl = (w: number, h: number, inner: string) => `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${inner}</svg>`)}`;
-const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
-const iconoPunto = (color: string) => ({ url: svgUrl(18, 18, `<circle cx="9" cy="9" r="7" fill="${color}" stroke="${PAPEL}" stroke-width="2"/>`), w: 18, h: 18 });
-/** El elegido sin cuenta (29-oct-2026, mockup 6-puerta-e, estado C): un punto más grande, sin texto (en tinta; en oscuro, papel). */
-const iconoElegido = () => ({ url: svgUrl(26, 26, `<circle cx="13" cy="13" r="11" fill="${elegidoDeTema().fondo}" stroke="${esClaro() ? PAPEL : TINTA}" stroke-width="3"/>`), w: 26, h: 26 });
-function iconoGrupo(n: number, color: string, tinta: string = PAPEL) {
-  const w = n < 10 ? 34 : n < 100 ? 40 : n < 1000 ? 48 : 56;
-  const t = n.toLocaleString("es-CL");
-  return { url: svgUrl(w, w, `<circle cx="${w / 2}" cy="${w / 2}" r="${w / 2 - 1.5}" fill="${color}" stroke="${PAPEL}" stroke-width="2"/><text x="50%" y="50%" dy=".36em" text-anchor="middle" font-family="Inter, Helvetica, Arial, sans-serif" font-size="12" font-weight="600" fill="${tinta}">${t}</text>`), w, h: w };
-}
-/** La píldora de un pin con zoom: el texto (flujo, «✓ Analizado», «Nuevo hoy») sobre su color; el elegido, en tinta. */
-function iconoEtiqueta(texto: string, fondo: string, elegido: boolean, tinta: string = PAPEL) {
-  const w = Math.round(18 + texto.length * 6.9), h = elegido ? 30 : 26;
-  const borde = elegido ? `stroke="${PAPEL}" stroke-width="2"` : `stroke="${PAPEL}" stroke-width="1"`;
-  return { url: svgUrl(w + 4, h + 4, `<rect x="2" y="2" width="${w}" height="${h}" rx="${h / 2}" fill="${fondo}" ${borde}/><text x="${(w + 4) / 2}" y="${(h + 4) / 2}" dy=".36em" text-anchor="middle" font-family="Inter, Helvetica, Arial, sans-serif" font-size="12" font-weight="600" fill="${tinta}">${esc(texto)}</text>`), w: w + 4, h: h + 4 };
-}
+const temaPin = (): TemaPin => (esClaro() ? "claro" : "oscuro");
 
 export interface MapaExplorarProps {
   pines: PinMapa[];
@@ -133,67 +113,78 @@ export default function MapaExplorar({ pines, negociados = [], analizados, selec
         const caja = map.getBounds();
         if (zoom == null) return;
         limpiar();
-        const azul = esClaro() ? AZUL_CLARO : AZUL_OSCURO;
+        // Todo ícono sale de iconoPin, con el color de su clase y del tema (colores-pin.ts): ni un color escrito acá.
+        const tema = temaPin();
+        const punto = (c: ClasePin, elegido = false) => iconoPin(c, tema, { forma: "punto" }, elegido);
+        const etiqueta = (c: ClasePin, texto: string, elegido = false) => iconoPin(c, tema, { forma: "etiqueta", texto }, elegido);
+        const grupo = (c: ClasePin, n: number) => iconoPin(c, tema, { forma: "grupo", n });
         const an = analizadosRef.current;
         // Solo lo que está a la vista: a Gran Santiago entero no hace falta dibujarle miles de marcadores.
         const visibles = caja ? pinesRef.current.filter((p) => caja.contains({ lat: p.lat, lng: p.lng })) : pinesRef.current;
         const sel = selRef.current;
         const porId = new Map(visibles.map((p) => [p.avisoId, p]));
         const ahora = new Date();
-        // Los círculos rojos de este dibujo (grupos y puntos), para correr los de la capa que tapan.
-        const rojos: Circulo[] = [];
+        // Los círculos de los ✓ Comprar de este dibujo (grupos y puntos), para correr los − Ajustar que tapan.
+        const arriba: Circulo[] = [];
         const circulo = (lat: number, lng: number, r: number) => ({ ...proyectar(lat, lng, zoom), r });
-        for (const gr of agruparPines(visibles, zoom, an, zoom >= ZOOM_ETIQUETAS ? 44 : 56)) {
+        const agrupaEn = zoom >= ZOOM_ETIQUETAS ? 44 : 56;
+        for (const gr of agruparPines(visibles, zoom, an, agrupaEn)) {
           if (gr.n === 1) {
             const id = gr.ids[0];
             const p = porId.get(id);
             if (!p) continue;
             const elegido = id === sel;
             if (sinCifrasRef.current) {
-              marcador({ lat: p.lat, lng: p.lng }, elegido ? iconoElegido() : iconoPunto(ROJO), elegido ? 20 : 2, () => cb.current.onSeleccionar(id));
-              if (!elegido) rojos.push(circulo(p.lat, p.lng, 9));
+              // Sin cuenta: puntos sin número (el flujo no viaja); el elegido, el mismo azul más grande.
+              marcador({ lat: p.lat, lng: p.lng }, punto("comprar", elegido), elegido ? 20 : 2, () => cb.current.onSeleccionar(id));
+              if (!elegido) arriba.push(circulo(p.lat, p.lng, 9));
             } else if (zoom >= ZOOM_ETIQUETAS || elegido) {
               const t = textoPin(p, { analizado: an.has(id), ahora });
-              const fondo = elegido ? elegidoDeTema().fondo : t.tipo === "analizado" ? azul : ROJO;
-              marcador({ lat: p.lat, lng: p.lng }, iconoEtiqueta(t.texto, fondo, elegido, elegido ? elegidoDeTema().texto : t.tipo === "analizado" && !esClaro() ? TINTA : PAPEL), elegido ? 20 : t.tipo === "analizado" ? 4 : 3, () => cb.current.onSeleccionar(id), t.texto);
+              marcador({ lat: p.lat, lng: p.lng }, etiqueta(t.tipo === "analizado" ? "analizado" : "comprar", t.texto, elegido), elegido ? 20 : t.tipo === "analizado" ? 4 : 3, () => cb.current.onSeleccionar(id), t.texto);
             } else {
-              rojos.push(circulo(p.lat, p.lng, 9));
-              marcador({ lat: p.lat, lng: p.lng }, iconoPunto(an.has(id) ? azul : ROJO), an.has(id) ? 3 : 2, () => cb.current.onSeleccionar(id));
+              arriba.push(circulo(p.lat, p.lng, 9));
+              marcador({ lat: p.lat, lng: p.lng }, punto(an.has(id) ? "analizado" : "comprar"), an.has(id) ? 3 : 2, () => cb.current.onSeleccionar(id));
             }
           } else {
             const pos = { lat: gr.lat, lng: gr.lng };
-            const icono = iconoGrupo(gr.n, gr.analizados === gr.n ? azul : ROJO, gr.analizados === gr.n && !esClaro() ? TINTA : PAPEL);
-            rojos.push(circulo(gr.lat, gr.lng, icono.w / 2));
+            const icono = grupo(gr.analizados === gr.n ? "analizado" : "comprar", gr.n);
+            arriba.push(circulo(gr.lat, gr.lng, icono.w / 2));
             marcador(pos, icono, 1, () => { propio.current = true; map.setZoom(Math.min(zoom + 2, 18)); map.panTo(pos); });
           }
         }
-        // LA CAPA «SI NEGOCIAS» (02-nov-2026): sus propios grupos y pines, en ciruela con el número en blanco, debajo de los que
-        // convienen. Con zoom, el descuento; el elegido, en tinta como cualquier elegido. Sin cuenta, puntos.
+        // LOS − AJUSTAR (02-nov-2026; de entrada desde el 03-nov): sus propios grupos y pines, en la ciruela del chip, debajo de los
+        // ✓ Comprar. Con zoom, el descuento («−4,2 % dcto.»); el elegido, la misma ciruela más grande. Sin cuenta, puntos.
         const negs = caja ? negociadosRef.current.filter((p) => caja.contains({ lat: p.lat, lng: p.lng })) : negociadosRef.current;
         const negPorId = new Map(negs.map((p) => [p.avisoId, p]));
-        for (const gr of agruparPines(negs, zoom, new Set<string>(), zoom >= ZOOM_ETIQUETAS ? 44 : 56)) {
+        const gruposNeg = agruparPines(negs, zoom, new Set<string>(), agrupaEn);
+        for (const gr of gruposNeg) {
           if (gr.n === 1) {
             const id = gr.ids[0];
             const p = negPorId.get(id);
             if (!p) continue;
             const elegido = id === sel;
-            // Sin cuenta, como el resto: puntos sin número (el descuento no viaja); el elegido, el de siempre.
-            if (sinCifrasRef.current) marcador({ lat: p.lat, lng: p.lng }, elegido ? iconoElegido() : iconoPunto(CIRUELA), elegido ? 20 : 1, () => cb.current.onSeleccionar(id), undefined, elegido ? undefined : satelite(circulo(p.lat, p.lng, 9), rojos));
+            // Sin cuenta, como el resto: puntos sin número (el descuento no viaja).
+            if (sinCifrasRef.current) marcador({ lat: p.lat, lng: p.lng }, punto("ajustar", elegido), elegido ? 20 : 1, () => cb.current.onSeleccionar(id), undefined, elegido ? undefined : satelite(circulo(p.lat, p.lng, 9), arriba));
             else if (zoom >= ZOOM_ETIQUETAS || elegido) {
               const texto = NEGOCIAR_COPY.pin(p.neg.d);
-              marcador({ lat: p.lat, lng: p.lng }, iconoEtiqueta(texto, elegido ? elegidoDeTema().fondo : CIRUELA, elegido, elegido ? elegidoDeTema().texto : PAPEL), elegido ? 20 : 1, () => cb.current.onSeleccionar(id), texto);
-            } else marcador({ lat: p.lat, lng: p.lng }, iconoPunto(CIRUELA), 1, () => cb.current.onSeleccionar(id), undefined, satelite(circulo(p.lat, p.lng, 9), rojos));
+              marcador({ lat: p.lat, lng: p.lng }, etiqueta("ajustar", texto, elegido), elegido ? 20 : 1, () => cb.current.onSeleccionar(id), texto);
+            } else marcador({ lat: p.lat, lng: p.lng }, punto("ajustar"), 1, () => cb.current.onSeleccionar(id), undefined, satelite(circulo(p.lat, p.lng, 9), arriba));
           } else {
             const pos = { lat: gr.lat, lng: gr.lng };
-            const icono = iconoGrupo(gr.n, CIRUELA, PAPEL);
-            marcador(pos, icono, 0, () => { propio.current = true; map.setZoom(Math.min(zoom + 2, 18)); map.panTo(pos); }, undefined, satelite(circulo(gr.lat, gr.lng, icono.w / 2), rojos));
+            const icono = grupo("ajustar", gr.n);
+            marcador(pos, icono, 0, () => { propio.current = true; map.setZoom(Math.min(zoom + 2, 18)); map.panTo(pos); }, undefined, satelite(circulo(gr.lat, gr.lng, icono.w / 2), arriba));
           }
         }
-        // El elegido, si quedó dentro de un grupo, igual se ve.
+        // El elegido, si quedó dentro de un grupo, igual se ve: del color de su clase, más grande.
         const e = sel ? pinesRef.current.find((p) => p.avisoId === sel) : null;
-        if (e && !(zoom >= ZOOM_ETIQUETAS) && !agruparPines(visibles, zoom, an, 56).some((gr) => gr.n === 1 && gr.ids[0] === sel)) {
+        if (e && !(zoom >= ZOOM_ETIQUETAS) && !agruparPines(visibles, zoom, an, agrupaEn).some((gr) => gr.n === 1 && gr.ids[0] === sel)) {
           const t = textoPin(e, { analizado: an.has(e.avisoId), ahora });
-          marcador({ lat: e.lat, lng: e.lng }, sinCifrasRef.current ? iconoElegido() : iconoEtiqueta(t.texto, elegidoDeTema().fondo, true, elegidoDeTema().texto), 20, () => cb.current.onSeleccionar(e.avisoId));
+          const clase: ClasePin = an.has(e.avisoId) ? "analizado" : "comprar";
+          marcador({ lat: e.lat, lng: e.lng }, sinCifrasRef.current ? punto(clase, true) : etiqueta(clase, t.texto, true), 20, () => cb.current.onSeleccionar(e.avisoId));
+        }
+        const en = sel && !e ? negociadosRef.current.find((p) => p.avisoId === sel) : null;
+        if (en && !(zoom >= ZOOM_ETIQUETAS) && !gruposNeg.some((gr) => gr.n === 1 && gr.ids[0] === sel)) {
+          marcador({ lat: en.lat, lng: en.lng }, sinCifrasRef.current ? punto("ajustar", true) : etiqueta("ajustar", NEGOCIAR_COPY.pin(en.neg.d), true), 20, () => cb.current.onSeleccionar(en.avisoId));
         }
       };
       encuadrarRef.current = () => {

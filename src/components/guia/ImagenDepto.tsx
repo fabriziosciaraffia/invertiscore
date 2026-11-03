@@ -27,13 +27,14 @@ export function useCalle(ids: string[]): Record<string, "foto" | "mapa"> {
   return tipos;
 }
 
-/** La imagen de un depto: la de la calle o el mapa chico (la ruta decide y la sirve desde la caché). */
-export function ImagenDepto({ avisoId, tipo, clase, carga = "eager" }: { avisoId: string; tipo: "foto" | "mapa" | undefined; clase: string; carga?: "eager" | "lazy" }) {
+/** La imagen de un depto: la de la calle o el mapa chico (la ruta decide y la sirve desde la caché). `ajustar` (03-nov-2026): un
+ *  − Ajustar, con el pin del mapa chico en la ciruela del chip (si no, el azul de ✓ Comprar). */
+export function ImagenDepto({ avisoId, tipo, clase, carga = "eager", ajustar = false }: { avisoId: string; tipo: "foto" | "mapa" | undefined; clase: string; carga?: "eager" | "lazy"; ajustar?: boolean }) {
   const oscuro = useTemaOscuro();
   return (
     <span className={clase} data-explorar="imagen" data-calle={tipo ?? undefined}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={rutaImagenCalle(avisoId, oscuro)} alt={tipo === "foto" ? CALLE_COPY.etiqueta : tipo === "mapa" ? CALLE_COPY.mapa : ""} loading={carga} decoding="async" width={96} height={96} />
+      <img src={rutaImagenCalle(avisoId, oscuro, ajustar)} alt={tipo === "foto" ? CALLE_COPY.etiqueta : tipo === "mapa" ? CALLE_COPY.mapa : ""} loading={carga} decoding="async" width={96} height={96} />
       {tipo === "foto" && <span className="ex-img-etq" data-explorar="vista-calle">{CALLE_COPY.etiqueta}</span>}
     </span>
   );

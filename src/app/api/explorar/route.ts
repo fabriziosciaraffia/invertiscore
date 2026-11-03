@@ -6,16 +6,17 @@ import { captureApiError } from "@/lib/observabilidad";
 import { COMUNAS_DISPONIBLES } from "@/lib/comunas-disponibles";
 import { PIE_POR_DEFECTO, PLAZO_POR_DEFECTO, tasaElegidaDe } from "@/lib/deptos/estandar";
 import { PIES_EXPLORAR, PLAZOS_EXPLORAR } from "@/lib/explorar/explorar";
-import { claveUniverso, universoDeLaNoche as esDeLaNoche } from "@/lib/explorar/portal";
-import { respuestaUniverso, universoCalculado, type RespuestaUniverso } from "@/lib/explorar/portal-servidor";
-import { universoDeLaNocheCacheado } from "@/lib/explorar/portal-cache";
+import { universoDeLaNoche as esDeLaNoche } from "@/lib/explorar/portal";
+import { respuestaUniverso, universoCalculado } from "@/lib/explorar/portal-servidor";
+import { respuestaDeLaNoche } from "@/lib/explorar/portal-cache";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/explorar?m=ltr&p=20&z=25[&c=Ñuñoa] (28-oct-2026, Explorar como portal): el universo del mapa para una modalidad,
 // un pie y un plazo, compacto (portal.ts › UniversoCompacto). Los filtros de comuna, tipología, precio, flujo, fecha y zona
 // se aplican en el navegador, al instante.
 //   · Arriendo tradicional con un pie y un plazo de la noche: TODO Gran Santiago, de la caché de diez minutos (es el mismo
-//     para todos). `c` no se mira.
+//     para todos). `c` no se mira. Con pie 20 % o 30 % a 30 años, en el MISMO PEDIDO los − Ajustar que llegan a Comprar
+//     negociando (03-nov-2026: se ven de entrada; portal-cache.ts › respuestaDeLaNoche).
 //   · Cualquier otro pie o plazo, o renta corta: las comunas de `c` (el navegador las pide de a una, para ir mostrando),
 //     calculadas en el momento y guardadas 24 horas.
 // Solo con sesión. NO ESCRIBE NADA de la persona —explorar no toca el perfil ni gasta—; lo calculado queda en `combos`.
@@ -42,10 +43,8 @@ export async function GET(request: Request) {
   const q = { modalidad, pie, plazo, tasa } as const;
   try {
     if (esDeLaNoche(q)) {
-      const u = await universoDeLaNocheCacheado(pie, plazo);
       // La misma forma que lo calculado (RespuestaUniverso): el universo va en `universo`, con su propia tabla de comunas.
-      const r: RespuestaUniverso = { clave: claveUniverso(q), comunas: [], universo: u, calculados: 0, ms: 0 };
-      return NextResponse.json(r, { headers: { "Cache-Control": "private, max-age=300" } });
+      return NextResponse.json(await respuestaDeLaNoche(pie, plazo), { headers: { "Cache-Control": "private, max-age=300" } });
     }
     const comunas = Array.from(new Set((sp.get("c") ?? "").split(",").map((x) => x.trim()).filter((c) => COMUNAS_OK.has(c))));
     if (comunas.length === 0 || comunas.length > MAX_COMUNAS_POR_PEDIDO) return NextResponse.json({ error: "comunas" }, { status: 400 });

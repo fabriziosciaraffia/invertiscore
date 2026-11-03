@@ -47,6 +47,8 @@ import "@/components/guia/guia.css";
 import "@/app/deptos/deptos.css";
 import "@/app/dashboard/casa.css";
 import { CASA } from "@/app/dashboard/casa-copy";
+import { PinTarjeta } from "@/app/dashboard/mapa-casa";
+import { clasePinDeItem } from "@/lib/casa/mapa-casa";
 
 const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
 const pct = (n: number) => String(Math.round(n * 10) / 10).replace(".", ",");
@@ -263,7 +265,7 @@ export function SemanalLista({
   const filaAnalizada = (it: ItemSemanal, informe: string, n: number | null): JSX.Element => (
     <EnlaceCarga key={it.avisoId} href={corta ? `/analisis/renta-corta/${informe}` : `/analisis/${informe}`} className="sel-fila" data-semanal="ya-analizado" data-n={n ?? undefined}>
       <span className="sel-fila-txt">
-        <span className="sel-fila-ojo">{n != null && <span className="sel-pin" aria-hidden="true">{n}</span>}{nombre(it)}</span>
+        <span className="sel-fila-ojo">{n != null && <PinTarjeta n={n} clase="analizado" />}{nombre(it)}</span>
         <span className="sel-fila-ya">{YA_ANALIZADO.texto}</span>
       </span>
       <span className="sel-fila-ver">{YA_ANALIZADO.enlace}</span>
@@ -276,7 +278,7 @@ export function SemanalLista({
     const neg = (it.flujo ?? 0) < 0;
     return (
       <article key={clave} className="sel-av" data-destacado={it.avisoId === destacado ? "1" : undefined} data-reemplazo={it.reemplazaA ? "1" : undefined} data-no-da={corta && noDa.has(it.avisoId) ? "1" : undefined} data-n={n ?? undefined}>
-        <div className="sel-ojo">{n != null && <span className="sel-pin" aria-hidden="true">{n}</span>}{ojoDe(it)}</div>
+        <div className="sel-ojo">{n != null && <PinTarjeta n={n} clase={clasePinDeItem(it)} />}{ojoDe(it)}</div>
         <div className="sel-precio">UF {miles(it.precioUF)}</div>
         {corta && <p className="sel-estado" data-semanal="zona">{MARCA_ZONA}</p>}
         {it.tramo === "negociar" && <p className="sel-estado" data-semanal="negociar">{MARCA_NEGOCIAR}</p>}

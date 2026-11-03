@@ -91,7 +91,7 @@ function filaDeDecision(id: string, punto: Punto, d: DecisionCalle, ahora: Date)
  *  guardada: un mapa por un rechazo de Google (la API apagada, la llave sin permiso) no lo es, y no se puede quedar 30 días
  *  en la caché del CDN tapando la foto que vendrá cuando Google responda. `lado` (02-nov-2026): la vista previa de un depto
  *  compartido pide la imagen grande —la foto a 630 px y el mapa a 315 con escala 2—; la tarjeta, la de siempre. */
-export async function imagenDeCalle(admin: SupabaseClient, avisoId: string, estilo: readonly string[], ahora: Date = new Date(), deps: DepsCalle = {}, lado?: { foto: number; mapa: number }): Promise<{ url: string; tipo: "foto" | "mapa"; guardada: boolean; respaldo?: string } | null> {
+export async function imagenDeCalle(admin: SupabaseClient, avisoId: string, estilo: readonly string[], ahora: Date = new Date(), deps: DepsCalle = {}, lado?: { foto: number; mapa: number }, pin?: string): Promise<{ url: string; tipo: "foto" | "mapa"; guardada: boolean; respaldo?: string } | null> {
   const key = deps.key ?? llaveCalle();
   const keyMapa = deps.key ?? llaveMapaChico();
   if (!key || !keyMapa) return null;
@@ -103,10 +103,11 @@ export async function imagenDeCalle(admin: SupabaseClient, avisoId: string, esti
   const fila = g as FilaCalle | null;
   // Con la foto va el mapa chico de RESPALDO (29-oct-2026): si Google no la entrega (la llave sin permiso, un corte), la ruta
   // sirve el mapa en vez de una imagen rota.
-  if (fila?.estado === "foto" && fila.pano_id && fila.rumbo != null) return { url: urlFotoCalle({ panoId: fila.pano_id, rumbo: Number(fila.rumbo) }, key, lado?.foto), tipo: "foto", guardada: true, respaldo: urlMapaChico({ lat: Number(fila.lat), lng: Number(fila.lng) }, keyMapa, estilo, lado?.mapa) };
+  // `pin` (03-nov-2026): el color del pin del mapa chico, el de la clase del depto (colores-pin.ts); sin él, el azul de ✓ Comprar.
+  if (fila?.estado === "foto" && fila.pano_id && fila.rumbo != null) return { url: urlFotoCalle({ panoId: fila.pano_id, rumbo: Number(fila.rumbo) }, key, lado?.foto), tipo: "foto", guardada: true, respaldo: urlMapaChico({ lat: Number(fila.lat), lng: Number(fila.lng) }, keyMapa, estilo, lado?.mapa, pin) };
   // Sin foto (o sin decidir, si Google rechazó): el mapa chico con el punto del aviso.
   const punto = fila ? { lat: Number(fila.lat), lng: Number(fila.lng) } : await puntoDelAviso(admin, avisoId);
-  return punto ? { url: urlMapaChico(punto, keyMapa, estilo, lado?.mapa), tipo: "mapa", guardada: fila != null } : null;
+  return punto ? { url: urlMapaChico(punto, keyMapa, estilo, lado?.mapa, pin), tipo: "mapa", guardada: fila != null } : null;
 }
 
 async function puntoDelAviso(admin: SupabaseClient, avisoId: string): Promise<Punto | null> {

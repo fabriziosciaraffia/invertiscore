@@ -13,6 +13,7 @@
 // decisión es null y no se guarda, así el día que la API se active las fotos aparecen solas. Puro: lo prueba el tier
 // EXPLORAR-PORTAL.
 // ─────────────────────────────────────────────────────────────────────────────
+import { colorPin, colorStaticMaps, type ClasePin } from "./colores-pin";
 
 /** El punto del aviso y el del panorama. */
 export interface Punto { lat: number; lng: number }
@@ -90,12 +91,20 @@ export function urlFotoCalle(d: { panoId: string; rumbo: number }, key: string, 
   return `https://maps.googleapis.com/maps/api/streetview?size=${lado}x${lado}&pano=${encodeURIComponent(d.panoId)}&heading=${d.rumbo}&pitch=8&fov=80&return_error_code=true&key=${encodeURIComponent(key)}`;
 }
 
-/** El mapa chico: la cuadra, con el pin del aviso, en el estilo claro de Franco (`estilo`: los parámetros de map-styles). */
-export function urlMapaChico(punto: Punto, key: string, estilo: readonly string[] = [], lado: number = LADO_IMAGEN / 2): string {
-  const partes = [`center=${coord(punto)}`, "zoom=17", `size=${lado}x${lado}`, "scale=2", "maptype=roadmap", ...estilo, `markers=color:0xC8323C%7Csize:mid%7C${coord(punto)}`, `key=${encodeURIComponent(key)}`];
+/** El mapa chico: la cuadra, con el pin del aviso, en el estilo claro de Franco (`estilo`: los parámetros de map-styles). EL PIN
+ *  (03-nov-2026, colores-pin.ts) va en el color de su clase y su tema: el azul de ✓ Comprar o la ciruela de − Ajustar, nunca el
+ *  rojo (hasta el 03-nov era rojo). */
+export function urlMapaChico(punto: Punto, key: string, estilo: readonly string[] = [], lado: number = LADO_IMAGEN / 2, pin: string = colorPin("comprar", "claro").fondo): string {
+  const partes = [`center=${coord(punto)}`, "zoom=17", `size=${lado}x${lado}`, "scale=2", "maptype=roadmap", ...estilo, `markers=color:${colorStaticMaps(pin)}%7Csize:mid%7C${coord(punto)}`, `key=${encodeURIComponent(key)}`];
   return `https://maps.googleapis.com/maps/api/staticmap?${partes.join("&")}`;
 }
 
-/** La dirección de la imagen de un aviso en Franco (la ruta la sirve desde la caché del CDN). En oscuro, `?tema=oscuro`: el mapa
- *  chico en el estilo oscuro, con su propia entrada en la caché (la foto de la calle es la misma). */
-export const rutaImagenCalle = (avisoId: string, oscuro = false): string => `/api/explorar/calle/${encodeURIComponent(avisoId)}${oscuro ? "?tema=oscuro" : ""}`;
+/** La dirección de la imagen de un aviso en Franco (la ruta la sirve desde la caché del CDN). En oscuro, `tema=oscuro`: el mapa
+ *  chico en el estilo oscuro, con su propia entrada en la caché (la foto de la calle es la misma). Un − Ajustar (03-nov-2026),
+ *  `v=a`: el pin del mapa chico en la ciruela del chip; sin `v`, el azul de ✓ Comprar. */
+export const rutaImagenCalle = (avisoId: string, oscuro = false, ajustar = false): string => {
+  const q = [oscuro ? "tema=oscuro" : null, ajustar ? "v=a" : null].filter(Boolean).join("&");
+  return `/api/explorar/calle/${encodeURIComponent(avisoId)}${q ? `?${q}` : ""}`;
+};
+/** La clase del pin que pide la imagen (`v=a`: − Ajustar). */
+export const claseDeImagen = (v: string | null): ClasePin => (v === "a" ? "ajustar" : "comprar");

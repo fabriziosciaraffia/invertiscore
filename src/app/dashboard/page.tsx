@@ -255,8 +255,13 @@ export default async function DashboardPage({
           <h2 className="ca-t2">{CASA.seleccion.titulo}</h2>
           {lineaSel && <p className="ca-linea" data-casa="seleccion-linea">{lineaSel}</p>}
           <AvisoSinOferta aviso={sinOferta} />
-          {mapa && <MapaCasa datos={mapa} totalNoche={totalNoche} />}
-          <SeleccionEnCasa sel={sel} autoAnalizar={autoAnalizar} primera={!hayDeptos(sel)} />
+          {/* EN EL PC, DOS COLUMNAS (03-nov-2026, la pasada real de Fabrizio): el mapa a la izquierda (55 %), con su píldora y
+              «Explorar los N de Santiago» debajo, fijo mientras se baja por las tarjetas, que van a la derecha. En el teléfono, uno
+              debajo del otro, como siempre (casa.css › .ca-dos). Sin mapa, las tarjetas a lo ancho. */}
+          <div className="ca-dos" data-casa="dos-columnas" data-con-mapa={mapa ? "1" : undefined}>
+            {mapa && <div className="ca-dos-mapa"><MapaCasa datos={mapa} totalNoche={totalNoche} /></div>}
+            <div className="ca-dos-tarjetas"><SeleccionEnCasa sel={sel} autoAnalizar={autoAnalizar} primera={!hayDeptos(sel)} /></div>
+          </div>
           <LineaPuertaExplorar linea={lineaPuerta} consulta={consultaPuerta} donde="dashboard" />
         </section>
 

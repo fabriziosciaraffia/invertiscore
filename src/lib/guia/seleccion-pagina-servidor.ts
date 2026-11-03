@@ -16,6 +16,8 @@ import { reportarFalloQuery } from "@/lib/observabilidad";
 import { ticketDeCuentaDisponible } from "@/lib/lo-que-sigue/ticket-cuenta-servidor";
 import { bloqueDelDestacado, type FilaPaginaSemanal } from "@/lib/guia/semanal";
 import { resumenSeleccion, type ResumenBloque } from "@/lib/guia/seleccion-casa";
+import { clasePinDeItem } from "@/lib/casa/mapa-casa";
+import type { ClasePin } from "@/lib/explorar/colores-pin";
 import {
   condicionesDeAvisos, conCondicion, finanzasDeSeleccion, informesEnRentaCorta, noDanEnRentaCorta, seleccionDeEstaSemana, seleccionPorToken, seleccionViva, type ItemSemanal, type SeleccionPorToken,
 } from "@/lib/guia/semanal-servidor";
@@ -73,9 +75,11 @@ export function bloquesEnOrden(s: SeleccionPagina): Array<{ bloque: "largo" | "c
 }
 
 /** Los deptos del mapa, en el orden de las tarjetas (bloquesEnOrden). Sin deptos, ninguno. */
-export function deptosDelMapa(s: SeleccionPagina | null): Array<{ avisoId: string; comuna: string }> {
+export function deptosDelMapa(s: SeleccionPagina | null): Array<{ avisoId: string; comuna: string; clase: ClasePin }> {
   if (!hayDeptos(s)) return [];
-  return bloquesEnOrden(s).flatMap((b) => b.filas.map((f) => f.reemplazo ?? f.item)).map((i) => ({ avisoId: i.avisoId, comuna: i.comuna }));
+  // La clase del pin (03-nov-2026): el ya analizado (en vivo, por sus informes), el que conviene negociando o el que conviene.
+  const informes = { ...(s.largo?.informes ?? {}), ...(s.corto?.informes ?? {}) };
+  return bloquesEnOrden(s).flatMap((b) => b.filas.map((f) => f.reemplazo ?? f.item)).map((i) => ({ avisoId: i.avisoId, comuna: i.comuna, clase: clasePinDeItem(i, informes) }));
 }
 
 /** El resumen para el banner de arriba del dashboard (casa-arriba.ts): los deptos vivos de cada bloque. null: no hay. */

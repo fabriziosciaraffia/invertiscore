@@ -7,6 +7,7 @@ import { esPuerta } from "@/lib/atribucion-puerta";
 import { primerosDeLaCuenta } from "@/lib/deptos/primeros-servidor";
 import { ticketDeCuentaDisponible } from "@/lib/lo-que-sigue/ticket-cuenta-servidor";
 import { datosMapaCasa } from "@/lib/casa/mapa-casa-servidor";
+import { clasePinDeItem, MAPA_CASA_PC, MAPA_DENTRO_PC } from "@/lib/casa/mapa-casa";
 import { portadaDeptos } from "@/lib/deptos/portada";
 import { leerPerfilBusqueda } from "@/lib/perfil-busqueda-servidor";
 import { consultaExplorar } from "@/lib/explorar/puerta-correos-filtros";
@@ -38,7 +39,8 @@ export async function GET(request: Request) {
     // LA PUERTA A EXPLORAR (02-nov-2026, explorar/puerta-correos.ts): con deptos, el número único de la noche (el mismo del botón
     // del mapa de la casa) y los filtros de su perfil para el enlace de la línea bajo la selección.
     const [mapa, portada, perfil] = await Promise.all([
-      conMapa ? datosMapaCasa(admin, user.id, r.items.map((i) => ({ avisoId: i.avisoId, comuna: i.comuna })), undefined, { grises: pideMapa === "casa" }).catch(() => null) : Promise.resolve(null),
+      // En el PC, la imagen al tamaño de su columna (03-nov-2026): la de «Estás dentro» (más angosta) o la del dashboard.
+      conMapa ? datosMapaCasa(admin, user.id, r.items.map((i) => ({ avisoId: i.avisoId, comuna: i.comuna, clase: clasePinDeItem(i) })), undefined, { grises: pideMapa === "casa", pc: pideMapa === "casa" ? MAPA_CASA_PC : MAPA_DENTRO_PC }).catch(() => null) : Promise.resolve(null),
       conDeptos ? portadaDeptos() : Promise.resolve(null),
       conDeptos ? leerPerfilBusqueda(admin, user.id).catch(() => null) : Promise.resolve(null),
     ]);

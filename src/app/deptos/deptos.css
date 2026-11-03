@@ -139,7 +139,13 @@ html[data-grano] .dp-banda::after { background-image: url("/landing/grano-256.pn
 @media (min-width: 1024px) { .sel-lista { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; } }
 .sel-av { background: var(--franco-card); border: 1px solid var(--franco-border); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 .sel-ojo { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--franco-text-secondary); min-width: 0; }
-.sel-pin { width: 20px; height: 20px; border-radius: 999px; background: var(--signal-red); color: #FFFFFF; font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; flex: none; }
+/* El número de la tarjeta, el mismo pin del mapa (03-nov-2026, lib/explorar/colores-pin.ts): ✓ Comprar en el azul del chip, − Ajustar
+   en la ciruela, el ya analizado en tinta con el ✓. En oscuro, los del chip sobre fondo oscuro. Hasta el 03-nov era rojo. */
+.sel-pin { width: 20px; height: 20px; border-radius: 999px; background: #8DB0E3; color: #0B1A2E; font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; flex: none; }
+.sel-pin[data-clase="ajustar"] { background: #D8AECA; color: #2A1622; }
+[data-theme="light"] .sel-pin { background: #2B558F; color: #FFFFFF; }
+[data-theme="light"] .sel-pin[data-clase="ajustar"] { background: #6E4560; color: #FFFFFF; }
+.sel-pin[data-clase="analizado"], [data-theme="light"] .sel-pin[data-clase="analizado"] { background: #0F0F0F; color: #FFFFFF; box-shadow: 0 0 0 1px rgb(255 255 255 / 0.5); }
 .sel-precio { font-size: 26px; font-weight: 600; line-height: 1; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
 .sel-dos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding-top: 10px; border-top: 1px solid var(--franco-border); }
 .sel-dos > div { display: flex; flex-direction: column; gap: 4px; min-width: 0; }

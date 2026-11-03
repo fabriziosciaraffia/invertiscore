@@ -185,7 +185,7 @@ export function TarjetaPin({ pines, seleccionado, uf, analizados, guardados, gen
                 </p>
               )}
               <div className="ex-tarjeta-fila">
-                <ImagenDepto avisoId={p.avisoId} tipo={tipos[p.avisoId]} clase="ex-img" />
+                <ImagenDepto avisoId={p.avisoId} tipo={tipos[p.avisoId]} clase="ex-img" ajustar={esNegociado(p)} />
                 <div className="ex-tarjeta-datos">
                   <div className="ex-tarjeta-cab">
                     <span className="ex-ojo" data-explorar="linea">{lineaDepto(p)}</span>

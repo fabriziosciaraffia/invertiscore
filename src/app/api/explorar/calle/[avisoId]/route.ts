@@ -1,6 +1,8 @@
 import { createServiceClient } from "@/lib/supabase/service";
 import { francoMapStaticStyleParams } from "@/lib/map-styles";
 import { imagenDeCalle } from "@/lib/explorar/calle-servidor";
+import { claseDeImagen } from "@/lib/explorar/calle";
+import { colorPin } from "@/lib/explorar/colores-pin";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/explorar/calle/<aviso> (28-oct-2026): la imagen de la tarjeta y de la lista. La foto de la calle de Street View
@@ -10,6 +12,7 @@ import { imagenDeCalle } from "@/lib/explorar/calle-servidor";
 // vista pública de una cuadra de un aviso que existe.
 // EN OSCURO (30-oct-2026): `?tema=oscuro` sirve el mapa chico en el estilo oscuro de Franco; la URL distinta lo guarda aparte en
 // la caché del CDN. La foto de la calle es la misma en los dos temas.
+// EL PIN DEL MAPA CHICO (03-nov-2026, colores-pin.ts): el azul de ✓ Comprar, o con `v=a` la ciruela de − Ajustar; nunca el rojo.
 // ─────────────────────────────────────────────────────────────────────────────
 export const dynamic = "force-dynamic";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -20,8 +23,11 @@ const CACHE_SIN_DECIDIR = "public, max-age=300, s-maxage=300";
 
 export async function GET(req: Request, { params }: { params: { avisoId: string } }) {
   if (!UUID.test(params.avisoId)) return new Response(null, { status: 404 });
-  const tema = new URL(req.url).searchParams.get("tema") === "oscuro" ? "dark" : "light";
-  const img = await imagenDeCalle(createServiceClient(), params.avisoId, francoMapStaticStyleParams(tema)).catch(() => null);
+  const sp = new URL(req.url).searchParams;
+  const tema = sp.get("tema") === "oscuro" ? "dark" : "light";
+  // El pin del mapa chico en el color de su clase y su tema (03-nov-2026): `v=a`, − Ajustar; si no, ✓ Comprar.
+  const pin = colorPin(claseDeImagen(sp.get("v")), tema === "dark" ? "oscuro" : "claro").fondo;
+  const img = await imagenDeCalle(createServiceClient(), params.avisoId, francoMapStaticStyleParams(tema), new Date(), {}, undefined, pin).catch(() => null);
   if (!img) return new Response(null, { status: 404, headers: { "Cache-Control": "no-store" } });
   const traer = (url: string) => fetch(url, { cache: "no-store", signal: AbortSignal.timeout(8000) }).then((x) => (x.ok && (x.headers.get("content-type") ?? "").startsWith("image/") ? x : null)).catch(() => null);
   const r = await traer(img.url);

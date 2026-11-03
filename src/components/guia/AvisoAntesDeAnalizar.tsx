@@ -141,7 +141,7 @@ export function AvisoAntesDeAnalizar({ avisoId = null, depto, combinacion, finan
           cada uno». Sin ticket, la línea del pack de tres de siempre (el consumo). */}
       {sin && <h2 id="modal-plausibilidad-titulo" className="av-sin-titulo" data-aviso="sin-titulo">{AVISO_ANALIZAR.tituloSin}</h2>}
       <div className="av-tarjeta-fila">
-      {avisoId && <ImagenDepto avisoId={avisoId} tipo={tipos[avisoId]} clase="av-img" />}
+      {avisoId && <ImagenDepto avisoId={avisoId} tipo={tipos[avisoId]} clase="av-img" ajustar={!!negociado} />}
       <div className="av-tarjeta">
         {sin ? <p className="av-nombre" data-aviso="depto">{resumen.direccion}</p> : <h2 id="modal-plausibilidad-titulo" className="av-nombre" data-aviso="depto">{resumen.direccion}</h2>}
         {negociado && siConsigues ? (

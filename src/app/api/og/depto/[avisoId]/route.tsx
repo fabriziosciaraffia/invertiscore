@@ -14,6 +14,7 @@ import { esTopeNegociar } from "@/lib/explorar/capa-negociar";
 import { NEGOCIADO_COPY } from "@/lib/precio-publicado";
 import { etiquetaVeredicto, signoVeredicto } from "@/lib/veredicto-etiqueta";
 import { wordmarkSvg } from "@/lib/og/wordmark";
+import { colorPin } from "@/lib/explorar/colores-pin";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/og/depto/<aviso>[?m=str] (02-nov-2026, goal «Compartir un depto desde Explorar»): LA VISTA PREVIA DEL ENLACE de
@@ -91,9 +92,10 @@ function fuentes() {
   return fuentesCache;
 }
 
-/** La imagen de la calle (o el mapa chico) como data URI; null si Google no la entrega. */
-async function imagenComoDato(avisoId: string): Promise<{ src: string; tipo: "foto" | "mapa" } | null> {
-  const img = await imagenDeCalle(createServiceClient(), avisoId, francoMapStaticStyleParams("light"), new Date(), {}, LADO).catch(() => null);
+/** La imagen de la calle (o el mapa chico) como data URI; null si Google no la entrega. El pin del mapa chico (03-nov-2026,
+ *  colores-pin.ts), en claro: el azul de ✓ Comprar o, el de un negociado, la ciruela de − Ajustar; nunca el rojo. */
+async function imagenComoDato(avisoId: string, ajustar: boolean): Promise<{ src: string; tipo: "foto" | "mapa" } | null> {
+  const img = await imagenDeCalle(createServiceClient(), avisoId, francoMapStaticStyleParams("light"), new Date(), {}, LADO, colorPin(ajustar ? "ajustar" : "comprar", "claro").fondo).catch(() => null);
   if (!img) return null;
   const traer = async (url: string) => {
     try {
@@ -138,7 +140,7 @@ export async function GET(req: Request, { params }: { params: { avisoId: string 
   const tope = esTopeNegociar(sp.get("n")) ? Number(sp.get("n")) : null;
   const [ficha, imagen, f] = await Promise.all([
     fichaCompartidaCacheada(params.avisoId, modalidad, tope).catch(() => null),
-    imagenComoDato(params.avisoId.toLowerCase()),
+    imagenComoDato(params.avisoId.toLowerCase(), tope != null),
     fuentes(),
   ]);
   if (!ficha) return new Response(null, { status: 404, headers: { "Cache-Control": "public, max-age=300, s-maxage=300" } });

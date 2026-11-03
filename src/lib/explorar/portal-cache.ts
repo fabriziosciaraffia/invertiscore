@@ -3,9 +3,10 @@
 // para el mapa: los dos leen la MISMA entrada, así el número no salta cuando llegan los pines. Una falla no se guarda.
 import { unstable_cache } from "next/cache";
 import { createServiceClient } from "@/lib/supabase/service";
-import { compactar, type TasaDelMotor, type UniversoCompacto } from "./portal";
-import { negociablesDeLaNoche, universoDeLaNoche } from "./portal-servidor";
-import { compactarNegociados, type NegociadosCompactos } from "./capa-negociar";
+import { claveUniverso, compactar, type TasaDelMotor, type UniversoCompacto } from "./portal";
+import { negociablesDeLaNoche, universoDeLaNoche, type RespuestaUniverso } from "./portal-servidor";
+import { capaNegociarDisponible, compactarNegociados, sinCifrasNegociados, type NegociadosCompactos } from "./capa-negociar";
+import { sinCifras as universoSinCifras } from "./abierto";
 
 const cacheado = unstable_cache(
   async (pie: number, plazo: number): Promise<UniversoCompacto> => compactar(await universoDeLaNoche(createServiceClient(), pie, plazo)),
@@ -26,6 +27,28 @@ const negociablesCache = unstable_cache(
 );
 export function negociablesCacheados(pie: number): Promise<NegociadosCompactos> {
   return negociablesCache(pie >= 30 ? 30 : 20);
+}
+
+/** EL PEDIDO DEL MAPA DE LA NOCHE (03-nov-2026, la pasada real de Fabrizio: de entrada se ven las dos clases): el universo de los
+ *  ✓ Comprar y, si la combinación tiene capa, los − Ajustar que llegan negociando, en una respuesta. De las dos cachés de diez
+ *  minutos de siempre. `sinCifras`: lo de /api/explorar/abierto (el flujo, el arriendo y el precio negociado no viajan). Una falla
+ *  de la capa no tumba el mapa: sale sin `negociados` y el navegador la pide aparte. */
+export async function respuestaDeLaNoche(
+  pie: number,
+  plazo: number,
+  o: { sinCifras?: boolean } = {},
+  /** Las lecturas (el tier EXPLORAR-PASADA las reemplaza para probar el armado sin la base). */
+  leer: { universo: (pie: number, plazo: number) => Promise<UniversoCompacto>; capa: (pie: number) => Promise<NegociadosCompactos> } = { universo: universoDeLaNocheCacheado, capa: negociablesCacheados },
+): Promise<RespuestaUniverso> {
+  const q = { modalidad: "ltr" as const, pie, plazo, tasa: null };
+  const [u, n] = await Promise.all([
+    leer.universo(pie, plazo),
+    capaNegociarDisponible(q as Parameters<typeof capaNegociarDisponible>[0]) ? leer.capa(pie).catch(() => null) : Promise.resolve(null),
+  ]);
+  return {
+    clave: claveUniverso(q), comunas: [], universo: o.sinCifras ? universoSinCifras(u) : u,
+    ...(n ? { negociados: o.sinCifras ? sinCifrasNegociados(n) : n } : {}), calculados: 0, ms: 0,
+  };
 }
 
 const tasaCacheada = unstable_cache(

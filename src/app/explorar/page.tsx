@@ -8,9 +8,10 @@ import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { capturarServidor } from "@/lib/posthog-servidor";
 import { MAPA_QUIETO } from "@/lib/explorar/explorar";
 import { MAPA_QUIETO_M } from "@/lib/explorar/mapa-quieto";
-import { cuantosConvienen, descompactar, filtrar, portalDeUrl, PORTAL_COPY, universoDeLaNoche } from "@/lib/explorar/portal";
+import { cuantosConvienen, descompactar, filtrar, FILTROS_GLOBALES, portalDeUrl, PORTAL_COPY, universoDeLaNoche } from "@/lib/explorar/portal";
 import { cuentaPortal, eventoPortalVista } from "@/lib/explorar/portal-servidor";
-import { tasaDelMotor, universoDeLaNocheCacheado } from "@/lib/explorar/portal-cache";
+import { negociablesCacheados, tasaDelMotor, universoDeLaNocheCacheado } from "@/lib/explorar/portal-cache";
+import { capaVisible, descompactarNegociados, esTopeNegociar, negociadosVisibles } from "@/lib/explorar/capa-negociar";
 import { esRobot, robotDeVisita } from "@/lib/vista-entrada";
 import { filtrosAbiertos, ordenAbierto, origenDeLlegada, PIE_ABIERTO, PLAZO_ABIERTO } from "@/lib/explorar/abierto";
 import { llegadaDeExplorar } from "@/lib/explorar/puertas-landing";
@@ -43,6 +44,10 @@ import { EsqueletoExplorar } from "./esqueleto";
 const METADATOS: Metadata = { title: PORTAL_COPY.pestana, robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
 
+/** EL TOPE QUE TRAE EL ENLACE DE UN NEGOCIADO (`n`), tal cual: desde el 03-nov-2026 los filtros de la página tienen siempre un
+ *  descuento máximo (10 % de entrada), así que un enlace de un ✓ Comprar —sin `n`— no puede leerse como el de un negociado. */
+const topeDelEnlaceEnUrl = (sp: URLSearchParams): number | null => (esTopeNegociar(sp.get("n")) ? Number(sp.get("n")) : null);
+
 /**
  * LA VISTA PREVIA DE UN DEPTO COMPARTIDO (02-nov-2026, lib/explorar/compartir.ts): con `?a=…&desde=compartido`, el título
  * y la imagen que leen WhatsApp y las redes son los del depto —la línea, el precio y el chip ✓ Comprar, sin más cifras—, y
@@ -59,7 +64,7 @@ export async function generateMetadata({ searchParams }: { searchParams?: Record
   // sin firma o con la de otro aviso, la de siempre de /explorar.
   if (!firmaCompartidoValida(c.avisoId, c.codigo, c.firma)) return METADATOS;
   // El de un negociado lleva el tope de la capa (`n`, 03-nov-2026): la ficha lo verifica con los datos de hoy.
-  const tope = portalDeUrl(sp).filtros.negociar;
+  const tope = topeDelEnlaceEnUrl(sp);
   const ficha = await fichaCompartidaCacheada(c.avisoId, c.modalidad, tope).catch(() => null);
   if (!ficha) return METADATOS;
   const v = contenidoVistaPrevia(ficha);
@@ -146,16 +151,24 @@ async function ExplorarAbierto({ consulta }: { consulta: string }) {
   // UNA SOLA LECTURA DEL UNIVERSO (02-nov-2026): el mapa abierto y la bienvenida cuentan el mismo universo de la noche (pie
   // 20 % y 30 años). Eran dos lecturas de la misma clave en este Promise.all: con la caché vencida, dos explorar_mapa en el
   // mismo milisegundo.
-  const [noche, tasa, compartido] = await Promise.all([
+  const [noche, capa, tasa, compartido] = await Promise.all([
     universoDeLaNocheCacheado(PIE_ABIERTO, PLAZO_ABIERTO).catch(() => null),
+    negociablesCacheados(PIE_ABIERTO).catch(() => null),
     tasaDelMotor(),
-    compartidoDe(sp, filtros.negociar, false),
+    compartidoDe(sp, topeDelEnlaceEnUrl(sp), false),
   ]);
   const universo = universoDeLaNoche(filtros) ? noche : null;
-  // La bienvenida dice el número de todo el sitio, aunque la URL traiga filtros; el del mapa es el filtrado.
+  // La bienvenida dice el número de todo el sitio, aunque la URL traiga filtros; el del mapa es el filtrado. Y, aparte, cuántos
+  // más llegan negociando (03-nov-2026), en la vista global: nunca sumados a los que convienen.
   const convienen = cuantosConvienen(noche);
-  const n = universo ? filtrar(descompactar(universo), filtros).length : null;
-  return <ExplorarCliente inicial={{ filtros, orden, n, cuenta: null, tasa, convienen }} abrir={compartido?.avisoId ?? sp.get("a")} compartido={compartido} origen={origenDeLlegada(sp.get("desde"))} />;
+  const pinesNoche = noche ? descompactar(noche) : [];
+  const idsNoche = new Set(pinesNoche.map((p) => p.avisoId));
+  const pinesCapa = capa ? descompactarNegociados(capa) : null;
+  const negociadosGlobal = noche && pinesCapa ? negociadosVisibles(pinesCapa, FILTROS_GLOBALES, idsNoche).length : null;
+  const n = universo ? filtrar(pinesNoche, filtros).length : null;
+  // La barra del primer pintado (03-nov-2026): los − Ajustar con los filtros de la URL; 0 si la capa no se ve con ellos.
+  const nAjustar = !capaVisible(filtros) ? 0 : universo && pinesCapa ? negociadosVisibles(pinesCapa, filtros, idsNoche).length : null;
+  return <ExplorarCliente inicial={{ filtros, orden, n, cuenta: null, tasa, convienen, negociadosGlobal, nAjustar }} abrir={compartido?.avisoId ?? sp.get("a")} compartido={compartido} origen={origenDeLlegada(sp.get("desde"))} />;
 }
 
 /** La cuenta y el número: lo que el esqueleto no espera. */
@@ -165,18 +178,22 @@ async function ExplorarConDatos({ consulta, user }: { consulta: string; user: Us
   const { filtros, orden } = portalDeUrl(sp);
   const admin = createServiceClient();
   const noche = universoDeLaNoche(filtros);
-  const [cuenta, universo, tasa, compartido] = await Promise.all([
+  const [cuenta, universo, capa, tasa, compartido] = await Promise.all([
     cuentaPortal(admin, user),
     noche ? universoDeLaNocheCacheado(filtros.pie, filtros.plazo).catch(() => null) : Promise.resolve(null),
+    noche && capaVisible(filtros) ? negociablesCacheados(filtros.pie).catch(() => null) : Promise.resolve(null),
     tasaDelMotor(),
-    compartidoDe(sp, filtros.negociar, true),
+    compartidoDe(sp, topeDelEnlaceEnUrl(sp), true),
   ]);
-  const n = universo ? filtrar(descompactar(universo), filtros).length : null;
+  const pines = universo ? descompactar(universo) : [];
+  const n = universo ? filtrar(pines, filtros).length : null;
+  // La barra del primer pintado (03-nov-2026): los − Ajustar con estos filtros; 0 si la capa no se ve con ellos.
+  const nAjustar = !capaVisible(filtros) ? 0 : universo && capa ? negociadosVisibles(descompactarNegociados(capa), filtros, new Set(pines.map((p) => p.avisoId))).length : null;
   void capturarServidor(eventoPortalVista({ userId: user.id, filtros, orden, n, robot: robotDeVisita(headers().get("user-agent"), headers()), llegada: llegadaDeExplorar(sp.get("desde")) })).catch(() => false);
   const a = compartido?.avisoId ?? sp.get("a");
   return (
     <ExplorarCliente
-      inicial={{ filtros, orden, n, cuenta, tasa, convienen: null }}
+      inicial={{ filtros, orden, n, cuenta, tasa, convienen: null, negociadosGlobal: null, nAjustar }}
       abrir={a}
       compartido={compartido}
       autoAnalizar={sp.get("analizar") === "1" ? a : null}

@@ -58,8 +58,8 @@ export const veredictoDelPin = (p: PinMapa): VeredictoCompartido =>
 export const pideAlServidor = (p: PinMapa, f: Pick<FiltrosPortal, "pie" | "plazo" | "tasa">): boolean =>
   !esVistaEstandar(f) || (esNegociado(p) && !conCifrasNegociado(p));
 
-/** EL TOPE QUE LLEVA EL ENLACE DE UN NEGOCIADO: el de la capa de quien comparte (5 % si no la tenía prendida), y nunca menos
- *  que el que alcanza su descuento: el enlace tiene que abrirlo dentro de la capa. */
+/** EL TOPE QUE LLEVA EL ENLACE DE UN NEGOCIADO: el descuento máximo de quien comparte (sin él, el de entrada: 10 % desde el
+ *  03-nov-2026; antes 5 %), y nunca menos que el que alcanza su descuento: el enlace tiene que abrirlo dentro de la capa. */
 export const topeDelEnlace = (tope: number | null, d: number): TopeNegociar =>
   Math.max(tope ?? TOPE_NEGOCIAR_POR_DEFECTO, topeQueAlcanza(d)) as TopeNegociar;
 

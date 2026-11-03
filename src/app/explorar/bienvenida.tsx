@@ -5,13 +5,16 @@
 // vez (abierto.ts › bienvenidaVista), sobre el mapa oscurecido. El número de la noche en grande en el material de la tríada,
 // «Revisados por Franco» a su lado, «Deptos en venta que convienen como inversión hoy.» y dos pasos: tocar uno en el mapa y
 // registrarse para el regalo. Un solo botón: «Ver el mapa». Ni pie, ni plazo, ni el ticket: ofertas de a una.
+// LOS NEGOCIADOS (03-nov-2026, la pasada real de Fabrizio): bajo el título, «y 3.238 más si negocias el precio» —los − Ajustar de
+// la vista global, que el mapa muestra de entrada—, aparte: el número grande sigue siendo el de los que convienen, sin sumarlos.
 // ─────────────────────────────────────────────────────────────────────────────
 import { useEffect, useRef } from "react";
 import { BIENVENIDA_COPY } from "@/lib/explorar/abierto";
+import { NEGOCIAR_COPY } from "@/lib/explorar/capa-negociar";
 
 const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
 
-export function Bienvenida({ n, alCerrar }: { n: number; alCerrar: () => void }) {
+export function Bienvenida({ n, negociados = null, alCerrar }: { n: number; negociados?: number | null; alCerrar: () => void }) {
   const boton = useRef<HTMLButtonElement>(null);
   // Escape la cierra: el listener va una vez y en captura (como la hoja de registro), para que un render a mitad del evento
   // no lo saque.
@@ -29,6 +32,7 @@ export function Bienvenida({ n, alCerrar }: { n: number; alCerrar: () => void })
         <div className="ex-bienvenida-cab ex-triada">
           <p className="ex-bienvenida-n"><span className="ex-bienvenida-cifra" data-explorar="bienvenida-n">{miles(n)}</span><span className="ex-bienvenida-rev">{BIENVENIDA_COPY.revisados}</span></p>
           <h2 id="ex-bienvenida-t" className="ex-bienvenida-t">{BIENVENIDA_COPY.titulo}</h2>
+          {negociados != null && negociados > 0 && <p className="ex-bienvenida-neg" data-explorar="bienvenida-negociados" data-n={negociados}>{NEGOCIAR_COPY.bienvenida(negociados)}</p>}
         </div>
         <ol className="ex-bienvenida-pasos">
           <li><span className="ex-bienvenida-num" aria-hidden="true">1</span><span>{BIENVENIDA_COPY.paso1}</span></li>
