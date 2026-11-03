@@ -142,6 +142,9 @@ export async function runInformeEnCaminoTier(): Promise<{ hard: number }> {
     }
     // La tarjeta de cada superficie lee los analizados de esta visita.
     const [exp, pri, sem, gui] = pantallas.map((s) => s.src);
+    // ⚠ ACTA (03-nov-2026, QA del preview de la guía) · el aviso de arriba quedaba pegado a la primera tarjeta: lleva el aire de la lista.
+    const cssGuia = leer("src/components/guia/guia.css").replace(/\/\*[\s\S]*?\*\//g, "");
+    if (!/\n\.guia \.ie-aviso \{ margin-bottom: 10px; \}/.test(cssGuia) || !/@media \(min-width: 768px\) \{ \.guia \.ie-aviso \{ margin-bottom: 14px; \} \}/.test(cssGuia) || !/\.guia-lista \{ display: grid; gap: 10px; \}/.test(cssGuia) || !/@media \(min-width: 768px\) \{ \.guia-lista \{ grid-template-columns: repeat\(3, minmax\(0, 1fr\)\); gap: 14px; \} \}/.test(cssGuia)) F("2 · la guía: el aviso «Tu informe … está listo» queda pegado a las tarjetas (sin el aire de la lista)");
     if (!/\) : informesAqui\[it\.avisoId\] \? \(\s*<p className="guia-acc guia-ya" data-guia="ya-analizado">\s*<span>\{YA_ANALIZADO\.texto\} ·<\/span>\s*<EnlaceCarga href=\{`\/analisis\/\$\{informesAqui\[it\.avisoId\]\}`\}>\{YA_ANALIZADO\.enlace\}<\/EnlaceCarga>/.test(gui)) F("2 · la guía: la tarjeta no dice «Ya lo analizaste · Ver informe» con los analizados de esta visita");
     if (!/const analizadosVivos = useMemo\(\(\) => \(\{ \.\.\.cuenta\.analizados, \.\.\.analizadosAqui \}\)/.test(exp) || (exp.match(/analizados=\{analizadosVivos\}/g) ?? []).length !== 2) F("2 · Explorar: la tarjeta y la lista no leen los analizados de esta visita");
     if (!/\{it\.informeId \?\? informesAqui\[it\.avisoId\] \? \(/.test(pri)) F("2 · la selección: la tarjeta no lee los analizados de esta visita");
@@ -327,4 +330,6 @@ if (require.main === module) {
 //      vacío), CARGA §4 (tres: la barra de la guía, su rama del informe listo y su cuenta de navegaciones, de 1 a 0), REANALISIS §3
 //      y GUIA-BUSQUEDA §8 (dos) y §9. Fijaban el `router.push` de la guía, el `router.replace(vuelta ?? "/dashboard")` de la
 //      vuelta y la nota del despublicado en la tarjeta.
+//   Tras el QA del preview (WebKit 390 y Chromium 1440, 48 de 48): el aviso de arriba quedaba pegado a la primera tarjeta de la
+//      guía. Con su aire, 3 de 3 en ROJO (`mutaciones-aviso-guia.cjs`): sin él en el teléfono, sin él en el PC, otro que el de la lista.
 // ─────────────────────────────────────────────────────────────────────────────

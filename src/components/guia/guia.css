@@ -55,6 +55,10 @@
 /* el analizado en esta visita (03-nov-2026, el informe en camino): «Ya lo analizaste · Ver informe», como la selección */
 .guia-ya { margin-bottom: 0; min-height: 38px; gap: 6px; font-size: 14px; color: var(--franco-text-secondary); }
 .guia-ya a { font-weight: 600; color: var(--franco-text); text-decoration: underline; text-underline-offset: 4px; }
+/* el aviso «Tu informe de [depto] está listo · Abrirlo» sobre la lista, con el mismo aire que hay entre tarjetas (cazado en el QA:
+   quedaba pegado a la primera) */
+.guia .ie-aviso { margin-bottom: 10px; }
+@media (min-width: 768px) { .guia .ie-aviso { margin-bottom: 14px; } }
 /* renta corta (14-oct-2026): midiendo, la medición que tardó, el que no dio y los parecidos del pop-up */
 .guia-midiendo { font-size: 13.5px; line-height: 1.35; color: var(--franco-text-secondary); }
 .guia-tardo { margin-top: auto; }
