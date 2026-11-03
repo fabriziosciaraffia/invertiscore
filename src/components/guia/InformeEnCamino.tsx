@@ -66,9 +66,10 @@ export function InformeEnCamino({ paso, alCerrar, alReintentar = null }: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paso.paso, id]);
 
-  // Escape cierra solo cuando se puede; el foco va al botón que aparece.
+  // Escape cierra solo cuando se puede, y no sigue de largo: la tarjeta de atrás (que escucha Escape en `window`) no se cierra
+  // por debajo del pop-up (cazado en el QA del preview, 03-nov-2026). El foco va al botón que aparece.
   useEffect(() => {
-    const tecla = (e: KeyboardEvent) => { if (e.key === "Escape") { e.preventDefault(); if (puedeCerrar) alCerrar(); } };
+    const tecla = (e: KeyboardEvent) => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); if (puedeCerrar) alCerrar(); } };
     document.addEventListener("keydown", tecla);
     return () => document.removeEventListener("keydown", tecla);
   }, [puedeCerrar, alCerrar]);

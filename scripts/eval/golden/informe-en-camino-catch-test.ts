@@ -94,7 +94,8 @@ export async function runInformeEnCaminoTier(): Promise<{ hard: number }> {
     if (!texto(g).includes(ie.INFORME_COPY.generando(DEPTO)) || !/data-informe="barra"/.test(g) || /data-informe="cerrar"/.test(g) || /<button|<a /.test(g.replace(/<div[^>]*role="progressbar"[^>]*>/, ""))) F("1 · generando, el pop-up no dice «Generando el informe de [depto]…» con su barra, o trae cómo cerrarlo o algún botón");
     if (texto(g) !== `${ie.INFORME_COPY.cabecera} ${ie.INFORME_COPY.generando(DEPTO)}`) F(`1 · generando, el pop-up dice otra cosa: «${texto(g)}»`);
     const comp = codigo("src/components/guia/InformeEnCamino.tsx");
-    if (!/if \(e\.key === "Escape"\) \{ e\.preventDefault\(\); if \(puedeCerrar\) alCerrar\(\); \}/.test(comp) || !/const puedeCerrar = cerrable\(paso, ahora\);/.test(cuerpo(comp, "export function InformeEnCamino("))) F("1 · Escape cierra el pop-up aunque esté generando");
+    // ⚠ ACTA (03-nov-2026, QA del preview) · y no sigue de largo (stopPropagation): la tarjeta de atrás se cerraba por debajo.
+    if (!/if \(e\.key === "Escape"\) \{ e\.preventDefault\(\); e\.stopPropagation\(\); if \(puedeCerrar\) alCerrar\(\); \}/.test(comp) || !/const puedeCerrar = cerrable\(paso, ahora\);/.test(cuerpo(comp, "export function InformeEnCamino("))) F("1 · Escape cierra el pop-up aunque esté generando");
     // Listo, se abre solo y una sola vez (con el viaje anotado para medir).
     const abre = bloque(comp, "useEffect(() => {\n    if (paso.paso !== \"listo\" || abierto.current === paso.id) return;");
     if (!/if \(paso\.paso !== "listo" \|\| abierto\.current === paso\.id\) return;/.test(comp) || !/router\.push\(paso\.ruta\)/.test(abre) || !/anotarViaje\(almacen\(\), \{ id: paso\.id, t0: paso\.t0, desde: desdeDeRuta\(window\.location\.pathname\), via: "auto" \}\)/.test(abre)) F("1 · con el informe listo, el pop-up no lo abre solo (o no anota el viaje)");
@@ -227,10 +228,11 @@ if (require.main === module) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ACTA DE MUTACIONES (03-nov-2026, meta-runner `mutar-gen.cjs` con `mutaciones-camino.cjs` del scratchpad de la sesión 087cc148,
-// que restaura byte a byte con hash y exige que el texto mutado aparezca UNA vez): 43 de 43 en ROJO, cada una por su invariante.
+// que restaura byte a byte con hash y exige que el texto mutado aparezca UNA vez): 44 de 44 en ROJO, cada una por su invariante.
 //   §1 N1-N10: Explorar cierra el pop-up al llegar el informe, la selección lo suelta, el dashboard navega por su cuenta, el
 //      pop-up generando con X, cerrable mientras genera, Escape que cierra siempre, el informe listo que no se abre solo, el aviso
-//      que ignora el informe, Explorar que no pasa a «Generando…», el dashboard que monta el pop-up sin el informe.
+//      que ignora el informe, Explorar que no pasa a «Generando…», el dashboard que monta el pop-up sin el informe; y N44
+//      (tras el QA del preview) Escape que sigue de largo y cierra la tarjeta de atrás.
 //   §2 N11-N20: «Abrir informe» a los 15 s o sin enlace, al cerrar listo no queda nada, el aviso que se cierra solo, Explorar que
 //      cierra sin dejar el aviso o no lo dibuja, las tres tarjetas sin los analizados de la visita, la apertura fallida sin esperar.
 //   §3 N21-N28: nunca distinto, distinto también por el puntaje, otro texto, la ruta sin el veredicto o sin leer el que ya estaba,
