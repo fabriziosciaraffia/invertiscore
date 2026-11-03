@@ -662,3 +662,13 @@ if (require.main === module) {
 // G28 (la línea del negociado en la imagen cortaba entre «UF» y el número, medido en el preview): entera, ROJO.
 // SIN BORROSO (03-nov-2026, decisión de Fabrizio): el negociado del enlace se ve nítido sin cuenta, sin el flujo. G20 reescrita
 // (sin cuenta viaja el flujo), G29 (sigue borroso), G30 (la tarjeta dibuja borroso con precio) y G17 de nuevo: 4 de 4 en ROJO.
+// LA FIRMA (03-nov-2026, §8 y los predicados al día de §1, §3, §6 y §7, cada uno con su acta): el runner entero, 147 de 147 en
+// ROJO (E5 se hizo única: su texto aparecía también en el evento nuevo de «sin firma»). R6, R7, T4, N2, N3, G19, G20 y G29
+// reescritas para el código nuevo, y 26 nuevas:
+//   F1 la firma sin el código · F2 sin el aviso · F3 cualquier firma con forma vale · F4 larga · F5 la página verifica y destapa
+//   sin firma · F6 cree firmado cualquier enlace · F7 negDelEnlace ignora la firma · F8 la vista previa con cifras sin firma ·
+//   F9 la imagen sin firma · F10 la API sigue por GET · F11 el tope no frena · F12 solo por sesión · F13 solo por IP · F14 de
+//   600 · F15 la ventana es un día · F16 la firma no se anota · F17 sin firma se comparte igual · F18 el enlace sin la firma ·
+//   F19 firma al abrir la tarjeta · F20 la barra deja la firma · F21 el enlace no la lleva · F22 cualquier cosa se lee como
+//   firma · F23 una falla queda guardada · F24 pasado el tope la API responde igual · F25 un conteo que falla deja firmar ·
+//   F26 la vista del enlace no dice si venía firmado.
