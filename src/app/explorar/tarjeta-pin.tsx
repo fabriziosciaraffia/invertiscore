@@ -26,6 +26,7 @@ import { lineaDepto } from "@/lib/guia/linea-depto";
 import { capRatePct, flujoTexto, pctUno, ufPorM2 } from "@/lib/explorar/explorar";
 import { PORTAL_COPY, type PinMapa } from "@/lib/explorar/portal";
 import { ImagenDepto, useCalle } from "@/components/guia/ImagenDepto";
+import { YA_ANALIZADO } from "@/lib/guia/semanal-str";
 import { ABIERTO_COPY, BORROSO } from "@/lib/explorar/abierto";
 import { ChipVeredicto } from "@/components/analysis/shared/ChipVeredicto";
 import { conCifrasNegociado, esNegociado, NEGOCIAR_COPY, type PinNegociado } from "@/lib/explorar/capa-negociar";
@@ -217,7 +218,8 @@ export function TarjetaPin({ pines, seleccionado, uf, analizados, guardados, gen
               {sinCuenta ? (
                 <button type="button" className="ex-cta ex-cta-triada" onClick={() => alAnalizar(p)} data-explorar="registrate">{ABIERTO_COPY.cta}</button>
               ) : informe ? (
-                <EnlaceCarga href={`/analisis/${informe}`} className="ex-cta ex-cta-enlace" data-explorar="ver-informe">{PORTAL_COPY.analizado} · {PORTAL_COPY.verInforme}</EnlaceCarga>
+                // «Ya lo analizaste · Ver informe» (03-nov-2026): la misma frase de la selección y del dashboard (YA_ANALIZADO).
+                <EnlaceCarga href={`/analisis/${informe}`} className="ex-cta ex-cta-enlace" data-explorar="ver-informe">{YA_ANALIZADO.texto} · {YA_ANALIZADO.enlace}</EnlaceCarga>
               ) : (
                 <button type="button" className="ex-cta" onClick={() => alAnalizar(p)} disabled={!!generando} {...botonOcupado(generando === p.avisoId)} data-explorar="analizar">
                   {generando === p.avisoId ? GUIA.analizando : esNegociado(p) && conCifrasNegociado(p) ? NEGOCIAR_COPY.analizarA(p.neg.p) : nueva && recien.regalo ? PORTAL_COPY.vuelta.analizarRegalo : PORTAL_COPY.analizar}

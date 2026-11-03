@@ -135,8 +135,11 @@ const AUDITADOS: Array<[string, number]> = [
   ["src/app/dashboard/casa.tsx", 0],
   ["src/app/dashboard/bienvenida.tsx", 1],
   ["src/components/guia/GuiaBusqueda.tsx", 1],
-  ["src/components/deptos/PrimeraSeleccion.tsx", 1],
-  ["src/app/semanal/semanal-lista.tsx", 1],
+  // ⚠ ACTA (03-nov-2026, «el informe en camino», tier INFORME-EN-CAMINO) · la ida al informe ya no la hacen la primera selección ni la
+  // página semanal: la hace el pop-up (InformeEnCamino), con la barra que la superficie encendió al tocar «Analizar».
+  ["src/components/deptos/PrimeraSeleccion.tsx", 0],
+  ["src/app/semanal/semanal-lista.tsx", 0],
+  ["src/components/guia/InformeEnCamino.tsx", 1],
   ["src/components/formulario-v4/ModalPlausibilidad.tsx", 0],
   ["src/components/guia/InformeDeAviso.tsx", 0],
   ["src/components/invitacion/InvitaAlguien.tsx", 0],
@@ -216,6 +219,15 @@ export function runCargaTier(): { hard: number } {
   const guia = codigo("src/components/guia/GuiaBusqueda.tsx");
   if (!/setGenerando\(it\.avisoId\);\s*const soltar = iniciarCarga\(claveActual\(\)\);/.test(guia) || !/abrio = true;\s*router\.push\(`\/analisis\/\$\{d\.id\}`\);/.test(guia) || !/\} finally \{\s*if \(!abrio\) soltar\(\);\s*\}/.test(guia)) F("4 · «Analizar este» de la guía no enciende la barra hasta abrir el informe (o no la suelta si no abre)");
   if (!/const soltar = iniciarCarga\(claveActual\(\)\);/.test(codigo("src/components/deptos/PrimeraSeleccion.tsx"))) F("4 · «Analizar este» de la primera selección no enciende la barra");
+  // ⚠ ACTA (03-nov-2026, «el informe en camino», tier INFORME-EN-CAMINO) · la barra que se encendió al tocar «Analizar» sigue encendida
+  // mientras el pop-up abre el informe: en la rama del informe listo, la superficie solo la suelta si el veredicto salió distinto.
+  for (const f of ["src/app/explorar/explorar-cliente.tsx", "src/components/deptos/PrimeraSeleccion.tsx", "src/app/semanal/semanal-lista.tsx"]) {
+    const s = codigo(f);
+    const i = s.indexOf("if (res.ok && d.id) {");
+    const rama = i < 0 ? "" : s.slice(i, s.indexOf("return;", i));
+    if (!rama || (rama.match(/soltar/g) ?? []).length !== 1 || !/if \(listo\.paso === "distinto"\) \{ soltar\??\.?\(\);/.test(rama)) F(`4 · ${f}: con el informe listo se apaga la barra antes de que se abra`);
+  }
+  if (!/router\.push\(paso\.ruta\)/.test(codigo("src/components/guia/InformeEnCamino.tsx"))) F("4 · el pop-up del informe no lo abre");
   if (!/iniciarCarga\(claveActual\(\)\);\s*router\.push\(href\);/.test(bienvenida)) F("4 · el botón de la bienvenida no enciende la barra al irse al wizard");
   if (!/iniciarCarga\(claveActual\(\)\);\s*router\.push\(e\.destino\);/.test(codigo("src/components/entrar/EntrarConCodigo.tsx"))) F("4 · /entrar no enciende la barra al irse a su destino");
   if (!/iniciarCarga\(claveActual\(\)\);\s*router\.push\("\/dashboard"\);/.test(codigo("src/app/analisis/[id]/delete-button.tsx"))) F("4 · eliminar el informe no enciende la barra al irse al dashboard");

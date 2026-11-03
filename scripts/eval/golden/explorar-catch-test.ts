@@ -221,7 +221,8 @@ export async function runExplorarTier(): Promise<{ hard: number }> {
   // ⚠ ACTA (02-nov-2026, goal «Filtros v2 y negociar», tier EXPLORAR-NEGOCIAR) · un negociado de la capa «Si negocias» dice «Analizar a UF 2.950» (sin «Cambiar»: la noche lo
   // calculó con ese pie y plazo) y sus derivados son a ese precio; para todo lo demás, lo de siempre.
   if (!/const analizar = negociado \? NEGOCIADO_COPY\.analizarA\(negociado\.precioUF\) : da\?\.empeora \? EXPLORAR_COPY\.analizarIgual : AVISO_ANALIZAR\.analizar;/.test(av)) F("7 · si empeora el botón no dice «Analizar igual»");
-  if (!/alAnalizar\(cambio \? \{ combinacion: combo, guardarPerfil: cambiada && guardar \} : undefined\)/.test(av)) F("7 · la elección (pie, plazo, guardar) no viaja a analizar");
+  // ⚠ ACTA (03-nov-2026, «el informe en camino», tier INFORME-EN-CAMINO) · la elección lleva además el veredicto que vio (`vista`).
+  if (!/alAnalizar\(cambio \? \{ combinacion: combo, guardarPerfil: cambiada && guardar, vista \} : undefined\)/.test(av)) F("7 · la elección (pie, plazo, guardar) no viaja a analizar");
   if (!/data-modal-guardar>\s*<input type="checkbox" checked=\{guardar\}/.test(av) || !/\{EXPLORAR_COPY\.guardarPerfil\(combo\.piePct, combo\.plazoAnios, combo\.tasaPct\)\}/.test(av)) F("7 · falta la casilla de guardar como perfil");
   // ⚠ ACTA (30-oct-2026, goal «la tasa editable en Filtros») · la casilla nombra la tasa elegida y los derivados se calculan con la tasa que se ve.
   if (!/derivados: derivadosAviso\(negociado \? \{ \.\.\.depto, precioUF: negociado\.precioUF \} : depto, combo, \{ \.\.\.finanzas, tasa: tasaVista \}\),/.test(av)) F("7 · los derivados (dividendo, retorno) no siguen al cambio");

@@ -181,7 +181,8 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
     if (STR.MIDIENDO !== "Midiendo con los datos de su dirección, unos 30 segundos" || STR.MIDIENDO_TOPE_MS !== 60_000) F("5 · el texto o el tope de la medición no son los aprobados");
     const acciones = cuerpo(lista, "const acciones = (it: ItemSemanal): JSX.Element => {", "\n  };\n");
     if (!/if \(corta && generando === it\.avisoId\) \{[\s\S]*?<Loader2 className="h-4 w-4 shrink-0 animate-spin[^"]*" aria-hidden \/>\s*<span>\{MIDIENDO\}<\/span>/.test(acciones)) F("5 · al medir, el botón no pasa al indicador giratorio con su texto");
-    if (!/const reloj = corta \? window\.setTimeout\(\(\) => control\.abort\(\), MIDIENDO_TOPE_MS\) : null;/.test(lista) || !/signal: control\.signal,/.test(lista) || !/if \(corta && control\.signal\.aborted\) setTardo\(it\.avisoId\);/.test(lista))
+    if (!/const reloj = corta \? window\.setTimeout\(\(\) => control\.abort\(\), MIDIENDO_TOPE_MS\) : null;/.test(lista) || !/signal: control\.signal,/.test(lista) || !/if \(corta && control\.signal\.aborted\) \{ setConfirmar\(null\); setTardo\(it\.avisoId\); \}/.test(lista))
+      // ⚠ ACTA (03-nov-2026, «el informe en camino», tier INFORME-EN-CAMINO) · el corte cierra el pop-up (si quedó abierto) y lleva al error con «Reintentar» de la tarjeta.
       F("5 · la medición no se corta a los 60 s (o no lleva al error con reintentar)");
     if (!/if \(corta && tardo === it\.avisoId\) \{[\s\S]*?\{MIDIENDO_TARDO\}[\s\S]*?onClick=\{\(\) => void analizar\(it\)\}[^>]*>\{REINTENTAR\}/.test(acciones)) F("5 · pasado el tope no aparece el error con «Reintentar»");
   }
@@ -425,7 +426,8 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
     // de `acciones` (tier PUERTA-B-DASHBOARD §4).
     const ramaInforme = cuerpo(lista, "const filaAnalizada = (it: ItemSemanal, informe: string, n: number | null): JSX.Element => (", "\n  );\n") + lista.slice(lista.indexOf("const tarjeta = (it: ItemSemanal"), lista.indexOf("const neg = (it.flujo ?? 0) < 0;"));
     // ⚠ ACTA (21-oct-2026) · en renta larga también cuenta lo leído en vivo (`informes`), no solo el del depto ya visto.
-    if (!/const informeDe = \(it: ItemSemanal\): string \| undefined => it\.informeId \?\? informes\[it\.avisoId\];/.test(lista)
+    // ⚠ ACTA (03-nov-2026, «el informe en camino», tier INFORME-EN-CAMINO) · y los de esta visita (un informe listo que no se abrió).
+    if (!/const informeDe = \(it: ItemSemanal\): string \| undefined => it\.informeId \?\? informes\[it\.avisoId\] \?\? informesAqui\[it\.avisoId\];/.test(lista)
       || !/const informe = informeDe\(it\);\s*if \(informe\) return filaAnalizada\(it, informe, n\);/.test(ramaInforme) || !/<EnlaceCarga key=\{it\.avisoId\} href=\{corta \? `\/analisis\/renta-corta\/\$\{informe\}` : `\/analisis\/\$\{informe\}`\} className="sel-fila" data-semanal="ya-analizado"/.test(ramaInforme) || !/\{YA_ANALIZADO\.enlace\}/.test(ramaInforme) || /analizar\(|setConfirmar|sel-btn/.test(ramaInforme))
       F("10 · lo ya analizado no muestra «Ya lo analizaste · Ver informe» en lugar de «Analizar este» (o vuelve a analizar)");
     // Con la base real: a quien ya midió, su armado deja fuera lo que no dio y trae lo analizado con su informe.

@@ -180,6 +180,7 @@ import { runExplorarCorreosTier } from "./explorar-correos-catch-test";
 import { runExplorarNegociarTier } from "./explorar-negociar-catch-test";
 import { runCompartirDeptoTier } from "./compartir-depto-catch-test";
 import { runExplorarPasadaTier } from "./explorar-pasada-catch-test";
+import { runInformeEnCaminoTier } from "./informe-en-camino-catch-test";
 import { runEdadEdificioTier } from "./edad-edificio-catch-test";
 import { runPautaArreglosTier } from "./pauta-arreglos-catch-test";
 import { runCuentasPruebaTier } from "./cuentas-prueba-catch-test";
@@ -775,6 +776,7 @@ function printSeed(r: SeedReport) {
   // deja en una, el desglose de la barra suma, ningún pin usa el rojo, el tooltip queda dentro de la pantalla y el dashboard va
   // en dos columnas en el PC. ──
   totalHard += (await runExplorarPasadaTier()).hard;
+  totalHard += (await runInformeEnCaminoTier()).hard;
   // Tier EDAD-EDIFICIO (03-nov-2026, 0 tokens): con el año de la ficha o de otro aviso del edificio, el motor recibe la edad real
   // (un edificio de 1951 entra con 75 años y usa el tramo de más de 25) y el informe la dice con el año y la fuente; sin año, la
   // nota distingue «La publicación no dice la antigüedad» de «No pudimos leer la antigüedad». ──

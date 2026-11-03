@@ -31,7 +31,9 @@ import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { botonOcupado, claveActual, iniciarCarga } from "@/lib/carga-global";
-import { compraDeLaSeleccion, comprasDelDepto, ticketConSaldoDelDepto } from "@/lib/guia/compra-desde-depto";
+import { compraDeLaSeleccion, comprasDelDepto, nombreDelDepto, ticketConSaldoDelDepto } from "@/lib/guia/compra-desde-depto";
+import { alCerrarQueda, informeFallo, informeGenerando, informeListo, type MotivoFallo, type PasoInforme } from "@/lib/guia/informe-en-camino";
+import { InformeListoAviso } from "@/components/guia/InformeEnCamino";
 import { cuandoVenceCorto } from "@/lib/lo-que-sigue/oferta-pack";
 import { recalcularAviso } from "@/lib/explorar/recalcular-cliente";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
@@ -121,6 +123,13 @@ export function SemanalLista({
   // El aviso antes de gastar (13-oct-2026). `sin`: el servidor dijo que no quedan, aunque la página creyera que sí.
   // `analizando` (21-oct-2026): renta larga, generando con el aviso abierto.
   const [confirmar, setConfirmar] = useState<{ it: ItemSemanal; sin: boolean; analizando?: boolean } | null>(null);
+  // DESPUÉS DE «ANALIZAR» (03-nov-2026, lib/guia/informe-en-camino.ts): lo que pasa con el informe, en el mismo pop-up; el aviso
+  // de arriba si quedó listo sin abrirse; y los analizados de esta visita («Ya lo analizaste · Ver informe»).
+  const [informe, setInforme] = useState<PasoInforme | null>(null);
+  const [listoSinAbrir, setListoSinAbrir] = useState<{ id: string; ruta: string; depto: string; t0: number } | null>(null);
+  const [informesAqui, setInformesAqui] = useState<Record<string, string>>({});
+  const ultimoAnalisis = useRef<{ it: ItemSemanal; recienPagado: boolean; eleccion?: EleccionAnalizar; igual: boolean } | null>(null);
+  const soltarCarga = useRef<(() => void) | null>(null);
   const conSaldo = saldo.tipo !== "sin";
   const noDa = new Set([...noDan, ...noDanAhora]);
   // Las compras, con el origen del correo y la vuelta a la selección en el dashboard (con el depto, si se compra desde uno).
@@ -143,6 +152,14 @@ export function SemanalLista({
     // Renta larga (21-oct-2026): el aviso queda abierto, cargando, con la barra del header, hasta que abre el informe.
     const soltar = corta ? null : iniciarCarga(claveActual());
     if (!corta) setConfirmar({ it, sin: false, analizando: true });
+    soltarCarga.current = soltar;
+    ultimoAnalisis.current = { it, recienPagado, eleccion, igual };
+    // Desde el 03-nov-2026, «Generando el informe de [depto]…» con su barra (InformeEnCamino), con lo que vio para decir si salió
+    // otro veredicto (renta corta no lo compara: mide fino y su informe no trae el veredicto de la tarjeta).
+    const paso0 = informeGenerando(nombreDelDepto(it), corta ? null : eleccion?.vista ?? (it.veredicto ? { veredicto: it.veredicto, score: it.score ?? null } : null));
+    if (!corta) setInforme(paso0);
+    // No salió (no se cobró): el pop-up lo dice con palabras; nunca se vuelve a la lista en silencio.
+    const fallar = (motivo: MotivoFallo) => { setPopup(null); setConfirmar({ it, sin: false }); setInforme(informeFallo(paso0, motivo)); };
     // La casilla del pop-up: la combinación elegida queda como su perfil de búsqueda antes de analizar.
     if (eleccion?.guardarPerfil) {
       await fetch("/api/perfil-busqueda", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ piePct: conCombo.piePct, plazoAnios: conCombo.plazoAnios, tasaPct: conCombo.tasaPct ?? null }) }).catch(() => null);
@@ -168,11 +185,20 @@ export function SemanalLista({
             });
         if (res.status === 409) {
           if (corta && Date.now() - t0 + ESPERA_EN_CURSO_MS >= MIDIENDO_TOPE_MS) { setTardo(it.avisoId); break; }
+          if (intento >= 7 + REINTENTOS_CREDITO) { fallar("error"); break; }
           await new Promise((ok) => setTimeout(ok, ESPERA_EN_CURSO_MS));
           continue;
         }
-        const d = (await res.json().catch(() => ({}))) as { id?: string; error?: string; estado?: string; alternativas?: string[]; publicacion?: string | null; porQue?: string | null; saldo?: EstadoSaldo | null };
-        if (res.ok && d.id) { router.push(corta ? `/analisis/renta-corta/${d.id}` : `/analisis/${d.id}`); return; }
+        const d = (await res.json().catch(() => ({}))) as { id?: string; error?: string; estado?: string; alternativas?: string[]; publicacion?: string | null; porQue?: string | null; saldo?: EstadoSaldo | null; veredicto?: string | null; score?: number | null };
+        if (res.ok && d.id) {
+          // Listo: el pop-up lo abre solo (también en renta corta, que mide con la tarjeta); si salió otro veredicto, lo dice primero.
+          const listo = informeListo(paso0, { id: d.id, ruta: corta ? `/analisis/renta-corta/${d.id}` : `/analisis/${d.id}`, veredicto: d.veredicto ?? null, score: d.score ?? null });
+          setPopup(null);
+          setConfirmar({ it, sin: false, analizando: true });
+          setInforme(listo);
+          if (listo.paso === "distinto") { soltar?.(); setGenerando(null); setAnalizandoIgual(false); }
+          return;
+        }
         // Renta corta: con los datos de su dirección no da Comprar. No se cobró: la tarjeta queda marcada y el
         // resultado va en el pop-up —con el enlace a la publicación, el porqué y «Analizar igual»—, con los parecidos
         // que sobreviven.
@@ -184,23 +210,22 @@ export function SemanalLista({
         // Lo que sigue cierra el pop-up de «Analizar igual» si estaba abierto: el informe no salió.
         setPopup(null);
         // Se dio de baja recién: el servidor lo marca y trae el siguiente.
-        if (res.status === 410 && d.error === "despublicado") { setConfirmar(null); router.refresh(); break; }
+        if (res.status === 410 && d.error === "despublicado") { fallar("despublicado"); break; }
         // Sin análisis: el mismo aviso, con el pack (ya no el callejón «Ya usaste tus análisis.»). Recién pagado, primero se
         // espera el crédito.
         if (d.error === "sin-creditos") {
           if (recienPagado && sinCredito++ < REINTENTOS_CREDITO) { await new Promise((ok) => setTimeout(ok, ESPERA_CREDITO_MS)); continue; }
+          setInforme(null);
           setConfirmar({ it, sin: true });
           break;
         }
-        setConfirmar(null);
-        setError({ avisoId: it.avisoId, texto: GUIA.error });
+        fallar("error");
         break;
       }
     } catch {
-      setConfirmar(null);
       setPopup(null);
-      if (corta && control.signal.aborted) setTardo(it.avisoId);
-      else setError({ avisoId: it.avisoId, texto: GUIA.error });
+      if (corta && control.signal.aborted) { setConfirmar(null); setTardo(it.avisoId); }
+      else fallar("error");
     } finally {
       if (reloj != null) window.clearTimeout(reloj);
     }
@@ -209,13 +234,37 @@ export function SemanalLista({
     setAnalizandoIgual(false);
   }
 
+  // Cerrar el pop-up del informe (solo cuando se puede). Si el informe quedó listo sin abrirse, la tarjeta dice «Ya lo
+  // analizaste · Ver informe» y arriba queda «Tu informe de [depto] está listo · Abrirlo»; si se dio de baja, se relee.
+  function cerrarInforme() {
+    const queda = informe ? alCerrarQueda(informe) : null;
+    const it = confirmar?.it;
+    if (queda && it && informe) {
+      setInformesAqui((m) => ({ ...m, [it.avisoId]: queda.id }));
+      setListoSinAbrir({ ...queda, t0: informe.t0 });
+    }
+    const relee = informe?.paso === "fallo" && informe.motivo === "despublicado";
+    soltarCarga.current?.();
+    setInforme(null);
+    setConfirmar(null);
+    setGenerando(null);
+    setAnalizandoIgual(false);
+    if (relee) router.refresh();
+  }
+  // Tras un fallo, «Reintentar» analiza otra vez lo mismo.
+  function reintentarInforme() {
+    const u = ultimoAnalisis.current;
+    setInforme(null);
+    if (u) void analizar(u.it, u.recienPagado, u.eleccion, u.igual);
+  }
+
   // Volvió pagado desde este depto (21-oct-2026): se analiza solo, una vez. El `analizar=1` sale de la dirección antes, así
   // recargar o volver atrás no lo analiza de nuevo.
   const autoHecho = useRef(false);
   useEffect(() => {
     if (!autoAnalizar || autoHecho.current) return;
     const it = filas.flatMap((f) => [f.item, ...(f.reemplazo ? [f.reemplazo] : [])]).find((i) => i.avisoId === autoAnalizar);
-    if (!it || it.informeId || informes[it.avisoId] || (corta && noDa.has(it.avisoId))) return;
+    if (!it || it.informeId || informes[it.avisoId] || informesAqui[it.avisoId] || (corta && noDa.has(it.avisoId))) return;
     autoHecho.current = true;
     try {
       const u = new URL(window.location.href);
@@ -232,7 +281,7 @@ export function SemanalLista({
 
   // Ya lo analizó: en renta corta, el informe de la medición fina (15-oct-2026); en renta larga, el que trae el depto ya
   // visto (19-oct-2026) o, desde el 21-oct-2026, el que leyó el servidor recién (en vivo, al volver del informe).
-  const informeDe = (it: ItemSemanal): string | undefined => it.informeId ?? informes[it.avisoId];
+  const informeDe = (it: ItemSemanal): string | undefined => it.informeId ?? informes[it.avisoId] ?? informesAqui[it.avisoId];
   const nombre = (it: ItemSemanal) => [ojoDe(it), `UF ${miles(it.precioUF)}`, it.veredicto ? `${etiquetaVeredicto(it.veredicto, "frase")}${it.score != null ? ` ${it.score}` : ""}` : null].filter(Boolean).join(" · ");
   const acciones = (it: ItemSemanal): JSX.Element => {
     // Renta corta: medido fino y no dio. Queda dicho, sin botón.
@@ -319,6 +368,8 @@ export function SemanalLista({
       {!enCasa && combinacion && <p className="guia-txt">{SEMANAL_PAGINA.bajada(pct(combinacion.piePct), combinacion.plazoAnios)}</p>}
       {corta && <p className="guia-txt" data-semanal="zona">{SEMANAL_STR.zona}</p>}
       {!enCasa && conTitulo && saldo.tipo === "regalo" && <p className="guia-txt" data-semanal="regalo"><b>{SEMANAL_PAGINA.regalo}</b>{saldo.vence ? ` ${textoVence(saldo.vence)}` : ""}</p>}
+      {/* El informe quedó listo y no se abrió (03-nov-2026): el aviso queda arriba de la lista hasta que la persona lo quite. */}
+      {listoSinAbrir && <InformeListoAviso depto={listoSinAbrir.depto} ruta={listoSinAbrir.ruta} id={listoSinAbrir.id} t0={listoSinAbrir.t0} alCerrar={() => setListoSinAbrir(null)} />}
       <div className="sel-lista" data-semanal="tarjetas">
         {filasALaVista.map((f, i) => (f.caido ? (
           <div key={f.item.avisoId} className="guia-caido-grupo">
@@ -371,6 +422,9 @@ export function SemanalLista({
           // Renta corta: el aviso se cierra y la tarjeta mide. Renta larga: queda abierto, cargando, hasta el informe.
           alAnalizar={(eleccion) => { const it = confirmar.it; if (corta) setConfirmar(null); void analizar(it, false, corta ? undefined : eleccion); }}
           alCancelar={() => { if (!confirmar.analizando) setConfirmar(null); }}
+          informe={informe}
+          alCerrarInforme={cerrarInforme}
+          alReintentarInforme={reintentarInforme}
           avisoId={confirmar.it.avisoId}
         />
       )}

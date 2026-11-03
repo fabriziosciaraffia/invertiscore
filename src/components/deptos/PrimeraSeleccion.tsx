@@ -24,7 +24,6 @@
 // esa pantalla, que use el regalo en uno de los suyos. En la casa no va (el dashboard tiene el suyo).
 // ─────────────────────────────────────────────────────────────────────────────
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 import { comoAnalizarPrimero, hojaSinDeptos, PRIMERA_SELECCION, puedeAnalizarPrimero, TARJETAS_A_LA_VISTA, textoAnalizar, tituloSeleccion } from "@/lib/guia/del-dia";
 import { GUIA } from "@/lib/guia/copy";
@@ -32,7 +31,9 @@ import { YA_ANALIZADO } from "@/lib/guia/semanal-str";
 import { lineaDepto } from "@/lib/guia/linea-depto";
 import { botonOcupado, claveActual, iniciarCarga } from "@/lib/carga-global";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
-import { comprasDeExplorar, comprasDelDepto, lineaTicketConSaldo, ticketConSaldoDelDepto } from "@/lib/guia/compra-desde-depto";
+import { comprasDeExplorar, comprasDelDepto, lineaTicketConSaldo, nombreDelDepto, ticketConSaldoDelDepto } from "@/lib/guia/compra-desde-depto";
+import { alCerrarQueda, informeFallo, informeGenerando, informeListo, type MotivoFallo, type PasoInforme } from "@/lib/guia/informe-en-camino";
+import { InformeListoAviso } from "@/components/guia/InformeEnCamino";
 import { cuandoVenceCorto } from "@/lib/lo-que-sigue/oferta-pack";
 import { recalcularAviso } from "@/lib/explorar/recalcular-cliente";
 import { leerPuertaCandidata } from "@/lib/atribucion-puerta";
@@ -56,12 +57,18 @@ export function PrimeraSeleccion({ encabezado = "dentro" }: {
   /** Dónde se monta: en «Estás dentro» (el kicker y el título) o en la casa (el título de sección de la casa). */
   encabezado?: "dentro" | "casa";
 }) {
-  const router = useRouter();
   const [datos, setDatos] = useState<PrimerosDeLaCuenta | null>(null);
   const [fallo, setFallo] = useState(false);
   const [generando, setGenerando] = useState<string | null>(null);
   const [error, setError] = useState<{ avisoId: string; texto: string } | null>(null);
   const [confirmar, setConfirmar] = useState<{ it: PrimerDepto; sin: boolean; analizando?: boolean } | null>(null);
+  // DESPUÉS DE «ANALIZAR» (03-nov-2026, lib/guia/informe-en-camino.ts): lo que pasa con el informe, en el mismo pop-up; el aviso
+  // de arriba si quedó listo sin abrirse; y los analizados de esta visita («Ya lo analizaste · Ver informe»).
+  const [informe, setInforme] = useState<PasoInforme | null>(null);
+  const [listoSinAbrir, setListoSinAbrir] = useState<{ id: string; ruta: string; depto: string; t0: number } | null>(null);
+  const [informesAqui, setInformesAqui] = useState<Record<string, string>>({});
+  const ultimoAnalisis = useRef<{ it: PrimerDepto; eleccion?: EleccionAnalizar } | null>(null);
+  const soltarCarga = useRef<(() => void) | null>(null);
   const [eleccion, setEleccion] = useState<ValorBusqueda>({ comunas: [], tipologia: TIPOLOGIA_POR_DEFECTO, rango: ELECCIONES_POR_DEFECTO.rango });
   const [armando, setArmando] = useState(false);
   const [verTodos, setVerTodos] = useState(false);
@@ -127,9 +134,16 @@ export function PrimeraSeleccion({ encabezado = "dentro" }: {
     const combo = eleccion?.combinacion ?? datos.combinacion;
     setError(null);
     setGenerando(it.avisoId);
-    // El aviso queda abierto, cargando, con la barra del header, hasta que abre el informe (21-oct-2026).
+    // El aviso queda abierto, cargando, con la barra del header, hasta que abre el informe (21-oct-2026). Desde el 03-nov-2026,
+    // «Generando el informe de [depto]…» con su barra (InformeEnCamino), con lo que vio para decir si salió otro veredicto.
     const soltar = iniciarCarga(claveActual());
+    soltarCarga.current = soltar;
+    ultimoAnalisis.current = { it, eleccion };
+    const paso0 = informeGenerando(nombreDelDepto(it), eleccion?.vista ?? { veredicto: it.veredicto, score: it.score });
     setConfirmar({ it, sin: false, analizando: true });
+    setInforme(paso0);
+    // No salió (no se cobró): el pop-up lo dice con palabras; nunca se vuelve a la lista en silencio.
+    const fallar = (motivo: MotivoFallo) => { setConfirmar({ it, sin: false }); setInforme(informeFallo(paso0, motivo)); };
     try {
       // La casilla: la combinación elegida queda como su perfil de búsqueda antes de analizar.
       if (eleccion?.guardarPerfil) {
@@ -143,22 +157,54 @@ export function PrimeraSeleccion({ encabezado = "dentro" }: {
             ? { origenId: datos.origenId, avisoId: it.avisoId, piePct: combo.piePct, plazoAnios: combo.plazoAnios, tasaPct: combo.tasaPct ?? null, semanal: datos.token }
             : { origenId: null, avisoId: it.avisoId, piePct: combo.piePct, plazoAnios: combo.plazoAnios, tasaPct: combo.tasaPct ?? null, respaldo: true }),
         });
-        if (res.status === 409) { await new Promise((ok) => setTimeout(ok, ESPERA_EN_CURSO_MS)); continue; }
-        const d = (await res.json().catch(() => ({}))) as { id?: string; error?: string };
-        if (res.ok && d.id) { router.push(`/analisis/${d.id}`); return; }
-        // Se dio de baja recién, o la cola ya rearmó la selección sin este: se vuelve a pedir la lista.
-        if ((res.status === 410 && d.error === "despublicado") || d.error === "combinacion") { setConfirmar(null); setDatos(null); await leer(); break; }
-        if (d.error === "sin-creditos") { setConfirmar({ it, sin: true }); break; }
-        setConfirmar(null);
-        setError({ avisoId: it.avisoId, texto: GUIA.error });
+        if (res.status === 409) {
+          if (intento === 7) { fallar("error"); break; }
+          await new Promise((ok) => setTimeout(ok, ESPERA_EN_CURSO_MS));
+          continue;
+        }
+        const d = (await res.json().catch(() => ({}))) as { id?: string; error?: string; veredicto?: string | null; score?: number | null };
+        if (res.ok && d.id) {
+          // Listo: el pop-up lo abre solo; si con los datos de hoy salió otro veredicto, lo dice primero.
+          const listo = informeListo(paso0, { id: d.id, ruta: `/analisis/${d.id}`, veredicto: d.veredicto ?? null, score: d.score ?? null });
+          setInforme(listo);
+          if (listo.paso === "distinto") { soltar(); setGenerando(null); }
+          return;
+        }
+        // Se dio de baja recién, o la cola ya rearmó la selección sin este: el pop-up lo dice y, al cerrarlo, se relee la lista.
+        if (res.status === 410 && d.error === "despublicado") { fallar("despublicado"); break; }
+        if (d.error === "combinacion") { fallar("fuera"); break; }
+        if (d.error === "sin-creditos") { setInforme(null); setConfirmar({ it, sin: true }); break; }
+        fallar("error");
         break;
       }
     } catch {
-      setConfirmar(null);
-      setError({ avisoId: it.avisoId, texto: GUIA.error });
+      fallar("error");
     }
     soltar();
     setGenerando(null);
+  }
+
+  // Cerrar el pop-up del informe (solo cuando se puede). Si el informe quedó listo sin abrirse, la tarjeta dice «Ya lo
+  // analizaste · Ver informe» y arriba queda «Tu informe de [depto] está listo · Abrirlo»; si el depto salió, se relee la lista.
+  function cerrarInforme() {
+    const queda = informe ? alCerrarQueda(informe) : null;
+    const it = confirmar?.it;
+    if (queda && it && informe) {
+      setInformesAqui((m) => ({ ...m, [it.avisoId]: queda.id }));
+      setListoSinAbrir({ ...queda, t0: informe.t0 });
+    }
+    const relee = informe?.paso === "fallo" && informe.motivo !== "error";
+    soltarCarga.current?.();
+    setInforme(null);
+    setConfirmar(null);
+    setGenerando(null);
+    if (relee) { setDatos(null); void leer(); }
+  }
+  // Tras un fallo, «Reintentar» analiza otra vez lo mismo.
+  function reintentarInforme() {
+    const u = ultimoAnalisis.current;
+    setInforme(null);
+    if (u) void analizar(u.it, u.eleccion);
   }
 
   // Sin saldo, la compra vuelve al depto y lo analiza: desde la selección, al dashboard con el token; desde el respaldo (sin
@@ -215,6 +261,8 @@ export function PrimeraSeleccion({ encabezado = "dentro" }: {
           {datos.revisando && <p className="sel-estado" role="status" aria-live="polite" data-primera="revisando">{PRIMERA_SELECCION.revisando}</p>}
           {sinDeptos && <p className="sel-estado" data-primera="ninguno">{PRIMERA_SELECCION.ninguno}</p>}
           {datos.vecinas && items.length > 0 && <p className="sel-estado" data-primera="vecinas">{PRIMERA_SELECCION.vecinas}</p>}
+          {/* El informe quedó listo y no se abrió (03-nov-2026): el aviso queda arriba de la lista hasta que la persona lo quite. */}
+          {listoSinAbrir && <InformeListoAviso depto={listoSinAbrir.depto} ruta={listoSinAbrir.ruta} id={listoSinAbrir.id} t0={listoSinAbrir.t0} alCerrar={() => setListoSinAbrir(null)} />}
           {items.length > 0 && (
             <div className="sel-lista" data-primera="lista">
               {visibles.map((it, i) => {
@@ -239,10 +287,10 @@ export function PrimeraSeleccion({ encabezado = "dentro" }: {
                       </div>
                     </div>
                     {error?.avisoId === it.avisoId && <p className="sel-error" role="alert">{error.texto}</p>}
-                    {it.informeId ? (
+                    {it.informeId ?? informesAqui[it.avisoId] ? (
                       <p className="sel-ya" data-primera="ya-analizado">
                         <span>{YA_ANALIZADO.texto} ·</span>
-                        <EnlaceCarga href={`/analisis/${it.informeId}`}>{YA_ANALIZADO.enlace}</EnlaceCarga>
+                        <EnlaceCarga href={`/analisis/${it.informeId ?? informesAqui[it.avisoId]}`}>{YA_ANALIZADO.enlace}</EnlaceCarga>
                       </p>
                     ) : puede && (
                       <button type="button" className="sel-btn" data-primario={i === 0 ? "1" : undefined} onClick={() => { setError(null); setConfirmar({ it, sin: false }); }} disabled={!!generando} {...botonOcupado(generando === it.avisoId)} data-primera="analizar">
@@ -276,6 +324,9 @@ export function PrimeraSeleccion({ encabezado = "dentro" }: {
           cambio={{ recalcular: (combo) => recalcularAviso(confirmar.it.avisoId, combo), base: { veredicto: confirmar.it.veredicto, score: confirmar.it.score, flujo: confirmar.it.flujo } }}
           alAnalizar={(eleccion) => void analizar(confirmar.it, eleccion)}
           alCancelar={() => { if (!confirmar.analizando) setConfirmar(null); }}
+          informe={informe}
+          alCerrarInforme={cerrarInforme}
+          alReintentarInforme={reintentarInforme}
           avisoId={confirmar.it.avisoId}
         />
       )}

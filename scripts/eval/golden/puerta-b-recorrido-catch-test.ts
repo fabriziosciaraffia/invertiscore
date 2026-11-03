@@ -312,7 +312,8 @@ export async function runPuertaBRecorridoTier(): Promise<{ hard: number }> {
     // Los dos caminos, cada uno con su mapeo: la selección del día ya armada (`i`) y los de la noche (`d`).
     if ((prim.match(/informesDeAvisos\(admin, userId,/g) ?? []).length < 2 || !/enSeleccion: true, informeId: informes\[i\.avisoId\] \?\? null,/.test(prim) || !/\(\{ \.\.\.d, enSeleccion, informeId: informes\[d\.avisoId\] \?\? null \}\)/.test(prim)) F("6 · la primera selección del día no trae lo ya analizado (en sus dos caminos)");
     const ps = codigo("src/components/deptos/PrimeraSeleccion.tsx");
-    if (!/\{it\.informeId \? \([\s\S]{0,200}data-primera="ya-analizado"[\s\S]{0,300}href=\{`\/analisis\/\$\{it\.informeId\}`\}/.test(ps)) F("6 · la primera selección no dice «Ya lo analizaste · Ver informe»");
+    // ⚠ ACTA (03-nov-2026, «el informe en camino», tier INFORME-EN-CAMINO) · el ya analizado incluye los de esta visita (`informesAqui`), con su informe.
+    if (!/\{it\.informeId \?\? informesAqui\[it\.avisoId\] \? \([\s\S]{0,200}data-primera="ya-analizado"[\s\S]{0,300}href=\{`\/analisis\/\$\{it\.informeId \?\? informesAqui\[it\.avisoId\]\}`\}/.test(ps)) F("6 · la primera selección no dice «Ya lo analizaste · Ver informe»");
     if (!/window\.addEventListener\("pageshow", alVolver\)/.test(ps)) F("6 · la primera selección no se relee al volver atrás desde el informe");
     // El dashboard se pide de nuevo al volver, sin recargar.
     const fresco = cargar<typeof import("../../../src/app/dashboard/fresco-al-volver")>("src/app/dashboard/fresco-al-volver");

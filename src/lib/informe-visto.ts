@@ -13,6 +13,7 @@
 
 import type { PostHog } from "posthog-js";
 import { createClient } from "@/lib/supabase/client";
+import { EVENTO_INFORME_ABIERTO, leerViaje } from "@/lib/guia/informe-en-camino";
 
 // `ai_estado` SALIÓ DEL EVENTO (25-sep-2026). Decía si la prosa IA venía guardada o «generando»;
 // desde el retiro de la IA nada genera, así que «generando» era falso en toda fila sin prosa.
@@ -78,6 +79,15 @@ export function registrarInformeVisto(args: {
     });
   } catch {
     /* PostHog sin inicializar — no es un problema */
+  }
+
+  // EL TIEMPO DESDE «ANALIZAR» (03-nov-2026, lib/guia/informe-en-camino.ts): si se llegó desde el pop-up después de
+  // «Analizar», cuánto tardó en verse este informe, desde dónde y cómo se abrió (solo, con «Abrir informe» o desde el aviso).
+  try {
+    const viaje = leerViaje(window.sessionStorage, args.ids[0]);
+    if (viaje) args.posthog?.capture(EVENTO_INFORME_ABIERTO, { analysis_id: args.ids[0], modalidad: args.modalidad, ms: viaje.ms, desde: viaje.desde, via: viaje.via });
+  } catch {
+    /* sin almacenamiento o sin PostHog: sin medición */
   }
 
   // Persistencia fire-and-forget: no se awaitea desde el render.

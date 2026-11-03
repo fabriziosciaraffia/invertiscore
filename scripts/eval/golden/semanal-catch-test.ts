@@ -416,7 +416,9 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
     // ⚠ ACTA (28-oct-2026, RESPALDO-MAPA) · contado desde el número de su bloque (`desdeN`), como el pin del mapa.
     if (!/<p className="guia-caido-txt">\{SEMANAL_PAGINA\.caido\}<\/p>/.test(li) || !/\{f\.reemplazo && tarjeta\(f\.reemplazo, f\.reemplazo\.avisoId, i \+ desdeN\)\}/.test(li)) F("13 · /semanal no dice el caído o no muestra el reemplazo en su lugar");
     // ⚠ ACTA (21-oct-2026) · antes de pedir la página de nuevo se cierra el aviso, que ahora queda abierto mientras genera.
-    if (!/if \(res\.status === 410 && d\.error === "despublicado"\) \{ setConfirmar\(null\); router\.refresh\(\); break; \}/.test(li)) F("13 · si se da de baja al analizar, la página no trae el siguiente");
+    // ⚠ ACTA (03-nov-2026, «el informe en camino», tier INFORME-EN-CAMINO) · el despublicado ya no cierra el pop-up en silencio: lo dice
+    // («Este depto se dio de baja recién…») y la página trae el siguiente al cerrarlo.
+    if (!/if \(res\.status === 410 && d\.error === "despublicado"\) \{ fallar\("despublicado"\); break; \}/.test(li) || !/const relee = informe\?\.paso === "fallo" && informe\.motivo === "despublicado";[\s\S]{0,200}if \(relee\) router\.refresh\(\);/.test(li)) F("13 · si se da de baja al analizar, la página no trae el siguiente");
     for (const s of [SEMANAL_PAGINA.caido, SEMANAL_PAGINA.enSuLugar]) if (VOSEO.test(s)) F(`13 · voseo: «${s}»`);
   }
 
@@ -509,7 +511,8 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
     if (!/\{it\.visto && it\.visto !== "analizado" && <p className="sel-estado" data-semanal="visto">\{MARCA_VISTO\[it\.visto\]\}<\/p>\}/.test(pg) || !/if \(informe\) return filaAnalizada\(it, informe, n\);/.test(pg)) F("15 · /semanal no marca lo ya visto");
     // ⚠ ACTA (21-oct-2026) · en renta larga también se lee en vivo lo ya analizado (\`informes\`, del servidor), no solo lo que
     // traía el depto al armarse (tier PUERTA-B-RECORRIDO §6).
-    if (!/const informeDe = \(it: ItemSemanal\): string \| undefined => it\.informeId \?\? informes\[it\.avisoId\];/.test(pg) || !/href=\{corta \? `\/analisis\/renta-corta\/\$\{informe\}` : `\/analisis\/\$\{informe\}`\}/.test(pg)) F("15 · en renta larga, un depto ya analizado no lleva a su informe");
+    // ⚠ ACTA (03-nov-2026, «el informe en camino», tier INFORME-EN-CAMINO) · y los de esta visita (un informe listo que no se abrió).
+    if (!/const informeDe = \(it: ItemSemanal\): string \| undefined => it\.informeId \?\? informes\[it\.avisoId\] \?\? informesAqui\[it\.avisoId\];/.test(pg) || !/href=\{corta \? `\/analisis\/renta-corta\/\$\{informe\}` : `\/analisis\/\$\{informe\}`\}/.test(pg)) F("15 · en renta larga, un depto ya analizado no lleva a su informe");
   }
 
   if (fallas.length === 0) console.log("  ✓ SEMANAL: Comprar publicados de a uno hasta cinco (tres o nada), domingo/lunes, regalo de reactivación (4 semanas sin analizar, uno cada 90 días), dos variantes con precio grande y botón rojo a la selección (sin saldo, con la línea del pack de tres), una vez por semana, clic que relee la ficha, los cinco eventos y la baja de un clic; respaldo hasta tres con vecinas y Ajustar negociables marcados; a toda persona con informe (desde el 13-oct, también solo de renta corta), presentándose la primera vez; prechequeo por turnos en las noches que sirve para descartar; rechequeo del domingo; /semanal viva con reemplazo; el reintento no alerta");

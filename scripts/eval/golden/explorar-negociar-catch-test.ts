@@ -478,9 +478,12 @@ export async function runExplorarNegociarTier(): Promise<{ hard: number }> {
     if (!/const medianaComuna = medianaDeHoy \?\? await prefetchMedianaComunaVenta\(admin, body, ufValue\);/.test(post)) F("10 · el informe no usa la mediana con que se verificó");
     // El navegador: el precio nuevo al pop-up (y a la capa); el que ya no llega sale de la capa y el pop-up ofrece el publicado.
     const an = cuerpo(cliente, "async function analizar(");
-    const iMov = an.indexOf('res.status === 412 && d.error === "precio-movido"'), iGen = an.indexOf("setError({ avisoId: it.avisoId, texto: GUIA.error });");
+    // ⚠ ACTA (03-nov-2026, «el informe en camino», tier INFORME-EN-CAMINO) · el error genérico ya no es una nota en la tarjeta:
+    // el pop-up lo dice (`fallar("error")`, el de la rama final del pedido); el precio movido se atiende antes, igual que antes.
+    const iMov = an.indexOf('res.status === 412 && d.error === "precio-movido"'), iGen = an.indexOf('fallar("error");\n        break;');
     if (iMov < 0 || iGen < 0 || iMov > iGen) F("10 · «Analizar a UF X» no atiende el precio movido antes del error genérico");
-    if (!/setMovidos\(\(m\) => \(\{ \.\.\.m, \[it\.avisoId\]: nuevo \}\)\);\s*setConfirmar\(\{ it: \{ \.\.\.it, neg: nuevo \} as PinNegociado, sin: false, movido: NEGOCIADO_COPY\.movido\(nuevo\.p, nuevo\.d, it\.neg\.p\) \}\);/.test(an)) F("10 · el pop-up no queda con el precio nuevo y su aviso");
+    // ⚠ ACTA (03-nov-2026, INFORME-EN-CAMINO) · el pop-up deja el informe en camino (setInforme(null)) y vuelve con el precio nuevo.
+    if (!/setMovidos\(\(m\) => \(\{ \.\.\.m, \[it\.avisoId\]: nuevo \}\)\);\s*setInforme\(null\);\s*setConfirmar\(\{ it: \{ \.\.\.it, neg: nuevo \} as PinNegociado, sin: false, movido: NEGOCIADO_COPY\.movido\(nuevo\.p, nuevo\.d, it\.neg\.p\) \}\);/.test(an)) F("10 · el pop-up no queda con el precio nuevo y su aviso");
     if (!/d\.error === "no-llega"[\s\S]{0,200}setNoLlegan\([\s\S]{0,80}setConfirmar\(\{ it: alPublicado, sin: false, movido: NEGOCIADO_COPY\.noLlega\(/.test(an)) F("10 · el que ya no llega no sale de la capa o el pop-up no ofrece el publicado");
     if (!/\.map\(\(p\) => \(movidos\[p\.avisoId\] \? \{ \.\.\.p, neg: movidos\[p\.avisoId\] \} : p\)\)/.test(cliente) || !/!noLlegan\.includes\(p\.avisoId\)/.test(cliente)) F("10 · la capa no toma el precio verificado");
     if (!/movido=\{confirmar\.movido \?\? null\}/.test(cliente)) F("10 · el pop-up no recibe el aviso del precio movido");

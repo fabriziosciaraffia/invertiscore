@@ -286,14 +286,17 @@ export async function runPrimeraSeleccionTier(): Promise<{ hard: number }> {
       // respaldo) · sin token, o fuera de la fila, la tarjeta se analiza como respaldo (tier RESPALDO-MAPA); sin combinación, no.
       if (!puedeAnalizarPrimero(pa, { enSeleccion: true }) || !puedeAnalizarPrimero(pa, { enSeleccion: false }) || !puedeAnalizarPrimero({ ...pa, token: null }, { enSeleccion: true }) || puedeAnalizarPrimero({ ...pa, combinacion: null }, { enSeleccion: true }))
         F("7 · «Analizar este» falta en una tarjeta con combinación (de la selección o del respaldo), o sale sin combinación");
-      if (!/const puede = puedeAnalizarPrimero\(datos, it\);/.test(ps) ||!/\{it\.informeId \? \(\s*<p className="sel-ya" data-primera="ya-analizado">[\s\S]{0,400}?<\/p>\s*\) : puede && \(\s*<button type="button" className="sel-btn" data-primario=\{i === 0 \? "1" : undefined\} onClick=\{\(\) => \{ setError\(null\); setConfirmar\(\{ it, sin: false \}\); \}\}[^\n]*data-primera="analizar"/.test(ps))
+      // ⚠ ACTA (03-nov-2026, «el informe en camino», tier INFORME-EN-CAMINO) · el ya analizado incluye los de esta visita (`informesAqui`).
+      if (!/const puede = puedeAnalizarPrimero\(datos, it\);/.test(ps) ||!/\{it\.informeId \?\? informesAqui\[it\.avisoId\] \? \(\s*<p className="sel-ya" data-primera="ya-analizado">[\s\S]{0,400}?<\/p>\s*\) : puede && \(\s*<button type="button" className="sel-btn" data-primario=\{i === 0 \? "1" : undefined\} onClick=\{\(\) => \{ setError\(null\); setConfirmar\(\{ it, sin: false \}\); \}\}[^\n]*data-primera="analizar"/.test(ps))
         F("7 · «Analizar este» no está en cada depto, o sale sin el token de la selección");
       // ⚠ ACTA (28-oct-2026, RESPALDO-MAPA) · el pedido elige el modo: con su fila, el token de la selección; sin ella, `respaldo: true` (lo prueba RESPALDO-MAPA §2).
       if (!/fetch\("\/api\/lo-que-sigue\/guia\/analizar", \{\s*method: "POST",[\s\S]{0,300}como === "seleccion"\s*\? \{ origenId: datos\.origenId, [^}]*semanal: datos\.token \}/.test(ps)) F("7 · «Analizar este» no va por la ruta de la guía con el token de la selección");
       if (!/<AvisoAntesDeAnalizar\s/.test(ps) || !/\{generando === it\.avisoId \? GUIA\.analizando : textoAnalizar\(usaRegalo\)\}/.test(ps) || !/const usaRegalo = saldo\?\.tipo === "regalo" \|\| \(saldo\?\.tipo === "con" && !!saldo\.proximoRegalo\);/.test(ps)) F("7 · falta el aviso antes de gastar, o el botón no dice «Analizar este · usa tu regalo» con el regalo");
       // Tres a la vista y «Ver los N que faltan» (mockup 2).
       if (TARJETAS_A_LA_VISTA !== 3 || PRIMERA_SELECCION.verMas(2) !== "Ver los 2 que faltan" || PRIMERA_SELECCION.verMas(1) !== "Ver el que falta" || !/const visibles = verTodos \? items : items\.slice\(0, TARJETAS_A_LA_VISTA\);/.test(ps) || !/data-primera="ver-mas">\{PRIMERA_SELECCION\.verMas\(faltanPorVer\)\}<\/button>/.test(ps)) F("7 · no van tres a la vista con «Ver los N que faltan»");
-      if (!/router\.push\(`\/analisis\/\$\{d\.id\}`\)/.test(ps)) F("7 · al analizar no lleva al informe");
+      // ⚠ ACTA (03-nov-2026, «el informe en camino», tier INFORME-EN-CAMINO) · al llegar el informe no navega la tarjeta: se lo pasa al pop-up
+      // (InformeEnCamino), que lo abre solo y a los 10 s ofrece «Abrir informe».
+      if (!/informeListo\(paso0, \{ id: d\.id, ruta: `\/analisis\/\$\{d\.id\}`, veredicto: d\.veredicto \?\? null, score: d\.score \?\? null \}\);\s*setInforme\(listo\);/.test(ps)) F("7 · al analizar no lleva al informe");
     }
 
     // ── 8 · ANALIZAR DESDE YA: los de la noche quedan en la fila pendiente ──

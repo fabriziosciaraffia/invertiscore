@@ -6,8 +6,14 @@
 // la medición del caso del 26-oct (tarifa $61.143 contra $80.367, ocupación 44 % contra 47 %), sin parecidos y con dos.
 // EL PLAN DONDE SE USA (28-oct-2026, Explorar como portal): p con saldo y p0 sin saldo, con la línea «Llevas 3 este mes…».
 // El aviso E de Explorar sin saldo (e, e0) se retiró con el mapa cerrado: sin saldo se explora todo.
+// EL INFORME EN CAMINO (03-nov-2026, InformeEnCamino.tsx): ig generando · il listo con «Abrir informe» (pasados 10 s) · iv el
+// veredicto distinto · ie el fallo · ip despublicado · if salió de la selección · ia el aviso de arriba. «Abrir informe» va a
+// un ancla de esta página: no navega a ningún informe.
 import { useEffect, useState } from "react";
 import { AvisoAntesDeAnalizar } from "@/components/guia/AvisoAntesDeAnalizar";
+import { InformeListoAviso } from "@/components/guia/InformeEnCamino";
+import { informeFallo, informeGenerando, informeListo, type PasoInforme } from "@/lib/guia/informe-en-camino";
+import { nombreDelDepto } from "@/lib/guia/compra-desde-depto";
 import { PopupNoDa } from "@/components/guia/PopupNoDa";
 import { porQueNoDa, textoAnalizarIgual } from "@/lib/guia/semanal-str";
 import "@/components/guia/guia.css";
@@ -16,12 +22,25 @@ import { comprasDeExplorar, ticketConSaldoDelDepto } from "@/lib/guia/compra-des
 import { lineaPlan } from "@/lib/explorar/portal";
 import { PLAZO_POR_DEFECTO } from "@/lib/deptos/estandar";
 
-export type EstadoDemoPopups = "a" | "a0" | "d1" | "d1t" | "d2" | "p" | "p0" | "c1" | "c0" | "nd" | "nd2";
+export type EstadoDemoPopups = "a" | "a0" | "d1" | "d1t" | "d2" | "p" | "p0" | "c1" | "c0" | "nd" | "nd2" | "ig" | "il" | "iv" | "ie" | "ip" | "if" | "ia";
 
 const DEPTO = { comuna: "Providencia", tipologia: "2D1B", m2: 46, precioUF: 3275 };
 const FINANZAS = { tasa: 4.2, uf: 39_600, arriendo: 720_000 };
 const BASE = { veredicto: "COMPRAR", score: 88, flujo: 88_363 };
 const nada = () => {};
+/** El informe en camino de cada estado: «Analizar» se tocó hace 11 s (así «Abrir informe» ya va), el informe, a un ancla. */
+function pasoDemo(estado: EstadoDemoPopups): PasoInforme | null {
+  const t0 = Date.now() - 11_000;
+  const g = informeGenerando(nombreDelDepto(DEPTO), { veredicto: "COMPRAR", score: 82 }, estado === "ig" ? Date.now() - 4_000 : t0);
+  const r = { id: "demo", ruta: "#informe-demo" };
+  if (estado === "ig") return g;
+  if (estado === "il") return informeListo(g, { ...r, veredicto: "COMPRAR", score: 80 }, Date.now() - 1_000);
+  if (estado === "iv") return informeListo(g, { ...r, veredicto: "AJUSTA SUPUESTOS", score: 68 });
+  if (estado === "ie") return informeFallo(g, "error");
+  if (estado === "ip") return informeFallo(g, "despublicado");
+  if (estado === "if") return informeFallo(g, "fuera");
+  return null;
+}
 /** La medición del 26-oct (comparaciones_zona_str del aviso 9bfe6906): la zona y lo medido en la dirección. */
 const ZONA_CASO = { veredicto: "COMPRAR", score: 85, adr: 80367, ocupacion: 0.466 };
 const FINO_CASO = { veredicto: "AJUSTA SUPUESTOS", score: 68, adr: 61143, ocupacion: 0.437 };
@@ -39,7 +58,9 @@ export function DemoPopups({ estado }: { estado: EstadoDemoPopups }) {
   return (
     <main style={{ minHeight: "100dvh", padding: 16 }} data-demo-popups={estado}>
       <p style={{ fontSize: 13, opacity: 0.6 }}>/dev/popups · {estado}</p>
-      {!montado ? null : estado === "nd" || estado === "nd2" ? (
+      {!montado ? null : estado === "ia" ? (
+        <InformeListoAviso depto={nombreDelDepto(DEPTO)} ruta="#informe-demo" id="demo" t0={Date.now() - 60_000} alCerrar={nada} />
+      ) : estado === "nd" || estado === "nd2" ? (
         <PopupNoDa
           parecidos={estado === "nd2" ? 2 : 0}
           alCerrar={nada}
@@ -68,6 +89,9 @@ export function DemoPopups({ estado }: { estado: EstadoDemoPopups }) {
           }}
           alAnalizar={nada}
           alCancelar={nada}
+          informe={pasoDemo(estado)}
+          alCerrarInforme={nada}
+          alReintentarInforme={estado === "ie" ? nada : null}
           // La imagen del depto a la izquierda de la tarjeta (30-oct-2026), como en todas partes: la sonda mide con ella.
           avisoId="demo"
         />

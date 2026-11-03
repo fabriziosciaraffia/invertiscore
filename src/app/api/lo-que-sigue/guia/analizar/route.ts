@@ -146,6 +146,9 @@ export async function POST(request: Request) {
     // con que se verificó, que es la que usa el informe.
     let negociadoFallo: Response | null = null;
     let medianaDeHoy: Awaited<ReturnType<typeof prefetchMedianaComunaVenta>> | null = null;
+    // El veredicto y el puntaje del informe (03-nov-2026, lib/guia/informe-en-camino.ts): el pop-up los compara con los de la
+    // tarjeta y, si el veredicto es otro, lo dice antes de abrirlo.
+    let delInforme: { veredicto: string | null; score: number | null } | null = null;
     const r = await analizarAvisoDeGuia({
       async chequear() {
         const ficha = await fichaDelAviso(admin, b.avisoId!);
@@ -251,6 +254,7 @@ export async function POST(request: Request) {
             }).select("id").single();
             if (error || !data) throw new Error(`insert: ${error?.message ?? "sin fila"}`);
             const id = data.id as string;
+            delInforme = { veredicto: readVeredicto(result) ?? null, score: result.score ?? null };
             waitUntil(capturarAnalisisCreado({ userId: user.id, analysisId: id, modalidad: "ltr", via: desde, precioNegociado }));
             if (desdeExplorar) {
               waitUntil(capturarServidor(eventoExplorarAnaliza({ userId: user.id, analysisId: id, avisoId: aviso.avisoId, comuna: aviso.comuna, precioUF: aviso.precioUF, m2: aviso.m2, piePct: combinacion.piePct, plazoAnios: combinacion.plazoAnios })).catch(() => false));
@@ -284,7 +288,13 @@ export async function POST(request: Request) {
     if (r.estado === "sin-preparar") return salir(plausibleFallo ?? negociadoFallo ?? NextResponse.json({ error: r.error }, { status: r.status }));
     if (r.estado === "sin-cobro") return salir(NextResponse.json({ error: r.error }, { status: r.status }));
     if (r.estado === "en-curso") return salir(NextResponse.json({ error: "en-curso" }, { status: 409 }));
-    return salir(NextResponse.json({ id: r.id, estado: r.estado }));
+    // Ya estaba creado (otro clic, otra pestaña): su veredicto se lee de la fila.
+    if (!delInforme) {
+      const { data: fila } = await admin.from("analisis").select("results").eq("id", r.id).maybeSingle();
+      const res = (fila?.results ?? null) as Parameters<typeof readVeredicto>[0] | null;
+      delInforme = res ? { veredicto: readVeredicto(res) ?? null, score: (res as { score?: number | null }).score ?? null } : null;
+    }
+    return salir(NextResponse.json({ id: r.id, estado: r.estado, veredicto: delInforme?.veredicto ?? null, score: delInforme?.score ?? null }));
   } catch (e) {
     captureApiError(e, { ruta: RUTA, operacion: "analizar-aviso", userId: user.id, extra: { avisoId: b.avisoId } });
     return salir(NextResponse.json({ error: "interno" }, { status: 500 }));

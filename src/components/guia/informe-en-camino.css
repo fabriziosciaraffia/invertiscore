@@ -1,0 +1,14 @@
+/* EL POP-UP DESPUÉS DE «ANALIZAR» (03-nov-2026, InformeEnCamino.tsx): dentro del modal del wizard (.wz4, sus tokens). */
+.ie .wz-modal-mt { gap: 10px; }
+.ie-titulo { margin: 12px 0 0; font-size: 17px; font-weight: 600; line-height: 1.35; color: var(--tx); }
+.ie-barra { margin-top: 14px; margin-bottom: 6px; height: 4px; }
+.ie-texto { margin: 8px 0 4px; font-size: 14px; line-height: 1.5; color: var(--tx2); }
+/* «Abrir informe» es un enlace (navega aunque el router se trabe) con forma de botón. */
+.ie-abrir { display: flex; align-items: center; justify-content: center; text-decoration: none; }
+
+/* EL AVISO DE ARRIBA: el informe quedó listo y no se abrió. No se cierra solo. Fuera del modal: tokens de la página. */
+.ie-aviso { position: relative; z-index: 6; display: flex; align-items: center; gap: 6px; margin: 0; padding: 10px 40px 10px 14px; font-size: 14px; line-height: 1.4;
+  color: var(--franco-text); background: var(--franco-card); border: 1px solid var(--franco-border); border-radius: 12px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04); }
+.ie-aviso a { font-weight: 600; color: var(--franco-text); text-decoration: underline; text-underline-offset: 3px; }
+.ie-aviso-x { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 32px; height: 32px; border: 0; background: none; color: var(--franco-text-secondary); font-size: 18px; cursor: pointer; border-radius: 8px; }
+.ie-aviso-x:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; }
