@@ -36,6 +36,11 @@ export type PasoInforme =
   | (Base & { paso: "listo"; id: string; ruta: string; listoEn: number })
   | (Base & { paso: "distinto"; id: string; ruta: string; listoEn: number; hoy: VeredictoVisto; esperado: VeredictoVisto })
   | (Base & { paso: "fallo"; motivo: MotivoFallo });
+/** Dónde se analizó, para decir de dónde se saca el que se dio de baja: el mapa de Explorar, la selección (el dashboard, «Estás
+ *  dentro», el semanal y la vuelta del pago de un depto) o la lista de la guía. */
+export type LugarInforme = "mapa" | "seleccion" | "lista";
+/** El lugar, por el «desde» de la medición. */
+export const lugarDeDesde = (d: DesdeInforme): LugarInforme => (d === "explorar" ? "mapa" : d === "guia" ? "lista" : "seleccion");
 /** Por qué no salió: un error, el aviso se dio de baja recién, la selección se rearmó sin él, o la guía es de la cuenta que pagó
  *  y se entró con otra (ninguno cobra). */
 export type MotivoFallo = "error" | "despublicado" | "fuera" | "otra-cuenta";
@@ -52,8 +57,11 @@ export const INFORME_COPY = {
   falloQue: "Prueba de nuevo en unos minutos. Si vuelve a pasar, escríbenos a hola@refranco.ai.",
   reintentar: "Reintentar",
   cerrar: "Cerrar",
-  despublicadoTitulo: "Este depto se dio de baja recién. No se usó ningún análisis.",
-  despublicadoQue: "Ya no está publicado: lo sacamos de la lista. Elige otro.",
+  /** EL QUE SE DIO DE BAJA, CON EL PORQUÉ (04-nov-2026, decisión de Fabrizio: que no se sienta como una falla). Lo que sigue al
+   *  título dice cuándo lo revisó Franco y de dónde lo saca, según dónde se analizó (despublicadoQue). */
+  despublicadoTitulo: "Este depto ya no está publicado.",
+  despublicadoQue: (lugar: LugarInforme) =>
+    `Franco lo revisó ${lugar === "lista" ? "al armar tu guía" : "anoche"} y hoy el vendedor lo sacó: los que convienen se van rápido. No se usó ningún análisis. Lo quitamos ${lugar === "mapa" ? "del mapa" : lugar === "lista" ? "de la lista" : "de tu selección"}; elige otro.`,
   fueraTitulo: "Este depto salió de tu selección. No se usó ningún análisis.",
   fueraQue: "La armamos de nuevo con lo de hoy. Elige otro.",
   otraCuentaQue: "Esa cuenta no es la del pago. Entra con el correo con que pagaste.",
@@ -153,8 +161,8 @@ export function leerViaje(almacen: Almacen | null, id: string, ahora: number = D
 }
 
 /** Lo que dice el pop-up cuando no salió: el título y qué hacer. */
-export function textoFallo(motivo: MotivoFallo): { titulo: string; que: string } {
-  if (motivo === "despublicado") return { titulo: INFORME_COPY.despublicadoTitulo, que: INFORME_COPY.despublicadoQue };
+export function textoFallo(motivo: MotivoFallo, lugar: LugarInforme = "mapa"): { titulo: string; que: string } {
+  if (motivo === "despublicado") return { titulo: INFORME_COPY.despublicadoTitulo, que: INFORME_COPY.despublicadoQue(lugar) };
   if (motivo === "fuera") return { titulo: INFORME_COPY.fueraTitulo, que: INFORME_COPY.fueraQue };
   if (motivo === "otra-cuenta") return { titulo: INFORME_COPY.falloTitulo, que: INFORME_COPY.otraCuentaQue };
   return { titulo: INFORME_COPY.falloTitulo, que: INFORME_COPY.falloQue };

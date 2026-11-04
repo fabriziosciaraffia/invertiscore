@@ -15,8 +15,9 @@ export const NEGOCIADO_COPY = {
   /** «Si consigues UF 2.950 (−4,2 %)». */
   siConsigues: (p: number, d: number) => ({ antes: "Si consigues", precio: `UF ${miles(p)}`, despues: `(−${pct1(d)} %)` }),
   analizarA: (p: number) => `Analizar a UF ${miles(p)}`,
-  /** VERIFICADO ANTES DE COBRAR (02-nov-2026): con los datos de hoy el precio que llega a Comprar se movió; el pop-up lo dice. */
-  movido: (p: number, d: number, antes: number) => `Con los datos de hoy, llega a Comprar con UF ${miles(p)} (−${pct1(d)} %), no con UF ${miles(antes)}. No se usó ningún análisis.`,
-  /** Con los datos de hoy ya no llega dentro del tope: el pop-up ofrece el precio publicado. */
-  noLlega: (tope: number) => `Con los datos de hoy ya no llega a Comprar con un descuento de hasta ${tope} %. No se usó ningún análisis; puedes analizarlo al precio publicado.`,
+  /** VERIFICADO ANTES DE COBRAR (02-nov-2026): con los datos de hoy el precio que llega a Comprar se movió; el pop-up lo dice, CON
+   *  EL PORQUÉ (04-nov-2026, decisión de Fabrizio: que no se sienta como una falla). */
+  movido: (p: number, d: number, antes: number) => `Desde anoche entraron avisos nuevos en la zona y el precio al que conviene cambió: hoy llega a Comprar con UF ${miles(p)} (−${pct1(d)} %), no con UF ${miles(antes)}. No se usó ningún análisis.`,
+  /** Con los datos de hoy ya no llega dentro del tope: el pop-up ofrece el precio publicado. Con el mismo porqué. */
+  noLlega: (tope: number) => `Desde anoche entraron avisos nuevos en la zona y el precio al que conviene cambió: hoy no llega a Comprar con un descuento de hasta ${tope} %. No se usó ningún análisis; puedes analizarlo al precio publicado.`,
 } as const;

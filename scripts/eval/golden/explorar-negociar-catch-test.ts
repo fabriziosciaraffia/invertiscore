@@ -172,7 +172,10 @@ export async function runExplorarNegociarTier(): Promise<{ hard: number }> {
     // Todo el copy de Explorar que dice «conviene» dice a qué precio («al precio publicado», o «si negocias» en la capa): también
     // la barra y la lista sin ninguno y el tooltip de la tasa. Fuera, con su razón: el nombre de la pestaña, el tooltip del
     // financiamiento (copy del goal: habla de «a ti», no del precio) y el paso 1 de la bienvenida, cuyo título ya lo dice.
-    const FUERA = ["PORTAL_COPY.pestana", "PORTAL_COPY.v2.financiamiento.tooltip", "BIENVENIDA_COPY.paso1"];
+    // ⚠ ACTA (04-nov-2026, la pasada de Fabrizio por /explorar, tier EXPLORAR-PASADA-0411) · el aviso del precio movido es el texto que dictó Fabrizio («Desde anoche entraron avisos nuevos en
+    // la zona y el precio al que conviene cambió: hoy llega a Comprar con UF 2.085…»): el precio al que conviene es el negociado, dicho
+    // en la misma frase.
+    const FUERA = ["PORTAL_COPY.pestana", "PORTAL_COPY.v2.financiamiento.tooltip", "BIENVENIDA_COPY.paso1", "NEGOCIAR_COPY.movido()"];
     const textos: [string, string][] = [["deptosN(0)", po.deptosN(0)], ["DESGLOSE_COPY.ninguno(10)", po.DESGLOSE_COPY.ninguno(10)]];
     const recorrer = (o: object, ruta: string) => {
       for (const [k, v] of Object.entries(o)) {
@@ -198,7 +201,9 @@ export async function runExplorarNegociarTier(): Promise<{ hard: number }> {
     for (const p of ["src/app/explorar/explorar-cliente.tsx", "src/app/explorar/tarjeta-pin.tsx", "src/app/explorar/lista-portal.tsx", "src/app/explorar/hoja-filtros.tsx", "src/components/guia/AvisoAntesDeAnalizar.tsx"]) {
       for (const m of codigo(p).matchAll(/<ChipVeredicto\b[^>]*\bpuntaje=\{([^}]+)\}[^>]*\/>/g)) {
         const linea = codigo(p).slice(codigo(p).lastIndexOf("\n", m.index ?? 0), codigo(p).indexOf("\n", m.index ?? 0));
-        const ok = (m[1] === "p.score" && /\{AL_PRECIO_PUBLICADO\}/.test(linea)) || (/neg\.s|negociado\.score/.test(m[1]) && /\{siConsigues\.antes\}|\{NEGOCIAR_COPY\.consigues\}/.test(linea));
+        // ⚠ ACTA (04-nov-2026, la pasada de Fabrizio por /explorar, tier EXPLORAR-PASADA-0411) · el pop-up de «Analizar este» también dibuja el chip con su puntaje (`enTarjeta.score`) y la
+        // frase en la misma línea.
+        const ok = ((m[1] === "p.score" || m[1] === "enTarjeta.score ?? null") && /\{AL_PRECIO_PUBLICADO\}/.test(linea)) || (/neg\.s|negociado\.score/.test(m[1]) && /\{siConsigues\.antes\}|\{NEGOCIAR_COPY\.consigues\}/.test(linea));
         if (!ok) F(`1 · ${p}: un chip con número («puntaje={${m[1]}}») sin «al precio publicado» ni «Si consigues» al lado`);
       }
     }
@@ -383,7 +388,10 @@ export async function runExplorarNegociarTier(): Promise<{ hard: number }> {
     if (!/<button[^>]*disabled=""[^>]*data-explorar="tasa-del-mes"/.test(hFiltros)) F("6 · «Usar la del mes» se puede tocar estando ya en la del mes");
     const otra = filtros({ ...po.FILTROS_GLOBALES, tasa: 4.25, negociar: 5 });
     if (!/data-explorar="tasa-valor"[^>]*>4,25 %</.test(otra) || /<button[^>]*disabled=""[^>]*data-explorar="tasa-del-mes"/.test(otra)) F("6 · con otra tasa, arriba no dice esa tasa o «Usar la del mes» no se puede tocar");
-    if (!/data-explorar="sin-capa"/.test(otra) || /data-explorar="sin-capa"/.test(hFiltros)) F("6 · con otra tasa, Filtros no dice que la capa no se muestra (o lo dice con la del mes)");
+    // ⚠ ACTA (04-nov-2026, la pasada de Fabrizio por /explorar, tier EXPLORAR-PASADA-0411) · con otra tasa hay − Ajustar (calculados por comuna): Filtros ofrece el descuento máximo y no dice que no
+    // se muestran; eso queda para la renta corta.
+    const corta = filtros({ ...po.FILTROS_GLOBALES, modalidad: "str" });
+    if (/data-explorar="sin-capa"/.test(otra) || /data-explorar="sin-capa"/.test(hFiltros) || !/data-explorar="sin-capa"/.test(corta) || !/data-explorar="tope-5"/.test(otra)) F("6 · con otra tasa, Filtros dice que la capa no se muestra (o en renta corta no lo dice)");
     const usar = elemento(filtrosSrc, "tasa-del-mes");
     if (!/onClick=\{\(\) => poner\(\{ tasa: null \}\)\}/.test(usar)) F("6 · «Usar la del mes» no deja la tasa siguiendo al motor (null)");
     const slider = (filtrosSrc.match(/<input type="range"[\s\S]*?data-explorar="tasa" \/>/) ?? [""])[0];
@@ -419,8 +427,13 @@ export async function runExplorarNegociarTier(): Promise<{ hard: number }> {
   // Mutaciones: M25 la capa con cualquier tasa · M26 sin cuenta viaja el precio negociado · M27 la tarjeta sin cuenta dice el precio.
   {
     const g = po.FILTROS_GLOBALES;
-    const casos: Array<[Partial<po.FiltrosPortal>, boolean]> = [[{}, true], [{ pie: 30 }, true], [{ tasa: 4.5 }, false], [{ plazo: 25 }, false], [{ pie: 10 }, false], [{ modalidad: "str" }, false]];
-    for (const [c, esperado] of casos) if (cn.capaNegociarDisponible({ ...g, ...c }) !== esperado) F(`9 · la capa con ${JSON.stringify(c)} da ${!esperado} (debía ser ${esperado})`);
+    // ⚠ ACTA (04-nov-2026, la pasada de Fabrizio por /explorar, tier EXPLORAR-PASADA-0411) · la capa existe en arriendo tradicional con cualquier tasa, pie o plazo (la de la noche o la calculada por
+    // comuna); la que GUARDA la noche sigue siendo solo pie 20 % o 30 % a 30 años con la tasa del motor (capaDeLaNoche).
+    const casos: Array<[Partial<po.FiltrosPortal>, boolean, boolean]> = [[{}, true, true], [{ pie: 30 }, true, true], [{ tasa: 4.5 }, true, false], [{ plazo: 25 }, true, false], [{ pie: 10 }, true, false], [{ modalidad: "str" }, false, false]];
+    for (const [c, esperado, deLaNoche] of casos) {
+      if (cn.capaNegociarDisponible({ ...g, ...c }) !== esperado) F(`9 · la capa con ${JSON.stringify(c)} da ${!esperado} (debía ser ${esperado})`);
+      if (cn.capaDeLaNoche({ ...g, ...c }) !== deLaNoche) F(`9 · la capa de la noche con ${JSON.stringify(c)} da ${!deLaNoche} (debía ser ${deLaNoche})`);
+    }
     if (Math.max(...cn.TOPES_NEGOCIAR) !== TOPE_NEGOCIAR_PCT || JSON.stringify([...cn.TOPES_NEGOCIAR]) !== "[5,10]") F(`9 · los topes (${cn.TOPES_NEGOCIAR}) no terminan en el de la noche (${TOPE_NEGOCIAR_PCT})`);
     const abierto = cn.sinCifrasNegociados(cn.compactarNegociados([NEG as cn.PinNegociado, { ...NEG, avisoId: "n2", neg: { ...NEG.neg, d: 7.5 } } as cn.PinNegociado]));
     const [a1, a2] = abierto.filas;
@@ -488,8 +501,10 @@ export async function runExplorarNegociarTier(): Promise<{ hard: number }> {
     if (!/\.map\(\(p\) => \(movidos\[p\.avisoId\] \? \{ \.\.\.p, neg: movidos\[p\.avisoId\] \} : p\)\)/.test(cliente) || !/!noLlegan\.includes\(p\.avisoId\)/.test(cliente)) F("10 · la capa no toma el precio verificado");
     if (!/movido=\{confirmar\.movido \?\? null\}/.test(cliente)) F("10 · el pop-up no recibe el aviso del precio movido");
     // El copy y el pop-up dibujado: el aviso en tinta, el precio nuevo en la línea y en el botón.
-    if (NEGOCIADO_COPY.movido(2648, 4.7, 2654) !== "Con los datos de hoy, llega a Comprar con UF 2.648 (−4,7 %), no con UF 2.654. No se usó ningún análisis.") F(`10 · el aviso del precio movido dice «${NEGOCIADO_COPY.movido(2648, 4.7, 2654)}»`);
-    if (NEGOCIADO_COPY.noLlega(5) !== "Con los datos de hoy ya no llega a Comprar con un descuento de hasta 5 %. No se usó ningún análisis; puedes analizarlo al precio publicado.") F(`10 · el aviso del que ya no llega dice «${NEGOCIADO_COPY.noLlega(5)}»`);
+    // ⚠ ACTA (04-nov-2026, decisión de Fabrizio en la pasada) · el aviso dice el porqué, para que no se sienta como una falla: desde anoche
+    // entraron avisos nuevos en la zona y el precio al que conviene cambió.
+    if (NEGOCIADO_COPY.movido(2085, 1.0, 2089) !== "Desde anoche entraron avisos nuevos en la zona y el precio al que conviene cambió: hoy llega a Comprar con UF 2.085 (−1,0 %), no con UF 2.089. No se usó ningún análisis.") F(`10 · el aviso del precio movido dice «${NEGOCIADO_COPY.movido(2085, 1.0, 2089)}»`);
+    if (NEGOCIADO_COPY.noLlega(5) !== "Desde anoche entraron avisos nuevos en la zona y el precio al que conviene cambió: hoy no llega a Comprar con un descuento de hasta 5 %. No se usó ningún análisis; puedes analizarlo al precio publicado.") F(`10 · el aviso del que ya no llega dice «${NEGOCIADO_COPY.noLlega(5)}»`);
     const hMov = popup({ precioUF: 2648, descuentoPct: 4.7, score: 70 }, NEGOCIADO_COPY.movido(2648, 4.7, 2654));
     const aviso = texto(hMov.match(/<p[^>]*data-aviso="precio-movido"[^>]*>[\s\S]*?<\/p>/)?.[0] ?? "");
     if (aviso !== NEGOCIADO_COPY.movido(2648, 4.7, 2654) || !/Si consigues UF 2\.648 \(−4,7 %\) ✓ Comprar · 70/.test(texto(hMov)) || !/Analizar a UF 2\.648/.test(texto(hMov))) F(`10 · el pop-up no dibuja el precio de hoy con su aviso: «${aviso || texto(hMov).slice(0, 160)}»`);

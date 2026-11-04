@@ -21,6 +21,7 @@ import { VENTANA_SEMANAL_DIAS } from "@/lib/guia/semanal";
 import { candidatoDeFila, comunaDeAviso, type FilaRpc } from "@/lib/guia/semanal-candidatos";
 import { leerConfigGuia } from "@/lib/guia/guia-servidor";
 import { sondaDeCandidato } from "@/lib/avisos/estandar-deptos";
+import { negociarCandidato, TOPE_NEGOCIAR_PCT } from "@/lib/avisos/negociar";
 import { celdaDormitorios, cuerpoStrDeAviso, evaluarStrCon, zonasDeComuna, type ZonaStr } from "@/lib/guia/semanal-str-servidor";
 import { origenSinteticoStr } from "@/lib/guia/semanal-str-servidor";
 import { estadoSaldo, leerSaldo, type EstadoSaldo } from "@/lib/casa-saldo";
@@ -30,7 +31,7 @@ import { validarCambiosPerfil } from "@/lib/perfil-busqueda";
 import type { EventoServidor } from "@/lib/posthog-servidor";
 import type { MotivoRobot } from "@/lib/vista-entrada";
 import type { LlegadaExplorar } from "./puertas-landing";
-import { negociadoDeFila, type NegociadosCompactos, type PinNegociado } from "./capa-negociar";
+import { compactarNegociados, negociadoDeFila, type Negociacion, type NegociadosCompactos, type PinNegociado } from "./capa-negociar";
 import { comboVigente, VIDA_COMBO_MS, type ComboGuardado } from "./explorar";
 import { filasParaSonda, guardarCombos, informesDeExplorar, type FilaUniverso } from "./servidor";
 import {
@@ -69,8 +70,10 @@ export async function negociablesDeLaNoche(admin: SupabaseClient, pie: number, a
 export const claveComboPortal = (m: ModalidadPortal, pie: number, plazo: number, tasa: number | null = null): string =>
   `${m === "str" ? "str-" : ""}${pie}-${plazo}${tasa != null ? `-t${tasa}` : ""}`;
 
-/** Lo guardado en renta corta lleva también el ingreso mensual estimado por zona (el cap rate de la tarjeta). */
-type ComboPortal = ComboGuardado & { i?: number | null };
+/** Lo guardado en renta corta lleva también el ingreso mensual estimado por zona (el cap rate de la tarjeta). En renta larga, el
+ *  − AJUSTAR CALCULADO (04-nov-2026): `n`, el descuento mínimo a Comprar con esa combinación (null si no llega dentro del tope).
+ *  Un Ajustar guardado sin `n` (de antes) no vale para la capa: se calcula de nuevo. */
+type ComboPortal = ComboGuardado & { i?: number | null; n?: Negociacion | null };
 
 /** Qué usa el cálculo; se inyecta para probarlo sin motor ni base. */
 export interface DepsPortal {
@@ -79,6 +82,11 @@ export interface DepsPortal {
   /** La renta corta de un depto con la zona de su celda: veredicto, puntaje, flujo e ingreso mensual (null si no se puede). */
   sondaStr?: (fila: FilaRpc, combo: { piePct: number; plazoAnios: number; tasa?: number | null }, cfg: { uf: number; tasa: number }, zona: ZonaStr | undefined, asOf: Date) => { v: string | null; s: number | null; f: number | null; i: number | null } | null;
   zonas?: (comuna: string) => Promise<Map<number, ZonaStr>>;
+  /** El descuento mínimo a Comprar de un Ajustar (avisos/negociar.ts › negociarCandidato con la combinación). */
+  negociarLtr?: typeof negociarCandidato;
+  /** LOS − AJUSTAR CON OTRA COMBINACIÓN (04-nov-2026, la pasada de Fabrizio: con otra tasa el mapa quedaba solo con azules y parecía
+   *  un error): en renta larga, además de los ✓ Comprar, el descuento de cada Ajustar, con el mismo tope de la noche. */
+  conCapa?: boolean;
   /** EL GUARDADO EN SEGUNDO PLANO (02-nov-2026): con `diferir` (la ruta le pasa `waitUntil`), lo calculado se guarda después
    *  de responder, en lotes chicos y de a uno (explorar/servidor.ts › guardarCombos), y no compite con la lectura de la comuna
    *  siguiente. Sin él (las pruebas), se espera el guardado como antes. */
@@ -98,18 +106,30 @@ const sondaStrReal: NonNullable<DepsPortal["sondaStr"]> = (fila, combo, cfg, zon
 };
 
 /** El universo de unas comunas para una combinación calculada: todos los Comprar, por puntaje. `cuenta.calculados`: cuántos
- *  se calcularon recién (el resto salió de lo guardado). */
+ *  se calcularon recién (el resto salió de lo guardado). Con `deps.conCapa`, en renta larga, también los − Ajustar que llegan a
+ *  Comprar negociando (universoYCapaCalculados). */
 export async function universoCalculado(
   admin: SupabaseClient, q: { comunas: string[]; modalidad: ModalidadPortal; pie: number; plazo: number; tasa?: number | null }, ahora: Date = new Date(),
   cuenta?: { calculados: number; ms: number }, deps: DepsPortal = {},
 ): Promise<PinMapa[]> {
+  return (await universoYCapaCalculados(admin, q, ahora, cuenta, deps)).pines;
+}
+
+export async function universoYCapaCalculados(
+  admin: SupabaseClient, q: { comunas: string[]; modalidad: ModalidadPortal; pie: number; plazo: number; tasa?: number | null }, ahora: Date = new Date(),
+  cuenta?: { calculados: number; ms: number }, deps: DepsPortal = {},
+): Promise<{ pines: PinMapa[]; negociados: PinNegociado[] }> {
   const t0 = Date.now();
   const clave = claveComboPortal(q.modalidad, q.pie, q.plazo, q.tasa ?? null);
   const combo = { piePct: q.pie, plazoAnios: q.plazo, tasa: q.tasa ?? null };
+  const conCapa = !!deps.conCapa && q.modalidad === "ltr";
+  // Vigente para lo que se pide: con la capa, un Ajustar guardado sin su descuento (de antes del 04-nov-2026) se calcula de nuevo.
+  const vigente = (r: { combo?: unknown; evaluado_at?: string | null }) =>
+    comboVigente(r.combo, r.evaluado_at, ahora) && !(conCapa && (r.combo as ComboPortal).v === "AJUSTA SUPUESTOS" && (r.combo as ComboPortal).n === undefined);
   const { data, error } = await admin.rpc("explorar_universo_liviano", { comunas: q.comunas.map(comunaDeAviso), dorms: TODOS_LOS_DORMS, uf_min: 0, uf_max: 1e9, desde: desdeVentana(ahora), clave });
   if (error) throw new Error(`explorar_universo_liviano: ${error.message}`);
   const filas = (Array.isArray(data) ? data : []) as Array<FilaUniverso & { condicion?: string | null; alta?: number | null }>;
-  const porCalcular = filas.filter((r) => !comboVigente(r.combo, r.evaluado_at, ahora));
+  const porCalcular = filas.filter((r) => !vigente(r));
   const [cfg, pesadas] = porCalcular.length
     ? await Promise.all([deps.cfg ?? leerConfigGuia(admin), filasParaSonda(admin, porCalcular.map((r) => r.id))])
     : [null, new Map<string, FilaRpc>()];
@@ -125,10 +145,11 @@ export async function universoCalculado(
   }
   const sondaLtr = deps.sondaLtr ?? sondaDeCandidato;
   const sondaStr = deps.sondaStr ?? sondaStrReal;
+  const negociarLtr = deps.negociarLtr ?? negociarCandidato;
   const nuevos: Array<{ avisoId: string; combo: ComboPortal }> = [];
   const resultado = new Map<string, ComboPortal>();
   for (const r of filas) {
-    if (comboVigente(r.combo, r.evaluado_at, ahora)) { resultado.set(r.id, r.combo as ComboPortal); continue; }
+    if (vigente(r)) { resultado.set(r.id, r.combo as ComboPortal); continue; }
     const pesada = pesadas.get(r.id);
     let c: ComboPortal;
     if (!cfg || !pesada) c = { v: null, s: null, f: null, at: ahora.toISOString() };
@@ -136,8 +157,14 @@ export async function universoCalculado(
       const s = sondaStr(pesada, combo, cfg, zonas.get(r.comuna)?.get(celdaDormitorios(Number(pesada.dormitorios))), ahora);
       c = { v: s?.v ?? null, s: s?.s ?? null, f: s?.f ?? null, i: s?.i ?? null, at: ahora.toISOString() };
     } else {
-      const s = sondaLtr(candidatoDeFila(pesada), combo, cfg, ahora);
+      const cand = candidatoDeFila(pesada);
+      const s = sondaLtr(cand, combo, cfg, ahora);
       c = { v: s?.veredicto ?? null, s: s?.score ?? null, f: s?.flujo ?? null, at: ahora.toISOString() };
+      // El − Ajustar: la regla de la noche (el descuento mínimo a Comprar, bisección de 0,1 punto, mismo tope) con esta combinación.
+      if (conCapa && c.v === "AJUSTA SUPUESTOS") {
+        const n = negociarLtr(cand, q.pie, cfg, ahora, TOPE_NEGOCIAR_PCT, { plazo: q.plazo, tasa: q.tasa ?? null, alPublicado: c.v });
+        c.n = n ? { d: n.d, p: n.p, s: n.s, f: n.f } : null;
+      }
     }
     resultado.set(r.id, c);
     nuevos.push({ avisoId: r.id, combo: c });
@@ -149,13 +176,15 @@ export async function universoCalculado(
   }
   if (cuenta) { cuenta.calculados += nuevos.length; cuenta.ms += Date.now() - t0; }
   const pines: PinMapa[] = [];
+  const negociados: PinNegociado[] = [];
   for (const r of filas) {
     const c = resultado.get(r.id);
-    if (c?.v !== "COMPRAR") continue;
-    const arriendo = q.modalidad === "str" ? c.i ?? null : r.arriendo_monto;
-    pines.push(pinDeFila({ id: r.id, comuna: r.comuna, lat: r.lat, lng: r.lng, m2: r.superficie_m2, dormitorios: r.dormitorios, banos: r.banos, precio: r.precio_uf, score: c.s, flujo: c.f, arriendo, condicion: r.condicion ?? null, alta: r.alta ?? null }));
+    const arriendo = q.modalidad === "str" ? c?.i ?? null : r.arriendo_monto;
+    const base = { id: r.id, comuna: r.comuna, lat: r.lat, lng: r.lng, m2: r.superficie_m2, dormitorios: r.dormitorios, banos: r.banos, precio: r.precio_uf, score: c?.s ?? null, flujo: c?.f ?? null, arriendo, condicion: r.condicion ?? null, alta: r.alta ?? null };
+    if (c?.v === "COMPRAR") pines.push(pinDeFila(base));
+    else if (conCapa && c?.v === "AJUSTA SUPUESTOS" && c.n) negociados.push({ ...pinDeFila(base), veredicto: "AJUSTA SUPUESTOS", neg: { d: c.n.d, p: c.n.p, s: c.n.s, f: c.n.f } });
   }
-  return pines.sort((a, b) => (b.score ?? -1) - (a.score ?? -1) || a.avisoId.localeCompare(b.avisoId));
+  return { pines: pines.sort((a, b) => (b.score ?? -1) - (a.score ?? -1) || a.avisoId.localeCompare(b.avisoId)), negociados };
 }
 
 /** Lo que devuelve GET /api/explorar: el universo compacto y de qué es (la clave y las comunas; vacío = Gran Santiago). Con una
@@ -164,8 +193,9 @@ export async function universoCalculado(
  *  `negociados` y el mapa sigue con los ✓ Comprar. */
 /** `sello` (03-nov-2026): el de la noche que se leyó (portal-cache.ts › nocheExplorar); solo en la noche. */
 export interface RespuestaUniverso { clave: string; comunas: string[]; universo: UniversoCompacto; negociados?: NegociadosCompactos; sello?: string | null; calculados: number; ms: number }
-export function respuestaUniverso(pines: PinMapa[], q: { modalidad: ModalidadPortal; pie: number; plazo: number; tasa?: number | null; comunas: string[] }, cuenta = { calculados: 0, ms: 0 }): RespuestaUniverso {
-  return { clave: claveUniverso(q), comunas: q.comunas, universo: compactar(pines), calculados: cuenta.calculados, ms: cuenta.ms };
+/** `negociados` (04-nov-2026): con una combinación calculada en renta larga, los − Ajustar de esas comunas, en el mismo pedido. */
+export function respuestaUniverso(pines: PinMapa[], q: { modalidad: ModalidadPortal; pie: number; plazo: number; tasa?: number | null; comunas: string[] }, cuenta = { calculados: 0, ms: 0 }, negociados: PinNegociado[] | null = null): RespuestaUniverso {
+  return { clave: claveUniverso(q), comunas: q.comunas, universo: compactar(pines), ...(negociados ? { negociados: compactarNegociados(negociados) } : {}), calculados: cuenta.calculados, ms: cuenta.ms };
 }
 
 // ── LA CUENTA ────────────────────────────────────────────────────────────────

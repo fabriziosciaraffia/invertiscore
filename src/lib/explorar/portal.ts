@@ -320,6 +320,17 @@ export function textoPin(p: Pick<PinMapa, "flujo" | "alta">, o: { analizado: boo
 /** «4,07»: la tasa con coma y hasta dos decimales. */
 export const tasaTexto = (t: number): string => t.toLocaleString("es-CL", { maximumFractionDigits: 2 });
 
+/** EL POP-UP DEL RECÁLCULO (04-nov-2026, la pasada de Fabrizio): qué está recalculando Franco, con lo que la persona cambió respecto
+ *  de lo de siempre —«Franco está recalculando con tu tasa de 5 %», «… con pie de 30 % y 25 años», «… para renta corta»—. */
+export function textoRecalculo(f: Pick<FiltrosPortal, "modalidad" | "pie" | "plazo" | "tasa">): string {
+  const partes: string[] = [];
+  if (f.tasa != null) partes.push(`tu tasa de ${tasaTexto(f.tasa)} %`);
+  if (f.pie !== PIE_POR_DEFECTO) partes.push(`pie de ${f.pie} %`);
+  if (f.plazo !== PLAZO_POR_DEFECTO) partes.push(`${f.plazo} años`);
+  const lista = partes.length > 1 ? `${partes.slice(0, -1).join(", ")} y ${partes[partes.length - 1]}` : partes.join("");
+  return `Franco está recalculando${f.modalidad === "str" ? " para renta corta" : ""}${lista ? ` con ${lista}` : ""}`;
+}
+
 /** La tasa del motor (config.tasa_hipotecaria), que el servidor lee (portal-cache.ts › tasaDelMotor) y baja a /explorar. */
 export interface TasaDelMotor {
   tasa: number;
@@ -514,12 +525,12 @@ export const PORTAL_COPY = {
     piePlazo: "Con qué pie y plazo", pie: "Pie", plazo: "Plazo", arriendo: "Arriendo", tradicional: "Tradicional", corta: "Renta corta",
     cortaNota: "Estimado por zona; se mide al analizar.", flujo: "Solo con flujo positivo", publicados: "Publicados", zona: "Zona del mapa", quitarZona: "Quitar",
   },
-  /** Mientras se calcula una combinación que la noche no tiene, o la renta corta. */
+  /** Mientras llega el universo (abajo). El avance por comunas va en el pop-up del recálculo (04-nov-2026, textoRecalculo). */
   calculando: "Calculando…",
-  calculandoComunas: (hechas: number, total: number) => `Calculando… ${hechas} de ${total} comunas`,
-  /** Con una tasa elegida (30-oct-2026): lo que dice abajo mientras calcula. */
+  /** Con una tasa elegida (30-oct-2026): lo que dice abajo mientras llega. */
   calculandoTasa: "Calculando con tu tasa…",
-  calculandoTasaComunas: (hechas: number, total: number) => `Calculando con tu tasa… ${hechas} de ${total} comunas`,
+  /** El avance del pop-up del recálculo (04-nov-2026): «9 de 25 comunas». */
+  avanceComunas: (hechas: number, total: number) => `${hechas} de ${total} comunas`,
   /** La primera opción de la tasa: la de hoy, que sigue al motor. */
   tasaHoy: (t: number | null) => (t != null ? `La de hoy (${tasaTexto(t)} %)` : "La de hoy"),
   /** La tasa elegida, cerrada (sin cuenta) o en la línea: «4,5 % · la elegiste». */

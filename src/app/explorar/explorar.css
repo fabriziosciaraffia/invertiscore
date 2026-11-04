@@ -461,3 +461,29 @@
 .ex-ver-n .chip-v { font-size: 12px; }
 .ex-card-t-chip { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .ex-card-t-chip .chip-v { letter-spacing: 0; }
+/* EL POP-UP DEL RECÁLCULO (04-nov-2026, recalculo.tsx): centrado como el de «Analizar», con el spinner en tinta y el avance debajo. */
+.ex-recalculo { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 28px 24px 24px; text-align: center; }
+.ex-recalculo-gira { width: 30px; height: 30px; border-radius: 50%; border: 3px solid var(--franco-border); border-top-color: var(--franco-text); animation: franco-gira 0.8s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .ex-recalculo-gira { animation-duration: 2.4s; } }
+.ex-recalculo-t { margin: 2px 0 0; font-size: 17px; font-weight: 600; line-height: 1.35; color: var(--franco-text); text-wrap: balance; }
+.ex-recalculo-avance { margin: 0; font-size: 14px; color: var(--franco-text-secondary); font-variant-numeric: tabular-nums; }
+/* LA HOJA DEL DEPTO COMPARTIDO (04-nov-2026, compartido-hoja.tsx): el marco de la bienvenida, más arriba para que quepa la tarjeta
+   grande; la imagen al costado de los datos. */
+.ex-comp-velo { padding-top: 72px; }
+.ex-comp { display: flex; flex-direction: column; }
+.ex-comp-t { margin: 0; padding: 20px 20px 0; font-size: 18px; font-weight: 600; line-height: 1.3; }
+.ex-comp-tarjeta { display: flex; gap: 14px; align-items: flex-start; padding: 14px 20px 2px; }
+.ex-comp-img { width: 120px; height: 120px; border-radius: 12px; }
+.ex-comp-datos { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.ex-comp-precio { font-size: 22px; }
+.ex-comp .ex-caido { display: flex; flex-direction: column; padding: 12px 20px 0; }
+.ex-comp-acciones { display: flex; flex-direction: column; align-items: stretch; gap: 12px; padding: 16px 20px 20px; }
+.ex-comp-acciones .ex-cta { width: 100%; }
+.ex-comp-mapa { align-self: center; }
+@media (min-width: 768px) { .ex-comp-velo { padding-top: 110px; } .ex-comp { max-width: 480px; } .ex-comp-img { width: 140px; height: 140px; } }
+/* «MAPA | SATÉLITE» (04-nov-2026, mapa-explorar.tsx › ConmutadorCapa): junto al zoom, como las opciones de la casa (la elegida, en tinta). */
+.ex-capa-ctl { margin: 10px; }
+.ex-capa { display: flex; padding: 3px; border-radius: 999px; background: var(--franco-card); border: 1px solid var(--franco-border); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2); }
+.ex-capa-op { min-height: 32px; padding: 0 12px; border: 0; border-radius: 999px; background: transparent; color: var(--franco-text); font-family: var(--font-body); font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; }
+.ex-capa-op[aria-checked="true"] { background: var(--franco-text); color: var(--franco-card); }
+.ex-capa-op:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; }

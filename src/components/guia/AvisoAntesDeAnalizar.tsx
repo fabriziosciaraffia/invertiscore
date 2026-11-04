@@ -34,9 +34,10 @@ import { TASAS_ELEGIBLES } from "@/lib/deptos/estandar";
 import { COMPRA_DEPTO, nombreDelDepto, type ComprasDelDepto } from "@/lib/guia/compra-desde-depto";
 import { ModalPlausibilidad } from "@/components/formulario-v4/ModalPlausibilidad";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
-import { AVISO_ANALIZAR, bloqueaAnalizar, derivadosAviso, lineaVeredicto, textoUso, type FinanzasAviso, type UsoAnalisis } from "@/lib/guia/aviso-analizar";
-import { NEGOCIADO_COPY } from "@/lib/precio-publicado";
-import { ChipVeredicto } from "@/components/analysis/shared/ChipVeredicto";
+import { AVISO_ANALIZAR, bloqueaAnalizar, derivadosAviso, lineaVeredicto, textoFlujo, textoUso, type FinanzasAviso, type UsoAnalisis } from "@/lib/guia/aviso-analizar";
+import { AL_PRECIO_PUBLICADO, NEGOCIADO_COPY } from "@/lib/precio-publicado";
+import { ChipVeredicto, ChipVeredictoTokens } from "@/components/analysis/shared/ChipVeredicto";
+import type { Veredicto } from "@/lib/types";
 import type { CondicionDepto } from "@/lib/guia/linea-depto";
 import { ImagenDepto, useCalle } from "@/components/guia/ImagenDepto";
 import { InformeEnCamino } from "@/components/guia/InformeEnCamino";
@@ -138,8 +139,11 @@ export function AvisoAntesDeAnalizar({ avisoId = null, depto, combinacion, finan
   const derivados = resumen.derivados.filter((x) => x.label === "Dividendo" || x.label === "Retorno bruto");
   // Qué incluye el informe: en renta corta, los dos casos (27-oct-2026): si no da, no gasta y ve la publicación igual.
   const incluye = modalidad === "str" ? AVISO_ANALIZAR.incluyeCorta : AVISO_ANALIZAR.incluye;
-  // Lo que daba al abrir (la tarjeta gris): con la combinación de apertura, o lo recalculado si ya cambió.
-  const linea = editando ? null : lineaVeredicto(cambio ? (cambiada && recal ? recal : cambio.base) : null);
+  // Lo que daba al abrir (la tarjeta gris): con la combinación de apertura, o lo recalculado si ya cambió. EL VEREDICTO VA CON EL CHIP
+  // DE LA CASA (04-nov-2026, la pasada de Fabrizio), no en texto: «[✓ Comprar · 84] al precio publicado · flujo +$261.383 te queda».
+  // La frase entera (lineaVeredicto) queda como su nombre accesible.
+  const enTarjeta = editando || !cambio ? null : cambiada && recal ? recal : cambio.base;
+  const linea = lineaVeredicto(enTarjeta);
   // NUNCA SE COBRA SIN EL VEREDICTO RECALCULADO: con otra combinación, hasta que llegue (aviso-analizar.ts).
   const bloqueado = bloqueaAnalizar({ sin, esBase: !cambiada, recalculando, evaluacion: recal });
   const analizar = negociado ? NEGOCIADO_COPY.analizarA(negociado.precioUF) : da?.empeora ? EXPLORAR_COPY.analizarIgual : AVISO_ANALIZAR.analizar;
@@ -149,6 +153,8 @@ export function AvisoAntesDeAnalizar({ avisoId = null, depto, combinacion, finan
   const tipos = useCalle(avisoId ? [avisoId] : []);
   const cuerpo = (
     <div className="av" data-aviso={sin ? "sin" : editando ? "cambiar" : "ver"}>
+      {/* El chip de veredicto se dibuja igual en Explorar, la selección, el dashboard y la guía: su CSS viaja con el pop-up. */}
+      <ChipVeredictoTokens />
       {/* SIN SALDO (mockup A): «No te quedan análisis.» grande y en rojo, la tarjeta gris del depto y, con el ticket vivo,
           la tarjeta roja de la oferta: «Solo para cuentas nuevas · vence mañana 11:17» y «3 análisis por $14.990 · $4.997
           cada uno». Sin ticket, la línea del pack de tres de siempre (el consumo). */}
@@ -162,7 +168,11 @@ export function AvisoAntesDeAnalizar({ avisoId = null, depto, combinacion, finan
             <span className="av-linea" data-aviso="veredicto-publicado">{NEGOCIADO_COPY.alPublicado} <ChipVeredicto v="AJUSTA SUPUESTOS" /></span>
             <span className="av-linea" data-aviso="veredicto-negociado">{siConsigues.antes} <b>{siConsigues.precio}</b> {siConsigues.despues} <ChipVeredicto v="COMPRAR" puntaje={negociado.score} /></span>
           </>
-        ) : linea && <span className="av-linea" data-aviso="veredicto">{linea}</span>}
+        ) : enTarjeta?.veredicto && linea && (
+          <span className="av-linea" data-aviso="veredicto" aria-label={linea}>
+            <ChipVeredicto v={enTarjeta.veredicto as Veredicto} puntaje={enTarjeta.score ?? null} /> {AL_PRECIO_PUBLICADO}{enTarjeta.flujo != null && <> · flujo {textoFlujo(enTarjeta.flujo)}</>}
+          </span>
+        )}
         <span className={modalidad === "str" ? "av-incluye av-incluye-corta" : "av-incluye"} data-aviso="incluye">{incluye.antes}<b>{incluye.fuerte}</b>{incluye.despues}</span>
       </div>
       </div>

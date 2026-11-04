@@ -6,7 +6,7 @@
 // Pura: sin base ni Next, para que el tier la corra.
 // ─────────────────────────────────────────────────────────────────────────────
 import { cuantosConvienen, descompactar, filtrar, FILTROS_GLOBALES, universoDeLaNoche, type FiltrosPortal, type UniversoCompacto } from "./portal";
-import { capaVisible, descompactarNegociados, negociadosVisibles, type NegociadosCompactos } from "./capa-negociar";
+import { capaDeLaNoche, capaVisible, descompactarNegociados, negociadosVisibles, type NegociadosCompactos } from "./capa-negociar";
 
 export interface CifrasNoche {
   /** Cuántos ✓ Comprar con estos filtros (null: estos filtros no son de la noche, o no se leyó). */
@@ -28,6 +28,7 @@ export function cifrasDeLaNoche(noche: { universo: UniversoCompacto; negociados:
     n: deLaNoche ? filtrar(pines, filtros, ahora).length : null,
     convienen: noche ? cuantosConvienen(noche.universo) : null,
     negociadosGlobal: noche && capa ? negociadosVisibles(capa, FILTROS_GLOBALES, ids, ahora).length : null,
-    nAjustar: !capaVisible(filtros) ? 0 : deLaNoche && capa ? negociadosVisibles(capa, filtros, ids, ahora).length : null,
+    // Con una capa que la noche no guarda (otra tasa, pie o plazo: se calcula en el navegador), aún no se sabe (04-nov-2026).
+    nAjustar: !capaVisible(filtros) ? 0 : deLaNoche && capaDeLaNoche(filtros) && capa ? negociadosVisibles(capa, filtros, ids, ahora).length : null,
   };
 }

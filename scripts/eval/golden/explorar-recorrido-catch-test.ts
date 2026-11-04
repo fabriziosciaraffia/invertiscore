@@ -301,8 +301,12 @@ export async function runExplorarRecorridoTier(): Promise<{ hard: number }> {
   // ── 9 · LOS MAPAS EN OSCURO ──
   const mapa = codigo("src/app/explorar/mapa-explorar.tsx");
   if (JSON.stringify(francoMapStyleForTheme("dark")) === JSON.stringify(francoMapStyleForTheme("light"))) F("9 · el estilo oscuro del mapa es el claro");
-  if (!/const opcionesDeTema = \(\) => \(esClaro\(\) \? \{ styles: francoMapStyleForTheme\("light"\), backgroundColor: "#F6F6F7" \} : \{ styles: francoMapStyleForTheme\("dark"\), backgroundColor: "#1a1a1a" \}\);/.test(mapa) || !/\.\.\.opcionesDeTema\(\),/.test(mapa)) F("9 · el mapa de /explorar no toma el estilo del tema");
-  if (!/new MutationObserver\(\(\) => \{\s*const map = mapRef\.current;\s*if \(!map\) return;\s*map\.setOptions\(opcionesDeTema\(\)\);\s*dibujarRef\.current\(\);\s*\}\);\s*o\.observe\(document\.documentElement, \{ attributes: true, attributeFilter: \["data-theme"\] \}\);/.test(mapa)) F("9 · el mapa de /explorar no cambia al momento cuando cambia el tema");
+  // ⚠ ACTA (04-nov-2026, la pasada de Fabrizio por /explorar, tier EXPLORAR-PASADA-0411) · las opciones del mapa salen de la vista (Mapa o Satélite) y del tema (capa-mapa.ts › opcionesDeCapa): en el
+  // mapa, el estilo de Franco de cada tema; en satélite, la foto sin estilo.
+  const capaSrc = codigo("src/lib/explorar/capa-mapa.ts");
+  if (!/const opcionesDe = \(capa: CapaMapa\) => opcionesDeCapa\(capa, esClaro\(\)\);/.test(mapa) || !/\.\.\.opcionesDe\(capaRef\.current\),/.test(mapa)
+    || !/return claro \? \{ mapTypeId: "roadmap", styles: francoMapStyleForTheme\("light"\), backgroundColor: "#F6F6F7" \} : \{ mapTypeId: "roadmap", styles: francoMapStyleForTheme\("dark"\), backgroundColor: "#1a1a1a" \};/.test(capaSrc)) F("9 · el mapa de /explorar no toma el estilo del tema");
+  if (!/new MutationObserver\(\(\) => \{\s*const map = mapRef\.current;\s*if \(!map\) return;\s*map\.setOptions\(opcionesDe\(capaRef\.current\)\);\s*dibujarRef\.current\(\);\s*\}\);\s*o\.observe\(document\.documentElement, \{ attributes: true, attributeFilter: \["data-theme"\] \}\);/.test(mapa)) F("9 · el mapa de /explorar no cambia al momento cuando cambia el tema");
   // ⚠ ACTA (03-nov-2026, goal «la pasada real de /explorar», «Rojo en ningún pin») · los pines van en el color de su clase y de su
   // tema (colores-pin.ts, por iconoPin): azul ✓ Comprar, tinta con ✓ el analizado; en oscuro, los del chip aclarados. Antes: rojos
   // y azules los analizados. Lo que se dibuja lo mide EXPLORAR-PASADA §5; acá, que el tema decida el color.

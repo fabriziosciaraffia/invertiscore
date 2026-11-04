@@ -17,8 +17,8 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { usePostHog } from "@/lib/posthog-react";
 import {
-  APERTURA_FALLIDA_TRAS_MS, EVENTO_APERTURA_FALLIDA, INFORME_COPY, anotarViaje, avance, cerrable, desdeDeRuta, muestraAbrir, textoFallo,
-  type DesdeInforme, type PasoInforme, type ViaInforme,
+  APERTURA_FALLIDA_TRAS_MS, EVENTO_APERTURA_FALLIDA, INFORME_COPY, anotarViaje, avance, cerrable, desdeDeRuta, lugarDeDesde, muestraAbrir, textoFallo,
+  type DesdeInforme, type LugarInforme, type PasoInforme, type ViaInforme,
 } from "@/lib/guia/informe-en-camino";
 import { RETORNO } from "@/lib/compra/compra";
 import { PLANO } from "@/components/plano/plano";
@@ -95,15 +95,17 @@ export function InformeEnCamino({ paso, alCerrar, alReintentar = null }: {
 
   if (typeof document === "undefined") return null;
   return createPortal(
-    <PopupInforme paso={paso} ahora={ahora} alCerrar={alCerrar} alReintentar={alReintentar} alAbrir={() => anotar("boton")} refPrimario={(el) => { primario.current = el; }} />,
+    <PopupInforme paso={paso} ahora={ahora} lugar={lugarDeDesde(desdeDeRuta(window.location.pathname))} alCerrar={alCerrar} alReintentar={alReintentar} alAbrir={() => anotar("boton")} refPrimario={(el) => { primario.current = el; }} />,
     document.body,
   );
 }
 
 /** LO QUE SE VE (sin portal ni reloj propio: el tier INFORME-EN-CAMINO lo dibuja con la hora que quiere). */
-export function PopupInforme({ paso, ahora, alCerrar, alReintentar = null, alAbrir, refPrimario }: {
+export function PopupInforme({ paso, ahora, lugar = "mapa", alCerrar, alReintentar = null, alAbrir, refPrimario }: {
   paso: PasoInforme;
   ahora: number;
+  /** Dónde se analizó: el que se dio de baja dice de dónde se saca (el mapa, la selección o la lista de la guía). */
+  lugar?: LugarInforme;
   alCerrar: () => void;
   alReintentar?: (() => void) | null;
   alAbrir?: () => void;
@@ -142,8 +144,8 @@ export function PopupInforme({ paso, ahora, alCerrar, alReintentar = null, alAbr
           )}
           {fallo && (
             <>
-              <h2 id="informe-en-camino-titulo" className="ie-titulo" role="alert" data-informe="fallo-titulo">{textoFallo(paso.motivo).titulo}</h2>
-              <p className="ie-texto" data-informe="fallo-que">{textoFallo(paso.motivo).que}</p>
+              <h2 id="informe-en-camino-titulo" className="ie-titulo" role="alert" data-informe="fallo-titulo">{textoFallo(paso.motivo, lugar).titulo}</h2>
+              <p className="ie-texto" data-informe="fallo-que">{textoFallo(paso.motivo, lugar).que}</p>
             </>
           )}
         </div>
@@ -198,7 +200,8 @@ export function VueltaInforme({ paso, ahora, saldo = null, alReintentar = null, 
   alAbrir?: () => void;
 }) {
   const conAbrir = muestraAbrir(paso, ahora);
-  const fallo = paso.paso === "fallo" ? textoFallo(paso.motivo) : null;
+  // La vuelta del pago es de un depto de la selección.
+  const fallo = paso.paso === "fallo" ? textoFallo(paso.motivo, "seleccion") : null;
   const reintenta = paso.paso === "fallo" && paso.motivo === "error" && !!alReintentar;
   const pct = Math.round(avance(paso, ahora) * 100);
   return (

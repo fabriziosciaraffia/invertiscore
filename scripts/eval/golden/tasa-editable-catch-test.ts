@@ -156,7 +156,9 @@ export async function runTasaEditableTier(): Promise<{ hard: number }> {
   if (!/const tasa = tasaElegidaDe\(sp\.get\("ta"\)\);/.test(ruta) || !/const q = \{ modalidad, pie, plazo, tasa \} as const;/.test(ruta)) F("2 · la API del mapa no recibe la tasa");
   const cli = codigo("src/app/explorar/explorar-cliente.tsx");
   if (!/&z=\$\{f\.plazo\}\$\{f\.tasa != null \? `&ta=\$\{f\.tasa\}` : ""\}/.test(cli)) F("2 · el navegador no pide el universo con la tasa");
-  if (!/const enCalculo = progreso \? \(conTasa \? PORTAL_COPY\.calculandoTasaComunas : PORTAL_COPY\.calculandoComunas\)/.test(cli) || po.PORTAL_COPY.calculandoTasa !== "Calculando con tu tasa…") F("2 · mientras calcula con una tasa elegida no dice «Calculando con tu tasa…»");
+  // ⚠ ACTA (04-nov-2026, la pasada de Fabrizio por /explorar, tier EXPLORAR-PASADA-0411) · el avance por comunas va en el pop-up del recálculo, que con tasa dice «Franco está recalculando con tu tasa de
+  // 5 %»; abajo, «Calculando con tu tasa…» mientras llega el universo.
+  if (!/const enCalculo = conTasa \? PORTAL_COPY\.calculandoTasa : PORTAL_COPY\.calculando;/.test(cli) || po.PORTAL_COPY.calculandoTasa !== "Calculando con tu tasa…" || po.textoRecalculo({ modalidad: "ltr", pie: 20, plazo: 30, tasa: 5 }) !== "Franco está recalculando con tu tasa de 5 %") F("2 · mientras calcula con una tasa elegida no dice «Calculando con tu tasa…»");
   const modCli = cargar<{ ExplorarCliente: FC<Record<string, unknown>> }>("src/app/explorar/explorar-cliente", F);
   if (modCli && !texto(dibujar(createElement(modCli.ExplorarCliente, { inicial: { filtros: { ...G, tasa: 4.5 }, orden: "puntaje", n: null, cuenta: cuentaBase(), tasa: { tasa: 4.07 }, convienen: null } }))).includes("Calculando con tu tasa…")) F("2 · el mapa con una tasa elegida no dice «Calculando con tu tasa…»");
   const rec = codigo("src/app/api/explorar/recalcular/route.ts");

@@ -230,7 +230,9 @@ export async function runExplorarPasadaTier(): Promise<{ hard: number }> {
     if (ids(cn.negociadosVisibles(negs, g, comprar)) !== "n1,n2") F(`3 · de entrada no se ven los − Ajustar hasta 10 % (sin los que ya son ✓ Comprar): ${ids(cn.negociadosVisibles(negs, g, comprar))}`);
     if (cn.negociadosVisibles(negs, solo, comprar).length !== 0) F("3 · «Ver solo ✓ Comprar» no deja solo los ✓ Comprar");
     if (ids(cn.negociadosVisibles(negs, { ...g, negociar: 5 }, comprar)) !== "n1") F("3 · el descuento máximo de 5 % no deja fuera a los que necesitan más");
-    if (cn.negociadosVisibles(negs, { ...g, plazo: 25 }, comprar).length !== 0) F("3 · la capa se ve con un plazo que la noche no calcula");
+    // ⚠ ACTA (04-nov-2026, la pasada de Fabrizio por /explorar, tier EXPLORAR-PASADA-0411) · con otro plazo la capa se ve (calculada por comuna en el navegador; la noche sigue sin traerla, abajo, r3);
+    // en renta corta, no.
+    if (ids(cn.negociadosVisibles(negs, { ...g, plazo: 25 }, comprar)) !== "n1,n2" || cn.negociadosVisibles(negs, { ...g, modalidad: "str" }, comprar).length !== 0) F("3 · la capa no se ve con otro plazo de arriendo tradicional (o se ve en renta corta)");
     // EL MISMO PEDIDO: el armado de la respuesta de la noche, con una lectura de mentira.
     // ⚠ ACTA (03-nov-2026, «una sola caché, con una sola edad») · la noche se lee en UNA lectura (portal-cache.ts › nocheExplorar: el
     // universo y la capa juntos, por sello); `leer` es esa lectura. Que a 25 años no se lea la capa y que su falla no tumbe la noche

@@ -21,6 +21,7 @@ import { construirCardStr } from "@/lib/card-recomendacion";
 import { titularMotor } from "@/lib/titular-motor";
 import { usePostHog } from "@/lib/posthog-react";
 import { registrarInformeVisto, leerEsperaMs } from "@/lib/informe-visto";
+import { VolverAlMapa } from "@/components/explorar/VolverAlMapa";
 import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { ShareButton } from "@/components/chrome/ShareButton";
 import { AppFooter } from "@/components/chrome/AppFooter";
@@ -337,6 +338,8 @@ export function STRResultsClient({
       )}
 
       <main className="mx-auto max-w-[1100px] px-4 sm:px-6 py-6 md:py-8">
+        {/* «← Volver al mapa» (04-nov-2026): solo si este informe se abrió desde Explorar en esta pestaña. */}
+        {!demo && <VolverAlMapa analysisId={analysisId} />}
         {/* Banner de subordinación AMBAS — hijo STR de un comparativo. */}
         {subordinatedHref && (
           <SubordinatedBanner href={subordinatedHref} modalidad="STR" />

@@ -184,7 +184,8 @@ export async function runInformeEnCaminoTier(): Promise<{ hard: number }> {
     const e = pop(ie.informeFallo(gen, "error"), T0 + 3_000, true);
     if (!texto(e).includes("No pudimos generar el informe. No se usó ningún análisis.") || !texto(e).includes(ie.INFORME_COPY.falloQue) || !/data-informe="reintentar"/.test(e) || !/data-informe="fallo-cerrar"/.test(e)) F(`4 · el fallo no se dice con palabras y qué hacer (con «Reintentar»): «${texto(e)}»`);
     const p = pop(ie.informeFallo(gen, "despublicado"), T0 + 3_000);
-    if (!texto(p).includes(ie.INFORME_COPY.despublicadoTitulo) || !texto(p).includes(ie.INFORME_COPY.despublicadoQue)) F("4 · el depto que se dio de baja al analizar no se dice (el caso de fsm@)");
+    // ⚠ ACTA (04-nov-2026, la pasada de Fabrizio por /explorar, tier EXPLORAR-PASADA-0411) · la baja dice por qué y de dónde se saca, según dónde se analizó (textoFallo con el lugar).
+    if (!texto(p).includes(ie.INFORME_COPY.despublicadoTitulo) || !texto(p).includes(ie.textoFallo("despublicado").que)) F("4 · el depto que se dio de baja al analizar no se dice (el caso de fsm@)");
     const f = pop(ie.informeFallo(gen, "fuera"), T0 + 3_000);
     if (!texto(f).includes(ie.INFORME_COPY.fueraTitulo)) F("4 · el depto que salió de la selección no se dice");
     for (const s of pantallas) {
@@ -256,7 +257,7 @@ export async function runInformeEnCaminoTier(): Promise<{ hard: number }> {
     const e = vu(ie.informeFallo(gen, "error"), T0 + 3_000, true);
     if (texto(e) !== `${ie.INFORME_COPY.falloTitulo} ${ie.INFORME_COPY.falloQue} ${ie.INFORME_COPY.reintentar} Volver a los deptos` || !/data-informe="reintentar"/.test(e) || !/<a [^>]*href="\/dashboard"[^>]*>Volver a los deptos<\/a>/.test(e)) F(`7 · la vuelta no dice el fallo con palabras, «Reintentar» y la vuelta a los deptos: «${texto(e)}»`);
     const p = vu(ie.informeFallo(gen, "despublicado"), T0 + 3_000, true);
-    if (!texto(p).includes(ie.INFORME_COPY.despublicadoTitulo) || !texto(p).includes(ie.INFORME_COPY.despublicadoQue) || /data-informe="reintentar"/.test(p) || !/>Volver a los deptos<\/a>/.test(p)) F("7 · la vuelta no dice que el depto se dio de baja (o ofrece reintentarlo)");
+    if (!texto(p).includes(ie.INFORME_COPY.despublicadoTitulo) || !texto(p).includes(ie.textoFallo("despublicado", "seleccion").que) || /data-informe="reintentar"/.test(p) || !/>Volver a los deptos<\/a>/.test(p)) F("7 · la vuelta no dice que el depto se dio de baja (o ofrece reintentarlo)");
     // La página: genera con lo que mostró la tarjeta, le pasa el informe a la vuelta y no se va sola a ningún lado.
     const ret = codigo("src/app/payments/return/page.tsx");
     const iG = ret.indexOf("async function generarDepto("), fG = iG < 0 ? -1 : ret.indexOf("\n  useEffect(() => {", iG);

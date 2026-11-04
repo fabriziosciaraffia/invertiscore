@@ -16,11 +16,15 @@
 // dice el descuento («−4,2 % dcto.»). Debajo de los ✓ Comprar; lejos, el grupo que uno de ellos tapa se corre a su borde
 // (satélite).
 // EL ENLACE DE UN DEPTO COMPARTIDO (02-nov-2026): con `foco`, el primer encuadre no abarca los pines sino que se centra en el
-// depto, de cerca (ZOOM_FOCO, con su etiqueta), una vez; después los filtros encuadran como siempre.
+// depto, de cerca (ZOOM_FOCO, con su etiqueta), una vez; después los filtros encuadran como siempre. Desde el 04-nov-2026 también el
+// pin abierto al volver del informe (volver-al-mapa.ts).
+// LA VISTA SATELITAL (04-nov-2026, la pasada de Fabrizio; regla en lib/explorar/capa-mapa.ts): «Mapa | Satélite» junto al zoom, un
+// control de Google donde React dibuja el botón. En satélite, la foto híbrida sin el estilo de Franco, igual en los dos temas.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { loadGoogleMaps } from "@/lib/loadGoogleMaps";
-import { francoMapStyleForTheme } from "@/lib/map-styles";
+import { CAPA_MAPA_COPY, CAPAS_MAPA, guardarCapaMapa, leerCapaMapa, opcionesDeCapa, type CapaMapa } from "@/lib/explorar/capa-mapa";
 import { agruparPines, proyectar } from "@/lib/explorar/explorar";
 import { textoPin, type Caja, type PinMapa } from "@/lib/explorar/portal";
 import { NEGOCIAR_COPY, satelite, type Circulo, type PinNegociado } from "@/lib/explorar/capa-negociar";
@@ -36,8 +40,20 @@ const CENTRO_SANTIAGO = { lat: -33.4489, lng: -70.6393 };
 
 const esClaro = () => typeof document !== "undefined" && document.documentElement.getAttribute("data-theme") === "light";
 /** EL MAPA EN OSCURO (30-oct-2026): el estilo oscuro de Franco (map-styles.ts: fondo oscuro, calles en gris medio, nombres
- *  legibles, agua y parques apagados) y el fondo mientras cargan las teselas. Sigue al tema del sitio y cambia al momento. */
-const opcionesDeTema = () => (esClaro() ? { styles: francoMapStyleForTheme("light"), backgroundColor: "#F6F6F7" } : { styles: francoMapStyleForTheme("dark"), backgroundColor: "#1a1a1a" });
+ *  legibles, agua y parques apagados) y el fondo mientras cargan las teselas. Sigue al tema del sitio y cambia al momento. En
+ *  satélite (04-nov-2026), la foto híbrida sin estilo, igual en los dos temas (capa-mapa.ts › opcionesDeCapa). */
+const opcionesDe = (capa: CapaMapa) => opcionesDeCapa(capa, esClaro());
+
+/** «Mapa | Satélite» (04-nov-2026): dos posiciones, con el estilo de las opciones de la casa (la elegida, rellena en tinta). */
+export function ConmutadorCapa({ capa, alCambiar }: { capa: CapaMapa; alCambiar: (c: CapaMapa) => void }) {
+  return (
+    <div className="ex-capa" role="radiogroup" aria-label={CAPA_MAPA_COPY.grupo} data-explorar="capa-mapa">
+      {CAPAS_MAPA.map((c) => (
+        <button key={c} type="button" role="radio" aria-checked={capa === c} className="ex-capa-op" data-capa={c} onClick={() => alCambiar(c)}>{CAPA_MAPA_COPY[c]}</button>
+      ))}
+    </div>
+  );
+}
 const temaPin = (): TemaPin => (esClaro() ? "claro" : "oscuro");
 
 export interface MapaExplorarProps {
@@ -84,6 +100,14 @@ export default function MapaExplorar({ pines, negociados = [], analizados, selec
   // Los movimientos que hace el propio mapa (encuadrar, acercar a un grupo) no son «la persona movió el mapa».
   const propio = useRef(false);
   const tocado = useRef(false);
+  // La vista (04-nov-2026): la última elegida en este navegador; el control vive dentro del mapa de Google.
+  const [capa, setCapa] = useState<CapaMapa>("mapa");
+  const capaRef = useRef(capa);
+  capaRef.current = capa;
+  const [control, setControl] = useState<HTMLDivElement | null>(null);
+  const almacenLocal = (): Storage | null => { try { return window.localStorage; } catch { return null; } };
+  useEffect(() => { const c = leerCapaMapa(almacenLocal()); if (c !== "mapa") setCapa(c); }, []);
+  const cambiarCapa = (c: CapaMapa) => { setCapa(c); guardarCapaMapa(almacenLocal(), c); };
 
   useEffect(() => {
     let cancelado = false;
@@ -97,9 +121,14 @@ export default function MapaExplorar({ pines, negociados = [], analizados, selec
       const map = new g.maps.Map(divRef.current, {
         // El zoom al centro derecho: abajo lo tapaban la hoja y la tarjeta (QA en WebKit 390, 28-oct-2026).
         center: CENTRO_SANTIAGO, zoom: 11, disableDefaultUI: true, zoomControl: true, zoomControlOptions: { position: g.maps.ControlPosition.RIGHT_CENTER }, clickableIcons: false,
-        gestureHandling: "greedy", ...opcionesDeTema(),
+        gestureHandling: "greedy", ...opcionesDe(capaRef.current),
       });
       mapRef.current = map;
+      // «Mapa | Satélite», junto al zoom (el mismo lado: abajo lo tapan la hoja y la tarjeta en el teléfono).
+      const ctl = document.createElement("div");
+      ctl.className = "ex-capa-ctl";
+      map.controls[g.maps.ControlPosition.RIGHT_CENTER].push(ctl);
+      setControl(ctl);
 
       const limpiar = () => { for (const m of marcadoresRef.current) m.setMap(null); marcadoresRef.current = []; };
       // `corrido`: el ícono se dibuja corrido de su punto, en píxeles (el satélite de la capa «Si negocias»).
@@ -223,12 +252,15 @@ export default function MapaExplorar({ pines, negociados = [], analizados, selec
     const o = new MutationObserver(() => {
       const map = mapRef.current;
       if (!map) return;
-      map.setOptions(opcionesDeTema());
+      map.setOptions(opcionesDe(capaRef.current));
       dibujarRef.current();
     });
     o.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
     return () => o.disconnect();
   }, []);
+
+  // Cambió la vista (04-nov-2026): el mismo mapa con otro tipo, sin volver a cargarlo.
+  useEffect(() => { const map = mapRef.current; if (map) { map.setOptions(opcionesDe(capa)); dibujarRef.current(); } }, [capa]);
 
   // Cambiaron los filtros (o llegó el universo): se encuadra de nuevo, salvo con una zona elegida. Llegó un foco (el depto
   // compartido, cuando el universo dice dónde está): se centra en él.
@@ -244,5 +276,10 @@ export default function MapaExplorar({ pines, negociados = [], analizados, selec
     if (p && c && !c.contains({ lat: p.lat, lng: p.lng })) { propio.current = true; map.panTo({ lat: p.lat, lng: p.lng }); }
   }, [seleccionado, pines, negociados, analizados]);
 
-  return <div ref={divRef} className="ex-mapa" data-explorar="mapa" aria-label="Mapa de los deptos que convienen" role="application" />;
+  return (
+    <>
+      <div ref={divRef} className="ex-mapa" data-explorar="mapa" data-capa={capa} aria-label="Mapa de los deptos que convienen" role="application" />
+      {control && createPortal(<ConmutadorCapa capa={capa} alCambiar={cambiarCapa} />, control)}
+    </>
+  );
 }

@@ -16,7 +16,7 @@ import { unstable_cache } from "next/cache";
 import { createServiceClient } from "@/lib/supabase/service";
 import { claveUniverso, compactar, type TasaDelMotor, type UniversoCompacto } from "./portal";
 import { negociablesDeLaNoche, universoDeLaNoche, type RespuestaUniverso } from "./portal-servidor";
-import { capaNegociarDisponible, compactarNegociados, sinCifrasNegociados, type NegociadosCompactos } from "./capa-negociar";
+import { capaDeLaNoche, compactarNegociados, sinCifrasNegociados, type NegociadosCompactos } from "./capa-negociar";
 import { sinCifras as universoSinCifras } from "./abierto";
 import { selloDeHora, selloDeToken, tokenDeSello, VIDA_SELLO_S } from "./sello-noche";
 
@@ -25,7 +25,8 @@ export interface NocheGuardada { n: number; universo: UniversoCompacto; negociad
 /** La noche que leen la página y la API: lo guardado y el sello firmado que viaja al navegador (null sin secreto). */
 export interface NocheExplorar { sello: string | null; universo: UniversoCompacto; negociados: NegociadosCompactos | null }
 
-const capaDe = (pie: number, plazo: number) => capaNegociarDisponible({ modalidad: "ltr", pie, plazo, tasa: null } as Parameters<typeof capaNegociarDisponible>[0]);
+// La capa que GUARDA la noche (pie 20 % o 30 % a 30 años); la de 25 años se calcula por comuna (04-nov-2026), no viaja con la noche.
+const capaDe = (pie: number, plazo: number) => capaDeLaNoche({ modalidad: "ltr", pie, plazo, tasa: null } as Parameters<typeof capaDeLaNoche>[0]);
 
 const nocheDeSello = unstable_cache(
   async (n: number, pie: number, plazo: number): Promise<NocheGuardada> => {

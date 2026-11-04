@@ -11,8 +11,11 @@
 //     cuenta, y llegan en el mismo pedido del mapa (portal-servidor.ts › respuestaDeLaNoche). El chip de la barra es el filtro
 //     «Ver solo ✓ Comprar», apagado por defecto: prendido, la capa no se ve. En Filtros, «Descuento máximo para − Ajustar», 5 % o
 //     10 %. Hasta el 03-nov la capa estaba apagada de entrada y el chip «Si negocias el precio» la prendía con 5 %.
-//   · SOLO LO QUE CALCULA LA NOCHE: arriendo tradicional, pie 20 % o 30 %, 30 años y la tasa del motor. Con otra tasa, otro pie,
-//     otro plazo o renta corta, la capa no se muestra y Filtros lo dice.
+//   · EN ARRIENDO TRADICIONAL, CON CUALQUIER PIE, PLAZO Y TASA (04-nov-2026, la pasada de Fabrizio: con otra tasa el mapa quedaba
+//     solo con azules y parecía un error). La noche guarda la capa de pie 20 % o 30 % a 30 años con la tasa del motor
+//     (capaDeLaNoche); con cualquier otra combinación se calcula por comuna con la misma regla y el mismo tope —en el mismo pedido
+//     del universo calculado, o aparte para pie 20 % o 30 % a 25 años, cuyo universo sí sale de la noche— y queda 24 horas en
+//     `combos`. En renta corta no hay capa y Filtros lo dice. Hasta el 04-nov solo existía la de la noche.
 //   · SIN CUENTA la capa existe y sus cifras van borrosas como el resto: el precio negociado y el flujo no viajan, y el descuento
 //     viaja solo como el tope que alcanza (5 o 10, lo que la persona elige igual). La tarjeta y la lista los dibujan borrosos; el
 //     mapa, puntos sin número.
@@ -81,9 +84,14 @@ export function satelite(c: Circulo, rojos: readonly Circulo[]): { dx: number; d
 /** Los pies que calcula la noche (a 30 años, con la tasa del motor). */
 export const PIES_NEGOCIAR = [PIE_POR_DEFECTO, 30] as const;
 
-/** ¿Esta combinación tiene capa? Solo la de la noche: arriendo tradicional, pie 20 % o 30 %, 30 años, la tasa del motor. */
-export function capaNegociarDisponible(f: Pick<FiltrosPortal, "modalidad" | "pie" | "plazo" | "tasa">): boolean {
+/** ¿La capa de esta combinación la guardó la noche? Arriendo tradicional, pie 20 % o 30 %, 30 años, la tasa del motor. */
+export function capaDeLaNoche(f: Pick<FiltrosPortal, "modalidad" | "pie" | "plazo" | "tasa">): boolean {
   return f.modalidad === "ltr" && f.tasa == null && f.plazo === PLAZO_POR_DEFECTO && (PIES_NEGOCIAR as readonly number[]).includes(f.pie);
+}
+
+/** ¿Esta combinación tiene capa? En arriendo tradicional, siempre (04-nov-2026): la de la noche o la calculada por comuna. */
+export function capaNegociarDisponible(f: Pick<FiltrosPortal, "modalidad" | "pie" | "plazo" | "tasa">): boolean {
+  return f.modalidad === "ltr";
 }
 
 /** ¿Se ve la capa? Con estos supuestos existe y «Ver solo ✓ Comprar» está apagado (03-nov-2026: de entrada, sí). */
@@ -160,7 +168,7 @@ export const NEGOCIAR_COPY = {
   ayuda: { antes: "Los deptos que al precio publicado dan", medio: "pero llegan a", despues: "si consigues un descuento de hasta:" },
   tope: (t: number) => `${t} %`,
   /** Con otra tasa, otro pie u otro plazo, o en renta corta: la capa no existe y Filtros lo dice. */
-  sinCapa: "Franco calcula los que convienen si negocias con pie 20 % o 30 %, 30 años, la tasa del mes y arriendo tradicional. Con lo que elegiste, no se muestran.",
+  sinCapa: "Los que convienen si negocias se calculan para arriendo tradicional; en renta corta no se muestran.",
   /** La bienvenida sin cuenta (03-nov-2026), bajo los que convienen: «y 3.238 más si negocias el precio». Nunca sumado a ellos. */
   bienvenida: (n: number) => `y ${miles(n)} más si negocias el precio`,
   /** El título de los − Ajustar en la lista, después de los ✓ Comprar. */

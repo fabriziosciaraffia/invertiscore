@@ -177,7 +177,9 @@ export async function runPuertaBMockupsTier(): Promise<{ hard: number }> {
       // El cuerpo del mockup: la tarjeta gris, la línea del pie y el plazo con «Cambiar», los selectores, la tarjeta del cambio
       // (en rojo solo si empeora), el dividendo y el retorno, la casilla.
       if (!/cuerpo=\{cuerpo\}/.test(av) || /resumen=\{resumen\}|destacado=\{/.test(av)) F("3 · el pop-up no dibuja su propio cuerpo (o vuelve al del wizard)");
-      if (!orden(av, ['className="av-tarjeta"', 'data-aviso="depto">{resumen.direccion}', 'data-aviso="veredicto">{linea}', 'data-aviso="incluye">{incluye.antes}', 'data-aviso="pie"', 'data-aviso="plazo"', 'data-aviso="cambio" data-empeora={da.empeora ? "1" : undefined}', 'data-aviso="combo"', "{c.antes}<b>{c.pie}</b>{c.medio}<b>{c.plazo}</b>", "data-modal-cambiar", 'data-aviso="derivados"', 'data-aviso="guardar" data-modal-guardar']))
+      // ⚠ ACTA (04-nov-2026, la pasada de Fabrizio por /explorar, tier EXPLORAR-PASADA-0411) · el veredicto de la tarjeta gris va con el chip de la casa; la frase entera queda como su nombre
+      // accesible (`aria-label={linea}`), en el mismo lugar del cuerpo.
+      if (!orden(av, ['className="av-tarjeta"', 'data-aviso="depto">{resumen.direccion}', 'data-aviso="veredicto" aria-label={linea}>', 'data-aviso="incluye">{incluye.antes}', 'data-aviso="pie"', 'data-aviso="plazo"', 'data-aviso="cambio" data-empeora={da.empeora ? "1" : undefined}', 'data-aviso="combo"', "{c.antes}<b>{c.pie}</b>{c.medio}<b>{c.plazo}</b>", "data-modal-cambiar", 'data-aviso="derivados"', 'data-aviso="guardar" data-modal-guardar']))
         F("3 · el cuerpo del pop-up no es el del mockup (tarjeta gris, pie y plazo con «Cambiar», selectores, el cambio, los derivados, la casilla)");
       if (!/const derivados = resumen\.derivados\.filter\(\(x\) => x\.label === "Dividendo" \|\| x\.label === "Retorno bruto"\);/.test(av)) F("3 · el pop-up muestra más que el dividendo y el retorno bruto");
       const cssW = leer("src/components/formulario-v4/wizard-v4.css");

@@ -7,7 +7,7 @@ import { COMUNAS_DISPONIBLES } from "@/lib/comunas-disponibles";
 import { PIE_POR_DEFECTO, PLAZO_POR_DEFECTO, tasaElegidaDe } from "@/lib/deptos/estandar";
 import { PIES_EXPLORAR, PLAZOS_EXPLORAR } from "@/lib/explorar/explorar";
 import { universoDeLaNoche as esDeLaNoche } from "@/lib/explorar/portal";
-import { respuestaUniverso, universoCalculado } from "@/lib/explorar/portal-servidor";
+import { respuestaUniverso, universoYCapaCalculados } from "@/lib/explorar/portal-servidor";
 import { respuestaDeLaNoche } from "@/lib/explorar/portal-cache";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -18,7 +18,8 @@ import { respuestaDeLaNoche } from "@/lib/explorar/portal-cache";
 //     para todos). `c` no se mira. Con pie 20 % o 30 % a 30 años, en el MISMO PEDIDO los − Ajustar que llegan a Comprar
 //     negociando (03-nov-2026: se ven de entrada; portal-cache.ts › respuestaDeLaNoche).
 //   · Cualquier otro pie o plazo, o renta corta: las comunas de `c` (el navegador las pide de a una, para ir mostrando),
-//     calculadas en el momento y guardadas 24 horas.
+//     calculadas en el momento y guardadas 24 horas. En renta larga, desde el 04-nov-2026, también los − Ajustar de esas comunas
+//     (el descuento mínimo a Comprar con esa combinación, mismo tope de la noche), en `negociados`.
 // Solo con sesión. NO ESCRIBE NADA de la persona —explorar no toca el perfil ni gasta—; lo calculado queda en `combos`.
 // ─────────────────────────────────────────────────────────────────────────────
 export const dynamic = "force-dynamic";
@@ -52,8 +53,9 @@ export async function GET(request: Request) {
     const admin = createServiceClient();
     const cuenta = { calculados: 0, ms: 0 };
     // Lo calculado se guarda después de responder (02-nov-2026): no compite con la lectura de la comuna siguiente.
-    const pines = await universoCalculado(admin, { ...q, comunas }, new Date(), cuenta, { diferir: waitUntil });
-    return NextResponse.json(respuestaUniverso(pines, { ...q, comunas }, cuenta), { headers: { "Cache-Control": "private, max-age=300" } });
+    const conCapa = modalidad === "ltr";
+    const { pines, negociados } = await universoYCapaCalculados(admin, { ...q, comunas }, new Date(), cuenta, { diferir: waitUntil, conCapa });
+    return NextResponse.json(respuestaUniverso(pines, { ...q, comunas }, cuenta, conCapa ? negociados : null), { headers: { "Cache-Control": "private, max-age=300" } });
   } catch (e) {
     captureApiError(e, { ruta: "GET /api/explorar", operacion: "universo", userId: user.id, extra: { modalidad, pie, plazo, tasa } });
     return NextResponse.json({ error: "interno" }, { status: 500 });

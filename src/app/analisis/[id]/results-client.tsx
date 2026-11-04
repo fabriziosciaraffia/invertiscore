@@ -5,6 +5,7 @@ import { espejarMeta, type EventoEspejo } from "@/lib/meta/espejo";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { usePostHog } from "@/lib/posthog-react";
 import { registrarInformeVisto, leerEsperaMs } from "@/lib/informe-visto";
+import { VolverAlMapa } from "@/components/explorar/VolverAlMapa";
 import type { FullAnalysisResult, AnalisisInput } from "@/lib/types";
 import type { AlternativaComunas } from "@/lib/alternativa-comunas";
 import { calcFlujoDesglose } from "@/lib/analysis";
@@ -604,6 +605,8 @@ export function PremiumResults({
 
   const mainContent = (
     <>
+      {/* «← Volver al mapa» (04-nov-2026): solo si este informe se abrió desde Explorar en esta pestaña. */}
+      {!isSharedView && <VolverAlMapa analysisId={analysisId} />}
       {/* Shared view banner (logged in user viewing someone else's analysis) */}
       {isSharedView && (
         <div className="bg-[var(--franco-card)] text-[var(--franco-text)] rounded-xl p-4 px-5 mb-4 flex items-center justify-between gap-3 flex-wrap border border-[var(--franco-border)]">

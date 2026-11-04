@@ -44,16 +44,21 @@ export const PLAZO_NEGOCIAR = PLAZO_POR_DEFECTO;
 /**
  * EL DESCUENTO MÍNIMO A COMPRAR de un aviso con un pie (a PLAZO_NEGOCIAR años, tasa del motor). null si a precio publicado la
  * sonda ya da Comprar (no hay nada que negociar), si no llega ni con el tope o si falta lo que la sonda necesita.
+ * CON OTRA COMBINACIÓN (04-nov-2026, Explorar con otra tasa, pie o plazo): `combo` cambia el plazo y la tasa del crédito —la de
+ * mercado sigue siendo la del motor, como en la sonda (estandar-deptos.ts › sondaDeCandidato)—; la regla es la misma, con el mismo
+ * tope. `alPublicado`: el veredicto al precio publicado si ya se sabe (la sonda de Explorar lo acaba de calcular con el mismo
+ * cuerpo): ahorra esa sonda.
  */
-export function negociarCandidato(c: CandidatoGuia, piePct: number, cfg: { uf: number; tasa: number }, asOf: Date = new Date(), tope: number = TOPE_NEGOCIAR_PCT): Negociado | null {
+export function negociarCandidato(c: CandidatoGuia, piePct: number, cfg: { uf: number; tasa: number }, asOf: Date = new Date(), tope: number = TOPE_NEGOCIAR_PCT, combo: { plazo?: number; tasa?: number | null; alPublicado?: string | null } = {}): Negociado | null {
   const ctx = contextoDeFila(c, cfg);
   if (!ctx || !c.arriendo || c.medianaComuna == null) return null;
-  const body = payloadDeAviso(respuestasDeAviso(avisoDeCandidato(c), piePct, cfg.tasa, c.arriendo.monto, { plazo: PLAZO_NEGOCIAR, tasaMercado: cfg.tasa }), ctx) as Record<string, unknown> & { precio: number };
+  const body = payloadDeAviso(respuestasDeAviso(avisoDeCandidato(c), piePct, combo.tasa ?? cfg.tasa, c.arriendo.monto, { plazo: combo.plazo ?? PLAZO_NEGOCIAR, tasaMercado: cfg.tasa }), ctx) as Record<string, unknown> & { precio: number };
   const precio = Number(body.precio);
   if (!(precio > 0)) return null;
   const sondaEn = (precioUF: number) => sondaConPatch(body as never, cfg.uf, c.medianaComuna as never, asOf, { precio: precioUF } as never);
   const cruza = (d: number) => sondaEn(precio * (1 - d / 100)).veredicto === "COMPRAR";
-  if (sondaEn(precio).veredicto === "COMPRAR" || !cruza(tope)) return null;
+  const publicado = combo.alPublicado !== undefined ? combo.alPublicado : sondaEn(precio).veredicto;
+  if (publicado === "COMPRAR" || !cruza(tope)) return null;
   let lo = 0, hi = tope;
   while (hi - lo > PREC_PTS) {
     const mid = (lo + hi) / 2;

@@ -29,6 +29,8 @@
 //     enlace y lo dice. El enlace lleva el código de invitación de quien tiene cuenta (pedido al abrir la primera tarjeta o
 //     la lista: la hoja tiene que abrirse en el mismo toque). EL ENLACE abre esta página en ese pin, con la tarjeta abierta y
 //     el mapa centrado; si el aviso ya no está, la tarjeta de «ya no está» con los parecidos que sí dan (compartido-caido.tsx).
+//     DESDE EL 04-NOV-2026 (la pasada de Fabrizio), en una hoja como la de bienvenida, «Te compartieron este depto», con la tarjeta
+//     grande del depto o, si ya no está, lo que pasó y los parecidos (compartido-hoja.tsx); sin la tarjeta del carrusel.
 //     UN NEGOCIADO (03-nov-2026) se comparte con su precio negociado y su descuento, y su enlace lleva el tope de la capa: abre
 //     con «Si negocias» prendido, en ese pin, con la tarjeta de los dos veredictos —con el precio de hoy si se movió—; si con
 //     los datos de hoy ya no llega dentro del tope, la tarjeta de «ya no llega» con parecidos.
@@ -51,7 +53,7 @@ import { botonAnalizar, type Recalculo } from "@/lib/explorar/explorar";
 import { textoAnalizarIgual } from "@/lib/guia/semanal-str";
 import {
   cercanos, claveUniverso, COMO_SE_CALCULA, comunasACalcular, descompactar, desgloseBarra, EVENTOS_PORTAL, etiquetaFiltros, filtrar, filtrosCambiados, lineaPlan, propsDeTasa,
-  lineaBusqueda, ordenar, perfilDeFiltros, PORTAL_COPY, propsDeFiltros, universoDeLaNoche, urlDePortal,
+  lineaBusqueda, ordenar, perfilDeFiltros, PORTAL_COPY, propsDeFiltros, textoRecalculo, universoDeLaNoche, urlDePortal,
   type Caja, type FiltrosPortal, type OrdenPortal, type PinMapa, type TasaDelMotor,
 } from "@/lib/explorar/portal";
 // Solo el tipo (se borra al compilar): la forma de GET /api/explorar, la misma que arma la ruta.
@@ -59,7 +61,7 @@ import type { RespuestaUniverso } from "@/lib/explorar/portal-servidor";
 import { TarjetaPin } from "./tarjeta-pin";
 import { ChipVeredicto, ChipVeredictoTokens } from "@/components/analysis/shared/ChipVeredicto";
 import {
-  capaNegociarDisponible, capaVisible, conCifrasNegociado, descompactarNegociados, esNegociado, EVENTO_NEGOCIAR, EVENTO_SOLO_COMPRAR, NEGOCIAR_COPY, negociadosVisibles, ordenarNegociados, propsNegociar,
+  capaDeLaNoche, capaNegociarDisponible, capaVisible, conCifrasNegociado, descompactarNegociados, esNegociado, EVENTO_NEGOCIAR, EVENTO_SOLO_COMPRAR, NEGOCIAR_COPY, negociadosVisibles, ordenarNegociados, propsNegociar,
   propsSoloComprar, type Negociacion, type NegociadosCompactos, type PinNegociado,
 } from "@/lib/explorar/capa-negociar";
 import { NEGOCIADO_COPY } from "@/lib/precio-publicado";
@@ -77,6 +79,8 @@ import {
   type DeptoCompartido, type EstadoCaido, type MetodoCompartir, type OrigenCompartir, type VeredictoCompartido,
 } from "@/lib/explorar/compartir";
 import { enlaceCompartido, PARAMS_DE_UNA_VEZ } from "@/lib/explorar/enlace-compartido";
+import { analizadosDeLaPestana, anotarVolver, hrefDelMapa } from "@/lib/explorar/volver-al-mapa";
+import type { CasoCompartido } from "./compartido-hoja";
 import "./explorar.css";
 
 const MapaExplorar = dynamic(() => import("./mapa-explorar"), { ssr: false, loading: () => null });
@@ -89,7 +93,8 @@ const PopupNoDa = dynamic(() => import("@/components/guia/PopupNoDa").then((m) =
 const HojaRegistro = dynamic(() => import("./hoja-registro").then((m) => m.HojaRegistro), { ssr: false, loading: () => null });
 const Bienvenida = dynamic(() => import("./bienvenida").then((m) => m.Bienvenida), { ssr: false, loading: () => null });
 const HojaCalculo = dynamic(() => import("./hoja-calculo").then((m) => m.HojaCalculo), { ssr: false, loading: () => null });
-const CompartidoCaido = dynamic(() => import("./compartido-caido").then((m) => m.CompartidoCaido), { ssr: false, loading: () => null });
+const HojaCompartida = dynamic(() => import("./compartido-hoja").then((m) => m.HojaCompartida), { ssr: false, loading: () => null });
+const PopupRecalculo = dynamic(() => import("./recalculo").then((m) => m.PopupRecalculo), { ssr: false, loading: () => null });
 
 const ESPERA_EN_CURSO_MS = 4000;
 /** Comunas que se calculan a la vez (otro pie u otro plazo, o renta corta). De 3 a 2 el 02-nov-2026: con 12 pedidos por comuna
@@ -180,10 +185,19 @@ const CUENTA_VACIA: CuentaCliente = {
 const usaRegalo = (s: EstadoSaldo): boolean => s.tipo === "regalo" || (s.tipo === "con" && !!s.proximoRegalo);
 
 type Universo = { comunas: "todas" | string[]; pines: PinMapa[] };
+/** La capa calculada de una combinación (04-nov-2026): las comunas que ya llegaron y sus − Ajustar. */
+type CapaCalculada = { comunas: string[]; pines: PinNegociado[] };
+/** Suma los − Ajustar de una comuna a la capa calculada de una clave (una comuna llega una vez). */
+const agregarCapa = (cs: Record<string, CapaCalculada>, clave: string, comuna: string, nuevos: PinNegociado[]): Record<string, CapaCalculada> => {
+  const prev = cs[clave];
+  if (prev?.comunas.includes(comuna)) return cs;
+  const ids = new Set((prev?.pines ?? []).map((x) => x.avisoId));
+  return { ...cs, [clave]: { comunas: [...(prev?.comunas ?? []), comuna], pines: [...(prev?.pines ?? []), ...nuevos.filter((x) => !ids.has(x.avisoId))] } };
+};
 
 // El mapa quieto del primer pintado (el LCP) NO va acá: es una capa de la página (page.tsx), una sola imagen y antes del header
 // en el HTML. El cliente avisa cuándo el mapa real dibujó sus teselas (`data-mapa`) y la capa se desvanece (explorar.css).
-export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, origen = "directo", correo = null, compartido = null }: {
+export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar = null, origen = "directo", correo = null, compartido = null }: {
   inicial: InicialPortal;
   abrir?: string | null;
   autoAnalizar?: string | null;
@@ -217,7 +231,9 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
   const [vista, setVista] = useState<"mapa" | "lista">("mapa");
   const [mapaListo, setMapaListo] = useState(false);
   const [mapa, setMapa] = useState<"cargando" | "listo" | "teselas" | "fallo">("cargando");
-  const [sel, setSel] = useState<string | null>(abrir);
+  // El pin abierto: el de la página (`a`) o, al volver del informe con «atrás», el que quedó en la barra (volver-al-mapa.ts).
+  const [abrir, setAbrir] = useState<string | null>(abrirProp);
+  const [sel, setSel] = useState<string | null>(abrirProp);
   const [carrusel, setCarrusel] = useState<string[]>([]);
   const [hojaFiltros, setHojaFiltros] = useState(false);
   const [zonaPendiente, setZonaPendiente] = useState<Caja | null>(null);
@@ -277,10 +293,11 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
   // Recién registrada desde un pin (30-oct-2026): esa tarjeta vuelve desbloqueada, con su banda; el pop-up lo abre la persona.
   const [recien, setRecien] = useState<{ avisoId: string; regalo: boolean } | null>(null);
   // EL ENLACE COMPARTIDO (02-nov-2026): la tarjeta de «ya no está» y si el mapa ya se centró en el depto.
-  const [caido, setCaido] = useState<{ estado: EstadoCaido; depto: DeptoCompartido | null; parecidos: PinMapa[] } | null>(null);
+  // LA HOJA DEL COMPARTIDO (04-nov-2026, compartido-hoja.tsx): el pin del enlace (su tarjeta grande) o, si ya no está, lo que pasó.
+  const [hojaComp, setHojaComp] = useState<{ tipo: "pin"; avisoId: string } | { tipo: "caido"; estado: EstadoCaido; depto: DeptoCompartido | null; parecidos: PinMapa[] } | null>(null);
   /** La capa «Si negocias» no llegó: el enlace de un negociado no la espera más (03-nov-2026). */
   const [capaFallo, setCapaFallo] = useState(false);
-  const [focoUsado, setFocoUsado] = useState(!compartido);
+  const [focoUsado, setFocoUsado] = useState(!compartido && !abrirProp);
   const compartidoResuelto = useRef(false);
   const [toast, setToast] = useState<string | null>(null);
   const vivo = useRef(true);
@@ -291,6 +308,12 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
   const negociadosRef = useRef(negociados);
   negociadosRef.current = negociados;
   const enCursoNeg = useRef(new Set<number>());
+  // LA CAPA CALCULADA (04-nov-2026, la pasada de Fabrizio): con otra tasa, pie o plazo, los − Ajustar de cada comuna, por la clave
+  // del universo (como lo calculado). Llegan en el mismo pedido de cada comuna del universo calculado; con pie 20 % o 30 % a 25 años,
+  // cuyo universo sí es de la noche, aparte (asegurarCapaCalculada).
+  const [capasCalc, setCapasCalc] = useState<Record<string, CapaCalculada>>({});
+  const capasCalcRef = useRef(capasCalc);
+  capasCalcRef.current = capasCalc;
   // EL SELLO DE LA NOCHE (03-nov-2026, portal-cache.ts › nocheExplorar): el de la noche que contó la página. Va en cada pedido de
   // la noche y de la capa, así la API trae esa misma aunque entretanto haya otra: en esta carga, la página, el mapa y la barra
   // dicen lo mismo. Si la página no lo trajo, el del primer pedido que conteste.
@@ -308,10 +331,55 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
     return parcial && pedidas.some((c) => hay.has(c)) ? u.pines : null;
   }, []);
 
+  /** La capa calculada de unos filtros: la de sus comunas, si llegaron todas (con `parcial`, lo que llegó). */
+  const capaCalculadaPara = useCallback((f: FiltrosPortal, cs: Record<string, CapaCalculada>, parcial = false): PinNegociado[] | null => {
+    const c = cs[claveUniverso(f)];
+    if (!c) return null;
+    const hay = new Set(c.comunas);
+    const pedidas = comunasACalcular(f);
+    if (pedidas.every((x) => hay.has(x))) return c.pines;
+    return parcial && pedidas.some((x) => hay.has(x)) ? c.pines : null;
+  }, []);
+
+  /** LA CAPA CALCULADA APARTE (04-nov-2026): la de pie 20 % o 30 % a 25 años —su universo sale de la noche, su capa no—, de a una
+   *  comuna (GET /api/explorar/negociar con `z`, `ta` y `c`), con el mismo avance y el mismo pop-up que un universo calculado. */
+  const asegurarCapaCalculada = useCallback(async (f: FiltrosPortal) => {
+    const clave = claveUniverso(f);
+    const ya = capasCalcRef.current[clave];
+    const tengo = new Set(ya ? ya.comunas : []);
+    const faltan = comunasACalcular(f).filter((c) => !tengo.has(c) && !enCurso.current.has(`capa|${clave}|${c}`));
+    if (faltan.length === 0) return;
+    for (const c of faltan) enCurso.current.add(`capa|${clave}|${c}`);
+    const base = `/api/explorar/negociar?p=${f.pie}&z=${f.plazo}${f.tasa != null ? `&ta=${f.tasa}` : ""}`;
+    let hechas = 0;
+    setProgreso({ hechas, total: faltan.length });
+    const cola = [...faltan];
+    const perdidas: string[] = [];
+    const trabajador = async () => {
+      for (let c = cola.shift(); c; c = cola.shift()) {
+        try {
+          const res = await fetch(`${base}&c=${encodeURIComponent(c)}`, { cache: "default" });
+          if (!res.ok) throw new Error(String(res.status));
+          const d = (await res.json()) as { negociados: NegociadosCompactos };
+          const negs = descompactarNegociados(d.negociados);
+          const comuna = c;
+          if (vivo.current) setCapasCalc((cs) => agregarCapa(cs, clave, comuna, negs));
+        } catch {
+          perdidas.push(c);
+        }
+        enCurso.current.delete(`capa|${clave}|${c}`);
+        hechas++;
+        if (vivo.current) setProgreso({ hechas, total: faltan.length });
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(COMUNAS_A_LA_VEZ, faltan.length) }, trabajador));
+    if (vivo.current) { setProgreso(null); if (perdidas.length) { setFallo(true); setFallidas({ clave, comunas: perdidas }); } }
+  }, []);
+
   /** LA CAPA APARTE, de respaldo: solo si el pedido del universo de la noche no la trajo (con pie 20 % o 30 % a 30 años la trae
    *  siempre; si su lectura falló en el servidor, sale sin ella). Una vez por pie. */
   const asegurarNegociados = useCallback(async (f: FiltrosPortal) => {
-    if (!capaNegociarDisponible(f)) return;
+    if (!capaDeLaNoche(f)) return;
     const pie = sinCuentaRef.current ? PIE_ABIERTO : f.pie;
     if (negociadosRef.current[pie] || enCursoNeg.current.has(pie)) return;
     enCursoNeg.current.add(pie);
@@ -339,11 +407,13 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
     setFallidas(null);
     try {
       if (universoDeLaNoche(f)) {
+        // La capa que la noche no guarda (pie 20 % o 30 % a 25 años, 04-nov-2026): por comuna, mientras llega el universo.
+        if (capaVisible(f) && !capaDeLaNoche(f)) void asegurarCapaCalculada(f);
         // Ya cargado: si a su pie le falta la capa (otro plazo antes, o no llegó), se pide aparte.
         if (universosRef.current[clave]) { void asegurarNegociados(f); return; }
         if (enCurso.current.has(clave)) return;
         enCurso.current.add(clave);
-        const conCapa = capaNegociarDisponible(f);
+        const conCapa = capaDeLaNoche(f);
         const pieNeg = sinCuentaRef.current ? PIE_ABIERTO : f.pie;
         // La capa viene en este mismo pedido: nadie la pide aparte mientras tanto.
         if (conCapa) enCursoNeg.current.add(pieNeg);
@@ -385,7 +455,10 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
             if (!res.ok) throw new Error(String(res.status));
             const d = (await res.json()) as RespuestaUniverso;
             const nuevos = descompactar(d.universo);
+            // Los − Ajustar de esta comuna con esta combinación (renta larga, 04-nov-2026), en el mismo pedido.
+            const negs = d.negociados ? descompactarNegociados(d.negociados) : null;
             const comuna = c;
+            if (vivo.current && negs) setCapasCalc((cs) => agregarCapa(cs, clave, comuna, negs));
             if (vivo.current) setUniversos((us) => {
               const prev = us[clave];
               const comunas = prev && prev.comunas !== "todas" ? [...prev.comunas, comuna] : [comuna];
@@ -406,7 +479,7 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
     } catch {
       if (vivo.current) { setProgreso(null); setFallo(true); }
     }
-  }, [asegurarNegociados]);
+  }, [asegurarNegociados, asegurarCapaCalculada]);
 
   // El universo de la vista con que se entró: el de la noche (con la capa en el mismo pedido), con la página quieta (el LCP es
   // el mapa quieto); uno calculado, enseguida. El mapa interactivo, también con la página quieta.
@@ -418,6 +491,8 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
       if (universoDeLaNoche(inicial.filtros)) void asegurar(inicial.filtros);
       // «¿Cómo se calcula?» abre directo (03-nov-2026): su hoja ya está bajada cuando se toca.
       void import("./hoja-calculo");
+      // El pop-up del recálculo (04-nov-2026): ya bajado cuando se elige otra tasa, pie o plazo.
+      void import("./recalculo");
     });
     return () => { vivo.current = false; cancelar(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -430,7 +505,9 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
   // LAS DOS CLASES (03-nov-2026): de entrada, los ✓ Comprar y, aparte, los − Ajustar de la noche con este pie que pasan los filtros
   // y el descuento máximo, sin los que ya convienen; «Ver solo ✓ Comprar» deja la primera (capa-negociar.ts › negociadosVisibles).
   const capa = capaVisible(filtros);
-  const negociadosDelPie = negociados[sinCuenta ? PIE_ABIERTO : filtros.pie];
+  // La de la noche (por pie) o, con otra combinación, la calculada (por comuna; si alguna falló, lo que llegó).
+  const negociadosDelPie = sinCuenta ? negociados[PIE_ABIERTO] : capaDeLaNoche(filtros) ? negociados[filtros.pie]
+    : capaCalculadaPara(filtros, capasCalc) ?? (progreso == null && fallidasAqui.length > 0 ? capaCalculadaPara(filtros, capasCalc, true) : null);
   const idsComprar = useMemo(() => new Set((universo ?? []).map((p) => p.avisoId)), [universo]);
   const visiblesNeg = useMemo(
     () => ordenarNegociados(negociadosVisibles(negociadosDelPie, filtros, idsComprar).filter((p) => !caidos.includes(p.avisoId) && !noLlegan.includes(p.avisoId)).map((p) => (movidos[p.avisoId] ? { ...p, neg: movidos[p.avisoId] } : p))),
@@ -453,11 +530,11 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
    *  ellos, null mientras llega. */
   const contarNegociados = useCallback((f: FiltrosPortal): number | null => {
     if (!capaVisible(f)) return 0;
-    const ns = negociadosRef.current[sinCuentaRef.current ? PIE_ABIERTO : f.pie];
+    const ns = sinCuentaRef.current ? negociadosRef.current[PIE_ABIERTO] : capaDeLaNoche(f) ? negociadosRef.current[f.pie] : capaCalculadaPara(f, capasCalcRef.current);
     if (!ns) return null;
     const u = universoPara(f, universosRef.current);
     return negociadosVisibles(ns, f, new Set((u ?? []).map((p) => p.avisoId))).filter((p) => !caidos.includes(p.avisoId)).length;
-  }, [universoPara, caidos]);
+  }, [universoPara, capaCalculadaPara, caidos]);
 
   // ── los cambios ──
   const ponerEnUrl = (f: FiltrosPortal, o: OrdenPortal) => {
@@ -477,7 +554,6 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
     if (fuente === "filtros" && f.negociar !== filtros.negociar) posthog?.capture(EVENTO_NEGOCIAR, propsNegociar(f.negociar, "filtros", contarNegociados(f)));
     setFiltros(f);
     setSel(null);
-    setCaido(null);
     setZonaPendiente(null);
     ponerEnUrl(f, orden);
     void asegurar(f);
@@ -538,7 +614,6 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
     setCarrusel(cercanos(todos, avisoId).map((p) => p.avisoId));
     setSel(avisoId);
     setError(null);
-    setCaido(null);
   }
   const abrirDesdeLista = (avisoId: string) => { setVista("mapa"); tocarPin(avisoId); };
 
@@ -613,6 +688,8 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
           if (usaRegalo(cuenta.saldo)) posthog?.capture(EVENTOS_ABIERTO.regaloUsado, { aviso_id: it.avisoId, analysis_id: d.id, modalidad: filtros.modalidad });
           // Listo: el pop-up lo abre solo (InformeEnCamino); si con los datos de hoy salió otro veredicto, lo dice primero.
           const listo = informeListo(paso0, { id: d.id, ruta: `/analisis/${d.id}`, veredicto: d.veredicto ?? null, score: d.score ?? null });
+          // Antes de ir al informe: «atrás» y «← Volver al mapa» vuelven a este mapa, a este pin y a su tarjeta (04-nov-2026).
+          recordarVuelta(it.avisoId, d.id);
           setNoDa(null);
           setConfirmar({ it, sin: false, analizando: true });
           setInforme(listo);
@@ -718,18 +795,43 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
       if (ap.tipo === "pin") {
         const hoy = compartido.neg;
         if (hoy && visiblesNeg.some((p) => p.avisoId === ap.avisoId && p.neg.p !== hoy.p)) setMovidos((m) => ({ ...m, [ap.avisoId]: hoy }));
-        setCarrusel(cercanos(todos, ap.avisoId).map((p) => p.avisoId));
+        // La hoja con la tarjeta grande (04-nov-2026); el pin queda elegido en el mapa, sin la tarjeta del carrusel.
         setSel(ap.avisoId);
+        setHojaComp({ tipo: "pin", avisoId: ap.avisoId });
         return;
       }
       setSel(null);
-      setCaido({ estado: ap.estado, depto: ap.depto, parecidos: ap.parecidos });
+      setHojaComp({ tipo: "caido", estado: ap.estado, depto: ap.depto, parecidos: ap.parecidos });
       posthog?.capture(EVENTOS_COMPARTIR.caido, { aviso_id: compartido.avisoId, estado: ap.estado, parecidos: ap.parecidos.length, modalidad: filtros.modalidad, sin_cuenta: sinCuenta, tope_negociar: compartido.tope ?? null });
       return;
     }
-    if (visibles.some((p) => p.avisoId === abrir)) setCarrusel(cercanos(visibles, abrir).map((p) => p.avisoId));
+    // El pin abierto, de cualquiera de las dos clases (04-nov-2026: un − Ajustar analizado vuelve a su tarjeta cuando llega la capa).
+    if (todos.some((p) => p.avisoId === abrir)) setCarrusel(cercanos(todos, abrir).map((p) => p.avisoId));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [universo, esperaCapa]);
+  }, [universo, esperaCapa, abrir, visiblesNeg.length]);
+  // VOLVER AL MAPA (04-nov-2026, volver-al-mapa.ts): los pines analizados en esta pestaña se suman a los de la cuenta —al volver con
+  // «atrás», la página puede venir del caché, con la cuenta de antes—, y si la página no trajo el pin abierto, el que quedó en la
+  // barra antes de ir al informe: su tarjeta se abre y el mapa se centra en él.
+  useEffect(() => {
+    let almacen: Storage | null = null;
+    try { almacen = window.sessionStorage; } catch { /* sin almacenamiento */ }
+    const deLaPestana = analizadosDeLaPestana(almacen);
+    if (Object.keys(deLaPestana).length) setAnalizadosAqui((m) => ({ ...deLaPestana, ...m }));
+    if (abrirProp || compartido) return;
+    const a = new URLSearchParams(window.location.search).get("a");
+    if (a) { setAbrir(a); setSel(a); setFocoUsado(false); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  /** Antes de ir a un informe desde un pin: esta entrada del historial queda con el pin (`a=`) y la pestaña anota de qué pin salió;
+   *  así «atrás» y «← Volver al mapa» vuelven a este mapa, a este pin y a su tarjeta (volver-al-mapa.ts). */
+  const recordarVuelta = (avisoId: string, informeId: string) => {
+    try {
+      const href = hrefDelMapa(window.location.pathname, window.location.search, avisoId);
+      window.history.replaceState(window.history.state, "", href);
+      anotarVolver(window.sessionStorage, { informeId, avisoId, href });
+    } catch { /* sin historial ni almacenamiento: el informe va sin «Volver al mapa» */ }
+  };
+
   // Lo que el enlace compartido trae una sola vez (la llegada y el código) sale de la barra apenas carga: una recarga no
   // vuelve a contar la vista, y quien copie la barra no reparte el código de otro.
   useEffect(() => {
@@ -745,12 +847,14 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
   const porId = useMemo(() => new Map<string, PinMapa>(todos.map((p) => [p.avisoId, p])), [todos]);
   // El mapa se centra en el depto compartido cuando el universo dice dónde está (o, si ya no está, donde estaba), una vez.
   const foco = useMemo(() => {
-    if (focoUsado || !compartido || !universo) return null;
+    // El depto compartido o, desde el 04-nov-2026, el pin abierto (al volver del informe, el mapa se centra en él).
+    const id = compartido?.avisoId ?? abrir;
+    if (focoUsado || !id || !universo) return null;
     // El pin, entre los que convienen o en la capa «Si negocias».
-    const p = porId.get(compartido.avisoId);
+    const p = porId.get(id);
     if (p) return { lat: p.lat, lng: p.lng };
-    return compartido.depto?.lat != null && compartido.depto.lng != null ? { lat: compartido.depto.lat, lng: compartido.depto.lng } : null;
-  }, [focoUsado, compartido, universo, porId]);
+    return compartido?.depto?.lat != null && compartido.depto.lng != null ? { lat: compartido.depto.lat, lng: compartido.depto.lng } : null;
+  }, [focoUsado, compartido, abrir, universo, porId]);
 
   // ── COMPARTIR (02-nov-2026) ──
   // EL ENLACE FIRMADO (03-nov-2026): un pedido trae la firma del servidor para ese aviso, el código de invitación de quien
@@ -893,16 +997,26 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [listaVuelta, universo]);
   const enCarrusel = carrusel.map((id) => porId.get(id)).filter((p): p is PinMapa => !!p && !caidos.includes(p.avisoId));
-  // Lo de abajo: «N deptos» con el chip; mientras se calcula, el avance (antes lo decía la tarjeta del número).
-  // Con una tasa elegida (30-oct-2026), mientras calcula: «Calculando con tu tasa…».
+  // Lo de abajo: «N deptos» con el chip; mientras llega el universo, «Calculando…» (con una tasa elegida, «Calculando con tu tasa…»).
+  // EL AVANCE POR COMUNAS VA EN EL POP-UP DEL RECÁLCULO (04-nov-2026, la pasada de Fabrizio): mientras hay avance, abajo no va nada.
   const conTasa = filtros.tasa != null;
-  const enCalculo = progreso ? (conTasa ? PORTAL_COPY.calculandoTasaComunas : PORTAL_COPY.calculandoComunas)(progreso.hechas, progreso.total) : conTasa ? PORTAL_COPY.calculandoTasa : PORTAL_COPY.calculando;
+  const enCalculo = conTasa ? PORTAL_COPY.calculandoTasa : PORTAL_COPY.calculando;
   // EL DESGLOSE (03-nov-2026): los ✓ Comprar y, aparte, los − Ajustar (0 sin capa). Antes de que llegue la capa, los que contó el
   // servidor con los filtros con que se entró; si la capa no llegó, sin ella. Mientras falte alguno, el avance.
   const nAjustar = !capa ? 0 : negociadosDelPie ? visiblesNeg.length : filtros === inicial.filtros && inicial.nAjustar != null ? inicial.nAjustar : capaFallo ? 0 : null;
-  const enCalculoAbajo = calculando || total == null || nAjustar == null ? enCalculo : null;
+  const enCalculoAbajo = progreso == null && (calculando || total == null || nAjustar == null) ? enCalculo : null;
   const desglose = enCalculoAbajo == null && total != null && nAjustar != null ? desgloseBarra(total, nAjustar, capa ? filtros.negociar : null) : null;
   const tarjeta = vista === "mapa" && sel && enCarrusel.some((p) => p.avisoId === sel);
+  // La hoja del compartido con el pin de hoy (con el precio negociado de hoy si se movió): el de `todos`.
+  const pinComp = hojaComp?.tipo === "pin" ? porId.get(hojaComp.avisoId) ?? null : null;
+  const casoComp: CasoCompartido | null = !hojaComp ? null : hojaComp.tipo === "caido" ? hojaComp : pinComp ? { tipo: "pin", pin: pinComp } : null;
+  /** Analizar (o registrarse) desde la hoja: se cierra, el pin abre su tarjeta y sigue el camino de siempre. */
+  const analizarDesdeHoja = (p: PinMapa) => {
+    setHojaComp(null);
+    setCarrusel(cercanos(todos, p.avisoId).map((x) => x.avisoId));
+    setSel(p.avisoId);
+    pedirAnalisis(p);
+  };
 
   return (
     <div className="ex" data-explorar="cliente" data-vista={vista} data-calculando={calculando ? "1" : undefined}>
@@ -960,7 +1074,7 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
               encuadre={`${claveUniverso(filtros)}|${filtros.comunas.join()}|${filtros.tipologias.join()}|${filtros.ufMin}|${filtros.ufMax}|${filtros.flujoPositivo}|${filtros.publicados}|${universo ? "1" : "0"}`}
               conZona={!!filtros.zona}
               onSeleccionar={tocarPin}
-              onTocarMapa={() => { setSel(null); setCaido(null); }}
+              onTocarMapa={() => setSel(null)}
               onMovido={(c) => setZonaPendiente(c)}
               onEstado={setMapa}
               sinCifras={sinCuenta}
@@ -977,17 +1091,7 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
               {universo && fallidasAqui.length > 0 ? PORTAL_COPY.errorComunas(fallidasAqui) : PORTAL_COPY.error} <button type="button" className="ex-enlace" onClick={() => void asegurar(filtros)}>{PORTAL_COPY.reintentar}</button>
             </p>
           )}
-          {caido && vista === "mapa" && !tarjeta ? (
-            <CompartidoCaido
-              estado={caido.estado}
-              tope={compartido?.tope ?? null}
-              depto={caido.depto}
-              parecidos={caido.parecidos}
-              sinCuenta={sinCuenta}
-              alAbrir={tocarPin}
-              alCerrar={() => setCaido(null)}
-            />
-          ) : tarjeta ? (
+          {tarjeta ? (
             <TarjetaPin
               pines={enCarrusel}
               seleccionado={sel!}
@@ -1001,6 +1105,7 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
               alGuardar={(id) => void alternarGuardado(id, "tarjeta")}
               alAnalizar={pedirAnalisis}
               alCompartir={(p) => void compartir(p, "tarjeta")}
+              alVerInforme={recordarVuelta}
               alPrepararCompartir={prepararCompartir}
               sinCuenta={sinCuenta}
               recien={recien}
@@ -1067,6 +1172,23 @@ export function ExplorarCliente({ inicial, abrir = null, autoAnalizar = null, or
       {registro && (
         <HojaRegistro pedido={registro.pedido} filtros={registro.filtros} orden={registro.orden} origen={origen} alCerrar={() => setRegistro(null)} />
       )}
+      {/* RECALCULAR CON OTRA TASA, PIE O PLAZO (04-nov-2026, la pasada de Fabrizio): el avance en un pop-up centrado, como el de
+          «Analizar», con un spinner; se cierra solo al terminar. Antes era la línea «Calculando con tu tasa… 9 de 25 comunas» de abajo. */}
+      {/* EL DEPTO COMPARTIDO COMO PROTAGONISTA (04-nov-2026): la hoja sobre el mapa centrado en el pin, sin la bienvenida encima. */}
+      {casoComp && (
+        <HojaCompartida
+          caso={casoComp}
+          tope={compartido?.tope ?? null}
+          sinCuenta={sinCuenta}
+          informe={casoComp.tipo === "pin" ? analizadosVivos[casoComp.pin.avisoId] ?? null : null}
+          generando={generando}
+          alAnalizar={analizarDesdeHoja}
+          alVerInforme={recordarVuelta}
+          alAbrirParecido={(id) => { setHojaComp(null); tocarPin(id); }}
+          alCerrar={() => setHojaComp(null)}
+        />
+      )}
+      {progreso && <PopupRecalculo texto={textoRecalculo(filtros)} hechas={progreso.hechas} total={progreso.total} />}
       {bienvenida && total != null && <Bienvenida n={inicial.convienen ?? inicial.n ?? total} negociados={inicial.negociadosGlobal} alCerrar={() => setBienvenida(false)} />}
       {calculo && <HojaCalculo tasa={inicial.tasa} elegida={filtros.tasa} sinCuenta={sinCuenta} alCerrar={() => setCalculo(false)} />}
 

@@ -257,6 +257,8 @@ export const COMPARTIR_COPY = {
     verMapa: "Ver el mapa",
     cerrar: "Cerrar",
   },
+  /** LA HOJA DEL DEPTO COMPARTIDO (04-nov-2026, la pasada de Fabrizio; compartido-hoja.tsx). */
+  hoja: { titulo: "Te compartieron este depto", verMapa: "Ver el mapa" },
 } as const;
 
 /** Los eventos de compartir (PostHog). La vista del enlace sale del servidor, `explorar_compartido_vista` (vista-entrada.ts ›

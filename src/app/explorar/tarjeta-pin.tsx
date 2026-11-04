@@ -101,7 +101,7 @@ export function VeredictosNegociado({ p }: { p: PinNegociado }) {
   );
 }
 
-export function TarjetaPin({ pines, seleccionado, uf, analizados, guardados, generando, error, alCambiar, alCerrar, alGuardar, alAnalizar, alCompartir, alPrepararCompartir, sinCuenta = false, recien = null }: {
+export function TarjetaPin({ pines, seleccionado, uf, analizados, guardados, generando, error, alCambiar, alCerrar, alGuardar, alAnalizar, alCompartir, alPrepararCompartir, alVerInforme, sinCuenta = false, recien = null }: {
   /** Los cercanos, el tocado primero. */
   pines: PinMapa[];
   seleccionado: string;
@@ -118,6 +118,8 @@ export function TarjetaPin({ pines, seleccionado, uf, analizados, guardados, gen
   /** «Compartir» (02-nov-2026), con y sin cuenta. */
   alCompartir: (p: PinMapa) => void;
   alPrepararCompartir?: (p: PinMapa) => void;
+  /** «Ver informe» de un ya analizado (04-nov-2026): antes de irse, la vuelta al mapa queda anotada (volver-al-mapa.ts). */
+  alVerInforme?: (avisoId: string, informeId: string) => void;
   /** Sin cuenta (estado C del mockup 6-puerta-e): el flujo, el cap rate y la UF por m² van borrosos y el botón pide registro. */
   sinCuenta?: boolean;
   /** Recién registrada desde este pin (30-oct-2026): su tarjeta se desbloquea con la banda; `regalo`, si tiene el análisis de regalo. */
@@ -219,7 +221,7 @@ export function TarjetaPin({ pines, seleccionado, uf, analizados, guardados, gen
                 <button type="button" className="ex-cta ex-cta-triada" onClick={() => alAnalizar(p)} data-explorar="registrate">{ABIERTO_COPY.cta}</button>
               ) : informe ? (
                 // «Ya lo analizaste · Ver informe» (03-nov-2026): la misma frase de la selección y del dashboard (YA_ANALIZADO).
-                <EnlaceCarga href={`/analisis/${informe}`} className="ex-cta ex-cta-enlace" data-explorar="ver-informe">{YA_ANALIZADO.texto} · {YA_ANALIZADO.enlace}</EnlaceCarga>
+                <EnlaceCarga href={`/analisis/${informe}`} className="ex-cta ex-cta-enlace" data-explorar="ver-informe" onClick={() => alVerInforme?.(p.avisoId, informe)}>{YA_ANALIZADO.texto} · {YA_ANALIZADO.enlace}</EnlaceCarga>
               ) : (
                 <button type="button" className="ex-cta" onClick={() => alAnalizar(p)} disabled={!!generando} {...botonOcupado(generando === p.avisoId)} data-explorar="analizar">
                   {generando === p.avisoId ? GUIA.analizando : esNegociado(p) && conCifrasNegociado(p) ? NEGOCIAR_COPY.analizarA(p.neg.p) : nueva && recien.regalo ? PORTAL_COPY.vuelta.analizarRegalo : PORTAL_COPY.analizar}

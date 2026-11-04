@@ -314,7 +314,9 @@ export async function runExplorarTier(): Promise<{ hard: number }> {
   if (!/universoDeLaNoche\(filtros\) \? nocheExplorar\(filtros\.pie, filtros\.plazo\)\.catch\(\(\) => null\) : Promise\.resolve\(null\)/.test(pagX) || /universoCalculado|pinesCalculados/.test(pagX)) F("10 · la página calcula una combinación nueva en el SSR (tardaría segundos antes del primer byte)");
   if (!/if \(!universoDeLaNoche\(inicial\.filtros\)\) void asegurar\(inicial\.filtros\);/.test(cli)) F("10 · con una combinación nueva el navegador no pide los pines enseguida");
   // ⚠ ACTA (30-oct-2026, goal «la tasa editable en Filtros») · con una tasa elegida dice «Calculando con tu tasa…»; sin ella, como siempre.
-  if (!/\(conTasa \? PORTAL_COPY\.calculandoTasaComunas : PORTAL_COPY\.calculandoComunas\)\(progreso\.hechas, progreso\.total\)/.test(cli)) F("10 · el mapa no dice «Calculando…» mientras calcula");
+  // ⚠ ACTA (04-nov-2026, la pasada de Fabrizio por /explorar, tier EXPLORAR-PASADA-0411) · el avance por comunas va en el pop-up del recálculo («Franco está recalculando con tu tasa de 5 %» y
+  // «9 de 25 comunas»); abajo, «Calculando…» (o «Calculando con tu tasa…») solo mientras llega el universo.
+  if (!/const enCalculo = conTasa \? PORTAL_COPY\.calculandoTasa : PORTAL_COPY\.calculando;/.test(cli) || !/\{progreso && <PopupRecalculo texto=\{textoRecalculo\(filtros\)\} hechas=\{progreso\.hechas\} total=\{progreso\.total\} \/>\}/.test(cli)) F("10 · el mapa no dice «Calculando…» mientras calcula");
   const hojaF = codigo("src/app/explorar/hoja-filtros.tsx");
   if (!/\{PIES_EXPLORAR\.map\(\(p\) => <option key=\{p\} value=\{p\}>/.test(hojaF) || !/\{PLAZOS_EXPLORAR\.map\(\(z\) => <option key=\{z\} value=\{z\}>/.test(hojaF)) F("10 · los filtros de pie y plazo no ofrecen las listas enteras");
   const sqlC = leer("supabase/migrations/20261024_explorar_combos.sql");
@@ -331,7 +333,8 @@ export async function runExplorarTier(): Promise<{ hard: number }> {
     F("10 · lo pesado no va de a 3 pedidos, o el guardado no va de a 200 avisos y de a un pedido");
   const portalSrv = codigo("src/lib/explorar/portal-servidor.ts");
   if (!/const leidas = await Promise\.all\(comunas\.map\(\(c\) => leer\(c\)\)\);/.test(portalSrv) || /leer\(c\)\.catch\(/.test(portalSrv)) F("10 · una zona que falla se disimula como zona vacía (y se guardan avisos sin veredicto)");
-  if (!/const guardado = guardarCombos\(admin, clave, nuevos\);\s*if \(deps\.diferir\) deps\.diferir\(guardado\.catch\(/.test(portalSrv) || !/\{ diferir: waitUntil \}\)/.test(codigo("src/app/api/explorar/route.ts")))
+  // ⚠ ACTA (04-nov-2026, la pasada de Fabrizio por /explorar, tier EXPLORAR-PASADA-0411) · la ruta pide también los − Ajustar (`conCapa`), con el mismo guardado en segundo plano.
+  if (!/const guardado = guardarCombos\(admin, clave, nuevos\);\s*if \(deps\.diferir\) deps\.diferir\(guardado\.catch\(/.test(portalSrv) || !/universoYCapaCalculados\(admin, \{ \.\.\.q, comunas \}, new Date\(\), cuenta, \{ diferir: waitUntil, conCapa \}\)/.test(codigo("src/app/api/explorar/route.ts")))
     F("10 · lo calculado no se guarda en segundo plano (compite con la lectura de la comuna siguiente)");
   const cliX = codigo("src/app/explorar/explorar-cliente.tsx");
   if (!/const COMUNAS_A_LA_VEZ = 2;/.test(cliX)) F("10 · el navegador pide más de 2 comunas a la vez");

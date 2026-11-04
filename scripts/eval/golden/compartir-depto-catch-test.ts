@@ -196,11 +196,14 @@ export async function runCompartirDeptoTier(): Promise<{ hard: number }> {
       if (cp.aperturaCompartida({ avisoId: AVISO, estado: null, depto: DEPTO, visibles: vis.filter((p) => p.avisoId !== AVISO) }).tipo !== "caido") F("1 · un aviso que no está abre una tarjeta igual");
       // ⚠ ACTA (03-nov-2026): la apertura mira también la capa «Si negocias» (los cercanos salen de los dos) y, si el servidor
       // trae el precio de hoy de un negociado, lo pone antes de abrir.
-      if (!/const ap = aperturaCompartida\(\{ avisoId: compartido\.avisoId, estado: compartido\.estado, depto: compartido\.depto, visibles, negociados: visiblesNeg \}\);\s*if \(ap\.tipo === "pin"\) \{\s*const hoy = compartido\.neg;\s*if \(hoy && visiblesNeg\.some\(\(p\) => p\.avisoId === ap\.avisoId && p\.neg\.p !== hoy\.p\)\) setMovidos\(\(m\) => \(\{ \.\.\.m, \[ap\.avisoId\]: hoy \}\)\);\s*setCarrusel\(cercanos\(todos, ap\.avisoId\)\.map\(\(p\) => p\.avisoId\)\);\s*setSel\(ap\.avisoId\);\s*return;\s*\}/.test(cliente)) F("1 · el navegador no abre la tarjeta del pin del enlace con sus cercanos (o no toma el precio de hoy de un negociado)");
+      if (!/const ap = aperturaCompartida\(\{ avisoId: compartido\.avisoId, estado: compartido\.estado, depto: compartido\.depto, visibles, negociados: visiblesNeg \}\);\s*if \(ap\.tipo === "pin"\) \{\s*const hoy = compartido\.neg;\s*if \(hoy && visiblesNeg\.some\(\(p\) => p\.avisoId === ap\.avisoId && p\.neg\.p !== hoy\.p\)\) setMovidos\(\(m\) => \(\{ \.\.\.m, \[ap\.avisoId\]: hoy \}\)\);\s*setSel\(ap\.avisoId\);\s*setHojaComp\(\{ tipo: "pin", avisoId: ap\.avisoId \}\);\s*return;\s*\}/.test(cliente)) F("1 · el navegador no abre la hoja del pin del enlace (o no toma el precio de hoy de un negociado)");
+      // ⚠ ACTA (04-nov-2026, la pasada de Fabrizio por /explorar, tier EXPLORAR-PASADA-0411) · el enlace abre la hoja «Te compartieron este depto» con la tarjeta grande (compartido-hoja.tsx), no la
+      // tarjeta del carrusel con sus cercanos; el pin queda elegido en el mapa.
       if (!/if \(compartidoResuelto\.current \|\| esperaCapa\) return;\s*compartidoResuelto\.current = true;/.test(cliente)) F("1 · el enlace compartido se resuelve más de una vez (cada universo nuevo volvería a abrir la tarjeta)");
       // El mapa: centrado en el pin (entre los que convienen o en la capa), una vez.
-      if (!/const p = porId\.get\(compartido\.avisoId\);\s*if \(p\) return \{ lat: p\.lat, lng: p\.lng \};/.test(cliente) || !/const porId = useMemo\(\(\) => new Map<string, PinMapa>\(todos\.map\(\(p\) => \[p\.avisoId, p\]\)\), \[todos\]\);/.test(cliente)) F("1 · el foco del mapa no es el pin del enlace");
-      if (!/foco=\{foco\}\s*onFoco=\{\(\) => setFocoUsado\(true\)\}/.test(cliente) || !/if \(focoUsado \|\| !compartido \|\| !universo\) return null;/.test(cliente)) F("1 · el mapa no recibe el foco o lo recibe más de una vez");
+      // ⚠ ACTA (04-nov-2026, la pasada de Fabrizio por /explorar, tier EXPLORAR-PASADA-0411) · el foco es el depto compartido o, si no hay enlace, el pin abierto (al volver del informe).
+      if (!/const id = compartido\?\.avisoId \?\? abrir;[\s\S]{0,120}const p = porId\.get\(id\);\s*if \(p\) return \{ lat: p\.lat, lng: p\.lng \};/.test(cliente) || !/const porId = useMemo\(\(\) => new Map<string, PinMapa>\(todos\.map\(\(p\) => \[p\.avisoId, p\]\)\), \[todos\]\);/.test(cliente)) F("1 · el foco del mapa no es el pin del enlace");
+      if (!/foco=\{foco\}\s*onFoco=\{\(\) => setFocoUsado\(true\)\}/.test(cliente) || !/if \(focoUsado \|\| !id \|\| !universo\) return null;/.test(cliente)) F("1 · el mapa no recibe el foco o lo recibe más de una vez");
       if (!/const f = focoRef\.current;\s*if \(f\) \{ map\.setCenter\(f\); map\.setZoom\(ZOOM_FOCO\); focoRef\.current = null; cb\.current\.onFoco\?\.\(\); return; \}\s*if \(ps\.length === 0\)/.test(mapa)) F("1 · el mapa no se centra en el foco antes de encuadrar los pines");
       if (!/useEffect\(\(\) => \{ if \(mapRef\.current && focoRef\.current\) \{ encuadrarRef\.current\(\); dibujarRef\.current\(\); \} \}, \[foco\]\);/.test(mapa)) F("1 · el foco que llega con el universo no centra el mapa (o lo centra dos veces)");
       // Lo que se usa una vez sale de la barra (la recarga no vuelve a contar la vista ni a repartir el código).
@@ -375,7 +378,8 @@ export async function runCompartirDeptoTier(): Promise<{ hard: number }> {
       if (titulo(vacia) !== cp.COMPARTIR_COPY.caido.noDa || !vacia.includes(cp.COMPARTIR_COPY.caido.sinParecidos)) F("5 · sin parecidos (o si ya no conviene) la tarjeta no lo dice");
       // El de un negociado nunca estuvo entre los que convienen al precio publicado: la frase no dice «ya no», y dice a qué precio.
       if (/\bya no\b/i.test(cp.COMPARTIR_COPY.caido.noDa) || !cp.COMPARTIR_COPY.caido.noDa.includes(AL_PRECIO_PUBLICADO)) F(`5 · la tarjeta de «no conviene» afirma que convenía o no dice a qué precio: «${cp.COMPARTIR_COPY.caido.noDa}»`);
-      if (!/alAbrir=\{tocarPin\}/.test(cliente) || !/setCaido\(\{ estado: ap\.estado, depto: ap\.depto, parecidos: ap\.parecidos \}\);/.test(cliente)) F("5 · el navegador no muestra la tarjeta de «ya no está» o tocar un parecido no abre su tarjeta");
+      // ⚠ ACTA (04-nov-2026, la pasada de Fabrizio por /explorar, tier EXPLORAR-PASADA-0411) · lo de «ya no está» va en la misma hoja del compartido; tocar un parecido la cierra y abre su tarjeta.
+      if (!/alAbrirParecido=\{\(id\) => \{ setHojaComp\(null\); tocarPin\(id\); \}\}/.test(cliente) || !/setHojaComp\(\{ tipo: "caido", estado: ap\.estado, depto: ap\.depto, parecidos: ap\.parecidos \}\);/.test(cliente)) F("5 · el navegador no muestra la tarjeta de «ya no está» o tocar un parecido no abre su tarjeta");
       if (!/return \{ avisoId: c\.avisoId, estado: f \? \(f\.estado === "despublicado" \? "despublicado" : null\) : null, depto: f\?\.depto \?\? null \};/.test(pagina)) F("5 · la página no le dice al navegador que el aviso ya no está publicado");
     }
 
@@ -506,7 +510,8 @@ export async function runCompartirDeptoTier(): Promise<{ hard: number }> {
       const ap1 = cp.aperturaCompartida({ avisoId: AVISO, estado: null, depto: NUNOA, visibles: [pin(OTRO)], negociados: [negP] });
       const ap2 = cp.aperturaCompartida({ avisoId: AVISO, estado: "no-llega", depto: NUNOA, visibles: [pin(OTRO)], negociados: [negP] });
       if (ap1.tipo !== "pin" || ap2.tipo !== "caido" || ap2.estado !== "no-llega" || ap2.parecidos.length !== 1) F("7 · la apertura no abre el pin del negociado (o abre uno que ya no llega)");
-      if (!/const esperaCapa = !!compartido && compartido\.tope != null && compartido\.estado == null && !negociadosDelPie && !capaFallo;/.test(cliente) || !/\}, \[universo, esperaCapa\]\);/.test(cliente) || !/if \(vivo\.current\) setCapaFallo\(true\);/.test(cliente)) F("7 · el navegador abre el enlace de un negociado sin esperar la capa (o la espera para siempre si falla)");
+      // ⚠ ACTA (04-nov-2026, la pasada de Fabrizio por /explorar, tier EXPLORAR-PASADA-0411) · el efecto también corre con el pin abierto y cuando llega la capa (un − Ajustar abierto al volver).
+      if (!/const esperaCapa = !!compartido && compartido\.tope != null && compartido\.estado == null && !negociadosDelPie && !capaFallo;/.test(cliente) || !/\}, \[universo, esperaCapa, abrir, visiblesNeg\.length\]\);/.test(cliente) || !/if \(vivo\.current\) setCapaFallo\(true\);/.test(cliente)) F("7 · el navegador abre el enlace de un negociado sin esperar la capa (o la espera para siempre si falla)");
       if (!/if \(compartido\.estado === "no-llega"\) setNoLlegan\(\(xs\) => \[\.\.\.xs, compartido\.avisoId\]\);/.test(cliente)) F("7 · el que ya no llega sigue en la capa");
       const caidoHtml = renderToStaticMarkup(createElement(CompartidoCaido, { estado: "no-llega", tope: 5, depto: NUNOA, parecidos: [pin(OTRO)], sinCuenta: true, alAbrir: () => {}, alCerrar: () => {} }));
       const tituloCaido = /data-explorar="caido-titulo">([^<]*)<\/b>/.exec(caidoHtml)?.[1] ?? "";
@@ -607,7 +612,7 @@ export async function runCompartirDeptoTier(): Promise<{ hard: number }> {
     console.log(`  ✗ ${fallas.length} falla(s) dura(s):`);
     for (const f of fallas.slice(0, 40)) console.log(`     · ${f}`);
   } else {
-    console.log("  ✓ VERDE — el enlace abre su pin (tarjeta y mapa centrado, una vez); la vista previa es la línea, el precio y el chip, solo para los robots; el registro queda C · depto y acredita a los dos; la vista y el botón se miden; el que ya no está ofrece parecidos; el texto es el del goal");
+    console.log("  ✓ VERDE — el enlace abre su pin (la hoja «Te compartieron este depto» y el mapa centrado, una vez); la vista previa es la línea, el precio y el chip, solo para los robots; el registro queda C · depto y acredita a los dos; la vista y el botón se miden; el que ya no está ofrece parecidos; el texto es el del goal");
   }
   return { hard: fallas.length };
 }
