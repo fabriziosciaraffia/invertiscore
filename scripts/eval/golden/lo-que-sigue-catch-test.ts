@@ -212,11 +212,13 @@ export function runLoQueSigueTier(): { hard: number } {
     // vencimiento nuevo dice «si te vas, guarda el enlace» —la oferta persiste en el informe— a propósito.
     if (/guard[aá] (tu|el|este) informe/i.test(t)) F(`5 · «guarda tu informe» en el copy: «${t}»`);
   }
-  // ⚠ ACTA (08-oct-2026, pedido de Fabrizio) · la despedida dice «Vence en 24 horas.», sin la hora y sin
-  // «y no vuelve». Reemplaza a «Vence a las 19:04 del 09-oct-2026.», que duró un commit sin llegar a master.
-  // En ROJO antes del cambio; mutaciones en ROJO: la frase vieja, el ticket diciendo otra cosa.
-  if ((TICKET_PACK.despedida as unknown) !== "Vence en 24 horas." || TICKET_PACK.despedidaAhorro("$15.000") !== "Son $15.000 menos en tus próximos tres análisis. ¿La dejas pasar?") F("5 · la despedida no es la frase aprobada («Vence en 24 horas.»), en tuteo");
-  if (!/<p className="lqs-despedida-t">\{TICKET_PACK\.despedida\}<\/p>/.test(sinComentarios(leer("src/components/lo-que-sigue/TicketPack.tsx")))) F("5 · el ticket no dice la despedida aprobada");
+  // ⚠ ACTA (04-nov-2026, decisión de Fabrizio, auditoría de promesas parte 1) · la despedida dice la HORA REAL del
+  // vencimiento («Vence mañana a las 11:17.»), con `cuandoVence(createdAt)`: «Vence en 24 horas.» era fijo y el ticket de
+  // la cuenta nueva corre desde el registro, así que a veces quedaban menos. Reemplaza al acta del 08-oct-2026 («Vence en
+  // 24 horas.», sin la hora). El predicado viejo exigía la frase literal: se reescribe, no se afloja. Verificado en ROJO
+  // en DATOS-Y-PLATA §8: el texto fijo de vuelta y el ticket sin `cuandoVence`.
+  if (TICKET_PACK.despedida("mañana a las 11:17") !== "Vence mañana a las 11:17." || TICKET_PACK.despedidaAhorro("$15.000") !== "Son $15.000 menos en tus próximos tres análisis. ¿La dejas pasar?") F("5 · la despedida no dice la hora real («Vence mañana a las 11:17.»), en tuteo");
+  if (!/<p className="lqs-despedida-t">\{TICKET_PACK\.despedida\(cuandoVence\(createdAt\)\)\}<\/p>/.test(sinComentarios(leer("src/components/lo-que-sigue/TicketPack.tsx")))) F("5 · el ticket no dice la despedida con la hora real del vencimiento");
   if ("fechaVencimiento" in OfertaPack) F("5 · queda `fechaVencimiento`, que ya no lee nadie");
   // Las frases aprobadas, literales (30-sep-2026; el banner y el ticket, del 08-oct-2026).
   // ⚠ ACTA (08-oct-2026, segunda pasada) · el banner a la mitad de alto: «Accede gratis» (en negrita) · solo

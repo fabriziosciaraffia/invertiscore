@@ -381,7 +381,7 @@ export function TicketPack({ ctx, createdAt, correoSesion = null, conSesion = fa
             </form>
             <div className="lqs-cara" data-activa={cara === "despedida" ? "1" : "0"}>
               <div className="lqs-cab"><p className="lqs-tk-ojo">{TICKET_PACK.linea(precio)}</p><span /></div>
-              <p className="lqs-despedida-t">{TICKET_PACK.despedida}</p>
+              <p className="lqs-despedida-t">{TICKET_PACK.despedida(cuandoVence(createdAt))}</p>
               <p className="lqs-despedida-s">{TICKET_PACK.despedidaAhorro(fmtCLP(PACK_AHORRO_CLP))}</p>
               <button type="button" className="lqs-rojo" onClick={() => { setCara("ticket"); setError(null); }}>{TICKET_PACK.comprar}</button>
               <button type="button" className="lqs-tinta" onClick={() => cerrarDelTodo("si-seguir")}>{TICKET_PACK.siSeguir}</button>

@@ -110,8 +110,9 @@ export const TICKET_PACK = {
   errorPago: "No pudimos abrir el pago. Intenta de nuevo.",
   vencido: "Ese precio venció y no vuelve.",
   seguir: "Seguir leyendo",
-  /** 08-oct-2026, pedido de Fabrizio: sin la hora y sin «y no vuelve». */
-  despedida: "Vence en 24 horas.",
+  /** LA HORA REAL (04-nov-2026, auditoría de promesas, decisión de Fabrizio): «Vence en 24 horas.» era fijo, y el ticket de la
+   *  cuenta nueva corre desde el registro, así que a veces quedaban menos. Ahora «Vence mañana a las 11:17.» (cuandoVence). */
+  despedida: (cuando: string) => `Vence ${cuando}.`,
   despedidaAhorro: (ahorro: string) => `Son ${ahorro} menos en tus próximos tres análisis. ¿La dejas pasar?`,
   comprar: "Quiero los 3 análisis",
   siSeguir: "Sí, seguir leyendo",
