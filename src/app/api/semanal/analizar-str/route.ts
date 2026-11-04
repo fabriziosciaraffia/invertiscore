@@ -31,6 +31,7 @@ import { capturarAnalisisCreado } from "@/lib/medicion-activacion";
 import { capturarServidor } from "@/lib/posthog-servidor";
 import { esPiePopup, esPlazoPopup } from "@/lib/explorar/explorar";
 import { eventoExplorarAnaliza } from "@/lib/explorar/servidor";
+import { devolverCobro } from "@/lib/access";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // «Analizar este» en un depto de la selección de RENTA CORTA (14-oct-2026, decisión de Fabrizio). El bloque de renta
@@ -201,7 +202,7 @@ export async function POST(request: Request) {
               },
               async cobrar() {
                 const c = await ensureCreditCharged({ user });
-                return c.ok ? { ok: true, mode: c.mode } : { ok: false, status: c.response.status, error: "sin-creditos" };
+                return c.ok ? { ok: true, mode: c.mode, devolucion: c.devolucion } : { ok: false, status: c.response.status, error: "sin-creditos" };
               },
               async marcarCobrado(mode) {
                 await admin.from("semanal_str_analisis").update({ cobrado_at: new Date().toISOString(), charge_mode: mode }).match(clave);
@@ -234,6 +235,10 @@ export async function POST(request: Request) {
               },
               async marcarCreado(id) {
                 await admin.from("semanal_str_analisis").update({ analysis_id: id, creado_at: new Date().toISOString() }).match(clave);
+              },
+              // La creación falló (04-nov-2026): el crédito vuelve, a su lote si se sabe (access.ts › devolverCobro).
+              async devolver(d) {
+                await devolverCobro(user.id, d);
               },
               async soltar() {
                 await admin.from("semanal_str_analisis").delete().match(clave).is("analysis_id", null);
@@ -274,6 +279,11 @@ export async function POST(request: Request) {
     if (r.estado === "sin-preparar") return salir(plausibleFallo ?? NextResponse.json({ error: r.error }, { status: r.status }));
     if (r.estado === "sin-cobro") return salir(NextResponse.json({ error: r.error }, { status: r.status }));
     if (r.estado === "en-curso") return salir(NextResponse.json({ error: "en-curso" }, { status: 409 }));
+    // No salió y el crédito volvió (04-nov-2026): el pop-up dice que falló, sin cobro.
+    if (r.estado === "fallo") {
+      captureApiError(r.error, { ruta: RUTA, operacion: "analizar-str-crear", userId: user.id, tags: { credito: "devuelto" } });
+      return salir(NextResponse.json({ error: "interno" }, { status: 500 }));
+    }
     if (r.estado === "no-da") {
       return salir(NextResponse.json({ estado: "no-da", alternativas: r.alternativas, publicacion, porQue: porQueNoDa(r.zona, r.fino), saldo: saldoAlMedir }));
     }

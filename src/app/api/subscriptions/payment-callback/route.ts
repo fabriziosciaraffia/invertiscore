@@ -32,6 +32,8 @@ const RAZONES_REINTENTABLES = new Set([
   "payments_insert_error",
   "no_payment_id",
   "user_unresolved",
+  // El ledger no pudo acreditar (04-nov-2026): otro intento puede.
+  "grant_error",
 ]);
 
 /** Subconjunto de payment/getStatus que consume este handler. */

@@ -29,6 +29,7 @@ import { AMBAS_ENABLED } from "@/lib/ambas-flag";
 import { desdeBodyLtr } from "@/lib/plausibilidad";
 import { redondearPiePct } from "@/lib/analysis/pie-input-data";
 import { persistSubmitTiming, type SubmitTiming } from "@/lib/pipeline-timing";
+import { devolverCobro, type Devolucion } from "@/lib/access";
 
 // Goal C: techo explícito. El response sale en segundos; el waitUntil (emails y timing) comparte
 // esta invocación. Hasta el 25-sep-2026 también corría ahí la prosa IA, retirada del informe.
@@ -42,6 +43,8 @@ export async function POST(request: Request) {
   // Frontera del INSERT — ver el comentario donde se pone en true. Una falla con
   // `filaCreada === false` no deja rastro en la base.
   let filaCreada = false;
+  // El cobro de este análisis, para devolverlo si el informe no se crea (04-nov-2026, access.ts › devolverCobro).
+  let cobro: { userId: string; devolucion: Devolucion } | null = null;
 
   try {
     // Timing por fase (Goal A): solo medición, se persiste fail-soft en el
@@ -132,6 +135,7 @@ export async function POST(request: Request) {
       if (!charge.ok) return charge.response;
       prepaidNeedClaim = charge.prepaidNeedClaim;
       chargeMode = charge.mode;
+      cobro = { userId: user.id, devolucion: charge.devolucion };
     }
     timing.cobro_ms = Date.now() - tCobro;
 
@@ -186,6 +190,8 @@ export async function POST(request: Request) {
         tags: { fase: "insert-rechazado", fila_creada: "no" },
         extra: { comuna: body.comuna, tipo_analisis: "long-term" },
       });
+      // Sin fila no hay informe: el crédito vuelve (04-nov-2026).
+      if (cobro) await devolverCobro(cobro.userId, cobro.devolucion);
       return NextResponse.json(
         { error: "Error al guardar el análisis" },
         { status: 500 },
@@ -308,6 +314,8 @@ export async function POST(request: Request) {
     return NextResponse.json(data);
   } catch (error) {
     console.error("API error:", error);
+    // Falló antes del insert (el motor, la mediana): no hay informe, así que el crédito vuelve (04-nov-2026).
+    if (cobro && !filaCreada) await devolverCobro(cobro.userId, cobro.devolucion);
     // El tag `fila_creada` es lo que hace útil este evento. Si es "no", el
     // usuario intentó generar un análisis y NO existe registro de ese intento en
     // ninguna tabla — este evento de Sentry es la única evidencia de que ocurrió.

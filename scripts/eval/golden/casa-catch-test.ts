@@ -88,7 +88,10 @@ export function runCasaTier(): { hard: number } {
   if (reg.tipo !== "regalo" || reg.vence !== "2026-12-01T15:00:00Z") F("2 · el regalo no trae su vencimiento");
   // ⚠ ACTA (16-oct-2026, goal «la puerta B») · los regalos son tres (registrarse, reactivación y el viejo de los 14 días):
   // el vencimiento sale de sus lotes, cualquiera de las tres fuentes (regalo-alta.ts › FUENTES_REGALO).
-  if (!/const regalos = vivos\.filter\(\(g\) => g\.source != null && FUENTES_REGALO\.has\(g\.source\)\);/.test(saldoFuente()) || !/regaloVence: regalos\.filter\(\(g\) => g\.expires_at\)/.test(saldoFuente())) F("2 · el vencimiento del regalo no sale de su lote");
+  // ⚠ ACTA (04-nov-2026, auditoría de promesas parte 1) · la bienvenida sin usar de las cuentas viejas entra como un regalo más
+  // (FUENTE_BIENVENIDA, sin vencimiento; DATOS-Y-PLATA §6): los regalos son esas fuentes o la bienvenida. El vencimiento sigue
+  // saliendo de los lotes. El predicado viejo pedía el filtro sin la bienvenida.
+  if (!/const regalos = vivos\.filter\(\(g\) => g\.source != null && \(FUENTES_REGALO\.has\(g\.source\) \|\| g\.source === FUENTE_BIENVENIDA\)\);/.test(saldoFuente()) || !/regaloVence: regalos\.filter\(\(g\) => g\.expires_at\)/.test(saldoFuente())) F("2 · el vencimiento del regalo no sale de su lote");
   // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockup 3b-dashboard.html) · el banner y el saldo plano se retiraron: la píldora del
   // saludo dice «1 análisis de regalo» (lib/casa/reglas.ts › pildoraSaldo, tier PUERTA-B-DASHBOARD §1) y cuándo vence lo
   // dice «Estás dentro» (tier PUERTA-B-MOCKUPS). El vencimiento sigue saliendo del lote (arriba).

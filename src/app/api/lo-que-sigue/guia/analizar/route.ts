@@ -33,6 +33,7 @@ import { esPiePopup, esPlazoPopup } from "@/lib/explorar/explorar";
 import { eventoExplorarAnaliza } from "@/lib/explorar/servidor";
 import { esTopeNegociar, precioNegociadoValido } from "@/lib/explorar/capa-negociar";
 import { verificarNegociado } from "@/lib/avisos/negociar";
+import { devolverCobro } from "@/lib/access";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // «Analizar este» (30-sep-2026): el informe de un aviso de la guía, sin wizard, con un crédito del
@@ -234,7 +235,7 @@ export async function POST(request: Request) {
           },
           async cobrar() {
             const c = await ensureCreditCharged({ user });
-            return c.ok ? { ok: true, mode: c.mode } : { ok: false, status: c.response.status, error: "sin-creditos" };
+            return c.ok ? { ok: true, mode: c.mode, devolucion: c.devolucion } : { ok: false, status: c.response.status, error: "sin-creditos" };
           },
           async marcarCobrado(mode) {
             await admin.from("guia_analisis").update({ cobrado_at: new Date().toISOString(), charge_mode: mode }).match(clave);
@@ -277,6 +278,10 @@ export async function POST(request: Request) {
           async marcarCreado(id) {
             await admin.from("guia_analisis").update({ analysis_id: id, creado_at: new Date().toISOString() }).match(clave);
           },
+          // La creación falló (04-nov-2026): el crédito vuelve, a su lote si se sabe (access.ts › devolverCobro).
+          async devolver(d) {
+            await devolverCobro(user.id, d);
+          },
           async soltar() {
             await admin.from("guia_analisis").delete().match(clave).is("analysis_id", null);
           },
@@ -288,6 +293,11 @@ export async function POST(request: Request) {
     if (r.estado === "sin-preparar") return salir(plausibleFallo ?? negociadoFallo ?? NextResponse.json({ error: r.error }, { status: r.status }));
     if (r.estado === "sin-cobro") return salir(NextResponse.json({ error: r.error }, { status: r.status }));
     if (r.estado === "en-curso") return salir(NextResponse.json({ error: "en-curso" }, { status: 409 }));
+    // No salió y el crédito volvió (04-nov-2026): el pop-up dice que falló, sin cobro.
+    if (r.estado === "fallo") {
+      captureApiError(r.error, { ruta: RUTA, operacion: "analizar-aviso-crear", userId: user.id, tags: { credito: "devuelto" } });
+      return salir(NextResponse.json({ error: "interno" }, { status: 500 }));
+    }
     // Ya estaba creado (otro clic, otra pestaña): su veredicto se lee de la fila.
     if (!delInforme) {
       const { data: fila } = await admin.from("analisis").select("results").eq("id", r.id).maybeSingle();

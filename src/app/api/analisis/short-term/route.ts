@@ -24,6 +24,7 @@ import { guardarPerfil, perfilDesdeStr } from "@/lib/lo-que-sigue/perfil";
 import { AMBAS_ENABLED } from "@/lib/ambas-flag";
 import { desdeBodyStr } from "@/lib/plausibilidad";
 import { persistSubmitTiming, type SubmitTiming } from "@/lib/pipeline-timing";
+import { devolverCobro, type Devolucion } from "@/lib/access";
 
 // Goal F: techo explícito 300s. Lo subió la prosa STR en el waitUntil (retirada del informe el
 // 25-sep-2026); AirROI solo pedía 120.
@@ -32,6 +33,10 @@ export const maxDuration = 300;
 // ─── POST handler ──────────────────────────────────────
 
 export async function POST(request: Request) {
+  // El cobro de este análisis, para devolverlo si el informe no se crea (04-nov-2026, access.ts › devolverCobro): AirROI
+  // caído, el motor o el insert. `filaCreada` marca desde cuándo ya no se devuelve.
+  let cobro: { userId: string; devolucion: Devolucion } | null = null;
+  let filaCreada = false;
   try {
     // Timing por fase (Goal A): solo medición, persistencia fail-soft post-insert.
     const t0 = Date.now();
@@ -99,6 +104,7 @@ export async function POST(request: Request) {
       if (!charge.ok) return charge.response;
       prepaidNeedClaim = charge.prepaidNeedClaim;
       chargeMode = charge.mode;
+      cobro = { userId: user.id, devolucion: charge.devolucion };
     }
     timing.cobro_ms = Date.now() - tCobro;
 
@@ -117,7 +123,10 @@ export async function POST(request: Request) {
     );
     timing.mediana_ms = Date.now() - tMediana;
     const built = await buildShortTermAnalysisRow(body, ufValue, medianaComuna, timing);
-    if (!built.ok) return built.response;
+    if (!built.ok) {
+      if (cobro) await devolverCobro(cobro.userId, cobro.devolucion);
+      return built.response;
+    }
 
     // 7. Insert en Supabase (misma tabla que LTR). El row computado viene del
     // helper; acá decidimos user_id/creator_name/is_premium (cobrado → premium
@@ -152,11 +161,13 @@ export async function POST(request: Request) {
 
     if (error) {
       console.error("[short-term] Supabase insert error:", error);
+      if (cobro) await devolverCobro(cobro.userId, cobro.devolucion);
       return NextResponse.json(
         { error: "Error al guardar el análisis" },
         { status: 500 },
       );
     }
+    filaCreada = true;
     // «Lo que sigue» (28-sep-2026): el perfil de inversión, guardado con el análisis (espejo LTR).
     try {
       await guardarPerfil(createAnonPipelineClient(), perfilDesdeStr(body, (built.row as { resumen?: string | null }).resumen ?? null, {
@@ -235,6 +246,7 @@ export async function POST(request: Request) {
     return NextResponse.json(data);
   } catch (error) {
     console.error("[short-term] API error:", error);
+    if (cobro && !filaCreada) await devolverCobro(cobro.userId, cobro.devolucion);
     captureApiError(error, { ruta: "POST /api/analisis/short-term", operacion: "crear-analisis-str" });
     return NextResponse.json(
       { error: "Error interno del servidor" },

@@ -302,10 +302,17 @@ export async function processSubscriptionCharge(
     if (!existingGrant) {
       // grantCredits devuelve el id del lote (o null). Acá `granted` sigue siendo
       // el booleano "¿este llamado insertó un lote?" que expone ProcessChargeResult.
-      granted =
-        (await grantCredits(userId, match.key, match.product.capacity ?? 0, {
-          paymentId,
-        })) !== null;
+      // Un error real del ledger (04-nov-2026, ErrorAcreditar) no se traga: el cargo se informa como no aplicado y
+      // payment-callback le pide a Flow que reintente (RAZONES_REINTENTABLES). El lote es idempotente por payment_id.
+      try {
+        granted =
+          (await grantCredits(userId, match.key, match.product.capacity ?? 0, {
+            paymentId,
+          })) !== null;
+      } catch (e) {
+        console.error("[processSubscriptionCharge] no se pudo acreditar:", e);
+        return fail("grant_error", userId);
+      }
     }
   }
 

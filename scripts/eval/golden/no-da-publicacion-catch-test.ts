@@ -93,10 +93,11 @@ function dobles(m: { mostrado: string; mostradoScore: number | null; zona: LadoM
         piezas: {
           reclamar: async () => { n.reclamar++; return { nueva: true }; },
           retomar: async () => false,
-          cobrar: async () => { n.cobrar++; return { ok: true, mode: "ledger" }; },
+          cobrar: async () => { n.cobrar++; return { ok: true, mode: "ledger", devolucion: { tipo: "nada" } }; },
           marcarCobrado: async () => {},
           crear: async () => { n.crear++; return { id: "informe-caso" }; },
           marcarCreado: async () => {},
+          devolver: async () => {},
           soltar: async () => {},
         },
       },

@@ -123,9 +123,13 @@ export function runLoQueSigueTier(): { hard: number } {
   if (!/if \(product === PRODUCTO_PACK && !analysisId && !ticketCuenta\) \{\s*return NextResponse\.json\(\{ error: "pack_vencido" \}, \{ status: 410 \}\);/.test(create) || !/const ticketCuenta = product === PRODUCTO_PACK && ticketDeCuenta\(user\.created_at\)/.test(create)) F("2 · payments/create acepta el pack sin informe fuera de las 24 horas de la cuenta");
   if (!/if \(!ofertaPackVigente\(analysis\.created_at as string\) && !ticketCuenta\) \{[\s\S]*?eventoPackVencido\([\s\S]*?status: 410/.test(create)) F("2 · payments/create no rechaza el pack vencido con 410 ni lo mide");
   if (/pack3: \{ amount: 9990/.test(create)) F("2 · vuelve el pack3 legacy de $9.990");
+  // ⚠ ACTA (04-nov-2026, auditoría de promesas parte 1) · la acreditación de los pagos únicos se mudó de payments/confirm a
+  // lib/pagos/acreditar-pago.ts, que comparte con el reconciliador diario: la regla es la misma, se lee de ahí y de que
+  // confirm la llame. El predicado viejo buscaba el grant dentro de confirm. Verificado en ROJO (acta de DATOS-Y-PLATA).
   const confirm = sinComentarios(leer("src/app/api/payments/confirm/route.ts"));
-  if (!/product === PRODUCTO_PACK\) \{[\s\S]*?grantCredits\(userId, PRODUCTO_PACK, PACK_ANALISIS, \{ paymentId, noExpire: true \}\)/.test(confirm)) F("2 · payments/confirm no otorga los 3 créditos sin caducidad");
-  if (!/capturarServidor\(eventoPackPagado\(/.test(confirm)) F("2 · pack_pagado no sale del servidor al confirmar");
+  const acreditar = sinComentarios(leer("src/lib/pagos/acreditar-pago.ts"));
+  if (!/acreditado = await acreditarPagoUnico\(supabase, payment, \{ companionStrId \}\);/.test(confirm) || !/if \(product === PRODUCTO_PACK\) \{\s*await grantCredits\(userId, PRODUCTO_PACK, PACK_ANALISIS, \{ paymentId, noExpire: true \}\);/.test(acreditar)) F("2 · payments/confirm no otorga los 3 créditos sin caducidad");
+  if (!/capturarServidor\(eventoPackPagado\(/.test(acreditar)) F("2 · pack_pagado no sale del servidor al confirmar");
   const ticket = sinComentarios(leer("src/components/lo-que-sigue/TicketPack.tsx"));
   // (08-oct-2026) sube por el disparador, que no sube con la oferta vencida (`puedeSubir`); el vencido
   // se mide al llegar al final.

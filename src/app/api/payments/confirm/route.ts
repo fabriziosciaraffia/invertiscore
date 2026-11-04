@@ -1,11 +1,9 @@
 import { NextResponse } from "next/server";
-import { waitUntil } from "@vercel/functions";
 import { createClient } from "@supabase/supabase-js";
 import { flowGet } from "@/lib/flow";
 import { sendAlertaPagoFallidoInterna, sendAlertaPagoInterna, sendPaymentConfirmationEmail } from "@/lib/email";
 import { nombreReal } from "@/lib/welcome";
-import { grantCredits } from "@/lib/credits-grant";
-import { abrirInformePagado } from "@/lib/desbloqueo-pago";
+import { acreditarPagoUnico } from "@/lib/pagos/acreditar-pago";
 import { FLOW_PRODUCTS, type FlowProductKey } from "@/lib/flow-products";
 import { emitirBoletaDTE } from "@/lib/openfactura/client";
 import { emitirEventoMeta } from "@/lib/meta/servidor";
@@ -13,15 +11,12 @@ import { EVENTOS_META, idCompra } from "@/lib/meta/ids";
 import { capturarServidor, uuidDeterminista } from "@/lib/posthog-servidor";
 import { eventoPagoConfirmado } from "@/lib/medicion-pago";
 import { capturarAnalisisCreado, modalidadDelInforme, seDesbloqueaConPago, VIA_PAGO } from "@/lib/medicion-activacion";
-import { eventoPackPagado } from "@/lib/lo-que-sigue/eventos-servidor";
 import { modalidadDeTipo, PACK_ANALISIS, PRODUCTO_PACK, urlRetornoPack } from "@/lib/lo-que-sigue/oferta-pack";
 import { esOrigenTres, PRODUCTO_TRES, TRES_CANTIDAD, volverSeguro } from "@/lib/tres-analisis";
 import { firmarPago } from "@/lib/lo-que-sigue/firma-pago";
 
 const SITIO_CORREO = process.env.NEXT_PUBLIC_SITE_URL || "https://refranco.ai";
 import { hayGuia } from "@/lib/guia/activa";
-import { calcularYGuardarGuia } from "@/lib/guia/guia-servidor";
-import { readVeredicto } from "@/lib/results-helpers";
 import { captureApiError, captureApiWarning } from "@/lib/observabilidad";
 
 // Label legible para los correos internos (admin). Usa el subject del catálogo
@@ -90,7 +85,7 @@ export async function POST(request: Request) {
       .eq("commerce_order", flowData.commerceOrder)
       .maybeSingle();
     const prePaymentData = prePayment?.payment_data as
-      | { companion_str_id?: string; ambas_group_id?: string; origen?: string; variante?: string; volver?: string }
+      | { companion_str_id?: string; ambas_group_id?: string; origen?: string; variante?: string; volver?: string; confirmacion_enviada_at?: string }
       | null;
     const companionStrId = prePaymentData?.companion_str_id;
     // Claves de negocio/audit escritas en payments/create que hay que preservar: el
@@ -106,6 +101,8 @@ export async function POST(request: Request) {
       // vuelve. Solo payments/create los escribe, y solo para ese producto.
       ...(esOrigenTres(prePaymentData?.origen) && prePaymentData?.origen !== "semanal" && prePaymentData?.origen !== "inmediato" ? { origen: prePaymentData.origen } : {}),
       ...(volverSeguro(prePaymentData?.volver) ? { volver: prePaymentData?.volver } : {}),
+      // «Pago confirmado» ya salió (04-nov-2026): la marca sobrevive a los reenvíos de Flow.
+      ...(prePaymentData?.confirmacion_enviada_at ? { confirmacion_enviada_at: prePaymentData.confirmacion_enviada_at } : {}),
     };
 
     // Update payment record. flowData define el payload fresco (no lo pisamos con el
@@ -145,61 +142,26 @@ export async function POST(request: Request) {
       // que pisa payment_data con la respuesta de Flow). El LTR va en analysis_id.
       // UN solo crédito cubre ambas filas (paridad con el Ambas pagado).
 
-      if (userId && product === "single") {
-        // Modelo nuevo: N créditos al ledger en UN grant (amount=quantity,
-        // remaining=quantity); expira en 1 año (regla heredada de grantCredits).
-        // quantity = 1 por default (compra de 1 crédito o filas legacy).
-        const creditQty = payment.quantity ?? 1;
-        // noExpire: el análisis comprado NO caduca (coherente con el copy "análisis
-        // sin caducidad"). El ledger ya cuenta y consume NULL bien (lo deja último).
-        await grantCredits(userId, "single", creditQty, { paymentId, noExpire: true });
+      // ACREDITAR (04-nov-2026, lib/pagos/acreditar-pago.ts): el suelto, el pack de 24 horas y el pack de tres, por el mismo
+      // camino que usa el reconciliador diario. Si el ledger no puede acreditar, NO sale «Pago confirmado» y se le pide a
+      // Flow que reintente (503): el pago queda pagado y sin su lote, que es exactamente la lista «Pagos sin acreditar» del
+      // admin, y el reconciliador lo vuelve a intentar.
+      let acreditado = false;
+      try {
+        acreditado = await acreditarPagoUnico(supabase, payment, { companionStrId });
+      } catch (e) {
+        console.error("[payments/confirm] no se pudo acreditar:", e);
+        captureApiError(e, {
+          ruta: "POST /api/payments/confirm",
+          operacion: "acreditar-pago",
+          commerceOrder: flowData.commerceOrder,
+          tags: { respuesta_a_flow: "503-reintento" },
+        });
+        return NextResponse.json({ status: "error", detalle: "no se pudo acreditar" }, { status: 503 });
+      }
 
-        // Si la compra vino atada a un análisis, desbloquearlo en el acto
-        // (mismo comportamiento que tenía 'pro'). Reusa la lógica ledger-aware
-        // de access.consumeCredit: consume el crédito recién otorgado y marca
-        // is_premium=true sobre ese análisis. consumeCredit es idempotente
-        // (corta si ya está is_premium), así que un reenvío de webhook no
-        // doble-consume el crédito.
-        if (analysisId) {
-          // El informe que abre este pago (21-oct-2026, lib/desbloqueo-pago.ts): consume el crédito recién otorgado, abre
-          // la fila bloqueada (la del wizard sin saldo, /api/analisis/locked), lo cuenta en la activación
-          // (`analisis_creado` con via = pago, solo si este pago lo abrió), el re-análisis y la fila STR de AMBAS.
-          // Todo idempotente ante un reenvío del webhook.
-          await abrirInformePagado(supabase, { userId, analysisId, companionStrId });
-        }
-      } else if (userId && product === PRODUCTO_PACK) {
-        // «Lo que sigue» (28-sep-2026): el pack son 3 créditos al ledger, sin caducidad, en UN
-        // grant (idempotente por dedup de grantCredits). No desbloquea nada: el primer informe ya
-        // era completo. `pack_pagado` sale acá, con el mismo id que el pago (commerce_order).
-        await grantCredits(userId, PRODUCTO_PACK, PACK_ANALISIS, { paymentId, noExpire: true });
-        try {
-          let veredictoPack: string | null = null;
-          if (analysisId) {
-            const { data: filaPack } = await supabase.from("analisis").select("results, tipo_analisis").eq("id", analysisId).single();
-            veredictoPack = readVeredicto(filaPack?.results as never) ?? null;
-            // «Por dónde seguir buscando» (30-sep-2026): la guía se calcula YA, después de responderle a
-            // Flow, y queda guardada por informe: cuando la persona llega a «Tienes 3 análisis» está lista.
-            if (hayGuia(modalidadDeTipo(filaPack?.tipo_analisis as string | null))) {
-              const idGuia = analysisId;
-              waitUntil(calcularYGuardarGuia(supabase, idGuia).then(() => undefined, (e) => console.error("[payments/confirm] guía:", e)));
-            }
-          }
-          await capturarServidor(eventoPackPagado({
-            commerceOrder: payment.commerce_order,
-            userId,
-            amount: payment.amount,
-            analysisId: analysisId ?? null,
-            veredicto: veredictoPack,
-          }));
-        } catch (e) {
-          console.error("[payments/confirm] pack_pagado excepción:", e);
-        }
-      } else if (userId && product === PRODUCTO_TRES) {
-        // Tres análisis por $19.990 para quien tiene cuenta (13-oct-2026, lib/tres-analisis.ts): 3 créditos al ledger,
-        // sin caducidad, en UN grant (idempotente por dedup de grantCredits). No desbloquea nada.
-        await grantCredits(userId, PRODUCTO_TRES, TRES_CANTIDAD, { paymentId, noExpire: true });
-        const deDonde = payment.payment_data as { origen?: string } | null;
-        await capturarServidor({ event: "tres_analisis_pagado", distinctId: userId, uuid: uuidDeterminista(`tres_analisis_pagado:${payment.commerce_order}`), properties: { amount: payment.amount, origen: deDonde?.origen ?? null } }).catch(() => false);
+      if (acreditado) {
+        // Ya quedó: el lote en el ledger y, si venía atado, el informe abierto.
       } else if (userId && product === "unlock") {
         // Fase D — desbloqueo ADITIVO de los hijos de un par AMBAS. NO consume
         // crédito ni toca is_premium (el crédito ya compró el comparativo
@@ -287,8 +249,10 @@ export async function POST(request: Request) {
         }
       }
 
-      // Send payment confirmation email
-      if (userId) {
+      // «PAGO CONFIRMADO», UNA VEZ POR PAGO (04-nov-2026, auditoría de promesas): Flow puede avisar el mismo pago varias
+      // veces y antes cada aviso mandaba el correo. Sale solo si el pago no tiene la marca `confirmacion_enviada_at`, se marca
+      // al salir, y Resend además deduplica con la llave del pago (dos avisos simultáneos no alcanzan a ver la marca).
+      if (userId && !prePaymentData?.confirmacion_enviada_at) {
         try {
           const { data: userData } = await supabase.auth.admin.getUserById(userId);
           if (userData?.user?.email) {
@@ -333,8 +297,14 @@ export async function POST(request: Request) {
               amount,
               analysisId || undefined,
               ambasIds,
-              { userId, guiaPack }
-            );
+              { userId, guiaPack, idempotencyKey: `pago_confirmado/${payment.commerce_order}` }
+            ).then(async (enviado) => {
+              if (!enviado) return;
+              await supabase.from("payments")
+                .update({ payment_data: { ...((payment.payment_data as Record<string, unknown> | null) ?? {}), confirmacion_enviada_at: new Date().toISOString() } })
+                .eq("commerce_order", payment.commerce_order)
+                .is("payment_data->>confirmacion_enviada_at", null);
+            });
           }
         } catch (e) {
           console.error("Payment email error:", e);

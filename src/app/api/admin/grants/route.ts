@@ -166,9 +166,10 @@ export async function POST(request: Request) {
     const cantidad = requireCantidad(body.cantidad, auditIntento);
     const motivo = requireMotivo(body.motivo, auditIntento);
 
+    // grantCredits lanza ante un error real (04-nov-2026): acá se lee como «no otorgó», igual que antes.
     const grantId = await grantCredits(targetUserId, SOURCE_ADMIN, cantidad, {
       noExpire: true,
-    });
+    }).catch((e) => { console.error("[admin/grants]", e); return null; });
 
     if (!grantId) {
       throw new AdminActionError(

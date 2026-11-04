@@ -3,7 +3,7 @@ import { fechaCortaCL, TZ_CHILE } from "@/lib/fecha-cl";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { hasSubscriptionAccess } from "@/lib/access";
-import { getAvailableCredits } from "@/lib/credits-grant";
+import { getAvailableCredits, getProximoVencimiento } from "@/lib/credits-grant";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -62,6 +62,9 @@ export default async function PerfilPage() {
   // creditsRow.credits (=0 en el modelo ledger) → "Gratuito" a quien sí tenía
   // crédito. RLS credit_grants_select_own permite leer los propios lotes.
   const credits: number = await getAvailableCredits(user.id, supabase);
+  // Cuándo vence el primero (04-nov-2026, auditoría de promesas): «Úsalos cuando quieras» se decía también de un regalo
+  // que vence a los 30 días.
+  const proximoVence = credits > 0 ? await getProximoVencimiento(user.id, supabase) : null;
   const subStatus: string = creditsRow?.subscription_status ?? "none";
   const graceEndsAt: string | null = (creditsRow?.grace_ends_at as string) ?? null;
   const subEnd: string | null = (creditsRow?.subscription_ends_at as string) ?? null;
@@ -147,7 +150,7 @@ export default async function PerfilPage() {
     planCtaHref = "/pricing";
   } else if (credits > 0) {
     planLabel = "Análisis disponibles";
-    planDescription = `Tienes ${credits} ${credits === 1 ? "análisis disponible" : "análisis disponibles"}. Úsalos cuando quieras.`;
+    planDescription = `Tienes ${credits} ${credits === 1 ? "análisis disponible" : "análisis disponibles"}. ${proximoVence ? `${credits === 1 ? "Vence" : "El primero vence"} el ${fechaCortaCL(proximoVence, { month: "long" })}.` : credits === 1 ? "No vence." : "No vencen."}`;
     planCtaText = "Comprar más";
     planCtaHref = "/pricing";
   } else {

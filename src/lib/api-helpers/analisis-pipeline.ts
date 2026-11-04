@@ -18,7 +18,7 @@ import { NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { createClient, type SupabaseClient, type User } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
-import { chargeAnalysisCredit } from "@/lib/access";
+import { chargeAnalysisCredit, type Devolucion } from "@/lib/access";
 import { isAdminUser } from "@/lib/admin";
 import { resolverCapRefComunaVivo } from "@/lib/capref-comuna-query";
 import type { CapRefComunaSnapshot } from "@/lib/capref-comuna";
@@ -375,6 +375,9 @@ export interface ChargeOk {
   /** Cómo se pagó ESTE análisis. Lo consumen los endpoints para el evento Lead
    * de Meta (solo `welcome` dispara). Aditivo: los callers destructuran parcial. */
   mode: ChargeMode;
+  /** Cómo deshacer ESTE cobro si el informe no se crea (04-nov-2026, access.ts › devolverCobro). El prepagado de
+   * AMBAS y el admin no tienen nada que devolver: el prepagado se reclama recién después del insert. */
+  devolucion: Devolucion;
 }
 export interface ChargeErr {
   ok: false;
@@ -434,7 +437,7 @@ export async function ensureCreditCharged(opts: {
         : "paid";
 
     if (charge.consumed_at === null) {
-      return { ok: true, prepaidNeedClaim: true, mode: prepaidMode };
+      return { ok: true, prepaidNeedClaim: true, mode: prepaidMode, devolucion: { tipo: "nada" } };
     }
 
     // Ya consumido: solo permitido si intent='both' (segundo análisis del flujo AMBAS).
@@ -447,7 +450,7 @@ export async function ensureCreditCharged(opts: {
         ),
       };
     }
-    return { ok: true, prepaidNeedClaim: false, mode: prepaidMode };
+    return { ok: true, prepaidNeedClaim: false, mode: prepaidMode, devolucion: { tipo: "nada" } };
   }
 
   if (!isAdmin) {
@@ -458,9 +461,9 @@ export async function ensureCreditCharged(opts: {
         response: NextResponse.json({ error: charge.message }, { status: 403 }),
       };
     }
-    return { ok: true, prepaidNeedClaim: false, mode: charge.mode };
+    return { ok: true, prepaidNeedClaim: false, mode: charge.mode, devolucion: charge.devolucion };
   }
-  return { ok: true, prepaidNeedClaim: false, mode: "admin" };
+  return { ok: true, prepaidNeedClaim: false, mode: "admin", devolucion: { tipo: "nada" } };
 }
 
 // ─── Post-insert: premium + claim ──────────────────────

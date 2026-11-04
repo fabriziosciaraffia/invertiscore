@@ -4,8 +4,12 @@
 // el candado:
 //   · el primero que la inserta sigue; el que la encuentra con informe, recibe ese informe; el que la
 //     encuentra reciente sin informe, espera («en curso»);
-//   · el cobro queda anotado en la fila (`cobrado_at`) ANTES de crear el informe: si la creación falla,
-//     el reintento (pasado RECLAMO_VIGENTE_MS) retoma la fila y crea el informe SIN volver a cobrar;
+//   · el cobro queda anotado en la fila (`cobrado_at`) ANTES de crear el informe, para que un segundo clic no cobre;
+//   · si la creación FALLA, el crédito se DEVUELVE en el acto y la fila se suelta (04-nov-2026, auditoría de promesas:
+//     «nunca queda un crédito gastado sin informe»): el reintento empieza de cero y cobra una vez. Una fila cobrada sin
+//     informe que quedó de una solicitud cortada a mitad (sin catch que devuelva) la retoma el reintento pasado
+//     RECLAMO_VIGENTE_MS —crea sin volver a cobrar, y si vuelve a fallar devuelve según el `charge_mode` guardado— o la
+//     devuelve el reconciliador diario (cron/reconciliar-pagos);
 //   · si el cobro no pasa (sin análisis disponibles), la fila se suelta y no queda nada cobrado.
 // Puro: las piezas se inyectan (el tier lo prueba con dobles y cuenta los cobros).
 //
@@ -13,6 +17,7 @@
 // aviso se despublicó, no se reclama, no se cobra ni se prepara nada (`analizarAvisoDeGuia`).
 // ─────────────────────────────────────────────────────────────────────────────
 import type { EstadoPublicacion } from "./publicacion";
+import { devolucionDesdeModo, type Devolucion } from "@/lib/access-devolucion";
 
 export const RECLAMO_VIGENTE_MS = 120_000;
 
@@ -24,7 +29,9 @@ export interface PiezasAnalizar {
   reclamar(): Promise<Reclamo>;
   /** Retoma una fila vieja sin informe; true si esta llamada la ganó. */
   retomar(): Promise<boolean>;
-  cobrar(): Promise<{ ok: true; mode: string } | { ok: false; status: number; error: string }>;
+  cobrar(): Promise<{ ok: true; mode: string; devolucion: Devolucion } | { ok: false; status: number; error: string }>;
+  /** Devuelve el crédito de un cobro cuyo informe no se creó (access.ts › devolverCobro). */
+  devolver(d: Devolucion): Promise<void>;
   marcarCobrado(mode: string): Promise<void>;
   crear(mode: string): Promise<{ id: string }>;
   marcarCreado(id: string): Promise<void>;
@@ -34,7 +41,9 @@ export interface PiezasAnalizar {
 export type ResultadoAnalizar =
   | { estado: "creado" | "ya-creado"; id: string }
   | { estado: "en-curso" }
-  | { estado: "sin-cobro"; status: number; error: string };
+  | { estado: "sin-cobro"; status: number; error: string }
+  /** La creación falló: el crédito volvió y la fila quedó suelta. `error` va a Sentry. */
+  | { estado: "fallo"; error: unknown };
 
 /**
  * «Analizar este» de punta a punta: chequear la ficha → si se despublicó, avisar y parar (sin crédito)
@@ -58,12 +67,15 @@ export async function analizarUnaVez(p: PiezasAnalizar): Promise<ResultadoAnaliz
   const r = await p.reclamar();
   let cobrado = false;
   let mode: string | null = null;
+  let devolucion: Devolucion | null = null;
   if (!r.nueva) {
     if (r.analysisId) return { estado: "ya-creado", id: r.analysisId };
     if (r.reclamadoHaceMs < RECLAMO_VIGENTE_MS) return { estado: "en-curso" };
     if (!(await p.retomar())) return { estado: "en-curso" };
     cobrado = r.cobrado;
     mode = r.chargeMode;
+    // Cobrado en otra solicitud: de ese cobro solo quedó el modo.
+    if (cobrado) devolucion = devolucionDesdeModo(mode);
   }
   if (!cobrado) {
     const c = await p.cobrar();
@@ -72,9 +84,18 @@ export async function analizarUnaVez(p: PiezasAnalizar): Promise<ResultadoAnaliz
       return { estado: "sin-cobro", status: c.status, error: c.error };
     }
     mode = c.mode;
+    devolucion = c.devolucion;
     await p.marcarCobrado(mode);
   }
-  const { id } = await p.crear(mode ?? "paid");
+  let id: string;
+  try {
+    ({ id } = await p.crear(mode ?? "paid"));
+  } catch (error) {
+    // Sin informe no queda crédito gastado: vuelve, y la fila se suelta para que el reintento empiece de cero.
+    if (devolucion) await p.devolver(devolucion);
+    await p.soltar();
+    return { estado: "fallo", error };
+  }
   await p.marcarCreado(id);
   return { estado: "creado", id };
 }

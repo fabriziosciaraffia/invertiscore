@@ -168,7 +168,10 @@ export async function runCorreosRecorridoTier(): Promise<{ hard: number }> {
   if (!/if \(product === PRODUCTO_PACK && !analysisId && !ticketCuenta\) \{\s*return NextResponse\.json\(\{ error: "pack_vencido" \}, \{ status: 410 \}\);/.test(crear) || !/if \(!ofertaPackVigente\(analysis\.created_at as string\) && !ticketCuenta\)/.test(crear)) F("6 · el ticket de $14.990 se puede comprar fuera de las 24 horas del primer informe o de la cuenta");
   if (!/if \(analysisId \|\| product !== "single"\) \{\s*quantity = 1;/.test(crear)) F("6 · el pack se puede comprar en cantidad (cobraría N × $19.990)");
   const confirmar = sinComentarios(leer("src/app/api/payments/confirm/route.ts"));
-  if (!/\} else if \(userId && product === PRODUCTO_TRES\) \{\s*await grantCredits\(userId, PRODUCTO_TRES, TRES_CANTIDAD, \{ paymentId, noExpire: true \}\);/.test(confirmar)) F("6 · el pago del pack no otorga 3 análisis sin caducidad");
+  // ⚠ ACTA (04-nov-2026, auditoría de promesas parte 1) · la acreditación se mudó a lib/pagos/acreditar-pago.ts (la comparten
+  // confirm y el reconciliador diario): se lee de ahí y de que confirm la llame. Verificado en ROJO (acta de DATOS-Y-PLATA).
+  const acreditarPago = sinComentarios(leer("src/lib/pagos/acreditar-pago.ts"));
+  if (!/acreditado = await acreditarPagoUnico\(supabase, payment, \{ companionStrId \}\);/.test(confirmar) || !/if \(product === PRODUCTO_TRES\) \{\s*await grantCredits\(userId, PRODUCTO_TRES, TRES_CANTIDAD, \{ paymentId, noExpire: true \}\);/.test(acreditarPago)) F("6 · el pago del pack no otorga 3 análisis sin caducidad");
   if (!/\(product === "single" \|\| product === PRODUCTO_PACK \|\| product === PRODUCTO_TRES\) && process\.env\.OPENFACTURA_ENABLED === "true"/.test(confirmar) || !/product === PRODUCTO_TRES \? TRES_CANTIDAD/.test(confirmar)) F("6 · el pack no emite su boleta (o con cantidad equivocada)");
   // El CHECK de payments.product: la última migración que lo arma tiene que aceptar todo producto del catálogo.
   const migraciones = readdirSync(join(RAIZ, "supabase", "migrations")).filter((f) => f.endsWith(".sql")).sort();

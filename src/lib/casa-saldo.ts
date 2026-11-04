@@ -13,6 +13,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { hasSubscriptionAccess } from "@/lib/access";
 import { FUENTES_REGALO } from "@/lib/regalo-alta";
+import { bienvenidaPendiente } from "@/lib/credits-grant";
+
+/** La bienvenida sin usar de una cuenta vieja, como si fuera un lote (04-nov-2026): no está en el ledger. */
+export const FUENTE_BIENVENIDA = "bienvenida";
 
 export interface DatosSaldo {
   disponibles: number;
@@ -23,6 +27,8 @@ export interface DatosSaldo {
   regaloRestante: number;
   /** Cuándo vence el regalo (el lote más próximo), si queda. */
   regaloVence: string | null;
+  /** El vencimiento más próximo de todo el saldo (null = nada vence). */
+  proximoVence?: string | null;
   todoSinCaducidad: boolean;
   /** El próximo que se gasta es un regalo (el FIFO del cobro: el lote que vence primero, los sin caducidad al final). */
   proximoRegalo?: boolean;
@@ -47,21 +53,25 @@ export function estadoSaldo(d: DatosSaldo): EstadoSaldo {
 type FilaCreditos = { credits?: number | null; is_unlimited?: boolean | null; subscription_status?: string | null; grace_ends_at?: string | null; subscription_ends_at?: string | null };
 
 /** Puro: el saldo desde los lotes vivos y la fila de créditos. «plan» SOLO con el Ilimitado (ver la cabecera). */
-export function datosSaldoDe(vivos: Array<{ remaining: number; expires_at: string | null; source: string | null }>, uc: FilaCreditos | null): DatosSaldo {
+export function datosSaldoDe(vivos: Array<{ remaining: number; expires_at: string | null; source: string | null }>, uc: FilaCreditos | null, bienvenida = false): DatosSaldo {
+  // LA BIENVENIDA SIN USAR DE LAS CUENTAS VIEJAS (04-nov-2026, auditoría de promesas): el cobro la gasta antes que el
+  // ledger (access.ts › chargeAnalysisCredit), así que cuenta como un análisis de regalo, sin vencimiento, y es el próximo.
+  if (bienvenida) vivos = [{ remaining: 1, expires_at: null, source: FUENTE_BIENVENIDA }, ...vivos];
   const ledger = vivos.reduce((a, g) => a + (g.remaining ?? 0), 0);
   const legacy = Math.max(0, Number(uc?.credits) || 0);
   const ilimitado = uc?.is_unlimited === true;
-  const regalos = vivos.filter((g) => g.source != null && FUENTES_REGALO.has(g.source));
+  const regalos = vivos.filter((g) => g.source != null && (FUENTES_REGALO.has(g.source) || g.source === FUENTE_BIENVENIDA));
   // El orden del cobro (credits-grant.ts › consumeCredit): por vencimiento, los que no vencen al final.
-  const primero = [...vivos].sort((a, b) => (a.expires_at ?? "9999").localeCompare(b.expires_at ?? "9999"))[0];
+  const primero = bienvenida ? vivos[0] : [...vivos].sort((a, b) => (a.expires_at ?? "9999").localeCompare(b.expires_at ?? "9999"))[0];
   return {
     disponibles: ledger + legacy,
     plan: ilimitado,
     suscripcion: ilimitado || (!!uc && hasSubscriptionAccess(uc as never)),
     regaloRestante: regalos.reduce((a, g) => a + g.remaining, 0),
+    proximoVence: vivos.filter((g) => g.expires_at).map((g) => g.expires_at as string).sort()[0] ?? null,
     regaloVence: regalos.filter((g) => g.expires_at).map((g) => g.expires_at as string).sort()[0] ?? null,
     todoSinCaducidad: vivos.length > 0 ? vivos.every((g) => g.expires_at == null) : legacy > 0,
-    proximoRegalo: !!primero?.source && FUENTES_REGALO.has(primero.source),
+    proximoRegalo: !!primero?.source && (FUENTES_REGALO.has(primero.source) || primero.source === FUENTE_BIENVENIDA),
   };
 }
 
@@ -69,7 +79,8 @@ export async function leerSaldo(admin: SupabaseClient, userId: string): Promise<
   const ahora = new Date().toISOString();
   const [{ data: grants }, { data: uc }] = await Promise.all([
     admin.from("credit_grants").select("remaining, expires_at, source").eq("user_id", userId).gt("remaining", 0).or(`expires_at.is.null,expires_at.gt.${ahora}`),
-    admin.from("user_credits").select("credits, is_unlimited, subscription_status, grace_ends_at, subscription_ends_at").eq("user_id", userId).maybeSingle(),
+    admin.from("user_credits").select("credits, is_unlimited, subscription_status, grace_ends_at, subscription_ends_at, welcome_credit_used").eq("user_id", userId).maybeSingle(),
   ]);
-  return datosSaldoDe((grants ?? []) as Array<{ remaining: number; expires_at: string | null; source: string | null }>, (uc ?? null) as FilaCreditos | null);
+  const bienvenida = uc?.is_unlimited !== true && (await bienvenidaPendiente(userId, (uc as { welcome_credit_used?: boolean | null } | null)?.welcome_credit_used));
+  return datosSaldoDe((grants ?? []) as Array<{ remaining: number; expires_at: string | null; source: string | null }>, (uc ?? null) as FilaCreditos | null, bienvenida);
 }

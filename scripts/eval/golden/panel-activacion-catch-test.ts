@@ -377,9 +377,12 @@ export async function runPanelActivacionTier(): Promise<{ hard: number }> {
     F(`2 · el desbloqueo por pago no corre: ${(e as Error).message}`);
   }
   const cf = sinComentarios(leer("src/app/api/payments/confirm/route.ts"));
-  const suelto = entre(cf, 'if (userId && product === "single") {', "} else if (userId && product === PRODUCTO_PACK) {");
+  // ⚠ ACTA (04-nov-2026, auditoría de promesas parte 1) · el suelto se acredita en lib/pagos/acreditar-pago.ts (la comparten
+  // confirm y el reconciliador diario): la regla es la misma, se lee de ahí y de que confirm la llame.
+  const acreditarPago = sinComentarios(leer("src/lib/pagos/acreditar-pago.ts"));
+  const suelto = entre(acreditarPago, 'if (product === "single") {', "if (product === PRODUCTO_PACK) {");
   const emite = /if \(seDesbloqueaConPago\(antesDelPago\)\) \{\s*await capturarAnalisisCreado\(\{ userId, analysisId, modalidad: modalidadDelInforme\(antesDelPago\?\.tipo_analisis as string \| null\), via: VIA_PAGO \}\);\s*\}/;
-  if (!/if \(analysisId\) \{\s*await abrirInformePagado\(supabase, \{ userId, analysisId, companionStrId \}\);\s*\}/.test(suelto) || /consumeCredit\(/.test(suelto)) F("2 · la compra suelta atada a un informe no lo abre con `abrirInformePagado` (el que cuenta el desbloqueo)");
+  if (!/acreditado = await acreditarPagoUnico\(supabase, payment, \{ companionStrId \}\);/.test(cf) || !/if \(analysisId\) await abrirInformePagado\(supabase, \{ userId, analysisId, companionStrId: opts\.companionStrId \?\? null \}\);/.test(suelto) || /consumeCredit\(/.test(suelto)) F("2 · la compra suelta atada a un informe no lo abre con `abrirInformePagado` (el que cuenta el desbloqueo)");
   const pro = entre(cf, 'if (product === "pro" && analysisId) {', 'if (premiumError)');
   if (!emite.test(pro) || pro.indexOf("antesDelPago") > pro.indexOf('.update({ is_premium: true })')) F("2 · el desbloqueo `pro` no emite `analisis_creado` con via = pago");
   const doc = leer("docs/posthog-activacion-por-puerta.md");

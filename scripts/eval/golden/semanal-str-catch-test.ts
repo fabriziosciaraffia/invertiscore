@@ -45,10 +45,11 @@ function dobles(o: { fino: string | null; mostrado?: string; publicado?: boolean
   const piezas: PiezasAnalizar = {
     async reclamar() { n.reclamar++; return { nueva: true }; },
     async retomar() { return false; },
-    async cobrar() { n.cobrar++; return { ok: true, mode: "paid" }; },
+    async cobrar() { n.cobrar++; return { ok: true, mode: "paid", devolucion: { tipo: "nada" } }; },
     async marcarCobrado() {},
     async crear() { n.crear++; return { id: "informe-1" }; },
     async marcarCreado() {},
+    async devolver() {},
     async soltar() {},
   };
   const correr = () => STR.analizarStrDeSemanal({

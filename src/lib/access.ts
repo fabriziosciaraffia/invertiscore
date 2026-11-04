@@ -1,7 +1,9 @@
 import { createClient } from "@supabase/supabase-js";
-import { reportarFalloQuery } from "@/lib/observabilidad";
-import { consumeCredit as consumeLedgerCredit, getAvailableCredits } from "@/lib/credits-grant";
+import { captureApiError, reportarFalloQuery } from "@/lib/observabilidad";
+import { consumeCredit as consumeLedgerCredit, consumirCredito, devolverLote, getAvailableCredits, grantCredits } from "@/lib/credits-grant";
 import { bienvenidaVigente } from "@/lib/regalo-alta";
+import { FUENTE_DEVOLUCION_COBRO, type Devolucion } from "@/lib/access-devolucion";
+export { devolucionDesdeModo, type Devolucion } from "@/lib/access-devolucion";
 import { asegurarRegaloDeAlta } from "@/lib/regalo-alta-servidor";
 
 function createAdminClient() {
@@ -43,8 +45,9 @@ export function hasSubscriptionAccess(row: {
   return false;
 }
 
+
 export type ChargeResult =
-  | { ok: true; mode: "welcome" | "paid" | "subscription" }
+  | { ok: true; mode: "welcome" | "paid" | "subscription"; devolucion: Devolucion }
   | {
       ok: false;
       reason: "no_credits" | "no_user";
@@ -137,7 +140,7 @@ export async function chargeAnalysisCredit(
   // welcome. (hasSubscriptionAccess sigue usándose para el bloqueo plan-aware más
   // abajo y en otras funciones.)
   if (row.is_unlimited) {
-    return { ok: true, mode: "subscription" };
+    return { ok: true, mode: "subscription", devolucion: { tipo: "nada" } };
   }
 
   // Welcome credit (primer análisis del registrado): UPDATE condicional.
@@ -172,14 +175,15 @@ export async function chargeAnalysisCredit(
     // welcome. La race legítima (0 filas) no trae error y sigue sin reportarse.
     reportarFalloQuery(claimedError, { ruta: "lib/access", operacion: "consumir-welcome", userId });
     if (claimed) {
-      return { ok: true, mode: "welcome" };
+      return { ok: true, mode: "welcome", devolucion: { tipo: "bienvenida" } };
     }
     // Race perdida: otra request consumió el welcome. Caer a paid.
   }
 
   // Crédito comprado — primero el ledger (credit_grants), FIFO por expiración.
-  if (await consumeLedgerCredit(userId)) {
-    return { ok: true, mode: "paid" };
+  const delLedger = await consumirCredito(userId);
+  if (delLedger.consumido) {
+    return { ok: true, mode: "paid", devolucion: delLedger.loteId ? { tipo: "lote", loteId: delLedger.loteId } : { tipo: "nada" } };
   }
 
   // Legacy: contador user_credits.credits (compras pro/pack3 previas a la migración).
@@ -193,7 +197,7 @@ export async function chargeAnalysisCredit(
       .maybeSingle();
     reportarFalloQuery(paidError, { ruta: "lib/access", operacion: "consumir-credito-legacy", userId });
     if (paid) {
-      return { ok: true, mode: "paid" };
+      return { ok: true, mode: "paid", devolucion: { tipo: "legacy" } };
     }
     // Race perdida: otra request consumió el último crédito.
   }
@@ -219,6 +223,50 @@ export async function chargeAnalysisCredit(
     reason: "no_credits",
     message: "Te quedaste sin análisis disponibles.",
   };
+}
+
+/**
+ * Devuelve el crédito de un cobro cuyo informe no se pudo crear (04-nov-2026, auditoría de promesas: «nunca queda un
+ * crédito gastado sin informe»). Lo llaman las rutas que cobran antes de crear —el formulario LTR y STR, «Analizar este»
+ * y la renta corta de la selección— cuando la creación falla, y el reconciliador diario con los cobros que quedaron sin
+ * informe. true = devuelto (o no había nada que devolver). Un fallo se reporta: es un crédito de una persona.
+ */
+export async function devolverCobro(userId: string, d: Devolucion | null | undefined): Promise<boolean> {
+  if (!userId || !d) return false;
+  try {
+    if (d.tipo === "nada") return true;
+    if (d.tipo === "credito-nuevo") {
+      const ok = (await grantCredits(userId, FUENTE_DEVOLUCION_COBRO, 1, { noExpire: true })) !== null;
+      if (!ok) captureApiError(new Error("No se pudo devolver el crédito (lote nuevo)"), { ruta: "lib/access", operacion: "devolver-cobro", userId });
+      return ok;
+    }
+    if (d.tipo === "lote") {
+      const ok = await devolverLote(d.loteId);
+      if (!ok) captureApiError(new Error("No se pudo devolver el crédito al lote"), { ruta: "lib/access", operacion: "devolver-cobro", userId, extra: { loteId: d.loteId } });
+      return ok;
+    }
+    const supabase = createAdminClient();
+    if (d.tipo === "bienvenida") {
+      const { data, error } = await supabase.from("user_credits").update({ welcome_credit_used: false, updated_at: new Date().toISOString() })
+        .eq("user_id", userId).eq("welcome_credit_used", true).select("user_id").maybeSingle();
+      reportarFalloQuery(error, { ruta: "lib/access", operacion: "devolver-bienvenida", userId });
+      return !!data;
+    }
+    // El contador viejo: suma 1 con un UPDATE condicional sobre el valor leído.
+    for (let intento = 0; intento < 3; intento++) {
+      const { data: fila } = await supabase.from("user_credits").select("credits").eq("user_id", userId).maybeSingle();
+      if (!fila) return false;
+      const credits = Number(fila.credits) || 0;
+      const { data: hecho } = await supabase.from("user_credits").update({ credits: credits + 1, updated_at: new Date().toISOString() })
+        .eq("user_id", userId).eq("credits", credits).select("user_id").maybeSingle();
+      if (hecho) return true;
+    }
+    captureApiError(new Error("No se pudo devolver el crédito del contador viejo"), { ruta: "lib/access", operacion: "devolver-cobro", userId });
+    return false;
+  } catch (e) {
+    captureApiError(e, { ruta: "lib/access", operacion: "devolver-cobro", userId, extra: { tipo: d.tipo } });
+    return false;
+  }
 }
 
 export async function getUserAccessLevel(

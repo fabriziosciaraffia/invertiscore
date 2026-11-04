@@ -13,7 +13,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { FLOW_PRODUCTS, type FlowProduct, type FlowProductKey } from "@/lib/flow-products";
 import { capturarServidor, uuidDeterminista } from "@/lib/posthog-servidor";
-import { FUENTE_REGALO_ALTA, FUENTE_REGALO_REACTIVACION } from "@/lib/regalo-alta";
+import { bienvenidaVigente, FUENTE_REGALO_ALTA, FUENTE_REGALO_REACTIVACION } from "@/lib/regalo-alta";
 
 function createAdminClient() {
   return createClient(
@@ -39,6 +39,14 @@ export function addOneMonth(d: Date): Date {
   return r;
 }
 
+/** El ledger no pudo acreditar (un error real de base, no el dedup). */
+export class ErrorAcreditar extends Error {
+  constructor(detalle: string) {
+    super(`No se pudo acreditar: ${detalle}`);
+    this.name = "ErrorAcreditar";
+  }
+}
+
 export type GrantOpts = {
   /** payments.id que originó el grant (FK). null para grants no transaccionales. */
   paymentId?: string | null;
@@ -48,7 +56,12 @@ export type GrantOpts = {
 
 /**
  * Inserta un lote de créditos en el ledger. Devuelve el ID del lote insertado, o
- * null si no insertó (dedup o error).
+ * null si ya existía uno para ese `payment_id` (dedup esperado: el webhook y el reconciliador sobre el mismo cargo).
+ *
+ * NO SE TRAGA ERRORES (04-nov-2026, auditoría de promesas): un insert que falla de verdad LANZA `ErrorAcreditar`.
+ * Antes devolvía null igual que el dedup, y payments/confirm mandaba «Pago confirmado» y le respondía 200 a Flow sobre
+ * un pago sin crédito. Quien llama decide: el cobro responde error para que Flow reintente; el admin y el cron mensual
+ * lo atrapan y lo reportan como antes.
  *
  * El id lo necesita el otorgamiento manual desde /admin: su fila de auditoría
  * apunta al lote concreto en target_id, y sin eso la reversión no tendría a qué
@@ -98,7 +111,7 @@ export async function grantCredits(
       return null;
     }
     console.error("[grantCredits] insert error:", error);
-    return null;
+    throw new ErrorAcreditar(error.message ?? "insert falló");
   }
   return (data?.id as string) ?? null;
 }
@@ -253,7 +266,16 @@ export async function applyPlanCredits(
 export const FUENTE_REGALO_SEMANAL = "regalo_semanal";
 
 export async function consumeCredit(userId: string): Promise<boolean> {
-  if (!userId) return false;
+  return (await consumirCredito(userId)).consumido;
+}
+
+/**
+ * Lo mismo que `consumeCredit`, diciendo además DE QUÉ LOTE salió (04-nov-2026, auditoría de promesas): el cobro de un
+ * análisis se devuelve si la creación del informe falla, y para devolverlo hay que saber a qué lote. `loteId` es null
+ * para el ilimitado (no consume) y cuando no hubo lote vivo.
+ */
+export async function consumirCredito(userId: string): Promise<{ consumido: boolean; loteId: string | null }> {
+  if (!userId) return { consumido: false, loteId: null };
 
   const supabase = createAdminClient();
 
@@ -263,7 +285,7 @@ export async function consumeCredit(userId: string): Promise<boolean> {
     .select("is_unlimited")
     .eq("user_id", userId)
     .maybeSingle();
-  if (uc?.is_unlimited) return true;
+  if (uc?.is_unlimited) return { consumido: true, loteId: null };
 
   // FIFO: el lote vivo más próximo a expirar (NULL = no expira, va al final).
   const nowIso = new Date().toISOString();
@@ -277,7 +299,7 @@ export async function consumeCredit(userId: string): Promise<boolean> {
     .limit(1)
     .maybeSingle();
 
-  if (!grant) return false;
+  if (!grant) return { consumido: false, loteId: null };
 
   // UPDATE condicional (gt remaining 0) para no caer negativo ante carreras.
   const nextRemaining = grant.remaining - 1;
@@ -300,7 +322,32 @@ export async function consumeCredit(userId: string): Promise<boolean> {
   if (updated && grant.source === FUENTE_REGALO_ALTA) {
     void capturarServidor({ event: "regalo_alta_usado", distinctId: userId, uuid: uuidDeterminista(`regalo_alta_usado:${grant.id}`), properties: {} }).catch(() => {});
   }
-  return !!updated;
+  return updated ? { consumido: true, loteId: grant.id as string } : { consumido: false, loteId: null };
+}
+
+/**
+ * Devuelve UN crédito a su lote (04-nov-2026): la contracara de `consumirCredito` cuando el informe no se pudo crear.
+ * Suma 1 a `remaining` sin pasar de `amount`, con un UPDATE condicional sobre el valor leído (si otro proceso lo movió
+ * entremedio, relee y reintenta). Si el lote ya venció, el crédito vuelve igual: el reloj del lote no se toca.
+ */
+export async function devolverLote(loteId: string): Promise<boolean> {
+  if (!loteId) return false;
+  const supabase = createAdminClient();
+  for (let intento = 0; intento < 3; intento++) {
+    const { data: lote, error } = await supabase.from("credit_grants").select("remaining, amount").eq("id", loteId).maybeSingle();
+    if (error || !lote) return false;
+    const remaining = Number(lote.remaining) || 0;
+    if (remaining >= (Number(lote.amount) || 0)) return false;
+    const { data: hecho } = await supabase
+      .from("credit_grants")
+      .update({ remaining: remaining + 1, consumed: false })
+      .eq("id", loteId)
+      .eq("remaining", remaining)
+      .select("id")
+      .maybeSingle();
+    if (hecho) return true;
+  }
+  return false;
 }
 
 /**
@@ -347,7 +394,7 @@ export async function getAvailableCredits(
   // Legacy: contador user_credits.credits (compras pro/pack3 pre-migración).
   const { data: uc, error: ucErr } = await supabase
     .from("user_credits")
-    .select("credits")
+    .select("credits, welcome_credit_used")
     .eq("user_id", userId)
     .maybeSingle();
 
@@ -355,7 +402,38 @@ export async function getAvailableCredits(
     console.error("[getAvailableCredits] user_credits query error:", ucErr);
   }
 
-  return ledger + (uc?.credits ?? 0);
+  return ledger + (uc?.credits ?? 0) + ((await bienvenidaPendiente(userId, uc?.welcome_credit_used)) ? 1 : 0);
+}
+
+/**
+ * ¿Le queda la bienvenida sin usar? (04-nov-2026, auditoría de promesas): las cuentas de antes del 16-oct-2026 con
+ * `welcome_credit_used = false` tienen el próximo análisis gratis —chargeAnalysisCredit lo cobra ANTES que el ledger—,
+ * pero el saldo no lo contaba y la casa les decía «Sin análisis». Misma regla que el cobro (`bienvenidaVigente` sobre la
+ * fecha de la cuenta), leída con la llave de servicio solo cuando la marca está en false.
+ */
+export async function bienvenidaPendiente(userId: string, welcomeCreditUsed: boolean | null | undefined): Promise<boolean> {
+  if (welcomeCreditUsed !== false) return false;
+  try {
+    const { data } = await createAdminClient().auth.admin.getUserById(userId);
+    return bienvenidaVigente(data?.user?.created_at ?? null);
+  } catch {
+    return false;
+  }
+}
+
+/** El vencimiento más próximo entre los lotes vivos (04-nov-2026, /perfil: «El primero vence el …»). null = ninguno vence. */
+export async function getProximoVencimiento(userId: string, supabase: SupabaseClient): Promise<string | null> {
+  const nowIso = new Date().toISOString();
+  const { data } = await supabase
+    .from("credit_grants")
+    .select("expires_at")
+    .eq("user_id", userId)
+    .gt("remaining", 0)
+    .gt("expires_at", nowIso)
+    .order("expires_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  return (data?.expires_at as string | undefined) ?? null;
 }
 
 /**

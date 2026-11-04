@@ -212,7 +212,8 @@ export async function GET(request: Request) {
         }
 
         // Reclamado. Recién ahora se inserta el lote.
-        const grantId = await grantCredits(row.user_id, key, capacity, {});
+        // grantCredits lanza ante un error real (04-nov-2026): acá se lee como «no otorgó», igual que antes.
+        const grantId = await grantCredits(row.user_id, key, capacity, {}).catch((e) => { console.error("[cron/monthly-grants]", e); return null; });
         if (!grantId) {
           console.error(
             "[cron/monthly-grants] grantCredits falló DESPUÉS de reclamar el mes; user:",

@@ -103,6 +103,8 @@ export const CRONS_VIGILADOS: CronVigilado[] = [
   { nombre: "reconcile-subscriptions", label: "Reconciliación de cobros", intervaloHoras: 1 },
   { nombre: "monthly-grants", label: "Lotes mensuales", intervaloHoras: 24 },
   { nombre: "expire-grace", label: "Vencimiento de gracia", intervaloHoras: 24 },
+  // Los pagos contra los créditos (04-nov-2026, auditoría de promesas): pagados sin lote, pagos de Flow sin aviso, cobros sin informe.
+  { nombre: "reconciliar-pagos", label: "Reconciliación de pagos y créditos", intervaloHoras: 24, desde: "2026-11-05T07:30:00Z" },
   { nombre: "abandoned-checkout", label: "Carritos abandonados", intervaloHoras: 24 },
   { nombre: "recordatorio-pack", label: "Recordatorio del pack", intervaloHoras: 24, desde: "2026-09-29T13:00:00Z" },
   // Latían desde agosto pero no estaban acá: el panel no los veía (29-sep-2026).

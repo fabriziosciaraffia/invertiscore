@@ -22,9 +22,14 @@ import { leerCobertura, plegarCobertura } from "@/lib/admin-cobertura";
 import { COMUNAS_ROSTER } from "@/lib/data/comunas-roster";
 import { DIAS_ATRASO_PASE, estadoPase, leerCheckpointBackfill } from "@/lib/admin-backfill-toctoc";
 import { leerLecturasFicha, pastillaFichas } from "@/lib/admin-fichas";
+import { pagosSinAcreditar } from "@/lib/pagos/sin-acreditar";
 import { AdminActions } from "../admin-actions";
 import { RetryButton } from "../retry-button";
 import { TestToggle } from "../test-toggle";
+
+/** Cuántos días mira «Pagos sin acreditar» (04-nov-2026). */
+const DIAS_SIN_ACREDITAR = 90;
+
 
 export const dynamic = "force-dynamic";
 
@@ -102,6 +107,7 @@ export default async function AdminOperacionPage({
     cobertura,
     checkpointBackfill,
     lecturasFicha,
+    sinAcreditar,
   ] = await Promise.all([
     sb.from("analisis").select("*", { count: "exact", head: true }),
     sb.from("scraped_properties").select("*", { count: "exact", head: true }).eq("is_active", true),
@@ -129,7 +135,10 @@ export default async function AdminOperacionPage({
     leerCobertura(sb),
     leerCheckpointBackfill(sb),
     leerLecturasFicha(sb),
+    // Los pagos sin acreditar (04-nov-2026): pagados en Flow y sin su lote. null = no se pudo leer (se dice).
+    pagosSinAcreditar(sb, DIAS_SIN_ACREDITAR).catch(() => null),
   ]);
+  const sinAcreditarVista = sinAcreditar == null ? null : includeTest ? sinAcreditar : sinAcreditar.filter((p) => !testUserIds.includes(p.user_id ?? ""));
 
   // ─── UF y tasa ───
   // La fuente viva es la tabla `config`, NO `market_data` (que no existe en la
@@ -542,6 +551,44 @@ export default async function AdminOperacionPage({
           <AdminActions />
           <p className="mt-3 font-body text-[11px] text-[var(--franco-text-muted)]">
             Ejecutan los endpoints CRON con el secret server-side. Los resultados se aplican inmediatamente a la base de datos.
+          </p>
+        </div>
+      </section>
+
+      {/* ─── PAGOS SIN ACREDITAR (04-nov-2026, auditoría de promesas) ─── */}
+      <section className="mb-8" data-admin="pagos-sin-acreditar">
+        <h2 className="mb-3 font-heading text-lg font-bold text-[var(--franco-text)]">Pagos sin acreditar</h2>
+        <div className="overflow-x-auto rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-4">
+          {sinAcreditarVista == null ? (
+            <p className="font-body text-sm text-[var(--signal-red)]">No se pudo leer la lista de pagos sin acreditar.</p>
+          ) : sinAcreditarVista.length === 0 ? (
+            <p className="font-body text-sm text-[var(--franco-text-muted)]">Ningún pago de los últimos {DIAS_SIN_ACREDITAR} días quedó sin su crédito.</p>
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left">
+                  <th className="pb-2 pr-4 font-body text-xs font-medium text-[var(--franco-text-muted)]">Fecha</th>
+                  <th className="pb-2 pr-4 font-body text-xs font-medium text-[var(--franco-text-muted)]">Producto</th>
+                  <th className="pb-2 pr-4 font-body text-xs font-medium text-[var(--franco-text-muted)]">Monto</th>
+                  <th className="pb-2 pr-4 font-body text-xs font-medium text-[var(--franco-text-muted)]">Orden</th>
+                  <th className="pb-2 font-body text-xs font-medium text-[var(--franco-text-muted)]">Usuario</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sinAcreditarVista.map((p) => (
+                  <tr key={p.id} className="border-t border-[var(--franco-border)]">
+                    <td className="py-2 pr-4 font-mono text-xs">{fmtDateShort(p.created_at)}</td>
+                    <td className="py-2 pr-4 font-body text-xs">{p.product}</td>
+                    <td className="py-2 pr-4 font-mono text-xs">{fmtCLP(p.amount ?? 0)}</td>
+                    <td className="py-2 pr-4 font-mono text-xs">{p.commerce_order}</td>
+                    <td className="py-2 font-mono text-xs">{p.user_id ? <Link href={`/admin/usuarios/${p.user_id}`} className="underline">{p.user_id.slice(0, 8)}</Link> : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          <p className="mt-3 font-body text-[11px] text-[var(--franco-text-muted)]">
+            Pagados en Flow y sin su lote en el ledger. El reconciliador de cada día (reconciliar-pagos) los vuelve a acreditar.
           </p>
         </div>
       </section>

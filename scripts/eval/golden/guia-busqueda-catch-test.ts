@@ -251,7 +251,7 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
     type Fila = { analysisId: string | null; cobrado: boolean; mode: string | null; t: number };
     let reloj = 0;
     let fila: Fila | null = null;
-    let cobros = 0, creados = 0, fallarCrear = false, sinCredito = false;
+    let cobros = 0, creados = 0, devueltos = 0, fallarCrear = false, sinCredito = false;
     const piezas = (): PiezasAnalizar => ({
       async reclamar(): Promise<Reclamo> {
         await Promise.resolve();
@@ -259,10 +259,11 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
         return { nueva: false, analysisId: fila.analysisId, cobrado: fila.cobrado, chargeMode: fila.mode, reclamadoHaceMs: reloj - fila.t };
       },
       async retomar() { if (!fila || fila.analysisId) return false; fila.t = reloj; return true; },
-      async cobrar() { await Promise.resolve(); if (sinCredito) return { ok: false, status: 403, error: "sin-creditos" }; cobros++; return { ok: true, mode: "paid" }; },
+      async cobrar() { await Promise.resolve(); if (sinCredito) return { ok: false, status: 403, error: "sin-creditos" }; cobros++; return { ok: true, mode: "paid", devolucion: { tipo: "lote", loteId: `lote-${cobros}` } }; },
       async marcarCobrado(mode) { if (fila) { fila.cobrado = true; fila.mode = mode; } },
       async crear() { await Promise.resolve(); if (fallarCrear) throw new Error("insert"); creados++; return { id: `inf-${creados}` }; },
       async marcarCreado(id) { if (fila) fila.analysisId = id; },
+      async devolver() { devueltos++; },
       async soltar() { if (fila && !fila.analysisId) fila = null; },
     });
     const [x, y] = await Promise.all([analizarUnaVez(piezas()), analizarUnaVez(piezas())]);
@@ -270,14 +271,22 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
     if (![x.estado, y.estado].includes("creado") || ![x.estado, y.estado].some((e) => e === "en-curso" || e === "ya-creado")) F("4 · el segundo clic no espera ni devuelve el mismo informe");
     const z = await analizarUnaVez(piezas());
     if (z.estado !== "ya-creado" || cobros !== 1) F("4 · volver a tocar un aviso ya analizado cobra otra vez");
-    // falla a mitad: cobrado, sin informe; el reintento (pasado el reclamo vigente) no vuelve a cobrar
-    fila = null; cobros = 0; creados = 0; fallarCrear = true;
-    await analizarUnaVez(piezas()).catch(() => null);
+    // ⚠ ACTA (04-nov-2026, decisión de Fabrizio, auditoría de promesas parte 1) · «nunca queda un crédito gastado sin
+    // informe». Antes una falla a mitad dejaba el crédito cobrado y la fila tomada, y solo el reintento pasado el reclamo
+    // vigente creaba sin volver a cobrar: si la persona no reintentaba, el crédito se perdía. Ahora la falla DEVUELVE el
+    // crédito en el acto y suelta la fila; el reintento empieza de cero y cobra una vez. Neto: un informe, un crédito. El
+    // predicado viejo exigía «en-curso» y un solo cobro: se reescribe, no se afloja (DATOS-Y-PLATA §3 lo verifica en rojo).
+    fila = null; cobros = 0; creados = 0; devueltos = 0; fallarCrear = true;
+    const w0 = await analizarUnaVez(piezas());
     fallarCrear = false;
+    if (w0.estado !== "fallo" || devueltos !== 1 || fila !== null) F(`4 · una falla a mitad no devuelve el crédito (${devueltos}) o deja la fila tomada`);
     const w1 = await analizarUnaVez(piezas());
+    if (w1.estado !== "creado" || cobros - devueltos !== 1 || creados !== 1) F(`4 · después de una falla el reintento no crea el informe o el neto no es un crédito (cobros ${cobros}, devueltos ${devueltos})`);
+    // la fila vieja de una solicitud cortada a mitad (cobrada sin informe): el reintento la retoma sin volver a cobrar
+    fila = { analysisId: null, cobrado: true, mode: "paid", t: reloj }; cobros = 0; creados = 0; devueltos = 0;
     reloj += RECLAMO_VIGENTE_MS + 1;
     const w2 = await analizarUnaVez(piezas());
-    if (w1.estado !== "en-curso" || w2.estado !== "creado" || cobros !== 1 || creados !== 1) F(`4 · después de una falla a mitad el reintento cobra de nuevo (cobros ${cobros}) o no crea el informe`);
+    if (w2.estado !== "creado" || cobros !== 0 || creados !== 1) F(`4 · la fila cobrada de una solicitud cortada se vuelve a cobrar (cobros ${cobros}) o no crea el informe`);
     // sin crédito: no queda nada cobrado ni la fila tomada
     fila = null; cobros = 0; creados = 0; sinCredito = true;
     const s1 = await analizarUnaVez(piezas());
@@ -333,8 +342,11 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
   if (!/out\.mediana_comuna = mediana \?\? null;/.test(evalAviso) || !/ae\.mediana_comuna/.test(leer("supabase/migrations/20261001_guia_publicados.sql"))) F("6 · la evaluación no guarda la mediana comunal (o la RPC no la devuelve)");
   const apiGuia = sinComentarios(leer("src/app/api/lo-que-sigue/guia/route.ts"));
   if (!/const guardada = await guiaGuardada\(admin, a\);\s*const r = guardada \?\? \(await calcularYGuardarGuia\(admin, a\)\);/.test(apiGuia)) F("6 · la pantalla no lee la guía guardada antes de calcularla");
+  // ⚠ ACTA (04-nov-2026, auditoría de promesas parte 1) · el pack se acredita en lib/pagos/acreditar-pago.ts (la comparten
+  // confirm y el reconciliador diario): la guía se calcula ahí, y confirm la llama. Verificado en ROJO (acta de DATOS-Y-PLATA).
   const confirm = sinComentarios(leer("src/app/api/payments/confirm/route.ts"));
-  if (!/if \(hayGuia\(modalidadDeTipo\(filaPack\?\.tipo_analisis as string \| null\)\)\) \{\s*const idGuia = analysisId;\s*waitUntil\(calcularYGuardarGuia\(supabase, idGuia\)/.test(confirm)) F("6 · la guía no se calcula al confirmarse el pago del pack (o se calcula para renta corta)");
+  const acreditarPago = sinComentarios(leer("src/lib/pagos/acreditar-pago.ts"));
+  if (!/acreditado = await acreditarPagoUnico\(supabase, payment, \{ companionStrId \}\);/.test(confirm) || !/if \(hayGuia\(modalidadDeTipo\(filaPack\?\.tipo_analisis as string \| null\)\)\) \{\s*waitUntil\(calcularYGuardarGuia\(supabase, analysisId\)/.test(acreditarPago)) F("6 · la guía no se calcula al confirmarse el pago del pack (o se calcula para renta corta)");
 
   // ── 7 · después de pagar, una idea ──────────────────────────────────────────
   if (/DESPUES_DE_PAGAR|fraseVeredicto|lqs-mat|lqs-btn|<DespuesDePagar\b/.test(gb)) F("7 · la guía vuelve a traer el bloque de color o la frase por veredicto");
@@ -436,10 +448,11 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
     const piezas: PiezasAnalizar = {
       async reclamar() { reclamos++; return { nueva: true }; },
       async retomar() { return false; },
-      async cobrar() { cobros++; return { ok: true, mode: "paid" }; },
+      async cobrar() { cobros++; return { ok: true, mode: "paid", devolucion: { tipo: "nada" } }; },
       async marcarCobrado() {},
       async crear() { return { id: "inf" }; },
       async marcarCreado() {},
+      async devolver() {},
       async soltar() {},
     };
     const correr = (e: EstadoPublicacion) => analizarAvisoDeGuia({
