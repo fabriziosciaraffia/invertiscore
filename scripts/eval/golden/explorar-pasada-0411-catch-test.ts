@@ -86,6 +86,8 @@ export async function runExplorarPasada0411Tier(): Promise<{ hard: number }> {
     ];
     for (const [f, esperado] of casos) if (po.textoRecalculo(f as never) !== esperado) F(`1 · el pop-up dice «${po.textoRecalculo(f as never)}», no «${esperado}»`);
     if (po.PORTAL_COPY.avanceComunas(9, 25) !== "9 de 25 comunas") F("1 · el avance no dice «9 de 25 comunas»");
+    // ⚠ ACTA (04-nov-2026, QA del preview de EXPLORAR-TURNOS) · con una sola comuna decía «0 de 1 comunas»: va en singular.
+    if (po.PORTAL_COPY.avanceComunas(0, 1) !== "0 de 1 comuna" || po.PORTAL_COPY.avanceComunas(1, 2) !== "1 de 2 comunas") F(`1 · el avance de una sola comuna no va en singular («${po.PORTAL_COPY.avanceComunas(0, 1)}»)`);
     const modRec = cargar<{ PopupRecalculo: FC<Record<string, unknown>> }>("src/app/explorar/recalculo", F);
     if (modRec) {
       const h = dibujar(createElement(modRec.PopupRecalculo, { texto: "Franco está recalculando con tu tasa de 5 %", hechas: 9, total: 25 }));

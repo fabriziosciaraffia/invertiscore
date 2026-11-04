@@ -530,7 +530,7 @@ export const PORTAL_COPY = {
   /** Con una tasa elegida (30-oct-2026): lo que dice abajo mientras llega. */
   calculandoTasa: "Calculando con tu tasa…",
   /** El avance del pop-up del recálculo (04-nov-2026): «9 de 25 comunas». */
-  avanceComunas: (hechas: number, total: number) => `${hechas} de ${total} comunas`,
+  avanceComunas: (hechas: number, total: number) => `${hechas} de ${total} ${total === 1 ? "comuna" : "comunas"}`,
   /** EL TOPE Y EL FUSIBLE (04-nov-2026; cola-recalculo.ts): los dos turnos del sitio están tomados y esta comuna espera. */
   recalculoOcupado: "Franco está ocupado con otro cálculo, un momento…",
   /** La base viene lenta: los recálculos se pausan y el pop-up ofrece la tasa del mes (respaldoDelFusible) en vez de esperar. */
