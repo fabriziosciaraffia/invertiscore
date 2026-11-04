@@ -8,6 +8,7 @@ import { captureApiWarning } from "@/lib/observabilidad";
 import { cerrarCron, CORRIDA_FALLIDA } from "@/lib/cron-resultado";
 import { latirCron } from "@/lib/cron-heartbeat";
 import { seVende } from "@/lib/planes";
+import { conBajaDeCorreos } from "@/lib/correo-baja";
 
 const RUTA = "GET /api/cron/abandoned-checkout";
 
@@ -159,8 +160,17 @@ export async function GET(request: Request) {
   // recuperación de un pending 'single' (ruta A), NO la de un pending de plan
   // (ruta B) — un comprador de análisis suelto puede abandonar un checkout de
   // suscripción y debe ser recuperable. Para planes, la red es activeSubUserIds.
+  // LA BAJA (04-nov-2026, lib/correo-baja.ts): quien se dio de baja de los correos de Franco no recibe la recuperación.
+  // Sin poder leer las bajas no se manda nada: la promesa de la baja pesa más que una venta recuperada.
+  let bajas: Set<string>;
+  try {
+    bajas = await conBajaDeCorreos(supabase, (candidates ?? []).map((c) => c.user_id as string));
+  } catch (e) {
+    console.error("[cron/abandoned-checkout] bajas:", e);
+    return cerrarCron(supabase, "abandoned-checkout", CORRIDA_FALLIDA, { error: "No se pudieron leer las bajas" });
+  }
   const toRecover = (candidates ?? []).filter(
-    (c) => !(c.product === "single" && paidUserIds.has(c.user_id)) && !activeSubUserIds.has(c.user_id),
+    (c) => !(c.product === "single" && paidUserIds.has(c.user_id)) && !activeSubUserIds.has(c.user_id) && !bajas.has(c.user_id),
   );
 
   let processed = 0;

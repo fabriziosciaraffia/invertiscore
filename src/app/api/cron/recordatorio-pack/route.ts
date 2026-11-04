@@ -8,6 +8,7 @@ import { capturarServidor } from "@/lib/posthog-servidor";
 import { debeRecordar, DIAS_RECORDATORIO } from "@/lib/lo-que-sigue/recordatorio";
 import { eventoRecordatorioPack } from "@/lib/lo-que-sigue/eventos-servidor";
 import { PACK_ANALISIS, PRODUCTO_PACK } from "@/lib/lo-que-sigue/oferta-pack";
+import { conBajaDeCorreos } from "@/lib/correo-baja";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // El recordatorio del pack (30-sep-2026), una vez al día: a quien pagó el pack hace tres días o más y
@@ -68,12 +69,23 @@ export async function GET(request: Request) {
     return cerrarCron(supabase, "recordatorio-pack", { procesados: 0, exitosos: 0, fallidos: 1 });
   }
 
+  // LA BAJA (04-nov-2026, lib/correo-baja.ts): quien se dio de baja de los correos de Franco no recibe el recordatorio.
+  // Sin poder leer las bajas no se manda nada.
+  let bajas: Set<string>;
+  try {
+    bajas = await conBajaDeCorreos(supabase, (pagos ?? []).map((p) => p.user_id as string));
+  } catch (e) {
+    captureApiWarning(e, { ruta: RUTA, operacion: "leer-bajas" });
+    return cerrarCron(supabase, "recordatorio-pack", { procesados: 0, exitosos: 0, fallidos: 1 });
+  }
   let procesados = 0;
   let enviados = 0;
   let fallidos = 0;
   let noReclamados = 0;
   let sinUsarNo = 0;
+  let deBaja = 0;
   for (const p of pagos ?? []) {
+    if (bajas.has(p.user_id as string)) { deBaja++; continue; }
     const ahora = new Date();
     if (!debeRecordar({ status: p.status, product: p.product, pagadoEl: p.updated_at, recordatorioEnviadoEl: p.recordatorio_pack_enviado_at, restantes: restantesPorPago.get(p.id) ?? null }, ahora)) { sinUsarNo++; continue; }
     procesados++;
@@ -113,5 +125,5 @@ export async function GET(request: Request) {
     }
   }
 
-  return cerrarCron(supabase, "recordatorio-pack", { procesados, exitosos: enviados, fallidos }, { enviados, noReclamados, yaUsaronAlguno: sinUsarNo, topePorCorrida: TOPE_POR_CORRIDA });
+  return cerrarCron(supabase, "recordatorio-pack", { procesados, exitosos: enviados, fallidos }, { enviados, noReclamados, yaUsaronAlguno: sinUsarNo, deBaja, topePorCorrida: TOPE_POR_CORRIDA });
 }

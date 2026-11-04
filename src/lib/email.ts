@@ -3,6 +3,8 @@ import { FLOW_PRODUCTS, type FlowProductKey } from './flow-products';
 import { capturarServidor } from "./posthog-servidor";
 import { eventoCorreoEnviado, identidadCorreo, tagsCorreo, type TipoCorreo } from "./medicion-correo";
 import { cuentasDePruebaSinCorreo, destinoBloqueado } from "./correo-destino";
+import { conBajaDeCorreos, TIPOS_CON_BAJA } from "./correo-baja";
+import { createServiceClient as adminCorreo } from "./supabase/service";
 import { correoRecordatorioPack } from "./lo-que-sigue/recordatorio";
 import { correoAlertaCron, correoResumenCrons, correoAlertaPago, correoAlertaPagoFallido, correoBienvenida, correoBoleta, correoCheckoutAbandonado, correoEliminacionInterna, correoEliminacionUsuario, correoAvisoPedido, correoInformeListo, correoPagoConfirmado, correoPagoFallido, correoPlanAumento, correoPremioReferido } from "./email/correos";
 
@@ -31,6 +33,8 @@ async function enviarCorreo(
   tipo: TipoCorreo,
   userId: string | null | undefined,
   mensaje: MensajeResend,
+  /** La llave de idempotencia de Resend (04-nov-2026): el mismo correo, con la misma llave, sale una vez. */
+  opciones: { idempotencyKey?: string } = {},
 ): Promise<{ data: { id: string } | null; error: { message?: string } | null }> {
   const resend = getResend();
   if (!resend) return { data: null, error: null };
@@ -42,8 +46,20 @@ async function enviarCorreo(
     console.info(`[email] ${tipo} no sale: ${bloqueo}`);
     return { data: null, error: null };
   }
+  // La baja de los correos (04-nov-2026, lib/correo-baja.ts): la red para los comerciales que la respetan, venga de donde venga
+  // el envío. Sin poder leerla, no sale.
+  if (TIPOS_CON_BAJA.has(tipo) && userId) {
+    const deBaja = await conBajaDeCorreos(adminCorreo(), [userId]).then((s) => s.has(userId), () => true);
+    if (deBaja) {
+      console.info(`[email] ${tipo} no sale: la persona se dio de baja`);
+      return { data: null, error: null };
+    }
+  }
   const distinctId = identidadCorreo(String(to ?? ""), userId);
-  const res = await resend.emails.send({ ...mensaje, tags: [...(mensaje.tags ?? []), ...tagsCorreo(tipo, distinctId)] } as MensajeResend);
+  const res = await resend.emails.send(
+    { ...mensaje, tags: [...(mensaje.tags ?? []), ...tagsCorreo(tipo, distinctId)] } as MensajeResend,
+    opciones.idempotencyKey ? { idempotencyKey: opciones.idempotencyKey } : undefined,
+  );
   if (!res.error) {
     void capturarServidor(eventoCorreoEnviado({ tipo, distinctId, resendId: res.data?.id ?? null, correo: String(to ?? "") || null })).catch(() => {});
   }
@@ -157,7 +173,8 @@ function paymentPlanCopy(product: string, analysisId?: string): {
 /** La línea del correo de pago confirmado del pack: quien pagó sin cuenta entra con su correo. */
 export const LINEA_CODIGO_PACK = "Para entrar, pide tu código con este mismo correo.";
 
-export async function sendPaymentConfirmationEmail(to: string, name: string, product: string, amount: number, analysisId?: string, ambasIds?: { ltrId: string; strId: string }, opts: CorreoOpts & { guiaPack?: string | null } = {}) {
+/** true si salió (Resend sin error). `idempotencyKey`: el pago (04-nov-2026), para que un reenvío de Flow no lo repita. */
+export async function sendPaymentConfirmationEmail(to: string, name: string, product: string, amount: number, analysisId?: string, ambasIds?: { ltrId: string; strId: string }, opts: CorreoOpts & { guiaPack?: string | null; idempotencyKey?: string } = {}): Promise<boolean> {
   const { productName, unlocks, includes } = paymentPlanCopy(product, analysisId);
 
   const dateFormatted = new Date().toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'America/Santiago' });
@@ -198,9 +215,11 @@ export async function sendPaymentConfirmationEmail(to: string, name: string, pro
     ...(lineaCodigo ? { despues: lineaCodigo } : {}),
   });
   try {
-    await enviarCorreo("pago_confirmado", opts.userId, { from: FROM_EMAIL, to, subject, html });
+    const { data, error } = await enviarCorreo("pago_confirmado", opts.userId, { from: FROM_EMAIL, to, subject, html }, { idempotencyKey: opts.idempotencyKey });
+    return !!data && !error;
   } catch (error) {
     console.error('Error sending payment confirmation email:', error);
+    return false;
   }
 }
 
