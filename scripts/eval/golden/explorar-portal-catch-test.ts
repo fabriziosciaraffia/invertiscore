@@ -418,6 +418,9 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
     // ⚠ ACTA (02-nov-2026, goal de los cortes por statement_timeout) · UNA ZONA QUE FALLA hace fallar el pedido de esa comuna
     // sin guardar nada (antes se tomaba como zona vacía y los avisos quedaban 24 horas sin veredicto: Santiago, 5.394 el 02-nov),
     // y CON `diferir` la respuesta no espera al guardado (va después, sin competir con la comuna siguiente).
+    // ⚠ ACTA (04-nov-2026, después de la caída de la base del 04-nov; goal de Fabrizio, tier EXPLORAR-TURNOS) · AL REVÉS: la
+    // respuesta ESPERA al guardado (dentro del turno), así la comuna siguiente empieza cuando terminó el guardado de la anterior.
+    // `diferir` se retiró.
     const guardadosZ: unknown[] = [];
     const { admin: a3 } = baseFalsa({}, {
       explorar_universo_liviano: () => ({ data: [filaU("A", null)], error: null }),
@@ -430,22 +433,18 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
     }).then(() => false, () => true);
     if (!lanzo || guardadosZ.length) F(`7 · una zona que falla no hace fallar el pedido (o se guardan avisos sin veredicto: ${guardadosZ.length})`);
     let liberar: (() => void) | null = null;
-    const diferidos: Array<Promise<unknown>> = [];
     const { admin: a4 } = baseFalsa({}, {
       explorar_universo_liviano: () => ({ data: [filaU("A", null)], error: null }),
       explorar_filas_para_sonda: (p: Record<string, unknown>) => ({ data: (p.ids as string[]).map(pesada), error: null }),
       explorar_guardar_combos: () => new Promise((ok) => { liberar = () => ok({ data: 1, error: null }); }),
     });
-    const pinesD = await Promise.race([
-      srv.universoCalculado(a4, { comunas: ["Providencia"], modalidad: "str", pie: 20, plazo: 25 }, ahora, undefined, {
-        cfg: { uf: UF, tasa: 4.2 }, zonas: async () => new Map([[1, { n: 5 } as never]]), sondaStr: () => ({ v: "COMPRAR", s: 80, f: 1, i: 1 }),
-        diferir: (p) => { diferidos.push(p); },
-      }),
-      new Promise<null>((ok) => setTimeout(() => ok(null), 2000)),
-    ]);
-    if (!pinesD || pinesD.length !== 1 || diferidos.length !== 1) F("7 · con `diferir`, la respuesta espera al guardado (o no lo deja en segundo plano)");
+    const enCurso = srv.universoCalculado(a4, { comunas: ["Providencia"], modalidad: "str", pie: 20, plazo: 25 }, ahora, undefined, {
+      cfg: { uf: UF, tasa: 4.2 }, zonas: async () => new Map([[1, { n: 5 } as never]]), sondaStr: () => ({ v: "COMPRAR", s: 80, f: 1, i: 1 }),
+    });
+    const antes = await Promise.race([enCurso.then(() => "respondio"), new Promise<"espera">((ok) => setTimeout(() => ok("espera"), 300))]);
     (liberar as (() => void) | null)?.();
-    await Promise.all(diferidos);
+    const pinesD = await Promise.race([enCurso, new Promise<null>((ok) => setTimeout(() => ok(null), 2000))]);
+    if (antes !== "espera" || !pinesD || pinesD.length !== 1) F(`7 · la respuesta no espera al guardado (${antes}; ${pinesD?.length ?? "sin respuesta"} pines después de guardar)`);
     if (srv.claveComboPortal("ltr", 15, 20) !== "15-20") F("7 · la clave de renta larga cambió (pisaría lo calculado por el pop-up)");
   } catch (e) {
     F(`7 · el universo explotó: ${(e as Error).message}`);
@@ -464,7 +463,9 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
   // navegador lee eso; y lo compacto ida y vuelta por JSON da los mismos pines.
   // ⚠ ACTA (03-nov-2026) · la rama de la noche la arma respuestaDeLaNoche: `universo` con su tabla y, aparte, `negociados`.
   // ⚠ ACTA (03-nov-2026, «una sola caché») · el universo sale de la noche leída (`noche.universo`).
-  if (!/Promise<RespuestaUniverso> \{/.test(cacheSrc) || !/clave: claveUniverso\(q\), comunas: \[\], universo: o\.sinCifras \? universoSinCifras\(noche\.universo\) : noche\.universo,/.test(cacheSrc) || /\.\.\.u[,}]/.test(ruta + cacheSrc) || (cli.match(/\(await res\.json\(\)\) as RespuestaUniverso;/g) ?? []).length !== 2 || (cli.match(/descompactar\(d\.universo\)/g) ?? []).length !== 2) F("7 · la respuesta del universo no tiene la forma que lee el navegador (`universo` con su tabla de comunas)");
+  // ⚠ ACTA (04-nov-2026, después de la caída de la base; tier EXPLORAR-TURNOS) · la rama calculada lee RespuestaUniverso por la cola
+  // de a una comuna (`recalcularEnCola<RespuestaUniverso>`, que hace el `res.json()`); la de la noche, como siempre.
+  if (!/Promise<RespuestaUniverso> \{/.test(cacheSrc) || !/clave: claveUniverso\(q\), comunas: \[\], universo: o\.sinCifras \? universoSinCifras\(noche\.universo\) : noche\.universo,/.test(cacheSrc) || /\.\.\.u[,}]/.test(ruta + cacheSrc) || (cli.match(/\(await res\.json\(\)\) as RespuestaUniverso;/g) ?? []).length !== 1 || (cli.match(/await recalcularEnCola<RespuestaUniverso>\(\{/g) ?? []).length !== 1 || (cli.match(/descompactar\(d\.universo\)/g) ?? []).length !== 2) F("7 · la respuesta del universo no tiene la forma que lee el navegador (`universo` con su tabla de comunas)");
   try {
     const srv = require(join(RAIZ, "src/lib/explorar/portal-servidor")) as typeof import("../../../src/lib/explorar/portal-servidor");
     const ida = JSON.parse(JSON.stringify(srv.respuestaUniverso([PIN, { ...PIN, avisoId: "z9", comuna: "Ñuñoa" }], { modalidad: "ltr", pie: 15, plazo: 20, comunas: ["Providencia"] })));

@@ -11,6 +11,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { reportarFalloQuery } from "@/lib/observabilidad";
+import { conTope } from "./turnos-recalculo";
 import { tipologiaDe } from "@/lib/lo-que-sigue/perfil";
 import { MEMORIA_SEMANAL_MS, VENTANA_SEMANAL_DIAS } from "@/lib/guia/semanal";
 import { comunaDeAviso } from "@/lib/guia/semanal-candidatos";
@@ -131,10 +132,22 @@ export type FilaUniverso = {
  *  pidiendo comunas en paralelo eran unos 36 pedidos a la vez por persona, y la base se saturaba hasta cortar por timeout. */
 const PEDIDOS_A_LA_VEZ = 3;
 const LOTE = 500;
-/** El guardado (02-nov-2026): de a 200 avisos y de a un pedido. Un UPDATE de 500 filas tomaba hasta 5,9 s y bloqueaba esas
- *  filas; Explorar además lo hace en segundo plano (portal-servidor.ts › DepsPortal.diferir). */
-const LOTE_GUARDADO = 200;
+/** El guardado (02-nov-2026): de a un pedido. Un UPDATE de 500 filas tomaba hasta 5,9 s y bloqueaba esas filas.
+ *  TANDAS CHICAS CON TOPE (04-nov-2026, después de la caída de la base): de a 100 avisos, cada tanda con 10 s como mucho; una que
+ *  se corta se reintenta una vez, y si vuelve a cortarse el guardado para ahí (lo que falta se calcula la próxima vez) en vez de
+ *  insistir y bloquear a los demás. Explorar lo espera dentro de su turno (turnos-recalculo.ts): ya no va en segundo plano. */
+export const LOTE_GUARDADO = 100;
+export const TANDA_GUARDADO_MS = 10_000;
 const lotes = <T,>(xs: T[], n: number = LOTE): T[][] => Array.from({ length: Math.ceil(xs.length / n) }, (_, i) => xs.slice(i * n, (i + 1) * n));
+
+/** Cómo mide un recálculo sus pedidos a la base (el fusible, turnos-recalculo.ts). */
+export type NotarRespuesta = (ms: number, error: unknown) => void;
+
+/** Un pedido de supabase con tope: corta el pedido (abortSignal) y no espera más que `ms`. */
+async function conCorte<T>(q: PromiseLike<T>, ms: number): Promise<T> {
+  const conSenal = typeof (q as { abortSignal?: unknown }).abortSignal === "function" ? (q as unknown as { abortSignal(s: AbortSignal): PromiseLike<T> }).abortSignal(AbortSignal.timeout(ms)) : q;
+  return conTope(conSenal, ms);
+}
 
 /** El universo de unos filtros (den lo que den), liviano, con lo guardado para esa combinación: UN solo pedido (la RPC
  *  devuelve un jsonb, no filas, así el tope de mil de PostgREST no corta; medido el 24-oct-2026: de a páginas, 2,5 s). */
@@ -145,12 +158,19 @@ export async function universoExplorar(admin: SupabaseClient, f: FiltrosExplorar
   return Array.isArray(data) ? (data as FilaUniverso[]) : [];
 }
 
-/** Lo que la sonda necesita, solo para esos avisos, de a 500 y de a PEDIDOS_A_LA_VEZ pedidos. */
-export async function filasParaSonda(admin: SupabaseClient, ids: string[]): Promise<Map<string, FilaRpc>> {
+/** Lo que la sonda necesita, solo para esos avisos, de a 500 y de a PEDIDOS_A_LA_VEZ pedidos. Con `notar`, cada pedido se mide
+ *  (más de 2 s o un error abren el fusible). */
+export async function filasParaSonda(admin: SupabaseClient, ids: string[], notar?: NotarRespuesta): Promise<Map<string, FilaRpc>> {
   const out = new Map<string, FilaRpc>();
   const todos = lotes(ids);
   for (let i = 0; i < todos.length; i += PEDIDOS_A_LA_VEZ) {
-    const respuestas = await Promise.all(todos.slice(i, i + PEDIDOS_A_LA_VEZ).map((lote) => admin.rpc("explorar_filas_para_sonda", { ids: lote })));
+    const respuestas = await Promise.all(todos.slice(i, i + PEDIDOS_A_LA_VEZ).map((lote) => {
+      const t0 = Date.now();
+      return Promise.resolve(admin.rpc("explorar_filas_para_sonda", { ids: lote })).then(
+        (r) => { notar?.(Date.now() - t0, r.error); return r; },
+        (e) => { notar?.(Date.now() - t0, e); throw e; },
+      );
+    }));
     for (const { data, error } of respuestas) {
       if (error) throw new Error(`explorar_filas_para_sonda: ${error.message}`);
       for (const r of (data ?? []) as FilaRpc[]) out.set(r.id, r);
@@ -159,13 +179,32 @@ export async function filasParaSonda(admin: SupabaseClient, ids: string[]): Prom
   return out;
 }
 
-/** Lo calculado, guardado en `combos` de a lotes chicos y de a uno (sin pisar las otras combinaciones). */
-export async function guardarCombos(admin: SupabaseClient, clave: string, nuevos: Array<{ avisoId: string; combo: ComboGuardado }>): Promise<number> {
+/** Cómo se guarda: `notar` mide cada tanda (el fusible); `seguir` se mira antes de cada una (con el fusible abierto, para). */
+export interface OpcionesGuardado { notar?: NotarRespuesta; seguir?: () => boolean; tandaMs?: number; pausaMs?: number }
+
+/** Lo calculado, guardado en `combos` en tandas de 100 y de a una (sin pisar las otras combinaciones). Cada tanda tiene 10 s
+ *  como mucho; si se corta, se reintenta una vez, y si vuelve a cortarse el guardado para (no insiste ni bloquea a los demás). */
+export async function guardarCombos(admin: SupabaseClient, clave: string, nuevos: Array<{ avisoId: string; combo: ComboGuardado }>, op: OpcionesGuardado = {}): Promise<number> {
   let guardados = 0;
+  const tope = op.tandaMs ?? TANDA_GUARDADO_MS;
   for (const lote of lotes(nuevos, LOTE_GUARDADO)) {
-    const { data, error } = await admin.rpc("explorar_guardar_combos", { filas: lote.map((n) => ({ aviso_id: n.avisoId, combo: { [clave]: n.combo } })) });
-    reportarFalloQuery(error, { ruta: RUTA, operacion: "guardar-combos" });
-    if (!error) guardados += Number(data) || 0;
+    if (op.seguir && !op.seguir()) break;
+    let hecha = false;
+    for (let intento = 0; intento < 2 && !hecha; intento++) {
+      const t0 = Date.now();
+      let error: unknown = null, data: unknown = null;
+      try {
+        const r = await conCorte(admin.rpc("explorar_guardar_combos", { filas: lote.map((n) => ({ aviso_id: n.avisoId, combo: { [clave]: n.combo } })) }), tope);
+        error = r.error; data = r.data;
+      } catch (e) {
+        error = e;
+      }
+      op.notar?.(Date.now() - t0, error);
+      if (error == null) { hecha = true; guardados += Number(data) || 0; }
+      else if (intento === 0) await new Promise((ok) => setTimeout(ok, op.pausaMs ?? 500));
+      else reportarFalloQuery(error as { message?: string }, { ruta: RUTA, operacion: "guardar-combos" });
+    }
+    if (!hecha) break;
   }
   return guardados;
 }

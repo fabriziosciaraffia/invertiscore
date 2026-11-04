@@ -531,6 +531,14 @@ export const PORTAL_COPY = {
   calculandoTasa: "Calculando con tu tasa…",
   /** El avance del pop-up del recálculo (04-nov-2026): «9 de 25 comunas». */
   avanceComunas: (hechas: number, total: number) => `${hechas} de ${total} comunas`,
+  /** EL TOPE Y EL FUSIBLE (04-nov-2026; cola-recalculo.ts): los dos turnos del sitio están tomados y esta comuna espera. */
+  recalculoOcupado: "Franco está ocupado con otro cálculo, un momento…",
+  /** La base viene lenta: los recálculos se pausan y el pop-up ofrece la tasa del mes (respaldoDelFusible) en vez de esperar. */
+  recalculoPausado: "Franco pausó los recálculos un momento",
+  recalculoPausadoQue: "Hay mucha demanda ahora. Puedes ver el mapa con la tasa del mes o intentarlo de nuevo en un rato.",
+  recalculoPausadoSinRespaldo: "Hay mucha demanda ahora. Puedes ver lo que ya cargó o intentarlo de nuevo en un rato.",
+  recalculoVerLoCargado: "Ver lo que ya cargó",
+  recalculoReintentar: "Intentar de nuevo",
   /** La primera opción de la tasa: la de hoy, que sigue al motor. */
   tasaHoy: (t: number | null) => (t != null ? `La de hoy (${tasaTexto(t)} %)` : "La de hoy"),
   /** La tasa elegida, cerrada (sin cuenta) o en la línea: «4,5 % · la elegiste». */

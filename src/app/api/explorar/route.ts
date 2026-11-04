@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { waitUntil } from "@vercel/functions";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { captureApiError } from "@/lib/observabilidad";
@@ -9,6 +8,7 @@ import { PIES_EXPLORAR, PLAZOS_EXPLORAR } from "@/lib/explorar/explorar";
 import { universoDeLaNoche as esDeLaNoche } from "@/lib/explorar/portal";
 import { respuestaUniverso, universoYCapaCalculados } from "@/lib/explorar/portal-servidor";
 import { respuestaDeLaNoche } from "@/lib/explorar/portal-cache";
+import { almacenDeConfig, esRecalculoEnEspera, TurnosRecalculo } from "@/lib/explorar/turnos-recalculo";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/explorar?m=ltr&p=20&z=25[&c=Ñuñoa][&s=sello] (28-oct-2026, Explorar como portal): el universo del mapa para una modalidad,
@@ -52,11 +52,14 @@ export async function GET(request: Request) {
     if (comunas.length === 0 || comunas.length > MAX_COMUNAS_POR_PEDIDO) return NextResponse.json({ error: "comunas" }, { status: 400 });
     const admin = createServiceClient();
     const cuenta = { calculados: 0, ms: 0 };
-    // Lo calculado se guarda después de responder (02-nov-2026): no compite con la lectura de la comuna siguiente.
+    // EL TOPE Y EL FUSIBLE (04-nov-2026, después de la caída de la base): si hay algo que calcular, un turno de los dos del sitio;
+    // lo calculado se guarda dentro del turno, antes de responder (turnos-recalculo.ts). Sin turno: 503 «ocupado» o «pausado».
     const conCapa = modalidad === "ltr";
-    const { pines, negociados } = await universoYCapaCalculados(admin, { ...q, comunas }, new Date(), cuenta, { diferir: waitUntil, conCapa });
+    const turnos = new TurnosRecalculo(almacenDeConfig(admin));
+    const { pines, negociados } = await universoYCapaCalculados(admin, { ...q, comunas }, new Date(), cuenta, { conCapa, turnos, quien: user.id });
     return NextResponse.json(respuestaUniverso(pines, { ...q, comunas }, cuenta, conCapa ? negociados : null), { headers: { "Cache-Control": "private, max-age=300" } });
   } catch (e) {
+    if (esRecalculoEnEspera(e)) return NextResponse.json({ error: e.motivo }, { status: 503, headers: { "Cache-Control": "no-store", "Retry-After": "3" } });
     captureApiError(e, { ruta: "GET /api/explorar", operacion: "universo", userId: user.id, extra: { modalidad, pie, plazo, tasa } });
     return NextResponse.json({ error: "interno" }, { status: 500 });
   }

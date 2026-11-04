@@ -94,7 +94,8 @@ export async function runExplorarPasada0411Tier(): Promise<{ hard: number }> {
     }
     const css = leer("src/app/explorar/explorar.css");
     if (!/\.ex-recalculo-gira \{[^}]*animation: franco-gira/.test(css)) F("1 · el spinner del pop-up no gira");
-    if (!/\{progreso && <PopupRecalculo texto=\{textoRecalculo\(filtros\)\} hechas=\{progreso\.hechas\} total=\{progreso\.total\} \/>\}/.test(cli)) F("1 · Explorar no muestra el pop-up mientras recalcula por comunas");
+    // ⚠ ACTA (04-nov-2026, después de la caída de la base; tier EXPLORAR-TURNOS) · el pop-up recibe además el estado de la cola.
+    if (!/\{progreso && \(\s*<PopupRecalculo texto=\{textoRecalculo\(filtros\)\} hechas=\{progreso\.hechas\} total=\{progreso\.total\} estado=\{progreso\.estado\}/.test(cli)) F("1 · Explorar no muestra el pop-up mientras recalcula por comunas");
     if (!/const enCalculoAbajo = progreso == null && \(calculando \|\| total == null \|\| nAjustar == null\) \? enCalculo : null;/.test(cli) || /calculandoTasaComunas|calculandoComunas/.test(cli + codigo("src/lib/explorar/portal.ts"))) F("1 · abajo sigue la línea «Calculando con tu tasa… 9 de 25 comunas»");
 
     // La capa con cualquier combinación de arriendo tradicional; la de la noche, solo con la suya.
@@ -136,9 +137,10 @@ export async function runExplorarPasada0411Tier(): Promise<{ hard: number }> {
       if (sin.negociados.length) F("1 · sin pedir la capa, el cálculo igual busca descuentos");
     }
     const ruta = codigo("src/app/api/explorar/route.ts");
-    if (!/const conCapa = modalidad === "ltr";\s*const \{ pines, negociados \} = await universoYCapaCalculados\(admin, \{ \.\.\.q, comunas \}, new Date\(\), cuenta, \{ diferir: waitUntil, conCapa \}\);\s*return NextResponse\.json\(respuestaUniverso\(pines, \{ \.\.\.q, comunas \}, cuenta, conCapa \? negociados : null\)/.test(ruta)) F("1 · GET /api/explorar no devuelve los − Ajustar de la comuna calculada");
+    // ⚠ ACTA (04-nov-2026, después de la caída de la base; tier EXPLORAR-TURNOS) · sin `diferir`: la ruta pasa los turnos del sitio.
+    if (!/const conCapa = modalidad === "ltr";\s*const turnos = new TurnosRecalculo\(almacenDeConfig\(admin\)\);\s*const \{ pines, negociados \} = await universoYCapaCalculados\(admin, \{ \.\.\.q, comunas \}, new Date\(\), cuenta, \{ conCapa, turnos, quien: user\.id \}\);\s*return NextResponse\.json\(respuestaUniverso\(pines, \{ \.\.\.q, comunas \}, cuenta, conCapa \? negociados : null\)/.test(ruta)) F("1 · GET /api/explorar no devuelve los − Ajustar de la comuna calculada");
     const rutaNeg = codigo("src/app/api/explorar/negociar/route.ts");
-    if (!/if \(plazo !== PLAZO_POR_DEFECTO \|\| tasa != null \|\| !\(PIES_NEGOCIAR as readonly number\[\]\)\.includes\(pie\)\) \{/.test(rutaNeg) || !/universoYCapaCalculados\(createServiceClient\(\), \{ modalidad: "ltr", pie, plazo, tasa, comunas \}, new Date\(\), cuenta, \{ diferir: waitUntil, conCapa: true \}\)/.test(rutaNeg)) F("1 · la capa de pie 20 % o 30 % a 25 años (o con tasa) no se calcula por comuna");
+    if (!/if \(plazo !== PLAZO_POR_DEFECTO \|\| tasa != null \|\| !\(PIES_NEGOCIAR as readonly number\[\]\)\.includes\(pie\)\) \{/.test(rutaNeg) || !/universoYCapaCalculados\(admin, \{ modalidad: "ltr", pie, plazo, tasa, comunas \}, new Date\(\), cuenta, \{ conCapa: true, turnos, quien: user\.id \}\)/.test(rutaNeg)) F("1 · la capa de pie 20 % o 30 % a 25 años (o con tasa) no se calcula por comuna");
     // El navegador: la junta por comuna, la elige con otra combinación y la pide aparte para la noche a 25 años.
     if (!/if \(vivo\.current && negs\) setCapasCalc\(\(cs\) => agregarCapa\(cs, clave, comuna, negs\)\);/.test(cli) || (cli.match(/setCapasCalc\(\(cs\) => agregarCapa\(cs, clave, comuna, negs\)\)/g) ?? []).length !== 2) F("1 · el navegador no junta los − Ajustar que llegan por comuna");
     if (!/: capaDeLaNoche\(filtros\) \? negociados\[filtros\.pie\]\s*: capaCalculadaPara\(filtros, capasCalc\)/.test(cli)) F("1 · con otra combinación el mapa no usa la capa calculada");

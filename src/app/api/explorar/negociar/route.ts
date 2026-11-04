@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { waitUntil } from "@vercel/functions";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { captureApiError } from "@/lib/observabilidad";
@@ -9,6 +8,7 @@ import { PIES_EXPLORAR, PLAZOS_EXPLORAR } from "@/lib/explorar/explorar";
 import { nocheExplorar } from "@/lib/explorar/portal-cache";
 import { universoYCapaCalculados } from "@/lib/explorar/portal-servidor";
 import { compactarNegociados, PIES_NEGOCIAR } from "@/lib/explorar/capa-negociar";
+import { almacenDeConfig, esRecalculoEnEspera, TurnosRecalculo } from "@/lib/explorar/turnos-recalculo";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/explorar/negociar?p=20|30[&s=sello] (02-nov-2026, capa-negociar.ts): la capa «Si negocias el precio» CON CUENTA: todo Gran
@@ -40,9 +40,13 @@ export async function GET(request: Request) {
     if (comunas.length !== 1) return NextResponse.json({ error: "comunas" }, { status: 400 });
     try {
       const cuenta = { calculados: 0, ms: 0 };
-      const { negociados } = await universoYCapaCalculados(createServiceClient(), { modalidad: "ltr", pie, plazo, tasa, comunas }, new Date(), cuenta, { diferir: waitUntil, conCapa: true });
+      // El mismo tope y el mismo fusible que el universo calculado (turnos-recalculo.ts, 04-nov-2026).
+      const admin = createServiceClient();
+      const turnos = new TurnosRecalculo(almacenDeConfig(admin));
+      const { negociados } = await universoYCapaCalculados(admin, { modalidad: "ltr", pie, plazo, tasa, comunas }, new Date(), cuenta, { conCapa: true, turnos, quien: user.id });
       return NextResponse.json({ pie, plazo, tasa, comunas, negociados: compactarNegociados(negociados), calculados: cuenta.calculados, ms: cuenta.ms }, { headers: { "Cache-Control": "private, max-age=300" } });
     } catch (e) {
+      if (esRecalculoEnEspera(e)) return NextResponse.json({ error: e.motivo }, { status: 503, headers: { "Cache-Control": "no-store", "Retry-After": "3" } });
       captureApiError(e, { ruta: "GET /api/explorar/negociar", operacion: "capa-calculada", userId: user.id, extra: { pie, plazo, tasa, comunas } });
       return NextResponse.json({ error: "interno" }, { status: 500 });
     }

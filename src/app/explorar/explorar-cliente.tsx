@@ -80,6 +80,7 @@ import {
 } from "@/lib/explorar/compartir";
 import { enlaceCompartido, PARAMS_DE_UNA_VEZ } from "@/lib/explorar/enlace-compartido";
 import { analizadosDeLaPestana, anotarVolver, hrefDelMapa } from "@/lib/explorar/volver-al-mapa";
+import { recalcularEnCola, respaldoDelFusible, respuestaDeComuna, type AvanceRecalculo } from "@/lib/explorar/cola-recalculo";
 import type { CasoCompartido } from "./compartido-hoja";
 import "./explorar.css";
 
@@ -97,9 +98,8 @@ const HojaCompartida = dynamic(() => import("./compartido-hoja").then((m) => m.H
 const PopupRecalculo = dynamic(() => import("./recalculo").then((m) => m.PopupRecalculo), { ssr: false, loading: () => null });
 
 const ESPERA_EN_CURSO_MS = 4000;
-/** Comunas que se calculan a la vez (otro pie u otro plazo, o renta corta). De 3 a 2 el 02-nov-2026: con 12 pedidos por comuna
- *  en el servidor eran unos 36 a la vez por persona, y la base cortaba por timeout. */
-const COMUNAS_A_LA_VEZ = 2;
+// Las comunas que se calculan (otro pie u otro plazo, o renta corta) van DE A UNA desde el 04-nov-2026 (eran 3 y, desde el 02-nov,
+// 2): la cola vive en cola-recalculo.ts, y el tope de todo el sitio, en el servidor (turnos-recalculo.ts).
 
 /** Lo que el servidor sabe de la cuenta (portal-servidor.ts › CuentaPortal), sin nada que no se pueda mostrar. */
 export interface CuentaCliente {
@@ -224,7 +224,7 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
   const enCurso = useRef(new Set<string>());
   const sinCuentaRef = useRef(sinCuenta);
   sinCuentaRef.current = sinCuenta;
-  const [progreso, setProgreso] = useState<{ hechas: number; total: number } | null>(null);
+  const [progreso, setProgreso] = useState<AvanceRecalculo | null>(null);
   const [fallo, setFallo] = useState(false);
   /** Las comunas que no cargaron en el último cálculo (02-nov-2026), con la clave del universo al que pertenecen. */
   const [fallidas, setFallidas] = useState<{ clave: string; comunas: string[] } | null>(null);
@@ -351,29 +351,19 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
     if (faltan.length === 0) return;
     for (const c of faltan) enCurso.current.add(`capa|${clave}|${c}`);
     const base = `/api/explorar/negociar?p=${f.pie}&z=${f.plazo}${f.tasa != null ? `&ta=${f.tasa}` : ""}`;
-    let hechas = 0;
-    setProgreso({ hechas, total: faltan.length });
-    const cola = [...faltan];
-    const perdidas: string[] = [];
-    const trabajador = async () => {
-      for (let c = cola.shift(); c; c = cola.shift()) {
-        try {
-          const res = await fetch(`${base}&c=${encodeURIComponent(c)}`, { cache: "default" });
-          if (!res.ok) throw new Error(String(res.status));
-          const d = (await res.json()) as { negociados: NegociadosCompactos };
-          const negs = descompactarNegociados(d.negociados);
-          const comuna = c;
-          if (vivo.current) setCapasCalc((cs) => agregarCapa(cs, clave, comuna, negs));
-        } catch {
-          perdidas.push(c);
-        }
-        enCurso.current.delete(`capa|${clave}|${c}`);
-        hechas++;
-        if (vivo.current) setProgreso({ hechas, total: faltan.length });
-      }
-    };
-    await Promise.all(Array.from({ length: Math.min(COMUNAS_A_LA_VEZ, faltan.length) }, trabajador));
-    if (vivo.current) { setProgreso(null); if (perdidas.length) { setFallo(true); setFallidas({ clave, comunas: perdidas }); } }
+    // De a una comuna (04-nov-2026, cola-recalculo.ts): «ocupado» espera y reintenta; «pausado» para la cola.
+    const { perdidas, pausado } = await recalcularEnCola<{ negociados: NegociadosCompactos }>({
+      comunas: faltan,
+      pedir: async (c) => respuestaDeComuna(await fetch(`${base}&c=${encodeURIComponent(c)}`, { cache: "default" })),
+      alListo: (comuna, d) => {
+        const negs = descompactarNegociados(d.negociados);
+        if (vivo.current) setCapasCalc((cs) => agregarCapa(cs, clave, comuna, negs));
+      },
+      alAvance: (a) => { if (vivo.current) setProgreso(a); },
+      vivo: () => vivo.current,
+    });
+    for (const c of faltan) enCurso.current.delete(`capa|${clave}|${c}`);
+    if (vivo.current) { if (pausado) setFallidas({ clave, comunas: perdidas }); else { setProgreso(null); if (perdidas.length) { setFallo(true); setFallidas({ clave, comunas: perdidas }); } } }
   }, []);
 
   /** LA CAPA APARTE, de respaldo: solo si el pedido del universo de la noche no la trajo (con pie 20 % o 30 % a 30 años la trae
@@ -443,39 +433,29 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
       const faltan = comunasACalcular(f).filter((c) => !tengo.has(c) && !enCurso.current.has(`${clave}|${c}`));
       for (const c of faltan) enCurso.current.add(`${clave}|${c}`);
       if (faltan.length === 0) return;
-      let hechas = 0;
-      setProgreso({ hechas, total: faltan.length });
-      const cola = [...faltan];
-      let errores = 0;
-      const perdidas: string[] = [];
-      const trabajador = async () => {
-        for (let c = cola.shift(); c; c = cola.shift()) {
-          try {
-            const res = await fetch(`${base}&c=${encodeURIComponent(c)}`, { cache: "default" });
-            if (!res.ok) throw new Error(String(res.status));
-            const d = (await res.json()) as RespuestaUniverso;
-            const nuevos = descompactar(d.universo);
-            // Los − Ajustar de esta comuna con esta combinación (renta larga, 04-nov-2026), en el mismo pedido.
-            const negs = d.negociados ? descompactarNegociados(d.negociados) : null;
-            const comuna = c;
-            if (vivo.current && negs) setCapasCalc((cs) => agregarCapa(cs, clave, comuna, negs));
-            if (vivo.current) setUniversos((us) => {
-              const prev = us[clave];
-              const comunas = prev && prev.comunas !== "todas" ? [...prev.comunas, comuna] : [comuna];
-              const ids = new Set((prev?.pines ?? []).map((p) => p.avisoId));
-              return { ...us, [clave]: { comunas, pines: [...(prev?.pines ?? []), ...nuevos.filter((p) => !ids.has(p.avisoId))] } };
-            });
-          } catch {
-            errores++;
-            perdidas.push(c);
-          }
-          enCurso.current.delete(`${clave}|${c}`);
-          hechas++;
-          if (vivo.current) setProgreso({ hechas, total: faltan.length });
-        }
-      };
-      await Promise.all(Array.from({ length: Math.min(COMUNAS_A_LA_VEZ, faltan.length) }, trabajador));
-      if (vivo.current) { setProgreso(null); if (errores) { setFallo(true); setFallidas({ clave, comunas: perdidas }); } }
+      // DE A UNA COMUNA (04-nov-2026, después de la caída de la base; cola-recalculo.ts): la siguiente sale cuando la anterior
+      // respondió, y el servidor responde después de guardar. «Ocupado» espera y reintenta; «pausado» para la cola y el pop-up
+      // ofrece la tasa del mes.
+      const { perdidas, pausado } = await recalcularEnCola<RespuestaUniverso>({
+        comunas: faltan,
+        pedir: async (c) => respuestaDeComuna(await fetch(`${base}&c=${encodeURIComponent(c)}`, { cache: "default" })),
+        alListo: (comuna, d) => {
+          const nuevos = descompactar(d.universo);
+          // Los − Ajustar de esta comuna con esta combinación (renta larga, 04-nov-2026), en el mismo pedido.
+          const negs = d.negociados ? descompactarNegociados(d.negociados) : null;
+          if (vivo.current && negs) setCapasCalc((cs) => agregarCapa(cs, clave, comuna, negs));
+          if (vivo.current) setUniversos((us) => {
+            const prev = us[clave];
+            const comunas = prev && prev.comunas !== "todas" ? [...prev.comunas, comuna] : [comuna];
+            const ids = new Set((prev?.pines ?? []).map((p) => p.avisoId));
+            return { ...us, [clave]: { comunas, pines: [...(prev?.pines ?? []), ...nuevos.filter((p) => !ids.has(p.avisoId))] } };
+          });
+        },
+        alAvance: (a) => { if (vivo.current) setProgreso(a); },
+        vivo: () => vivo.current,
+      });
+      for (const c of faltan) enCurso.current.delete(`${clave}|${c}`);
+      if (vivo.current) { if (pausado) setFallidas({ clave, comunas: perdidas }); else { setProgreso(null); if (perdidas.length) { setFallo(true); setFallidas({ clave, comunas: perdidas }); } } }
     } catch {
       if (vivo.current) { setProgreso(null); setFallo(true); }
     }
@@ -544,7 +524,7 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
     posthog?.capture(EVENTOS_PORTAL.vista, { ...propsDeFiltros(f, o), n, fuente });
 
   /** Aplica unos filtros: la URL, el universo que falte y la medición. No toca el perfil. */
-  function aplicar(f0: FiltrosPortal, fuente: "filtros" | "mi_busqueda" | "zona" | "limpiar" | "solo_comprar") {
+  function aplicar(f0: FiltrosPortal, fuente: "filtros" | "mi_busqueda" | "zona" | "limpiar" | "solo_comprar" | "fusible") {
     // Sin cuenta, el financiamiento por defecto, y sin «Solo flujo positivo» (piden registro).
     const f = sinCuenta ? filtrosAbiertos(f0) : f0;
     const cambiados = filtrosCambiados(filtros, f);
@@ -1188,7 +1168,13 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
           alCerrar={() => setHojaComp(null)}
         />
       )}
-      {progreso && <PopupRecalculo texto={textoRecalculo(filtros)} hechas={progreso.hechas} total={progreso.total} />}
+      {progreso && (
+        <PopupRecalculo texto={textoRecalculo(filtros)} hechas={progreso.hechas} total={progreso.total} estado={progreso.estado}
+          respaldo={respaldoDelFusible(filtros)?.etiqueta ?? null}
+          alRespaldo={() => { const r = respaldoDelFusible(filtros); setProgreso(null); setFallidas(null); if (r) aplicar(r.filtros, "fusible"); }}
+          alCerrar={() => { setProgreso(null); setFallo(true); }}
+          alReintentar={() => { setProgreso(null); void asegurar(filtros); }} />
+      )}
       {bienvenida && total != null && <Bienvenida n={inicial.convienen ?? inicial.n ?? total} negociados={inicial.negociadosGlobal} alCerrar={() => setBienvenida(false)} />}
       {calculo && <HojaCalculo tasa={inicial.tasa} elegida={filtros.tasa} sinCuenta={sinCuenta} alCerrar={() => setCalculo(false)} />}
 

@@ -182,6 +182,7 @@ import { runCompartirDeptoTier } from "./compartir-depto-catch-test";
 import { runExplorarPasadaTier } from "./explorar-pasada-catch-test";
 import { runInformeEnCaminoTier } from "./informe-en-camino-catch-test";
 import { runExplorarPasada0411Tier } from "./explorar-pasada-0411-catch-test";
+import { runExplorarTurnosTier } from "./explorar-turnos-catch-test";
 import { runEdadEdificioTier } from "./edad-edificio-catch-test";
 import { runPautaArreglosTier } from "./pauta-arreglos-catch-test";
 import { runCuentasPruebaTier } from "./cuentas-prueba-catch-test";
@@ -779,6 +780,9 @@ function printSeed(r: SeedReport) {
   totalHard += (await runExplorarPasadaTier()).hard;
   totalHard += (await runInformeEnCaminoTier()).hard;
   totalHard += (await runExplorarPasada0411Tier()).hard;
+  // Tier EXPLORAR-TURNOS (04-nov-2026, 0 tokens, después de la caída de la base del 04-nov): de a una comuna, dos recálculos a la vez
+  // en todo el sitio y el tercero en cola, el guardado en tandas con tope dentro del turno, y el fusible con la tasa del mes.
+  totalHard += (await runExplorarTurnosTier()).hard;
   // Tier EDAD-EDIFICIO (03-nov-2026, 0 tokens): con el año de la ficha o de otro aviso del edificio, el motor recibe la edad real
   // (un edificio de 1951 entra con 75 años y usa el tramo de más de 25) y el informe la dice con el año y la fuente; sin año, la
   // nota distingue «La publicación no dice la antigüedad» de «No pudimos leer la antigüedad». ──

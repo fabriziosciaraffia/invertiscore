@@ -316,7 +316,9 @@ export async function runExplorarTier(): Promise<{ hard: number }> {
   // ⚠ ACTA (30-oct-2026, goal «la tasa editable en Filtros») · con una tasa elegida dice «Calculando con tu tasa…»; sin ella, como siempre.
   // ⚠ ACTA (04-nov-2026, la pasada de Fabrizio por /explorar, tier EXPLORAR-PASADA-0411) · el avance por comunas va en el pop-up del recálculo («Franco está recalculando con tu tasa de 5 %» y
   // «9 de 25 comunas»); abajo, «Calculando…» (o «Calculando con tu tasa…») solo mientras llega el universo.
-  if (!/const enCalculo = conTasa \? PORTAL_COPY\.calculandoTasa : PORTAL_COPY\.calculando;/.test(cli) || !/\{progreso && <PopupRecalculo texto=\{textoRecalculo\(filtros\)\} hechas=\{progreso\.hechas\} total=\{progreso\.total\} \/>\}/.test(cli)) F("10 · el mapa no dice «Calculando…» mientras calcula");
+  // ⚠ ACTA (04-nov-2026, después de la caída de la base; tier EXPLORAR-TURNOS) · el pop-up recibe además el estado de la cola
+  // («ocupado», «pausado») y el respaldo del fusible.
+  if (!/const enCalculo = conTasa \? PORTAL_COPY\.calculandoTasa : PORTAL_COPY\.calculando;/.test(cli) || !/\{progreso && \(\s*<PopupRecalculo texto=\{textoRecalculo\(filtros\)\} hechas=\{progreso\.hechas\} total=\{progreso\.total\} estado=\{progreso\.estado\}/.test(cli)) F("10 · el mapa no dice «Calculando…» mientras calcula");
   const hojaF = codigo("src/app/explorar/hoja-filtros.tsx");
   if (!/\{PIES_EXPLORAR\.map\(\(p\) => <option key=\{p\} value=\{p\}>/.test(hojaF) || !/\{PLAZOS_EXPLORAR\.map\(\(z\) => <option key=\{z\} value=\{z\}>/.test(hojaF)) F("10 · los filtros de pie y plazo no ofrecen las listas enteras");
   const sqlC = leer("supabase/migrations/20261024_explorar_combos.sql");
@@ -328,16 +330,23 @@ export async function runExplorarTier(): Promise<{ hard: number }> {
   // (eran unos 36: 3 comunas × 12 lotes, y la base cortaba por timeout): lo pesado de a 3 pedidos, el guardado de a 200 avisos
   // y de a un pedido, en segundo plano (después de responder), y el navegador pide 2 comunas a la vez. Una zona que falla
   // hace fallar esa comuna sin guardar nada; el mapa muestra las que sí cargaron y «Reintentar» pide solo las que faltan.
+  // ⚠ ACTA (04-nov-2026, después de la caída de la base del 04-nov; goal de Fabrizio, tier EXPLORAR-TURNOS) · el guardado va en
+  // tandas de 100 (eran 200) con 10 s como mucho por tanda y un reintento; su comportamiento lo prueba EXPLORAR-TURNOS sobre la función.
   if (!/const PEDIDOS_A_LA_VEZ = 3;/.test(srvSrc) || (srvSrc.match(/todos\.slice\(i, i \+ PEDIDOS_A_LA_VEZ\)\.map/g) ?? []).length !== 1
-    || !/const LOTE_GUARDADO = 200;/.test(srvSrc) || !/for \(const lote of lotes\(nuevos, LOTE_GUARDADO\)\) \{\s*const \{ data, error \} = await admin\.rpc\("explorar_guardar_combos"/.test(srvSrc))
-    F("10 · lo pesado no va de a 3 pedidos, o el guardado no va de a 200 avisos y de a un pedido");
+    || !/export const LOTE_GUARDADO = 100;/.test(srvSrc) || !/export const TANDA_GUARDADO_MS = 10_000;/.test(srvSrc) || (srvSrc.match(/for \(const lote of lotes\(nuevos, LOTE_GUARDADO\)\) \{/g) ?? []).length !== 1)
+    F("10 · lo pesado no va de a 3 pedidos, o el guardado no va en tandas de 100 con su tope");
   const portalSrv = codigo("src/lib/explorar/portal-servidor.ts");
   if (!/const leidas = await Promise\.all\(comunas\.map\(\(c\) => leer\(c\)\)\);/.test(portalSrv) || /leer\(c\)\.catch\(/.test(portalSrv)) F("10 · una zona que falla se disimula como zona vacía (y se guardan avisos sin veredicto)");
-  // ⚠ ACTA (04-nov-2026, la pasada de Fabrizio por /explorar, tier EXPLORAR-PASADA-0411) · la ruta pide también los − Ajustar (`conCapa`), con el mismo guardado en segundo plano.
-  if (!/const guardado = guardarCombos\(admin, clave, nuevos\);\s*if \(deps\.diferir\) deps\.diferir\(guardado\.catch\(/.test(portalSrv) || !/universoYCapaCalculados\(admin, \{ \.\.\.q, comunas \}, new Date\(\), cuenta, \{ diferir: waitUntil, conCapa \}\)/.test(codigo("src/app/api/explorar/route.ts")))
-    F("10 · lo calculado no se guarda en segundo plano (compite con la lectura de la comuna siguiente)");
+  // ⚠ ACTA (04-nov-2026, la pasada de Fabrizio por /explorar, tier EXPLORAR-PASADA-0411) · la ruta pide también los − Ajustar (`conCapa`).
+  // ⚠ ACTA (04-nov-2026, después de la caída de la base del 04-nov, 13:44-14:04 UTC; goal de Fabrizio, tier EXPLORAR-TURNOS) · el
+  // guardado YA NO VA EN SEGUNDO PLANO: se espera dentro del turno del recálculo, así la comuna siguiente del navegador empieza
+  // cuando terminó el guardado de la anterior, y el turno no se suelta con escrituras todavía en vuelo. Y el navegador pide DE A
+  // UNA comuna (eran 2), por la cola de cola-recalculo.ts.
+  if (!/if \(nuevos\.length\) await guardarCombos\(admin, clave, nuevos, \{ notar, seguir: turnos \? \(\) => !turnos\.abierto\(\) : undefined \}\);/.test(portalSrv) || /deps\.diferir/.test(portalSrv)
+    || !/universoYCapaCalculados\(admin, \{ \.\.\.q, comunas \}, new Date\(\), cuenta, \{ conCapa, turnos, quien: user\.id \}\)/.test(codigo("src/app/api/explorar/route.ts")))
+    F("10 · lo calculado no se guarda dentro del turno (o la ruta no pasa los turnos)");
   const cliX = codigo("src/app/explorar/explorar-cliente.tsx");
-  if (!/const COMUNAS_A_LA_VEZ = 2;/.test(cliX)) F("10 · el navegador pide más de 2 comunas a la vez");
+  if ((cliX.match(/await recalcularEnCola</g) ?? []).length !== 2 || /COMUNAS_A_LA_VEZ|trabajador/.test(cliX)) F("10 · el navegador pide más de una comuna a la vez (o no por la cola)");
   if (!/return parcial && pedidas\.some\(\(c\) => hay\.has\(c\)\) \? u\.pines : null;/.test(cliX)
     || !/const universo = universoPara\(filtros, universos\) \?\? \(progreso == null && fallidasAqui\.length > 0 \? universoPara\(filtros, universos, true\) : null\);/.test(cliX)
     || !/setFallidas\(\{ clave, comunas: perdidas \}\);/.test(cliX)

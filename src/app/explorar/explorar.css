@@ -467,6 +467,8 @@
 @media (prefers-reduced-motion: reduce) { .ex-recalculo-gira { animation-duration: 2.4s; } }
 .ex-recalculo-t { margin: 2px 0 0; font-size: 17px; font-weight: 600; line-height: 1.35; color: var(--franco-text); text-wrap: balance; }
 .ex-recalculo-avance { margin: 0; font-size: 14px; color: var(--franco-text-secondary); font-variant-numeric: tabular-nums; }
+/* El fusible (04-nov-2026): el respaldo y «Intentar de nuevo», a lo ancho del pop-up, sin el borde de arriba (no hay cuerpo que separar). */
+.ex-recalculo .ex-recalculo-acciones { align-self: stretch; margin: 6px -24px -14px; padding: 6px 18px 0; border-top: 0; }
 /* LA HOJA DEL DEPTO COMPARTIDO (04-nov-2026, compartido-hoja.tsx): el marco de la bienvenida, más arriba para que quepa la tarjeta
    grande; la imagen al costado de los datos. */
 .ex-comp-velo { padding-top: 72px; }

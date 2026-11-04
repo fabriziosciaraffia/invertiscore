@@ -15,7 +15,7 @@
 //     nada acá cobra.
 // ─────────────────────────────────────────────────────────────────────────────
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { captureApiWarning, reportarFalloQuery } from "@/lib/observabilidad";
+import { reportarFalloQuery } from "@/lib/observabilidad";
 import { COMUNAS_DISPONIBLES } from "@/lib/comunas-disponibles";
 import { VENTANA_SEMANAL_DIAS } from "@/lib/guia/semanal";
 import { candidatoDeFila, comunaDeAviso, type FilaRpc } from "@/lib/guia/semanal-candidatos";
@@ -34,6 +34,7 @@ import type { LlegadaExplorar } from "./puertas-landing";
 import { compactarNegociados, negociadoDeFila, type Negociacion, type NegociadosCompactos, type PinNegociado } from "./capa-negociar";
 import { comboVigente, VIDA_COMBO_MS, type ComboGuardado } from "./explorar";
 import { filasParaSonda, guardarCombos, informesDeExplorar, type FilaUniverso } from "./servidor";
+import { RecalculoEnEspera, type Turno, type TurnosRecalculo } from "./turnos-recalculo";
 import {
   claveUniverso, compactar, EVENTOS_PORTAL, filtrosDeMiBusqueda, lineaBusqueda, perfilDeFiltros, pinDeFila, propsDeFiltros, VENTANA_PLAN_DIAS,
   type FiltrosPortal, type ModalidadPortal, type OrdenPortal, type PinMapa, type UniversoCompacto,
@@ -87,11 +88,19 @@ export interface DepsPortal {
   /** LOS − AJUSTAR CON OTRA COMBINACIÓN (04-nov-2026, la pasada de Fabrizio: con otra tasa el mapa quedaba solo con azules y parecía
    *  un error): en renta larga, además de los ✓ Comprar, el descuento de cada Ajustar, con el mismo tope de la noche. */
   conCapa?: boolean;
-  /** EL GUARDADO EN SEGUNDO PLANO (02-nov-2026): con `diferir` (la ruta le pasa `waitUntil`), lo calculado se guarda después
-   *  de responder, en lotes chicos y de a uno (explorar/servidor.ts › guardarCombos), y no compite con la lectura de la comuna
-   *  siguiente. Sin él (las pruebas), se espera el guardado como antes. */
-  diferir?: (p: Promise<unknown>) => void;
+  /** EL TOPE Y EL FUSIBLE (04-nov-2026, después de la caída de la base del 04-nov; turnos-recalculo.ts): si hay algo que calcular,
+   *  antes se toma uno de los dos turnos del sitio («ocupado» si no hay; «pausado» si la base viene lenta), cada pedido a la base
+   *  se mide, y el turno se suelta cuando terminó el GUARDADO, que ya no va en segundo plano: la comuna responde después de
+   *  guardar, así la siguiente del navegador empieza cuando la anterior terminó. Sin `turnos` (las pruebas viejas), sin tope. */
+  turnos?: Pick<TurnosRecalculo, "pedir" | "soltar" | "notar" | "abierto">;
+  /** Quién pide el turno (la cuenta), para leer los turnos en `config`. */
+  quien?: string;
 }
+
+/** Cada cuántos avisos el cálculo le cede el hilo a los demás pedidos de la misma función (una comuna grande son ~10 s de motor
+ *  seguidos, y en ese rato ni los guardados ni las otras lecturas avanzaban). */
+const CEDER_CADA = 100;
+const ceder = () => new Promise<void>((ok) => setImmediate(ok));
 
 const sondaStrReal: NonNullable<DepsPortal["sondaStr"]> = (fila, combo, cfg, zona, asOf) => {
   if (!zona) return null;
@@ -126,65 +135,79 @@ export async function universoYCapaCalculados(
   // Vigente para lo que se pide: con la capa, un Ajustar guardado sin su descuento (de antes del 04-nov-2026) se calcula de nuevo.
   const vigente = (r: { combo?: unknown; evaluado_at?: string | null }) =>
     comboVigente(r.combo, r.evaluado_at, ahora) && !(conCapa && (r.combo as ComboPortal).v === "AJUSTA SUPUESTOS" && (r.combo as ComboPortal).n === undefined);
+  const turnos = deps.turnos;
+  const tU = Date.now();
   const { data, error } = await admin.rpc("explorar_universo_liviano", { comunas: q.comunas.map(comunaDeAviso), dorms: TODOS_LOS_DORMS, uf_min: 0, uf_max: 1e9, desde: desdeVentana(ahora), clave });
+  turnos?.notar(Date.now() - tU, error);
   if (error) throw new Error(`explorar_universo_liviano: ${error.message}`);
   const filas = (Array.isArray(data) ? data : []) as Array<FilaUniverso & { condicion?: string | null; alta?: number | null }>;
   const porCalcular = filas.filter((r) => !vigente(r));
-  const [cfg, pesadas] = porCalcular.length
-    ? await Promise.all([deps.cfg ?? leerConfigGuia(admin), filasParaSonda(admin, porCalcular.map((r) => r.id))])
-    : [null, new Map<string, FilaRpc>()];
-  // Renta corta: la zona de cada comuna (una lectura por comuna, en paralelo; queda en memoria 30 minutos).
-  // UNA ZONA QUE FALLA NO SE DISIMULA (02-nov-2026): si la lectura falla, el pedido falla —sin guardar nada— y el navegador
-  // ofrece reintentar esa comuna. Antes se tomaba como zona vacía y cada aviso quedaba guardado 24 horas sin veredicto.
-  const zonas = new Map<string, Map<number, ZonaStr>>();
-  if (q.modalidad === "str" && porCalcular.length) {
-    const leer = deps.zonas ?? ((c: string) => zonasDeComuna(admin, c));
-    const comunas = Array.from(new Set(porCalcular.map((r) => r.comuna)));
-    const leidas = await Promise.all(comunas.map((c) => leer(c)));
-    comunas.forEach((c, i) => zonas.set(c, leidas[i]));
+  // EL TURNO: solo si hay algo que calcular (lo ya guardado se lee sin esperar ni pausarse).
+  let turno: Turno | null = null;
+  if (porCalcular.length && turnos) {
+    const t = await turnos.pedir(deps.quien ?? "explorar");
+    if (t === "ocupado" || t === "pausado") throw new RecalculoEnEspera(t);
+    turno = t;
   }
-  const sondaLtr = deps.sondaLtr ?? sondaDeCandidato;
-  const sondaStr = deps.sondaStr ?? sondaStrReal;
-  const negociarLtr = deps.negociarLtr ?? negociarCandidato;
-  const nuevos: Array<{ avisoId: string; combo: ComboPortal }> = [];
-  const resultado = new Map<string, ComboPortal>();
-  for (const r of filas) {
-    if (vigente(r)) { resultado.set(r.id, r.combo as ComboPortal); continue; }
-    const pesada = pesadas.get(r.id);
-    let c: ComboPortal;
-    if (!cfg || !pesada) c = { v: null, s: null, f: null, at: ahora.toISOString() };
-    else if (q.modalidad === "str") {
-      const s = sondaStr(pesada, combo, cfg, zonas.get(r.comuna)?.get(celdaDormitorios(Number(pesada.dormitorios))), ahora);
-      c = { v: s?.v ?? null, s: s?.s ?? null, f: s?.f ?? null, i: s?.i ?? null, at: ahora.toISOString() };
-    } else {
-      const cand = candidatoDeFila(pesada);
-      const s = sondaLtr(cand, combo, cfg, ahora);
-      c = { v: s?.veredicto ?? null, s: s?.score ?? null, f: s?.flujo ?? null, at: ahora.toISOString() };
-      // El − Ajustar: la regla de la noche (el descuento mínimo a Comprar, bisección de 0,1 punto, mismo tope) con esta combinación.
-      if (conCapa && c.v === "AJUSTA SUPUESTOS") {
-        const n = negociarLtr(cand, q.pie, cfg, ahora, TOPE_NEGOCIAR_PCT, { plazo: q.plazo, tasa: q.tasa ?? null, alPublicado: c.v });
-        c.n = n ? { d: n.d, p: n.p, s: n.s, f: n.f } : null;
-      }
+  try {
+    const notar = turnos ? (ms: number, e: unknown) => turnos.notar(ms, e) : undefined;
+    const [cfg, pesadas] = porCalcular.length
+      ? await Promise.all([deps.cfg ?? leerConfigGuia(admin), filasParaSonda(admin, porCalcular.map((r) => r.id), notar)])
+      : [null, new Map<string, FilaRpc>()];
+    // Renta corta: la zona de cada comuna (una lectura por comuna, en paralelo; queda en memoria 30 minutos).
+    // UNA ZONA QUE FALLA NO SE DISIMULA (02-nov-2026): si la lectura falla, el pedido falla —sin guardar nada— y el navegador
+    // ofrece reintentar esa comuna. Antes se tomaba como zona vacía y cada aviso quedaba guardado 24 horas sin veredicto.
+    const zonas = new Map<string, Map<number, ZonaStr>>();
+    if (q.modalidad === "str" && porCalcular.length) {
+      const leer = deps.zonas ?? ((c: string) => zonasDeComuna(admin, c));
+      const comunas = Array.from(new Set(porCalcular.map((r) => r.comuna)));
+      const leidas = await Promise.all(comunas.map((c) => leer(c)));
+      comunas.forEach((c, i) => zonas.set(c, leidas[i]));
     }
-    resultado.set(r.id, c);
-    nuevos.push({ avisoId: r.id, combo: c });
+    const sondaLtr = deps.sondaLtr ?? sondaDeCandidato;
+    const sondaStr = deps.sondaStr ?? sondaStrReal;
+    const negociarLtr = deps.negociarLtr ?? negociarCandidato;
+    const nuevos: Array<{ avisoId: string; combo: ComboPortal }> = [];
+    const resultado = new Map<string, ComboPortal>();
+    let hechos = 0;
+    for (const r of filas) {
+      if (vigente(r)) { resultado.set(r.id, r.combo as ComboPortal); continue; }
+      if (++hechos % CEDER_CADA === 0) await ceder();
+      const pesada = pesadas.get(r.id);
+      let c: ComboPortal;
+      if (!cfg || !pesada) c = { v: null, s: null, f: null, at: ahora.toISOString() };
+      else if (q.modalidad === "str") {
+        const s = sondaStr(pesada, combo, cfg, zonas.get(r.comuna)?.get(celdaDormitorios(Number(pesada.dormitorios))), ahora);
+        c = { v: s?.v ?? null, s: s?.s ?? null, f: s?.f ?? null, i: s?.i ?? null, at: ahora.toISOString() };
+      } else {
+        const cand = candidatoDeFila(pesada);
+        const s = sondaLtr(cand, combo, cfg, ahora);
+        c = { v: s?.veredicto ?? null, s: s?.score ?? null, f: s?.flujo ?? null, at: ahora.toISOString() };
+        // El − Ajustar: la regla de la noche (el descuento mínimo a Comprar, bisección de 0,1 punto, mismo tope) con esta combinación.
+        if (conCapa && c.v === "AJUSTA SUPUESTOS") {
+          const n = negociarLtr(cand, q.pie, cfg, ahora, TOPE_NEGOCIAR_PCT, { plazo: q.plazo, tasa: q.tasa ?? null, alPublicado: c.v });
+          c.n = n ? { d: n.d, p: n.p, s: n.s, f: n.f } : null;
+        }
+      }
+      resultado.set(r.id, c);
+      nuevos.push({ avisoId: r.id, combo: c });
+    }
+    // El guardado, dentro del turno: en tandas de 100 con tope y, con el fusible abierto, para (servidor.ts › guardarCombos).
+    if (nuevos.length) await guardarCombos(admin, clave, nuevos, { notar, seguir: turnos ? () => !turnos.abierto() : undefined });
+    if (cuenta) { cuenta.calculados += nuevos.length; cuenta.ms += Date.now() - t0; }
+    const pines: PinMapa[] = [];
+    const negociados: PinNegociado[] = [];
+    for (const r of filas) {
+      const c = resultado.get(r.id);
+      const arriendo = q.modalidad === "str" ? c?.i ?? null : r.arriendo_monto;
+      const base = { id: r.id, comuna: r.comuna, lat: r.lat, lng: r.lng, m2: r.superficie_m2, dormitorios: r.dormitorios, banos: r.banos, precio: r.precio_uf, score: c?.s ?? null, flujo: c?.f ?? null, arriendo, condicion: r.condicion ?? null, alta: r.alta ?? null };
+      if (c?.v === "COMPRAR") pines.push(pinDeFila(base));
+      else if (conCapa && c?.v === "AJUSTA SUPUESTOS" && c.n) negociados.push({ ...pinDeFila(base), veredicto: "AJUSTA SUPUESTOS", neg: { d: c.n.d, p: c.n.p, s: c.n.s, f: c.n.f } });
+    }
+    return { pines: pines.sort((a, b) => (b.score ?? -1) - (a.score ?? -1) || a.avisoId.localeCompare(b.avisoId)), negociados };
+  } finally {
+    if (turno && turnos) await turnos.soltar(turno);
   }
-  if (nuevos.length) {
-    const guardado = guardarCombos(admin, clave, nuevos);
-    if (deps.diferir) deps.diferir(guardado.catch((e) => captureApiWarning(e, { ruta: RUTA, operacion: "guardar-combos-fondo" })));
-    else await guardado;
-  }
-  if (cuenta) { cuenta.calculados += nuevos.length; cuenta.ms += Date.now() - t0; }
-  const pines: PinMapa[] = [];
-  const negociados: PinNegociado[] = [];
-  for (const r of filas) {
-    const c = resultado.get(r.id);
-    const arriendo = q.modalidad === "str" ? c?.i ?? null : r.arriendo_monto;
-    const base = { id: r.id, comuna: r.comuna, lat: r.lat, lng: r.lng, m2: r.superficie_m2, dormitorios: r.dormitorios, banos: r.banos, precio: r.precio_uf, score: c?.s ?? null, flujo: c?.f ?? null, arriendo, condicion: r.condicion ?? null, alta: r.alta ?? null };
-    if (c?.v === "COMPRAR") pines.push(pinDeFila(base));
-    else if (conCapa && c?.v === "AJUSTA SUPUESTOS" && c.n) negociados.push({ ...pinDeFila(base), veredicto: "AJUSTA SUPUESTOS", neg: { d: c.n.d, p: c.n.p, s: c.n.s, f: c.n.f } });
-  }
-  return { pines: pines.sort((a, b) => (b.score ?? -1) - (a.score ?? -1) || a.avisoId.localeCompare(b.avisoId)), negociados };
 }
 
 /** Lo que devuelve GET /api/explorar: el universo compacto y de qué es (la clave y las comunas; vacío = Gran Santiago). Con una
