@@ -278,7 +278,7 @@ export default function MapaExplorar({ pines, negociados = [], analizados, selec
 
   return (
     <>
-      <div ref={divRef} className="ex-mapa" data-explorar="mapa" data-capa={capa} aria-label="Mapa de los deptos que convienen" role="application" />
+      <div ref={divRef} className="ex-mapa" data-explorar="mapa" data-vista={capa} aria-label="Mapa de los deptos que convienen" role="application" />
       {control && createPortal(<ConmutadorCapa capa={capa} alCambiar={cambiarCapa} />, control)}
     </>
   );

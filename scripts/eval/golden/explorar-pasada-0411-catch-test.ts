@@ -192,9 +192,12 @@ export async function runExplorarPasada0411Tier(): Promise<{ hard: number }> {
     vm.anotarVolver(alm, { informeId: INF, avisoId: "aviso-1", href: "/explorar?c=Providencia&a=aviso-1" });
     vm.anotarVolver(alm, { informeId: "no-es-uuid", avisoId: "x", href: "/explorar" });
     vm.anotarVolver(alm, { informeId: OTRO, avisoId: "aviso-2", href: "/dashboard" });
-    if (vm.notaDelInforme(alm, INF)?.href !== "/explorar?c=Providencia&a=aviso-1" || vm.notaDelInforme(alm, OTRO) !== null || vm.notaDelInforme(alm, "c5555555-5555-4555-8555-555555555555") !== null) F("4 · la nota de la vuelta no es la de ese informe (o acepta una que no vuelve a Explorar)");
+    if (vm.tomarNotaDelInforme(alm, OTRO) !== null || vm.tomarNotaDelInforme(alm, "c5555555-5555-4555-8555-555555555555") !== null || vm.tomarNotaDelInforme(alm, INF)?.href !== "/explorar?c=Providencia&a=aviso-1") F("4 · la nota de la vuelta no es la de ese informe (o acepta una que no vuelve a Explorar)");
+    // ⚠ ACTA (04-nov-2026, QA del preview) · la nota se gasta al mostrarse: el mismo informe abierto después desde el dashboard no ofrecía
+    // el mapa… pero lo ofrecía. Los analizados de la pestaña quedan.
+    if (vm.tomarNotaDelInforme(alm, INF) !== null) F("4 · la nota de la vuelta no se gasta: el informe abierto después desde otro lado igual ofrece el mapa");
     const an = vm.analizadosDeLaPestana(alm);
-    if (Object.keys(an).join() !== "aviso-1" || an["aviso-1"] !== INF) F(`4 · los analizados de la pestaña no son los anotados: ${JSON.stringify(an)}`);
+    if (Object.keys(an).join() !== "aviso-1" || an["aviso-1"] !== INF) F(`4 · los analizados de la pestaña no son los anotados (o se fueron con la nota): ${JSON.stringify(an)}`);
     for (let i = 0; i < 25; i++) vm.anotarVolver(alm, { informeId: `e${String(i).padStart(7, "0")}-1111-4111-8111-111111111111`, avisoId: `v${i}`, href: "/explorar" });
     if (Object.keys(vm.analizadosDeLaPestana(alm)).length !== 20) F("4 · las notas de la pestaña crecen sin tope");
     // Explorar: antes de ir al informe, su entrada del historial queda con el pin y se anota; al volver, lo lee.
@@ -209,7 +212,7 @@ export async function runExplorarPasada0411Tier(): Promise<{ hard: number }> {
     // Los informes: arriba, «← Volver al mapa» con la nota de ese informe.
     for (const f of ["src/app/analisis/[id]/results-client.tsx", "src/app/analisis/renta-corta/[id]/results-client.tsx"]) if (!/<VolverAlMapa analysisId=\{analysisId\} \/>/.test(codigo(f))) F(`4 · ${f}: el informe no ofrece «← Volver al mapa»`);
     const vol = codigo("src/components/explorar/VolverAlMapa.tsx");
-    if (!/setHref\(notaDelInforme\(almacen, analysisId\)\?\.href \?\? null\);/.test(vol) || !/if \(!href\) return null;/.test(vol) || !/<span aria-hidden="true">←<\/span> \{VOLVER_AL_MAPA\}/.test(vol) || vm.VOLVER_AL_MAPA !== "Volver al mapa") F("4 · «← Volver al mapa» no sale de la nota del informe (o aparece sin ella)");
+    if (!/const nota = tomarNotaDelInforme\(almacen, analysisId\);\s*if \(nota\) setHref\(nota\.href\);/.test(vol) || !/if \(!href\) return null;/.test(vol) || !/<span aria-hidden="true">←<\/span> \{VOLVER_AL_MAPA\}/.test(vol) || vm.VOLVER_AL_MAPA !== "Volver al mapa") F("4 · «← Volver al mapa» no sale de la nota del informe (o aparece sin ella)");
   }
 
   // ══ §5 · EL ENLACE COMPARTIDO ABRE EL DEPTO ═════════════════════════════════
@@ -290,4 +293,7 @@ if (require.main === module) {
 //      PUERTA-B-MOCKUPS §3, EXPLORAR-NEGOCIAR §1 (la excepción del precio movido y el chip del pop-up), §6 y §9, EXPLORAR-PASADA §3
 //      (dos; R10 es el error que cazó este mismo tier: la noche habría servido su capa de 30 años a 25), COMPARTIR-DEPTO §1 (dos), §5
 //      y §7, INFORME-EN-CAMINO §4 y §7.
+//   Tras el QA del preview (04-nov-2026): la nota de «Volver al mapa» se gasta al mostrarse —el mismo informe abierto después desde el
+//      dashboard seguía ofreciendo el mapa— y los analizados de la pestaña quedan aparte. 3 de 3 en ROJO (`mutaciones-0411b.cjs`):
+//      P52 la nota no se gasta, P53 los analizados se van con ella, P54 el informe la lee sin gastarla.
 // ─────────────────────────────────────────────────────────────────────────────
