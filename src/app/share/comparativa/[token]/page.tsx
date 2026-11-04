@@ -3,6 +3,7 @@ import { fechaProsaVigente } from "@/lib/pipeline-timing";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { getUFValue, resolveUfForAnalysis } from "@/lib/uf";
 import { decodeShareToken } from "@/lib/share-token";
 import type { Analisis, FullAnalysisResult, AIAnalysisComparativa, AnalisisInput } from "@/lib/types";
@@ -14,6 +15,7 @@ import { recomputeResultsForLegacy } from "@/lib/analysis/recompute-results-for-
 import { prefetchMedianaComunaVenta, prefetchMercadoStr } from "@/lib/api-helpers/analisis-pipeline";
 import { SharedComparativaClient } from "./shared-client";
 import { modoGestionAmbas } from "@/lib/modo-gestion";
+import { algunoBloqueado } from "@/lib/informe-bloqueado";
 
 export const metadata: Metadata = {
   title: "Franco — Análisis comparativo Renta Larga vs Renta Corta",
@@ -42,15 +44,22 @@ export default async function ShareComparativaPage({
   }
 
   const supabase = createClient();
+
+  // La fila, con la llave de servicio (04-nov-2026): `analisis` ya no se lee con la pública. Ver informe-ltr.tsx.
+
+  const informes = createServiceClient();
   const [{ data: ltrRow }, { data: strRow }, ufValue] = await Promise.all([
-    supabase.from("analisis").select("*").eq("id", decoded.ltrId).single(),
-    supabase.from("analisis").select("*").eq("id", decoded.strId).single(),
+    informes.from("analisis").select("*").eq("id", decoded.ltrId).single(),
+    informes.from("analisis").select("*").eq("id", decoded.strId).single(),
     getUFValue(),
   ]);
 
   if (!ltrRow || !strRow) {
     notFound();
   }
+
+  // Pendiente de pago (04-nov-2026, lib/informe-bloqueado.ts): sin el contenido del informe hasta que se pague.
+  if (algunoBloqueado([ltrRow, strRow] as Array<{ pending_payment?: boolean | null }>, false)) notFound();
 
   // Paridad con guards LTR/STR (E.1.1): SQL `tipo_analisis` es autoritativa;
   // jsonb solo se consulta cuando SQL es null (análisis pre-migration 20260510).

@@ -24,6 +24,9 @@ import { quienMiraElInforme } from "@/lib/lo-que-sigue/oferta-informe";
 import { emitirVistaInforme } from "@/lib/meta/vista-informe";
 import { leerOfertaPack } from "@/lib/lo-que-sigue/oferta-informe-servidor";
 import { publicacionDelInforme } from "@/lib/guia/publicacion-portada";
+import { informeBloqueado, rutaPagoBloqueado } from "@/lib/informe-bloqueado";
+import { InformeBloqueado } from "@/components/analysis/InformeBloqueado";
+import { etiquetaAnalisis } from "@/lib/format-direccion";
 
 /**
  * EL INFORME STR, fuera de la ruta (25-sep-2026). Espejo de `InformeLtr`: lo dibujan
@@ -43,13 +46,15 @@ export async function InformeStr({ id, demo = false }: { id: string; demo?: bool
   // de la prop: el cliente de servicio solo lee las dos filas públicas.
   const modoDemo = demo && esDemo(id);
   const supabase = modoDemo ? createServiceClient() : createClient();
+  // La fila, con la llave de servicio (04-nov-2026): ver informe-ltr.tsx. El dueño lo dice la sesión.
+  const informes = createServiceClient();
 
   const [user, ufValue] = await Promise.all([
     modoDemo ? Promise.resolve(null) : supabase.auth.getUser().then((r) => r.data.user),
     getUFValue(),
   ]);
 
-  const { data } = await supabase
+  const { data } = await informes
     .from("analisis")
     .select("*")
     .eq("id", id)
@@ -57,6 +62,25 @@ export async function InformeStr({ id, demo = false }: { id: string; demo?: bool
 
   if (!data) {
     redirect(user ? "/dashboard" : "/");
+  }
+
+  // EL INFORME BLOQUEADO (04-nov-2026, lib/informe-bloqueado.ts): pendiente de pago, solo la portada bloqueada, antes de
+  // recalcular o generar nada. En AMBAS se paga desde la fila de renta larga, con esta como acompañante.
+  if (informeBloqueado(data as { pending_payment?: boolean | null }, isAdminUser(user?.email))) {
+    const fila = data as { id: string; user_id?: string | null; nombre?: string | null; comuna?: string | null; ambas_role?: string | null; ambas_group_id?: string | null };
+    let pagoDesde = { analysisId: fila.id, companionStrId: null as string | null };
+    if (fila.ambas_role === "str" && fila.ambas_group_id) {
+      const { data: hermano } = await informes.from("analisis").select("id").eq("ambas_group_id", fila.ambas_group_id).eq("ambas_role", "ltr").maybeSingle();
+      if (hermano?.id) pagoDesde = { analysisId: hermano.id as string, companionStrId: fila.id };
+    }
+    return (
+      <InformeBloqueado
+        titulo={etiquetaAnalisis(fila.nombre, fila.comuna)}
+        esDueno={!!user && user.id === fila.user_id}
+        rutaPago={rutaPagoBloqueado(pagoDesde)}
+        sesion={user ? { email: user.email ?? "" } : null}
+      />
+    );
   }
 
   // La demanda de la zona del score (factibilidad): las filas anteriores a que se guardara la leen
@@ -198,7 +222,7 @@ export async function InformeStr({ id, demo = false }: { id: string; demo?: bool
   const strRole = (data as Record<string, unknown>).ambas_role as string | null | undefined;
   const strGroupId = (data as Record<string, unknown>).ambas_group_id as string | null | undefined;
   if (strRole === "str" && strGroupId) {
-    const { data: sibling } = await supabase
+    const { data: sibling } = await informes
       .from("analisis")
       .select("id")
       .eq("ambas_group_id", strGroupId)

@@ -23,9 +23,10 @@
 
 import { NextResponse } from "next/server";
 import { decodeShareToken } from "@/lib/share-token";
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { renderPdf } from "@/lib/pdf/render-pdf";
 import { formatDireccionDisplay } from "@/lib/format-direccion";
+import { algunoBloqueado } from "@/lib/informe-bloqueado";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -42,12 +43,17 @@ export async function GET(
     }
 
     // Validar que ambos análisis existen antes de gastar tiempo en Chromium.
-    const supabase = createClient();
+    // La fila, con la llave de servicio (04-nov-2026): `analisis` ya no se lee con la pública. Ver informe-ltr.tsx.
+    const informes = createServiceClient();
     const [{ data: ltrRow }, { data: strRow }] = await Promise.all([
-      supabase.from("analisis").select("id, comuna, direccion, dormitorios, banos, results").eq("id", decoded.ltrId).single(),
-      supabase.from("analisis").select("id").eq("id", decoded.strId).single(),
+      informes.from("analisis").select("id, comuna, direccion, dormitorios, banos, results, pending_payment").eq("id", decoded.ltrId).single(),
+      informes.from("analisis").select("id, pending_payment").eq("id", decoded.strId).single(),
     ]);
     if (!ltrRow || !strRow) {
+      return NextResponse.json({ error: "Análisis no encontrado" }, { status: 404 });
+    }
+    // Pendiente de pago (04-nov-2026, lib/informe-bloqueado.ts): sin el contenido del informe hasta que se pague.
+    if (algunoBloqueado([ltrRow, strRow] as Array<{ pending_payment?: boolean | null }>, false)) {
       return NextResponse.json({ error: "Análisis no encontrado" }, { status: 404 });
     }
 

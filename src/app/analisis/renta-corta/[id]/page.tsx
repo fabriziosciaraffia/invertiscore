@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { etiquetaAnalisis } from "@/lib/format-direccion";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 import { normalizeLegacyVerdict } from "@/lib/types";
@@ -7,15 +7,16 @@ import { conOcupacionRealizadaDelCache } from "@/lib/airbnb/ocupacion-realizada-
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import { recomputeShortTermForLegacy } from "@/lib/analysis/recompute-short-term-for-legacy";
 import { InformeStr } from "./informe-str";
+import { informeBloqueado, INFORME_BLOQUEADO_COPY } from "@/lib/informe-bloqueado";
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
-  const supabase = createClient();
-  const { data } = await supabase
+  // Con la llave de servicio (04-nov-2026): `analisis` ya no se lee con la pública. Ver informe-ltr.tsx.
+  const { data } = await createServiceClient()
     .from("analisis")
     // `input_data` y `created_at` entran para poder RECOMPUTAR el veredicto (ver abajo). Esta
     // query es propia de la metadata —no comparte nada con el cuerpo de la página— así que
     // sumarle dos columnas a un SELECT que ya se hace no agrega un viaje a la base.
-    .select("nombre, comuna, results, input_data, created_at, mediana_comuna_snapshot")
+    .select("nombre, comuna, results, input_data, created_at, pending_payment, mediana_comuna_snapshot")
     .eq("id", params.id)
     .single();
 
@@ -24,6 +25,11 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
       title: "Franco — Análisis de renta corta",
       robots: { index: false, follow: false },
     };
+  }
+
+  // Pendiente de pago (04-nov-2026, lib/informe-bloqueado.ts): sin puntaje ni veredicto en la vista previa.
+  if (informeBloqueado(data, false)) {
+    return { title: `Análisis Franco: ${etiquetaAnalisis(data.nombre, data.comuna)}`, description: INFORME_BLOQUEADO_COPY.metaDescripcion, robots: { index: false, follow: false } };
   }
 
   // La demanda de la zona del score: las filas que no la guardaron la leen del caché de AirROI,

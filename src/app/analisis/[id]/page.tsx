@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { etiquetaAnalisis } from "@/lib/format-direccion";
 import { InformeLtr } from "./informe-ltr";
+import { informeBloqueado, INFORME_BLOQUEADO_COPY } from "@/lib/informe-bloqueado";
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
-  const supabase = createClient();
-  const { data } = await supabase
+  // Con la llave de servicio (04-nov-2026): `analisis` ya no se lee con la pública. Ver informe-ltr.tsx.
+  const { data } = await createServiceClient()
     .from("analisis")
-    .select("nombre, score, comuna, creator_name")
+    .select("nombre, score, comuna, creator_name, pending_payment")
     .eq("id", params.id)
     .single();
 
@@ -16,6 +17,11 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
       title: "Franco — Análisis de inversión inmobiliaria",
       robots: { index: false, follow: false },
     };
+  }
+
+  // Pendiente de pago (04-nov-2026, lib/informe-bloqueado.ts): sin puntaje ni veredicto en la vista previa.
+  if (informeBloqueado(data, false)) {
+    return { title: `Análisis Franco: ${etiquetaAnalisis(data.nombre, data.comuna)}`, description: INFORME_BLOQUEADO_COPY.metaDescripcion, robots: { index: false, follow: false } };
   }
 
   // La comuna manda: `nombre` es texto libre y editable, así que el título se

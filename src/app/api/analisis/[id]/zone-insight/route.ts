@@ -10,9 +10,11 @@
 import { NextResponse } from "next/server";
 import { captureApiError } from "@/lib/observabilidad";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { createAnonPipelineClient } from "@/lib/api-helpers/anon-cap";
 import { buildZoneInsightForRow, PROMPT_VERSION_ZONA, type ZoneInsightResponse } from "@/lib/zone-insight-core";
 import { persistGeneracionTiming } from "@/lib/pipeline-timing";
+import { informeBloqueado } from "@/lib/informe-bloqueado";
 
 // Goal C: techo explícito — POIs + stats + 1 llamada corta (1200 tokens).
 export const maxDuration = 60;
@@ -44,7 +46,11 @@ export async function GET(
     const force = url.searchParams.get("regenerate") === "true";
 
     const supabase = createClient();
-    const { data: row, error } = await supabase
+
+    // La fila, con la llave de servicio (04-nov-2026): `analisis` ya no se lee con la pública. Ver informe-ltr.tsx.
+
+    const informes = createServiceClient();
+    const { data: row, error } = await informes
       .from("analisis")
       .select("*")
       .eq("id", params.id)
@@ -52,6 +58,10 @@ export async function GET(
 
     if (error || !row) {
       return NextResponse.json({ error: "Análisis no encontrado" }, { status: 404 });
+    }
+    // Pendiente de pago (04-nov-2026, lib/informe-bloqueado.ts): sin el contenido del informe hasta que se pague.
+    if (informeBloqueado(row as { pending_payment?: boolean | null }, false)) {
+      return NextResponse.json({ error: "El informe se abre al pagar." }, { status: 403 });
     }
 
     // Cache hit — unless forced o la version del prompt quedo atras.

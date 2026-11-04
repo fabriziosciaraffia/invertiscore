@@ -27,6 +27,9 @@ import { medianaDesdeSnapshot } from "@/lib/analysis/mediana-snapshot";
 import { AppFooter } from "@/components/chrome/AppFooter";
 import { emitirVistaInforme } from "@/lib/meta/vista-informe";
 import { publicacionDelInforme } from "@/lib/guia/publicacion-portada";
+import { informeBloqueado, rutaPagoBloqueado } from "@/lib/informe-bloqueado";
+import { InformeBloqueado } from "@/components/analysis/InformeBloqueado";
+import { etiquetaAnalisis } from "@/lib/format-direccion";
 
 // Replica el formato de fecha de la vista AMBAS (shared-client → formatFechaCorta):
 // "7 de junio 2026". Usado en el header público de la vista guest.
@@ -55,13 +58,18 @@ export async function InformeLtr({ id, demo = false }: { id: string; demo?: bool
   // de la prop: el cliente de servicio solo lee las dos filas públicas.
   const modoDemo = demo && esDemo(id);
   const supabase = modoDemo ? createServiceClient() : createClient();
+  // LA FILA SE LEE CON LA LLAVE DE SERVICIO (04-nov-2026, auditoría de promesas): `analisis` ya no se lee con la llave
+  // pública —la política «Anyone can read analisis» dejaba listar la tabla entera—. El enlace sigue siendo la llave: quien
+  // tiene el id ve el informe, como siempre, y quién es el dueño lo sigue diciendo la sesión de `supabase`. Lo fija el
+  // tier DATOS-Y-PLATA.
+  const informes = createServiceClient();
 
   const [user, ufValue] = await Promise.all([
     modoDemo ? Promise.resolve(null) : supabase.auth.getUser().then((r) => r.data.user),
     getUFValue(),
   ]);
 
-  const { data } = await supabase
+  const { data } = await informes
     .from("analisis")
     .select("*")
     .eq("id", id)
@@ -93,8 +101,9 @@ export async function InformeLtr({ id, demo = false }: { id: string; demo?: bool
   // ocultar share/PDF/delete propios. Si el hermano no existe (grupo huérfano
   // por fallo parcial de creación), degradamos a análisis suelto normal.
   let subordinatedHref: string | null = null;
+  let hermanoStrId: string | null = null;
   if (analisis.ambas_role === "ltr" && analisis.ambas_group_id) {
-    const { data: sibling } = await supabase
+    const { data: sibling } = await informes
       .from("analisis")
       .select("id")
       .eq("ambas_group_id", analisis.ambas_group_id)
@@ -102,7 +111,21 @@ export async function InformeLtr({ id, demo = false }: { id: string; demo?: bool
       .maybeSingle();
     if (sibling?.id) {
       subordinatedHref = `/analisis/comparativa?ltr=${analisis.id}&str=${sibling.id}`;
+      hermanoStrId = sibling.id as string;
     }
+  }
+
+  // EL INFORME BLOQUEADO (04-nov-2026, lib/informe-bloqueado.ts): pendiente de pago, solo la portada bloqueada —antes de
+  // recalcular nada—. El dueño ve el botón de pagar; cualquier otro, que todavía no está disponible.
+  if (informeBloqueado(data as { pending_payment?: boolean | null }, isAdminUser(user?.email))) {
+    return (
+      <InformeBloqueado
+        titulo={etiquetaAnalisis(analisis.nombre, analisis.comuna)}
+        esDueno={!!user && user.id === analisis.user_id}
+        rutaPago={rutaPagoBloqueado({ analysisId: analisis.id, companionStrId: hermanoStrId })}
+        sesion={user ? { email: user.email ?? "" } : null}
+      />
+    );
   }
   const isSubordinated = !!subordinatedHref;
 

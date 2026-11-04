@@ -3,6 +3,7 @@ import { fechaProsaVigente } from "@/lib/pipeline-timing";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { getUFValue, resolveUfForAnalysis } from "@/lib/uf";
 import { getUserAccessLevel } from "@/lib/access";
 import { getAvailableCredits } from "@/lib/credits-grant";
@@ -19,6 +20,9 @@ import { sha256Hex, tokenAnonDelRequest } from "@/lib/api-helpers/anon-cap";
 import { buildResumenLTR, buildResumenSTR } from "@/lib/resumen-anexo";
 import { ComparativaClient } from "./comparativa-client";
 import { modoGestionAmbas } from "@/lib/modo-gestion";
+import { algunoBloqueado, rutaPagoBloqueado } from "@/lib/informe-bloqueado";
+import { InformeBloqueado } from "@/components/analysis/InformeBloqueado";
+import { etiquetaAnalisis } from "@/lib/format-direccion";
 
 export const metadata: Metadata = {
   title: "Franco — Comparativa Renta Larga vs Renta Corta",
@@ -43,6 +47,8 @@ export default async function ComparativaPage({
   searchParams: { ltr?: string; str?: string; ver?: string };
 }) {
   const supabase = createClient();
+  // La fila, con la llave de servicio (04-nov-2026): `analisis` ya no se lee con la pública. Ver informe-ltr.tsx.
+  const informes = createServiceClient();
   const ltrId = searchParams.ltr;
   const strId = searchParams.str;
 
@@ -56,8 +62,8 @@ export default async function ComparativaPage({
   }
 
   const [{ data: ltrRow }, { data: strRow }] = await Promise.all([
-    supabase.from("analisis").select("*").eq("id", ltrId).single(),
-    supabase.from("analisis").select("*").eq("id", strId).single(),
+    informes.from("analisis").select("*").eq("id", ltrId).single(),
+    informes.from("analisis").select("*").eq("id", strId).single(),
   ]);
 
   if (!ltrRow || !strRow) {
@@ -78,6 +84,20 @@ export default async function ComparativaPage({
     (strSql == null && (strRow.results as { tipoAnalisis?: string } | null)?.tipoAnalisis === "short-term");
   if (ltrIsSTR || !strIsSTR) {
     redirect(user ? "/dashboard" : "/");
+  }
+
+  // EL INFORME BLOQUEADO (04-nov-2026, lib/informe-bloqueado.ts): con una de las dos filas pendiente de pago, solo la
+  // portada bloqueada; se paga desde la de renta larga con la corta como acompañante.
+  if (algunoBloqueado([ltrRow, strRow] as Array<{ pending_payment?: boolean | null }>, isAdminUser(user?.email))) {
+    const fila = ltrRow as { id: string; user_id?: string | null; nombre?: string | null; comuna?: string | null };
+    return (
+      <InformeBloqueado
+        titulo={etiquetaAnalisis(fila.nombre, fila.comuna)}
+        esDueno={!!user && user.id === fila.user_id}
+        rutaPago={rutaPagoBloqueado({ analysisId: fila.id, companionStrId: (strRow as { id: string }).id })}
+        sesion={user ? { email: user.email ?? "" } : null}
+      />
+    );
   }
 
   const ltr = ltrRow as Analisis;

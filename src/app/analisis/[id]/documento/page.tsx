@@ -14,6 +14,7 @@ import { fechaCortaCL } from "@/lib/fecha-cl";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { getUFValue, resolveUfForAnalysis } from "@/lib/uf";
 import { recomputeResultsForLegacy } from "@/lib/analysis/recompute-results-for-legacy";
 import { enrichMetricsLegacy } from "@/lib/analysis/enrich-metrics-legacy";
@@ -26,6 +27,7 @@ import { medianaDesdeSnapshot } from "@/lib/analysis/mediana-snapshot";
 import type { Analisis, AnalisisInput, FullAnalysisResult, AIAnalysisV2 } from "@/lib/types";
 import { DocumentoLTR } from "./DocumentoLTR";
 import "./documento.css";
+import { informeBloqueado } from "@/lib/informe-bloqueado";
 
 export const dynamic = "force-dynamic";
 
@@ -57,7 +59,8 @@ export default async function DocumentoLTRPage({
     getUFValue(),
   ]);
 
-  const { data } = await supabase
+  // La fila, con la llave de servicio (04-nov-2026): el renderer de PDFs entra sin sesión. Ver informe-ltr.tsx.
+  const { data } = await createServiceClient()
     .from("analisis")
     .select("*")
     .eq("id", params.id)
@@ -66,6 +69,9 @@ export default async function DocumentoLTRPage({
   if (!data) {
     redirect(user ? "/dashboard" : "/");
   }
+
+  // Pendiente de pago (04-nov-2026, lib/informe-bloqueado.ts): sin el contenido del informe hasta que se pague.
+  if (informeBloqueado(data as { pending_payment?: boolean | null }, false)) redirect(`/analisis/${params.id}`);
 
   // ── Gating dueño-only (D-1) ──
   // Antes de cualquier cómputo: quien no es dueño (ni admin, ni el renderer de

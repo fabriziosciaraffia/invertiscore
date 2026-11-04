@@ -21,9 +21,11 @@
 import { NextResponse } from "next/server";
 import { captureApiError } from "@/lib/observabilidad";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { renderPdf } from "@/lib/pdf/render-pdf";
 import { accesoPdf, logDenegacion } from "@/lib/pdf/documento-access";
 import { formatDireccionDisplay } from "@/lib/format-direccion";
+import { informeBloqueado } from "@/lib/informe-bloqueado";
 
 /** 25-sep-2026: el PDF STR sale de la UI, igual que el LTR, al salir la IA del informe. */
 const PDF_STR_VISIBLE = false;
@@ -41,13 +43,19 @@ export async function GET(
 
     // Validar que el análisis existe antes de gastar tiempo en Chromium.
     const supabase = createClient();
-    const { data: row } = await supabase
+    // La fila, con la llave de servicio (04-nov-2026): `analisis` ya no se lee con la pública. Ver informe-ltr.tsx.
+    const informes = createServiceClient();
+    const { data: row } = await informes
       .from("analisis")
-      .select("id, comuna, direccion, ambas_role, ambas_group_id, user_id, anon_claim_token_hash")
+      .select("id, comuna, direccion, ambas_role, ambas_group_id, user_id, anon_claim_token_hash, pending_payment")
       .eq("id", id)
       .single();
     if (!row) {
       return NextResponse.json({ error: "Análisis no encontrado" }, { status: 404 });
+    }
+    // Pendiente de pago (04-nov-2026, lib/informe-bloqueado.ts): sin el contenido del informe hasta que se pague.
+    if (informeBloqueado(row as { pending_payment?: boolean | null }, false)) {
+      return NextResponse.json({ error: "El informe se abre al pagar." }, { status: 403 });
     }
 
     // 25-sep-2026: el PDF STR está fuera de la UI, igual que el LTR (mismo 410). El documento
@@ -77,7 +85,7 @@ export async function GET(
     const ambasRole = (row as Record<string, unknown>).ambas_role as string | null;
     const ambasGroupId = (row as Record<string, unknown>).ambas_group_id as string | null;
     if (ambasRole === "str" && ambasGroupId) {
-      const { data: sibling } = await supabase
+      const { data: sibling } = await informes
         .from("analisis")
         .select("id")
         .eq("ambas_group_id", ambasGroupId)

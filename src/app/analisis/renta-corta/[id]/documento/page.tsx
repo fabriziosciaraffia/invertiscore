@@ -10,6 +10,7 @@ import { normalizarResultsStrPersistidos } from "@/lib/analysis/normalizar-resul
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { getUFValue } from "@/lib/uf";
 import { recomputeShortTermForLegacy } from "@/lib/analysis/recompute-short-term-for-legacy";
 import { conOcupacionRealizadaDelCache } from "@/lib/airbnb/ocupacion-realizada-cache";
@@ -22,6 +23,7 @@ import type { AIAnalysisSTRv2 } from "@/lib/types";
 import { DocumentoSTR } from "./DocumentoSTR";
 import "./documento.css";
 import { evaluarAccesoDocumento, logDenegacion } from "@/lib/pdf/documento-access";
+import { informeBloqueado } from "@/lib/informe-bloqueado";
 
 export const dynamic = "force-dynamic";
 
@@ -46,7 +48,8 @@ export default async function DocumentoSTRPage({ params }: { params: { id: strin
     getUFValue(),
   ]);
 
-  const { data } = await supabase
+  // La fila, con la llave de servicio (04-nov-2026): el renderer de PDFs entra sin sesión. Ver informe-ltr.tsx.
+  const { data } = await createServiceClient()
     .from("analisis")
     .select("*")
     .eq("id", params.id)
@@ -55,6 +58,9 @@ export default async function DocumentoSTRPage({ params }: { params: { id: strin
   if (!data) {
     redirect(user ? "/dashboard" : "/");
   }
+
+  // Pendiente de pago (04-nov-2026, lib/informe-bloqueado.ts): sin el contenido del informe hasta que se pague.
+  if (informeBloqueado(data as { pending_payment?: boolean | null }, false)) redirect(`/analisis/renta-corta/${params.id}`);
 
   // ── Gating dueño-only (D-1) ── espejo verbatim del LTR. Ver documento-access.
   const acceso = evaluarAccesoDocumento({

@@ -23,11 +23,12 @@ export async function GET(request: Request) {
 
   const { data } = await supabase
     .from("analisis")
-    .select("nombre, score, comuna, creator_name, results")
+    .select("nombre, score, comuna, creator_name, results, pending_payment")
     .eq("id", id)
     .single();
 
-  if (!data) {
+  // Pendiente de pago (04-nov-2026, lib/informe-bloqueado.ts): sin puntaje ni veredicto en la vista previa.
+  if (!data || (data as { pending_payment?: boolean | null }).pending_payment === true) {
     return new Response("Not found", { status: 404 });
   }
 

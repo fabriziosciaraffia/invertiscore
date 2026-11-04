@@ -12,6 +12,7 @@
 
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { getUFValue, resolveUfForAnalysis } from "@/lib/uf";
 import { decodeShareToken } from "@/lib/share-token";
 import { formatDireccionDisplay } from "@/lib/format-direccion";
@@ -25,6 +26,7 @@ import { prefetchMedianaComunaVenta, prefetchMercadoStr } from "@/lib/api-helper
 import { DocumentoAmbas } from "./DocumentoAmbas";
 import "./documento.css";
 import { modoGestionAmbas } from "@/lib/modo-gestion";
+import { algunoBloqueado } from "@/lib/informe-bloqueado";
 
 export const dynamic = "force-dynamic";
 
@@ -49,15 +51,22 @@ export default async function DocumentoAmbasPage({
   }
 
   const supabase = createClient();
+
+  // La fila, con la llave de servicio (04-nov-2026): `analisis` ya no se lee con la pública. Ver informe-ltr.tsx.
+
+  const informes = createServiceClient();
   const [{ data: ltrRow }, { data: strRow }, ufValue] = await Promise.all([
-    supabase.from("analisis").select("*").eq("id", decoded.ltrId).single(),
-    supabase.from("analisis").select("*").eq("id", decoded.strId).single(),
+    informes.from("analisis").select("*").eq("id", decoded.ltrId).single(),
+    informes.from("analisis").select("*").eq("id", decoded.strId).single(),
     getUFValue(),
   ]);
 
   if (!ltrRow || !strRow) {
     notFound();
   }
+
+  // Pendiente de pago (04-nov-2026, lib/informe-bloqueado.ts): sin el contenido del informe hasta que se pague.
+  if (algunoBloqueado([ltrRow, strRow] as Array<{ pending_payment?: boolean | null }>, false)) notFound();
 
   // Guard de roles: SQL `tipo_analisis` autoritativa; jsonb solo si SQL es null.
   const ltrSql = (ltrRow as Record<string, unknown>).tipo_analisis as string | null | undefined;
