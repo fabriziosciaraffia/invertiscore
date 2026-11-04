@@ -31,7 +31,7 @@ import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { botonOcupado, claveActual, iniciarCarga } from "@/lib/carga-global";
-import { compraDeLaSeleccion, comprasDelDepto, nombreDelDepto, ticketConSaldoDelDepto } from "@/lib/guia/compra-desde-depto";
+import { compraDeLaSeleccion, comprasDelDepto, nombreDelDepto, ticketConSaldoDelDepto, type AutoAnalizar } from "@/lib/guia/compra-desde-depto";
 import { alCerrarQueda, informeFallo, informeGenerando, informeListo, type MotivoFallo, type PasoInforme } from "@/lib/guia/informe-en-camino";
 import { InformeListoAviso } from "@/components/guia/InformeEnCamino";
 import { cuandoVenceCorto } from "@/lib/lo-que-sigue/oferta-pack";
@@ -96,7 +96,7 @@ export function SemanalLista({
   /** Con el ticket vivo (22-oct-2026): cuándo nació la cuenta, para la línea del ticket con saldo en el pop-up. */
   cuentaCreadaAt?: string | null;
   /** Volvió pagado desde este depto (`analizar=1`): se analiza solo. */
-  autoAnalizar?: string | null;
+  autoAnalizar?: AutoAnalizar | null;
   /** En el dashboard (24-oct-2026, mockup 3b): sin título ni bajada propios —los pone la página—, las tarjetas numeradas
    *  con el pin rojo (deptos.css › .sel-*), el ya analizado como fila compacta en su misma posición y, con `aLaVista`,
    *  solo esas a la vista y «Ver los N que faltan». */
@@ -262,8 +262,9 @@ export function SemanalLista({
   // recargar o volver atrás no lo analiza de nuevo.
   const autoHecho = useRef(false);
   useEffect(() => {
-    if (!autoAnalizar || autoHecho.current) return;
-    const it = filas.flatMap((f) => [f.item, ...(f.reemplazo ? [f.reemplazo] : [])]).find((i) => i.avisoId === autoAnalizar);
+    // Solo la lista de la modalidad que se tocó (04-nov-2026): el mismo depto puede estar en los dos bloques.
+    if (!autoAnalizar || autoAnalizar.modalidad !== modalidad || autoHecho.current) return;
+    const it = filas.flatMap((f) => [f.item, ...(f.reemplazo ? [f.reemplazo] : [])]).find((i) => i.avisoId === autoAnalizar.avisoId);
     if (!it || it.informeId || informes[it.avisoId] || informesAqui[it.avisoId] || (corta && noDa.has(it.avisoId))) return;
     autoHecho.current = true;
     try {
@@ -411,8 +412,8 @@ export function SemanalLista({
           combinacion={combinacion}
           finanzas={{ tasa: finanzas.tasa, uf: finanzas.uf, arriendo: finanzas.arriendos[confirmar.it.avisoId] ?? null }}
           uso={confirmar.sin ? { tipo: "sin" } : saldo}
-          compras={comprasDelDepto({ token, avisoId: confirmar.it.avisoId, origen: origenCompra, variante: varianteCompra, ticket })}
-          ticketConSaldo={ticket && !corta ? ticketConSaldoDelDepto({ token, avisoId: confirmar.it.avisoId, origen: origenCompra, variante: varianteCompra, cuentaCreadaAt }) : null}
+          compras={comprasDelDepto({ token, avisoId: confirmar.it.avisoId, origen: origenCompra, variante: varianteCompra, ticket, modalidad })}
+          ticketConSaldo={ticket && !corta ? ticketConSaldoDelDepto({ token, avisoId: confirmar.it.avisoId, origen: origenCompra, variante: varianteCompra, cuentaCreadaAt, modalidad }) : null}
           // Sin saldo y con el ticket vivo (24-oct-2026, mockup A): la tarjeta roja de la oferta dice hasta cuándo.
           ticketVence={ticket && cuentaCreadaAt ? cuandoVenceCorto(cuentaCreadaAt) : null}
           rutaCompra={comprarSeleccion.href}

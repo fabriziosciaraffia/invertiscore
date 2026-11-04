@@ -126,7 +126,9 @@ export function runTicketVivoTier(): { hard: number } {
     if (textos(aviso({ tipo: "sin" }, { ticketConSaldo: l })).includes(l.texto)) F("3 · sin saldo (la compra manda), la línea sale igual");
     if (textos(aviso({ tipo: "con", n: 1, noVencen: true })).includes("3 más por")) F("3 · sin el ticket, el pop-up ofrece «3 más»");
     const sl = codigo("src/app/semanal/semanal-lista.tsx"), ps = codigo("src/components/deptos/PrimeraSeleccion.tsx");
-    if (!/ticketConSaldo=\{ticket && !corta \? ticketConSaldoDelDepto\(\{ token, avisoId: confirmar\.it\.avisoId, origen: origenCompra, variante: varianteCompra, cuentaCreadaAt \}\) : null\}/.test(sl)) F("3 · la selección no le pasa la línea del ticket al pop-up");
+    // ⚠ ACTA (04-nov-2026, auditoría de promesas parte 1) · con la modalidad del bloque (DATOS-Y-PLATA §4). El predicado viejo
+    // pedía la llamada sin ella.
+    if (!/ticketConSaldo=\{ticket && !corta \? ticketConSaldoDelDepto\(\{ token, avisoId: confirmar\.it\.avisoId, origen: origenCompra, variante: varianteCompra, cuentaCreadaAt, modalidad \}\) : null\}/.test(sl)) F("3 · la selección no le pasa la línea del ticket al pop-up");
     // ⚠ ACTA (28-oct-2026, RESPALDO-MAPA) · la línea del ticket sale de la tarjeta (con el token desde la selección; con la compra de Explorar desde el respaldo).
     if (!/ticketConSaldo=\{ticketConSaldoDeLaTarjeta\(confirmar\.it\)\}/.test(ps) || !/if \(!datos\?\.ticket\) return null;/.test(ps) || !/return ticketConSaldoDelDepto\(\{ token: datos\.token, avisoId: it\.avisoId, origen: "semanal", cuentaCreadaAt: datos\.cuentaCreadaAt \}\);/.test(ps)) F("3 · la primera selección no le pasa la línea del ticket al pop-up");
     if (!/cuentaCreadaAt: ticket \? \(user\.created_at \?\? null\) : null/.test(codigo("src/lib/guia/seleccion-pagina-servidor.ts")) || !/cuentaCreadaAt: ticket \? \(user\.created_at \?\? null\) : null/.test(codigo("src/app/api/deptos/primeros/route.ts"))) F("3 · el servidor no manda cuándo nació la cuenta junto con el ticket");

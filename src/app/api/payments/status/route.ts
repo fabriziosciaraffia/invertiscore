@@ -55,6 +55,9 @@ async function deptoDelPago(admin: ReturnType<typeof createServiceClient>, f: { 
   const volver = volverSeguro((f.payment_data as { volver?: unknown } | null)?.volver);
   const d = deptoDeVolver(volver);
   if (f.status !== "paid" || f.analysis_id || !d || !analizaAlVolver(volver)) return null;
+  // Tocado en renta corta (04-nov-2026, `m=str`): la vuelta no lo genera como renta larga; lo analiza la lista de renta
+  // corta del dashboard, con su medición fina y su «no da».
+  if (d.m === "str") return null;
   const sel = await seleccionPorToken(admin, d.t);
   if (!sel || sel.user_id !== f.user_id) return null;
   const it = sel.items.find((i) => i.avisoId === d.a);

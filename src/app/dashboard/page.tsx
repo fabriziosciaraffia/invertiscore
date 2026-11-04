@@ -52,6 +52,7 @@ import { parseParams, PAGE_SIZE } from "./dashboard-helpers";
 // El CSS del chip de veredicto del informe: el dashboard lo usa desde el 25-sep-2026.
 import { ChipVeredictoTokens } from "@/components/analysis/shared/ChipVeredicto";
 import "./casa.css";
+import { autoAnalizarDeLaVuelta } from "@/lib/guia/compra-desde-depto";
 
 /**
  * EL DASHBOARD (24-oct-2026, mockup docs/puerta-b-mockups/3b-dashboard.html, decisión de Fabrizio): UNA casa para quien
@@ -88,7 +89,8 @@ export default async function DashboardPage({
   // Sin sesión, el enlace del correo entra por el código y vuelve a esta misma selección.
   if (!user && tSel) redirect(hrefEntrar(`/dashboard?${new URLSearchParams({ t: tSel, ...(aSel ? { a: aSel } : {}) }).toString()}`, "semanal"));
   if (!user) redirect("/login");
-  const autoAnalizar = uno("analizar") === "1" ? aSel : null;
+  // En la modalidad que se tocó (`m=str`, 04-nov-2026, compra-desde-depto.ts › volverAlDepto): solo esa lista lo analiza.
+  const autoAnalizar = autoAnalizarDeLaVuelta({ analizar: uno("analizar"), a: aSel, m: uno("m") });
   const dibujadoAt = Date.now();
 
   const fullName = resolveDisplayName(user.user_metadata, user.email);

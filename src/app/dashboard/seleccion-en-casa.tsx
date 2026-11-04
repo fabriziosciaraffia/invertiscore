@@ -12,11 +12,12 @@ import { SEMANAL_PAGINA } from "@/lib/guia/semanal";
 import { SEMANAL_STR } from "@/lib/guia/semanal-str";
 import { SELECCION_CASA, TARJETAS_EN_CASA } from "@/lib/guia/seleccion-casa";
 import { bloquesEnOrden, hayDeptos, type SeleccionPagina } from "@/lib/guia/seleccion-pagina-servidor";
+import type { AutoAnalizar } from "@/lib/guia/compra-desde-depto";
 
 export function SeleccionEnCasa({ sel, autoAnalizar, primera }: {
   sel: SeleccionPagina | null;
   /** Volvió pagado desde un depto (`analizar=1`): ese se analiza solo. */
-  autoAnalizar: string | null;
+  autoAnalizar: AutoAnalizar | null;
   /** Sin selección con deptos, mostrar la primera selección (la cuenta sin informes). */
   primera: boolean;
 }) {

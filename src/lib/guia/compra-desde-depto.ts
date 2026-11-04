@@ -51,24 +51,37 @@ export function lineaTicketConSaldo(cuentaCreadaAt: string, href: string, ahora:
 }
 
 /** La misma línea desde un depto de la selección: compra el pack al precio del ticket y vuelve a ese depto. */
-export function ticketConSaldoDelDepto(p: { token: string; avisoId: string; origen: "semanal" | "inmediato"; variante?: "banda" | "tarjetas" | null; cuentaCreadaAt: string | null | undefined; ahora?: Date }): { texto: string; href: string } | null {
+export function ticketConSaldoDelDepto(p: { token: string; avisoId: string; origen: "semanal" | "inmediato"; variante?: "banda" | "tarjetas" | null; cuentaCreadaAt: string | null | undefined; ahora?: Date; modalidad?: ModalidadDepto }): { texto: string; href: string } | null {
   if (!p.cuentaCreadaAt) return null;
   const variante = p.origen === "semanal" ? p.variante ?? null : null;
-  return lineaTicketConSaldo(p.cuentaCreadaAt, urlCompra({ product: PRODUCTO_PACK, origen: p.origen, variante, volver: volverAlDepto(p.token, p.avisoId) }), p.ahora);
+  return lineaTicketConSaldo(p.cuentaCreadaAt, urlCompra({ product: PRODUCTO_PACK, origen: p.origen, variante, volver: volverAlDepto(p.token, p.avisoId, p.modalidad) }), p.ahora);
 }
 
-/** Adónde vuelve la compra hecha desde un depto: el dashboard, en la selección, con ese depto arriba y analizándose solo. */
-export function volverAlDepto(token: string, avisoId: string): string {
-  return `/dashboard?t=${encodeURIComponent(token)}&a=${encodeURIComponent(avisoId)}&analizar=1`;
+/** La modalidad del bloque desde donde se tocó el depto. */
+export type ModalidadDepto = "ltr" | "str";
+
+/** Adónde vuelve la compra hecha desde un depto: el dashboard, en la selección, con ese depto arriba y analizándose solo.
+ *  LA MODALIDAD QUE SE TOCÓ (04-nov-2026, auditoría de promesas): un depto puede estar en el bloque de renta larga Y en el
+ *  de renta corta de la misma selección (54 de 112 selecciones con los dos bloques repiten alguno). La vuelta lleva `m=str`
+ *  cuando se tocó en renta corta: la vuelta de Flow no lo genera como renta larga y solo la lista de renta corta lo analiza
+ *  sola. Un toque, un análisis, en su modalidad. */
+export function volverAlDepto(token: string, avisoId: string, modalidad: ModalidadDepto = "ltr"): string {
+  return `/dashboard?t=${encodeURIComponent(token)}&a=${encodeURIComponent(avisoId)}&analizar=1${modalidad === "str" ? "&m=str" : ""}`;
 }
 
 /** El depto de una vuelta (`volver`): su selección (`t`) y su aviso (`a`). null: la vuelta no es a un depto. */
-export function deptoDeVolver(volver: string | null | undefined): { t: string; a: string } | null {
+export function deptoDeVolver(volver: string | null | undefined): { t: string; a: string; m: ModalidadDepto } | null {
   const v = volverSeguro(volver);
   if (!v) return null;
   const q = new URLSearchParams(v.split("?")[1]?.split("#")[0] ?? "");
   const t = q.get("t"), a = q.get("a");
-  return t && a && TOKEN.test(t) && AVISO.test(a) ? { t, a } : null;
+  return t && a && TOKEN.test(t) && AVISO.test(a) ? { t, a, m: q.get("m") === "str" ? "str" : "ltr" } : null;
+}
+
+/** El depto que se analiza solo al volver pagado (`a` con `analizar=1`) y en qué bloque (`m`; renta larga si no viene). */
+export type AutoAnalizar = { avisoId: string; modalidad: ModalidadDepto };
+export function autoAnalizarDeLaVuelta(q: { analizar: string | null; a: string | null; m: string | null }): AutoAnalizar | null {
+  return q.analizar === "1" && q.a ? { avisoId: q.a, modalidad: q.m === "str" ? "str" : "ltr" } : null;
 }
 
 /** ¿La vuelta pide analizar el depto solo, apenas llega? */
@@ -161,8 +174,8 @@ export function compraDeLaSeleccion(p: { token: string; origen: "semanal" | "inm
 }
 
 /** Las dos compras del pop-up sin saldo, con la vuelta a este depto. */
-export function comprasDelDepto(p: { token: string; avisoId: string; origen: "semanal" | "inmediato"; variante?: "banda" | "tarjetas" | null; ticket: boolean }): ComprasDelDepto {
-  const volver = volverAlDepto(p.token, p.avisoId);
+export function comprasDelDepto(p: { token: string; avisoId: string; origen: "semanal" | "inmediato"; variante?: "banda" | "tarjetas" | null; ticket: boolean; modalidad?: ModalidadDepto }): ComprasDelDepto {
+  const volver = volverAlDepto(p.token, p.avisoId, p.modalidad);
   const precio = p.ticket ? PACK_PRECIO_CLP : TRES_PRECIO_CLP;
   const variante = p.origen === "semanal" ? p.variante ?? null : null;
   return {

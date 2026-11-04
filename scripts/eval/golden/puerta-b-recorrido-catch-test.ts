@@ -279,7 +279,9 @@ export async function runPuertaBRecorridoTier(): Promise<{ hard: number }> {
     if (iPack < 0 || iSuelto < 0 || iSuelto < iPack) F("5 · el aviso sin saldo no ofrece el pack y debajo «Comprar solo 1 · $9.990»");
     if (!sinSaldo.includes("3 análisis por $14.990")) F("5 · el aviso sin saldo de una cuenta nueva no dice el precio del ticket");
     const sl = codigo("src/app/semanal/semanal-lista.tsx"), ps = codigo("src/components/deptos/PrimeraSeleccion.tsx");
-    if (!/compras=\{comprasDelDepto\(\{ token, avisoId: confirmar\.it\.avisoId, origen: origenCompra, variante: varianteCompra, ticket \}\)\}/.test(sl)) F("5 · la selección no le pasa las dos compras al aviso");
+    // ⚠ ACTA (04-nov-2026, auditoría de promesas parte 1) · con la modalidad del bloque (DATOS-Y-PLATA §4): la vuelta lo
+    // analiza en la que se tocó. El predicado viejo pedía la llamada sin ella.
+    if (!/compras=\{comprasDelDepto\(\{ token, avisoId: confirmar\.it\.avisoId, origen: origenCompra, variante: varianteCompra, ticket, modalidad \}\)\}/.test(sl)) F("5 · la selección no le pasa las dos compras al aviso");
     // ⚠ ACTA (28-oct-2026, RESPALDO-MAPA) · la compra sale de la tarjeta: desde la selección, las dos compras con el token; desde el respaldo, las de Explorar.
     if (!/compras=\{comprasDeLaTarjeta\(confirmar\.it\)\}/.test(ps) || !/\? comprasDelDepto\(\{ token: datos\.token, avisoId: it\.avisoId, origen: "semanal", ticket: !!datos\.ticket \}\)/.test(ps)) F("5 · la primera selección no le pasa las dos compras al aviso");
     if (!/ticketDeCuentaDisponible\(admin, user\)/.test(codigo("src/app/api/deptos/primeros/route.ts"))) F("5 · la primera selección no sabe si la cuenta tiene el ticket");
@@ -331,7 +333,9 @@ export async function runPuertaBRecorridoTier(): Promise<{ hard: number }> {
     const sl = codigo("src/app/semanal/semanal-lista.tsx");
     const auto = entre(sl, "const autoHecho = useRef(false);", "}, [autoAnalizar]);");
     if (!/u\.searchParams\.delete\("analizar"\)/.test(auto) || !/void analizar\(it, true\);/.test(auto) || !/autoHecho\.current = true;/.test(auto)) F("6 · al volver pagado, el depto no se analiza solo una vez");
-    if (!/const autoAnalizar = uno\("analizar"\) === "1" \? aSel : null;/.test(dash)) F("6 · el dashboard no le pasa a la selección el depto que vuelve pagado");
+    // ⚠ ACTA (04-nov-2026, auditoría de promesas parte 1) · el depto que vuelve pagado trae su modalidad (`m=str`) y solo esa
+    // lista lo analiza (DATOS-Y-PLATA §4): `autoAnalizarDeLaVuelta` en vez del `aSel` pelado.
+    if (!/const autoAnalizar = autoAnalizarDeLaVuelta\(\{ analizar: uno\("analizar"\), a: aSel, m: uno\("m"\) \}\);/.test(dash)) F("6 · el dashboard no le pasa a la selección el depto que vuelve pagado");
   } catch (e) {
     F(`6 · no corrió: ${(e as Error).message}`);
   }
