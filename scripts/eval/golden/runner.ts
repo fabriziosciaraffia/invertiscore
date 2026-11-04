@@ -206,6 +206,7 @@ import { runCierreInformeTier } from "./cierre-informe-catch-test";
 import { runAmbasTier } from "./ambas-recompute";
 import { runPruebasSueltasTier } from "./pruebas-sueltas-tier";
 import { runStrCongeladoTier } from "./str-congelado-catch-test";
+import { runDatosYPlataTier } from "./datos-y-plata-catch-test";
 
 const argv = process.argv.slice(2);
 const has = (f: string) => argv.includes(f);
@@ -839,6 +840,11 @@ function printSeed(r: SeedReport) {
   // con la firma (y nada sin ella), el pago de otra cuenta lo dice, el STR avisa que está listo, y el precio del
   // pack solo en el ticket (lista blanca). ──
   totalHard += (await runPagoSinSesionTier()).hard;
+  // Tier DATOS-Y-PLATA (04-nov-2026, 0 tokens, lee la base): la auditoría de promesas, parte 1 — analisis no se lee con la
+  // llave pública (lectura anónima real), el informe pendiente solo muestra su portada, el crédito vuelve si el informe no
+  // se crea, un toque analiza una vez en su modalidad, acreditar no se traga errores, la bienvenida cuenta en el saldo,
+  // las bajas se respetan, «Pago confirmado» una vez y la hora real del ticket. ──
+  totalHard += (await runDatosYPlataTier()).hard;
   // Tier CIERRE-INFORME (01-oct-2026, 0 tokens): el final del informe tiene UNA acción —el ticket, la banda de
   // bienvenida o «Te quedan N análisis.» con «Analizar otro depto»—. ──
   totalHard += runCierreInformeTier().hard;
