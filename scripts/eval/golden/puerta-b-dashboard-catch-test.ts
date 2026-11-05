@@ -236,7 +236,10 @@ export async function runPuertaBDashboardTier(): Promise<{ hard: number }> {
   const bloques = Array.from(htmlLista.matchAll(/<(a|article) [^>]*class="(sel-fila|sel-av)"[^>]*data-n="(\d)"/g)).map((x) => `${x[2]}:${x[3]}`);
   if (bloques.join(",") !== "sel-fila:1,sel-av:2,sel-av:3") F(`4 · el analizado no es la fila compacta en su posición, con tres a la vista (${bloques.join(",")})`);
   const fila = htmlLista.slice(htmlLista.indexOf('class="sel-fila"'), htmlLista.indexOf('class="sel-av"'));
-  if (!/href="\/analisis\/informe-a"/.test(fila) || !/Providencia · 2D1B · 59 m² · UF 3\.500 · Comprar 91/.test(fila) || !/Ya lo analizaste/.test(fila) || !/Ver informe/.test(fila) || /sel-precio|Analizar este/.test(fila)) F("4 · la fila compacta no dice el depto con su veredicto, «Ya lo analizaste» y «Ver informe» (o es una tarjeta)");
+  // ⚠ ACTA (05-nov-2026, decisión de Fabrizio: la tarjeta de un analizado dice SU informe, no la noche; tier TARJETA-ANALIZADA)
+  // · la fila compacta ya no lleva el veredicto de la noche («Comprar 91»): dice el depto y su precio, y el chip de su informe
+  // si viene su resumen; sin resumen (esta fixture), «Ya lo analizaste». Exigir «Comprar 91» acá era exigir la noche.
+  if (!/href="\/analisis\/informe-a"/.test(fila) || !/Providencia · 2D1B · 59 m² · UF 3\.500/.test(fila) || /Comprar 91|\b91\b/.test(texto(fila)) || !/Ya lo analizaste/.test(fila) || !/Ver informe/.test(fila) || /sel-precio|Analizar este/.test(fila)) F("4 · la fila compacta no dice el depto con su precio, «Ya lo analizaste» y «Ver informe» (o es una tarjeta, o dice la noche)");
   if (!/data-semanal="ver-mas"[^>]*>Ver el que falta</.test(htmlLista)) F("4 · con cuatro deptos y tres a la vista no está «Ver el que falta»");
   if ((htmlLista.match(/Analizar este/g) ?? []).length !== 2 || /guia-titulo|guia-pie|Revisados con tu pie/.test(htmlLista)) F("4 · las tarjetas visibles no llevan «Analizar este», o la casa repite el título, la bajada o el pie de la lista");
   const htmlRegalo = dibujarConRouter(createElement(SemanalLista, { ...props, saldo: regalo }));

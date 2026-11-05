@@ -209,6 +209,7 @@ import { runStrCongeladoTier } from "./str-congelado-catch-test";
 import { runDatosYPlataTier } from "./datos-y-plata-catch-test";
 import { runSuscripcionTier } from "./suscripcion-catch-test";
 import { runAvisoCobroTier } from "./aviso-cobro-catch-test";
+import { runTarjetaAnalizadaTier } from "./tarjeta-analizada-catch-test";
 
 const argv = process.argv.slice(2);
 const has = (f: string) => argv.includes(f);
@@ -855,6 +856,10 @@ function printSeed(r: SeedReport) {
   // la ruta de producción, con la sonda), consulta el pago por GET con esperas y concilia si Flow no lo entrega; cada
   // llamada a Flow va con el método de su servicio (el POST a payment/getStatus era la causa del aviso perdido). ──
   totalHard += (await runAvisoCobroTier()).hard;
+  // Tier TARJETA-ANALIZADA (05-nov-2026, 0 tokens): la tarjeta de un depto ya analizado dice SU informe —el chip con su
+  // veredicto y puntaje y «tu informe del 13-oct»—, no la noche; si la noche da distinto, la línea chica «hoy la noche da 82».
+  // Dibujadas de verdad: la tarjeta y la lista de Explorar, el compartido, la selección, los guardados y la primera selección. ──
+  totalHard += (await runTarjetaAnalizadaTier()).hard;
   // Tier CIERRE-INFORME (01-oct-2026, 0 tokens): el final del informe tiene UNA acción —el ticket, la banda de
   // bienvenida o «Te quedan N análisis.» con «Analizar otro depto»—. ──
   totalHard += runCierreInformeTier().hard;
