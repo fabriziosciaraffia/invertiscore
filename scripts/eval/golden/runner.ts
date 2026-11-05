@@ -208,6 +208,7 @@ import { runPruebasSueltasTier } from "./pruebas-sueltas-tier";
 import { runStrCongeladoTier } from "./str-congelado-catch-test";
 import { runDatosYPlataTier } from "./datos-y-plata-catch-test";
 import { runSuscripcionTier } from "./suscripcion-catch-test";
+import { runAvisoCobroTier } from "./aviso-cobro-catch-test";
 
 const argv = process.argv.slice(2);
 const has = (f: string) => argv.includes(f);
@@ -850,6 +851,10 @@ function printSeed(r: SeedReport) {
   // falso), «Tarjeta registrada» al alta y «Pago confirmado» con el primer cobro, la gracia vencida cancela en Flow,
   // cancelar y volver, la fecha de Flow, el tope de 90 s, «ningún cargo» solo comprobado y la eliminación de la cuenta. ──
   totalHard += (await runSuscripcionTier()).hard;
+  // Tier AVISO-COBRO (05-nov-2026, 0 tokens, llama a producción): el aviso de cobro de Flow responde 200 siempre (también
+  // la ruta de producción, con la sonda), consulta el pago por GET con esperas y concilia si Flow no lo entrega; cada
+  // llamada a Flow va con el método de su servicio (el POST a payment/getStatus era la causa del aviso perdido). ──
+  totalHard += (await runAvisoCobroTier()).hard;
   // Tier CIERRE-INFORME (01-oct-2026, 0 tokens): el final del informe tiene UNA acción —el ticket, la banda de
   // bienvenida o «Te quedan N análisis.» con «Analizar otro depto»—. ──
   totalHard += runCierreInformeTier().hard;
