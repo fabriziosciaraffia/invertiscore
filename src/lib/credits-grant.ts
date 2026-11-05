@@ -136,14 +136,17 @@ export async function grantCredits(
  */
 export async function setPlanFields(
   userId: string,
-  product: FlowProduct
+  product: FlowProduct,
+  /** `finDePeriodo: null` (05-nov-2026): el alta de una suscripción todavía no tiene período pagado; lo llena el primer
+   *  cobro con la fecha de Flow (lib/subscriptions/suscripcion.ts › esperaPrimerCobro). Sin la opción, ahora + un ciclo. */
+  opts: { finDePeriodo?: string | null } = {}
 ): Promise<boolean> {
   if (!userId) return false;
 
   const supabase = createAdminClient();
   const now = new Date();
   const cycleMs = product.billing === "annual" ? ONE_YEAR_MS : ONE_MONTH_MS;
-  const subscriptionEndsAt = new Date(now.getTime() + cycleMs).toISOString();
+  const subscriptionEndsAt = "finDePeriodo" in opts ? opts.finDePeriodo ?? null : new Date(now.getTime() + cycleMs).toISOString();
 
   // 1) Campos de plan: siempre, sin condición.
   const { error } = await supabase
@@ -197,7 +200,9 @@ export async function setPlanFields(
  */
 export async function refreshSubscriptionEndsAt(
   userId: string,
-  product: FlowProduct
+  product: FlowProduct,
+  /** La fecha del siguiente cobro según Flow (05-nov-2026). Sin ella, ahora + un ciclo. */
+  deFlow: string | null = null
 ): Promise<boolean> {
   if (!userId) return false;
 
@@ -208,7 +213,7 @@ export async function refreshSubscriptionEndsAt(
   const { error } = await supabase
     .from("user_credits")
     .update({
-      subscription_ends_at: new Date(now.getTime() + cycleMs).toISOString(),
+      subscription_ends_at: deFlow ?? new Date(now.getTime() + cycleMs).toISOString(),
       updated_at: now.toISOString(),
     })
     .eq("user_id", userId);

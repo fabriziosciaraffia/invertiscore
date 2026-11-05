@@ -6,6 +6,7 @@ import { flowPost, flowGet } from "@/lib/flow";
 import { FLOW_PRODUCTS, type FlowProductKey } from "@/lib/flow-products";
 import { seVende } from "@/lib/planes";
 import { contextoDeRequest, guardarContextoMeta } from "@/lib/meta/servidor";
+import { puedeAbrirPlan } from "@/lib/subscriptions/suscripcion";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://refranco.ai";
 
@@ -99,6 +100,9 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
   const product = (body as { product?: string }).product as FlowProductKey | undefined;
   const chosen = product ? FLOW_PRODUCTS[product] : undefined;
+  // «Ver cómo pagar» (05-nov-2026, auditoría de promesas parte 2): cambiar la tarjeta de un plan en la gracia. Registra la
+  // tarjeta nueva y register-callback cierra la suscripción anterior en Flow antes de abrir la nueva (flow-vivas.ts).
+  const cambiarTarjeta = (body as { cambiarTarjeta?: unknown }).cambiarTarjeta === true;
 
   if (!product || !chosen || chosen.kind !== "recurring") {
     return NextResponse.json({ error: "Plan inválido" }, { status: 400 });
@@ -127,9 +131,12 @@ export async function POST(request: Request) {
       console.error("[subscriptions/create] Error fetching user_credits:", creditsError);
     }
 
-    if (credits?.subscription_status === "active") {
-      return NextResponse.json({ error: "Ya tienes una suscripción activa" }, { status: 400 });
-    }
+    // UNA SOLA SUSCRIPCIÓN (05-nov-2026, auditoría de promesas parte 2): «Contratar el plan» no abre otra si ya hay una, en
+    // cualquier estado que no sea cancelada. En la gracia (past_due) solo se entra a cambiar la tarjeta; activa, nunca.
+    // Antes solo se miraba 'active' y un past_due abría una segunda suscripción en Flow con la primera viva.
+    const estado = credits?.subscription_status ?? "none";
+    const bloqueo = puedeAbrirPlan(estado, cambiarTarjeta);
+    if (bloqueo) return NextResponse.json({ error: bloqueo.error, codigo: bloqueo.codigo }, { status: 409 });
 
     let customerId = credits?.flow_customer_id;
 
@@ -208,24 +215,28 @@ export async function POST(request: Request) {
     // El navegador de la cuenta (15-oct-2026): el primer cobro llega por webhook, sin cookies; con esto el Purchase y el
     // Subscribe llegan a Meta con fbp, fbc, IP y navegador (src/lib/meta/servidor.ts).
     await guardarContextoMeta(admin, user.id, contextoDeRequest(request));
-    const pendingOrder = `franco-sub-pending-${user.id}-${product}`;
-    const { error: pendingErr } = await admin
-      .from("payments")
-      .upsert(
-        {
-          user_id: user.id,
-          commerce_order: pendingOrder,
-          product,
-          amount: chosen.amount,
-          status: "pending",
-          recovery_email_sent_at: null,
-        },
-        { onConflict: "commerce_order" },
-      );
-    if (pendingErr) {
-      // No bloqueamos el checkout por esto: la recuperación es best-effort, la
-      // activación (register-callback) no depende de esta fila.
-      console.error("[subscriptions/create] pending payment upsert error:", pendingErr);
+    // Cambiar la tarjeta no es un carrito: sin fila pendiente, el cron de carrito abandonado no le escribe «empezaste a
+    // suscribirte» a quien ya tiene el plan.
+    if (!cambiarTarjeta) {
+      const pendingOrder = `franco-sub-pending-${user.id}-${product}`;
+      const { error: pendingErr } = await admin
+        .from("payments")
+        .upsert(
+          {
+            user_id: user.id,
+            commerce_order: pendingOrder,
+            product,
+            amount: chosen.amount,
+            status: "pending",
+            recovery_email_sent_at: null,
+          },
+          { onConflict: "commerce_order" },
+        );
+      if (pendingErr) {
+        // No bloqueamos el checkout por esto: la recuperación es best-effort, la
+        // activación (register-callback) no depende de esta fila.
+        console.error("[subscriptions/create] pending payment upsert error:", pendingErr);
+      }
     }
 
     // Send customer to register their card

@@ -39,8 +39,26 @@ const fechaLarga = (d: Date | string) =>
 // ── Cobro de suscripción rechazado ───────────────────────────────────────────
 // mismo contenido; «no pudimos procesar el cobro» → «no pudimos cobrar»; el aviso de
 // la gracia va en la nota de tinta (antes, caja con filete rojo); el botón sin flecha.
-export function correoPagoFallido(p: { nombre: string | null; graciaHasta: Date | string; sitio?: string }): Correo {
+// 05-nov-2026 (auditoría de promesas parte 2): el botón ya no lleva a /pricing —de ahí salía una SEGUNDA suscripción con la
+// primera viva— sino a cambiar la tarjeta (/cuenta/tarjeta), que cierra la anterior en Flow antes de abrir la nueva. Y si
+// lo que rechazó fue el PRIMER cobro, no dice «tu suscripción» como si ya se hubiera pagado: dice que el plan no se activó.
+export function correoPagoFallido(p: { nombre: string | null; graciaHasta: Date | string; primerCobro?: boolean; sitio?: string }): Correo {
   const sitio = p.sitio ?? SITIO;
+  const boton = { texto: "Cambiar la tarjeta", url: `${sitio}/cuenta/tarjeta` };
+  if (p.primerCobro) {
+    return {
+      subject: "El primer cobro de tu plan no pasó",
+      html: plantillaClara({
+        titulo: "El primer cobro de tu plan no pasó",
+        preencabezado: "Tu plan no se activó. Puedes cambiar la tarjeta.",
+        titular: "El primer cobro no pasó",
+        parrafos: [`${saludoDe(p.nombre)} Flow intentó hacer el primer cobro del plan y tu tarjeta lo rechazó: tu plan no se activó. Suele ser algo simple: una tarjeta vencida, sin cupo o un rechazo del banco.`],
+        nota: `Cambia la tarjeta antes del <b>${fechaLarga(p.graciaHasta)}</b> y el plan se activa con el cobro.`,
+        boton,
+        despues: ["Si no haces nada, el plan se cancela ese día y no se te cobra nada."],
+      }),
+    };
+  }
   return {
     subject: "Tu pago no se procesó — tienes unos días para actualizarlo",
     html: plantillaClara({
@@ -48,9 +66,31 @@ export function correoPagoFallido(p: { nombre: string | null; graciaHasta: Date 
       preencabezado: `Mantienes tu acceso hasta el ${fechaLarga(p.graciaHasta)}.`,
       titular: "Tu pago no se procesó",
       parrafos: [`${saludoDe(p.nombre)} no pudimos cobrar tu suscripción. Suele ser algo simple: una tarjeta vencida, sin cupo o un rechazo del banco.`],
-      nota: `Mantienes tu acceso hasta el <b>${fechaLarga(p.graciaHasta)}</b>. Reactiva tu suscripción antes de esa fecha para no perderlo.`,
-      boton: { texto: "Reactivar mi suscripción", url: `${sitio}/pricing` },
-      despues: ["Si no haces nada, tu cuenta vuelve al plan gratis y conservas los análisis que te queden."],
+      nota: `Mantienes tu acceso hasta el <b>${fechaLarga(p.graciaHasta)}</b>. Cambia la tarjeta antes de esa fecha para no perderlo.`,
+      boton,
+      despues: ["Si no haces nada, el plan se cancela ese día y conservas los análisis que te queden."],
+    }),
+  };
+}
+
+// ── Tarjeta registrada (el alta de la suscripción) ──────────────────────────
+// 05-nov-2026 (auditoría de promesas parte 2, decisión de Fabrizio): registrar la tarjeta no es pagar. Antes el alta mandaba
+// «Pago confirmado» horas antes de que Flow cobrara (≈5 h en el caso real), y si la tarjeta rechazaba el primer cobro, el
+// «confirmado» ya estaba dicho. «Pago confirmado» y los análisis del mes salen con el primer cobro (process-charge.ts).
+export function correoTarjetaRegistrada(p: { nombre: string | null; plan: string; sitio?: string }): Correo {
+  const sitio = p.sitio ?? SITIO;
+  return {
+    subject: `Tarjeta registrada — ${p.plan}`,
+    html: plantillaClara({
+      titulo: "Tarjeta registrada",
+      preencabezado: "Tu plan se activa con el primer cobro, en las próximas horas.",
+      titular: "Tarjeta registrada",
+      parrafos: [
+        `${saludoDe(p.nombre)} tu tarjeta quedó registrada para el <b>${escaparHtml(p.plan)}</b>. Tu plan se activa con el primer cobro, en las próximas horas.`,
+        "Cuando Flow haga el cobro te llega «Pago confirmado» con tus análisis del mes. Si la tarjeta lo rechaza, te lo decimos por correo.",
+      ],
+      boton: { texto: "Ver mi cuenta", url: `${sitio}/cuenta` },
+      legal: `Pagos procesados de forma segura por Flow.cl.<br>${LEGAL}`,
     }),
   };
 }

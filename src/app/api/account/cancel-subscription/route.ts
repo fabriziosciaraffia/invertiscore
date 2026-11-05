@@ -2,7 +2,21 @@ import { NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
-import { flowPost } from "@/lib/flow";
+import { captureApiError } from "@/lib/observabilidad";
+import { cancelarPlan } from "@/lib/subscriptions/flow-vivas";
+import { puertaFlow } from "@/lib/subscriptions/flow-puerta";
+import { esperaPrimerCobro, fechaFlowAIso } from "@/lib/subscriptions/suscripcion";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// «CANCELAR EL PLAN» (05-nov-2026, auditoría de promesas parte 2, decisión de Fabrizio).
+//   · Pagado y vigente: se cancela en Flow al fin del período (ya lo pagó) y conserva el acceso hasta esa fecha.
+//   · En la gracia (past_due) o esperando el primer cobro: se cancela en Flow AHORA. Al fin del período Flow seguiría
+//     intentando cobrar el importe impago.
+//   · «Cancelas cuando quieras» funciona aunque falte `subscription_id`: se busca la suscripción en Flow por el cliente
+//     (flow-vivas.ts › cancelarPlan). Cualquier otra viva del cliente se cancela ahora: nunca quedan dos.
+//   · Si Flow no confirma, NO se marca cancelado acá (no hay «cancelado en Franco y cobrando en Flow»).
+// Lo fija el tier SUSCRIPCION.
+// ─────────────────────────────────────────────────────────────────────────────
 
 function createSupabaseServer() {
   const cookieStore = cookies();
@@ -42,13 +56,10 @@ export async function POST() {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    // Verify a real subscription exists. 'active' y 'past_due' (cargo falló,
-    // en gracia) representan una suscripción que el usuario tiene y puede
-    // querer cancelar. Solo rechazamos si no hay suscripción real ('none',
-    // 'cancelled', o sin fila).
+    // 'active' y 'past_due' (cobro rechazado, en gracia) son una suscripción que la persona tiene y puede cancelar.
     const { data: credits } = await admin
       .from("user_credits")
-      .select("subscription_status, subscription_id, subscription_ends_at")
+      .select("subscription_status, subscription_id, subscription_ends_at, flow_customer_id")
       .eq("user_id", user.id)
       .single();
 
@@ -58,73 +69,46 @@ export async function POST() {
     }
 
     const subscriptionId = (credits.subscription_id as string | null) ?? null;
-    // Fin de ciclo: arrancamos con el valor actual (fallback) y lo pisamos solo
-    // si Flow devuelve uno válido. Nunca lo nulificamos.
-    let cycleEndIso: string | null =
-      (credits.subscription_ends_at as string | null) ?? null;
+    const customerId = (credits.flow_customer_id as string | null) ?? null;
+    // Al fin del período solo lo que ya se pagó.
+    const alFinDelPeriodo = status === "active" && !esperaPrimerCobro(credits);
 
-    if (subscriptionId) {
-      // Cancelar en Flow AL FIN DEL PERÍODO: deja de cobrar (next_invoice_date
-      // null) pero mantiene la sub activa hasta period_end. Confirmado en sandbox.
-      // flowPost firma con apiKey + HMAC y LANZA si Flow responde !ok → un fallo
-      // cae al catch y NO marcamos cancelled local (evita "local cancelado pero
-      // Flow sigue cobrando").
-      let flowResp: { subscriptionId?: string; subscription_end?: string; period_end?: string };
-      try {
-        flowResp = await flowPost("subscription/cancel", {
-          subscriptionId,
-          at_period_end: 1,
+    let finDelAcceso: string | null = alFinDelPeriodo ? ((credits.subscription_ends_at as string | null) ?? null) : new Date().toISOString();
+
+    if (subscriptionId || customerId) {
+      const cierre = await cancelarPlan(puertaFlow, { customerId, subscriptionId, alFinDelPeriodo });
+      if (!cierre.ok) {
+        console.error("[cancel-subscription] Flow no confirmó la cancelación:", JSON.stringify(cierre.fallidas));
+        captureApiError(new Error("Cancelación no confirmada por Flow"), {
+          ruta: "POST /api/account/cancel-subscription",
+          operacion: "cancelar-en-flow",
+          userId: user.id,
+          extra: { vivas: cierre.vivas, fallidas: cierre.fallidas, lecturaFallida: cierre.lecturaFallida },
         });
-      } catch (e) {
-        console.error(
-          "[cancel-subscription] Flow subscription/cancel falló:",
-          e instanceof Error ? e.message : String(e)
-        );
         return NextResponse.json(
-          { error: "No pudimos cancelar tu suscripción con el procesador de pago. Inténtalo en unos minutos." },
+          { error: "No pudimos cancelar tu plan con Flow. Inténtalo en unos minutos." },
           { status: 502 }
         );
       }
-
-      // Flow eco-devuelve subscriptionId en éxito. Si no viene (200 con cuerpo de
-      // error), tratamos como fallo: no marcamos cancelled.
-      if (!flowResp?.subscriptionId) {
-        console.error("[cancel-subscription] respuesta inesperada de Flow:", flowResp);
-        return NextResponse.json(
-          { error: "No pudimos confirmar la cancelación con el procesador de pago. Inténtalo en unos minutos." },
-          { status: 502 }
-        );
-      }
-
-      // Fin de ciclo real (con at_period_end=1, subscription_end == period_end).
-      // Formato Flow "YYYY-MM-DD HH:mm:ss" → ISO. Si no parsea, conservamos el fallback.
-      const flowEnd = flowResp.subscription_end || flowResp.period_end;
-      if (flowEnd) {
-        const parsed = new Date(flowEnd.replace(" ", "T"));
-        if (!Number.isNaN(parsed.getTime())) {
-          cycleEndIso = parsed.toISOString();
-        }
-      }
+      // Fin del período real según Flow (subscription_end / period_end, en hora de Chile).
+      if (alFinDelPeriodo) finDelAcceso = fechaFlowAIso(cierre.finPeriodo) ?? finDelAcceso;
     } else {
-      // Legacy/raro: sin subscription_id no podemos avisar a Flow. Degradamos al
-      // update local de antes (no romper), pero lo logueamos para visibilidad.
-      console.error(
-        "[cancel-subscription] sin subscription_id; solo update local para user:",
-        user.id
-      );
+      // Sin suscripción ni cliente en Flow no hay nada que cancelar allá.
+      console.error("[cancel-subscription] sin subscription_id ni cliente en Flow; solo local para user:", user.id);
     }
 
-    // Marcar cancelled. Mantiene acceso hasta subscription_ends_at (corte por
-    // fecha vía hasSubscriptionAccess + cron de limpieza).
+    // Marcar cancelled. El acceso sigue hasta subscription_ends_at (corte por fecha vía hasSubscriptionAccess + cron de
+    // limpieza); cancelado ahora, termina ahora.
     const updatePayload: Record<string, unknown> = {
       subscription_status: "cancelled",
+      grace_ends_at: null,
       updated_at: new Date().toISOString(),
     };
-    if (cycleEndIso) updatePayload.subscription_ends_at = cycleEndIso;
+    if (finDelAcceso) updatePayload.subscription_ends_at = finDelAcceso;
 
     await admin.from("user_credits").update(updatePayload).eq("user_id", user.id);
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, alFinDelPeriodo });
   } catch (error) {
     console.error("Cancel subscription error:", error instanceof Error ? error.message : "Unknown");
     return NextResponse.json({ error: "Error al cancelar" }, { status: 500 });

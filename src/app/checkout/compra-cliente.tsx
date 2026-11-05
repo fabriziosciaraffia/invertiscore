@@ -24,6 +24,7 @@ import { CHECKOUT_PACK } from "@/lib/lo-que-sigue/copy";
 import { COMPRA, urlCompra, type ResumenCompra } from "@/lib/compra/compra";
 import { COMPRA_DEPTO } from "@/lib/guia/compra-desde-depto";
 import { TRES_PRECIO_CLP } from "@/lib/tres-analisis";
+import { RUTA_CAMBIAR_TARJETA, SUSCRIPCION_COPY } from "@/lib/subscriptions/suscripcion";
 
 export function CompraCliente(props: {
   productKey: string;
@@ -41,6 +42,10 @@ export function CompraCliente(props: {
   depto?: string | null;
   sesionEmail: string | null;
   conPlan: boolean;
+  /** El plan tiene un cobro pendiente (05-nov-2026): se cambia la tarjeta, no se contrata otro. */
+  planPendiente?: boolean;
+  /** Canceló su plan: volver abre uno nuevo que se cobra hoy, y se dice. */
+  planCancelado?: boolean;
   pagarAlEntrar: boolean;
   volverHref: string;
 }) {
@@ -68,6 +73,7 @@ export function CompraCliente(props: {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const yaTienePlan = props.conPlan && !product.unico;
+  const pendiente = !!props.planPendiente && !product.unico;
 
   async function handlePay() {
     setLoading(true);
@@ -122,13 +128,13 @@ export function CompraCliente(props: {
   // De vuelta del enlace del correo o de Google, con la sesión puesta: sigue sola a Flow, una vez.
   const siguioSola = useRef(false);
   useEffect(() => {
-    if (!props.pagarAlEntrar || !sesion || siguioSola.current || yaTienePlan) return;
+    if (!props.pagarAlEntrar || !sesion || siguioSola.current || yaTienePlan || pendiente) return;
     if (esPack && (oferta === null || !oferta.vigente)) return;
     siguioSola.current = true;
     window.history.replaceState(null, "", urlCompra(estaCompra));
     void handlePay();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [props.pagarAlEntrar, sesion, oferta, yaTienePlan, esPack]);
+  }, [props.pagarAlEntrar, sesion, oferta, yaTienePlan, pendiente, esPack]);
 
   // «¿No es tu correo?» cierra la sesión y recarga la compra: el enlace queda ocupado y la barra encendida (22-oct-2026).
   const [saliendo, setSaliendo] = useState(false);
@@ -170,6 +176,9 @@ export function CompraCliente(props: {
           {COMPRA_DEPTO.paraDepto} <b>{props.depto}</b>
         </p>
       )}
+      {props.planCancelado && !product.unico && (
+        <p className="mt-2 text-[14px] text-[var(--franco-text)]" data-compra="plan-nuevo">{SUSCRIPCION_COPY.planNuevo}</p>
+      )}
       {esPack && packCreadoAt && packVencido && (
         <p className="mt-2 text-[14px] text-[var(--signal-red)]" data-lqs="checkout-vence">{CHECKOUT_PACK.vencido}</p>
       )}
@@ -179,6 +188,11 @@ export function CompraCliente(props: {
           <div data-compra="ya-plan">
             <p className="m-0 text-[15px] text-[var(--franco-text)]">{COMPRA.yaPlan}</p>
             <EnlaceCarga href="/cuenta" className={`mt-4 ${PLANO.principal}`}>{COMPRA.verCuenta}</EnlaceCarga>
+          </div>
+        ) : pendiente ? (
+          <div data-compra="plan-pendiente">
+            <p className="m-0 text-[15px] text-[var(--franco-text)]">{COMPRA.planPendiente}</p>
+            <EnlaceCarga href={RUTA_CAMBIAR_TARJETA} className={`mt-4 ${PLANO.principal}`}>{COMPRA.cambiarTarjeta}</EnlaceCarga>
           </div>
         ) : sesion ? (
           <div className="flex flex-col gap-3" data-compra="con-sesion">

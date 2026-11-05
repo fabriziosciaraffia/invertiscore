@@ -26,7 +26,9 @@ export default async function PricingPage() {
     ? await supabase.from("user_credits").select("subscription_status, active_plan, is_unlimited").eq("user_id", user.id).maybeSingle()
     : { data: null };
   // Un plan vigente (el Franco, o uno de los que ya no se venden): el botón del plan lleva a la cuenta.
-  const conPlan = !!cuenta && (cuenta.is_unlimited === true || (cuenta.subscription_status === "active" && !!cuenta.active_plan));
+  // Con un cobro pendiente (past_due) tampoco: el plan sigue vivo en Flow y «Contratar» abriría otro (05-nov-2026); desde la
+  // cuenta se cambia la tarjeta.
+  const conPlan = !!cuenta && (cuenta.is_unlimited === true || ((cuenta.subscription_status === "active" || cuenta.subscription_status === "past_due") && !!cuenta.active_plan));
   const C = PLANES_COPY;
 
   return (

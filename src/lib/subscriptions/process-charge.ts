@@ -28,8 +28,11 @@ import {
 } from "@/lib/credits-grant";
 import { emitirBoletaDTE, type PaymentForDTE } from "@/lib/openfactura/client";
 import { PLAN_PRECIO_CLP, PRODUCTO_PLAN, correspondeAvisoAumento } from "@/lib/planes";
-import { sendPlanAumentoEmail } from "@/lib/email";
+import { sendPaymentConfirmationEmail, sendPlanAumentoEmail } from "@/lib/email";
 import { fmtCLP } from "@/lib/pricing";
+import { nombreReal } from "@/lib/welcome";
+import { puertaFlow } from "@/lib/subscriptions/flow-puerta";
+import { fechaDeRenovacion } from "@/lib/subscriptions/suscripcion";
 
 function createAdminClient() {
   return createClient(
@@ -264,8 +267,12 @@ export async function processSubscriptionCharge(
   // cargo, sin drift por reprocesos del cron. Excluye cargos genuinamente pre-C
   // (pre_cutoff: no extender períodos viejos; protege la canary). Sin producto resuelto
   // no sabemos el ciclo → se omite.
+  // LA FECHA DE FLOW (05-nov-2026, auditoría de promesas parte 2): «Se renueva el …» es el siguiente cobro según Flow
+  // (`next_invoice_date`), no «ahora + 30 días». Si Flow no responde, o todavía devuelve una fecha que no es futura, queda el
+  // cálculo de siempre. Esto además saca al plan de «esperando el primer cobro» (suscripcion.ts › esperaPrimerCobro).
   if (freshFila && match && gate.reason !== "pre_cutoff") {
-    await refreshSubscriptionEndsAt(userId, match.product);
+    const deFlow = fechaDeRenovacion(await puertaFlow.leer(subId).catch(() => null));
+    await refreshSubscriptionEndsAt(userId, match.product, deFlow && new Date(deFlow).getTime() > Date.now() ? deFlow : null);
   }
 
   // 5. Ensure grant. Cuatro guardas, en orden:
@@ -339,6 +346,30 @@ export async function processSubscriptionCharge(
     }
   } else {
     console.error("[processSubscriptionCharge] sin email para boleta, user:", userId);
+  }
+
+  // 6.5 «PAGO CONFIRMADO» CON EL COBRO (05-nov-2026, auditoría de promesas parte 2, decisión de Fabrizio): el alta solo dijo
+  // «Tarjeta registrada»; el «confirmado» y los análisis del mes se dicen cuando Flow cobró. Solo el PRIMER cobro de ESTA
+  // suscripción (las renovaciones no mandan correo, como siempre) y solo si este llamado otorgó el lote: un reintento no lo
+  // repite, y la llave del cobro lo deja en uno aunque dos llamados lleguen juntos.
+  if (granted && match && userEmail) {
+    try {
+      const { count: previos, error: ePrevios } = await supabase
+        .from("payments")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .like("commerce_order", "franco-sub-pay-%")
+        .neq("commerce_order", commerceOrderRow)
+        .like("payment_data->>commerceOrder", `${subId}_%`);
+      if (!ePrevios && previos === 0) {
+        await sendPaymentConfirmationEmail(userEmail, nombreReal(authUser?.user?.user_metadata) ?? "", match.key, amount, undefined, undefined, {
+          userId,
+          idempotencyKey: `pago-confirmado-${commerceOrderRow}`,
+        });
+      }
+    } catch (e) {
+      console.error("[processSubscriptionCharge] «Pago confirmado» del primer cobro falló:", e);
+    }
   }
 
   // 7. EL AUMENTO (19-oct-2026, lib/planes.ts): si este cobro entregó el primer lote de 20 del Plan Franco a una cuenta

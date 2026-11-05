@@ -31,6 +31,9 @@ export const COMPRA = {
   yendo: "Llevándote a Flow…",
   pie: "El pago se hace en Flow. Franco analiza deptos del Gran Santiago.",
   yaPlan: "Ya tienes el Plan Franco.",
+  /** Con un cobro pendiente (05-nov-2026): no se contrata otro, se cambia la tarjeta. */
+  planPendiente: "Tu plan tiene un cobro pendiente: cámbiale la tarjeta en vez de contratar otro.",
+  cambiarTarjeta: "Cambiar la tarjeta",
   verCuenta: "Ver mi cuenta",
   errorPago: "No pudimos abrir el pago. Intenta de nuevo.",
   errorConexion: "Error de conexión. Intenta de nuevo.",

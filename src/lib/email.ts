@@ -6,7 +6,7 @@ import { cuentasDePruebaSinCorreo, destinoBloqueado } from "./correo-destino";
 import { conBajaDeCorreos, TIPOS_CON_BAJA } from "./correo-baja";
 import { createServiceClient as adminCorreo } from "./supabase/service";
 import { correoRecordatorioPack } from "./lo-que-sigue/recordatorio";
-import { correoAlertaCron, correoResumenCrons, correoAlertaPago, correoAlertaPagoFallido, correoBienvenida, correoBoleta, correoCheckoutAbandonado, correoEliminacionInterna, correoEliminacionUsuario, correoAvisoPedido, correoInformeListo, correoPagoConfirmado, correoPagoFallido, correoPlanAumento, correoPremioReferido } from "./email/correos";
+import { correoAlertaCron, correoResumenCrons, correoAlertaPago, correoAlertaPagoFallido, correoBienvenida, correoBoleta, correoCheckoutAbandonado, correoEliminacionInterna, correoEliminacionUsuario, correoAvisoPedido, correoInformeListo, correoPagoConfirmado, correoPagoFallido, correoPlanAumento, correoPremioReferido, correoTarjetaRegistrada } from "./email/correos";
 
 /** Quién recibe el correo, para atar el evento a su persona de PostHog. Sin id, se deriva del correo. */
 export interface CorreoOpts {
@@ -224,6 +224,22 @@ export async function sendPaymentConfirmationEmail(to: string, name: string, pro
 }
 
 /**
+ * «Tarjeta registrada» (05-nov-2026, auditoría de promesas parte 2): el correo del alta de una suscripción. No es «Pago
+ * confirmado»: todavía no se cobró. Devuelve true si salió. La llave es la suscripción: un reintento no lo repite.
+ */
+export async function sendTarjetaRegistradaEmail(to: string, name: string, product: string, opts: CorreoOpts & { idempotencyKey?: string } = {}): Promise<boolean> {
+  const { productName } = paymentPlanCopy(product);
+  const { subject, html } = correoTarjetaRegistrada({ nombre: name, plan: productName, sitio: SITE_URL });
+  try {
+    const { data, error } = await enviarCorreo("tarjeta_registrada", opts.userId, { from: FROM_EMAIL, to, subject, html }, { idempotencyKey: opts.idempotencyKey });
+    return !!data && !error;
+  } catch (error) {
+    console.error("Error sending tarjeta registrada email:", error);
+    return false;
+  }
+}
+
+/**
  * Construye el HTML del correo de boleta (sin adjuntos). Exportado para poder
  * medir su tamaño en pruebas sin enviar (Gmail recorta el cuerpo sobre ~102KB).
  */
@@ -306,9 +322,10 @@ export async function sendPaymentFailedEmail(
   to: string,
   name: string | null,
   graceEndsAt: Date | string,
-  opts: CorreoOpts = {},
+  /** `primerCobro` (05-nov-2026): lo que rechazó fue el primer cobro; el plan nunca se activó. */
+  opts: CorreoOpts & { primerCobro?: boolean } = {},
 ) {
-  const { subject, html } = correoPagoFallido({ nombre: name, graciaHasta: graceEndsAt, sitio: SITE_URL });
+  const { subject, html } = correoPagoFallido({ nombre: name, graciaHasta: graceEndsAt, primerCobro: opts.primerCobro === true, sitio: SITE_URL });
   try {
     await enviarCorreo("pago_fallido", opts.userId, { from: FROM_EMAIL, to, subject, html });
   } catch (error) {

@@ -22,6 +22,7 @@ import { hrefEntrar } from "@/lib/entrar/entrada";
 import { PRODUCTO_TRES, TRES_COPY, volverSeguro } from "@/lib/tres-analisis";
 import { PLANO, UI_PLANO } from "@/components/plano/plano";
 import { RETORNO, botonTrasPagar, rutaReintentar } from "@/lib/compra/compra";
+import { CONFIRMANDO_TOPE_MS, DEMORA_PAGO, PAGO_SIN_CONFIRMAR, RETORNO_SUSCRIPCION, estadoRetornoSuscripcion } from "@/lib/subscriptions/suscripcion";
 import { ABRIR_INFORME_TRAS_MS, INFORME_COPY, informeFallo, informeGenerando, informeListo, type MotivoFallo, type PasoInforme } from "@/lib/guia/informe-en-camino";
 import { InformeEnLaVuelta } from "@/components/guia/InformeEnCamino";
 
@@ -42,7 +43,18 @@ function PaymentReturnContent() {
   // La llave del pago (02-oct-2026): la firma que el servidor puso en la URL de retorno. Sin sesión deja
   // leer el estado de ESTE pago, el saldo y la guía; sin ella, la pantalla no sabe nada y pide entrar.
   const llavePago: LlavePago | null = retornoPack?.firma && order ? { order, firma: retornoPack.firma } : null;
-  const [paymentStatus, setPaymentStatus] = useState<"loading" | "paid" | "pending" | "error" | "sin_sesion" | "otra_cuenta">("loading");
+  // `suscripcion`: la vuelta de registrar la tarjeta, con lo que register-callback comprobó (05-nov-2026). `sin_confirmar`: la
+  // consulta del pago falló; no se sabe si se cobró y no se dice «No se hizo ningún cargo».
+  const [paymentStatus, setPaymentStatus] = useState<"loading" | "paid" | "pending" | "error" | "sin_sesion" | "otra_cuenta" | "suscripcion" | "sin_confirmar">("loading");
+  const estadoSuscripcion = type === "subscription" ? estadoRetornoSuscripcion(statusParam) : null;
+  // EL TOPE DE «CONFIRMANDO TU PAGO…» (05-nov-2026, auditoría de promesas parte 2): a los 90 segundos la pantalla dice qué
+  // pasa y ofrece volver. Si después llega el pago, igual cambia a «Pago confirmado» (la consulta sigue).
+  const [demora, setDemora] = useState(false);
+  useEffect(() => {
+    if (type === "subscription") return;
+    const t = window.setTimeout(() => setDemora(true), CONFIRMANDO_TOPE_MS);
+    return () => window.clearTimeout(t);
+  }, [type]);
   const [analysisId, setAnalysisId] = useState<string | null>(null);
   const [packInfo, setPackInfo] = useState<RetornoPack | null>(null);
   // El pack de tres (13-oct-2026): dice lo que compró y vuelve adonde estaba (el aviso, la semana, la guía).
@@ -53,8 +65,6 @@ function PaymentReturnContent() {
   const [volver, setVolver] = useState<string | null>(null);
   // El saldo real de la cuenta dueña del pago (`null` = no se sabe; la pantalla no inventa un número).
   const [saldo, setSaldo] = useState<number | null>(null);
-  // Solo el plan Ilimitado lee «Análisis ilimitados» al activar la suscripción (14-oct-2026).
-  const [ilimitado, setIlimitado] = useState(false);
   const [conSesion, setConSesion] = useState(true);
   // Estado puente: tras detectar paid de un single con análisis, mostramos
   // "abriendo tu análisis…" mientras se hace el push (evita flash de la pantalla
@@ -117,8 +127,10 @@ function PaymentReturnContent() {
 
   useEffect(() => {
     if (type === "subscription") {
-      const success = statusParam === "success";
-      setPaymentStatus(success ? "paid" : "error");
+      // Registrar la tarjeta no es pagar (05-nov-2026): la pantalla dice lo que register-callback comprobó
+      // (lib/subscriptions/suscripcion.ts › estadoRetornoSuscripcion), nunca «Pago confirmado».
+      const success = estadoRetornoSuscripcion(statusParam) === "registrada";
+      setPaymentStatus("suscripcion");
       // Meta Pixel: Subscribe browser-side. event_id sub-<subscriptionId> → dedup con
       // el Subscribe server-side (payment-callback / cron reconciler, solo primer
       // cobro). sub/val vienen del redirect de register-callback.
@@ -179,7 +191,6 @@ function PaymentReturnContent() {
           setPackInfo(leerRetornoPackDelPago(data.retornoPack));
           setConSesion(!data.sinSesion);
           setSaldo(typeof data.saldo === "number" && !data.ilimitado ? data.saldo : null);
-          setIlimitado(data.ilimitado === true);
           const estado = estadoDelPago(data.payment.status);
           if (estado === "paid") {
             // `pro_purchased` se retiró (28-sep-2026): el pago se mide desde el servidor con
@@ -259,7 +270,8 @@ function PaymentReturnContent() {
           setTimeout(checkStatus, 3000);
         }
       } catch {
-        setPaymentStatus("error");
+        // La consulta falló: no se sabe si se cobró (05-nov-2026). Antes caía en «El pago no pasó. … No se hizo ningún cargo.»
+        setPaymentStatus("sin_confirmar");
       }
     };
 
@@ -305,11 +317,42 @@ function PaymentReturnContent() {
     <div className="flex min-h-screen flex-col bg-[var(--franco-bg)] text-[var(--franco-text)]">
       <HeaderFranco />
       <main className={ancha ? "mx-auto w-full max-w-5xl flex-1 px-4 pb-16 pt-8" : PLANO.main} style={{ fontFamily: UI_PLANO }} data-retorno={paymentStatus}>
-        {(paymentStatus === "loading" || paymentStatus === "pending") && !redirecting && (
+        {(paymentStatus === "loading" || paymentStatus === "pending") && !redirecting && !demora && (
           <div>
             {girando}
             <h1 className={PLANO.titulo}>{RETORNO.procesando.titulo}</h1>
             <p className={PLANO.bajada}>{RETORNO.procesando.cuerpo}</p>
+          </div>
+        )}
+        {(paymentStatus === "loading" || paymentStatus === "pending") && !redirecting && demora && (
+          <div data-retorno-estado="demora">
+            <h1 className={PLANO.titulo}>{DEMORA_PAGO.titulo}</h1>
+            <p className={PLANO.bajada}>{DEMORA_PAGO.cuerpo}</p>
+            <div className={PLANO.seccion}>
+              <EnlaceCarga href={tras.href} className={PLANO.principal} data-retorno-boton="volver">{DEMORA_PAGO.volver}</EnlaceCarga>
+            </div>
+          </div>
+        )}
+        {paymentStatus === "sin_confirmar" && (
+          <div data-retorno-estado="sin-confirmar">
+            <h1 className={PLANO.titulo}>{PAGO_SIN_CONFIRMAR.titulo}</h1>
+            <p className={PLANO.bajada}>{PAGO_SIN_CONFIRMAR.cuerpo}</p>
+            <div className={PLANO.seccion}>
+              <EnlaceCarga href={tras.href} className={PLANO.principal} data-retorno-boton="volver">{PAGO_SIN_CONFIRMAR.volver}</EnlaceCarga>
+            </div>
+          </div>
+        )}
+        {paymentStatus === "suscripcion" && estadoSuscripcion && (
+          <div data-retorno-suscripcion={estadoSuscripcion}>
+            <h1 className={PLANO.titulo}>{RETORNO_SUSCRIPCION[estadoSuscripcion].titulo}</h1>
+            <p className={PLANO.bajada}>{RETORNO_SUSCRIPCION[estadoSuscripcion].cuerpo}</p>
+            <div className={PLANO.seccion}>
+              {estadoSuscripcion === "noRegistrada" || estadoSuscripcion === "sinPlan" ? (
+                <EnlaceCarga href={reintentar} className={PLANO.principal} data-retorno-boton="reintentar">{RETORNO.reintentar}</EnlaceCarga>
+              ) : (
+                <EnlaceCarga href="/cuenta" className={PLANO.principal} data-retorno-boton="cuenta">{RETORNO_SUSCRIPCION.boton}</EnlaceCarga>
+              )}
+            </div>
           </div>
         )}
 
@@ -363,9 +406,8 @@ function PaymentReturnContent() {
           <div data-retorno-estado="pagado">
             <h1 className={PLANO.titulo}>{RETORNO.pagado.titulo}</h1>
             <p className={PLANO.bajada}>
-              {type === "subscription"
-                ? ilimitado ? "Tu suscripción Franco está activa. Análisis ilimitados." : "Tu suscripción Franco está activa."
-                : producto === PRODUCTO_TRES || producto === PRODUCTO_PACK
+              {/* La suscripción ya no llega acá (05-nov-2026): registrar la tarjeta no es pagar; su vuelta es el bloque de arriba. */}
+              {producto === PRODUCTO_TRES || producto === PRODUCTO_PACK
                 ? TRES_COPY.listo
                 : analysisId ? "Tu análisis está desbloqueado." : RETORNO.pagado.uno
               }

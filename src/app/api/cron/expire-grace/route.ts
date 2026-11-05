@@ -3,6 +3,8 @@ import { createClient } from "@supabase/supabase-js";
 import { capturarFallaDeCron } from "@/lib/observabilidad";
 import { cerrarCron, CORRIDA_FALLIDA } from "@/lib/cron-resultado";
 import { latirCron } from "@/lib/cron-heartbeat";
+import { cerrarTodo } from "@/lib/subscriptions/flow-vivas";
+import { puertaFlow } from "@/lib/subscriptions/flow-puerta";
 
 const RUTA = "GET /api/cron/expire-grace";
 
@@ -67,7 +69,7 @@ export async function GET(request: Request) {
   // MANUAL (toggle de /admin) no se apaga acá — ver el comentario del loop.
   const { data: pastDueRows, error: pdError } = await supabase
     .from("user_credits")
-    .select("user_id, unlimited_source")
+    .select("user_id, unlimited_source, subscription_id, flow_customer_id")
     .eq("subscription_status", "past_due")
     .not("grace_ends_at", "is", null)
     .lte("grace_ends_at", nowIso);
@@ -119,6 +121,25 @@ export async function GET(request: Request) {
   for (const row of pastDueRows ?? []) {
     try {
       processed++;
+      // LA GRACIA VENCIDA CANCELA TAMBIÉN EN FLOW (05-nov-2026, auditoría de promesas parte 2, decisión de Fabrizio). Antes
+      // solo se marcaba 'cancelled' acá y la suscripción seguía viva allá, intentando cobrar el importe impago. Se cancela
+      // ahora todo lo vivo del cliente (aunque falte subscription_id: flow-vivas.ts › cerrarTodo). Si Flow no lo confirma, la
+      // fila queda en past_due —el acceso ya se cortó por fecha— y el cron vuelve a intentarlo mañana.
+      const cierre = await cerrarTodo(puertaFlow, {
+        customerId: (row.flow_customer_id as string | null) ?? null,
+        subscriptionId: (row.subscription_id as string | null) ?? null,
+      });
+      if (!cierre.ok) {
+        console.error("[cron/expire-grace] Flow no confirmó la cancelación para user:", row.user_id, JSON.stringify(cierre.fallidas), cierre.lecturaFallida ?? "");
+        fallidos++;
+        capturarFallaDeCron(new Error("Gracia vencida sin cancelar en Flow"), {
+          ruta: RUTA,
+          operacion: "cancelar-en-flow",
+          userId: row.user_id,
+          tags: { consecuencia: "flow-puede-seguir-cobrando" },
+        });
+        continue;
+      }
       const esManual = row.unlimited_source === "manual";
       const { error: updErr } = await supabase
         .from("user_credits")

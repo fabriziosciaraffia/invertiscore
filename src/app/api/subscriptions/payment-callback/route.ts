@@ -7,6 +7,7 @@ import { sendPaymentFailedEmail } from "@/lib/email";
 import { nombreReal } from "@/lib/welcome";
 import { processSubscriptionCharge, parseSubscriptionId } from "@/lib/subscriptions/process-charge";
 import { sendSubscribeIfFirstCharge } from "@/lib/subscriptions/subscribe-event";
+import { esperaPrimerCobro } from "@/lib/subscriptions/suscripcion";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://refranco.ai";
 const RUTA = "POST /api/subscriptions/payment-callback";
@@ -306,7 +307,15 @@ export async function POST(request: Request) {
     } else if ((flowStatus === 3 || flowStatus === 4) && userId) {
       // Cargo rechazado (3) o anulado (4) → suscripción en mora con 7 días de
       // gracia (mantiene acceso hasta grace_ends_at; el cron expire-grace corta
-      // al vencer). Avisamos por email.
+      // al vencer, también en Flow). Avisamos por email.
+      // ¿Era el PRIMER cobro? (05-nov-2026, auditoría de promesas parte 2): entonces el correo no habla de «tu suscripción»
+      // como si se hubiera pagado: dice que el plan no se activó. Se lee ANTES de marcar past_due.
+      const { data: antes } = await supabase
+        .from("user_credits")
+        .select("subscription_status, subscription_ends_at")
+        .eq("user_id", userId)
+        .maybeSingle();
+      const primerCobro = esperaPrimerCobro(antes);
       const graceEndsAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
       await supabase
         .from("user_credits")
@@ -323,7 +332,7 @@ export async function POST(request: Request) {
         const flowUser = userData?.user;
         if (flowUser?.email) {
           const nombre = nombreReal(flowUser.user_metadata);
-          await sendPaymentFailedEmail(flowUser.email, nombre, graceEndsAt, { userId });
+          await sendPaymentFailedEmail(flowUser.email, nombre, graceEndsAt, { userId, primerCobro });
         }
       } catch (e) {
         console.error("[subscriptions/payment-callback] aviso past_due email error:", e);

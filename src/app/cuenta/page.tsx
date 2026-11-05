@@ -10,7 +10,10 @@ import { estadoSaldo, leerSaldo } from "@/lib/casa-saldo";
 import { leerPerfilBusqueda } from "@/lib/perfil-busqueda-servidor";
 import { textoVence } from "@/lib/guia/semanal";
 import { fmtCLP } from "@/lib/pricing";
-import { PLANES_COPY, nombrePlan } from "@/lib/planes";
+import { PLANES_COPY, PRODUCTO_PLAN, nombrePlan } from "@/lib/planes";
+import { urlCompra } from "@/lib/compra/compra";
+import { esperaPrimerCobro, fechaDeRenovacion, RUTA_CAMBIAR_TARJETA } from "@/lib/subscriptions/suscripcion";
+import { leerConTope } from "@/lib/subscriptions/flow-puerta";
 import { CASA } from "@/app/dashboard/casa-copy";
 import { PerfilBusquedaCasa } from "@/app/dashboard/casa";
 import { CancelSubscriptionButton } from "./cancel-dialog";
@@ -38,7 +41,7 @@ export default async function CuentaPage() {
 
   const admin = createServiceClient();
   const [{ data: fila }, datosSaldo, pp, { data: compras }] = await Promise.all([
-    supabase.from("user_credits").select("subscription_status, subscription_ends_at, grace_ends_at, is_unlimited, active_plan").eq("user_id", user.id).maybeSingle(),
+    supabase.from("user_credits").select("subscription_status, subscription_ends_at, grace_ends_at, is_unlimited, active_plan, subscription_id").eq("user_id", user.id).maybeSingle(),
     leerSaldo(admin, user.id),
     leerPerfilBusqueda(admin, user.id),
     supabase.from("payments").select("id, product, amount, created_at").eq("user_id", user.id).eq("status", "paid").gt("amount", 0).order("created_at", { ascending: false }).limit(6),
@@ -56,6 +59,17 @@ export default async function CuentaPage() {
   const plan = activo || cancelado || pendiente || ilimitado ? nombrePlan(fila?.active_plan as string | null, ilimitado) : null;
   const esFranco = fila?.active_plan === "plan10" && !ilimitado;
   const disponibles = datosSaldo.disponibles;
+  // LA SUSCRIPCIÓN DICHA COMO ES (05-nov-2026, auditoría de promesas parte 2, lib/subscriptions/suscripcion.ts):
+  //   · con la tarjeta registrada y sin el primer cobro, «Tarjeta registrada. Tu plan se activa con el primer cobro…»;
+  //   · «Se renueva el …» con la fecha del siguiente cobro según Flow (si Flow tarda, la guardada, que viene de Flow desde
+  //     el último cobro);
+  //   · en la gracia, «Ver cómo pagar» cambia la tarjeta (/cuenta/tarjeta) y «Cancelar el plan» también está;
+  //   · «Volver al Plan Franco» abre un plan nuevo y lo dice: Flow no reanuda la cancelada.
+  const esperando = esperaPrimerCobro(fila);
+  const subId = (fila?.subscription_id as string | null) ?? null;
+  const renueva = activo && !esperando
+    ? (subId ? fechaDeRenovacion(await leerConTope(subId)) : null) ?? finDelPeriodo
+    : null;
 
   const conGoogle = (user.identities ?? []).some((i) => i.provider === "google");
   const correos = { semanal: !pp.semanalBajaAt, inmediato: !pp.inmediatoBajaAt };
@@ -80,14 +94,16 @@ export default async function CuentaPage() {
                   <span className="text-[var(--franco-text-secondary)]"> · {esFranco ? PLANES_COPY.plan.resumen : C.plan.legado}</span>
                 </p>
                 {!ilimitado && <p className="mt-1 text-[15px]">{C.plan.teQuedan(disponibles)}</p>}
-                {activo && finDelPeriodo && <p className="mt-1 text-[14px] text-[var(--franco-text-secondary)]">{C.plan.renueva(fecha(finDelPeriodo))}</p>}
+                {activo && esperando && <p className="mt-1 text-[14px] text-[var(--franco-text-secondary)]" data-cuenta="esperando">{C.plan.esperando}</p>}
+                {renueva && <p className="mt-1 text-[14px] text-[var(--franco-text-secondary)]" data-cuenta="renueva">{C.plan.renueva(fecha(renueva))}</p>}
                 {cancelado && <p className="mt-1 text-[14px] text-[var(--franco-text-secondary)]">{C.plan.cancelado(fecha(finDelPeriodo))}</p>}
-                {pendiente && <p className="mt-1 text-[14px] text-[var(--franco-text-secondary)]">{C.plan.pendiente(fecha(finDeGracia))}</p>}
+                {pendiente && <p className="mt-1 text-[14px] text-[var(--franco-text-secondary)]">{esperando ? C.plan.primerCobroFallido(fecha(finDeGracia)) : C.plan.pendiente(fecha(finDeGracia))}</p>}
                 <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
-                  {activo && <CancelSubscriptionButton />}
-                  {cancelado && <EnlaceCarga href="/pricing" className={enlace}>{C.plan.volver}</EnlaceCarga>}
-                  {pendiente && <EnlaceCarga href="/pricing" className={enlace}>{C.plan.actualizarPago}</EnlaceCarga>}
+                  {pendiente && <EnlaceCarga href={RUTA_CAMBIAR_TARJETA} className={enlace} data-cuenta="tarjeta">{C.plan.actualizarPago}</EnlaceCarga>}
+                  {(activo || pendiente) && <CancelSubscriptionButton ahora={pendiente || esperando} />}
+                  {cancelado && <EnlaceCarga href={urlCompra({ product: PRODUCTO_PLAN })} className={enlace} data-cuenta="volver">{C.plan.volver}</EnlaceCarga>}
                 </div>
+                {cancelado && <p className="mt-2 text-[13px] text-[var(--franco-text-secondary)]" data-cuenta="volver-nota">{C.plan.volverNota}</p>}
               </>
             ) : (
               <>

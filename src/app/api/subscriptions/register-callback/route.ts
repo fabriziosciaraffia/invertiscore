@@ -1,14 +1,38 @@
 import { NextResponse } from "next/server";
 import { captureApiError, captureApiWarning } from "@/lib/observabilidad";
 import { createClient } from "@supabase/supabase-js";
-import { flowPost, flowGet } from "@/lib/flow";
+import { flowGet } from "@/lib/flow";
 import { recurringProductByPlan, setPlanFields, addOneMonth } from "@/lib/credits-grant";
 import { resolvePlanId } from "@/lib/flow-products";
-import { sendPaymentConfirmationEmail } from "@/lib/email";
+import { sendTarjetaRegistradaEmail } from "@/lib/email";
 import { nombreReal } from "@/lib/welcome";
 import { seVende } from "@/lib/planes";
+import { abrirPlanUnico } from "@/lib/subscriptions/flow-vivas";
+import { puertaFlow } from "@/lib/subscriptions/flow-puerta";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://refranco.ai";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LA VUELTA DE REGISTRAR LA TARJETA (05-nov-2026, auditoría de promesas parte 2, decisión de Fabrizio).
+//   · Antes de abrir la suscripción se cierran en Flow todas las vivas de la persona (flow-vivas.ts › abrirPlanUnico): nunca
+//     quedan dos. Si alguna no se puede cerrar, no se abre la nueva.
+//   · Registrar la tarjeta no es pagar: el correo y la pantalla dicen «Tarjeta registrada. Tu plan se activa con el primer
+//     cobro, en las próximas horas.» «Pago confirmado» sale con el primer cobro (process-charge.ts).
+//   · La vuelta dice solo lo comprobado (lib/subscriptions/suscripcion.ts › estadoRetornoSuscripcion): «No se hizo ningún
+//     cargo» cuando no se abrió nada; si se pidió el alta y Flow no la confirmó, «Si Flow lo cobra, te avisamos por correo».
+// Lo fija el tier SUSCRIPCION.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Los estados de la vuelta. */
+type Vuelta = "registrada" | "error" | "no-abierto" | "sin-plan" | "sin-confirmar";
+
+function volver(status: Vuelta, extra?: Record<string, string>) {
+  const url = new URL("/payments/return", SITE_URL);
+  url.searchParams.set("type", "subscription");
+  url.searchParams.set("status", status);
+  for (const [k, v] of Object.entries(extra ?? {})) url.searchParams.set(k, v);
+  return NextResponse.redirect(url);
+}
 
 function createAdminClient() {
   return createClient(
@@ -18,42 +42,37 @@ function createAdminClient() {
 }
 
 export async function POST(request: Request) {
+  // Hasta dónde se llegó: decide qué se puede afirmar si algo revienta.
+  let fase: "antes-del-alta" | "alta-pedida" | "alta-guardada" = "antes-del-alta";
   try {
     const formData = await request.formData();
     const token = formData.get("token") as string;
 
-    if (!token) {
-      return NextResponse.redirect(new URL("/payments/return?type=subscription&status=error", SITE_URL));
-    }
+    // Sin token no se registró nada ni se abrió nada.
+    if (!token) return volver("error");
 
     // Check card registration status. Flow devuelve `status` como STRING ("1"),
     // así que comparamos con Number() para no romper por tipo.
     const registerStatus = await flowGet("customer/getRegisterStatus", { token });
 
-    if (Number(registerStatus.status) !== 1) {
-      return NextResponse.redirect(new URL("/payments/return?type=subscription&status=error", SITE_URL));
-    }
+    // Comprobado por Flow: la tarjeta no quedó registrada.
+    if (Number(registerStatus.status) !== 1) return volver("error");
 
     const customerId = registerStatus.customerId;
     const supabase = createAdminClient();
 
-    // Buscar al user + el plan persistido por subscriptions/create (fuente de
-    // verdad, ya no el hardcode "FrancoMensual" del flujo viejo $19.990).
+    // Buscar al user + el plan persistido por subscriptions/create.
     const { data: userCredit } = await supabase
       .from("user_credits")
-      .select("user_id, active_plan, billing_period, subscription_status")
+      .select("user_id, active_plan, billing_period, subscription_status, subscription_id")
       .eq("flow_customer_id", customerId)
       .single();
 
     // Idempotencia: si la suscripción YA está activa (Flow reintentó el callback,
-    // o el user recargó /register-callback), no recrear la suscripción en Flow ni
-    // re-otorgar el grant. Evita doble subscription/create y doble credit_grant.
+    // o el user recargó /register-callback), no recrear la suscripción en Flow.
     if (userCredit?.subscription_status === "active") {
-      console.error(
-        "[register-callback] suscripción ya activa, idempotente (sin doble grant):",
-        customerId
-      );
-      return NextResponse.redirect(new URL("/payments/return?type=subscription&status=success", SITE_URL));
+      console.error("[register-callback] suscripción ya activa, idempotente:", customerId);
+      return volver("registrada");
     }
 
     const match = recurringProductByPlan(
@@ -62,43 +81,71 @@ export async function POST(request: Request) {
     );
 
     if (!userCredit || !match?.product.planId) {
-      console.error(
-        "[register-callback] sin plan persistido o planId nulo para customer:",
-        customerId
-      );
-      return NextResponse.redirect(new URL("/payments/return?type=subscription&status=error", SITE_URL));
+      console.error("[register-callback] sin plan persistido o planId nulo para customer:", customerId);
+      return volver("sin-plan");
     }
 
     // LA OFERTA DEL 19-OCT-2026 (lib/planes.ts): quien empezó a suscribirse a un plan que ya no se vende (antes del corte)
     // y termina de registrar la tarjeta después, no lo activa: la tarjeta queda registrada, sin suscripción ni cobro.
     if (!seVende(match.key)) {
       console.error("[register-callback] plan que ya no se vende, sin suscripción:", match.key, customerId);
-      return NextResponse.redirect(new URL("/payments/return?type=subscription&status=error", SITE_URL));
+      return volver("sin-plan");
     }
 
-    // Create subscription con el planId real del producto elegido, resuelto
-    // por entorno (base + FLOW_PLAN_SUFFIX). urlCallback derivado de SITE_URL.
-    const subData = await flowPost("subscription/create", {
-      planId: resolvePlanId(match.product.planId),
+    // UNA SOLA VIVA: cierra en Flow lo vivo de este cliente (la del plan en la gracia, la cancelada al fin del período, una
+    // huérfana) y recién entonces abre la nueva, con el planId del entorno (base + FLOW_PLAN_SUFFIX).
+    fase = "alta-pedida";
+    const alta = await abrirPlanUnico(puertaFlow, {
       customerId,
+      subscriptionId: (userCredit.subscription_id as string | null) ?? null,
+      planId: resolvePlanId(match.product.planId),
       urlCallback: `${SITE_URL}/api/subscriptions/payment-callback`,
     });
-
-    if (!subData.subscriptionId) {
-      console.error("Subscription create error:", subData);
-      return NextResponse.redirect(new URL("/payments/return?type=subscription&status=error", SITE_URL));
+    if (alta.cierre.canceladas.length > 0) {
+      console.error("[register-callback] cerradas en Flow antes del alta:", alta.cierre.canceladas.join(", "), "· customer:", customerId);
     }
+    if (!alta.ok) {
+      captureApiError(new Error(`Alta de suscripción no hecha: ${alta.motivo}`), {
+        ruta: "POST /api/subscriptions/register-callback",
+        operacion: "alta-suscripcion",
+        userId: userCredit.user_id,
+        tags: { motivo: alta.motivo },
+        extra: { customerId, vivas: alta.cierre.vivas, fallidas: alta.cierre.fallidas, lecturaFallida: alta.cierre.lecturaFallida, error: alta.error ?? null },
+      });
+      return volver(alta.motivo === "sin-confirmar" ? "sin-confirmar" : "no-abierto");
+    }
+    const subData = alta.suscripcion;
 
-    // Record as payment (monto y producto reales del plan elegido). Capturamos
-    // el id para el FK del grant.
+    // Lo primero que se guarda es el id: sin él, un cobro de esta suscripción no tendría dueño. El alta deja el período en
+    // null: hasta el primer cobro el plan está «esperando el primer cobro» (suscripcion.ts › esperaPrimerCobro), y ese
+    // cobro lo llena con la fecha de Flow.
+    // next_monthly_grant_at: solo para ANUAL finito (no unlimited): marca cuándo toca el mes 2.
+    const now = new Date();
+    const isAnnualFinite = match.product.billing === "annual" && match.product.isUnlimited !== true;
+    await supabase
+      .from("user_credits")
+      .update({
+        subscription_status: "active",
+        subscription_id: subData.subscriptionId,
+        subscription_start: now.toISOString(),
+        subscription_ends_at: null,
+        grace_ends_at: null,
+        next_monthly_grant_at: isAnnualFinite ? addOneMonth(now).toISOString() : null,
+        updated_at: now.toISOString(),
+      })
+      .eq("user_id", userCredit.user_id);
+    fase = "alta-guardada";
+
+    // MODELO C — "el grant sigue al cobro": el alta SOLO activa (campos de plan), NO otorga. Período en null (ver arriba).
+    await setPlanFields(userCredit.user_id, match.product, { finDePeriodo: null });
+
+    // RUTA B · flip del pending: subscriptions/create dejó una fila PENDING keyed por user+plan
+    // (franco-sub-pending-<userId>-<planKey>). Si existe, la FLIPEAMOS a 'paid' con el commerce_order final
+    // (franco-sub-<subId>); si no (cambio de tarjeta, flujos viejos), UPSERT do-nothing.
     //
-    // RUTA B · flip del pending: subscriptions/create dejó una fila PENDING
-    // keyed por user+plan (franco-sub-pending-<userId>-<planKey>). Si existe, la
-    // FLIPEAMOS a 'paid' (UPDATE) en vez de insertar una segunda fila — así el
-    // cron de abandono no la ve como carrito vivo y no hay fila pending huérfana.
-    // Al flipear le ponemos el commerce_order final (franco-sub-<subId>) +
-    // payment_data. Fallback a INSERT si no había pending (activación nunca se
-    // rompe: flujos viejos / pending perdido).
+    // POR QUÉ ACÁ NO SE CONSULTA `payment/getStatus`: el token es el del registro de la TARJETA y el cobro todavía no
+    // ocurrió. El fee del primer cobro queda medido en la fila `franco-sub-pay-<flowOrder>` de processSubscriptionCharge.
+    // Esta fila es el ALTA, no el cobro — `esAltaSuscripcion` la deja fuera de los totales. `payment_data` se FUSIONA.
     const paidOrder = `franco-sub-${subData.subscriptionId}`;
     const { data: pendingRow } = await supabase
       .from("payments")
@@ -109,179 +156,59 @@ export async function POST(request: Request) {
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
-
-    // POR QUÉ ACÁ NO SE CONSULTA `payment/getStatus`
-    //
-    // En `payments/confirm` y en `subscriptions/payment-callback` el token es de
-    // un PAGO, así que getStatus devuelve el bloque `paymentData` con fee/taxes/
-    // balance (la comisión de Flow; ver src/lib/comision-flow.ts). Acá no: el
-    // token es el del registro de la TARJETA, y en este instante el cobro todavía
-    // no ocurrió — la primera invoice que devuelve `subscription/create` viene en
-    // `status: 1` (pendiente), `attemped: 0` y sin flowOrder. No hay transacción
-    // que consultar, y por lo tanto no hay comisión que guardar.
-    //
-    // El fee del primer cobro sí queda medido: llega minutos u horas después por
-    // `subscriptions/payment-callback`, que crea su propia fila
-    // `franco-sub-pay-<flowOrder>` con el bloque completo. Esta fila es el ALTA,
-    // no el cobro — `esAltaSuscripcion` la reconoce y la deja fuera de los
-    // totales para que el mismo dinero no se cuente dos veces.
-    //
-    // Lo que sí se arregla acá: `payment_data` se FUSIONA sobre lo que hubiera
-    // dejado `subscriptions/create` en vez de pisarlo (mismo patrón que
-    // `preservedPaymentData` en payments/confirm). subData va encima porque es el
-    // dato fresco de Flow.
     const prevPaymentData =
       pendingRow?.payment_data && typeof pendingRow.payment_data === "object" && !Array.isArray(pendingRow.payment_data)
         ? (pendingRow.payment_data as Record<string, unknown>)
         : {};
     const paymentDataAlta = { ...prevPaymentData, ...subData };
-
-    // La fila de alta (franco-sub-<subId>) se crea/flipea igual; ya no capturamos su
-    // id porque bajo modelo C el grant NO se ata a la fila del alta sino a la del
-    // cobro (franco-sub-pay-<flowOrder>, en processSubscriptionCharge).
     if (pendingRow) {
       await supabase
         .from("payments")
-        .update({
-          commerce_order: paidOrder,
-          amount: match.product.amount,
-          status: "paid",
-          payment_data: paymentDataAlta,
-        })
+        .update({ commerce_order: paidOrder, amount: match.product.amount, status: "paid", payment_data: paymentDataAlta })
         .eq("id", pendingRow.id);
     } else {
-      // UPSERT do-nothing (no INSERT plano): si un retry de Flow llega tras un
-      // flip/insert previo (y el guard 'active' no cortó por fallo a mitad de la
-      // primera corrida), `franco-sub-<subId>` ya existe → el INSERT plano
-      // chocaría con el UNIQUE de commerce_order. ignoreDuplicates evita romper.
-      const { data: inserted, error: insertErr } = await supabase
+      await supabase
         .from("payments")
         .upsert(
-          {
-            user_id: userCredit.user_id,
-            commerce_order: paidOrder,
-            product: match.key,
-            amount: match.product.amount,
-            status: "paid",
-            payment_data: paymentDataAlta,
-          },
+          { user_id: userCredit.user_id, commerce_order: paidOrder, product: match.key, amount: match.product.amount, status: "paid", payment_data: paymentDataAlta },
           { onConflict: "commerce_order", ignoreDuplicates: true },
-        )
-        .select("id")
-        .maybeSingle();
-
-      // Duplicado (sin error y sin fila) = este cobro YA se procesó en una corrida
-      // previa. NO-OP TOTAL: salimos antes de re-activar y re-mandar el email de
-      // bienvenida. (Bajo modelo C el alta ya no otorga grant — el grant lo da el
-      // cobro confirmado vía processSubscriptionCharge — pero igual evitamos
-      // re-procesar el alta.) La suscripción ya quedó activa en la corrida original
-      // → success redirect.
-      if (!inserted && !insertErr) {
-        console.error(
-          "[register-callback] cobro ya procesado (commerce_order duplicado), no-op:",
-          paidOrder,
         );
-        return NextResponse.redirect(new URL("/payments/return?type=subscription&status=success", SITE_URL));
-      }
     }
 
-    // MODELO C — "el grant sigue al cobro": el alta SOLO activa (setea los campos de
-    // plan), NO otorga grant. El grant del mes 1 lo da el cobro confirmado
-    // (payment-callback / cron reconciler) vía processSubscriptionCharge, así el alta
-    // no puede duplicar el mes 1. setPlanFields setea active_plan/billing_period/
-    // is_unlimited/subscription_ends_at; NO toca subscription_status ni
-    // subscription_id (esos van en el UPDATE de abajo).
-    await setPlanFields(userCredit.user_id, match.product);
-
-    // Activar la suscripción (campos que setPlanFields no maneja).
-    // next_monthly_grant_at: solo para ANUAL finito (no unlimited). El mes 1 lo
-    // otorga el cobro confirmado (payment-callback/reconciler), no el alta; esto
-    // marca cuándo toca el mes 2 = subscription_start + 1 mes. Mensual recobra por
-    // cargo recurrente real (payment-callback) y unlimited es free pass → en ambos
-    // queda null (el cron los ignora).
-    const now = new Date();
-    const isAnnualFinite =
-      match.product.billing === "annual" && match.product.isUnlimited !== true;
-    const nextMonthlyGrantAt = isAnnualFinite ? addOneMonth(now).toISOString() : null;
-
-    await supabase
-      .from("user_credits")
-      .update({
-        subscription_status: "active",
-        subscription_id: subData.subscriptionId,
-        subscription_start: now.toISOString(),
-        next_monthly_grant_at: nextMonthlyGrantAt,
-        updated_at: now.toISOString(),
-      })
-      .eq("user_id", userCredit.user_id);
-
-    // Comprobante de alta de la suscripción. Solo en el alta — las renovaciones
-    // (payment-callback) NO mandan correo para no spamear: el usuario ya tiene
-    // el comprobante de Flow y este de bienvenida al plan. product/amount reales
-    // del plan elegido (match.key). Un fallo de Resend no debe romper el callback.
+    // «Tarjeta registrada» (05-nov-2026): el correo del alta ya no es «Pago confirmado» —todavía no se cobró nada—. Una vez
+    // por suscripción (la llave es su id). Un fallo de Resend no rompe la vuelta.
     try {
       const { data: userData } = await supabase.auth.admin.getUserById(userCredit.user_id);
       const flowUser = userData?.user;
       if (flowUser?.email) {
-        await sendPaymentConfirmationEmail(
-          flowUser.email,
-          nombreReal(flowUser.user_metadata) ?? "",
-          match.key,
-          match.product.amount,
-          undefined,
-          undefined,
-          { userId: userCredit.user_id },
-        );
+        await sendTarjetaRegistradaEmail(flowUser.email, nombreReal(flowUser.user_metadata) ?? "", match.key, {
+          userId: userCredit.user_id,
+          idempotencyKey: `tarjeta-registrada-${subData.subscriptionId}`,
+        });
       }
     } catch (e) {
-      console.error("[register-callback] email confirmación alta error:", e);
-      captureApiWarning(e, {
-        ruta: "GET /api/subscriptions/register-callback",
-        operacion: "email-alta-suscripcion",
-      });
+      console.error("[register-callback] correo tarjeta registrada error:", e);
+      captureApiWarning(e, { ruta: "POST /api/subscriptions/register-callback", operacion: "email-tarjeta-registrada" });
     }
 
-    // FACTURACIÓN — el alta NO emite boleta, y eso ya no es un pendiente sino la
-    // decisión tomada. Estado confirmado con la suscripción real del 10-ago-2026:
-    //  - Esta fila de payments es el ALTA (franco-sub-<subId>) y trae
-    //    flow_order = null: no es un cobro, es el registro de la suscripción /
-    //    tokenización de la tarjeta. Emitir acá facturaría dinero no cobrado.
-    //  - El primer cargo SÍ materializa una segunda fila,
-    //    `franco-sub-pay-<flowOrder>`, que crea processSubscriptionCharge. Esa fila
-    //    es la del cobro real y es la que lleva la boleta (paso 6 del helper).
-    //  - payment-callback (el webhook del cobro recurrente) quedó ejercitado en prod
-    //    en esa misma fecha: llegó, procesó el cargo y emitió.
-    // NO borrar ni "limpiar" la fila franco-sub-pay-*: además de la boleta, es lo que
-    // sostiene el gate de primer cobro del Subscribe de Meta (subscribe-event.ts).
+    // FACTURACIÓN — el alta NO emite boleta (decisión tomada): no es un cobro. La boleta va con la fila del cobro
+    // (`franco-sub-pay-<flowOrder>`, paso 6 de processSubscriptionCharge). NO borrar esa fila: sostiene también el gate de
+    // primer cobro del Subscribe de Meta (subscribe-event.ts).
 
-    // Meta Pixel (browser): pasamos sub=<subscriptionId> + val al return para que
-    // dispare Subscribe con event_id sub-<subscriptionId> → dedup con el Subscribe
-    // server-side (payment-callback / cron reconciler, solo primer cobro). Solo en
-    // esta activación real: los redirects idempotentes de arriba (Flow reintentó el
-    // callback / reload) NO llevan sub → el browser Subscribe se omite ahí, y el
-    // server-side first-charge Subscribe queda como fuente de verdad.
-    //
-    // `val` es el PRECIO DE CATÁLOGO (match.product.amount), NO el monto cobrado —
-    // divergencia deliberada y estructural: acá todavía no existe cargo alguno (Flow
-    // recién tokenizó la tarjeta y creó la suscripción), así que el monto real aún no
-    // ocurrió. El server manda el monto real de Flow cuando llega el primer cobro.
-    // Meta se queda con el PRIMER evento que recibe para un event_id dado, y el
-    // browser dispara en este redirect mientras el server espera al cargo → en la
-    // práctica Meta registra el precio de catálogo.
-    //
-    // REAPERTURA: si algún día hay prorrateo, cupón o descuento, el fix es SACAR `val`
-    // de este redirect y dejar al server como única fuente de value. No intentar que
-    // el browser adivine un monto que todavía no existe.
-    const returnUrl = new URL("/payments/return?type=subscription&status=success", SITE_URL);
-    returnUrl.searchParams.set("sub", subData.subscriptionId);
-    returnUrl.searchParams.set("val", String(match.product.amount));
-    return NextResponse.redirect(returnUrl);
+    // Meta Pixel (browser): sub=<subscriptionId> + val al return para que dispare Subscribe con event_id sub-<subscriptionId>
+    // → dedup con el Subscribe server-side del primer cobro. Solo en esta activación real (los redirects idempotentes de
+    // arriba no llevan sub). `val` es el PRECIO DE CATÁLOGO (acá no existe cargo todavía); si algún día hay prorrateo,
+    // cupón o descuento, sacar `val` y dejar al server como única fuente.
+    return volver("registrada", { sub: subData.subscriptionId, val: String(match.product.amount) });
   } catch (err) {
     console.error("Register callback error:", err);
     captureApiError(err, {
-      ruta: "GET /api/subscriptions/register-callback",
+      ruta: "POST /api/subscriptions/register-callback",
       operacion: "alta-suscripcion",
+      tags: { fase },
     });
-    return NextResponse.redirect(new URL("/payments/return?type=subscription&status=error", SITE_URL));
+    // Lo que se puede afirmar depende de hasta dónde se llegó: guardada, el plan está; pedida, puede haberse abierto; antes,
+    // no se abrió nada.
+    return volver(fase === "alta-guardada" ? "registrada" : fase === "alta-pedida" ? "sin-confirmar" : "sin-plan");
   }
 }

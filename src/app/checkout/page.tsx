@@ -105,6 +105,10 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Bus
     ? await supabase.from("user_credits").select("subscription_status, is_unlimited").eq("user_id", user.id).maybeSingle()
     : { data: null };
   const conPlan = !!cuenta && (cuenta.is_unlimited === true || cuenta.subscription_status === "active");
+  // UNA SOLA SUSCRIPCIÓN (05-nov-2026, auditoría de promesas parte 2): con un cobro pendiente no se contrata otro plan, se
+  // cambia la tarjeta; y quien canceló sabe que volver abre un plan nuevo que se cobra hoy (Flow no reanuda la cancelada).
+  const planPendiente = !conPlan && cuenta?.subscription_status === "past_due";
+  const planCancelado = !conPlan && cuenta?.subscription_status === "cancelled";
 
   return (
     <div className="flex min-h-screen flex-col bg-[var(--franco-bg)] text-[var(--franco-text)]">
@@ -125,6 +129,8 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Bus
           depto={depto}
           sesionEmail={user?.email ?? null}
           conPlan={conPlan}
+          planPendiente={planPendiente}
+          planCancelado={planCancelado}
           pagarAlEntrar={uno(searchParams, "pagar") === "1"}
           // «Volver» vuelve adonde estaba: desde planes, a planes (el `volver` de la compra es adónde ir DESPUÉS de pagar).
           // Desde un depto, «Volver» lo deja en la selección sin analizarlo.

@@ -15,7 +15,9 @@ import { User, CreditCard, Clock, Sparkles } from "lucide-react";
 import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { ChangePasswordForm } from "./change-password-form";
 import { isAdminUser } from "@/lib/admin";
-import { PLANES_COPY } from "@/lib/planes";
+import { PLANES_COPY, PRODUCTO_PLAN } from "@/lib/planes";
+import { urlCompra } from "@/lib/compra/compra";
+import { esperaPrimerCobro, RUTA_CAMBIAR_TARJETA, SUSCRIPCION_COPY } from "@/lib/subscriptions/suscripcion";
 
 interface PaymentRow {
   id: string;
@@ -69,6 +71,8 @@ export default async function PerfilPage() {
   const graceEndsAt: string | null = (creditsRow?.grace_ends_at as string) ?? null;
   const subEnd: string | null = (creditsRow?.subscription_ends_at as string) ?? null;
   const isSubscriber = subStatus === "active";
+  // Tarjeta registrada sin el primer cobro (05-nov-2026, auditoría de promesas parte 2): el plan todavía no está activo.
+  const esperando = esperaPrimerCobro({ subscription_status: subStatus, subscription_ends_at: subEnd });
   // Plan FINITO (plan10/plan50) vs ILIMITADO: un finito consume saldo del ledger →
   // ya NO es "ilimitado". Solo is_unlimited mantiene ese copy.
   const isUnlimited: boolean = creditsRow?.is_unlimited === true;
@@ -129,25 +133,31 @@ export default async function PerfilPage() {
     // "Suscripción" (no mostrar "Plan 10" a quien no lo tiene). El saldo se muestra igual.
     // Desde el 19-oct-2026 el de 10 es el Plan Franco, de 20 al mes (lib/planes.ts).
     planLabel = activePlan === "plan10" ? PLANES_COPY.plan.nombre : activePlan === "plan50" ? "Plan 50" : "Suscripción";
-    planDescription = `${credits} ${credits === 1 ? "análisis disponible" : "análisis disponibles"} · todas las variables.`;
+    planDescription = esperando
+      ? SUSCRIPCION_COPY.tarjetaRegistrada
+      : `${credits} ${credits === 1 ? "análisis disponible" : "análisis disponibles"} · todas las variables.`;
     planCtaText = "Gestionar";
-    planCtaHref = "/pricing";
+    planCtaHref = "/cuenta";
   } else if (isPastDueGrace) {
     const graceDate = graceEndsAt
       ? fechaCortaCL(graceEndsAt, { month: "long" })
       : "—";
     planLabel = "Pago pendiente";
-    planDescription = `Tu último cobro no se procesó. Mantienes acceso hasta el ${graceDate}.`;
+    planDescription = esperando
+      ? `El primer cobro no pasó: tu plan no se activó. Puedes cambiar la tarjeta hasta el ${graceDate}.`
+      : `Tu último cobro no se procesó. Mantienes acceso hasta el ${graceDate}.`;
+    // Cambia la tarjeta (05-nov-2026): /pricing abría una segunda suscripción con la primera viva.
     planCtaText = "Actualiza tu método de pago →";
-    planCtaHref = "/pricing";
+    planCtaHref = RUTA_CAMBIAR_TARJETA;
   } else if (isCancelledActive) {
     const endDate = subEnd
       ? fechaCortaCL(subEnd, { month: "long" })
       : "—";
     planLabel = "Suscripción cancelada";
-    planDescription = `Acceso Pro hasta el ${endDate}.`;
-    planCtaText = "Reactivar suscripción →";
-    planCtaHref = "/pricing";
+    // Flow no reanuda una suscripción cancelada (05-nov-2026): volver abre una nueva, y se dice.
+    planDescription = `Acceso hasta el ${endDate}. Si vuelves al Plan Franco, ${SUSCRIPCION_COPY.planNuevo.charAt(0).toLowerCase()}${SUSCRIPCION_COPY.planNuevo.slice(1)}`;
+    planCtaText = "Volver al Plan Franco →";
+    planCtaHref = urlCompra({ product: PRODUCTO_PLAN });
   } else if (credits > 0) {
     planLabel = "Análisis disponibles";
     planDescription = `Tienes ${credits} ${credits === 1 ? "análisis disponible" : "análisis disponibles"}. ${proximoVence ? `${credits === 1 ? "Vence" : "El primero vence"} el ${fechaCortaCL(proximoVence, { month: "long" })}.` : credits === 1 ? "No vence." : "No vencen."}`;

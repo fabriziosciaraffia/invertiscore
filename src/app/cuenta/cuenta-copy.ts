@@ -4,6 +4,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import { COMO_ENTRAR } from "@/lib/guia/semanal";
 import { PLANES_COPY } from "@/lib/planes";
+import { SUSCRIPCION_COPY } from "@/lib/subscriptions/suscripcion";
 
 export const CUENTA_COPY = {
   titulo: "Tu cuenta",
@@ -14,7 +15,12 @@ export const CUENTA_COPY = {
     legado: "Lo sigues teniendo como lo contrataste.",
     cancelado: (fecha: string) => `Lo cancelaste: tienes acceso hasta el ${fecha}.`,
     pendiente: (fecha: string) => `Tu último cobro no se pudo hacer. Tienes acceso hasta el ${fecha}.`,
+    // 05-nov-2026 (auditoría de promesas parte 2, lib/subscriptions/suscripcion.ts): registrar la tarjeta no es pagar.
+    esperando: SUSCRIPCION_COPY.tarjetaRegistrada,
+    primerCobroFallido: (fecha: string) => `El primer cobro no pasó: tu plan no se activó. Puedes cambiar la tarjeta hasta el ${fecha}.`,
     volver: "Volver al Plan Franco",
+    // Flow no reanuda una suscripción cancelada: volver abre una nueva.
+    volverNota: SUSCRIPCION_COPY.planNuevo,
     actualizarPago: "Ver cómo pagar",
   },
   saldo: {
@@ -50,6 +56,9 @@ export const CUENTA_COPY = {
     boton: "Cancelar el plan",
     pregunta: "¿Cancelas el plan?",
     texto: "No se renueva más. Los análisis que ya tienes siguen vigentes hasta que vencen.",
+    // En la gracia o esperando el primer cobro se cancela ahora en Flow (05-nov-2026): al fin del período, Flow seguiría
+    // intentando cobrar.
+    textoAhora: "Se cancela ahora y Flow no vuelve a intentar el cobro. Los análisis que ya tienes siguen vigentes hasta que vencen.",
     si: "Sí, cancelar",
     no: "No, mantenerlo",
     cancelando: "Cancelando…",
