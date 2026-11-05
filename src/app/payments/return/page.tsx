@@ -45,7 +45,8 @@ function PaymentReturnContent() {
   const llavePago: LlavePago | null = retornoPack?.firma && order ? { order, firma: retornoPack.firma } : null;
   // `suscripcion`: la vuelta de registrar la tarjeta, con lo que register-callback comprobó (05-nov-2026). `sin_confirmar`: la
   // consulta del pago falló; no se sabe si se cobró y no se dice «No se hizo ningún cargo».
-  const [paymentStatus, setPaymentStatus] = useState<"loading" | "paid" | "pending" | "error" | "sin_sesion" | "otra_cuenta" | "suscripcion" | "sin_confirmar">("loading");
+  // La vuelta de la suscripción nace como tal: ni un instante de «Confirmando tu pago…» al registrar una tarjeta.
+  const [paymentStatus, setPaymentStatus] = useState<"loading" | "paid" | "pending" | "error" | "sin_sesion" | "otra_cuenta" | "suscripcion" | "sin_confirmar">(type === "subscription" ? "suscripcion" : "loading");
   const estadoSuscripcion = type === "subscription" ? estadoRetornoSuscripcion(statusParam) : null;
   // EL TOPE DE «CONFIRMANDO TU PAGO…» (05-nov-2026, auditoría de promesas parte 2): a los 90 segundos la pantalla dice qué
   // pasa y ofrece volver. Si después llega el pago, igual cambia a «Pago confirmado» (la consulta sigue).
