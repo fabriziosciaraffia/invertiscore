@@ -46,22 +46,17 @@ Next.js 14 + App Router + TypeScript + Tailwind + shadcn/ui + Supabase + Claude 
 ## Modelo de acceso y precios
 - Modelo de crédito: **1 análisis = 1 crédito**, sin distinción de tipo (LTR/STR/AMBAS).
 
-### Tiers (lógica en `src/lib/access.ts` + gating en `src/app/analisis/[id]/page.tsx`)
-4 niveles: `guest | free | premium | subscriber` (admin → subscriber; el análisis demo → premium).
-- **guest** (no logueado): contenido limitado + CTAs de registro.
-- **free** (logueado, análisis no premium): análisis base, sin el panel interactivo avanzado.
-- **premium** (análisis con `is_premium=true`): reporte completo de ese análisis.
-- **subscriber** (suscripción activa o `is_unlimited`; admin incluido): todo desbloqueado.
-- Gate verificado: el **simulador interactivo** (sliders + recalcular) y la **Advanced Section** (proyección de patrimonio, escenarios venta/refi, indicadores) son solo premium/subscriber.
+### Niveles (lógica en `src/lib/access.ts` › `getUserAccessLevel`)
+4 niveles: `guest | free | premium | subscriber` (admin → subscriber; el análisis demo → premium). **subscriber** = `hasSubscriptionAccess` (suscripción vigente, con gracia) o `is_unlimited`.
+- **El informe no se bloquea por nivel** (05-nov-2026, auditoría de promesas parte 3). El simulador de renta larga (sliders + recalcular) y la Advanced Section ya no existen: el informe entero se ve igual para todos los niveles, y lo único que lo retiene es `pending_payment` (el análisis creado sin crédito, a la espera del pago). El nivel solo decide la telemetría, el modo del header y el redirect de los hijos AMBAS. `/api/analisis/recalculate` todavía rechaza guest/free, pero no lo llama nadie.
 
-### Precios (fuente de verdad: `src/lib/flow-products.ts` = montos a Flow · `src/lib/pricing.ts` = UI)
+### Precios (fuente de verdad: `src/lib/flow-products.ts` = montos a Flow · `src/lib/planes.ts` = la oferta que muestra la UI · `src/lib/pricing.ts` = solo `SINGLE_PRICE` y `fmtCLP`)
 - **Análisis individual (single): $9.990** — 1 crédito al ledger, **sin caducidad** (`expires_at` NULL, `noExpire: true` en `payments/confirm`). Coherente con el copy "análisis sin caducidad"; los que sí expiran al año son los lotes de plan. Como el FIFO ordena por `expires_at` con los NULL al final, el usuario gasta primero lo que vence.
-- **Plan 10**: $39.990/mes · $395.880/año — 10 análisis/mes.
-- **Plan 50**: $149.990/mes · $1.499.880/año — 50 análisis/mes.
-- **Ilimitado**: $399.990/mes · $3.959.880/año — sin límite (`is_unlimited`).
-- Los planes `_annual` cobran el total del año up-front. Email `fabriziosciaraffia@gmail.com` (ADMIN_EMAIL) ve todo desbloqueado.
-- Orden de cobro al crear/desbloquear (`chargeAnalysisCredit`): suscripción/ilimitado (gratis) → welcome credit → ledger `credit_grants` → legacy `user_credits.credits` → si nada, cobra (Flow).
-- **El regalo al registrarse (16-oct-2026) reemplaza al welcome credit.** Toda cuenta creada desde el 16-oct-2026, por cualquier puerta, nace con 1 análisis de regalo en el ledger (`credit_grants.source = regalo_alta`, vence a los 30 días) y con `welcome_credit_used = true`: no son dos gratis. Lo otorga UN solo lugar (`asegurarRegaloDeAlta`, `src/lib/regalo-alta-servidor.ts`), con tope de 1 por dispositivo cada 30 días (cookie `franco_disp` del middleware) y 100 en el día (la IP se anota pero no topa: CGNAT). Las cuentas de antes conservan su bienvenida. El regalo de los 14 días del semanal pasó a ser el de **reactivación** (`regalo_reactivacion`: 4 semanas sin analizar, uno cada 90 días).
+- **Tres análisis: $19.990** (`tres_analisis`, quien ya tiene cuenta) y **$14.990** (`pack3`, el usuario nuevo en sus 24 horas). Sin caducidad.
+- **Plan Franco: $39.990/mes — 20 análisis/mes** (19-oct-2026). Es `plan10_mensual` con `capacity: 20`: la key y `plan: "plan10"` se conservan porque están persistidas. Los análisis de cada mes vencen a los 12 meses.
+- **Retirados de la venta** (`VENTA_RETIRADA` en `planes.ts`; las rutas de cobro los rechazan): Plan 50, Ilimitado y todos los `_annual`. Siguen en el catálogo de Flow y lo ya comprado se respeta. Email `fabriziosciaraffia@gmail.com` (ADMIN_EMAIL) ve todo desbloqueado.
+- Orden de cobro al crear/desbloquear (`chargeAnalysisCredit`): ilimitado (gratis, el único) → welcome credit → ledger `credit_grants` → legacy `user_credits.credits` → si nada, cobra (Flow). **El Plan Franco descuenta de su saldo** como cualquier crédito: el suscriptor que agotó los 20 del ciclo recibe `no_credits` con `subscriptionActive: true`.
+- **El regalo al registrarse (16-oct-2026) reemplaza al welcome credit.** Toda cuenta creada desde el 16-oct-2026, por cualquier puerta, nace con 1 análisis de regalo en el ledger (`credit_grants.source = regalo_alta`, vence a los 30 días) y con `welcome_credit_used = true`: no son dos gratis. Lo otorga UN solo lugar (`asegurarRegaloDeAlta`, `src/lib/regalo-alta-servidor.ts`), con tope de 1 por dispositivo cada 30 días (cookie `franco_disp` del middleware) y 500 en el día (05-nov-2026; antes 100. La IP se anota pero no topa: CGNAT). Un lote que falla lo reintenta solo el cron `reconciliar-pagos` (`reintentarRegalosEnFallo`), y quien queda sin regalo por un tope ve el motivo en pantalla y bajo «Sin análisis», con «Ver planes» (`SIN_REGALO_COPY`, `src/lib/regalo-alta.ts`). Las cuentas de antes conservan su bienvenida. El regalo de los 14 días del semanal pasó a ser el de **reactivación** (`regalo_reactivacion`: 4 semanas sin analizar, uno cada 90 días).
 - **El financiamiento por defecto de todo el sitio (30-oct-2026): pie 20 %, 30 años y la tasa del motor** (`src/lib/deptos/estandar.ts` › `PLAZO_POR_DEFECTO`, una sola constante; `deptos_conteo` y `deptos_candidatos` reciben el plazo). Hasta entonces, el estándar de /deptos fue pie 20 % y 25 años (16-oct-2026): La evaluación de la noche sigue a 30 años en `veredicto_20`/`veredicto_30`; las columnas `*_20_25` / `*_30_25` de `avisos_evaluados` son el mismo aviso a 25 años (sonda, `src/lib/avisos/estandar-deptos.ts`): de ahí salía la respuesta al instante de /deptos hasta el 30-oct-2026; hoy la noche las sigue llenando para la opción de 25 años de Filtros, y /deptos lee las de 30.
 
 ## Análisis demo protegido
@@ -73,7 +68,7 @@ Emisión de **boleta electrónica afecta (TipoDTE 39)** cuando Flow confirma un 
 - **Modo autoservicio**: el body lleva `customer` + `selfService` (issueBoleta + allowFactura), `documentReference.ID = flow_order` (fallback a hash del commerce_order). Devuelve FOLIO + PDF + XML + SELF_SERVICE (URL para ver/convertir a factura).
 - Montos IVA incluido: `neto = round(total/1.19)`, `IVA = total − neto`.
 - **Correo de la boleta**: lo envía Franco vía Resend (`sendBoletaEmail` en `src/lib/email.ts`) con PDF+XML adjuntos y subject único por folio. NO se usa `CorreoRecep`.
-- **Kill-switch**: `OPENFACTURA_ENABLED` debe ser exactamente `"true"` para emitir; cualquier otro valor = no-op. `OPENFACTURA_ENV` = `dev` (CAF simulado) | `prod`. Cableado en dos puntos: `payments/confirm` (compras single) y `subscriptions/payment-callback` (cobros de suscripción — b229d39: monto validado, glosa de plan, idempotencia por `commerce_order`). Ambos en try/catch que nunca rompe el 200 a Flow.
+- **Emite en producción**: en Vercel están `OPENFACTURA_ENABLED=true` y `OPENFACTURA_ENV=prod`. El kill-switch sigue: `OPENFACTURA_ENABLED` debe ser exactamente `"true"` para emitir; cualquier otro valor = no-op. `OPENFACTURA_ENV` = `dev` (CAF simulado) | `prod`. Cableado en dos puntos: `payments/confirm` (compras `single`, `pack3`, `tres_analisis` y `unlock`) y `subscriptions/payment-callback` (cobros de suscripción — b229d39: monto validado, glosa de plan, idempotencia por `commerce_order`). Ambos en try/catch que nunca rompe el 200 a Flow.
 - Admin: sección "Documentos tributarios" en `/admin` + endpoint de reintento `POST /api/admin/documentos/retry`.
 
 ## Branding e identidad
@@ -260,7 +255,7 @@ Motivo: master avanza en paralelo. Una rama que no rebasa obliga a ritual manual
 - Variables de entorno: editalas **solo** en VS Code (`.env.local`) o en el dashboard de Vercel. **Nunca en terminal.**
 - **Nunca** pegues keys/secrets en el chat ni en logs — solo nombres de variables.
 - Para verificar una variable sin exponer su valor: `Select-String -Path .env.local -Pattern "<NOMBRE>"`.
-- **Facturación:** `OPENFACTURA_API_KEY`, `OPENFACTURA_ENV`, `OPENFACTURA_ENABLED` (ver `.env.example`). En prod la emisión está **apagada** por kill-switch hasta setear `OPENFACTURA_ENV=prod` + `OPENFACTURA_ENABLED=true` en Vercel.
+- **Facturación:** `OPENFACTURA_API_KEY`, `OPENFACTURA_ENV`, `OPENFACTURA_ENABLED` (ver `.env.example`). En prod la emisión está **prendida** (`OPENFACTURA_ENV=prod` + `OPENFACTURA_ENABLED=true` en Vercel); para apagarla basta cambiar `OPENFACTURA_ENABLED` en el dashboard.
 
 ## Workflow
 - **El índice de memoria lleva NOMBRES, no resúmenes.** Una entrada de `MEMORY.md` es un puntero: etiqueta de **60 caracteres o menos**, y el detalle en el archivo. Si la etiqueta necesita explicar, el que está mal es el archivo — arreglá el archivo. Medido el 17-sep-2026: **39% de las etiquetas pasaban de 60** y ese solo exceso era el **23% del índice**; ocho transcribían entera la `description` del archivo al que apuntaban. Y no es estética: lo que pasa del corte de lectura **se descarta en silencio**, sin avisar — el 14-sep el 21% del índice era invisible, y lo invisible eran las dos PRIORITARIAS que después fueron goals.
