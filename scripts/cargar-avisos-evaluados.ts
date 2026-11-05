@@ -17,6 +17,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { evaluarAviso, VERSION_EVALUACION } from "../src/lib/avisos/evaluar-aviso";
 import { avisosEvaluables, avisosPendientes, sinDespublicados, VENTANA_VISTOS_DIAS, type EvaluacionGuardada, type FilaAviso } from "../src/lib/avisos/depurar";
+import { conEdadConocida, leerEdadesConocidas } from "../src/lib/avisos/edad-conocida";
 
 const CONC = Number(process.env.CONC ?? 6);
 const TOPE = Number(process.env.TOPE ?? Infinity);
@@ -53,12 +54,13 @@ async function main() {
       .order("id", { ascending: true }).range(a, b),
   );
   const guardadas = await paginar<EvaluacionGuardada & { condicion: string }>((a, b) =>
-    sb.from("avisos_evaluados").select("aviso_id, precio_uf, evaluado_at, motor_version, condicion").order("aviso_id", { ascending: true }).range(a, b),
+    sb.from("avisos_evaluados").select("aviso_id, precio_uf, evaluado_at, motor_version, condicion, antiguedad_anios, antiguedad_origen").order("aviso_id", { ascending: true }).range(a, b),
   );
   const despublicados = await paginar<{ aviso_id: string }>((a, b) =>
     sb.from("publicacion_avisos").select("aviso_id").eq("estado", "despublicado").order("aviso_id", { ascending: true }).range(a, b),
   );
-  const evaluables = sinDespublicados(avisosEvaluables(filas, cfg.uf), new Set(despublicados.map((d) => d.aviso_id)));
+  // Con la edad conocida de cada usado, como el cron (05-nov-2026, avisos/edad-conocida.ts).
+  const evaluables = conEdadConocida(sinDespublicados(avisosEvaluables(filas, cfg.uf), new Set(despublicados.map((d) => d.aviso_id))), await leerEdadesConocidas(sb));
   const vigentes = guardadas.filter((g) => {
     if (MOTOR && g.motor_version !== VERSION_EVALUACION) return false;
     if (REEVALUAR_ANTES !== null && new Date(g.evaluado_at).getTime() < REEVALUAR_ANTES && (!CONDICION || g.condicion === CONDICION)) return false;

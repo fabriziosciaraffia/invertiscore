@@ -7,14 +7,16 @@
 // LA EDAD REAL (03-nov-2026, goal «la edad del edificio»): con año, el motor recibe la edad tal cual (no la banda) y
 // `origenAviso.edad` guarda el año y la fuente —la ficha de este aviso u otro aviso del edificio— para que el informe lo
 // diga; sin año, `origenAviso.supuestaPor` dice si la ficha se leyó y no lo trae o si no se pudo leer (edad-edificio.ts).
+// LA MISMA EDAD QUE LA NOCHE (05-nov-2026): el año sale de `edadConocida`, la regla que usa también la evaluación de cada
+// noche (avisos/edad-conocida.ts): su ficha (la recién leída o la última en `fichas_leidas`), si no el edificio.
 // ─────────────────────────────────────────────────────────────────────────────
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { arriendoParaEvaluar, contextoDeSugerencias, payloadDeAviso, respuestasDeAviso, sugerenciasDeAviso } from "@/lib/avisos/evaluar-aviso";
 import type { AnalisisInput } from "@/lib/types";
-import { aniosDesde, claveEdificio } from "./ficha-anio";
+import { claveEdificio } from "./ficha-anio";
 import { avisoDeCandidato, type CandidatoGuia, type OrigenGuia } from "./guia-servidor";
 import { distanciaM, type Combinacion } from "./seleccion";
-import type { EdadEdificio, SupuestaPor } from "./edad-edificio";
+import { edadConocida, type EdadEdificio, type SupuestaPor } from "./edad-edificio";
 
 export type OrigenAntiguedad = "ficha" | "supuesta" | "nuevo";
 /** La edad con que se analiza: los años (null = 25 supuestos), de dónde salió, el año y su fuente, o por qué se supuso. */
@@ -76,18 +78,26 @@ export async function fichaDelAviso(admin: SupabaseClient, avisoId: string): Pro
   return { id: f.id as string, url: (f.url as string | null) ?? null, edificio: claveEdificio({ comuna: f.comuna as string, lat: Number(f.lat), lng: Number(f.lng) }) };
 }
 
-/** Los años del edificio: los de la ficha recién leída, o los del edificio si se conocen, o null (25 supuestos).
- *  No sale a la fuente: la única lectura es la que chequeó la publicación. Con año, el año y su fuente: «edificio» solo si lo
- *  dio OTRO aviso (`anios_edificio` guarda el aviso cuya ficha lo dijo). Sin año, por qué: la ficha leída no lo dice, o no se
- *  pudo leer. */
+/** Los años del edificio con la regla de la noche (edad-edificio.ts › edadConocida): el año de su ficha —la recién leída o la
+ *  última lectura con año en `fichas_leidas`—, si no el del edificio, si no null (25 supuestos). No sale a la fuente: la única
+ *  lectura es la que chequeó la publicación. Con año, el año y su fuente: «edificio» solo si lo dio OTRO aviso
+ *  (`anios_edificio` guarda el aviso cuya ficha lo dijo). Sin año, por qué: la ficha leída no lo dice, o no se pudo leer.
+ *  Hasta el 05-nov-2026 mandaba primero la edad guardada en la fila de la noche (`c.antiguedadAnios`), rotulada siempre
+ *  «según la ficha»: con la noche usando también el año del edificio, ese rótulo habría mentido. */
 export async function antiguedadDelAviso(admin: SupabaseClient, c: CandidatoGuia, lectura: LecturaAnio, ahora: Date = new Date()): Promise<AntiguedadAviso> {
   if (c.condicion === "nuevo") return { anios: 0, origen: "nuevo" };
-  if (c.antiguedadAnios != null) return { anios: c.antiguedadAnios, origen: "ficha", edad: { anio: ahora.getFullYear() - c.antiguedadAnios, fuente: "ficha" } };
-  if (lectura.anio != null) return { anios: aniosDesde(lectura.anio, ahora), origen: "ficha", edad: { anio: lectura.anio, fuente: "ficha" } };
-  const { data } = await admin.from("anios_edificio").select("anio, aviso_id").eq("edificio", claveEdificio(c)).maybeSingle();
-  if (typeof data?.anio === "number") {
-    return { anios: aniosDesde(data.anio, ahora), origen: "ficha", edad: { anio: data.anio, fuente: data.aviso_id === c.avisoId ? "ficha" : "edificio" } };
+  let anioPropio = lectura.anio;
+  if (anioPropio == null) {
+    const { data } = await admin.from("fichas_leidas").select("anio").eq("aviso_id", c.avisoId).maybeSingle();
+    anioPropio = typeof data?.anio === "number" ? data.anio : null;
   }
+  let edificio: { anio: number; avisoId: string | null } | null = null;
+  if (anioPropio == null) {
+    const { data } = await admin.from("anios_edificio").select("anio, aviso_id").eq("edificio", claveEdificio(c)).maybeSingle();
+    edificio = typeof data?.anio === "number" ? { anio: data.anio, avisoId: (data.aviso_id as string | null) ?? null } : null;
+  }
+  const e = edadConocida({ avisoId: c.avisoId, anioPropio, edificio }, ahora);
+  if (e) return { anios: e.anios, origen: "ficha", edad: e.edad };
   return { anios: null, origen: "supuesta", supuestaPor: lectura.leida ? "no-dice" : "no-leida" };
 }
 

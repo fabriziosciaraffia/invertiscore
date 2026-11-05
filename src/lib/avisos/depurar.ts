@@ -7,11 +7,14 @@
 //     Primero los nunca evaluados. (30-sep-2026, decisión de Fabrizio: la carga inicial la hace un script
 //     una vez; el cron solo sigue lo nuevo y lo que cambió de precio. Ya no se reevalúa por antigüedad ni
 //     por versión del motor: un cambio de motor se recarga corriendo el script de carga.)
+//   · Desde el 05-nov-2026 también es pendiente la fila evaluada con otra edad de la que hoy se conoce
+//     (edad-conocida.ts › edadDistinta): el año de una ficha recién leída llega a la noche siguiente.
 // ─────────────────────────────────────────────────────────────────────────────
 import type { AvisoParaEvaluar } from "./evaluar-aviso";
 
 import { esFueraDeLaFicha } from "./marcas-unidades";
 import { claveAviso, ventaPlausible } from "./plausible";
+import { edadDistinta } from "./edad-conocida";
 
 export const VENTANA_VISTOS_DIAS = 7;
 
@@ -70,6 +73,9 @@ export interface EvaluacionGuardada {
   precio_uf: number | string;
   evaluado_at: string;
   motor_version: string;
+  /** La edad con que se evaluó (05-nov-2026): si hoy se conoce otra, la fila vuelve a la cola (edad-conocida.ts). */
+  antiguedad_anios?: number | string | null;
+  antiguedad_origen?: string | null;
 }
 
 export function avisosPendientes<T extends AvisoParaEvaluar & { scrapedAt: string }>(
@@ -85,7 +91,8 @@ export function avisosPendientes<T extends AvisoParaEvaluar & { scrapedAt: strin
     if (new Date(a.scrapedAt).getTime() < desde) continue;
     const g = porId.get(a.id);
     if (!g) { nunca.push(a); continue; }
-    if (Math.abs(Number(g.precio_uf) - a.precioUF) > 0.5) otra.push(a);
+    // El precio cambió, o la fila se evaluó con otra edad de la que hoy se conoce (05-nov-2026: un año recién leído).
+    if (Math.abs(Number(g.precio_uf) - a.precioUF) > 0.5 || edadDistinta(a, g)) otra.push(a);
   }
   return [...nunca, ...otra];
 }
@@ -109,7 +116,7 @@ export function avisosDeOtraVersion<T extends AvisoParaEvaluar & { scrapedAt: st
     if (new Date(a.scrapedAt).getTime() < desde) continue;
     const g = porId.get(a.id);
     if (!g || g.motor_version === motorVersion) continue;
-    if (Math.abs(Number(g.precio_uf) - a.precioUF) > 0.5) continue;
+    if (Math.abs(Number(g.precio_uf) - a.precioUF) > 0.5 || edadDistinta(a, g)) continue;
     out.push({ a, t: new Date(g.evaluado_at).getTime() });
   }
   return out.sort((x, y) => x.t - y.t).map((x) => x.a);

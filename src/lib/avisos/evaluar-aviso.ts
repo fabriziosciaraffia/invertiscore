@@ -8,7 +8,9 @@
 //   · Antigüedad (usados): la fuente casi nunca la da. Sin año, 25 años (la banda «20+»): un Comprar
 //     que aguanta 25 años es robusto; preferimos perder una oportunidad a mostrar una mala (Fabrizio,
 //     30-sep-2026). Con año (la ficha del aviso u otro aviso del edificio, al analizarlo), la edad real, sin pasarla
-//     por la banda (03-nov-2026: `antiguedadAnios` en las respuestas, helpers-wizard.ts › aniosDelUsado).
+//     por la banda (03-nov-2026: `antiguedadAnios` en las respuestas, helpers-wizard.ts › aniosDelUsado). Desde el
+//     05-nov-2026 también en la evaluación de cada noche: el cron le pone a cada usado la edad conocida con la regla del
+//     informe (edad-conocida.ts › conEdadConocida); los 25 quedan solo para los edificios sin año.
 //   · Entrega (nuevos): de scraped_properties.fecha_entrega (GraphQL de la fuente). Sin dato, inmediata.
 //   · Arriendo: el sugerido por radio. El del mismo segmento de precio (arriendo-segmentado.ts) queda
 //     detrás de `segmentar` y el cron lo tiene apagado: el censo del 29-sep-2026 no lo vio desinflar

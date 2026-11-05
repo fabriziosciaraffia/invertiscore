@@ -10,6 +10,7 @@ import { evaluarNegociar, NEGOCIAR_VACIO } from "@/lib/avisos/negociar";
 import { guardarConteosDeLaNoche, guardarResumenDeLaNoche } from "@/lib/deptos/servidor";
 import { guardarConvienenMapa } from "@/lib/explorar/convienen-guardado";
 import { avisosDeOtraVersion, avisosEvaluables, avisosPendientes, sinDespublicados, VENTANA_VISTOS_DIAS, type EvaluacionGuardada, type FilaAviso } from "@/lib/avisos/depurar";
+import { conEdadConocida, leerEdadesConocidas } from "@/lib/avisos/edad-conocida";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Los avisos evaluados con el motor (30-sep-2026): cada semana, los avisos de venta vistos en los
@@ -28,6 +29,9 @@ import { avisosDeOtraVersion, avisosEvaluables, avisosPendientes, sinDespublicad
 // Antes de evaluar, `cerrar_bajas()` saca lo que se dio de baja (lo anota en bajas_avisos).
 // LOS QUE CONVIENEN SI NEGOCIAS (02-nov-2026, avisos/negociar.ts): en la misma pasada, a cada aviso que da Ajustar con un pie, el
 // descuento mínimo a Comprar (negociar_20 / negociar_30); `msNegociar` en el cierre dice cuánto suma a la corrida.
+// LA EDAD REAL (05-nov-2026, avisos/edad-conocida.ts): cada usado con el año conocido —su ficha o la de otro aviso del mismo
+// edificio— se evalúa con su edad, no con los 25 supuestos, con la misma regla del informe; la fila evaluada con otra edad
+// vuelve a la cola.
 // SOLO escribe en avisos_evaluados. `?dry=1` evalúa un puñado y no escribe nada.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -91,15 +95,17 @@ export async function GET(request: Request) {
         .order("id", { ascending: true }).range(a, b),
     );
     const guardadas = await paginar<EvaluacionGuardada>((a, b) =>
-      sb.from("avisos_evaluados").select("aviso_id, precio_uf, evaluado_at, motor_version").order("aviso_id", { ascending: true }).range(a, b),
+      sb.from("avisos_evaluados").select("aviso_id, precio_uf, evaluado_at, motor_version, antiguedad_anios, antiguedad_origen").order("aviso_id", { ascending: true }).range(a, b),
     );
     const despublicados = await paginar<{ aviso_id: string }>((a, b) =>
       sb.from("publicacion_avisos").select("aviso_id").eq("estado", "despublicado").order("aviso_id", { ascending: true }).range(a, b),
     );
     const evaluables = sinDespublicados(avisosEvaluables(filas, cfg.uf), new Set(despublicados.map((d) => d.aviso_id)));
-    pendientes = avisosPendientes(evaluables, guardadas);
+    // La edad conocida de cada usado (05-nov-2026): la de su ficha o la del edificio, la misma que usa el informe.
+    const conEdad = conEdadConocida(evaluables, await leerEdadesConocidas(sb));
+    pendientes = avisosPendientes(conEdad, guardadas);
     // Con lo que sobre del presupuesto, de a poco, los evaluados con otra versión del motor.
-    otraVersion = avisosDeOtraVersion(evaluables, guardadas, VERSION_EVALUACION);
+    otraVersion = avisosDeOtraVersion(conEdad, guardadas, VERSION_EVALUACION);
   } catch (e) {
     captureApiWarning(e, { ruta: RUTA, operacion: "leer" });
     return cerrarCron(sb, "evaluar-avisos", { procesados: 0, exitosos: 0, fallidos: 1 }, { error: `leer: ${String(e).slice(0, 200)}` }, { registrar: !dry });

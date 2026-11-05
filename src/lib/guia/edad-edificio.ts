@@ -8,7 +8,9 @@
 // Los informes de antes no tienen `supuestaPor`: los 44 con la antigüedad supuesta tuvieron su ficha leída al tocar (medido
 // el 03-nov-2026 en `lecturas_ficha`; el único sin lectura es de una cuenta de prueba del 01-oct), así que leen «no dice».
 // Puro y sin servidor: lo leen la portada, el capítulo y la nota (cliente) y el tier EDAD-EDIFICIO.
+// Desde el 05-nov-2026 la noche usa la MISMA edad (edadConocida, tier EDAD-NOCHE): hasta entonces suponía 25 años para todos.
 // ─────────────────────────────────────────────────────────────────────────────
+import { aniosDesde } from "./ficha-anio";
 
 export type FuenteEdad = "ficha" | "edificio";
 export interface EdadEdificio {
@@ -52,3 +54,23 @@ export function estadoUsado(anios: number, edad: EdadEdificio | null): string {
 
 /** La línea chica de la fuente: «según la ficha» / «según otro aviso del edificio». */
 export const fuenteEdad = (edad: EdadEdificio) => EDAD_COPY.fuente[edad.fuente];
+
+/** De dónde puede salir la edad de un usado: el año que dijo SU ficha (recién leída, o la última lectura en `fichas_leidas`)
+ *  y el año del edificio (`anios_edificio`: el que dio la primera ficha que lo trajo, de este u otro aviso). */
+export interface FuentesEdad {
+  avisoId: string;
+  anioPropio: number | null;
+  edificio: { anio: number; avisoId: string | null } | null;
+}
+
+/**
+ * LA EDAD CONOCIDA DE UN USADO (05-nov-2026, decisión de Fabrizio): UNA regla para la evaluación de cada noche
+ * (avisos/edad-conocida.ts › conEdadConocida) y para el informe (analizar-servidor.ts › antiguedadDelAviso), así el mismo
+ * depto tiene la misma edad en la tarjeta y en su informe. Primero el año de su propia ficha; si no, el del edificio; si no,
+ * null (la noche supone 25 años y el informe dice por qué). Los años, contados como el informe (ficha-anio.ts › aniosDesde).
+ */
+export function edadConocida(f: FuentesEdad, ahora: Date = new Date()): { anios: number; edad: EdadEdificio } | null {
+  if (f.anioPropio != null) return { anios: aniosDesde(f.anioPropio, ahora), edad: { anio: f.anioPropio, fuente: "ficha" } };
+  if (f.edificio) return { anios: aniosDesde(f.edificio.anio, ahora), edad: { anio: f.edificio.anio, fuente: f.edificio.avisoId === f.avisoId ? "ficha" : "edificio" } };
+  return null;
+}
