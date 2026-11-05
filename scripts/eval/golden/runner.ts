@@ -211,6 +211,7 @@ import { runSuscripcionTier } from "./suscripcion-catch-test";
 import { runAvisoCobroTier } from "./aviso-cobro-catch-test";
 import { runTarjetaAnalizadaTier } from "./tarjeta-analizada-catch-test";
 import { runEdadNocheTier } from "./edad-noche-catch-test";
+import { runPromesasTextosTier } from "./promesas-textos-catch-test";
 
 const argv = process.argv.slice(2);
 const has = (f: string) => argv.includes(f);
@@ -865,6 +866,10 @@ function printSeed(r: SeedReport) {
   // conoce (su ficha o la de otro aviso del edificio), con la misma regla del informe; la fila evaluada con otra edad vuelve
   // a la cola. En vivo: avisos reales de edificios con año pasan por la noche y por el informe con la misma edad. ──
   totalHard += (await runEdadNocheTier()).hard;
+  // Tier PROMESAS-TEXTOS (05-nov-2026, 0 tokens): auditoría de promesas, parte 3 — cada texto dice lo que el código hace:
+  // el regalo (cupo 500, reintento, el motivo con «Ver planes»), el referido (el primer análisis, 5 y 60 días), los avisos
+  // («hoy» solo si fue hoy), las cifras, los datos, después de pagar, las fechas y CLAUDE.md. ──
+  totalHard += (await runPromesasTextosTier()).hard;
   // Tier CIERRE-INFORME (01-oct-2026, 0 tokens): el final del informe tiene UNA acción —el ticket, la banda de
   // bienvenida o «Te quedan N análisis.» con «Analizar otro depto»—. ──
   totalHard += runCierreInformeTier().hard;
