@@ -32,6 +32,8 @@ export interface BloquePagina {
   filas: Array<FilaPaginaSemanal<ItemSemanal>>;
   finanzas: { tasa: number | null; uf: number | null; arriendos: Record<string, number> };
   noDan: string[];
+  /** El enlace a la publicación de los que no dieron (05-nov-2026): la tarjeta lo muestra junto a «Analizar igual». */
+  publicaciones?: Record<string, string>;
   informes: Record<string, string>;
   /** El resumen de cada informe de la persona que muestra la página (05-nov-2026, informe-propio.ts): la tarjeta de un ya
    *  analizado dice su informe, no la noche. Por id de informe. */
@@ -142,7 +144,11 @@ export async function cargarSeleccionPagina(admin: SupabaseClient, user: { id: s
   // LA TARJETA DE UN ANALIZADO DICE SU INFORME (05-nov-2026): el resumen de cada informe de la persona que la página muestra,
   // de los mapas y de los ítems que ya lo traen (lo visto como «analizado»).
   const idsDeInformes = (fs: typeof filas, mapa: Record<string, string>) => [...Object.values(mapa), ...fs.flatMap((f) => [f.item.informeId, f.reemplazo?.informeId])];
-  const resumenes = await resumenesDeInformes(admin, userId, [...idsDeInformes(filas, informesLargos), ...idsDeInformes(filasCortas, informesCortos)]);
+  const [resumenes, publicaciones] = await Promise.all([
+    resumenesDeInformes(admin, userId, [...idsDeInformes(filas, informesLargos), ...idsDeInformes(filasCortas, informesCortos)]),
+    // «TE MOSTRAMOS LA PUBLICACIÓN IGUAL», también en la tarjeta (05-nov-2026): el enlace de los que no dieron.
+    publicacionesDeAvisos(admin, noDan),
+  ]);
   const ingresosCortos: Record<string, number> = {};
   for (const f of filasCortas) for (const it of [f.item, ...(f.reemplazo ? [f.reemplazo] : [])]) if (it.ingresoMensual != null && it.ingresoMensual > 0) ingresosCortos[it.avisoId] = it.ingresoMensual;
   return {
@@ -157,8 +163,18 @@ export async function cargarSeleccionPagina(admin: SupabaseClient, user: { id: s
     largo: sel.conLargo ? { origenId: sel.origen_analysis_id, combinacion: sel.combinacion, filas: primero(filas), finanzas, noDan: [], informes: informesLargos, resumenes } : null,
     corto: sel.corto ? {
       origenId: sel.corto.origenId, combinacion: sel.corto.combinacion, filas: primero(filasCortas),
-      finanzas: { tasa: finanzasCorto?.tasa ?? null, uf: cfg.uf, arriendos: ingresosCortos }, noDan, informes: informesCortos, resumenes,
+      finanzas: { tasa: finanzasCorto?.tasa ?? null, uf: cfg.uf, arriendos: ingresosCortos }, noDan, publicaciones, informes: informesCortos, resumenes,
     } : null,
     cortoPrimero: sel.conLargo && sel.corto != null && bloqueDelDestacado(a, filas, filasCortas) === "corto",
   };
+}
+
+/** El enlace a la publicación de cada aviso (scraped_properties.url), para los que no dieron en renta corta. */
+export async function publicacionesDeAvisos(admin: SupabaseClient, ids: string[]): Promise<Record<string, string>> {
+  if (ids.length === 0) return {};
+  // Un lote acotado (CLAUDE.md › PostgREST corta en 1.000): los que no dieron de una selección son a lo más unos pocos.
+  const { data } = await admin.from("scraped_properties").select("id, url").in("id", ids.slice(0, 100)).order("id").limit(100);
+  const out: Record<string, string> = {};
+  for (const r of (data ?? []) as Array<{ id: string; url: string | null }>) if (r.url) out[r.id] = r.url;
+  return out;
 }

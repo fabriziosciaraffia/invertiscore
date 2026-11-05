@@ -97,7 +97,8 @@ export function correoTarjetaRegistrada(p: { nombre: string | null; plan: string
 
 // ── Carrito abandonado (single o plan; el pack no: vence y no vuelve) ────────
 // mismo copy; el botón sin flecha.
-export function correoCheckoutAbandonado(p: { nombre: string | null; producto: string; tipo: "single" | "plan"; sitio?: string }): Correo {
+// LA COMPRA A MEDIAS (05-nov-2026, compra.ts › rutaRetomarCompra): el botón lleva a esa compra, no a /pricing.
+export function correoCheckoutAbandonado(p: { nombre: string | null; producto: string; tipo: "single" | "plan"; sitio?: string; retomar?: string }): Correo {
   const sitio = p.sitio ?? SITIO;
   const producto = `<b>${escaparHtml(p.producto)}</b>`;
   const intro =
@@ -111,7 +112,7 @@ export function correoCheckoutAbandonado(p: { nombre: string | null; producto: s
       preencabezado: "Tu compra quedó a medio camino. Sin apuro: sigue ahí cuando quieras.",
       titular: "¿Quedó algo pendiente?",
       parrafos: [intro, "Si tuviste algún problema con el pago o quieres preguntarnos algo antes de decidir, responde este correo. Franco es directo: no hay letra chica."],
-      boton: { texto: "Retomar mi compra", url: `${sitio}/pricing` },
+      boton: { texto: "Retomar mi compra", url: `${sitio}${p.retomar ?? "/pricing"}` },
     }),
   };
 }
@@ -296,8 +297,8 @@ export function correoAvisoPedido(p: { nombre: string | null; comuna: string; ur
 // textos, de bienvenida-copy.ts), sin «Cómo funciona». Sin «tu primer análisis es gratis»: este
 // correo sale cuando la persona crea su primer análisis con sesión, y ese análisis ya usó el crédito.
 // EL REGALO (16-oct-2026, regalo-alta.ts): si la cuenta nació con su análisis de regalo, el correo lo dice con su fecha.
-// ── Tu invitado entró (16-oct-2026, la puerta C) ──────────────────────────────
-// A quien invitó, cuando su invitado contesta el «cuándo»: el análisis más, cuándo vence, cuántos lleva de cinco y, si le
+// ── Tu invitado hizo su primer análisis (16-oct-2026, la puerta C; el disparador desde el 05-nov-2026) ──────────────────────────────
+// A quien invitó, cuando su invitado hace su primer análisis: el análisis más, cuándo vence, cuántos lleva de cinco y, si le
 // quedan, su enlace para invitar a otro.
 export function correoPremioReferido(p: { nombre: string | null; vence: string; pagados: number; codigo: string | null; sitio?: string }): Correo {
   const sitio = p.sitio ?? SITIO;
@@ -338,7 +339,8 @@ export function correoPlanAumento(p: { nombre: string | null; precio: string; si
   };
 }
 
-export function correoBienvenida(p: { nombre: string | null; sitio?: string; regaloVence?: string | null }): Correo {
+/** `comparables` (05-nov-2026): la cifra en vivo (comparables-vivos.ts); sin ella, el respaldo de stats.ts. */
+export function correoBienvenida(p: { nombre: string | null; sitio?: string; regaloVence?: string | null; comparables?: string }): Correo {
   const sitio = p.sitio ?? SITIO;
   const [analiza, oportunidades] = BIENVENIDA.hace;
   return {
@@ -348,8 +350,8 @@ export function correoBienvenida(p: { nombre: string | null; sitio?: string; reg
       preencabezado: BIENVENIDA.titular,
       titular: "Ya estás en Franco",
       parrafos: [
-        `<b>${escaparHtml(analiza.titulo)}</b> ${escaparHtml(analiza.texto)} ${TRIADA}.`,
-        `<b>${escaparHtml(oportunidades.titulo)}</b> ${escaparHtml(oportunidades.texto)}`,
+        `<b>${escaparHtml(analiza.titulo)}</b> ${escaparHtml(analiza.texto(p.comparables))} ${TRIADA}.`,
+        `<b>${escaparHtml(oportunidades.titulo)}</b> ${escaparHtml(oportunidades.texto())}`,
         ...(p.regaloVence ? [`<b>${escaparHtml(REGALO_COPY.cargado)}</b> ${escaparHtml(textoVence(p.regaloVence))}`] : []),
         // Cómo se vuelve a entrar (13-oct-2026): la cuenta no tiene contraseña.
         escaparHtml(COMO_ENTRAR),

@@ -18,7 +18,9 @@ import { hayGuia } from "@/lib/guia/activa";
 import { hrefEntrar } from "@/lib/entrar/entrada";
 import "./lo-que-sigue.css";
 
-export function DespuesDePagar({ analysisId, veredicto, modalidad, conSesion, saldo = null }: { analysisId: string; veredicto: VeredictoLqs; modalidad: "ltr" | "str"; conSesion: boolean; saldo?: number | null }) {
+/** `sinParecidos` (05-nov-2026, auditoría de promesas parte 3): la guía no llegó a mostrar deptos (no estaba disponible o falló);
+ *  entonces «Abajo, deptos parecidos» no se dice —no hay nada abajo—. */
+export function DespuesDePagar({ analysisId, veredicto, modalidad, conSesion, saldo = null, sinParecidos = false }: { analysisId: string; veredicto: VeredictoLqs; modalidad: "ltr" | "str"; conSesion: boolean; saldo?: number | null; sinParecidos?: boolean }) {
   const posthog = usePostHog();
   const destino = rutaPrecarga(analysisId);
   // Sin sesión, la entrada por código con el copy del pack («Entra con el correo con que pagaste»).
@@ -35,7 +37,7 @@ export function DespuesDePagar({ analysisId, veredicto, modalidad, conSesion, sa
       <div className="lqs-col">
         <h1 className="lqs-h3">{DESPUES_DE_PAGAR.titular(saldo)}</h1>
         <p className="lqs-cuerpo">{DESPUES_DE_PAGAR.cuerpo}</p>
-        <p className="lqs-lead">{veredicto === "BUSCAR OTRA" && !hayGuia(modalidad) ? DESPUES_DE_PAGAR.buscarSinGuia : DESPUES_DE_PAGAR.fraseVeredicto[veredicto]}</p>
+        <p className="lqs-lead">{veredicto === "BUSCAR OTRA" && (sinParecidos || !hayGuia(modalidad)) ? DESPUES_DE_PAGAR.buscarSinGuia : DESPUES_DE_PAGAR.fraseVeredicto[veredicto]}</p>
         <EnlaceCarga href={href} className="lqs-btn" data-lqs="precarga">
           {DESPUES_DE_PAGAR.boton}
         </EnlaceCarga>

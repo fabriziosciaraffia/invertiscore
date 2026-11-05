@@ -18,7 +18,7 @@
  * La URL compartida se arma con `window.location.origin + path`.
  *
  * INVITA A ALGUIEN (16-oct-2026, la puerta C): el botón solo lo ve el dueño del informe (HeaderFranco › modo «propio»,
- * con sesión), así que el menú lleva su enlace de invitación —«los dos reciben un análisis»—, que se pide al abrir el
+ * con sesión), así que el menú lleva su enlace de invitación —quien invita recibe uno cuando el invitado hace su primer análisis—, que se pide al abrir el
  * menú (/api/invitacion). Para que se vea también en el teléfono, el menú se abre siempre, como con el PDF; el menú
  * nativo del sistema queda como «Más opciones».
  * Desde el 17-oct-2026 (decisión de Fabrizio) va ARRIBA de las demás opciones y destacado con el color de «Invita a

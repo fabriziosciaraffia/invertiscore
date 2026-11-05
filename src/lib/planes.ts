@@ -15,6 +15,10 @@
 import { FLOW_PRODUCTS, type FlowProductKey } from "@/lib/flow-products";
 import { fmtCLP } from "@/lib/pricing";
 import { PRODUCTO_TRES, TRES_PRECIO_CLP } from "@/lib/tres-analisis";
+import { DIAS_VIGENCIA_PREMIO_REFERIDO, TOPE_PREMIOS_REFERIDO } from "@/lib/referido";
+
+/** El referido en la lista de Gratis (05-nov-2026, la regla de referido.ts › REGLA_REFERIDO, corta). */
+const PLAN_REFERIDO = `Un análisis más cuando un invitado hace su primer análisis (hasta ${TOPE_PREMIOS_REFERIDO}, vigente ${DIAS_VIGENCIA_PREMIO_REFERIDO} días)`;
 
 /** El producto de Flow del Plan Franco. */
 export const PRODUCTO_PLAN: FlowProductKey = "plan10_mensual";
@@ -50,7 +54,7 @@ export const PLANES_COPY = {
   gratis: {
     nombre: "Gratis",
     precio: "$0",
-    incluye: ["Cada semana, los deptos que convienen según tu perfil", "Un análisis gratis al crear tu cuenta", "Un análisis más por cada amigo que invites"],
+    incluye: ["Cada semana, los deptos que convienen según tu perfil", "Un análisis gratis al crear tu cuenta", PLAN_REFERIDO],
     // «Empezar gratis» (19-oct-2026, decisión de Fabrizio): a /deptos, que desde planes dice arriba qué hacer ahí.
     boton: "Empezar gratis",
     ruta: "/deptos?desde=planes",

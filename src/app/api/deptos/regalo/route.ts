@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { captureApiError } from "@/lib/observabilidad";
 import { regaloAltaVivo } from "@/lib/regalo-alta-servidor";
+import { motivoSinRegalo } from "@/lib/regalo-alta";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/deptos/regalo (25-oct-2026, el alta rápida de /deptos; lib/deptos/alta-orden.ts): el regalo de alta de la
@@ -26,7 +27,9 @@ export async function GET() {
     // Decidido: hay un lote vivo, o la decisión ya está escrita y no fue otorgar (topado). Un «otorgado» sin lote todavía
     // es que el lote se está cargando: se sigue preguntando.
     const decidido = !!vence || (!!decision && decision.motivo !== "otorgado");
-    return NextResponse.json({ vence, decidido }, { headers: { "Cache-Control": "no-store" } });
+    // POR QUÉ NO HAY REGALO (05-nov-2026, regalo-alta.ts › motivoSinRegalo): «Estás dentro» lo dice, con «Ver planes».
+    const motivo = vence ? null : motivoSinRegalo(null, decision?.motivo as string | null | undefined);
+    return NextResponse.json({ vence, decidido, motivo }, { headers: { "Cache-Control": "no-store" } });
   } catch (e) {
     captureApiError(e, { ruta: "GET /api/deptos/regalo", operacion: "regalo", userId: user.id });
     return NextResponse.json({ error: "interno" }, { status: 500 });

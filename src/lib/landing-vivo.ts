@@ -25,7 +25,7 @@
 //    la fecha de creación — lo mismo que `src/app/analisis/[id]/informe-ltr.tsx`, y
 //    el tier CAPREF-COMUNA lo exige en los dos. En memoria y sin escribir nada.
 //
-// La cifra de comparables NO vive acá: la landing la lee de `COMPARABLES_TEXTO`
+// La cifra de comparables NO vive acá: la landing la lee de comparables-vivos.ts (el conteo vivo, 05-nov-2026), no de `COMPARABLES_TEXTO`
 // (src/lib/stats.ts), la fuente única del sitio (tier CIFRA-COMPARABLES).
 // ─────────────────────────────────────────────────────────────────────────────
 

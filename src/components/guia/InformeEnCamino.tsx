@@ -72,8 +72,10 @@ export function useInformeEnCamino(paso: PasoInforme, { desde, reemplazar = fals
   return { ahora, anotar };
 }
 
-export function InformeEnCamino({ paso, alCerrar, alReintentar = null }: {
+export function InformeEnCamino({ paso, alCerrar, alReintentar = null, saldo = null }: {
   paso: PasoInforme;
+  /** Los análisis de la cuenta (05-nov-2026): si el informe no sale, quedan a la vista. null = no se sabe. */
+  saldo?: number | null;
   /** Cerrar: solo cuando se puede (cerrable); con el informe listo, quien lo monta deja el aviso de arriba. */
   alCerrar: () => void;
   /** Tras un fallo: volver a intentar con lo mismo. */
@@ -95,15 +97,17 @@ export function InformeEnCamino({ paso, alCerrar, alReintentar = null }: {
 
   if (typeof document === "undefined") return null;
   return createPortal(
-    <PopupInforme paso={paso} ahora={ahora} lugar={lugarDeDesde(desdeDeRuta(window.location.pathname))} alCerrar={alCerrar} alReintentar={alReintentar} alAbrir={() => anotar("boton")} refPrimario={(el) => { primario.current = el; }} />,
+    <PopupInforme paso={paso} ahora={ahora} saldo={saldo} lugar={lugarDeDesde(desdeDeRuta(window.location.pathname))} alCerrar={alCerrar} alReintentar={alReintentar} alAbrir={() => anotar("boton")} refPrimario={(el) => { primario.current = el; }} />,
     document.body,
   );
 }
 
 /** LO QUE SE VE (sin portal ni reloj propio: el tier INFORME-EN-CAMINO lo dibuja con la hora que quiere). */
-export function PopupInforme({ paso, ahora, lugar = "mapa", alCerrar, alReintentar = null, alAbrir, refPrimario }: {
+export function PopupInforme({ paso, ahora, saldo = null, lugar = "mapa", alCerrar, alReintentar = null, alAbrir, refPrimario }: {
   paso: PasoInforme;
   ahora: number;
+  /** Los análisis de la cuenta: si no salió, quedan a la vista (05-nov-2026). */
+  saldo?: number | null;
   /** Dónde se analizó: el que se dio de baja dice de dónde se saca (el mapa, la selección o la lista de la guía). */
   lugar?: LugarInforme;
   alCerrar: () => void;
@@ -115,7 +119,7 @@ export function PopupInforme({ paso, ahora, lugar = "mapa", alCerrar, alReintent
   const conAbrir = muestraAbrir(paso, ahora);
   const enCurso = paso.paso === "generando" || paso.paso === "listo";
   const fallo = paso.paso === "fallo";
-  const reintenta = fallo && paso.motivo === "error" && !!alReintentar;
+  const reintenta = fallo && (paso.motivo === "error" || paso.motivo === "medicion") && !!alReintentar;
   return (
     <div className="wz4 wz-modal-velo wz-modal-velo-compacto" style={{ height: "100dvh" }} role="dialog" aria-modal="true" aria-labelledby="informe-en-camino-titulo" data-informe={paso.paso} data-motivo={fallo ? paso.motivo : undefined}>
       <div className="wz-modal wz-modal-compacto ie">
@@ -146,6 +150,8 @@ export function PopupInforme({ paso, ahora, lugar = "mapa", alCerrar, alReintent
             <>
               <h2 id="informe-en-camino-titulo" className="ie-titulo" role="alert" data-informe="fallo-titulo">{textoFallo(paso.motivo, lugar).titulo}</h2>
               <p className="ie-texto" data-informe="fallo-que">{textoFallo(paso.motivo, lugar).que}</p>
+              {/* Los análisis que quedan, a la vista (05-nov-2026): este no se usó. */}
+              {saldo != null && <p className="ie-texto" data-informe="quedan-sin-usar">{RETORNO.quedanSinUsar(saldo)}</p>}
             </>
           )}
         </div>
@@ -202,7 +208,7 @@ export function VueltaInforme({ paso, ahora, saldo = null, alReintentar = null, 
   const conAbrir = muestraAbrir(paso, ahora);
   // La vuelta del pago es de un depto de la selección.
   const fallo = paso.paso === "fallo" ? textoFallo(paso.motivo, "seleccion") : null;
-  const reintenta = paso.paso === "fallo" && paso.motivo === "error" && !!alReintentar;
+  const reintenta = paso.paso === "fallo" && (paso.motivo === "error" || paso.motivo === "medicion") && !!alReintentar;
   const pct = Math.round(avance(paso, ahora) * 100);
   return (
     <div data-informe={paso.paso} data-motivo={paso.paso === "fallo" ? paso.motivo : undefined}>
@@ -226,6 +232,8 @@ export function VueltaInforme({ paso, ahora, saldo = null, alReintentar = null, 
         <>
           <p className="mt-2 text-[15px] font-semibold leading-[1.45] text-[var(--franco-text)]" role="alert" data-informe="fallo-titulo">{fallo.titulo}</p>
           <p className={PLANO.bajada} data-informe="fallo-que">{fallo.que}</p>
+          {/* Los análisis que quedan, a la vista (05-nov-2026): este no se usó. */}
+          {saldo != null && <p className="mt-2 text-[13px] text-[var(--franco-text-secondary)]" data-retorno="quedan-sin-usar">{RETORNO.quedanSinUsar(saldo)}</p>}
         </>
       )}
       {conAbrir && (paso.paso === "listo" || paso.paso === "distinto") && (

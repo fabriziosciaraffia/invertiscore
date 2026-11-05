@@ -653,14 +653,26 @@ export function rutaSueltoSemanal(variante: Variante | null | undefined): string
   return variante === "banda" || variante === "tarjetas" ? `${RUTA_SUELTO_SEMANAL}&variante=${variante}` : RUTA_SUELTO_SEMANAL;
 }
 
-/** «Vence el 1 de diciembre.»: la fecha del regalo, en hora de Chile (02-oct-2026, decisión de Fabrizio). */
-export function textoVence(iso: string): string {
-  const fecha = new Date(iso).toLocaleDateString("es-CL", { day: "numeric", month: "long", timeZone: "America/Santiago" });
-  return `Vence el ${fecha}.`;
+/**
+ * «el 1 de diciembre», o «hoy a las 21:04» si vence hoy (05-nov-2026, auditoría de promesas parte 3): el regalo vence al
+ * segundo, así que el mismo día decir solo la fecha dejaba creer que quedaba el día entero. En hora de Chile.
+ */
+export function fechaVence(iso: string, ahora: Date = new Date()): string {
+  const d = new Date(iso);
+  const dia = (x: Date) => x.toLocaleDateString("en-CA", { timeZone: "America/Santiago" });
+  if (dia(d) === dia(ahora)) return `hoy a las ${d.toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "America/Santiago" })}`;
+  return `el ${d.toLocaleDateString("es-CL", { day: "numeric", month: "long", timeZone: "America/Santiago" })}`;
+}
+
+/** «Vence el 1 de diciembre.» o «Vence hoy a las 21:04.»: la fecha del regalo, en hora de Chile (02-oct-2026). */
+export function textoVence(iso: string, ahora: Date = new Date()): string {
+  return `Vence ${fechaVence(iso, ahora)}.`;
 }
 
 /** La página adonde lleva el correo (/semanal). */
 export const SEMANAL_PAGINA = {
+  /** Volvió de pagar por un depto que salió de la selección (05-nov-2026): no se usó ningún análisis. */
+  yaNoEsta: "El depto que elegiste ya no está en tu selección. No se usó ningún análisis.",
   titulo: "Deptos publicados que Franco revisó para ti",
   bajada: (pie: string, plazo: number) => `Revisados con tu pie de ${pie}% y tu plazo de ${plazo} años. Analiza el que quieras.`,
   regalo: "El próximo que analices va por cuenta de Franco.",

@@ -43,7 +43,9 @@ export type LugarInforme = "mapa" | "seleccion" | "lista";
 export const lugarDeDesde = (d: DesdeInforme): LugarInforme => (d === "explorar" ? "mapa" : d === "guia" ? "lista" : "seleccion");
 /** Por qué no salió: un error, el aviso se dio de baja recién, la selección se rearmó sin él, o la guía es de la cuenta que pagó
  *  y se entró con otra (ninguno cobra). */
-export type MotivoFallo = "error" | "despublicado" | "fuera" | "otra-cuenta";
+/** «sin-direccion» y «medicion» (05-nov-2026, auditoría de promesas parte 3): la renta corta que no se pudo medir lo dice con
+ *  su porqué —el aviso no trae dirección, o la medición no respondió—; antes caía en el «No pudimos generar» genérico. */
+export type MotivoFallo = "error" | "despublicado" | "fuera" | "otra-cuenta" | "sin-direccion" | "medicion";
 
 export const INFORME_COPY = {
   /** La cabecera del pop-up (el depto va en el título, una sola vez). */
@@ -63,6 +65,10 @@ export const INFORME_COPY = {
   despublicadoQue: (lugar: LugarInforme) =>
     `Franco lo revisó ${lugar === "lista" ? "al armar tu guía" : "anoche"} y hoy el vendedor lo sacó: los que convienen se van rápido. No se usó ningún análisis. Lo quitamos ${lugar === "mapa" ? "del mapa" : lugar === "lista" ? "de la lista" : "de tu selección"}; elige otro.`,
   fueraTitulo: "Este depto salió de tu selección. No se usó ningún análisis.",
+  sinDireccionTitulo: "Este depto no trae su dirección en el aviso. No se usó ningún análisis.",
+  sinDireccionQue: "Sin la dirección no se puede medir para renta corta. Elige otro.",
+  medicionTitulo: "La medición de renta corta no respondió. No se usó ningún análisis.",
+  medicionQue: "Prueba de nuevo en unos minutos.",
   fueraQue: "La armamos de nuevo con lo de hoy. Elige otro.",
   otraCuentaQue: "Esa cuenta no es la del pago. Entra con el correo con que pagaste.",
   /** «Con los datos de hoy dio Ajustar 68, no Comprar 82. Igual puedes verlo completo.» */
@@ -165,5 +171,7 @@ export function textoFallo(motivo: MotivoFallo, lugar: LugarInforme = "mapa"): {
   if (motivo === "despublicado") return { titulo: INFORME_COPY.despublicadoTitulo, que: INFORME_COPY.despublicadoQue(lugar) };
   if (motivo === "fuera") return { titulo: INFORME_COPY.fueraTitulo, que: INFORME_COPY.fueraQue };
   if (motivo === "otra-cuenta") return { titulo: INFORME_COPY.falloTitulo, que: INFORME_COPY.otraCuentaQue };
+  if (motivo === "sin-direccion") return { titulo: INFORME_COPY.sinDireccionTitulo, que: INFORME_COPY.sinDireccionQue };
+  if (motivo === "medicion") return { titulo: INFORME_COPY.medicionTitulo, que: INFORME_COPY.medicionQue };
   return { titulo: INFORME_COPY.falloTitulo, que: INFORME_COPY.falloQue };
 }

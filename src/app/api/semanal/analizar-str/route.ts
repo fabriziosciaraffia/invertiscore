@@ -4,6 +4,7 @@ import { waitUntil } from "@vercel/functions";
 import { getUFValue } from "@/lib/uf";
 import { readVeredicto } from "@/lib/results-helpers";
 import { sendAnalysisReadyEmail } from "@/lib/email";
+import { referidoTrasAnalisis } from "@/lib/referido-servidor";
 import { nombreReal } from "@/lib/welcome";
 import { captureApiError } from "@/lib/observabilidad";
 import { desdeBodyStr } from "@/lib/plausibilidad";
@@ -218,6 +219,8 @@ export async function POST(request: Request) {
                 if (error || !data) throw new Error(`insert: ${error?.message ?? "sin fila"}`);
                 const id = data.id as string;
                 waitUntil(capturarAnalisisCreado({ userId: user.id, analysisId: id, modalidad: "str", via: desde }));
+                // EL PREMIO DEL REFERIDO (05-nov-2026): el primer análisis del invitado le da uno a quien invitó.
+                waitUntil(referidoTrasAnalisis(user.id));
                 if (desdeExplorar) waitUntil(capturarServidor(eventoExplorarAnaliza({ userId: user.id, analysisId: id, avisoId, comuna: aviso.comuna, precioUF: aviso.precioUF, m2: aviso.m2, piePct: combo.piePct, plazoAnios: combo.plazoAnios })).then(() => undefined).catch(() => undefined));
                 await markPremiumAndClaimPrepaid({ dbClient: admin, analysisId: id, prepaidNeedClaim: false });
                 try {

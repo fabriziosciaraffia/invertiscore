@@ -5,7 +5,7 @@
 // como estaban.
 //
 // TOPES, contra las cuentas repetidas (los de Fabrizio: por dispositivo y por día): uno por DISPOSITIVO cada 30 días (la
-// cookie `franco_disp`, src/lib/dispositivo.ts) y CIEN en el día en total. La IP queda anotada en hash, pero NO topa: en
+// cookie `franco_disp`, src/lib/dispositivo.ts) y QUINIENTOS en el día en total (cien hasta el 05-nov-2026). La IP queda anotada en hash, pero NO topa: en
 // Chile los celulares salen a internet por IPs compartidas (CGNAT), y un tope por IP les quitaría el regalo a personas
 // distintas en plena campaña. Una cuenta que topa no recibe regalo y tampoco la bienvenida: lo que queda es pagar.
 //
@@ -34,7 +34,8 @@ export const DIAS_VIGENCIA_REGALO_ALTA = 30;
 export const REGALO_ALTA_DESDE = "2026-10-16T00:00:00Z";
 export const TOPE_REGALOS_DISPOSITIVO = 1;
 export const DIAS_TOPE_DISPOSITIVO = 30;
-export const TOPE_REGALOS_DIA = 100;
+/** Cien hasta el 05-nov-2026; quinientos para la campaña (decisión de Fabrizio, auditoría de promesas parte 3). */
+export const TOPE_REGALOS_DIA = 500;
 
 /** ¿Es una cuenta del regalo (creada desde el corte)? Entonces no tiene bienvenida. */
 export function esCuentaDelRegalo(creadaAt: string | Date | null | undefined): boolean {
@@ -92,6 +93,36 @@ export function dispositivoTopa(porDispositivo: number | null): boolean {
 /** El día en Chile (YYYY-MM-DD), el mismo con que la tabla cuenta el tope del día. */
 export function diaChile(ahora: Date = new Date()): string {
   return ahora.toLocaleDateString("en-CA", { timeZone: "America/Santiago" });
+}
+
+/**
+ * POR QUÉ NO HAY REGALO (05-nov-2026, auditoría de promesas parte 3): quien no lo recibe ve el motivo —en «Estás dentro»
+ * y bajo «Sin análisis» del dashboard—, con «Ver planes». Antes la tarjeta simplemente no aparecía. «existente»: el correo
+ * ya tenía cuenta (el alta de /deptos, /i/ o Explorar lo sabe; el regalo es de las cuentas nuevas). Un lote en fallo no
+ * es un motivo: se reintenta solo (regalo-alta-servidor.ts › reintentarLote).
+ */
+export type MotivoSinRegalo = "tope_dispositivo" | "tope_dia" | "existente";
+
+export const SIN_REGALO_COPY: Record<MotivoSinRegalo, { titulo: string; bajada: string }> = {
+  tope_dispositivo: {
+    titulo: "Tu regalo ya se usó en este dispositivo.",
+    bajada: `El análisis de regalo es uno por dispositivo cada ${DIAS_TOPE_DISPOSITIVO} días.`,
+  },
+  tope_dia: {
+    titulo: "Hoy se acabaron los regalos del día.",
+    bajada: `Repartimos hasta ${TOPE_REGALOS_DIA} análisis de regalo al día.`,
+  },
+  existente: {
+    titulo: "Este correo ya tenía cuenta.",
+    bajada: "El análisis de regalo es para las cuentas nuevas.",
+  },
+};
+export const VER_PLANES = { texto: "Ver planes", href: "/pricing" } as const;
+
+/** El motivo que se le dice a la persona, desde lo que decidió el regalo (o lo que ya estaba escrito); null si no hay. */
+export function motivoSinRegalo(estado: string | null | undefined, motivoGuardado?: string | null): MotivoSinRegalo | null {
+  for (const m of [estado, motivoGuardado]) if (m === "tope_dispositivo" || m === "tope_dia" || m === "existente") return m;
+  return null;
 }
 
 /** El aviso antes de gastar y el saldo (16-oct-2026): con un regalo, se dice que se usa el regalo. */

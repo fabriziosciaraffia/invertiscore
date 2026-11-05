@@ -10,9 +10,11 @@
 //       cuenta, una invitación. La cuenta que ya existía queda anotada como `cuenta_previa` y no cuenta. La nueva queda
 //       con la puerta C (`fijarPuertaReferido`): `invitacion:CÓDIGO` por el enlace de siempre, `depto:CÓDIGO` si la
 //       invitación vino en el enlace de un depto compartido desde Explorar (02-nov-2026).
-//   3 · EL PREMIO (`pagarPremioReferido`): cuando el invitado, con sesión, contesta el «cuándo». Mismo dispositivo, tope de
-//       cinco, o el análisis más (60 días) y el correo a quien invitó. El lugar entre los cinco lo guarda el índice único
-//       (invitador, premio_n): dos premios a la vez no pasan de cinco.
+//   3 · EL PREMIO (`pagarPremioReferido`): cuando el invitado hace su primer análisis (`referidoAlPrimerAnalisis`, desde el
+//       05-nov-2026: lo llaman las rutas que crean un análisis —renta larga, renta corta, «Analizar este», la renta corta de
+//       la selección, el reclamo del informe del invitado— y el dashboard como red). Hasta entonces esperaba a que contestara
+//       el «cuándo». Mismo dispositivo, tope de cinco, o el análisis más (60 días) y el correo a quien invitó. El lugar entre
+//       los cinco lo guarda el índice único (invitador, premio_n): dos premios a la vez no pasan de cinco.
 // Nunca lanzan: un referido perdido no puede romper un registro.
 // ─────────────────────────────────────────────────────────────────────────────
 import { randomInt } from "node:crypto";
@@ -20,6 +22,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { reportarFalloQuery } from "@/lib/observabilidad";
 import { capturarServidor, uuidDeterminista } from "@/lib/posthog-servidor";
 import { fijarPuertaReferido } from "@/lib/attribution";
+import { createServiceClient } from "@/lib/supabase/service";
 import { sendPremioReferidoEmail } from "@/lib/email";
 import { nombreReal } from "@/lib/welcome";
 import type { Huella } from "@/lib/regalo-alta-servidor";
@@ -183,7 +186,7 @@ export async function vincularInvitacion(
 }
 
 export interface ResultadoPremio {
-  estado: DecisionPremio | "ya" | "sin_referido" | "fallo";
+  estado: DecisionPremio | "ya" | "sin_referido" | "sin_analisis" | "fallo";
   /** Cuándo vence el análisis que recibió quien invitó, si se pagó. */
   vence?: string;
   pagados?: number;
@@ -208,8 +211,9 @@ async function avisarInvitador(admin: SupabaseClient, invitadorId: string, vence
 }
 
 /**
- * EL PREMIO, cuando el invitado contesta el «cuándo». Solo para una invitación `pendiente`: la decide una vez. El invitado
- * no recibe nada acá: su regalo es el de cuenta nueva (regalo-alta-servidor.ts), el mismo de todos.
+ * EL PREMIO, cuando el invitado hace su primer análisis (lo llama `referidoAlPrimerAnalisis`). Solo para una invitación
+ * `pendiente`: la decide una vez. El invitado no recibe nada acá: su regalo es el de cuenta nueva (regalo-alta-servidor.ts),
+ * el mismo de todos.
  */
 export async function pagarPremioReferido(
   admin: SupabaseClient,
@@ -232,7 +236,7 @@ export async function pagarPremioReferido(
       admin.from("regalos_alta").select("dispositivo_hash").eq("user_id", invitador).maybeSingle(),
       contarPagados(),
     ]);
-    // Un conteo sin número es «no sé», no cero: no se paga a ciegas (se reintenta en el próximo «cuándo»).
+    // Un conteo sin número es «no sé», no cero: no se paga a ciegas (se reintenta en el próximo análisis o en el dashboard).
     if (e1 || e2 || pagados0 == null) {
       reportarFalloQuery(e1 ?? e2, { ruta: RUTA, operacion: "leer-invitador", userId: invitador });
       return { estado: "fallo" };
@@ -279,7 +283,7 @@ export async function pagarPremioReferido(
     }).select("id").single();
     if (eG || !g) {
       reportarFalloQuery(eG, { ruta: RUTA, operacion: "cargar-premio", userId: invitador });
-      // Sin el análisis no hay premio: el lugar se suelta y la invitación vuelve a esperar el próximo «cuándo».
+      // Sin el análisis no hay premio: el lugar se suelta y la invitación vuelve a esperar (el próximo análisis o el dashboard).
       await admin.from("referidos").update({ estado: "pendiente", premio_n: null, decidido_at: null }).eq("invitado_id", p.invitadoId);
       return { estado: "fallo" };
     }
@@ -298,13 +302,37 @@ export async function pagarPremioReferido(
 }
 
 /**
- * Lo que corre al contestar el «cuándo» con sesión: si la cuenta todavía no cobró el código (llegó a contestar sin pasar
- * por un registro que lo cobrara), lo cobra; después, el premio.
+ * EL PRIMER ANÁLISIS DEL INVITADO (05-nov-2026, auditoría de promesas parte 3). Lo llaman las rutas que crean un análisis y
+ * el dashboard como red: si la cuenta todavía no cobró el código (llegó sin pasar por un registro que lo cobrara), lo
+ * cobra; si tiene una invitación pendiente y ya tiene un análisis (uno usable: no el bloqueado esperando el pago), paga el
+ * premio. Sin invitación pendiente no consulta nada más. Nunca lanza.
  */
-export async function referidoAlContestarCuando(
+export async function referidoAlPrimerAnalisis(
   admin: SupabaseClient,
-  p: { userId: string; creadaAt: string | null | undefined; cookie: string | null | undefined; huella: Huella },
+  p: { userId: string; creadaAt?: string | null; cookie?: string | null; huella?: Huella },
+  ahora: Date = new Date(),
 ): Promise<ResultadoPremio> {
-  if (p.cookie) await vincularInvitacion(admin, p);
-  return pagarPremioReferido(admin, { invitadoId: p.userId });
+  try {
+    if (p.cookie && p.huella) await vincularInvitacion(admin, { userId: p.userId, creadaAt: p.creadaAt, cookie: p.cookie, huella: p.huella });
+    const { data: r, error: e0 } = await admin.from("referidos").select("estado").eq("invitado_id", p.userId).maybeSingle();
+    reportarFalloQuery(e0, { ruta: RUTA, operacion: "leer-referido-primer-analisis", userId: p.userId });
+    if (e0) return { estado: "fallo" };
+    if (!r) return { estado: "sin_referido" };
+    if (r.estado !== "pendiente") return { estado: "ya" };
+    // `pending_payment` NULL cuenta como usable: un `.neq` pelado lo descartaría (CLAUDE.md › NULL en filtros de exclusión).
+    const { count, error: e1 } = await admin.from("analisis").select("id", { count: "exact", head: true })
+      .eq("user_id", p.userId).or("pending_payment.is.null,pending_payment.eq.false");
+    reportarFalloQuery(e1, { ruta: RUTA, operacion: "contar-analisis-invitado", userId: p.userId });
+    if (e1 || count == null) return { estado: "fallo" };
+    if (count === 0) return { estado: "sin_analisis" };
+    return await pagarPremioReferido(admin, { invitadoId: p.userId }, ahora);
+  } catch (e) {
+    reportarFalloQuery(e, { ruta: RUTA, operacion: "primer-analisis", userId: p.userId });
+    return { estado: "fallo" };
+  }
+}
+
+/** Lo que llaman las rutas que crean un análisis, después de responder (waitUntil): el premio del referido, si toca. */
+export function referidoTrasAnalisis(userId: string): Promise<void> {
+  return referidoAlPrimerAnalisis(createServiceClient(), { userId }).then(() => undefined).catch(() => undefined);
 }

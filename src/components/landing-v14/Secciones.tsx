@@ -15,7 +15,6 @@ import type { ReactNode } from "react";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import type { DatosLanding } from "@/lib/landing-vivo";
 import { SINGLE_PRICE, fmtCLP } from "@/lib/pricing";
-import { COMPARABLES_CIFRA, COMPARABLES_PISO } from "@/lib/stats";
 import { CampoLanding } from "./Entrada";
 import { HeroMapa, type DatosHeroMapa } from "./HeroMapa";
 import { Respuesta } from "./Respuesta";
@@ -69,7 +68,8 @@ export function LoQueHaria() {
 }
 
 // ===== 4 · POR QUÉ CREERLE =====
-export function PorQueCreerle() {
+/** `comparables` (05-nov-2026, comparables-vivos.ts): el conteo vivo de la base, no la constante medida a mano. */
+export function PorQueCreerle({ comparables }: { comparables: { cifra: string; piso: number } }) {
   return (
     <SeccionVista n={4} className="lv-s3">
       {/* resplandor muy tenue del azul del token en la esquina superior derecha, en
@@ -86,7 +86,7 @@ export function PorQueCreerle() {
             <div className="lv-idx">Por qué creerle</div>
             {/* «+40.000 deptos», todo en el mismo tamaño y la misma fuente (QA 28-sep-2026) */}
             <div className="lv-big">
-              <ContadorComparables final={COMPARABLES_CIFRA} piso={COMPARABLES_PISO} /> deptos
+              <ContadorComparables final={comparables.cifra} piso={comparables.piso} /> deptos
             </div>
             <p className="lv-sabe">Franco evalúa tu depto<br />contra toda la oferta comparable en <mark>Santiago</mark>.</p>
           </div>

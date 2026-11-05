@@ -36,6 +36,7 @@ import { comboVigente, VIDA_COMBO_MS, type ComboGuardado } from "./explorar";
 import { filasParaSonda, guardarCombos, informesDeExplorar, type FilaUniverso } from "./servidor";
 import { RecalculoEnEspera, type Turno, type TurnosRecalculo } from "./turnos-recalculo";
 import type { ResumenInforme } from "@/lib/informe-propio";
+import { motivoSinRegalo, type MotivoSinRegalo } from "@/lib/regalo-alta";
 import { resumenesDeInformes } from "@/lib/informe-propio-servidor";
 import {
   claveUniverso, compactar, EVENTOS_PORTAL, filtrosDeMiBusqueda, lineaBusqueda, perfilDeFiltros, pinDeFila, propsDeFiltros, VENTANA_PLAN_DIAS,
@@ -267,6 +268,8 @@ export interface CuentaPortal {
   busquedaActual: string | null;
   /** Cuántos analizó desde Explorar en 30 días. */
   explorarEnMes: number;
+  /** Por qué no tiene regalo (05-nov-2026, regalo-alta.ts › motivoSinRegalo), solo sin análisis: la banda de la vuelta lo dice. */
+  sinRegalo?: MotivoSinRegalo | null;
 }
 
 export async function cuentaPortal(admin: SupabaseClient, user: { id: string; created_at?: string | null }, ahora: Date = new Date()): Promise<CuentaPortal> {
@@ -282,8 +285,10 @@ export async function cuentaPortal(admin: SupabaseClient, user: { id: string; cr
   const perfil = pp.perfil.modalidad === "str" ? pp.perfilStr ?? pp.perfil : pp.perfilLtr ?? pp.perfil;
   const tiene = perfil.comunas.length > 0 || perfil.dormitorios.length > 0 || perfil.precioMaxUf != null;
   const resumenes = await resumenesDeInformes(admin, user.id, Object.values(analizados));
+  const saldo = estadoSaldo(datosSaldo);
+  const sinRegalo = saldo.tipo === "sin" ? motivoSinRegalo(null, (await admin.from("regalos_alta").select("motivo").eq("user_id", user.id).maybeSingle()).data?.motivo as string | null | undefined) : null;
   return {
-    analizados, resumenes, guardados, saldo: estadoSaldo(datosSaldo), suscrito: datosSaldo.suscripcion, ticket, cuentaCreadaAt: ticket ? (user.created_at ?? null) : null,
+    analizados, resumenes, guardados, saldo, sinRegalo, suscrito: datosSaldo.suscripcion, ticket, cuentaCreadaAt: ticket ? (user.created_at ?? null) : null,
     finanzas: { uf: cfg.uf, tasa: cfg.tasa },
     miBusqueda: filtrosDeMiBusqueda(perfil),
     busquedaActual: tiene ? lineaBusqueda({ ...perfil, modalidad: perfil.modalidad }) : null,

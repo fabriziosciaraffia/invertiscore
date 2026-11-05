@@ -16,6 +16,7 @@ import { prefetchMedianaComunaVenta, prefetchMercadoStr } from "@/lib/api-helper
 import { SharedComparativaClient } from "./shared-client";
 import { modoGestionAmbas } from "@/lib/modo-gestion";
 import { algunoBloqueado } from "@/lib/informe-bloqueado";
+import { puntajeDe } from "@/lib/analysis/resultados-del-informe";
 
 export const metadata: Metadata = {
   title: "Franco — Análisis comparativo Renta Larga vs Renta Corta",
@@ -153,7 +154,7 @@ export default async function ShareComparativaPage({
       piePct={(ltr.input_data as unknown as Record<string, unknown> | null)?.piePct as number | undefined}
       plazoAnios={(ltr.input_data as unknown as Record<string, unknown> | null)?.plazoCredito as number | undefined}
       tasaPct={(ltr.input_data as unknown as Record<string, unknown> | null)?.tasaInteres as number | undefined}
-      ltrScore={ltr.score ?? 0}
+      ltrScore={puntajeDe(ltrResults as FullAnalysisResult) ?? ltr.score ?? 0}
       strScore={strResults?.francoScore?.score ?? 0}
       ltrResults={ltrResults}
       strResults={strResults}

@@ -18,6 +18,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import type { EstadoPublicacion } from "./publicacion";
 import { analizarUnaVez, type PiezasAnalizar, type ResultadoAnalizar } from "./analizar-una-vez";
+import { TIEMPO_ANALISIS } from "@/lib/stats";
 
 /** La marca de un depto del bloque de renta corta: se estimó con la tarifa y la ocupación típicas de su zona. */
 export const MARCA_ZONA = "Estimado por zona";
@@ -85,7 +86,7 @@ export function porQueNoDa(zona: LadoMedicion | null, fino: LadoMedicion): strin
 export const MARCA_NO_DA = "No da con los datos de su dirección";
 
 /** Mientras mide (14-oct-2026): el botón pasa a un indicador giratorio con este texto. */
-export const MIDIENDO = "Midiendo con los datos de su dirección, unos 30 segundos";
+export const MIDIENDO = `Midiendo con los datos de su dirección: toma ${TIEMPO_ANALISIS}`;
 /** Pasado este tiempo, la medición se da por caída: error con «Reintentar» (la ruta corta a los 60 s). */
 export const MIDIENDO_TOPE_MS = 60_000;
 /** El error con reintentar. Reintentar no cobra dos veces (el cobro es una vez por persona y aviso, analizarUnaVez), pero

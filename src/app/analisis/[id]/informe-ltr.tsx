@@ -3,27 +3,23 @@ import { esDemo } from "@/lib/demo";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import type { Analisis, FullAnalysisResult, AnalisisInput } from "@/lib/types";
+import type { Analisis, AnalisisInput } from "@/lib/types";
 import { DeleteButton } from "./delete-button";
 import { SubordinatedBanner } from "@/components/analysis/SubordinatedBanner";
 import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { ShareButton } from "@/components/chrome/ShareButton";
 import { PremiumResults } from "./results-client";
-import { getUFValue, resolveUfForAnalysis } from "@/lib/uf";
+import { getUFValue } from "@/lib/uf";
 import { getUserAccessLevel } from "@/lib/access";
 import { getAvailableCredits } from "@/lib/credits-grant";
 import { isAdminUser } from "@/lib/admin";
-import { enrichMetricsLegacy } from "@/lib/analysis/enrich-metrics-legacy";
-import { recomputeResultsForLegacy } from "@/lib/analysis/recompute-results-for-legacy";
-import { prefetchMedianaComunaVenta, prefetchCapRefComuna, type MedianaComunaSnapshot } from "@/lib/api-helpers/analisis-pipeline";
-import type { CapRefComunaSnapshot } from "@/lib/capref-comuna";
+import { resultadosDelInforme, resultadosPorId, type FilaInforme } from "@/lib/analysis/resultados-del-informe";
 import { duenoQaDelRequest, sha256Hex, tokenAnonDelRequest } from "@/lib/api-helpers/anon-cap";
 import { esNavegadorDeOrigen } from "@/lib/navegador-origen";
 import { quienMiraElInforme } from "@/lib/lo-que-sigue/oferta-informe";
 import { leerOfertaPack } from "@/lib/lo-que-sigue/oferta-informe-servidor";
 import { construirAlternativaComunas } from "@/lib/alternativa-comunas";
-import { conVeredictoGuardado, readVeredicto } from "@/lib/results-helpers";
-import { medianaDesdeSnapshot } from "@/lib/analysis/mediana-snapshot";
+import { readVeredicto } from "@/lib/results-helpers";
 import { AppFooter } from "@/components/chrome/AppFooter";
 import { emitirVistaInforme } from "@/lib/meta/vista-informe";
 import { publicacionDelInforme } from "@/lib/guia/publicacion-portada";
@@ -129,7 +125,6 @@ export async function InformeLtr({ id, demo = false }: { id: string; demo?: bool
   }
   const isSubordinated = !!subordinatedHref;
 
-  const rawResults: FullAnalysisResult | null = analisis.results || null;
   const inputDataRaw = analisis.input_data as AnalisisInput | undefined;
   // Fix drift UF prosa↔KPI (Opción 3): el render recomputa con la UF CONGELADA al
   // crear (reconstruida desde precioCLP/precio), NO con la UF viva. Así los KPI
@@ -137,59 +132,14 @@ export async function InformeLtr({ id, demo = false }: { id: string; demo?: bool
   // `ufValue` (getUFValue) queda solo como fallback para filas legacy sin precioCLP
   // reconstruible. Mismo patrón "snapshot congelado gana" que mediana_comuna_snapshot.
   // Ver of-audit-drift-uf.md.
-  const ufFrozen = resolveUfForAnalysis(rawResults, inputDataRaw, ufValue, analisis.id);
-  // Recompute on-load (Opción A — idempotente). Garantiza coherencia entre
-  // snapshots persistidos pre-evolución del motor y runtime fresh:
-  // - TIR Card 04 (snapshot) vs Card 08 (runtime) — cierra B3 H3 inconsistency.
-  // - Precio sugerido header vs drawer — cierra Fase 3.6 v9 inconsistency.
-  // - Metrics legacy sin gastos/contribuciones — cierra B1 NaN cascade.
-  // Análisis nuevos (motor actual al guardar) son no-op funcional. AI
-  // (`ai_analysis`) vive en columna separada y se preserva por construcción.
-  // Si falta input_data (caso edge legacy), cae a enrichMetricsLegacy como
-  // patch mínimo. Ver audit/sesionB-bug-snapshot/diagnostico.md.
-  // Mediana comunal inyectada al recompute (sobreprecio-sync): permite que el
-  // motor siembre el hallazgo de sobreprecio sync en el primer render, en vez de
-  // depender del ai_analysis async.
-  // Fase B — fuente única: el snapshot PRESENTE gana siempre (foto fija del
-  // análisis). Si existe (mediana number O null), se usa tal cual — el null
-  // congelado al crear se respeta (el recompute lo trata como "sin sobreprecio",
-  // correcto) y NO se re-resuelve por render. FALLBACK a la resolución vieja
-  // (prefetch vivo) SOLO cuando no hay snapshot (análisis pre-Fase A) — exactamente
-  // el comportamiento previo (Fase 1). Mismo criterio "existe → usalo; ausente →
-  // fallback" en las 3 lecturas, para que traten el caso null idéntico (sin
-  // re-resolución no hay divergencia). El recompute recibe el mismo shape { mediana, n }.
-  const medianaSnapshot = (data as Record<string, unknown>).mediana_comuna_snapshot as
-    | MedianaComunaSnapshot
-    | null
-    | undefined;
-  // Referencia de cap rate de la comuna (21-sep-2026): misma regla, snapshot presente gana;
-  // las filas anteriores al campo la resuelven viva (y el prefetch de la mediana ya la trae).
-  const capRefSnapshot = (data as Record<string, unknown>).capref_comuna_snapshot as
-    | CapRefComunaSnapshot
-    | null
-    | undefined;
-  // El snapshot entero (22-oct-2026, mediana-snapshot.ts): cuartiles, «estimada» y el UNIVERSO, que el brazo de
-  // sobreprecio del gate 1 necesita; a mano se perdía y la portada contradecía al correo.
-  const medianaComuna = inputDataRaw
-    ? (medianaSnapshot != null
-        ? medianaDesdeSnapshot(medianaSnapshot, { capRefComuna: capRefSnapshot ?? (await prefetchCapRefComuna(supabase, inputDataRaw, ufFrozen)) })
-        : await prefetchMedianaComunaVenta(supabase, inputDataRaw, ufFrozen))
-    : undefined;
-  // Fecha de análisis CONGELADA a created_at (espejo de ufFrozen): el recompute
-  // usa la fecha de creación de la fila, no la viva, para que meses-hasta-entrega,
-  // plusvalía proyectada, penalty del score y prosa NO deriven entre recargas.
-  // Ver of-datedrift-design.md.
+  // LOS RESULTADOS DEL INFORME (05-nov-2026, lib/analysis/resultados-del-informe.ts): el recálculo con la UF congelada, la
+  // mediana del snapshot (o resuelta viva en las filas de antes) y la fecha de creación, con el veredicto guardado. Es el MISMO
+  // cálculo que usan la imagen para compartir y la metadata: el puntaje de la vista previa es el de la portada.
+  const { results, ufFrozen, medianaSnapshot } = (await resultadosPorId(analisis.id, ufValue)) ?? (await resultadosDelInforme(supabase, data as unknown as FilaInforme, ufValue));
+  // Fecha de análisis CONGELADA a created_at (espejo de ufFrozen): ver of-datedrift-design.md.
   const asOfFrozen = new Date(analisis.created_at);
-  // Fecha de la mediana comunal para la celda de zona (goal "LTR hereda"): la del snapshot
-  // (congelada al crear) o ahora, cuando se resolvió viva (filas pre-Fase A).
+  // Fecha de la mediana comunal para la celda de zona (goal "LTR hereda"): la del snapshot (congelada al crear) o ahora.
   const medianaResolvedAt = medianaSnapshot?.resolvedAt ?? new Date().toISOString();
-  // EL VEREDICTO ES EL GUARDADO (22-oct-2026, decisión de Fabrizio; results-helpers.ts › conVeredictoGuardado): la
-  // portada muestra el que el motor calculó al crear —el del correo y el dashboard—; el recálculo da el resto.
-  const results: FullAnalysisResult | null = inputDataRaw
-    ? conVeredictoGuardado(recomputeResultsForLegacy(inputDataRaw, ufFrozen, medianaComuna, asOfFrozen), rawResults)
-    : (rawResults && rawResults.metrics
-      ? { ...rawResults, metrics: enrichMetricsLegacy(rawResults.metrics, {} as AnalisisInput) }
-      : rawResults);
 
   // Access level: "guest" | "free" | "premium" | "subscriber"
 

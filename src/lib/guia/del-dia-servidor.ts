@@ -25,7 +25,7 @@ import { almacenPublicacion, bajarFicha } from "./ficha-servidor";
 import { claveEdificio } from "./ficha-anio";
 import type { Candidato } from "./semanal-candidatos";
 import type { Evaluado } from "./seleccion";
-import { cuandoSeVio, esCuentaNueva, LECTURAS_POR_VUELTA_DEL_DIA, pasoDelDia, REGLA_DEL_DIA } from "./del-dia";
+import { cuandoSeVio, diaRelativo, esCuentaNueva, LECTURAS_POR_VUELTA_DEL_DIA, pasoDelDia, REGLA_DEL_DIA } from "./del-dia";
 import { textoRenueva } from "./renovacion";
 import { convienenEnSeleccion } from "@/lib/explorar/puerta-correos";
 import { puertaExplorarCorreo } from "@/lib/explorar/puerta-correos-servidor";
@@ -238,7 +238,8 @@ async function enviarDelDia(
         regaloAltaVence: regaloVence,
         renueva: textoRenueva(),
         presentacion: true,
-        delDia: { publicadosAl: cuandoSeVio(masAntiguo, ahora) },
+        // «revisados hoy» solo si el chequeo más antiguo fue hoy (05-nov-2026, del-dia.ts › diaRelativo).
+        delDia: { publicadosAl: cuandoSeVio(masAntiguo, ahora), dia: diaRelativo(masAntiguo, ahora) },
         urlBoton: enlaces.boton,
         urlTres: enlaces.tres,
         urlBaja: enlaces.baja,

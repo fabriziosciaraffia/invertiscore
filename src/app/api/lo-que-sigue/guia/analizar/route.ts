@@ -6,6 +6,7 @@ import { METHODOLOGY_VERSION_ACTUAL } from "@/lib/modelo-costos";
 import { getUFValue } from "@/lib/uf";
 import { readVeredicto } from "@/lib/results-helpers";
 import { sendAnalysisReadyEmail } from "@/lib/email";
+import { referidoTrasAnalisis } from "@/lib/referido-servidor";
 import { nombreReal } from "@/lib/welcome";
 import { captureApiError } from "@/lib/observabilidad";
 import { desdeBodyLtr } from "@/lib/plausibilidad";
@@ -257,6 +258,8 @@ export async function POST(request: Request) {
             const id = data.id as string;
             delInforme = { veredicto: readVeredicto(result) ?? null, score: result.score ?? null };
             waitUntil(capturarAnalisisCreado({ userId: user.id, analysisId: id, modalidad: "ltr", via: desde, precioNegociado }));
+            // EL PREMIO DEL REFERIDO (05-nov-2026): el primer análisis del invitado le da uno a quien invitó.
+            waitUntil(referidoTrasAnalisis(user.id));
             if (desdeExplorar) {
               waitUntil(capturarServidor(eventoExplorarAnaliza({ userId: user.id, analysisId: id, avisoId: aviso.avisoId, comuna: aviso.comuna, precioUF: aviso.precioUF, m2: aviso.m2, piePct: combinacion.piePct, plazoAnios: combinacion.plazoAnios })).catch(() => false));
             }

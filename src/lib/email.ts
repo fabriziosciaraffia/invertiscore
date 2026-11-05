@@ -77,7 +77,9 @@ async function enviarCorreo(
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://refranco.ai';
 
 export async function sendWelcomeEmail(to: string, name: string, opts: CorreoOpts & { regaloVence?: string | null } = {}) {
-  const { subject, html } = correoBienvenida({ nombre: name, sitio: SITE_URL, regaloVence: opts.regaloVence ?? null });
+  // La cifra de comparables en vivo (05-nov-2026, comparables-vivos.ts).
+  const comparables = await import("@/lib/comparables-vivos").then((m) => m.comparablesVivos()).then((c) => c.texto).catch(() => undefined);
+  const { subject, html } = correoBienvenida({ nombre: name, sitio: SITE_URL, regaloVence: opts.regaloVence ?? null, comparables });
   try {
     await enviarCorreo("bienvenida", opts.userId, { from: FROM_EMAIL, to, subject, html });
   } catch (error) {
@@ -360,7 +362,7 @@ export async function sendCheckoutRecoveryEmail(
   // compat). 'plan' = suscripción (ruta B) → copy de plan. El cron lo deriva del
   // kind del catálogo.
   kind: 'single' | 'plan' = 'single',
-  opts: CorreoOpts = {},
+  opts: CorreoOpts & { retomar?: string } = {},
 ): Promise<boolean> {
   const resend = getResend();
   if (!resend) {
@@ -368,7 +370,7 @@ export async function sendCheckoutRecoveryEmail(
     return false;
   }
 
-  const { subject, html } = correoCheckoutAbandonado({ nombre: name, producto: productLabel, tipo: kind, sitio: SITE_URL });
+  const { subject, html } = correoCheckoutAbandonado({ nombre: name, producto: productLabel, tipo: kind, sitio: SITE_URL, retomar: opts.retomar });
   try {
     const res = await enviarCorreo("checkout_abandonado", opts.userId, { from: FROM_EMAIL, to, subject, html });
     return !res.error;
@@ -536,7 +538,7 @@ export async function sendPreguntaYaEmail(to: string, correo: { subject: string;
   }
 }
 
-/** «Tu invitado entró: tienes un análisis más» (16-oct-2026, la puerta C), a quien invitó. Devuelve si salió. */
+/** «Tu invitado hizo su primer análisis: tienes uno más» (16-oct-2026, la puerta C), a quien invitó. Devuelve si salió. */
 export async function sendPremioReferidoEmail(to: string, p: Parameters<typeof correoPremioReferido>[0], opts: CorreoOpts = {}): Promise<boolean> {
   const { subject, html } = correoPremioReferido({ ...p, sitio: p.sitio ?? SITE_URL });
   try {

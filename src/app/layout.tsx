@@ -2,7 +2,8 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import "./fuentes.css";
 import { PHProvider } from "./providers";
-import { COMPARABLES_TEXTO } from "@/lib/stats";
+import { TIEMPO_ANALISIS } from "@/lib/stats";
+import { comparablesVivos } from "@/lib/comparables-vivos";
 import { buildSiteJsonLd } from "@/lib/seo/jsonld";
 
 // ── LAS FUENTES ───────────────────────────────────────────────────────────────
@@ -40,7 +41,10 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-export const metadata: Metadata = {
+// La cifra de comparables, en vivo (05-nov-2026, comparables-vivos.ts): la descripción del sitio la dice.
+export async function generateMetadata(): Promise<Metadata> {
+  const { texto: COMPARABLES_VIVOS } = await comparablesVivos();
+  return {
   // Base para resolver metadata relativa (canonicals, OG images) en absoluta.
   metadataBase: new URL("https://refranco.ai"),
   title: {
@@ -48,7 +52,7 @@ export const metadata: Metadata = {
     template: "%s | Franco",
   },
   description:
-    `Analiza departamentos como inversión en Santiago. Franco Score, rentabilidad, flujo de caja, comparación con la zona y análisis con datos reales de ${COMPARABLES_TEXTO} propiedades.`,
+    `Analiza departamentos como inversión en Santiago. Franco Score, rentabilidad, flujo de caja, comparación con la zona y análisis con datos reales de ${COMPARABLES_VIVOS} propiedades.`,
   keywords: [
     "inversión inmobiliaria",
     "departamentos Santiago",
@@ -60,7 +64,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "refranco.ai — Análisis de inversión inmobiliaria en Chile",
     description:
-      "Analiza departamentos como inversión en Santiago. Franco Score, rentabilidad, flujo de caja y análisis con datos reales. Gratis, en 30 segundos.",
+      `Analiza departamentos como inversión en Santiago. Franco Score, rentabilidad, flujo de caja y análisis con datos reales. Gratis, ${TIEMPO_ANALISIS}.`,
     type: "website",
     url: "https://refranco.ai",
     siteName: "Franco",
@@ -84,7 +88,8 @@ export const metadata: Metadata = {
   // página que no la sobreescriba, y un canonical absoluto en el root declaraba
   // a cada página "copia de la homepage" (bug Fase 0 SEO). El canonical va por
   // página, relativo, resuelto contra metadataBase.
-};
+  };
+}
 
 export default function RootLayout({
   children,

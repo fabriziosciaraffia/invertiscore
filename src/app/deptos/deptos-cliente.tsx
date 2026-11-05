@@ -52,6 +52,7 @@ import type { PortadaDeptos } from "@/lib/deptos/portada";
 import { CamposBusqueda, type ValorBusqueda } from "@/components/deptos/CamposBusqueda";
 import { PrimeraSeleccion } from "@/components/deptos/PrimeraSeleccion";
 import { PASO_REGALO_MS, TOPE_ESPERA_REGALO_MS } from "@/lib/deptos/alta-orden";
+import { SIN_REGALO_COPY, VER_PLANES, type MotivoSinRegalo } from "@/lib/regalo-alta";
 import "./deptos.css";
 
 type Paso = "elegir" | "codigo" | "dentro" | "agregar";
@@ -74,7 +75,21 @@ export interface OpcionesDeptos {
 }
 
 /** Lo que responde el alta (POST /api/deptos/alta y POST /api/deptos/entrar). */
-type RespuestaAlta = { estado?: string; regaloVence?: string | null; regalo?: string; comunasNuevas?: string[]; comunas?: string[]; busqueda?: BusquedaDeptos | null; error?: string };
+type RespuestaAlta = { estado?: string; regaloVence?: string | null; regaloMotivo?: MotivoSinRegalo | null; regalo?: string; comunasNuevas?: string[]; comunas?: string[]; busqueda?: BusquedaDeptos | null; error?: string };
+
+/** El dashboard con el motivo «el correo ya tenía cuenta» (05-nov-2026): lo dice bajo «Sin análisis». */
+const DASHBOARD_SIN_REGALO_EXISTENTE = "/dashboard?regalo=existente";
+
+/** SIN REGALO (05-nov-2026, auditoría de promesas parte 3): por qué no hubo regalo, con «Ver planes». */
+function SinRegalo({ motivo }: { motivo: MotivoSinRegalo }) {
+  const c = SIN_REGALO_COPY[motivo];
+  return (
+    <section className="dp-perfil" data-deptos="sin-regalo" data-motivo={motivo}>
+      <p className="dp-perfil-linea">{c.titulo}</p>
+      <p className="dp-ayuda">{c.bajada} <EnlaceCarga href={VER_PLANES.href} className="dp-enlace" data-deptos="ver-planes">{VER_PLANES.texto}</EnlaceCarga></p>
+    </section>
+  );
+}
 
 /** La búsqueda inicial, como clave: si la pantalla arranca con su respuesta del servidor, no la vuelve a pedir. Las
  *  comunas y el rango son los por defecto, o los de `?comuna=` (20-oct-2026, «Ver los deptos de [comuna]»). */
@@ -98,6 +113,8 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
   // EL REGALO APENAS LLEGUE (25-oct-2026, lib/deptos/alta-orden.ts): el alta responde antes de que el regalo termine; si
   // salió «pendiente», «Estás dentro» se muestra igual y la tarjeta aparece cuando el regalo está.
   const [regaloPendiente, setRegaloPendiente] = useState(false);
+  // Por qué no hay regalo (05-nov-2026): tope del dispositivo o del día.
+  const [regaloMotivo, setRegaloMotivo] = useState<MotivoSinRegalo | null>(null);
   const [agregar, setAgregar] = useState<{ nuevas: string[]; actuales: string[] } | null>(null);
   // «Tu perfil de búsqueda» (23-oct-2026): la búsqueda con que nació la cuenta, en una línea; se edita en el dashboard.
   const [busca, setBusca] = useState<BusquedaDeptos | null>(null);
@@ -229,6 +246,7 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
     router.refresh();
     if (d.estado === "nueva") {
       setRegaloVence(d.regaloVence ?? null);
+      setRegaloMotivo(d.regaloMotivo ?? null);
       setRegaloPendiente(!d.regaloVence && d.regalo === "pendiente");
       setBusca(d.busqueda ?? null);
       // Con Google, el completado lo emite useAttributionSync con la marca de OAuth: acá no se repite.
@@ -245,7 +263,8 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
     // «Estás dentro» se queda hasta que la persona siga: una respuesta tardía o repetida nunca la saca de ahí.
     if (pasoActual.current === "dentro") return;
     iniciarCarga(claveActual());
-    router.push("/dashboard");
+    // El correo ya tenía cuenta (05-nov-2026): el dashboard dice por qué no hay regalo, bajo «Sin análisis».
+    router.push(d.estado === "existente" ? DASHBOARD_SIN_REGALO_EXISTENTE : "/dashboard");
   }, [posthog, router]);
 
   // Al volver por el enlace del correo o por Google: el alta, con tope y un reintento solo (entrada.ts). Si tampoco
@@ -276,9 +295,10 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
     const mirar = async () => {
       try {
         const r = await fetch("/api/deptos/regalo", { cache: "no-store" });
-        const d = (await r.json().catch(() => ({}))) as { vence?: string | null; decidido?: boolean };
+        const d = (await r.json().catch(() => ({}))) as { vence?: string | null; decidido?: boolean; motivo?: MotivoSinRegalo | null };
         if (!vivo) return;
         if (d.vence) setRegaloVence(d.vence);
+        else if (d.decidido) setRegaloMotivo(d.motivo ?? null);
         if (d.vence || d.decidido) { setRegaloPendiente(false); return; }
       } catch {
         /* se vuelve a preguntar */
@@ -342,7 +362,7 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
       if (!res.ok) { setError(ALTA_COPY.error); setYendo(null); return; }
     }
     iniciarCarga(claveActual());
-    router.push("/dashboard");
+    router.push(DASHBOARD_SIN_REGALO_EXISTENTE);
   }
 
   // «ESTÁS DENTRO» ABRE ARRIBA (24-oct-2026, recorrido de Fabrizio): el código se escribe abajo de todo, en la banda, y la
@@ -370,6 +390,8 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
             <p className="dp-regalo-s">{ESTAS_DENTRO_DEPTOS.regalo.bajada} {textoVence(regaloVence)}</p>
           </section>
         )}
+        {/* SIN REGALO, DICHO (05-nov-2026, regalo-alta.ts › SIN_REGALO_COPY): el motivo y «Ver planes». */}
+        {!regaloVence && !regaloPendiente && regaloMotivo && <SinRegalo motivo={regaloMotivo} />}
         {/* «Tu selección», ahí mismo (20-oct-2026): sin esperar a nada. */}
         <div data-deptos="primeros">
           <PrimeraSeleccion encabezado="dentro" />
@@ -397,6 +419,7 @@ export function DeptosCliente({ sesion, pagina = "/deptos", puerta = { puerta: "
     return (
       <div className="dp" data-deptos="agregar">
         <h1 className="dp-titulo">{ALTA_COPY.agregar(agregar.nuevas)}</h1>
+        <SinRegalo motivo="existente" />
         <div className="dp-fin dp-fin-izq">
           <button type="button" className="dp-boton dp-boton-tinta" onClick={() => void sumarComunas(true)} disabled={!!yendo} {...botonOcupado(yendo === "si")}>{ALTA_COPY.agregarSi}</button>
           <button type="button" className="dp-enlace" onClick={() => void sumarComunas(false)} disabled={!!yendo} {...botonOcupado(yendo === "no")}>{ALTA_COPY.agregarNo}</button>

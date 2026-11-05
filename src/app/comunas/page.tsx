@@ -16,6 +16,7 @@ import { PieComunas } from "@/components/comunas/PieComunas";
 import { CtaAnalizar } from "@/components/CtaAnalizar";
 import { ChipEstimado } from "@/components/comunas/ChipEstimado";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
+import { TIEMPO_ANALISIS } from "@/lib/stats";
 
 export const revalidate = 86400; // ISR: 24 hours
 
@@ -184,7 +185,7 @@ export default async function ComunasIndexPage() {
         <section className="cm-cierre" data-comuna="cierre">
           <h2 className="cm-h2">¿Tienes un depto?</h2>
           <p className="cm-texto">
-            Analízalo gratis en 2 minutos. Franco te dice si {etiquetaVeredicto("COMPRAR").toLowerCase()},{" "}
+            Analízalo gratis: el informe sale {TIEMPO_ANALISIS}. Franco te dice si {etiquetaVeredicto("COMPRAR").toLowerCase()},{" "}
             {etiquetaVeredicto("AJUSTA SUPUESTOS").toLowerCase()} o {etiquetaVeredicto("BUSCAR OTRA").toLowerCase()}.
           </p>
           <div className="cm-acciones">

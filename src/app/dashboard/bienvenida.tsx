@@ -33,6 +33,7 @@ export function Bienvenida({
   onboarding,
   demo = false,
   saldo = null,
+  comparables,
 }: {
   /** El nombre REAL (nombreReal en lib/welcome): sin él, «Hola.». */
   nombre: string | null;
@@ -43,6 +44,8 @@ export function Bienvenida({
   demo?: boolean;
   /** El saldo o el plan en una línea (casa-copy.ts › lineaSaldo), si la cuenta tiene (14-oct-2026). */
   saldo?: string | null;
+  /** La cifra de comparables en vivo (05-nov-2026, comparables-vivos.ts): «más de 39.000». */
+  comparables?: string;
 }) {
   const router = useRouter();
   const [yendo, setYendo] = useState(false);
@@ -76,7 +79,7 @@ export function Bienvenida({
           {BIENVENIDA.hace.map((h, i) => (
             <div key={h.titulo}>
               <p className="text-[16px] font-semibold">{h.titulo}</p>
-              <p className="mt-1 text-[15px] leading-[1.55] text-[var(--franco-text-secondary)]">{h.texto}</p>
+              <p className="mt-1 text-[15px] leading-[1.55] text-[var(--franco-text-secondary)]">{h.texto(comparables)}</p>
               {i === 0 && (
                 <div className="mt-3 flex flex-wrap items-center gap-2" data-bienvenida="triada">
                   <ChipVeredicto v="COMPRAR" />

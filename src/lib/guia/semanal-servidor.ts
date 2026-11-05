@@ -704,6 +704,14 @@ export async function itemsVigentes(admin: SupabaseClient, items: ItemSemanal[])
   return items.filter((i) => !fuera.has(i.avisoId) && vivos.has(i.avisoId));
 }
 
+/** Cuándo Franco vio publicado cada aviso (el último chequeo de su ficha), para la línea de cada depto del correo. */
+export async function vistosAlEnviar(admin: SupabaseClient, ids: string[]): Promise<Map<string, string>> {
+  if (ids.length === 0) return new Map();
+  const { data, error } = await admin.from("publicacion_avisos").select("aviso_id, chequeado_at").in("aviso_id", Array.from(new Set(ids))).eq("estado", "publicado");
+  reportarFalloQuery(error, { ruta: RUTA, operacion: "vistos-al-enviar" });
+  return new Map(((data ?? []) as Array<{ aviso_id: string; chequeado_at: string | null }>).filter((r) => !!r.chequeado_at).map((r) => [r.aviso_id, r.chequeado_at as string]));
+}
+
 /** El clic en un depto del correo: la ficha se chequea de nuevo (con la memoria y el tope de siempre). */
 export async function chequearAlClic(admin: SupabaseClient, avisoId: string): Promise<EstadoPublicacion> {
   const { data } = await admin.from("scraped_properties").select("id, url, comuna, lat, lng").eq("id", avisoId).order("id").limit(1);
@@ -909,16 +917,20 @@ export async function enviarSeleccion(admin: SupabaseClient, fila: FilaSeleccion
     baseClic: enlaces.boton, de: "semanal", n: convienenEnSeleccion([...deptos, ...deptosCortos]),
     perfil: conLargo ? fila.perfil : fila.perfil_str ?? null, combo: combo, modalidad: conLargo ? "ltr" : "str",
   });
+  // LA FECHA REAL (05-nov-2026, auditoría de promesas parte 3): cada depto dice cuándo Franco lo vio publicado (el último
+  // chequeo de su ficha). El envío no lee fichas: rechequear los de más de 48 horas costaría ~250 lecturas cada lunes
+  // (medido el 02-nov: 127 de 243 avisos), unas 8 horas del tope global de 30 por hora.
+  const vistos = await vistosAlEnviar(admin, [...deptos, ...deptosCortos].map((d) => d.avisoId));
   const correo = correoSemanal({
     variante,
     nombre: nombreReal(user.user_metadata),
     busca: conLargo ? textoBusca(fila.perfil!) : "",
     piePct: combo.piePct,
     plazoAnios: combo.plazoAnios,
-    deptos: deptos.map((d) => ({ ...d, url: enlaces.depto(d.avisoId) })),
+    deptos: deptos.map((d) => ({ ...d, url: enlaces.depto(d.avisoId), vistoAt: vistos.get(d.avisoId) ?? null })),
     largo: conLargo,
     corto: conCorto ? {
-      deptos: deptosCortos.map((d) => ({ ...d, url: enlaces.depto(d.avisoId) })),
+      deptos: deptosCortos.map((d) => ({ ...d, url: enlaces.depto(d.avisoId), vistoAt: vistos.get(d.avisoId) ?? null })),
       busca: textoBusca(fila.perfil_str!),
       piePct: fila.combinacion_str!.piePct,
       plazoAnios: fila.combinacion_str!.plazoAnios,

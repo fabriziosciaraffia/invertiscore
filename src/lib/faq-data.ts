@@ -1,4 +1,5 @@
-import { COMPARABLES_TEXTO } from "@/lib/stats";
+import { COMPARABLES_TEXTO, TIEMPO_ANALISIS } from "@/lib/stats";
+import { COMPARAR_MAX, COMPARAR_MIN } from "@/lib/lo-que-sigue/comparar-tipos";
 import { etiquetaVeredicto } from "./veredicto-etiqueta";
 import { COMUNAS_DISPONIBLES } from "@/lib/comunas-disponibles";
 
@@ -22,7 +23,9 @@ export interface FAQSection {
  * estables ("caducan", "cambiar-plan", "cancelar", "factura"). El resto de
  * los ids son slugs estables para futuras referencias cruzadas.
  */
-export const FAQ_SECTIONS: FAQSection[] = [
+/** `comparables` (05-nov-2026, comparables-vivos.ts): la cifra en vivo; la página del FAQ la pasa. */
+export function faqSecciones(comparables: string = COMPARABLES_TEXTO): FAQSection[] {
+  return [
   {
     title: "Sobre Franco",
     items: [
@@ -44,7 +47,7 @@ export const FAQ_SECTIONS: FAQSection[] = [
       {
         id: "datos",
         q: "¿De dónde salen los datos?",
-        a: `Analizamos información de mercado de ${COMPARABLES_TEXTO} propiedades en ${COMUNAS_DISPONIBLES.length} comunas de Santiago. Los datos incluyen precios de venta, arriendos y condiciones actuales del mercado.`,
+        a: `Analizamos información de mercado de ${comparables} propiedades en ${COMUNAS_DISPONIBLES.length} comunas de Santiago. Los datos incluyen precios de venta, arriendos y condiciones actuales del mercado.`,
       },
       {
         id: "confiabilidad",
@@ -74,7 +77,10 @@ export const FAQ_SECTIONS: FAQSection[] = [
       {
         id: "que-incluye",
         q: "¿Qué incluye el análisis?",
-        a: "Un análisis personalizado de tu depto, con los datos de su zona: veredicto y precio sugerido, proyecciones de patrimonio y flujo a 10 años, escenarios de salida (venta y refinanciamiento), panel para ajustar variables de financiamiento, y análisis de sensibilidad con 3 escenarios. Es un solo análisis que entrega toda la información, en la modalidad que elijas: arriendo largo plazo, Airbnb o ambas comparadas.",
+        // LO QUE EXISTE (05-nov-2026, auditoría de promesas parte 3): decía «análisis de sensibilidad con 3 escenarios» (lo que hay
+        // es cuánto puede bajar el arriendo antes de que cambie el veredicto), «panel para ajustar variables» (es la grilla de pie y
+        // plazo) y «ambas comparadas» (el comparativo no se crea: ambas-flag.ts).
+        a: "Un análisis personalizado de tu depto, con los datos de su zona: el veredicto y el precio sugerido para negociar, el flujo de cada mes, el resultado a 10 años y cómo salir (vender o refinanciar), cuánto puede bajar el arriendo antes de que cambie el veredicto, y cómo cambia el resultado con otro pie y otro plazo. Es un solo análisis, en la modalidad que elijas: arriendo tradicional o renta corta (Airbnb).",
       },
       {
         id: "analizar-varios",
@@ -84,12 +90,14 @@ export const FAQ_SECTIONS: FAQSection[] = [
       {
         id: "comparar-analisis",
         q: "¿Puedo comparar mis análisis?",
-        a: "Sí. Desde tu dashboard puedes seleccionar hasta 3 departamentos que ya analizaste y verlos lado a lado: score, rentabilidad, flujo y proyección a 10 años, con un veredicto automático de cuál es la mejor inversión y por qué.",
+        // LO QUE EXISTE (05-nov-2026): /comparar acepta de 2 a 4 (comparar-tipos.ts) y muestra veredicto, precio, flujo mensual y
+        // resultado a 10 años; no elige un ganador.
+        a: `Sí. Desde tu dashboard eliges de ${COMPARAR_MIN} a ${COMPARAR_MAX} departamentos que ya analizaste y los ves lado a lado: el veredicto, el precio, el flujo mensual y el resultado a 10 años de cada uno.`,
       },
       {
         id: "caro-complejo",
         q: "Me parece caro y complejo.",
-        a: "En 30 segundos obtienes un análisis de inversión equivalente al de un equipo de finanzas corporativo, por el precio de dos cafés. Y el primero es gratis, te lo regalamos.",
+        a: `${TIEMPO_ANALISIS.charAt(0).toUpperCase()}${TIEMPO_ANALISIS.slice(1)} obtienes un análisis de inversión equivalente al de un equipo de finanzas corporativo, por el precio de dos cafés. Y el primero es gratis, te lo regalamos.`,
       },
       {
         id: "factura",
@@ -144,11 +152,17 @@ export const FAQ_SECTIONS: FAQSection[] = [
       {
         id: "datos-seguros",
         q: "¿Mis datos están seguros?",
-        a: "Sí. Usamos encriptación SSL, autenticación segura con Supabase y no compartimos tus datos personales con terceros. Los pagos se procesan de forma segura a través de Flow.cl.",
+        // LO MISMO QUE /privacy (05-nov-2026, auditoría de promesas parte 3): decía «no compartimos tus datos con terceros» y
+        // /privacy cuenta Meta y PostHog. El correo cifrado va a Meta solo con las cookies aceptadas (lib/meta/servidor.ts).
+        a: "Usamos encriptación SSL, autenticación segura con Supabase y los pagos se procesan a través de Flow.cl. Para medir qué funciona usamos PostHog y, solo si aceptas las cookies, Meta: con tu permiso le mandamos tu correo cifrado, para reconocer el registro o la compra; sin él, nunca tu correo. No vendemos tus datos. El detalle está en la política de privacidad.",
       },
     ],
   },
-];
+  ];
+}
+
+/** Con el respaldo de stats.ts: lo usa el teaser de /pricing, que no muestra la cifra. */
+export const FAQ_SECTIONS: FAQSection[] = faqSecciones();
 
 /**
  * Aplana todas las secciones y devuelve los items en el ORDEN de los ids

@@ -6,6 +6,7 @@ import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { PieComunas } from "@/components/comunas/PieComunas";
 import { CtaAnalizar } from "@/components/CtaAnalizar";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
+import { TIEMPO_ANALISIS } from "@/lib/stats";
 
 export const metadata: Metadata = {
   title: "¿Dónde está disponible Franco?",
@@ -67,7 +68,7 @@ export default function CoberturaPage() {
         <section className="cm-cierre" data-comuna="cierre">
           <h2 className="cm-h2">¿Tu depto está en una de estas comunas?</h2>
           <p className="cm-texto">
-            Analízalo en 2 minutos. Franco te dice si {etiquetaVeredicto("COMPRAR").toLowerCase()},{" "}
+            Analízalo: el informe sale {TIEMPO_ANALISIS}. Franco te dice si {etiquetaVeredicto("COMPRAR").toLowerCase()},{" "}
             {etiquetaVeredicto("AJUSTA SUPUESTOS").toLowerCase()} o {etiquetaVeredicto("BUSCAR OTRA").toLowerCase()}.
           </p>
           <div className="cm-acciones">

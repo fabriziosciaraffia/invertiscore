@@ -35,9 +35,10 @@ import { compraDeLaSeleccion, comprasDelDepto, nombreDelDepto, ticketConSaldoDel
 import { alCerrarQueda, informeFallo, informeGenerando, informeListo, type MotivoFallo, type PasoInforme } from "@/lib/guia/informe-en-camino";
 import { InformeListoAviso } from "@/components/guia/InformeEnCamino";
 import { cuandoVenceCorto } from "@/lib/lo-que-sigue/oferta-pack";
+import { RETORNO } from "@/lib/compra/compra";
 import { recalcularAviso } from "@/lib/explorar/recalcular-cliente";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
-import { GUIA } from "@/lib/guia/copy";
+import { GUIA, PUBLICACION_PORTADA } from "@/lib/guia/copy";
 import { MARCA_NEGOCIAR, MARCA_SIN_CONFIRMAR, MARCA_VISTO, SEMANAL_PAGINA, textoVence, type FilaPaginaSemanal } from "@/lib/guia/semanal";
 import { MARCA_NO_DA, MARCA_ZONA, MIDIENDO, MIDIENDO_TARDO, MIDIENDO_TOPE_MS, REINTENTAR, SEMANAL_STR, YA_ANALIZADO, textoAnalizarIgual } from "@/lib/guia/semanal-str";
 import { AvisoAntesDeAnalizar, type EleccionAnalizar } from "@/components/guia/AvisoAntesDeAnalizar";
@@ -68,7 +69,7 @@ const REINTENTOS_CREDITO = 4;
 
 export function SemanalLista({
   token, origenId, combinacion, filas, destacado, saldo, variante, inmediato = false, finanzas = { tasa: null, uf: null, arriendos: {} },
-  modalidad = "ltr", bloque = null, conTitulo = true, cierre = true, noDan = [], informes = {}, resumenes = {}, ticket = false, cuentaCreadaAt = null, autoAnalizar = null, enCasa = false, aLaVista = null, desdeN = 1,
+  modalidad = "ltr", bloque = null, conTitulo = true, cierre = true, noDan = [], publicaciones = {}, informes = {}, resumenes = {}, ticket = false, cuentaCreadaAt = null, autoAnalizar = null, enCasa = false, aLaVista = null, desdeN = 1,
 }: {
   token: string;
   origenId: string | null;
@@ -91,6 +92,8 @@ export function SemanalLista({
   cierre?: boolean;
   /** Renta corta: los que ya se midieron fino y no dieron (marcados, sin botón). */
   noDan?: string[];
+  /** El enlace a la publicación de los que no dieron (05-nov-2026): la tarjeta lo muestra junto a «Analizar igual». */
+  publicaciones?: Record<string, string>;
   /** Los que ya analizó, por aviso, con su informe: en renta corta desde el 15-oct-2026, en renta larga desde el 21-oct-2026. */
   informes?: Record<string, string>;
   /** El resumen de cada informe de la persona, por id (05-nov-2026, lib/informe-propio.ts): la fila de un ya analizado dice
@@ -118,6 +121,8 @@ export function SemanalLista({
   const [tardo, setTardo] = useState<string | null>(null);
   // Renta corta: los que no dieron en esta visita, y el pop-up con sus parecidos.
   const [noDanAhora, setNoDanAhora] = useState<string[]>([]);
+  // El enlace a la publicación de los que no dieron en esta visita (05-nov-2026): la tarjeta lo muestra.
+  const [publicacionesAhora, setPublicacionesAhora] = useState<Record<string, string>>({});
   // Desde el 27-oct-2026 el pop-up lleva también el enlace a la publicación, por qué no da y el uso de «Analizar igual»
   // (con el saldo con que midió el servidor, que tras un pago recién hecho puede ser más nuevo que el de la página).
   const [popup, setPopup] = useState<{ it: ItemSemanal; parecidos: string[]; publicacion: string | null; porQue: string | null; uso: string | null } | null>(null);
@@ -213,6 +218,7 @@ export function SemanalLista({
         // que sobreviven.
         if (res.ok && d.estado === "no-da") {
           setNoDanAhora((xs) => [...xs, it.avisoId]);
+          if (d.publicacion) setPublicacionesAhora((m) => ({ ...m, [it.avisoId]: d.publicacion as string }));
           setPopup({ it, parecidos: d.alternativas ?? [], publicacion: d.publicacion ?? null, porQue: d.porQue ?? null, uso: usoDelSaldo(d.saldo ?? saldo) });
           break;
         }
@@ -228,6 +234,9 @@ export function SemanalLista({
           setConfirmar({ it, sin: true });
           break;
         }
+        // Renta corta sin dirección o con la medición caída (05-nov-2026): lo dice con su porqué.
+        if (d.error === "sin-direccion") { fallar("sin-direccion"); break; }
+        if (d.error === "medicion") { fallar("medicion"); break; }
         fallar("error");
         break;
       }
@@ -270,11 +279,16 @@ export function SemanalLista({
   // Volvió pagado desde este depto (21-oct-2026): se analiza solo, una vez. El `analizar=1` sale de la dirección antes, así
   // recargar o volver atrás no lo analiza de nuevo.
   const autoHecho = useRef(false);
+  // Volvió de pagar por un depto que ya no está en la selección (05-nov-2026): se dice.
+  const [yaNoEsta, setYaNoEsta] = useState(false);
   useEffect(() => {
     // Solo la lista de la modalidad que se tocó (04-nov-2026): el mismo depto puede estar en los dos bloques.
     if (!autoAnalizar || autoAnalizar.modalidad !== modalidad || autoHecho.current) return;
     const it = filas.flatMap((f) => [f.item, ...(f.reemplazo ? [f.reemplazo] : [])]).find((i) => i.avisoId === autoAnalizar.avisoId);
-    if (!it || it.informeId || informes[it.avisoId] || informesAqui[it.avisoId] || (corta && noDa.has(it.avisoId))) return;
+    // EL DEPTO YA NO ESTÁ (05-nov-2026, auditoría de promesas parte 3): volvió de pagar y el depto salió de la selección; se
+    // dice, con los análisis que tiene, en vez de no hacer nada.
+    if (!it) { autoHecho.current = true; setYaNoEsta(true); return; }
+    if (it.informeId || informes[it.avisoId] || informesAqui[it.avisoId] || (corta && noDa.has(it.avisoId))) return;
     autoHecho.current = true;
     try {
       const u = new URL(window.location.href);
@@ -296,8 +310,22 @@ export function SemanalLista({
   // los de su informe (ChipInformePropio), no los de la noche.
   const nombre = (it: ItemSemanal) => [ojoDe(it), `UF ${miles(it.precioUF)}`].join(" · ");
   const acciones = (it: ItemSemanal): JSX.Element => {
-    // Renta corta: medido fino y no dio. Queda dicho, sin botón.
-    if (corta && noDa.has(it.avisoId)) return <p className="sel-estado" data-semanal="no-da">{MARCA_NO_DA}</p>;
+    // Renta corta: medido fino y no dio. «TE MOSTRAMOS LA PUBLICACIÓN IGUAL», TAMBIÉN EN LA TARJETA (05-nov-2026, auditoría de
+    // promesas parte 3): queda dicho, con el enlace a la publicación y «Analizar igual», como en el pop-up.
+    if (corta && noDa.has(it.avisoId)) {
+      const url = publicacionesAhora[it.avisoId] ?? publicaciones[it.avisoId] ?? null;
+      return (
+        <div data-semanal="no-da">
+          <p className="sel-estado">{MARCA_NO_DA}</p>
+          <div className="sel-no-da-acciones">
+            {url && <a href={url} target="_blank" rel="noopener noreferrer" className="sel-enlace" data-semanal="ver-publicacion">{PUBLICACION_PORTADA.enlace} ↗</a>}
+            <button type="button" className="sel-btn sel-btn-chico" onClick={() => { setError(null); void analizar(it, false, undefined, true); }} disabled={!!generando} {...botonOcupado(generando === it.avisoId)} data-semanal="analizar-igual">
+              {textoAnalizarIgual(usoDelSaldo(saldo))}
+            </button>
+          </div>
+        </div>
+      );
+    }
     if (corta && generando === it.avisoId) {
       return (
         <div className="sel-ya" role="status" aria-live="polite" data-semanal="midiendo">
@@ -403,6 +431,7 @@ export function SemanalLista({
         ) : tarjeta(f.item, f.item.avisoId, i + desdeN)))}
         {faltanPorVer > 0 && <button type="button" className="sel-mas" onClick={() => setVerTodos(true)} data-semanal="ver-mas">{CASA.seleccion.verMas(faltanPorVer)}</button>}
       </div>
+      {yaNoEsta && <p className="guia-txt" role="status" data-semanal="ya-no-esta">{SEMANAL_PAGINA.yaNoEsta}{saldo.tipo === "con" ? ` ${RETORNO.quedanSinUsar(saldo.n)}` : saldo.tipo === "regalo" ? ` ${RETORNO.quedanSinUsar(1)}` : ""}</p>}
       {visibles === 0 && <p className="guia-txt" data-semanal="vacia">{corta ? SEMANAL_STR.sinCorto : SEMANAL_PAGINA.vacia}</p>}
       {cierre && !enCasa && !conSaldo && visibles > 0 && (
         <div className="mt-6 flex flex-col items-start gap-2" data-semanal="comprar">

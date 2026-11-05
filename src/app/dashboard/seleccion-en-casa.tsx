@@ -65,6 +65,7 @@ export function SeleccionEnCasa({ sel, autoAnalizar, primera }: {
       conTitulo={!sel.largo || sel.cortoPrimero}
       cierre={!sel.cortoPrimero}
       noDan={sel.corto.noDan}
+      publicaciones={sel.corto.publicaciones}
       informes={sel.corto.informes}
       resumenes={sel.corto.resumenes}
     />

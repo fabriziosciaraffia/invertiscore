@@ -19,6 +19,7 @@ import { PlusvaliaComunaSection } from "@/components/comunas/PlusvaliaComunaSect
 import { GFK_SERIE, PLUSVALIA_ESTIMADO, coberturaPlusvaliaDe } from "@/lib/plusvalia-estimado.gen";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 import { comunaDeLaUrl } from "@/lib/deptos/portada";
+import { TIEMPO_ANALISIS } from "@/lib/stats";
 
 export const revalidate = 86400;
 
@@ -149,7 +150,7 @@ function ComunaSinDatos({ nombre }: { nombre: string }) {
 
         <section className="cm-cierre" data-comuna="cierre">
           <h2 className="cm-h2">¿Tienes un departamento en {nombre}?</h2>
-          <p className="cm-texto">Analízalo en 2 minutos. Franco te dice si {VEREDICTOS_FRASE}.</p>
+          <p className="cm-texto">Analízalo: el informe sale {TIEMPO_ANALISIS}. Franco te dice si {VEREDICTOS_FRASE}.</p>
           <AccionesComuna nombre={nombre} />
         </section>
 
@@ -534,7 +535,7 @@ export default async function ComunaPage({ params }: { params: { slug: string } 
           ) : (
             <>
               <h2 className="cm-h2">¿Tienes un departamento en {stats.nombre}?</h2>
-              <p className="cm-texto">Analízalo en 2 minutos. Franco te dice si {VEREDICTOS_FRASE}.</p>
+              <p className="cm-texto">Analízalo: el informe sale {TIEMPO_ANALISIS}. Franco te dice si {VEREDICTOS_FRASE}.</p>
             </>
           )}
           <AccionesComuna nombre={stats.nombre} />

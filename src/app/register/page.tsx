@@ -10,6 +10,7 @@ import { PLANO, UI_PLANO } from "@/components/plano/plano";
 import { LinkAuth } from "@/components/auth/LinkAuth";
 import { esDestinoSeguro } from "@/lib/auth-next";
 import { emitirAuthCompletada, marcarOAuthPendiente, reclamarAnalisisAnonimos } from "@/lib/auth-analytics";
+import { TIEMPO_ANALISIS } from "@/lib/stats";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -125,7 +126,7 @@ export default function RegisterPage() {
         ) : (
           <>
             <h1 className={PLANO.titulo}>Crea tu cuenta gratis</h1>
-            <p className={PLANO.bajada}>Análisis de cualquier departamento en 30 segundos.</p>
+            <p className={PLANO.bajada}>Análisis de cualquier departamento {TIEMPO_ANALISIS}.</p>
 
             <div className={`${PLANO.seccion} flex flex-col gap-3`}>
               <button type="button" onClick={handleGoogle} className={PLANO.principal}>

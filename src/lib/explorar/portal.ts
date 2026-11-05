@@ -21,6 +21,7 @@ import { MAX_COMUNAS_PERFIL, TIPOLOGIAS_DEPTOS } from "@/lib/deptos/respuesta";
 import { PLAN_ANALISIS_MES, PLAN_PRECIO_CLP, RUTA_PLAN } from "@/lib/planes";
 import { tipologiaDe } from "@/lib/lo-que-sigue/perfil";
 import { condicionDe, type CondicionDepto } from "@/lib/guia/linea-depto";
+import { AVISO_NUEVOS } from "@/lib/guia/aviso-nuevos";
 import { capRatePct, esCombinacionDeLaNoche, pieDeLista, PIES_EXPLORAR, plazoDeLista, PLAZOS_EXPLORAR, tipologiaDeDorm, type PieExplorar, type PlazoExplorar } from "./explorar";
 import type { PerfilBusqueda } from "@/lib/perfil-busqueda";
 
@@ -568,7 +569,8 @@ export const PORTAL_COPY = {
     sinAntes: "Todavía no tenías una búsqueda guardada.",
     guardar: "Guardar y avisarme",
     cancelar: "Cancelar",
-    listo: "Listo. Te avisamos de los nuevos que convengan.",
+    // (05-nov-2026, guia/aviso-nuevos.ts) Lo que de verdad llega: el semanal, o la diaria con «Quiero comprar ya».
+    listo: `Listo. ${AVISO_NUEVOS}`,
     faltanComunas: `Para avisarte, elige entre 1 y ${MAX_COMUNAS_PERFIL} comunas en Filtros.`,
     elegir: "Elegir comunas",
     error: "No pudimos guardar tu búsqueda. Intenta de nuevo.",

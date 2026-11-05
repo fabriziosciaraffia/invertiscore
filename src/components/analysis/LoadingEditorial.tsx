@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import FrancoLogo from "@/components/franco-logo";
+import { TIEMPO_ANALISIS } from "@/lib/stats";
 
 const STEPS = [
   "Comparando propiedades cercanas",
@@ -104,7 +105,7 @@ export function LoadingEditorial({ isDataReady = false }: LoadingEditorialProps)
               color: "var(--franco-text-tertiary)",
             }}
           >
-            Esto puede tomar hasta 60 segundos · No cierres la página
+            Esto toma {TIEMPO_ANALISIS} · No cierres la página
           </p>
         </div>
 

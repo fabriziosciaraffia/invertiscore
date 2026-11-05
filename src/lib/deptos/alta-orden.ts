@@ -15,6 +15,7 @@
 // Puro: las piezas se inyectan. Lo prueba el tier ALTA-ORDEN con piezas de mentira que tardan.
 // ─────────────────────────────────────────────────────────────────────────────
 import { tipoDeAlta } from "./respuesta";
+import { motivoSinRegalo } from "@/lib/regalo-alta";
 
 /** La puerta con que nace la cuenta por esta alta: B (/deptos), C (invitada) o E (Explorar sin cuenta, 29-oct-2026). */
 export type PuertaAlta = "B" | "C" | "E";
@@ -35,6 +36,8 @@ export interface PendienteAlta {
 export interface RegaloAlta {
   estado: string;
   vence: string | null;
+  /** Con «ya»: lo que estaba escrito (regalo-alta-servidor.ts), para decir por qué no hay regalo. */
+  motivo?: string | null;
 }
 
 export interface PiezasAlta {
@@ -137,7 +140,7 @@ export async function ordenarAlta(
   const espejo = e.espejoDe(puerta.puerta, prueba);
   const cuerpo: Record<string, unknown> = regalo === "pendiente"
     ? { estado: "nueva", regaloVence: null, regalo: "pendiente", busqueda: e.busquedaDe(p.perfil) }
-    : { estado: "nueva", regaloVence: regalo?.vence ?? null, busqueda: e.busquedaDe(p.perfil) };
+    : { estado: "nueva", regaloVence: regalo?.vence ?? null, regaloMotivo: regalo?.vence ? null : motivoSinRegalo(regalo?.estado, regalo?.motivo), busqueda: e.busquedaDe(p.perfil) };
   return { cuerpo, invitacionUsada: puerta.invitacionUsada, espejos: espejo ? [espejo] : [] };
 }
 

@@ -39,9 +39,18 @@ export async function sha256Hex(texto: string): Promise<string> {
 
 export const normalizarCorreo = (correo: string) => correo.trim().toLowerCase();
 
-/** Un Lead por correo, para siempre: el mismo correo en el banner y en el ticket es una sola persona. */
-export async function idLead(correo: string): Promise<string> {
-  return `lead-${(await sha256Hex(normalizarCorreo(correo))).slice(0, 32)}`;
+/**
+ * Un Lead por correo, para siempre: el mismo correo en el banner y en el ticket es una sola persona.
+ * CON LLAVE (05-nov-2026, auditoría de promesas parte 3): era el SHA-256 del correo, y el `event_id` viaja a Meta aunque la
+ * persona rechace las cookies; como Meta hashea los correos con SHA-256, podía cruzarlo con el correo —y /privacy dice que
+ * sin permiso nunca le llega el correo—. Ahora es un HMAC con una llave del servidor (CRON_SECRET): sigue siendo uno por
+ * correo, pero no se puede cruzar. Sin llave, un id al azar (sin deduplicar, sin correo).
+ */
+export async function idLead(correo: string, clave: string | undefined = process.env.CRON_SECRET): Promise<string> {
+  if (!clave) return `lead-${globalThis.crypto.randomUUID().replace(/-/g, "").slice(0, 32)}`;
+  const k = await globalThis.crypto.subtle.importKey("raw", new TextEncoder().encode(`lead:${clave}`), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const firma = await globalThis.crypto.subtle.sign("HMAC", k, new TextEncoder().encode(normalizarCorreo(correo)));
+  return `lead-${Array.from(new Uint8Array(firma)).map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 32)}`;
 }
 /** Un registro por cuenta. */
 export const idRegistro = (userId: string) => `reg-${userId}`;

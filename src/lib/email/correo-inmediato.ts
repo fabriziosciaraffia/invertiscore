@@ -22,6 +22,8 @@ export interface DatosCorreoInmediato {
   urlBaja: string;
   /** La puerta a Explorar (02-nov-2026, explorar/puerta-correos.ts): después de la selección y antes del botón. */
   explorar?: PuertaExplorarCorreo | null;
+  /** Cuándo apareció el más antiguo (05-nov-2026, del-dia.ts › diaRelativo): «hoy», «ayer», «el martes 3». */
+  dia?: string;
 }
 
 const pct = (n: number) => String(Math.round(n * 10) / 10).replace(".", ",");
@@ -61,7 +63,7 @@ export function correoInmediato(d: DatosCorreoInmediato): { subject: string; htm
   const pie = pct(d.piePct);
   const filas: string[] = [titular(n === 1 ? INMEDIATO.titular : INMEDIATO.titularVarios(n))];
   filas.push(parrafoSemanal(escaparHtml(d.nombre ? `Hola, ${d.nombre}:` : "Hola:")));
-  filas.push(parrafoSemanal(escaparHtml(INMEDIATO.intro(n, d.busca, pie, d.plazoAnios))));
+  filas.push(parrafoSemanal(escaparHtml(INMEDIATO.intro(n, d.busca, pie, d.plazoAnios, d.dia))));
   if (d.deptos.some((x) => x.tramo === "vecina")) filas.push(parrafoSemanal(escaparHtml(INMEDIATO.vecinas)));
   for (const dep of d.deptos) filas.push(tarjetaSemanal(dep));
   const puerta = lineaPuertaSemanal(d.explorar);
@@ -69,7 +71,7 @@ export function correoInmediato(d: DatosCorreoInmediato): { subject: string; htm
   const conSaldo = d.saldo == null || d.saldo > 0;
   filas.push(botonRojoSemanal(conSaldo ? INMEDIATO.botonConSaldo : INMEDIATO.botonSinSaldo, conSaldo ? d.urlBoton : d.urlComprar));
   const pieHtml = `${INMEDIATO.porQue} <a href="${d.urlBaja}" style="color: ${TINTA_3}; text-decoration: underline;">${INMEDIATO.baja}</a>. ${INMEDIATO.bajaSigue}`;
-  return { subject: INMEDIATO.asunto, html: documento(INMEDIATO.asunto, INMEDIATO.intro(n, d.busca, pie, d.plazoAnios), filas, pieHtml) };
+  return { subject: INMEDIATO.asunto, html: documento(INMEDIATO.asunto, INMEDIATO.intro(n, d.busca, pie, d.plazoAnios, d.dia), filas, pieHtml) };
 }
 
 /** La pregunta de los 60 días: tres respuestas de un clic. */

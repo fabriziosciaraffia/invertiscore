@@ -61,6 +61,7 @@ import type { RespuestaUniverso } from "@/lib/explorar/portal-servidor";
 import { TarjetaPin } from "./tarjeta-pin";
 import { ChipVeredicto, ChipVeredictoTokens } from "@/components/analysis/shared/ChipVeredicto";
 import type { ResumenInforme } from "@/lib/informe-propio";
+import type { MotivoSinRegalo } from "@/lib/regalo-alta";
 import {
   capaDeLaNoche, capaNegociarDisponible, capaVisible, conCifrasNegociado, descompactarNegociados, esNegociado, EVENTO_NEGOCIAR, EVENTO_SOLO_COMPRAR, NEGOCIAR_COPY, negociadosVisibles, ordenarNegociados, propsNegociar,
   propsSoloComprar, type Negociacion, type NegociadosCompactos, type PinNegociado,
@@ -116,6 +117,8 @@ export interface CuentaCliente {
   miBusqueda: FiltrosPortal | null;
   busquedaActual: string | null;
   explorarEnMes: number;
+  /** Por qué no tiene regalo (05-nov-2026): la banda de la vuelta lo dice. */
+  sinRegalo?: MotivoSinRegalo | null;
 }
 
 export interface InicialPortal {
@@ -296,7 +299,7 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
   };
   const [aviso, setAviso] = useState<string | null>(null);
   // Recién registrada desde un pin (30-oct-2026): esa tarjeta vuelve desbloqueada, con su banda; el pop-up lo abre la persona.
-  const [recien, setRecien] = useState<{ avisoId: string; regalo: boolean } | null>(null);
+  const [recien, setRecien] = useState<{ avisoId: string; regalo: boolean; sinRegalo?: MotivoSinRegalo | null } | null>(null);
   // EL ENLACE COMPARTIDO (02-nov-2026): la tarjeta de «ya no está» y si el mapa ya se centró en el depto.
   // LA HOJA DEL COMPARTIDO (04-nov-2026, compartido-hoja.tsx): el pin del enlace (su tarjeta grande) o, si ya no está, lo que pasó.
   const [hojaComp, setHojaComp] = useState<{ tipo: "pin"; avisoId: string } | { tipo: "caido"; estado: EstadoCaido; depto: DeptoCompartido | null; parecidos: PinMapa[] } | null>(null);
@@ -973,7 +976,7 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
     if (it) { setCarrusel(cercanos(visibles, it.avisoId).map((p) => p.avisoId)); setSel(it.avisoId); }
     // (30-oct-2026, recorrido real de Fabrizio) Desde un pin vuelve a SU tarjeta, desbloqueada y con la banda; el pop-up de
     // «Analizar este» no se abre solo: lo abre la persona.
-    if (it && (v.motivo === "analizar" || v.motivo === "guardar")) setRecien({ avisoId: it.avisoId, regalo: usaRegalo(cuenta.saldo) });
+    if (it && (v.motivo === "analizar" || v.motivo === "guardar")) setRecien({ avisoId: it.avisoId, regalo: usaRegalo(cuenta.saldo), sinRegalo: cuenta.sinRegalo ?? null });
     if (v.motivo === "guardar" && it && !guardados.has(it.avisoId)) void alternarGuardado(it.avisoId, "tarjeta");
     if (v.motivo === "pie-plazo") setHojaFiltros(true);
     // «Avísame»: la cuenta nueva ya nació con estos filtros como búsqueda; si la cuenta ya existía, se confirma el reemplazo.

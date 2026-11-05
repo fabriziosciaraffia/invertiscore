@@ -9,6 +9,7 @@ import { nombreReal } from "@/lib/welcome";
 import { capturarFallaDeCron } from "@/lib/observabilidad";
 import { cerrarCron } from "@/lib/cron-resultado";
 import { latirCron } from "@/lib/cron-heartbeat";
+import { reintentarRegalosEnFallo } from "@/lib/regalo-alta-servidor";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // EL RECONCILIADOR DE PAGOS (04-nov-2026, auditoría de promesas parte 1, decisión de Fabrizio). Una vez al día cruza lo
@@ -20,6 +21,8 @@ import { latirCron } from "@/lib/cron-heartbeat";
 //       webhook (lib/pagos/acreditar-pago.ts) y, si «Pago confirmado» no salió, sale ahora, una vez.
 //   3 · COBROS SIN INFORME: «Analizar este» y la renta corta de la selección que cobraron y no alcanzaron a crear el
 //       informe (una solicitud cortada a mitad, sin catch que devolviera) devuelven el crédito y sueltan la fila.
+//   4 · REGALOS EN FALLO (05-nov-2026): el regalo de alta cuyo lote no se pudo cargar se reintenta
+//       (regalo-alta-servidor.ts › reintentarRegalosEnFallo).
 // Cuenta lo que hizo y lo que no pudo: un pago que no se acredita queda en el panel («Pagos sin acreditar»).
 // Lo fija el tier DATOS-Y-PLATA.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -131,6 +134,16 @@ export async function GET(request: Request) {
     }
   }
 
-  const exitosos = marcadosPagados + acreditados + devueltos;
-  return cerrarCron(sb, "reconciliar-pagos", { procesados: exitosos + fallidos, exitosos, fallidos }, { marcadosPagados, acreditados, correos, devueltos, sinLote: sinLote.length });
+  // ── 4 · Regalos de alta en fallo (05-nov-2026, auditoría de promesas parte 3) ──
+  // El lote que no se pudo cargar se reintenta solo, aunque la persona no vuelva a entrar.
+  let regalos = { revisados: 0, cargados: 0 };
+  try {
+    regalos = await reintentarRegalosEnFallo(sb, ahora);
+  } catch (e) {
+    fallidos++;
+    capturarFallaDeCron(e, { ruta: RUTA, operacion: "regalos-en-fallo" });
+  }
+
+  const exitosos = marcadosPagados + acreditados + devueltos + regalos.cargados;
+  return cerrarCron(sb, "reconciliar-pagos", { procesados: exitosos + fallidos, exitosos, fallidos }, { marcadosPagados, acreditados, correos, devueltos, sinLote: sinLote.length, regalosRevisados: regalos.revisados, regalosCargados: regalos.cargados });
 }

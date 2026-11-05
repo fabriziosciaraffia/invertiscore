@@ -10,6 +10,7 @@ import type { EstadoSaldo } from "@/lib/casa-saldo";
 import { TRES_COPY, TRES_PRECIO_CLP } from "@/lib/tres-analisis";
 import { PACK_PRECIO_CLP } from "@/lib/lo-que-sigue/oferta-pack";
 import { FRECUENCIA_COPY } from "@/lib/guia/inmediato";
+import { REGLA_REFERIDO } from "@/lib/referido";
 import { lista, RANGOS_UF, TIPOLOGIAS_DEPTOS } from "@/lib/deptos/respuesta";
 
 const SUELTO = fmtCLP(SINGLE_PRICE);
@@ -29,7 +30,7 @@ export const CASA = {
   /** LA FRANJA NEGRA «Invita a alguien». */
   invita: {
     titulo: "Invita a alguien",
-    bajada: "Si entra con tu enlace, los dos reciben un análisis.",
+    bajada: REGLA_REFERIDO,
     boton: "Compartir",
     copiado: "Enlace copiado",
   },

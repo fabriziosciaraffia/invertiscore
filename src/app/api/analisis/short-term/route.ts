@@ -5,6 +5,7 @@ import { getUFValue } from "@/lib/uf";
 import { capturarAnalisisCreado } from "@/lib/medicion-activacion";
 import { capturarReanalisis, sanearReanalisis } from "@/lib/reanalisis-servidor";
 import { sendAnalysisReadyEmail } from "@/lib/email";
+import { referidoTrasAnalisis } from "@/lib/referido-servidor";
 import { nombreReal } from "@/lib/welcome";
 import { readVeredicto } from "@/lib/results-helpers";
 import {
@@ -227,6 +228,8 @@ export async function POST(request: Request) {
     // cuenta el lado LTR). El Lead de bienvenida se retiró: desde el 15-oct Lead es «dejó su correo».
     if (data?.id && user?.id && !ambasGroupId) {
       waitUntil(capturarAnalisisCreado({ userId: user.id, analysisId: data.id as string, modalidad: "str", via: reanalisis ? "reanalisis" : "wizard" }));
+      // EL PREMIO DEL REFERIDO (05-nov-2026): el primer análisis del invitado le da uno a quien invitó (referido-servidor.ts).
+      waitUntil(referidoTrasAnalisis(user.id));
       if (reanalisis) waitUntil(capturarReanalisis({ userId: user.id, analysisId: data.id as string, r: reanalisis, modalidad: "str", conPago: false }));
     }
 

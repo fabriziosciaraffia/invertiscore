@@ -1,5 +1,6 @@
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { fechaCortaCL, TZ_CHILE } from "@/lib/fecha-cl";
+import { fechaVence } from "@/lib/guia/semanal";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { hasSubscriptionAccess } from "@/lib/access";
@@ -160,7 +161,7 @@ export default async function PerfilPage() {
     planCtaHref = urlCompra({ product: PRODUCTO_PLAN });
   } else if (credits > 0) {
     planLabel = "Análisis disponibles";
-    planDescription = `Tienes ${credits} ${credits === 1 ? "análisis disponible" : "análisis disponibles"}. ${proximoVence ? `${credits === 1 ? "Vence" : "El primero vence"} el ${fechaCortaCL(proximoVence, { month: "long" })}.` : credits === 1 ? "No vence." : "No vencen."}`;
+    planDescription = `Tienes ${credits} ${credits === 1 ? "análisis disponible" : "análisis disponibles"}. ${proximoVence ? `${credits === 1 ? "Vence" : "El primero vence"} ${fechaVence(proximoVence)}.` : credits === 1 ? "No vence." : "No vencen."}`;
     planCtaText = "Comprar más";
     planCtaHref = "/pricing";
   } else {

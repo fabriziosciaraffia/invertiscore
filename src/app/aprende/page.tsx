@@ -4,6 +4,7 @@ import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { AppFooter } from "@/components/chrome/AppFooter";
 import LeverageSection from "@/components/leverage-section";
 import { CtaAnalizar } from "@/components/CtaAnalizar";
+import { TIEMPO_ANALISIS } from "@/lib/stats";
 
 export const metadata: Metadata = {
   title: "Aprende a invertir en departamentos",
@@ -56,7 +57,7 @@ export default function AprendePage() {
           ¿Quieres saber si tu depto vale la pena?
         </p>
         <p className="font-body text-sm text-[var(--franco-text-secondary)] mb-6">
-          Ingresa los datos y Franco te dice la verdad en 30 segundos.
+          Ingresa los datos y Franco te dice la verdad {TIEMPO_ANALISIS}.
         </p>
         <CtaAnalizar origen="aprende"
           className="inline-block bg-[#C8323C] text-white font-body text-[15px] font-semibold px-8 py-3.5 rounded-lg hover:bg-[#C8323C]/90 transition-colors"

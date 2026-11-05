@@ -111,10 +111,12 @@ export const INMEDIATO = {
   asunto: "Apareció un depto que conviene con lo que buscas",
   titular: "Apareció un depto que conviene con lo que buscas",
   titularVarios: (n: number) => `Aparecieron ${n} deptos que convienen con lo que buscas`,
-  intro: (n: number, busca: string, pie: string, plazo: number) =>
+  /** `dia`: del-dia.ts › diaRelativo del más antiguo de lo que va (05-nov-2026): «hoy» solo si apareció hoy; si no, «ayer» o
+   *  «el martes 3» (con varios, «desde»). Decía «Apareció hoy» con avisos de hasta 48 horas (y de una semana en la primera). */
+  intro: (n: number, busca: string, pie: string, plazo: number, dia = "hoy") =>
     n === 1
-      ? `Apareció hoy un depto publicado como los que buscas —${busca}— que resulta con tu pie de ${pie}% y tu plazo de ${plazo} años.`
-      : `Aparecieron hoy ${n} deptos publicados como los que buscas —${busca}— que resultan con tu pie de ${pie}% y tu plazo de ${plazo} años.`,
+      ? `Apareció ${dia} un depto publicado como los que buscas —${busca}— que resulta con tu pie de ${pie}% y tu plazo de ${plazo} años.`
+      : `Aparecieron ${dia === "hoy" ? "hoy" : `desde ${dia}`} ${n} deptos publicados como los que buscas —${busca}— que resultan con tu pie de ${pie}% y tu plazo de ${plazo} años.`,
   porQue: "Te llega porque nos dijiste que quieres comprar ya.",
   // Con vecinas (27-oct-2026): en sus comunas no hubo nuevos que convengan.
   vecinas: "En tus comunas no apareció ninguno nuevo que convenga, así que miramos las comunas vecinas.",
@@ -127,7 +129,7 @@ export const INMEDIATO = {
   pregunta: {
     asunto: "¿Cuándo piensas comprar?",
     titular: "¿Cuándo piensas comprar?",
-    cuerpo: "Hace dos meses nos dijiste que querías comprar ya, y por eso te avisamos apenas aparece un depto que conviene con lo que buscas. ¿Sigue igual?",
+    cuerpo: "Hace dos meses nos dijiste que querías comprar ya, y por eso te mandamos cada día que aparece un depto que conviene con lo que buscas. ¿Sigue igual?",
     sinRespuesta: "Si no respondes, dejamos los avisos al momento y te seguimos mandando el resumen de cada semana.",
     // Renombrado el 16-oct-2026 (decisión de Fabrizio): «Ya» desaparece, va «Quiero comprar ya».
     opciones: [
@@ -136,7 +138,7 @@ export const INMEDIATO = {
       { id: "mirando", texto: "Solo estoy mirando" },
     ] as ReadonlyArray<{ id: HorizonteCompra; texto: string }>,
     gracias: "Listo, lo anotamos.",
-    graciasYa: "Te seguimos avisando apenas aparezca un depto que conviene con lo que buscas.",
+    graciasYa: "Te seguimos mandando, cada día que aparezca, un depto que conviene con lo que buscas.",
     graciasOtro: "Te seguimos mandando el resumen de cada semana.",
     error: "No pudimos anotarlo con ese enlace. Escríbenos a hola@refranco.ai y lo hacemos.",
   },

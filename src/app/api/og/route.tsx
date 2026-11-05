@@ -5,8 +5,11 @@ import { readVeredicto } from "@/lib/results-helpers";
 import { veredictoDeBanda } from "@/lib/gate-veredicto-hallazgo";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 import type { Veredicto } from "@/lib/types";
+import { puntajeDe, resultadosPorId } from "@/lib/analysis/resultados-del-informe";
+import { getUFValue } from "@/lib/uf";
 
-export const runtime = "edge";
+// En Node, no en edge (05-nov-2026): el puntaje sale del mismo recálculo que el informe (resultados-del-informe.ts), que
+// corre el motor. El runtime edge está deprecado en Vercel.
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -32,7 +35,9 @@ export async function GET(request: Request) {
     return new Response("Not found", { status: 404 });
   }
 
-  const score = data.score || 0;
+  // EL PUNTAJE DE LA PORTADA (05-nov-2026): el mismo recálculo que el informe, no la columna del día en que se creó.
+  const delInforme = await resultadosPorId(id, await getUFValue());
+  const score = puntajeDe(delInforme?.results) ?? (data.score || 0);
   // Goal 10a (07-sep-2026): el veredicto sale de results.veredicto (el del motor, con
   // gates), no de umbrales sobre el score (los viejos 75/40 ni siquiera eran los del
   // motor). Sin results, la banda del score con los umbrales del motor. Etiqueta única.
@@ -40,7 +45,7 @@ export async function GET(request: Request) {
   const verdict = etiquetaVeredicto(veredicto, "banda");
   const verdictColor = veredicto === "COMPRAR" ? "#B0BEC5" : "#C8323C";
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const results = data.results as any;
+  const results = (delInforme?.results ?? data.results) as any;
   const flujo = results?.metrics?.flujoNetoMensual;
   const rent = results?.metrics?.rentabilidadBruta;
 

@@ -21,7 +21,7 @@ import { DISCLAIMER_CANONICO } from "@/components/chrome/AppFooter";
 import { FondoMaterial, Glifo, PieLanding } from "@/components/landing-v14/Marca";
 import { CampoLanding } from "@/components/landing-v14/Entrada";
 import { EXPLICACION_VEREDICTO } from "@/components/landing-v14/explicaciones";
-import { COMPARABLES_TEXTO } from "@/lib/stats";
+import { comparablesVivos } from "@/lib/comparables-vivos";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 import { DIMENSIONES_LTR, DIMENSIONES_STR, HORIZONTE, PLUSVALIA_PCT, REGLAS } from "@/lib/metodologia";
 import type { Veredicto } from "@/lib/types";
@@ -40,7 +40,8 @@ export const metadata: Metadata = {
   },
 };
 
-export const revalidate = 86400;
+// Cada hora (05-nov-2026): la cifra de comparables es el conteo vivo (comparables-vivos.ts).
+export const revalidate = 3600;
 
 /** Qué pesa en cada respuesta, en palabras: la banda del puntaje y las reglas que la mueven. */
 const QUE_PESA: Record<Veredicto, string> = {
@@ -51,7 +52,8 @@ const QUE_PESA: Record<Veredicto, string> = {
 
 const ORDEN: Veredicto[] = ["COMPRAR", "AJUSTA SUPUESTOS", "BUSCAR OTRA"];
 
-export default function MetodologiaPage() {
+export default async function MetodologiaPage() {
+  const { texto: COMPARABLES_TEXTO } = await comparablesVivos();
   return (
     <>
       <HeaderFranco />

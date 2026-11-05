@@ -1,9 +1,10 @@
 import { redirect } from "next/navigation";
 import { cookies, headers } from "next/headers";
 import { asegurarRegaloDeAlta, huellaDeCabeceras } from "@/lib/regalo-alta-servidor";
+import { motivoSinRegalo, SIN_REGALO_COPY } from "@/lib/regalo-alta";
 import { COOKIE_DISPOSITIVO } from "@/lib/dispositivo";
 import { COOKIE_INVITACION } from "@/lib/referido";
-import { vincularInvitacion } from "@/lib/referido-servidor";
+import { referidoAlPrimerAnalisis, vincularInvitacion } from "@/lib/referido-servidor";
 import { InvitaAlguien } from "@/components/invitacion/InvitaAlguien";
 import { bloquesEnOrden, cargarSeleccionPagina, deptosDelMapa, hayDeptos } from "@/lib/guia/seleccion-pagina-servidor";
 import { convienenEnSeleccion, lineaConvienen } from "@/lib/explorar/puerta-correos";
@@ -47,6 +48,7 @@ import {
 import { agruparPorPropiedad, contarUnidades } from "./agrupar";
 import { Bienvenida, type PerfilBienvenida } from "./bienvenida";
 import { primerAnalisisGratis } from "./bienvenida-copy";
+import { comparablesVivos } from "@/lib/comparables-vivos";
 import { Archive } from "./archive";
 import { parseParams, PAGE_SIZE } from "./dashboard-helpers";
 // El CSS del chip de veredicto del informe: el dashboard lo usa desde el 25-sep-2026.
@@ -59,7 +61,7 @@ import { autoAnalizarDeLaVuelta } from "@/lib/guia/compra-desde-depto";
  * tiene su perfil o su selección, con o sin informes. El orden manda:
  *   1 · «Hola, [nombre]» con la píldora del saldo («Sin análisis · Ver planes» / «Te quedan N»);
  *   2 · la oferta roja de una fila, mientras el ticket de la cuenta nueva viva, con o sin saldo (lib/casa/reglas.ts);
- *   3 · la franja «Invita a alguien · Si entra con tu enlace, los dos reciben un análisis · Compartir»;
+ *   3 · la franja «Invita a alguien · la regla del referido (referido.ts › REGLA_REFERIDO) · Compartir»;
  *   4 · «Tu selección de esta semana» con la línea del perfil y cuándo se renueva; el mapa de la selección (los 5 en rojo,
  *       los demás que convienen en gris, «Explorar los N en el mapa» a /explorar); las tarjetas numeradas, el ya analizado
  *       como fila compacta en su posición, «Ver los N que faltan»;
@@ -100,7 +102,7 @@ export default async function DashboardPage({
 
   // El regalo al registrarse (16-oct-2026, regalo-alta.ts), como red: la cuenta que llegó hasta acá sin pasar por el
   // código ni por el enlace (contraseña). Antes de la bienvenida: el correo lo dice.
-  await asegurarRegaloDeAlta(admin, {
+  const regaloAlta = await asegurarRegaloDeAlta(admin, {
     userId: user.id, creadaAt: user.created_at, huella: huellaDeCabeceras(headers(), cookies().get(COOKIE_DISPOSITIVO)?.value ?? null),
   });
   // La invitación (16-oct-2026, la puerta C), también como red: la cuenta que llegó hasta acá con la cookie de un «/i/CÓDIGO»
@@ -111,6 +113,9 @@ export default async function DashboardPage({
       userId: user.id, creadaAt: user.created_at, cookie: cookieInv, huella: huellaDeCabeceras(headers(), cookies().get(COOKIE_DISPOSITIVO)?.value ?? null),
     });
   }
+  // EL PREMIO DEL REFERIDO, como red (05-nov-2026): si el invitado ya tiene su primer análisis y el premio no se pagó
+  // (una ruta que no alcanzó, un informe desbloqueado al pagar), se paga acá. Sin invitación pendiente, una sola lectura.
+  await referidoAlPrimerAnalisis(admin, { userId: user.id });
   // Welcome email server-side e idempotente, antes del branch de onboarding.
   await ensureWelcomeEmail(user.id, user.email, fullName);
 
@@ -137,6 +142,9 @@ export default async function DashboardPage({
   ]);
   const gratis = primerAnalisisGratis(creditsRow);
   const saldo = estadoSaldo(datosSaldo);
+  // POR QUÉ NO HAY REGALO (05-nov-2026, regalo-alta.ts › motivoSinRegalo): bajo «Sin análisis», el tope que lo frenó, o el
+  // correo que ya tenía cuenta (el alta de /deptos llega con `?regalo=existente`).
+  const sinRegalo = saldo.tipo === "sin" ? motivoSinRegalo(regaloAlta.estado, regaloAlta.motivo) ?? (uno("regalo") === "existente" ? "existente" : null) : null;
   const informes = analisisCount ?? 0;
   const pb = perfilPersona.perfilLtr ?? perfilPersona.perfilStr ?? perfilPersona.perfil;
   const tienePerfil = informes > 0 || (perfilPersona.soloManual && pb.completo);
@@ -157,7 +165,7 @@ export default async function DashboardPage({
       <div className="min-h-screen bg-[var(--franco-bg)]">
         <ChipVeredictoTokens />
         {creditsRow?.onboarding_completed && <HeaderFranco activo="mis" sesion={{ email: user.email ?? "" }} />}
-        <Bienvenida nombre={firstName || null} gratis={gratis} perfil={perfil} onboarding={!creditsRow?.onboarding_completed} saldo={lineaSaldo(saldo)} />
+        <Bienvenida nombre={firstName || null} gratis={gratis} perfil={perfil} onboarding={!creditsRow?.onboarding_completed} saldo={lineaSaldo(saldo)} comparables={(await comparablesVivos()).texto} />
       </div>
     );
   }
@@ -237,6 +245,7 @@ export default async function DashboardPage({
             {pildora.planes && <> · <EnlaceCarga href="/pricing" data-casa="planes">{CASA.verPlanes}</EnlaceCarga></>}
           </span>
         </div>
+        {sinRegalo && <p className="ca-sin-regalo" data-casa="sin-regalo" data-motivo={sinRegalo}>{SIN_REGALO_COPY[sinRegalo].titulo} {SIN_REGALO_COPY[sinRegalo].bajada}</p>}
         {/* «Nuevo análisis» como botón en la página (25-oct-2026): el header lleva «Explorar» destacado y, con sesión, deja
             «Nuevo análisis» como enlace (en el teléfono, en el menú del avatar); acá sigue a la vista. Con contorno: el
             botón negro de la pantalla es el del header. */}

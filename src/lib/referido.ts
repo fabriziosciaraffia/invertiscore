@@ -1,14 +1,16 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// LA PUERTA C, EL REFERIDO (16-oct-2026, decisiones de Fabrizio): una persona registrada invita a alguien y, si entra,
-// los dos reciben un análisis.
+// LA PUERTA C, EL REFERIDO (16-oct-2026, decisiones de Fabrizio): una persona registrada invita a alguien; el invitado
+// recibe su regalo de cuenta nueva y, CUANDO HACE SU PRIMER ANÁLISIS, quien invitó recibe uno (05-nov-2026, auditoría de
+// promesas parte 3: hasta entonces el premio esperaba a que el invitado contestara «¿Cuándo piensas comprar?», cosa que
+// ningún texto decía). La regla, en una sola frase: REGLA_REFERIDO.
 //   · El enlace: cada persona tiene el suyo, «refranco.ai/i/CÓDIGO». Por defecto el invitado ve «Un amigo te invitó a
 //     Franco»; con su nombre solo si quien invita lo pide al generar el enlace (es otro enlace, el suyo con nombre).
 //   · La cookie: abrir el enlace deja el código guardado 30 días (el middleware); se cobra al registrarse, venga por
 //     donde venga —las cuatro preguntas de la página, el informe gratis por dirección, el banner, Google—.
-//   · El premio se paga cuando el invitado, con sesión (validó el código), contesta el «cuándo»: a quien invitó, un
-//     análisis más vigente 60 días y el correo «Tu invitado entró: tienes un análisis más». El invitado recibe el
-//     regalo normal de cuenta nueva, no dos. Tope: cinco por persona. No cuenta si el invitado ya tenía cuenta ni si
-//     usa el mismo dispositivo que quien invita.
+//   · El premio se paga cuando el invitado hace su primer análisis (referido-servidor.ts › referidoAlPrimerAnalisis, en
+//     cada ruta que crea uno y en el dashboard como red): a quien invitó, un análisis más vigente 60 días y el correo «Tu
+//     invitado hizo su primer análisis». El invitado recibe el regalo normal de cuenta nueva, no dos. Tope: cinco por
+//     persona. No cuenta si el invitado ya tenía cuenta ni si usa el mismo dispositivo que quien invita.
 // Puro (sin Node): lo lee el middleware. La escritura vive en referido-servidor.ts; lo prueba el tier PUERTA-C.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -35,7 +37,7 @@ export const CODIGO_INVITACION = /^[A-HJKMNP-Z2-9]{6}$/;
 export const PREFIJO_DETALLE_INVITACION = "invitacion:";
 /**
  * EL DEPTO COMPARTIDO (02-nov-2026, lib/explorar/enlace-compartido.ts): el enlace de un depto de Explorar lleva el código de
- * quien lo comparte. La invitación vale igual que la de /i/CÓDIGO —los dos ganan un análisis, con las mismas reglas—, pero
+ * quien lo comparte. La invitación vale igual que la de /i/CÓDIGO —con las mismas reglas: el regalo del invitado y el premio con su primer análisis—, pero
  * la cuenta queda con el detalle `depto:CÓDIGO`, y así el panel separa los registros que vienen de un depto compartido de
  * los del enlace genérico. La cookie lo recuerda con una tercera parte: `CÓDIGO.<segundos>.d`.
  */
@@ -100,7 +102,7 @@ export type EstadoReferido = "pendiente" | "pagado" | "tope" | "mismo_dispositiv
 export type DecisionPremio = "pagar" | "tope" | "mismo_dispositivo";
 
 /**
- * Qué se hace con el premio de quien invitó, cuando el invitado contesta el «cuándo». El mismo dispositivo primero: es la
+ * Qué se hace con el premio de quien invitó, cuando el invitado hace su primer análisis. El mismo dispositivo primero: es la
  * señal de que es la misma persona (quien invita abrió su enlace en ese navegador). `pagados` = premios ya pagados a
  * quien invitó.
  */
@@ -119,10 +121,15 @@ export function nombreInvitacion(v: unknown): string | null {
 
 const quien = (nombre: string | null) => (nombre ? `${nombre} te invitó a Franco` : "Un amigo te invitó a Franco");
 
+/** LA REGLA DEL REFERIDO, en una frase (05-nov-2026): la dicen todos los textos de «Invita a alguien». */
+export const REGLA_REFERIDO = `Cuando tu invitado hace su primer análisis, tú recibes uno: hasta ${TOPE_PREMIOS_REFERIDO} invitados, cada uno vigente ${DIAS_VIGENCIA_PREMIO_REFERIDO} días.`;
+/** Lo que recibe el invitado: su regalo de cuenta nueva (regalo-alta.ts), que ve en «Estás dentro». */
+const REGALO_INVITADO = "Al crear tu cuenta, Franco te regala un análisis.";
+
 export const REFERIDO_COPY = {
   // ── La página del invitado ──
   titular: "Te invitaron a Franco.",
-  bajada: "Tu primer análisis va por cuenta de Franco.",
+  bajada: REGALO_INVITADO,
   /** La vista previa del enlace (WhatsApp, el correo) y la línea de arriba del titular. */
   quien,
   sinDepto: "Elige y Franco te dice cuántos deptos convienen hoy.",
@@ -138,36 +145,36 @@ export const REFERIDO_COPY = {
 
   // ── Invita a alguien (el dashboard, el menú de compartir, el pie del semanal) ──
   invitaTitulo: "Invita a alguien",
-  invitaTexto: "Si entra con tu enlace, los dos reciben un análisis.",
+  invitaTexto: REGLA_REFERIDO,
   copiar: "Copiar enlace",
   copiado: "Enlace copiado",
   compartir: "Compartir",
   conNombre: "Que diga mi nombre",
   nombrePlaceholder: "Tu nombre",
   /** Lo que lleva el mensaje al compartir (sin el enlace, para el menú nativo, y con él). */
-  textoCompartir: (nombre: string | null) => `${quien(nombre)}: tu primer análisis va por cuenta de Franco.`,
-  mensaje: (nombre: string | null, url: string) => `${quien(nombre)}: tu primer análisis va por cuenta de Franco. ${url}`,
+  textoCompartir: (nombre: string | null) => `${quien(nombre)}. ${REGALO_INVITADO}`,
+  mensaje: (nombre: string | null, url: string) => `${quien(nombre)}. ${REGALO_INVITADO} ${url}`,
   usarNombre: "Usar este nombre",
   error: "No pudimos armar tu enlace. Intenta de nuevo.",
   cuenta: (pagados: number) =>
     pagados >= TOPE_PREMIOS_REFERIDO
       ? `Ya sumaste tus ${TOPE_PREMIOS_REFERIDO} análisis por invitar.`
       : pagados === 0
-        ? `Hasta ${TOPE_PREMIOS_REFERIDO} invitados te suman un análisis cada uno, vigente ${DIAS_VIGENCIA_PREMIO_REFERIDO} días.`
-        : `Llevas ${pagados} de ${TOPE_PREMIOS_REFERIDO}: cada invitado que entra te suma un análisis, vigente ${DIAS_VIGENCIA_PREMIO_REFERIDO} días.`,
-  pieSemanal: "Invita a alguien: si entra con tu enlace, los dos reciben un análisis.",
+        ? REGLA_REFERIDO
+        : `Llevas ${pagados} de ${TOPE_PREMIOS_REFERIDO}: cada invitado que hace su primer análisis te suma uno, vigente ${DIAS_VIGENCIA_PREMIO_REFERIDO} días.`,
+  pieSemanal: `Invita a alguien. ${REGLA_REFERIDO}`,
   menuCompartir: "Invita a alguien",
-  menuCompartirNota: "Los dos reciben un análisis",
+  menuCompartirNota: `Recibes uno cuando hace su primer análisis: hasta ${TOPE_PREMIOS_REFERIDO}, vigente ${DIAS_VIGENCIA_PREMIO_REFERIDO} días`,
 
   // ── El correo a quien invitó ──
-  correoAsunto: "Tu invitado entró: tienes un análisis más",
-  correoTitular: "Tu invitado entró.",
-  correoTexto: "Tienes un análisis más en tu cuenta, para el depto que quieras.",
+  correoAsunto: "Tu invitado hizo su primer análisis: tienes uno más",
+  correoTitular: "Tu invitado hizo su primer análisis.",
+  correoTexto: `Tienes un análisis más en tu cuenta, vigente ${DIAS_VIGENCIA_PREMIO_REFERIDO} días, para el depto que quieras.`,
   /** Lo mismo después del saludo («Hola Camila, tienes…»). */
-  correoCuerpo: "tienes un análisis más en tu cuenta, para el depto que quieras.",
+  correoCuerpo: `tienes un análisis más en tu cuenta, vigente ${DIAS_VIGENCIA_PREMIO_REFERIDO} días, para el depto que quieras.`,
   correoQuedan: (pagados: number) =>
     pagados >= TOPE_PREMIOS_REFERIDO
       ? `Con este sumaste los ${TOPE_PREMIOS_REFERIDO} análisis por invitar.`
-      : `Llevas ${pagados} de ${TOPE_PREMIOS_REFERIDO} invitados: cada uno que entra te suma otro.`,
+      : `Llevas ${pagados} de ${TOPE_PREMIOS_REFERIDO} invitados: cada uno que hace su primer análisis te suma otro.`,
   correoBoton: "Analizar un depto",
 } as const;

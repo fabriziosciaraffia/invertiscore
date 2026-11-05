@@ -19,7 +19,7 @@ export default function TermsPage() {
           Términos de Uso
         </h1>
         <p className="font-body text-[13px] text-[var(--franco-text-secondary)] mt-3">
-          Última actualización: marzo 2026
+          Última actualización: noviembre 2026
         </p>
 
         {/* Disclaimer */}
@@ -40,7 +40,12 @@ export default function TermsPage() {
           <section>
             <h2 className="font-heading font-bold text-lg text-[var(--franco-text)]">1. Qué es Franco</h2>
             <p className="font-body text-[15px] text-[var(--franco-text)] leading-relaxed mt-3">
-              Franco (refranco.ai) es una herramienta de análisis de inversión inmobiliaria operada desde Chile. Permite evaluar propiedades residenciales mediante métricas financieras calculadas a partir de los datos ingresados por el usuario.
+              Franco (refranco.ai) es una herramienta de análisis de inversión inmobiliaria operada desde Chile. Permite evaluar propiedades residenciales mediante métricas financieras calculadas a partir de los datos ingresados por el usuario y de información de mercado.
+            </p>
+            {/* QUÉ INCLUYE EL ANÁLISIS (05-nov-2026, auditoría de promesas parte 3): la descripción de la página lo prometía y el
+                cuerpo no lo decía. Lo mismo que el FAQ (lib/faq-data.ts › que-incluye). */}
+            <p className="font-body text-[15px] text-[var(--franco-text)] leading-relaxed mt-3">
+              Cada análisis incluye el veredicto y el Franco Score, el precio sugerido para negociar, el flujo de cada mes, el resultado a 10 años y cómo salir (vender o refinanciar), cuánto puede bajar el arriendo antes de que cambie el veredicto, y cómo cambia el resultado con otro pie y otro plazo, en arriendo tradicional o en renta corta.
             </p>
           </section>
 
@@ -48,7 +53,7 @@ export default function TermsPage() {
           <section>
             <h2 className="font-heading font-bold text-lg text-[var(--franco-text)]">2. Datos y precisión</h2>
             <p className="font-body text-[15px] text-[var(--franco-text)] leading-relaxed mt-3">
-              Los datos utilizados provienen de fuentes públicas (Banco Central, SII, CMF) e información de mercado. Franco no garantiza la exactitud, completitud ni actualidad de los datos. Los resultados son estimaciones basadas en los parámetros ingresados y supuestos del modelo.
+              Los datos utilizados provienen de avisos de venta y arriendo publicados en portales inmobiliarios, que Franco recolecta y actualiza; la UF y la tasa hipotecaria promedio, del Banco Central; las reglas de las contribuciones, del SII; y, en renta corta, datos de mercado de arriendos de corto plazo. Franco no garantiza la exactitud, completitud ni actualidad de los datos. Los resultados son estimaciones basadas en los parámetros ingresados y supuestos del modelo.
             </p>
           </section>
 

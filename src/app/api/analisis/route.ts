@@ -7,6 +7,7 @@ import { runAnalysis } from "@/lib/analysis";
 import { METHODOLOGY_VERSION_ACTUAL } from "@/lib/modelo-costos";
 import { getUFValue } from "@/lib/uf";
 import { sendAnalysisReadyEmail } from "@/lib/email";
+import { referidoTrasAnalisis } from "@/lib/referido-servidor";
 import { nombreReal, ensureWelcomeEmail } from "@/lib/welcome";
 import { readVeredicto } from "@/lib/results-helpers";
 import { captureApiError, captureApiWarning } from "@/lib/observabilidad";
@@ -308,6 +309,8 @@ export async function POST(request: Request) {
     // 15-oct Lead es «dejó su correo» (src/lib/meta/ids.ts).
     if (data?.id && user?.id) {
       waitUntil(capturarAnalisisCreado({ userId: user.id, analysisId: data.id as string, modalidad: typeof data.tipo_analisis === "string" ? data.tipo_analisis : "ltr", via: reanalisis ? "reanalisis" : "wizard" }));
+      // EL PREMIO DEL REFERIDO (05-nov-2026): el primer análisis del invitado le da uno a quien invitó (referido-servidor.ts).
+      waitUntil(referidoTrasAnalisis(user.id));
       if (reanalisis) waitUntil(capturarReanalisis({ userId: user.id, analysisId: data.id as string, r: reanalisis, modalidad: "ltr", conPago: false }));
     }
 

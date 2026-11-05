@@ -159,7 +159,9 @@ export function correoCodigoSupabase(): string {
     codigo: "{{ .Token }}",
     boton: { texto: "Entrar con el enlace", url: "{{ .ConfirmationURL }}" },
     despues: [
-      "El enlace hace lo mismo que el código: te deja en el mismo informe, ya con tu cuenta.",
+      // «EN ESTE NAVEGADOR» (05-nov-2026, auditoría de promesas parte 3): el enlace deja la página con la cuenta solo si se abre
+      // en el navegador donde se pidió (el reclamo lee su cookie, auth/callback). En otro, entra a la cuenta y nada más.
+      "El enlace hace lo mismo que el código si lo abres en el navegador donde lo pediste: te deja en la misma página, ya con tu cuenta.",
       "Si no pediste este código, no hagas nada: sin él nadie entra a tu cuenta.",
     ],
   });

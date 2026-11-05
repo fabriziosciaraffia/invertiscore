@@ -41,7 +41,8 @@ export const REGISTRO_UN_PASO = {
   enviadoTitular: "Revisa tu correo.",
   enviadoPlumon: "El código ya salió.",
   enviadoCuerpo: (correo: string) => `Lo mandamos a ${correo}. Escríbelo acá y este informe queda en tu cuenta, sin salir de la página.`,
-  enlaceAlternativa: "El correo también trae un enlace: si lo abres, vuelves a este mismo informe con tu cuenta.",
+  // «En este navegador» (05-nov-2026): el reclamo del informe lee la cookie de este navegador (auth/callback).
+  enlaceAlternativa: "El correo también trae un enlace: si lo abres en este navegador, vuelves a este mismo informe con tu cuenta.",
   seguir: "Seguir leyendo",
   errorCorreo: "Ese correo no se entiende. Revísalo.",
   errorEnvio: "No pudimos mandar el código. Intenta de nuevo.",
@@ -188,4 +189,12 @@ export const CORREO_RECORDATORIO = {
   cuerpo: "El próximo toma un minuto: tu pie, tu tasa y tu plazo ya están puestos. Solo falta el depto.",
   boton: "Analizar el próximo",
   pie: "Tus 3 análisis no vencen. Te escribimos esta vez y no volvemos a insistir.",
+} as const;
+/** EL PACK SIN INFORME (05-nov-2026, auditoría de promesas parte 3): comprado desde un depto o desde Explorar, no hay números
+ *  que precargar. Lleva al mapa, que abre con su búsqueda. Antes iba al formulario vacío prometiendo «números ya cargados». */
+export const CORREO_RECORDATORIO_SIN_INFORME = {
+  asunto: "Te quedan 3 análisis.",
+  cuerpo: "En el mapa están los deptos que convienen hoy con tu búsqueda: elige uno y analízalo.",
+  boton: "Ver el mapa",
+  pie: CORREO_RECORDATORIO.pie,
 } as const;

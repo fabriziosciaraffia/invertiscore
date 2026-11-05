@@ -7,8 +7,6 @@ import { pagoAbreElInforme } from "@/lib/lo-que-sigue/retorno-pago";
 import { waitUntil } from "@vercel/functions";
 import { emitirIntencionCompra, emitirRegistroAlCrear } from "@/lib/meta/registro";
 import { conEspejo, contextoDeRequest } from "@/lib/meta/servidor";
-import { huellaDeRequest } from "@/lib/regalo-alta-servidor";
-import { cookieInvitacionDeCabeceras, referidoAlContestarCuando } from "@/lib/referido-servidor";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/lo-que-sigue/perfil (30-sep-2026): lo que la persona elige en «Estás dentro» —los chips
@@ -68,8 +66,7 @@ export async function POST(request: Request) {
   // IntencionCompra con la respuesta; y CompleteRegistration si la cuenta nació sin él (idempotente). Sin sesión (la
   // firma del pago) no: esa cuenta no validó nada.
   if (user && cambios.horizonte_compra) {
-    // EL PREMIO DEL REFERIDO (16-oct-2026, la puerta C): validó el código y contestó el «cuándo» (referido-servidor.ts).
-    waitUntil(referidoAlContestarCuando(admin, { userId: user.id, creadaAt: user.created_at, cookie: cookieInvitacionDeCabeceras(request.headers), huella: huellaDeRequest(request) }).then(() => undefined));
+    // El premio del referido ya no depende del «cuándo» (05-nov-2026): lo paga el primer análisis del invitado.
     const ctx = contextoDeRequest(request);
     const reg = await emitirRegistroAlCrear(admin, user, ctx, { origen: "cuando" });
     const ic = await emitirIntencionCompra(admin, user, cambios.horizonte_compra, ctx);

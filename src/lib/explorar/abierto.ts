@@ -13,6 +13,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import { perfilManualDeElecciones, RANGOS_UF, validarElecciones, type EleccionesDeptos } from "@/lib/deptos/respuesta";
 import { lineaDepto } from "@/lib/guia/linea-depto";
+import { AVISO_NUEVOS } from "@/lib/guia/aviso-nuevos";
 import { DESDE_COMPARTIDO_LLEGADA, DESDE_LANDING } from "./puertas-landing";
 import { PIE_POR_DEFECTO, PLAZO_POR_DEFECTO } from "@/lib/deptos/estandar";
 import { perfilDeFiltros, urlDePortal, validarPortal, type FiltrosPortal, type ModalidadPortal, type OrdenPortal, type PinMapa, type UniversoCompacto } from "./portal";
@@ -73,7 +74,8 @@ export const REGISTRO_COPY = {
   conDepto: "Te regalamos el análisis de este depto.",
   sinDepto: "Te regalamos un análisis.",
   cuerpoDepto: { antes: "Crea tu cuenta gratis y recibe el informe completo, con ", fuerte: "el enlace a la publicación", despues: "." },
-  cuerpoAvisame: "Crea tu cuenta gratis y te avisamos de los nuevos que convienen con estos filtros.",
+  // (05-nov-2026, guia/aviso-nuevos.ts) Lo que de verdad llega después de «Avísame».
+  cuerpoAvisame: `Crea tu cuenta gratis y busca con estos filtros. ${AVISO_NUEVOS}`,
   cuerpoCifras: "Crea tu cuenta gratis y ve el flujo, el cap rate y el precio por m² de cada depto.",
   cuerpoPiePlazo: "Crea tu cuenta gratis y elige tu pie y tu plazo.",
   google: "Entrar con Google",

@@ -11,6 +11,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import { COMUNAS_DISPONIBLES } from "@/lib/comunas-disponibles";
 import { PIE_DEPTOS, PLAZO_DEPTOS } from "./estandar";
+import { AVISO_NUEVOS } from "@/lib/guia/aviso-nuevos";
 
 export const MAX_COMUNAS_DEPTOS = 3;
 /** Un correo que se entiende (el mismo criterio que /entrar y el ticket). */
@@ -154,20 +155,25 @@ export const DEPTOS_COPY = {
   eligeYTeDecimos: "Elige la comuna y te decimos cuántos convienen hoy.",
   /** Al lado del número: «de 310 publicados convienen». */
   resto: (total: number, convienen: number) => `de ${miles(total)} publicados ${convienen === 1 ? "conviene" : "convienen"}`,
-  nota: "Publicados anoche. Cambia la búsqueda y el número cambia.",
+  // «Publicados anoche» (hasta el 05-nov-2026) prometía de más: el número es de la evaluación de anoche, sobre los avisos
+  // vistos en la semana (deptos/servidor.ts › desdeVentana).
+  nota: "Evaluados anoche. Cambia la búsqueda y el número cambia.",
   /** La tarjeta del correo. */
   correo: {
     titulo: "Regístrate gratis y revísalos ahora mismo.",
-    tituloSinDeptos: "Regístrate gratis y te avisamos cuando aparezca uno.",
+    // Sin deptos (05-nov-2026, guia/aviso-nuevos.ts): lo que de verdad llega, no una alerta que no existe.
+    tituloSinDeptos: `Regístrate gratis. ${AVISO_NUEVOS}`,
     /** «Los mejores de estos 12 te llegan al correo en minutos, con un análisis de regalo para el que más te interese.»: la
      *  negrita va en `fuerte`. «LOS MEJORES DE ESTOS» (24-oct-2026, recorrido de Fabrizio): lo que llega es la selección, no
      *  los 12; prometer los 12 era falso. */
     bajada: (convienen: number): { antes: string; fuerte: string; despues: string } =>
       convienen > 1
-        ? { antes: `Los mejores de estos ${miles(convienen)} te llegan al correo en minutos, `, fuerte: "con un análisis de regalo", despues: " para el que más te interese." }
+        // «Dentro de la hora» (05-nov-2026): el correo del día sale cuando hay lecturas de ficha, o a los 45 minutos con lo
+        // visto en la semana (del-dia.ts › MINUTOS_CUPO_DEL_DIA). «En minutos» prometía de más.
+        ? { antes: `Los mejores de estos ${miles(convienen)} te llegan al correo dentro de la hora, `, fuerte: "con un análisis de regalo", despues: " para el que más te interese." }
         : convienen === 1
-          ? { antes: "Te llega al correo en minutos, ", fuerte: "con un análisis de regalo", despues: " para analizarlo." }
-          : { antes: "Te llega al correo apenas se publique, ", fuerte: "con un análisis de regalo", despues: " para analizarlo." },
+          ? { antes: "Te llega al correo dentro de la hora, ", fuerte: "con un análisis de regalo", despues: " para analizarlo." }
+          : { antes: "Cada lunes te llegan los nuevos que convienen, ", fuerte: "con un análisis de regalo", despues: " para analizar el que quieras." },
     google: "Entrar con Google",
     oTuCorreo: "o con tu correo",
     placeholder: "nombre@correo.cl",

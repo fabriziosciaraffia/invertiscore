@@ -19,6 +19,7 @@ import { RUTA_SUELTO_INMEDIATO, diaDelAviso, elegirInmediato, estadoYa, mandaSel
 import { avisadosAlMomento, prepararSeleccion, publicadoConPresupuesto, type ItemSemanal, type PresupuestoFichas } from "./semanal-servidor";
 import { prepararSeleccionStr, type PreparacionStr } from "./semanal-str-servidor";
 import { vistosDePersona } from "./vistos-servidor";
+import { diaRelativo } from "./del-dia";
 import type { Candidato } from "./semanal-candidatos";
 import type { Combinacion, Evaluado } from "./seleccion";
 import type { EstadoPublicacion } from "./publicacion";
@@ -174,8 +175,13 @@ export async function avisarPersona(
     await admin.from("avisos_inmediatos").update({ enviado_at: null }).eq("id", tomada.id);
     return "no";
   }
+  // «Apareció hoy» solo si el más antiguo apareció hoy (05-nov-2026, del-dia.ts › diaRelativo): la primera vez que el
+  // listado lo trajo (`scraped_properties.created_at`).
+  const { data: altas } = await admin.from("scraped_properties").select("created_at").in("id", items.map((i) => i.avisoId)).order("created_at").limit(1);
+  const masViejo = (altas?.[0]?.created_at as string | undefined) ?? null;
   const correo = correoInmediato({
     nombre: nombreReal(usuario?.user_metadata),
+    dia: masViejo ? diaRelativo(masViejo, ahora) : undefined,
     busca: textoBusca(perfil),
     piePct: combo.piePct,
     plazoAnios: combo.plazoAnios,

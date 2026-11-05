@@ -40,7 +40,8 @@ export function ticketEnElInforme(p: { cuentaCreadaAt: string | null | undefined
 /** Con saldo y el ticket vivo (22-oct-2026): una sola línea, como enlace, sin frenar —en el dashboard y debajo del
  *  «Usa 1 de tus N análisis» del pop-up de «Analizar este»—. */
 export const TICKET_CON_SALDO = {
-  linea: (precio: string, vence: string) => `Hoy, 3 más por ${precio} · vence ${vence}`,
+  // Sin «Hoy,» (05-nov-2026): el ticket vence a las 24 horas y el «vence» ya puede decir «mañana».
+  linea: (precio: string, vence: string) => `3 más por ${precio} · vence ${vence}`,
   /** El botón de la tarjeta del dashboard, con saldo. */
   boton: (precio: string) => `3 más por ${precio}`,
 } as const;

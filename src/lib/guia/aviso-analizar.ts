@@ -51,6 +51,8 @@ export const AVISO_ANALIZAR = {
   /** RENTA CORTA (27-oct-2026, decisión de Fabrizio): la medición fina puede decir que no da, y entonces no hay informe.
    *  La promesa dice los dos casos —y el pop-up «no da» la cumple con «Ver la publicación»—. */
   incluyeCorta: { antes: "Si da, el informe incluye ", fuerte: "el enlace a la publicación", despues: "; si no da, no gastas y te mostramos la publicación igual." },
+  /** Lo mismo SIN SALDO, mientras compra (05-nov-2026): «no gastas» al lado de «Comprar» se leía como «no pagas». */
+  incluyeCortaComprando: { antes: "Si da, el informe incluye ", fuerte: "el enlace a la publicación", despues: "; si no da, no usas un análisis y te mostramos la publicación igual." },
   sinRecalculo: "No pudimos recalcular con esa combinación. Prueba otra.",
 } as const;
 

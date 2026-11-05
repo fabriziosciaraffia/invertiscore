@@ -4,7 +4,7 @@
 // El poblamiento del mapa y el contador de «Por qué creerle», atados (27-sep-2026).
 //
 // Decisión de Fabrizio: el mapa se va poblando en racimos y el contador sube JUNTO con él,
-// hasta terminar en la cifra de la fuente única («+40.000», `COMPARABLES_CIFRA`). Después se
+// hasta terminar en la cifra de la fuente única (el conteo vivo, comparables-vivos.ts, desde el 05-nov-2026). Después se
 // queda quieto. El mapa publica cuánto lleva (0 a 1) y el contador lo escribe; los dos viven
 // en columnas distintas de la sección, así que se hablan por este contexto.
 //

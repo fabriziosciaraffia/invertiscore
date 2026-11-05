@@ -11,6 +11,7 @@
 // tier PUERTA-B; la escritura y el envío, del-dia-servidor.ts y el cron correo-del-dia.
 // ─────────────────────────────────────────────────────────────────────────────
 import type { ReglaSemanal } from "./semanal";
+import { AVISO_NUEVOS } from "./aviso-nuevos";
 
 /** Pasado esto sin cupo, sale con lo que ya se sabe publicado (la promesa es «dentro de la hora»). */
 export const MINUTOS_CUPO_DEL_DIA = 45;
@@ -40,6 +41,19 @@ const diaChile = (d: Date) => d.toLocaleDateString("en-CA", { timeZone: "America
 /** La marca de un pin del mapa de Explorar: «Visto publicado hoy a las 03:12» (en «Tu selección» ya no va por tarjeta). */
 export function marcaVisto(iso: string, ahora: Date = new Date()): string {
   return `Visto publicado ${cuandoSeVio(iso, ahora)}`;
+}
+
+/**
+ * EL DÍA, DICHO DE VERDAD (05-nov-2026, auditoría de promesas parte 3): «hoy» solo si es de hoy en Chile (o sea, de las
+ * últimas 24 horas); si no, «ayer» o «el martes 3». Lo usan «Apareció hoy» del aviso inmediato y «revisados hoy» del correo
+ * del día, que decían «hoy» aunque el depto fuera de hace dos días.
+ */
+export function diaRelativo(iso: string, ahora: Date = new Date()): string {
+  const d = new Date(iso);
+  const hoy = diaChile(ahora), ese = diaChile(d), ayer = diaChile(new Date(ahora.getTime() - 864e5));
+  if (ese === hoy) return "hoy";
+  if (ese === ayer) return "ayer";
+  return `el ${d.toLocaleDateString("es-CL", { weekday: "long", day: "numeric", timeZone: "America/Santiago" })}`;
 }
 
 export function cuandoSeVio(iso: string, ahora: Date = new Date()): string {
@@ -124,7 +138,7 @@ export const PRIMERA_SELECCION = {
   faltan: "Para armar tu selección falta un dato:",
   armar: "Ver mis deptos",
   /** Ninguno conviene (sin la bajada, `hojaSinDeptos`: lo del correo lo dice este texto): */
-  ninguno: "Para tu búsqueda no hay uno publicado que convenga por ahora. En unos minutos te llega al correo la confirmación, y Franco te avisa en cuanto aparezca uno.",
+  ninguno: `Para tu búsqueda no hay uno publicado que convenga por ahora. Dentro de la hora te llega al correo la confirmación. ${AVISO_NUEVOS}`,
   vecinas: "En tus comunas no hay uno hoy: estos son de comunas vecinas.",
   revisando: "Revisando uno por uno si siguen publicados…",
   cargando: "Buscando tus primeros deptos…",
@@ -166,18 +180,19 @@ export function textoAnalizar(usaRegalo: boolean): string {
 }
 
 export const DEL_DIA = {
-  asunto: "Tus primeros deptos, revisados hoy",
-  titular: "Tus primeros deptos, revisados hoy",
+  /** `dia`: diaRelativo del chequeo más antiguo de lo que va (05-nov-2026): «hoy» solo si de verdad fue hoy. */
+  asunto: (dia = "hoy") => `Tus primeros deptos, revisados ${dia}`,
+  titular: (dia = "hoy") => `Tus primeros deptos, revisados ${dia}`,
   preencabezado: (n: number) => (n === 1 ? "El depto publicado que mejor resulta con lo que buscas." : `Los ${n} deptos publicados que mejor resultan con lo que buscas.`),
-  introN: (n: number, busca: string, pie: string, plazo: number, negociar = 0) =>
-    `Hoy, ${n === 1 ? "1 depto publicado" : `${n} deptos publicados`} como los que buscas —${busca}— ${n === 1 ? "resulta" : "resultan"} con un pie de ${pie}% y un plazo de ${plazo} años${
+  introN: (n: number, busca: string, pie: string, plazo: number, negociar = 0, dia = "hoy") =>
+    `${dia === "hoy" ? "Hoy, " : ""}${n === 1 ? "1 depto publicado" : `${n} deptos publicados`} como los que buscas —${busca}— ${n === 1 ? "resulta" : "resultan"} con un pie de ${pie}% y un plazo de ${plazo} años${
       negociar === 0 ? "" : negociar === 1 ? ", uno de ellos si lo negocias" : `, ${negociar} de ellos si los negocias`}.`,
   /** Desde ahora, el semanal (la presentación del primer correo). */
   semanal: "Desde ahora, cada lunes te mandamos los nuevos que convengan.",
   /** «Publicados al [hora]»: el chequeo más antiguo de lo que va en el correo. */
   publicadosAl: (cuando: string) => `Franco los vio publicados ${cuando}. Antes de visitar uno, confirma con quien lo publica que sigue disponible.`,
   regalo: "Te cargamos un análisis de regalo: úsalo en el depto que quieras.",
-  vacioAsunto: "Te aviso cuando aparezca uno",
-  vacio: "Hoy no encontré uno publicado que convenga con lo que buscas. Sigo buscando y te aviso cuando aparezca uno.",
+  vacioAsunto: "Hoy no encontré uno que convenga",
+  vacio: `Hoy no encontré uno publicado que convenga con lo que buscas. ${AVISO_NUEVOS}`,
   vacioPerfil: "Si quieres buscar en otras comunas o con otro pie, cámbialo en tu perfil:",
 } as const;

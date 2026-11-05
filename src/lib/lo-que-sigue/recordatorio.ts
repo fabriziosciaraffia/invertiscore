@@ -7,7 +7,7 @@
 // Funciones puras: las prueba el tier sin red.
 // ─────────────────────────────────────────────────────────────────────────────
 import { escaparHtml, plantillaClara } from "@/lib/email/plantilla-clara";
-import { CORREO_RECORDATORIO } from "./copy";
+import { CORREO_RECORDATORIO, CORREO_RECORDATORIO_SIN_INFORME } from "./copy";
 import { PACK_ANALISIS, rutaPrecarga } from "./oferta-pack";
 
 export const DIAS_RECORDATORIO = 3;
@@ -35,18 +35,23 @@ export function debeRecordar(p: PagoPackRecordatorio, ahora: Date = new Date()):
 
 /** El correo, en la plantilla clara. `sitio` sin barra final. */
 export function correoRecordatorioPack(sitio: string, analysisId: string | null): { subject: string; html: string } {
-  const destino = analysisId ? rutaPrecarga(analysisId) : "/analisis/nuevo-v4";
-  // Directo al wizard precargado: sin sesión, el wizard pide el código y vuelve al mismo lugar.
+  // Con informe, directo al wizard precargado (sin sesión, el wizard pide el código y vuelve al mismo lugar). Sin informe
+  // (05-nov-2026), al mapa: no hay números que precargar.
+  const destino = analysisId ? rutaPrecarga(analysisId) : DESTINO_SIN_INFORME;
+  const c = analysisId ? CORREO_RECORDATORIO : CORREO_RECORDATORIO_SIN_INFORME;
   const url = `${sitio}${destino}`;
   return {
-    subject: CORREO_RECORDATORIO.asunto,
+    subject: c.asunto,
     html: plantillaClara({
-      titulo: CORREO_RECORDATORIO.asunto,
-      preencabezado: CORREO_RECORDATORIO.cuerpo,
-      titular: escaparHtml(CORREO_RECORDATORIO.asunto),
-      parrafos: [escaparHtml(CORREO_RECORDATORIO.cuerpo)],
-      boton: { texto: CORREO_RECORDATORIO.boton, url },
-      despues: [escaparHtml(CORREO_RECORDATORIO.pie)],
+      titulo: c.asunto,
+      preencabezado: c.cuerpo,
+      titular: escaparHtml(c.asunto),
+      parrafos: [escaparHtml(c.cuerpo)],
+      boton: { texto: c.boton, url },
+      despues: [escaparHtml(c.pie)],
     }),
   };
 }
+
+/** Adónde lleva el recordatorio de un pack sin informe: el mapa de Explorar, que abre con la búsqueda de la cuenta. */
+export const DESTINO_SIN_INFORME = "/explorar";

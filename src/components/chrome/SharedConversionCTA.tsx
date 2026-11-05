@@ -22,6 +22,7 @@
 
 import { CtaAnalizar } from "@/components/CtaAnalizar";
 import type { OrigenCTA } from "@/lib/cta-analizar";
+import { TIEMPO_ANALISIS } from "@/lib/stats";
 
 const RED_TINT = "#FFD9DC"; // tinte claro de Signal Red para texto sobre campo rojo
 
@@ -67,7 +68,7 @@ export function ConversionCloser({ origen = "resultado_cierre" }: { origen?: Ori
           margin: "0 auto 28px auto",
         }}
       >
-        Datos reales del mercado, sin conflictos de interés. Veredicto en menos de un minuto.
+        Datos reales del mercado, sin conflictos de interés. Veredicto {TIEMPO_ANALISIS}.
       </p>
       <CtaAnalizar
         origen={origen}

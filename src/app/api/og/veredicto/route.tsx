@@ -1,6 +1,8 @@
 import { ImageResponse } from "next/og";
 import { createClient } from "@supabase/supabase-js";
 import { readVeredicto } from "@/lib/results-helpers";
+import { puntajeDe, resultadosPorId } from "@/lib/analysis/resultados-del-informe";
+import { getUFValue } from "@/lib/uf";
 import { fmtPct, fmtMult } from "@/components/analysis/utils";
 import type {
   FullAnalysisResult,
@@ -11,7 +13,7 @@ import type {
 // Edge runtime: misma elección que /api/og (existente).
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 
-export const runtime = "edge";
+// En Node (05-nov-2026): el puntaje sale del mismo recálculo que el informe (resultados-del-informe.ts).
 
 // ── Fuentes del sistema (Capa 2) ─────────────────────────────────────────
 // Solo Source Serif 4 (narrativa/wordmark) + JetBrains Mono (datos/labels).
@@ -174,7 +176,8 @@ export async function GET(request: Request) {
   const results = (data.results as FullAnalysisResult | null) ?? null;
   const input = (data.input_data as AnalisisInput | null) ?? null;
 
-  const score = Math.max(0, Math.min(100, Math.round(data.score || 0)));
+  // EL PUNTAJE DE LA PORTADA (05-nov-2026): el mismo recálculo que el informe, no la columna del día en que se creó.
+  const score = Math.max(0, Math.min(100, puntajeDe((await resultadosPorId(id, await getUFValue()))?.results) ?? Math.round(data.score || 0)));
   const veredicto: Veredicto =
     readVeredicto(results) ??
     (score >= 70 ? "COMPRAR" : score >= 45 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA");

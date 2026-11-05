@@ -14,7 +14,7 @@
 //   · `desde=compartido` marca la llegada (la vista del enlace compartido, la puerta E con su detalle).
 //   · `i=CÓDIGO`, cuando quien comparte tiene cuenta: su código de invitación. El middleware lo deja en la cookie de la
 //     invitación, marcada «depto», y la cuenta que nazca en ese navegador queda con la puerta C y el detalle `depto:CÓDIGO`
-//     (referido.ts): los dos ganan un análisis, igual que con el enlace /i/CÓDIGO.
+//     (referido.ts): el invitado su regalo de cuenta nueva y quien invita uno con su primer análisis, igual que con /i/CÓDIGO.
 // ─────────────────────────────────────────────────────────────────────────────
 import { normalizarCodigo } from "@/lib/referido";
 import { DESDE_COMPARTIDO_LLEGADA } from "./puertas-landing";

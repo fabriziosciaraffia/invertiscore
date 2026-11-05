@@ -14,11 +14,12 @@ export const BIENVENIDA = {
   hace: [
     {
       titulo: "Analiza tus deptos.",
-      texto: `Pones la dirección y el precio. Franco lo cruza con ${COMPARABLES_TEXTO} propiedades reales y te dice si conviene:`,
+      // La cifra en vivo (05-nov-2026, comparables-vivos.ts): la pasa el dashboard; sin ella, el respaldo.
+      texto: (comparables: string = COMPARABLES_TEXTO) => `Pones la dirección y el precio. Franco lo cruza con ${comparables} propiedades reales y te dice si conviene:`,
     },
     {
       titulo: "Te hace llegar oportunidades de inversión.",
-      texto: "Franco tiene un portafolio de deptos para invertir, y todos pasaron por el mismo análisis que vas a hacer tú. Estamos abriendo el acceso: te escribimos apenas tengamos uno que calce con lo que buscas.",
+      texto: () => "Franco tiene un portafolio de deptos para invertir, y todos pasaron por el mismo análisis que vas a hacer tú. Estamos abriendo el acceso: te escribimos apenas tengamos uno que calce con lo que buscas.",
     },
   ],
   /** El botón dice «gratis» solo si es verdad: la cuenta tiene el crédito de bienvenida sin usar. */

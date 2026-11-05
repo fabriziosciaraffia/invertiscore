@@ -21,7 +21,9 @@ export const VEDADAS_GUIA = ["portafolio", "exclusivo", "oportunidad"] as const;
 // 02-oct-2026: el título y «usa 1 de tus N» dicen el SALDO REAL (GUIA_SALDO, abajo), no «3» fijo: quien
 // ya usó uno, o tenía saldo de antes, leía un número falso.
 export const GUIA = {
-  cuerpo: "Deptos publicados hoy, parecidos y cercanos al que analizaste. Franco los revisó con tu pie y tu plazo: estos son los mejores.",
+  // «Publicados hoy» (hasta el 05-nov-2026) prometía de más: son avisos vistos en la semana cuya ficha Franco revisó en las
+  // últimas 24 horas (guia-servidor.ts). Lo que es seguro: siguen publicados.
+  cuerpo: "Deptos que siguen publicados, parecidos y cercanos al que analizaste. Franco los revisó con tu pie y tu plazo: estos son los mejores.",
   ajustada: "Ajustamos tu pie y tu plazo porque ninguno calzaba con esa combinación; estos son los mejores.",
   ninguno: "Ninguno conviene, ni con más plazo ni con más pie. Mejor sigue buscando en otra zona.",
   analizar: "Analizar este",

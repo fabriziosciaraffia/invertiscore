@@ -9,6 +9,7 @@ import { cerrarCron, CORRIDA_FALLIDA } from "@/lib/cron-resultado";
 import { latirCron } from "@/lib/cron-heartbeat";
 import { seVende } from "@/lib/planes";
 import { conBajaDeCorreos } from "@/lib/correo-baja";
+import { rutaRetomarCompra } from "@/lib/compra/compra";
 
 const RUTA = "GET /api/cron/abandoned-checkout";
 
@@ -93,7 +94,7 @@ export async function GET(request: Request) {
 
   const { data: candidates, error } = await supabase
     .from("payments")
-    .select("id, user_id, product, created_at")
+    .select("id, user_id, product, created_at, analysis_id, payment_data")
     .eq("status", "pending")
     .in("product", RECOVERABLE_PRODUCTS)
     .lte("created_at", cutoffIso)
@@ -264,7 +265,8 @@ export async function GET(request: Request) {
       }
 
       // Reclamada. Recién ahora sale el correo.
-      const ok = await sendCheckoutRecoveryEmail(u.email, name, productLabel, productKind, { userId: u.id });
+      // A la compra que quedó a medias (05-nov-2026, compra.ts › rutaRetomarCompra), no a /pricing.
+      const ok = await sendCheckoutRecoveryEmail(u.email, name, productLabel, productKind, { userId: u.id, retomar: rutaRetomarCompra(row) });
       if (!ok) {
         console.error(
           "[cron/abandoned-checkout] envío falló DESPUÉS de reclamar; payment:",

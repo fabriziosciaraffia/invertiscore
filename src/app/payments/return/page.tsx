@@ -21,7 +21,7 @@ import { hayGuia } from "@/lib/guia/activa";
 import { hrefEntrar } from "@/lib/entrar/entrada";
 import { PRODUCTO_TRES, TRES_COPY, volverSeguro } from "@/lib/tres-analisis";
 import { PLANO, UI_PLANO } from "@/components/plano/plano";
-import { RETORNO, botonTrasPagar, rutaReintentar } from "@/lib/compra/compra";
+import { RETORNO, botonTrasPagar, rutaReintentar, vueltaAnalizaSola } from "@/lib/compra/compra";
 import { CONFIRMANDO_TOPE_MS, DEMORA_PAGO, PAGO_SIN_CONFIRMAR, RETORNO_SUSCRIPCION, estadoRetornoSuscripcion } from "@/lib/subscriptions/suscripcion";
 import { ABRIR_INFORME_TRAS_MS, INFORME_COPY, informeFallo, informeGenerando, informeListo, type MotivoFallo, type PasoInforme } from "@/lib/guia/informe-en-camino";
 import { InformeEnLaVuelta } from "@/components/guia/InformeEnCamino";
@@ -71,6 +71,8 @@ function PaymentReturnContent() {
   // "abriendo tu análisis…" mientras se hace el push (evita flash de la pantalla
   // genérica antes de la navegación).
   const [redirecting, setRedirecting] = useState(false);
+  // La vuelta que analiza al llegar (05-nov-2026): renta corta o Explorar.
+  const [volviendo, setVolviendo] = useState(false);
   // LA COMPRA SALIÓ DE UN DEPTO DE LA SELECCIÓN (22-oct-2026, decisión de Fabrizio; compra-desde-depto.ts): pagada, esta
   // pantalla genera el informe de ese depto sola —«Pago confirmado. Franco está analizando Providencia · 2D2B · 59 m² ·
   // UF 3.500…»— y lo abre. Desde el 03-nov-2026 con la regla del informe en camino (lib/guia/informe-en-camino.ts,
@@ -257,6 +259,13 @@ function PaymentReturnContent() {
                 setRedirecting(true);
                 setAlDepto(depto);
                 void generarDepto(depto);
+              } else if (!redirectedRef.current && !data.payment.analysis_id && vuelta && vueltaAnalizaSola(vuelta)) {
+                // RENTA CORTA Y EXPLORAR (05-nov-2026, compra.ts › vueltaAnalizaSola): sin informe que generar acá, la vuelta
+                // lleva sola al depto, que se analiza al llegar —igual que en renta larga—.
+                redirectedRef.current = true;
+                setRedirecting(true);
+                setVolviendo(true);
+                abrirDestino(vuelta);
               }
             }
           } else if (estado === "error") {
@@ -367,7 +376,7 @@ function PaymentReturnContent() {
               <InformeEnLaVuelta paso={informe} saldo={saldo} alReintentar={() => void generarDepto(alDepto)} />
             ) : (
               <>
-                <p className={PLANO.bajada}>{RETORNO.abriendo.cuerpo}</p>
+                <p className={PLANO.bajada} data-retorno={volviendo ? "volviendo-al-depto" : undefined}>{volviendo ? RETORNO.volviendoAlDepto : RETORNO.abriendo.cuerpo}</p>
                 {destino && conAbrir && (
                   <div className={PLANO.seccion}>
                     <a href={destino} className={PLANO.principal} data-informe="abrir">{INFORME_COPY.abrir}</a>
@@ -392,7 +401,7 @@ function PaymentReturnContent() {
               conSesion={conSesion}
               saldo={saldo}
               pago={llavePago}
-              sinGuia={<DespuesDePagar analysisId={packPagado.analysisId} veredicto={packPagado.veredicto} modalidad={packPagado.modalidad} conSesion={conSesion} saldo={saldo} />}
+              sinGuia={<DespuesDePagar analysisId={packPagado.analysisId} veredicto={packPagado.veredicto} modalidad={packPagado.modalidad} conSesion={conSesion} saldo={saldo} sinParecidos />}
             />
           ) : (
             <DespuesDePagar analysisId={packPagado.analysisId} veredicto={packPagado.veredicto} modalidad={packPagado.modalidad} conSesion={conSesion} saldo={saldo} />

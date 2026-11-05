@@ -9,6 +9,9 @@
 .ca-hola { margin: 0; font-size: 14px; color: var(--franco-text-secondary); }
 .ca-pildora { font-size: 13px; font-weight: 500; color: var(--franco-text-secondary); background: var(--franco-card); border: 1px solid var(--franco-border); border-radius: 999px; padding: 6px 12px; white-space: nowrap; }
 .ca-pildora a { color: var(--franco-text); text-decoration: underline; text-underline-offset: 3px; }
+/* Por qué no hay regalo (05-nov-2026, regalo-alta.ts › SIN_REGALO_COPY), bajo «Sin análisis». */
+.ca-sin-regalo { margin: 8px 0 0; font-size: 13px; line-height: 1.45; color: var(--franco-text-secondary); text-align: right; }
+@media (max-width: 640px) { .ca-sin-regalo { text-align: left; } }
 /* «Nuevo análisis» en la página (25-oct-2026), con contorno: el botón negro de la pantalla es «Explorar», en el header. */
 .ca-acciones { margin-top: 12px; }
 .ca-boton-nuevo { display: inline-flex; align-items: center; height: 40px; padding: 0 18px; border: 1px solid var(--franco-text); border-radius: 999px; background: var(--franco-card); color: var(--franco-text); font-size: 14px; font-weight: 600; text-decoration: none; }

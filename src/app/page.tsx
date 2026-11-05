@@ -16,7 +16,7 @@
 import type { Metadata } from "next";
 import "@/components/landing-v14/landing.css";
 import { leerDatosLanding } from "@/lib/landing-vivo";
-import { COMPARABLES_TEXTO } from "@/lib/stats";
+import { comparablesVivos } from "@/lib/comparables-vivos";
 import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { Hero, LaRespuesta, LoQueHaria, PorQueCreerle, Cierre } from "@/components/landing-v14/Secciones";
 import { RotacionEjemplos } from "@/components/landing-v14/Rotacion";
@@ -24,9 +24,12 @@ import { SuaveScroll } from "@/components/landing-v14/SuaveScroll";
 
 export const revalidate = 600;
 
-export const metadata: Metadata = {
+// La cifra de comparables, en vivo (05-nov-2026, comparables-vivos.ts).
+export async function generateMetadata(): Promise<Metadata> {
+  const { texto } = await comparablesVivos();
+  return {
   title: { absolute: "¿Ese depto es buena inversión? — Franco" },
-  description: `Escribe la dirección y Franco te dice si comprar, ajustar o buscar otro: un modelo financiero y un veredicto, contra ${COMPARABLES_TEXTO} deptos comparables de Santiago.`,
+  description: `Escribe la dirección y Franco te dice si comprar, ajustar o buscar otro: un modelo financiero y un veredicto, contra ${texto} deptos comparables de Santiago.`,
   alternates: { canonical: "/" },
   openGraph: {
     title: "¿Ese depto es buena inversión? — Franco",
@@ -36,10 +39,11 @@ export const metadata: Metadata = {
     locale: "es_CL",
     type: "website",
   },
-};
+  };
+}
 
 export default async function LandingPage() {
-  const datos = await leerDatosLanding();
+  const [datos, comparables] = await Promise.all([leerDatosLanding(), comparablesVivos()]);
   const ahora = new Date();
   return (
     // `data-theme="light"` en la raíz: la landing es de material fijo, y las piezas del informe que
@@ -58,7 +62,7 @@ export default async function LandingPage() {
           <LaRespuesta />
           <LoQueHaria />
         </RotacionEjemplos>
-        <PorQueCreerle />
+        <PorQueCreerle comparables={comparables} />
         <Cierre datos={datos} ahora={ahora} />
       </main>
     </div>

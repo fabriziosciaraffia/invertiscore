@@ -138,7 +138,9 @@ export function AvisoAntesDeAnalizar({ avisoId = null, depto, combinacion, finan
   };
   const derivados = resumen.derivados.filter((x) => x.label === "Dividendo" || x.label === "Retorno bruto");
   // Qué incluye el informe: en renta corta, los dos casos (27-oct-2026): si no da, no gasta y ve la publicación igual.
-  const incluye = modalidad === "str" ? AVISO_ANALIZAR.incluyeCorta : AVISO_ANALIZAR.incluye;
+  // COMPRANDO (05-nov-2026, auditoría de promesas parte 3): sin saldo la persona está pagando, y «no gastas» se leía como «no
+  // pagas»; ahí dice «no usas un análisis».
+  const incluye = modalidad === "str" ? (sin ? AVISO_ANALIZAR.incluyeCortaComprando : AVISO_ANALIZAR.incluyeCorta) : AVISO_ANALIZAR.incluye;
   // Lo que daba al abrir (la tarjeta gris): con la combinación de apertura, o lo recalculado si ya cambió. EL VEREDICTO VA CON EL CHIP
   // DE LA CASA (04-nov-2026, la pasada de Fabrizio), no en texto: «[✓ Comprar · 84] al precio publicado · flujo +$261.383 te queda».
   // La frase entera (lineaVeredicto) queda como su nombre accesible.
@@ -245,7 +247,7 @@ export function AvisoAntesDeAnalizar({ avisoId = null, depto, combinacion, finan
   );
 
   // Después de «Analizar»: el mismo pop-up, con lo que pasa con el informe. No se cierra mientras genera.
-  if (informe) return <InformeEnCamino paso={informe} alCerrar={alCerrarInforme ?? alCancelar} alReintentar={alReintentarInforme} />;
+  if (informe) return <InformeEnCamino paso={informe} alCerrar={alCerrarInforme ?? alCancelar} alReintentar={alReintentarInforme} saldo={uso.tipo === "con" ? uso.n : uso.tipo === "regalo" ? 1 : uso.tipo === "sin" ? 0 : null} />;
 
   // Lo que vio al tocar «Analizar»: lo recalculado si cambió el pie o el plazo, si no la tarjeta.
   const vista: VeredictoVisto | null = cambio ? (cambiada && recal ? { veredicto: recal.veredicto, score: recal.score } : { veredicto: cambio.base.veredicto, score: cambio.base.score }) : null;

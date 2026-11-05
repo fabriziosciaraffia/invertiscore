@@ -23,7 +23,7 @@ import { RANGOS_UF } from "@/lib/deptos/respuesta";
 import { asuntoSemanal, COMO_ENTRAR, MARCA_NEGOCIAR, MARCA_SIN_CONFIRMAR, MARCA_VISTO, SEMANAL_VACIO, textoVence, type Visto } from "@/lib/guia/semanal";
 import { MARCA_ZONA, SEMANAL_STR } from "@/lib/guia/semanal-str";
 import { TRES_COPY } from "@/lib/tres-analisis";
-import { DEL_DIA } from "@/lib/guia/del-dia";
+import { cuandoSeVio, DEL_DIA } from "@/lib/guia/del-dia";
 import { REFERIDO_COPY } from "@/lib/referido";
 import { lineaDepto, type CondicionDepto } from "@/lib/guia/linea-depto";
 import { PUERTA_EXPLORAR, type PuertaExplorarCorreo } from "@/lib/explorar/puerta-correos";
@@ -53,7 +53,9 @@ export const SEMANAL = {
   sinConfirmar: (n: number) => (n === 1
     ? "Uno lo vio anoche publicado en los resultados del portal, pero no alcanzó a revisar su ficha: va al final, marcado."
     : `${n} los vio anoche publicados en los resultados del portal, pero no alcanzó a revisar sus fichas: van al final, marcados.`),
-  revisadosSinConfirmar: "Los confirmados, Franco los revisó hace unas horas y seguían publicados; los marcados «sin confirmar» los vio anoche en el portal. Antes de visitar uno, confirma con quien lo publica que sigue disponible.",
+  // LA FECHA REAL (05-nov-2026, auditoría de promesas parte 3): decía «los revisó hace unas horas» y el envío del lunes no lee
+  // ninguna ficha (el último chequeo puede tener días). Ahora cada depto dice cuándo Franco lo vio publicado (`vistoAt`).
+  revisadosSinConfirmar: "Franco revisó que los confirmados siguieran publicados: en cada uno dice cuándo lo vio. Los marcados «sin confirmar» los vio en los resultados del portal, sin abrir su ficha. Antes de visitar uno, confirma con quien lo publica que sigue disponible.",
   presentacion: "Desde ahora, cada semana te mandamos los deptos publicados que mejor resultan con lo que buscas.",
   presentacionBaja: "Si no los quieres,",
   presentacionBajaEnlace: "deja de recibirlos",
@@ -66,7 +68,9 @@ export const SEMANAL = {
   lineaTres: TRES_COPY.lineaCorreo,
   verDepto: "Ver este depto",
   alMes: "al mes",
-  revisados: "Franco los revisó hace unas horas y seguían publicados. Antes de visitar uno, confirma con quien lo publica que sigue disponible.",
+  revisados: "Franco revisó que cada uno siguiera publicado: en cada uno dice cuándo lo vio. Antes de visitar uno, confirma con quien lo publica que sigue disponible.",
+  /** La línea de cada depto (05-nov-2026): «Visto publicado el sábado 1 a las 03:12». */
+  vistoPublicado: (cuando: string) => `Visto publicado ${cuando}`,
   porQue: "Los recibes porque tienes cuenta en Franco.",
   baja: "Dejar de recibirlos",
 } as const;
@@ -90,6 +94,8 @@ export interface DeptoCorreo {
   sinConfirmar?: boolean;
   /** Nuevo o usado, como lo dice el aviso (28-oct-2026): «· Usado» al final de la línea. Ausente si no lo dice. */
   condicion?: CondicionDepto;
+  /** Cuándo Franco lo vio publicado (05-nov-2026): el último chequeo de su ficha (`publicacion_avisos.chequeado_at`). */
+  vistoAt?: string | null;
 }
 
 /** El bloque de renta corta del correo (14-oct-2026): sus deptos, lo que busca y su pie y su plazo. */
@@ -124,7 +130,7 @@ export interface DatosCorreoSemanal {
   largo?: boolean;
   corto?: BloqueCortoCorreo | null;
   /** El correo del día (16-oct-2026): cuándo se vieron publicados (`cuandoSeVio` del chequeo más antiguo). */
-  delDia?: { publicadosAl: string } | null;
+  delDia?: { publicadosAl: string; dia?: string } | null;
   /** El regalo al registrarse, vivo (16-oct-2026): cuándo vence. */
   regaloAltaVence?: string | null;
   /** Cuándo se renueva la selección (22-oct-2026): «Se renueva el lunes 27.» (lib/guia/renovacion.ts › textoRenueva). */
@@ -181,7 +187,7 @@ export interface EnlaceInvitarCorreo {
   texto: string;
 }
 
-/** La primera línea del pie: «Invita a alguien: si entra con tu enlace, los dos reciben un análisis.» y el enlace. */
+/** La primera línea del pie: «Invita a alguien.» con la regla del referido (REGLA_REFERIDO) y el enlace. */
 function pieInvitar(inv: EnlaceInvitarCorreo | null | undefined): string {
   if (!inv) return "";
   return `<span style="color: ${TINTA_2};">${escaparHtml(REFERIDO_COPY.pieSemanal)} <a href="${inv.url}" style="color: ${TINTA_2}; text-decoration: underline;" data-invitar="pie">${escaparHtml(inv.texto)}</a></span><br><br>`;
@@ -207,6 +213,7 @@ function tarjeta(d: DeptoCorreo): string {
     ${d.tramo === "negociar" ? `<tr><td style="padding: 0 18px 10px 18px; font-family: ${FUENTE_UI}; font-size: 14px; font-weight: 600; color: ${TINTA};">${escaparHtml(SEMANAL.negociar)}</td></tr>` : ""}
     ${d.visto ? `<tr><td style="padding: 0 18px 10px 18px; font-family: ${FUENTE_UI}; font-size: 13px; font-weight: 600; color: ${TINTA_2};" data-marca="visto">${escaparHtml(MARCA_VISTO[d.visto])}</td></tr>` : ""}
     ${d.sinConfirmar ? `<tr><td style="padding: 0 18px 10px 18px; font-family: ${FUENTE_UI}; font-size: 13px; font-weight: 600; color: ${TINTA_2};" data-marca="sin-confirmar">${escaparHtml(MARCA_SIN_CONFIRMAR)}</td></tr>` : ""}
+    ${d.vistoAt && !d.sinConfirmar ? `<tr><td style="padding: 0 18px 10px 18px; font-family: ${FUENTE_UI}; font-size: 13px; color: ${TINTA_2};" data-marca="visto-publicado">${escaparHtml(SEMANAL.vistoPublicado(cuandoSeVio(d.vistoAt)))}</td></tr>` : ""}
     <tr><td style="padding: 0 18px 14px 18px; font-family: ${FUENTE_UI}; font-size: 15px; line-height: 1.5;">
       <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
         <td valign="middle" style="padding: 0 8px 0 0;"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td width="10" height="10" bgcolor="${color}" style="width: 10px; height: 10px; background: ${color}; border-radius: 3px; font-size: 0; line-height: 0;">&nbsp;</td></tr></table></td>
@@ -249,8 +256,8 @@ export function correoSemanal(d: DatosCorreoSemanal): { subject: string; html: s
   // El asunto y el titular dicen cuántos (20-oct-2026): «Encontré 2 que te convienen»; los negociables aparte, solo cuentan los
   // que convienen sin negociar (los negociables y el relleno van marcados en el cuerpo).
   const negociables = conLargo ? d.deptos.filter((x) => x.tramo === "negociar").length : 0;
-  const asunto = delDia ? DEL_DIA.asunto : asuntoSemanal(total, negociables);
-  const titular = delDia ? DEL_DIA.titular : asunto;
+  const asunto = delDia ? DEL_DIA.asunto(delDia.dia) : asuntoSemanal(total, negociables);
+  const titular = delDia ? DEL_DIA.titular(delDia.dia) : asunto;
   const sinConfirmar = conLargo ? d.deptos.filter((x) => x.sinConfirmar).length : 0;
   if (d.variante === "banda" && !delDia) {
     filas.push(`<tr><td style="padding: 0 0 24px 0;"><a href="${d.urlBoton}" style="text-decoration: none;"><img src="${d.urlBanda ?? URL_BANDA_SEMANAL}" width="${ANCHO_BANDA}" height="${ALTO_BANDA}" alt="${escaparHtml(SEMANAL.titular)}" style="display: block; width: 100%; max-width: ${ANCHO_BANDA}px; height: auto; border: 0; border-radius: 16px; background: #2B558F; font-family: ${FUENTE_TITULO}; font-size: 24px; font-weight: 700; line-height: 1.3; color: #FFFFFF;"></a></td></tr>`);
@@ -282,7 +289,7 @@ export function correoSemanal(d: DatosCorreoSemanal): { subject: string; html: s
     if (dosBloques) filas.push(tituloBloque(SEMANAL_STR.bloqueLargo));
     if (d.deptos.length > 0) {
       const negociar = d.deptos.filter((x) => x.tramo === "negociar").length;
-      filas.push(parrafo(escaparHtml(delDia ? DEL_DIA.introN(d.deptos.length, d.busca, pie, d.plazoAnios, negociar) : SEMANAL.intro(d.deptos.length, d.busca, pie, d.plazoAnios, negociar))));
+      filas.push(parrafo(escaparHtml(delDia ? DEL_DIA.introN(d.deptos.length, d.busca, pie, d.plazoAnios, negociar, delDia.dia) : SEMANAL.intro(d.deptos.length, d.busca, pie, d.plazoAnios, negociar))));
       // Cuándo se renueva (22-oct-2026, lib/guia/renovacion.ts): «Se renueva el lunes 27.», como en el dashboard.
       if (d.renueva) filas.push(parrafo(`<span data-correo="renueva">${escaparHtml(d.renueva)}</span>`));
       if (d.deptos.some((x) => x.tramo === "vecina")) filas.push(parrafo(escaparHtml(SEMANAL.vecinas)));

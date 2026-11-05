@@ -16,7 +16,7 @@
 // sin informe anónimo también recibe su bienvenida.
 //
 // EL REGALO AL REGISTRARSE (16-oct-2026, regalo-alta.ts): toda cuenta nueva pasa por acá después del código (banner,
-// /entrar, guía) y recibe su análisis de regalo, con los topes por dispositivo, IP y día. Antes de responder: la
+// /entrar, guía) y recibe su análisis de regalo, con los topes por dispositivo y por día (la IP solo queda anotada). Antes de responder: la
 // pantalla que sigue ya lo muestra. Una cuenta de antes del corte no hace ninguna consulta.
 //
 // LA INVITACIÓN (16-oct-2026, la puerta C): si el navegador trae la cookie de un «/i/CÓDIGO», la cuenta se liga a quien la
@@ -36,7 +36,7 @@ import { captureApiError } from "@/lib/observabilidad";
 import { asegurarRegaloDeAlta, huellaDeRequest } from "@/lib/regalo-alta-servidor";
 import { emitirRegistroAlCrear } from "@/lib/meta/registro";
 import { conEspejo, contextoDeRequest } from "@/lib/meta/servidor";
-import { COOKIE_INVITACION_USADA, cookieInvitacionDeCabeceras, VINCULO_TERMINADO, vincularInvitacion, type ResultadoVinculo } from "@/lib/referido-servidor";
+import { COOKIE_INVITACION_USADA, cookieInvitacionDeCabeceras, referidoTrasAnalisis, VINCULO_TERMINADO, vincularInvitacion, type ResultadoVinculo } from "@/lib/referido-servidor";
 import { encolarPrimeraSeleccion } from "@/lib/guia/del-dia-servidor";
 
 const SITIO = process.env.NEXT_PUBLIC_SITE_URL || "https://refranco.ai";
@@ -79,6 +79,8 @@ export async function POST(request: Request) {
     // informe (visto en el QA del 20-oct-2026: encolado antes del reclamo, la primera vuelta salía vacía).
     const token = tokenAnonDelRequest();
     const result = token ? await claimAnalisisAnonimos(createAdminServiceClient(), user, token) : { claimed: 0, redirect: null };
+    // EL PREMIO DEL REFERIDO (05-nov-2026): el informe del invitado, recién suyo, puede ser su primer análisis.
+    if (result.claimed > 0) waitUntil(referidoTrasAnalisis(user.id));
     // LA PRIMERA SELECCIÓN Y EL CORREO DEL DÍA (20-oct-2026, toda puerta): la cuenta nueva queda con su correo del día en
     // cola (la primera vuelta en el momento) ANTES de la bienvenida, que así ya no sale: su bienvenida es ese correo.
     await encolarPrimeraSeleccion(createAdminServiceClient(), user, { sitio: SITIO, enSegundoPlano: waitUntil, ruta: "POST /api/analisis/claim" });

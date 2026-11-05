@@ -99,17 +99,35 @@ export function urlCompra(q: { product: string; analysisId?: string | null; comp
   return `/checkout?${p.toString()}`;
 }
 
+/**
+ * RETOMAR LA COMPRA A MEDIAS (05-nov-2026, auditoría de promesas parte 3): el correo de carrito abandonado llevaba siempre a
+ * /pricing, a elegir de nuevo. Ahora lleva a la misma compra, con lo que el pago guardó (producto, informe, origen, variante
+ * y adónde volver).
+ */
+export function rutaRetomarCompra(p: { product: string | null; analysis_id?: string | null; payment_data?: unknown }): string {
+  if (!p.product) return "/pricing";
+  const d = (p.payment_data && typeof p.payment_data === "object" ? p.payment_data : {}) as Record<string, unknown>;
+  const s = (k: string) => (typeof d[k] === "string" && d[k] ? (d[k] as string) : null);
+  return urlCompra({ product: p.product, analysisId: p.analysis_id ?? null, companionStrId: s("companion_str_id"), origen: s("origen"), variante: s("variante"), volver: s("volver") });
+}
+
 // ── LA VUELTA DE FLOW ───────────────────────────────────────────────────────
 export const RETORNO = {
   procesando: { titulo: "Confirmando tu pago…", cuerpo: "Esto toma unos segundos. No cierres esta página." },
   abriendo: { titulo: "Pago confirmado.", cuerpo: "Abriendo tu análisis…" },
+  /** La vuelta que analiza al llegar (vueltaAnalizaSola, 05-nov-2026). */
+  volviendoAlDepto: "Volviendo al depto para analizarlo…",
   /** La compra salió de un depto de la selección (22-oct-2026, decisión de Fabrizio): la vuelta de Flow genera el
    *  informe sola y lo abre; mientras, dice de cuál (el depto como en las tarjetas: compra-desde-depto.ts › nombreDelDepto). */
   generandoDepto: (depto: string) => `Generando el informe de ${depto}…`,
   /** El estado C del mockup 4-ticket-y-popups.html (24-oct-2026): «Franco está analizando X. En unos segundos se abre el
    *  informe.» y, debajo de la barra, cuántos le quedan para cualquier otro depto. */
   desdeDepto: { antes: "Franco está analizando ", despues: ". En unos segundos se abre el informe." },
-  quedanOtros: (n: number) => (n === 1 ? "Te queda 1 análisis para cualquier otro depto." : `Te quedan ${n} análisis para cualquier otro depto.`),
+  // Con 0 decía «Te quedan 0 análisis…» (05-nov-2026): con el último, se dice así.
+  quedanOtros: (n: number) => (n <= 0 ? "Con este usas tu último análisis." : n === 1 ? "Te queda 1 análisis para cualquier otro depto." : `Te quedan ${n} análisis para cualquier otro depto.`),
+  /** EL INFORME NO SALIÓ (05-nov-2026, auditoría de promesas parte 3): no se usó ningún análisis, y los que tiene quedan a la
+   *  vista. `n`: el saldo real, sin restar el de este depto. */
+  quedanSinUsar: (n: number) => (n <= 0 ? "No te quedan análisis." : n === 1 ? "Te queda 1 análisis para otro depto." : `Te quedan ${n} análisis para otro depto.`),
   pagado: {
     titulo: "Pago confirmado.",
     tres: "Tienes 3 análisis más.",
@@ -129,6 +147,16 @@ export const RETORNO = {
 /** El botón después de pagar: «Ir a mi dashboard», o de vuelta a los deptos si la compra salió de ahí y el informe no se
  *  pudo generar solo. Desde el 21-oct-2026 la selección vive en el dashboard: una vuelta a un depto (`/dashboard?t=…&a=…`)
  *  vuelve a ese depto. */
+/**
+ * ¿LA VUELTA ANALIZA SOLA AL LLEGAR? (05-nov-2026, auditoría de promesas parte 3) Comprado desde un depto de renta corta (la
+ * selección mide en el dashboard) o desde Explorar (el mapa analiza ahí), esta pantalla no genera el informe: lleva sola al
+ * depto, con `analizar=1`, y allá se analiza —igual que en renta larga, donde el informe sale acá—. Antes había que tocar
+ * «Volver a los deptos».
+ */
+export function vueltaAnalizaSola(volver: string | null | undefined): boolean {
+  return !!volver && /^\/(?:dashboard|explorar)\?(?:[^#]*&)?analizar=1(?:&|$)/.test(volver);
+}
+
 export function botonTrasPagar(volver: string | null | undefined): { texto: string; href: string } {
   if (volver && /^\/dashboard\?(?:[^#]*&)?t=[0-9a-f]{20,80}&a=/i.test(volver)) return { texto: RETORNO.volverDeptos, href: volver };
   if (!volver || volver === "/dashboard" || volver.startsWith("/dashboard?")) return { texto: RETORNO.irAlDashboard, href: "/dashboard" };

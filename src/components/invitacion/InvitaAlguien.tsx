@@ -113,7 +113,7 @@ export function InvitaAlguien({ variante = "casa" }: { variante?: "casa" | "prop
   }
 
   // LA FRANJA DEL DASHBOARD (24-oct-2026, mockup 3b-dashboard.html): una sola fila con su color —«Invita a alguien · Si
-  // entra con tu enlace, los dos reciben un análisis.» y «Compartir»—. Compartir abre el menú del teléfono; donde no lo
+  // REGLA_REFERIDO de referido.ts» y «Compartir»—. Compartir abre el menú del teléfono; donde no lo
   // hay, copia el enlace y lo dice. Sin «Que diga mi nombre» acá: eso vive en la página del propio enlace.
   if (variante === "fila") {
     const compartirOCopiar = async () => { if (puedeCompartir) await compartir(); else await copiar(); };

@@ -6,12 +6,13 @@
 // Funciones puras: las prueba el tier sin red.
 // ─────────────────────────────────────────────────────────────────────────────
 import { urlRetornoFlow } from "@/lib/compra/retorno-flow";
+import { SINGLE_PRICE } from "@/lib/pricing";
 
 export const PRODUCTO_PACK = "pack3" as const;
 export const PACK_ANALISIS = 3;
 export const PACK_PRECIO_CLP = 14990;
-/** Lo que cuesta un análisis suelto hoy (`FLOW_PRODUCTS.single.amount`), para decir el ahorro. */
-export const PACK_UNITARIO_REFERENCIA_CLP = 9990;
+/** Lo que cuesta un análisis suelto hoy, para decir el ahorro: el precio de la UI (pricing.ts › SINGLE_PRICE), no un 9990 a mano. */
+export const PACK_UNITARIO_REFERENCIA_CLP = SINGLE_PRICE;
 /** Lo que se dice por análisis: $14.990 / 3 = $4.997 (08-oct-2026; hasta esa fecha se decía «$5.000»). */
 export const PACK_UNITARIO_CLP = Math.round(PACK_PRECIO_CLP / PACK_ANALISIS);
 export const VENTANA_PACK_MS = 24 * 60 * 60 * 1000;
@@ -61,8 +62,9 @@ export function cuandoVenceCorto(createdAt: string | Date, ahora: Date = new Dat
   return `el ${fecha} ${hora}`;
 }
 
-/** Lo que se ahorra en los tres análisis, redondeado al mil: 3 × $9.990 − $14.990 = $14.980 → «$15.000». */
-export const PACK_AHORRO_CLP = Math.round((PACK_ANALISIS * PACK_UNITARIO_REFERENCIA_CLP - PACK_PRECIO_CLP) / 1000) * 1000;
+/** Lo que se ahorra en los tres análisis, EXACTO: 3 × $9.990 − $14.990 = $14.980 (05-nov-2026, auditoría de promesas parte 3:
+ *  hasta entonces se redondeaba al mil y decía «$15.000 menos»). */
+export const PACK_AHORRO_CLP = PACK_ANALISIS * PACK_UNITARIO_REFERENCIA_CLP - PACK_PRECIO_CLP;
 
 /** El wizard con lo de la persona ya cargado desde el informe `analysisId` (30-sep-2026). */
 export const rutaPrecarga = (analysisId: string) => `/analisis/nuevo-v4?precarga=${encodeURIComponent(analysisId)}`;

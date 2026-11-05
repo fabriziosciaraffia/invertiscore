@@ -3,6 +3,8 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { etiquetaAnalisis } from "@/lib/format-direccion";
 import { InformeLtr } from "./informe-ltr";
 import { informeBloqueado, INFORME_BLOQUEADO_COPY } from "@/lib/informe-bloqueado";
+import { puntajeDe, resultadosPorId } from "@/lib/analysis/resultados-del-informe";
+import { getUFValue } from "@/lib/uf";
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
   // Con la llave de servicio (04-nov-2026): `analisis` ya no se lee con la pública. Ver informe-ltr.tsx.
@@ -30,7 +32,10 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
   // rotularía la pestaña con otra comuna que la del análisis.
   const title = `Análisis Franco: ${etiquetaAnalisis(data.nombre, data.comuna)}`;
   const creatorText = data.creator_name ? `Análisis de ${data.creator_name} — ` : "";
-  const description = `${creatorText}Franco Score: ${data.score}/100. Análisis de inversión inmobiliaria en ${data.comuna}.`;
+  // EL PUNTAJE DE LA PORTADA (05-nov-2026, lib/analysis/resultados-del-informe.ts): el mismo recálculo que el informe (una vez
+  // por pedido); la columna `score` es la del motor del día en que se creó.
+  const puntaje = puntajeDe((await resultadosPorId(params.id, await getUFValue()))?.results) ?? data.score;
+  const description = `${creatorText}Franco Score: ${puntaje}/100. Análisis de inversión inmobiliaria en ${data.comuna}.`;
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://refranco.ai";
   const ogImageUrl = `${siteUrl}/api/og?id=${params.id}`;
 

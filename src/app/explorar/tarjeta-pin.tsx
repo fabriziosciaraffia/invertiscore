@@ -34,6 +34,7 @@ import { AL_PRECIO_PUBLICADO } from "@/lib/precio-publicado";
 import type { Veredicto } from "@/lib/types";
 import { COMPARTIR_COPY } from "@/lib/explorar/compartir";
 import { ChipInformePropio } from "@/components/guia/ChipInformePropio";
+import { SIN_REGALO_COPY, VER_PLANES, type MotivoSinRegalo } from "@/lib/regalo-alta";
 import type { ResumenInforme } from "@/lib/informe-propio";
 
 const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
@@ -127,7 +128,7 @@ export function TarjetaPin({ pines, seleccionado, uf, analizados, resumenes = {}
   /** Sin cuenta (estado C del mockup 6-puerta-e): el flujo, el cap rate y la UF por m² van borrosos y el botón pide registro. */
   sinCuenta?: boolean;
   /** Recién registrada desde este pin (30-oct-2026): su tarjeta se desbloquea con la banda; `regalo`, si tiene el análisis de regalo. */
-  recien?: { avisoId: string; regalo: boolean } | null;
+  recien?: { avisoId: string; regalo: boolean; sinRegalo?: MotivoSinRegalo | null } | null;
 }) {
   const fila = useRef<HTMLDivElement>(null);
   const tipos = useCalle(pines.map((p) => p.avisoId));
@@ -189,6 +190,10 @@ export function TarjetaPin({ pines, seleccionado, uf, analizados, resumenes = {}
               {nueva && (
                 <p className="ex-recien" role="status" data-explorar="recien">
                   <b>{PORTAL_COPY.vuelta.listo}</b>{recien.regalo ? ` ${PORTAL_COPY.vuelta.regalo}` : ""}
+                  {/* SIN REGALO, DICHO (05-nov-2026, regalo-alta.ts › SIN_REGALO_COPY): el motivo y «Ver planes». */}
+                  {!recien.regalo && recien.sinRegalo && (
+                    <span data-explorar="sin-regalo" data-motivo={recien.sinRegalo}> {SIN_REGALO_COPY[recien.sinRegalo].titulo} <EnlaceCarga href={VER_PLANES.href}>{VER_PLANES.texto}</EnlaceCarga></span>
+                  )}
                 </p>
               )}
               <div className="ex-tarjeta-fila">
