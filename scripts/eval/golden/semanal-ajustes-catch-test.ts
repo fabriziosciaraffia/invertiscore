@@ -428,7 +428,9 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
     // (o el de la página, en vivo), como antes; en renta larga, el del depto ya analizado, que lleva a /analisis/[id] (SEMANAL §15).
     // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockups 3b y 4) · el ya analizado es la fila compacta en su posición (filaAnalizada, desde `tarjeta`), no una rama
     // de `acciones` (tier PUERTA-B-DASHBOARD §4).
-    const ramaInforme = cuerpo(lista, "const filaAnalizada = (it: ItemSemanal, informe: string, n: number | null): JSX.Element => (", "\n  );\n") + lista.slice(lista.indexOf("const tarjeta = (it: ItemSemanal"), lista.indexOf("const neg = (it.flujo ?? 0) < 0;"));
+    // ⚠ ACTA (05-nov-2026, tier TARJETA-ANALIZADA) · `filaAnalizada` pasó a tener cuerpo (lee el resumen de su informe antes de
+    // dibujar), así que se extrae hasta su `};` y no hasta el `);` de una flecha de expresión.
+    const ramaInforme = cuerpo(lista, "const filaAnalizada = (it: ItemSemanal, informe: string, n: number | null): JSX.Element => {", "\n  };\n") + lista.slice(lista.indexOf("const tarjeta = (it: ItemSemanal"), lista.indexOf("const neg = (it.flujo ?? 0) < 0;"));
     // ⚠ ACTA (21-oct-2026) · en renta larga también cuenta lo leído en vivo (`informes`), no solo el del depto ya visto.
     // ⚠ ACTA (03-nov-2026, «el informe en camino», tier INFORME-EN-CAMINO) · y los de esta visita (un informe listo que no se abrió).
     if (!/const informeDe = \(it: ItemSemanal\): string \| undefined => it\.informeId \?\? informes\[it\.avisoId\] \?\? informesAqui\[it\.avisoId\];/.test(lista)

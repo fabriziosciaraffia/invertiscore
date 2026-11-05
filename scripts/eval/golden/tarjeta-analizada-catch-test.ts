@@ -232,4 +232,10 @@ if (require.main === module) {
 //   M17 un depto SIN analizar muestra un chip de informe ...................... ROJO (§2, el control)
 //   17/17 en rojo. Además, el tier PUERTA-B-DASHBOARD §4 exigía «Comprar 91» —la noche— en la fila del analizado: reescrito
 //   con su acta (ahora exige el depto y su precio, y que el 91 no esté) y verificado en rojo con M4 sobre ese tier.
+//   El QUICK de la rama cazó cuatro predicados más que fijaban la GRAFÍA vieja de la tarjeta, no su conducta: INFORME-EN-CAMINO
+//   §2, PRIMERA-SELECCION §7 y PUERTA-B-RECORRIDO §6 buscaban `it.informeId ?? informesAqui[it.avisoId]` en línea (ahora se
+//   nombra una vez, `const informe = …`, porque lo leen el chip y «Ya lo analizaste»), y SEMANAL-AJUSTES §10 extraía
+//   `filaAnalizada` hasta el `);` de una flecha de expresión (ahora tiene cuerpo). Reescritos con su acta y verificados en
+//   rojo: olvidar los de esta visita (los tres), apagar «Ya lo analizaste» (los tres), «Ver informe» a otro lado, la fila sin
+//   su marca y la fila que vuelve a analizar — 9/9.
 // ============================================================================

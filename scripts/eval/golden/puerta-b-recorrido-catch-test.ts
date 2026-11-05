@@ -317,7 +317,9 @@ export async function runPuertaBRecorridoTier(): Promise<{ hard: number }> {
     if ((prim.match(/informesDeAvisos\(admin, userId,/g) ?? []).length < 2 || !/enSeleccion: true, informeId: informes\[i\.avisoId\] \?\? null,/.test(prim) || !/\(\{ \.\.\.d, enSeleccion, informeId: informes\[d\.avisoId\] \?\? null \}\)/.test(prim)) F("6 · la primera selección del día no trae lo ya analizado (en sus dos caminos)");
     const ps = codigo("src/components/deptos/PrimeraSeleccion.tsx");
     // ⚠ ACTA (03-nov-2026, «el informe en camino», tier INFORME-EN-CAMINO) · el ya analizado incluye los de esta visita (`informesAqui`), con su informe.
-    if (!/\{it\.informeId \?\? informesAqui\[it\.avisoId\] \? \([\s\S]{0,200}data-primera="ya-analizado"[\s\S]{0,300}href=\{`\/analisis\/\$\{it\.informeId \?\? informesAqui\[it\.avisoId\]\}`\}/.test(ps)) F("6 · la primera selección no dice «Ya lo analizaste · Ver informe»");
+    // ⚠ ACTA (05-nov-2026, tier TARJETA-ANALIZADA) · el informe se nombra una vez (`const informe = …`, lo leen el chip y esta
+    // rama): se exige el nombre con los de esta visita y que el enlace vaya a ese informe.
+    if (!/const informe = it\.informeId \?\? informesAqui\[it\.avisoId\] \?\? null;/.test(ps) || !/\{informe \? \(\s*<p className="sel-ya" data-primera="ya-analizado">[\s\S]{0,200}?href=\{`\/analisis\/\$\{informe\}`\}/.test(ps)) F("6 · la primera selección no dice «Ya lo analizaste · Ver informe»");
     if (!/window\.addEventListener\("pageshow", alVolver\)/.test(ps)) F("6 · la primera selección no se relee al volver atrás desde el informe");
     // El dashboard se pide de nuevo al volver, sin recargar.
     const fresco = cargar<typeof import("../../../src/app/dashboard/fresco-al-volver")>("src/app/dashboard/fresco-al-volver");
