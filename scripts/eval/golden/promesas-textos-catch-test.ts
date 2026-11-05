@@ -262,7 +262,12 @@ export async function runPromesasTextosTier(): Promise<{ hard: number }> {
   for (const n of [999, 39_950, 41_976, 100_001]) if (pisoComparables(n) > n) F(`4 · la cifra de comparables promete más de lo medido (${n})`);
   for (const r of ["src/app/page.tsx", "src/app/layout.tsx", "src/app/metodologia/page.tsx", "src/app/faq/page.tsx", "src/app/dashboard/page.tsx"])
     if (!usa(r, "comparablesVivos()")) F(`4 · ${r} no lee la cifra de comparables en vivo`);
-  if (!/\.from\("scraped_properties"\)\.select\("id", \{ count: "exact", head: true \}\)\s*\.eq\("is_active", true\)\.gt\("precio", 0\)\.gt\("superficie_m2", 0\)/.test(sc("src/lib/comparables-vivos.ts"))) F("4 · el conteo vivo no cuenta la población de las medianas (activos con precio y superficie), o no por count");
+  // Sin nombrar la tabla: LECTURA-PAGINADA prohíbe su nombre fuera de una llamada, y ya fija que esa lectura sea un conteo.
+  // Acá: una sola lectura en el módulo, y con los filtros de la población de las medianas.
+  {
+    const cv = sc("src/lib/comparables-vivos.ts");
+    if ((cv.match(/\.from\(/g) ?? []).length !== 1 || !/\.select\("id", \{ count: "exact", head: true \}\)\s*\.eq\("is_active", true\)\.gt\("precio", 0\)\.gt\("superficie_m2", 0\)/.test(cv)) F("4 · el conteo vivo no cuenta la población de las medianas (activos con precio y superficie), o no por count");
+  }
   {
     const s = faqSecciones("más de 1.234");
     const it = (id: string) => s.flatMap((x) => x.items).find((i) => i.id === id)?.a ?? "";
@@ -442,4 +447,7 @@ if (require.main === module) {
 //   todas. Y tres se corrigieron por medir mal, no el código: §5 «sin llave» pasaba `undefined`, que activa el valor por
 //   defecto (CRON_SECRET) en vez de probar la falta de llave; §5 «rawResults» tomaba `rawResultsForGuard` (el tipo, no el
 //   puntaje); §6 buscaba el saldo en InformeEnLaVuelta, que delega el dibujo en VueltaInforme.
+//   §4 «el conteo vivo» nombraba la tabla en su regex y LECTURA-PAGINADA lo cazó recién en el QUICK sobre master: ese tier
+//   lee los archivos TRACKEADOS, y en la rama este archivo todavía no lo estaba. Reescrito sin el nombre (una sola lectura
+//   en el módulo, con los filtros de la población); L1 sin el filtro de precio y L2 una segunda lectura: los dos ROJO.
 // ============================================================================
