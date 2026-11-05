@@ -1,33 +1,44 @@
 import { NextResponse } from "next/server";
+import { waitUntil } from "@vercel/functions";
 import { captureApiError, captureApiWarning } from "@/lib/observabilidad";
 import { createClient } from "@supabase/supabase-js";
-import { flowPost } from "@/lib/flow";
+import { flowGet } from "@/lib/flow";
 import { recurringProductByAmount, recurringProductByPlan, addOneMonth } from "@/lib/credits-grant";
 import { sendPaymentFailedEmail } from "@/lib/email";
 import { nombreReal } from "@/lib/welcome";
 import { processSubscriptionCharge, parseSubscriptionId } from "@/lib/subscriptions/process-charge";
 import { sendSubscribeIfFirstCharge } from "@/lib/subscriptions/subscribe-event";
 import { esperaPrimerCobro } from "@/lib/subscriptions/suscripcion";
+import { procesarAvisoDeCobro, responderAviso, TOPE_CONCILIAR_MS, type EstadoPagoFlow, type PiezasAviso } from "@/lib/subscriptions/aviso-cobro";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EL AVISO DE COBRO DE FLOW (urlCallback de los planes). Reescrito el 05-nov-2026 (decisión de Fabrizio: «que el cobro se
+// registre al momento»).
+//
+// LA CAUSA: desde agosto esta ruta consultaba `payment/getStatus` por POST y el servicio es GET (apiFlow.yaml). Flow
+// responde a ese POST 400 {"code":105,"message":"No services available"} —medido en el sandbox: el mismo token por GET da
+// 1700 «Transaction not found», o sea, se procesa—. Por eso fallaron TODOS los avisos (9-ago, 9, 22 y 23 de octubre, a
+// ~4 s del cobro, con la URL correcta), la ruta respondía 503, Flow no vuelve a llamar y el cobro quedaba para el cron
+// reconcile-subscriptions de la hora siguiente. La hipótesis de que el 105 era «transitorio» (flow.ts) era falsa.
+//
+// AHORA (lib/subscriptions/aviso-cobro.ts):
+//   · la consulta va por GET (getStatus; si falla, getStatusExtended);
+//   · la ruta responde 200 SIEMPRE que recibe el aviso y lo procesa en segundo plano (waitUntil), con esperas crecientes
+//     por si Flow tarda en tener el pago; si en la ventana no lo entrega, corre la conciliación del día; el cron de cada
+//     hora sigue de respaldo;
+//   · el token de sonda responde 200 sin trabajo: el tier AVISO-COBRO llama a producción con él y exige 200.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Tiempo para el trabajo en segundo plano (ver ESPERAS_AVISO_MS). Debe coincidir con DURACION_RUTA_AVISO_S. */
+export const maxDuration = 300;
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://refranco.ai";
 const RUTA = "POST /api/subscriptions/payment-callback";
 
 /**
- * Intentos de `payment/getStatus`. El POST de Flow al urlCallback trae SOLO el
- * token: sin esta respuesta no sabemos de quién es el cargo, cuánto se cobró ni
- * qué otorgar. Es el único punto del flujo donde perder la llamada cuesta un
- * grant, así que acá sí pagamos el costo de reintentar (opt-in de flowPost).
- */
-const GET_STATUS_INTENTOS = 3;
-
-/**
- * Razones de processSubscriptionCharge que un reintento PUEDE arreglar: fallas de
- * DB y mapeos que dependen de una fila que quizá todavía no existe (carrera del
- * alta con el primer cobro). Ante una de estas devolvemos 5xx.
- *
- * Las demás razones son decisiones firmes —`status_not_paid`, `pre_cutoff`,
- * `commerce_order_not_subscription`, `amount_invalid`, `no_flow_order`— y ahí un
- * reintento repetiría el mismo resultado: 200.
+ * Razones de processSubscriptionCharge que otro intento PUEDE arreglar: fallas de DB y mapeos que dependen de una fila que
+ * quizá todavía no existe (carrera del alta con el primer cobro). Las demás —`status_not_paid`, `pre_cutoff`,
+ * `commerce_order_not_subscription`, `amount_invalid`, `no_flow_order`— son firmes: otro intento daría lo mismo.
  */
 const RAZONES_REINTENTABLES = new Set([
   "payments_insert_error",
@@ -37,17 +48,6 @@ const RAZONES_REINTENTABLES = new Set([
   "grant_error",
 ]);
 
-/** Subconjunto de payment/getStatus que consume este handler. */
-type FlowPaymentStatus = {
-  commerceOrder?: string;
-  flowOrder?: number | string;
-  status?: number | string;
-  amount?: number | string;
-  payer?: string;
-  requestDate?: string;
-  optional?: string;
-};
-
 function createAdminClient() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -55,310 +55,190 @@ function createAdminClient() {
   );
 }
 
+/** El estado del pago en Flow, por GET (el servicio no existe por POST). Si getStatus falla, getStatusExtended. */
+async function consultarPago(token: string): Promise<EstadoPagoFlow> {
+  try {
+    return (await flowGet("payment/getStatus", { token })) as EstadoPagoFlow;
+  } catch (e) {
+    try {
+      return (await flowGet("payment/getStatusExtended", { token })) as EstadoPagoFlow;
+    } catch {
+      throw e;
+    }
+  }
+}
+
 /**
- * Respuesta de error que PIDE reintento.
- *
- * Antes este handler devolvía 200 en todos los caminos ("para que Flow no
- * reintente"). Eso convirtió una caída puntual de getStatus (9-ago-2026) en un
- * grant perdido para siempre: el pago quedó registrado, la suscripción activa y
- * el usuario sin créditos, sin segunda oportunidad.
- *
- * NO ESTÁ CONFIRMADO que Flow reintente ante un 5xx. Se implementa igual porque
- * el costo de equivocarse es nulo (volvemos al comportamiento actual) y el
- * upside es recuperar el cargo en minutos. El backstop real y verificado sigue
- * siendo el cron reconcile-subscriptions, que reprocesa la ventana HOY+AYER por
- * el mismo helper idempotente.
- *
- * Reprocesar es seguro: fila (commerce_order UNIQUE), grant (payment_id UNIQUE) y
- * boleta (payment_id) deduplican solos.
+ * Aplica un cobro con su estado ya leído de Flow. `listo: false` = otro intento puede arreglarlo (dueño todavía sin
+ * resolver, falla de base, pago aún pendiente). Lo idempotente (fila, lote, boleta) deduplica solo: reintentar es seguro.
  */
-function pedirReintento(mensaje: string) {
-  return NextResponse.json({ status: "error", detalle: mensaje }, { status: 503 });
+async function aplicarCobro(token: string, flowData: EstadoPagoFlow): Promise<{ listo: boolean; motivo?: string }> {
+  const contextoFlow = () => ({
+    token,
+    commerceOrder: flowData.commerceOrder ?? null,
+    flowOrder: flowData.flowOrder ?? null,
+    amount: flowData.amount ?? null,
+    flowStatus: flowData.status ?? null,
+  });
+  const supabase = createAdminClient();
+
+  // Resolver el dueño de la suscripción. PRIMARIO: parsear sus_<subId> del commerceOrder de Flow →
+  // user_credits.subscription_id. Fallbacks legacy: optional.userId y commerceOrder en payments.
+  let userId: string | null = null;
+  const subId = parseSubscriptionId(flowData.commerceOrder);
+  if (subId) {
+    const { data } = await supabase.from("user_credits").select("user_id").eq("subscription_id", subId).maybeSingle();
+    userId = data?.user_id ?? null;
+  }
+  if (!userId) {
+    try {
+      const optional = JSON.parse(flowData.optional || "{}");
+      userId = optional.userId ?? null;
+    } catch { /* ignore */ }
+  }
+  if (!userId && flowData.commerceOrder) {
+    const { data } = await supabase.from("payments").select("user_id").eq("commerce_order", flowData.commerceOrder).maybeSingle();
+    userId = data?.user_id || null;
+  }
+
+  // Enum Flow: 1=pendiente, 2=pagada, 3=rechazada, 4=anulada. Flow devuelve `status` como STRING → Number().
+  const flowStatus = Number(flowData.status);
+
+  // Pagado y sin dueño: puede ser una carrera con el alta (subscription_id todavía no guardado). Otro intento.
+  if (flowStatus === 2 && !userId) {
+    console.error("[payment-callback] cargo pagado sin dueño resoluble; commerceOrder:", flowData.commerceOrder);
+    return { listo: false, motivo: "dueño de la suscripción no resuelto" };
+  }
+
+  // Pendiente: Flow todavía no lo cierra. Otro intento dentro de la ventana; si no, la conciliación.
+  if (flowStatus === 1) return { listo: false, motivo: "pago pendiente en Flow" };
+
+  if (flowStatus === 2 && userId) {
+    // Cargo recurrente OK → suscripción activa. Si venía de past_due (recuperación en la gracia), limpia grace_ends_at.
+    await supabase
+      .from("user_credits")
+      .update({ subscription_status: "active", grace_ends_at: null, updated_at: new Date().toISOString() })
+      .eq("user_id", userId);
+
+    // Fila franco-sub-pay-<flowOrder> + lote (idempotente por payment_id, gateado por el cutoff de C) + boleta DTE 39: el
+    // helper compartido con el cron. chargeDate ← requestDate es CRÍTICO: sin él el cutoff suspende el lote.
+    const result = await processSubscriptionCharge({
+      flowOrder: Number(flowData.flowOrder),
+      commerceOrder: flowData.commerceOrder ?? "",
+      amount: Number(flowData.amount),
+      status: flowStatus,
+      payer: flowData.payer,
+      chargeDate: flowData.requestDate,
+      flowData,
+    });
+    console.error("[payment-callback] processSubscriptionCharge →", JSON.stringify(result));
+    if (!result.ok && RAZONES_REINTENTABLES.has(String(result.reason))) {
+      captureApiWarning(new Error(`Cargo no aplicado: ${String(result.reason)}`), {
+        ruta: RUTA,
+        operacion: "aplicar-cargo",
+        commerceOrder: flowData.commerceOrder ?? null,
+        userId,
+        tags: { motivo: String(result.reason ?? "sin-motivo").slice(0, 32) },
+        extra: contextoFlow(),
+      });
+      return { listo: false, motivo: `cargo no aplicado: ${String(result.reason)}` };
+    }
+
+    // Meta CAPI: Subscribe SOLO en el primer cobro de esta suscripción (gate compartido con el cron). Después del helper:
+    // el conteo asume que la fila del cargo actual ya existe. Una falla de Meta no toca el cobro.
+    if (subId) {
+      try {
+        await sendSubscribeIfFirstCharge({
+          supabase,
+          userId,
+          commerceOrder: flowData.commerceOrder ?? "",
+          amount: Number(flowData.amount),
+          flowOrder: Number(flowData.flowOrder),
+          payerEmail: flowData.payer,
+          eventSourceUrl: SITE_URL,
+        });
+      } catch (e) {
+        console.error("[payment-callback] Meta CAPI Subscribe excepción:", e);
+        captureApiWarning(e, { ruta: RUTA, operacion: "meta-capi-subscribe", extra: contextoFlow() });
+      }
+    }
+
+    // Re-armar el lote mensual de planes ANUALES finitos SOLO ante un cargo FRESCO (result.granted).
+    if (result.granted) {
+      const { data: uc } = await supabase.from("user_credits").select("active_plan, billing_period").eq("user_id", userId).maybeSingle();
+      const match = recurringProductByPlan(uc?.active_plan, uc?.billing_period) ?? recurringProductByAmount(Number(flowData.amount));
+      if (match && match.product.billing === "annual" && match.product.isUnlimited !== true) {
+        const now = new Date();
+        await supabase
+          .from("user_credits")
+          .update({ next_monthly_grant_at: addOneMonth(now).toISOString(), updated_at: now.toISOString() })
+          .eq("user_id", userId);
+      }
+    }
+    return { listo: true };
+  }
+
+  if ((flowStatus === 3 || flowStatus === 4) && userId) {
+    // Cargo rechazado (3) o anulado (4) → mora con 7 días de gracia (acceso hasta grace_ends_at; expire-grace corta al
+    // vencer, también en Flow). ¿Era el PRIMER cobro? (05-nov-2026): entonces el correo dice que el plan no se activó. Se
+    // lee ANTES de marcar past_due.
+    const { data: antes } = await supabase
+      .from("user_credits")
+      .select("subscription_status, subscription_ends_at")
+      .eq("user_id", userId)
+      .maybeSingle();
+    const primerCobro = esperaPrimerCobro(antes);
+    const graceEndsAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    await supabase
+      .from("user_credits")
+      .update({ subscription_status: "past_due", grace_ends_at: graceEndsAt.toISOString(), updated_at: new Date().toISOString() })
+      .eq("user_id", userId);
+
+    // Email de aviso. Un fallo de Resend no rompe el aviso.
+    try {
+      const { data: userData } = await supabase.auth.admin.getUserById(userId);
+      const flowUser = userData?.user;
+      if (flowUser?.email) {
+        const nombre = nombreReal(flowUser.user_metadata);
+        await sendPaymentFailedEmail(flowUser.email, nombre, graceEndsAt, { userId, primerCobro });
+      }
+    } catch (e) {
+      console.error("[subscriptions/payment-callback] aviso past_due email error:", e);
+      captureApiWarning(e, { ruta: RUTA, operacion: "email-past-due", extra: contextoFlow() });
+    }
+  }
+  return { listo: true };
+}
+
+/** Las piezas reales del aviso: Flow por GET, la base, el reloj y la conciliación del día (el cron, con su tope). */
+function piezasReales(token: string): PiezasAviso {
+  return {
+    consultar: consultarPago,
+    aplicar: (estado) => aplicarCobro(token, estado),
+    reconciliar: async () => {
+      const secreto = process.env.CRON_SECRET;
+      if (!secreto) throw new Error("CRON_SECRET no configurado");
+      const r = await fetch(`${SITE_URL}/api/cron/reconcile-subscriptions`, {
+        headers: { Authorization: `Bearer ${secreto}` },
+        signal: AbortSignal.timeout(TOPE_CONCILIAR_MS),
+      });
+      if (!r.ok) throw new Error(`conciliación respondió ${r.status}`);
+    },
+    esperar: (ms) => new Promise((ok) => setTimeout(ok, ms)),
+    avisar: (evento, datos) => {
+      if (evento === "aplicado") {
+        console.error("[payment-callback] cobro aplicado", JSON.stringify(datos));
+        return;
+      }
+      console.error(`[payment-callback] ${evento}`, JSON.stringify(datos));
+      const error = new Error(evento === "sin-estado" ? "Aviso de cobro sin estado de Flow en la ventana: va la conciliación" : "La conciliación tras el aviso falló");
+      if (evento === "sin-estado") captureApiWarning(error, { ruta: RUTA, operacion: "aviso-sin-estado", extra: { token, ...datos } });
+      else captureApiError(error, { ruta: RUTA, operacion: "aviso-conciliar", extra: { token, ...datos } });
+    },
+  };
 }
 
 export async function POST(request: Request) {
-  // Fuera del try para que el catch externo pueda mandarlos a Sentry: sin el
-  // token y el commerceOrder no hay forma de saber QUÉ cargo se perdió — el
-  // incidente del 9-ago llegó a Sentry sin un solo identificador utilizable.
-  let token: string | null = null;
-  let flowData: FlowPaymentStatus | null = null;
-
-  // Contexto de Sentry armado en un solo lugar. El token va en `extra` y no en
-  // `tags`: es único por transacción y un tag de cardinalidad alta vuelve
-  // inservible el buscador (mismo criterio que observabilidad.ts con los ids).
-  const contextoFlow = () => ({
-    token,
-    commerceOrder: flowData?.commerceOrder ?? null,
-    flowOrder: flowData?.flowOrder ?? null,
-    amount: flowData?.amount ?? null,
-    flowStatus: flowData?.status ?? null,
-  });
-
-  try {
-    const formData = await request.formData();
-    token = (formData.get("token") as string) ?? null;
-
-    if (!token) {
-      // Sin token no hay nada que consultar y un reintento traería lo mismo → 200.
-      console.error("[payment-callback] callback sin token");
-      captureApiWarning(new Error("Callback de Flow sin token"), {
-        ruta: RUTA,
-        operacion: "cobro-recurrente",
-        tags: { respuesta_a_flow: "200-descartado" },
-      });
-      return NextResponse.json({ status: "error" }, { status: 200 });
-    }
-
-    // getStatus aislado: su fallo es la causa raíz del incidente y merece su
-    // propio diagnóstico + un 5xx explícito, en vez de caer al catch genérico.
-    try {
-      flowData = await flowPost(
-        "payment/getStatus",
-        { token },
-        { intentos: GET_STATUS_INTENTOS }
-      );
-    } catch (e) {
-      console.error("[payment-callback] getStatus falló tras reintentos:", e);
-      captureApiError(e, {
-        ruta: RUTA,
-        operacion: "flow-get-status",
-        tags: { respuesta_a_flow: "503-reintento" },
-        extra: { token, intentos: GET_STATUS_INTENTOS },
-      });
-      return pedirReintento("getStatus no disponible");
-    }
-    if (!flowData) return pedirReintento("getStatus sin respuesta");
-
-    const supabase = createAdminClient();
-
-    // Resolver el dueño de la suscripción. PRIMARIO (fix): parsear sus_<subId> del
-    // commerceOrder de Flow → user_credits.subscription_id. Los cargos recurrentes
-    // NO traen nuestro optional.userId ni un commerceOrder que matchee payments, así
-    // que sin esto userId quedaba null y el cargo se descartaba en silencio.
-    // Fallbacks legacy: optional.userId y commerceOrder en payments.
-    let userId: string | null = null;
-
-    // parseSubscriptionId (compartido con process-charge y subscribe-event): un solo
-    // parser del `sus_<subId>`, del que salen tanto este mapeo como el event_id de Meta.
-    const subId = parseSubscriptionId(flowData.commerceOrder);
-    if (subId) {
-      const { data } = await supabase
-        .from("user_credits")
-        .select("user_id")
-        .eq("subscription_id", subId)
-        .maybeSingle();
-      userId = data?.user_id ?? null;
-    }
-
-    if (!userId) {
-      try {
-        const optional = JSON.parse(flowData.optional || "{}");
-        userId = optional.userId ?? null;
-      } catch { /* ignore */ }
-    }
-
-    if (!userId && flowData.commerceOrder) {
-      const { data } = await supabase
-        .from("payments")
-        .select("user_id")
-        .eq("commerce_order", flowData.commerceOrder)
-        .maybeSingle();
-      userId = data?.user_id || null;
-    }
-
-    // Enum Flow: 1=pendiente, 2=pagada, 3=rechazada, 4=anulada.
-    // Flow devuelve `status` como STRING → comparar con Number() (no === directo).
-    const flowStatus = Number(flowData.status);
-
-    // Cargo PAGADO cuyo dueño no resolvimos: antes se caía por el `&& userId` de
-    // abajo y terminaba en un 200 silencioso — plata cobrada sin grant y sin
-    // rastro. Puede ser una carrera con el alta (subscription_id todavía no
-    // persistido), así que pedimos reintento.
-    if (flowStatus === 2 && !userId) {
-      console.error(
-        "[payment-callback] cargo pagado sin dueño resoluble; commerceOrder:",
-        flowData.commerceOrder
-      );
-      captureApiError(new Error("Cargo pagado sin user resoluble"), {
-        ruta: RUTA,
-        operacion: "resolver-dueno",
-        commerceOrder: flowData.commerceOrder ?? null,
-        tags: { respuesta_a_flow: "503-reintento" },
-        extra: contextoFlow(),
-      });
-      return pedirReintento("dueño de la suscripción no resuelto");
-    }
-
-    if (flowStatus === 2 && userId) {
-      // Cargo recurrente OK → mantener suscripción activa. Si venía de past_due
-      // (recuperación dentro de la gracia), limpiar grace_ends_at. Idempotente.
-      await supabase
-        .from("user_credits")
-        .update({
-          subscription_status: "active",
-          grace_ends_at: null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("user_id", userId);
-
-      // Fila franco-sub-pay-<flowOrder> + grant (idempotente por payment_id, gateado
-      // por el cutoff de C) + boleta DTE 39: todo en el helper compartido (el mismo
-      // que usará el cron reconciler). chargeDate ← requestDate es CRÍTICO: sin él el
-      // fail-safe del cutoff suspende el grant. El helper NUNCA lanza y deduplica solo
-      // (commerce_order UNIQUE + grant por payment_id + boleta por payment_id), así
-      // que un reenvío del mismo cobro es no-op seguro.
-      const result = await processSubscriptionCharge({
-        flowOrder: Number(flowData.flowOrder),
-        commerceOrder: flowData.commerceOrder ?? "",
-        amount: Number(flowData.amount),
-        status: flowStatus,
-        payer: flowData.payer,
-        chargeDate: flowData.requestDate,
-        flowData,
-      });
-      console.error(
-        "[payment-callback] processSubscriptionCharge →",
-        JSON.stringify(result)
-      );
-
-      // El cargo no quedó aplicado por una causa que otro intento puede resolver
-      // (falla de DB, mapeo en carrera) → 5xx en vez del 200 que sepultaba el
-      // problema. Las razones firmes (pre_cutoff, status_not_paid, etc.) siguen
-      // de largo y salen 200.
-      if (!result.ok && RAZONES_REINTENTABLES.has(String(result.reason))) {
-        captureApiError(
-          new Error(`Cargo no aplicado: ${String(result.reason)}`),
-          {
-            ruta: RUTA,
-            operacion: "aplicar-cargo",
-            commerceOrder: flowData.commerceOrder ?? null,
-            userId,
-            tags: {
-              respuesta_a_flow: "503-reintento",
-              motivo: String(result.reason ?? "sin-motivo").slice(0, 32),
-            },
-            extra: contextoFlow(),
-          }
-        );
-        return pedirReintento(`cargo no aplicado: ${String(result.reason)}`);
-      }
-
-      // Meta CAPI: Subscribe SOLO en el primer cobro de esta suscripción. El gate
-      // (conteo de filas franco-sub-pay-* del user excluyendo la actual) y toda su
-      // doctrina viven en sendSubscribeIfFirstCharge — COMPARTIDO con el cron
-      // reconciler, que recorre el mismo camino cuando este webhook falla o llega
-      // tarde. Antes esto era inline acá y el reconciler no enviaba nada: la
-      // conversión se perdía en silencio.
-      //
-      // Va DESPUÉS de processSubscriptionCharge: el conteo asume que la fila del
-      // cargo actual ya existe. El helper nunca lanza; el try/catch es defensa en
-      // profundidad para que una falla de Meta jamás rompa el 200 que Flow espera.
-      if (subId) {
-        try {
-          await sendSubscribeIfFirstCharge({
-            supabase,
-            userId,
-            commerceOrder: flowData.commerceOrder ?? "",
-            amount: Number(flowData.amount),
-            flowOrder: Number(flowData.flowOrder),
-            payerEmail: flowData.payer,
-            eventSourceUrl: SITE_URL,
-          });
-        } catch (e) {
-          console.error("[payment-callback] Meta CAPI Subscribe excepción:", e);
-          captureApiWarning(e, {
-            ruta: RUTA,
-            operacion: "meta-capi-subscribe",
-            extra: contextoFlow(),
-          });
-        }
-      }
-
-      // Re-armar el lote mensual de planes ANUALES finitos SOLO ante un cargo FRESCO
-      // (result.granted = se insertó un lote nuevo en este llamado). En un reenvío del
-      // webhook (granted=false) NO re-armamos, para no empujar next_monthly_grant_at
-      // repetidamente. El cron monthly-grants otorga los meses 2-12 desde esta fecha.
-      // (Antes esto vivía tras el INSERT-first; ahora el helper hace el INSERT y la
-      // idempotencia del grant, y result.granted refleja "cargo fresco".)
-      if (result.granted) {
-        const { data: uc } = await supabase
-          .from("user_credits")
-          .select("active_plan, billing_period")
-          .eq("user_id", userId)
-          .maybeSingle();
-        const match =
-          recurringProductByPlan(uc?.active_plan, uc?.billing_period) ??
-          recurringProductByAmount(Number(flowData.amount));
-        if (
-          match &&
-          match.product.billing === "annual" &&
-          match.product.isUnlimited !== true
-        ) {
-          const now = new Date();
-          await supabase
-            .from("user_credits")
-            .update({
-              next_monthly_grant_at: addOneMonth(now).toISOString(),
-              updated_at: now.toISOString(),
-            })
-            .eq("user_id", userId);
-        }
-      }
-    } else if ((flowStatus === 3 || flowStatus === 4) && userId) {
-      // Cargo rechazado (3) o anulado (4) → suscripción en mora con 7 días de
-      // gracia (mantiene acceso hasta grace_ends_at; el cron expire-grace corta
-      // al vencer, también en Flow). Avisamos por email.
-      // ¿Era el PRIMER cobro? (05-nov-2026, auditoría de promesas parte 2): entonces el correo no habla de «tu suscripción»
-      // como si se hubiera pagado: dice que el plan no se activó. Se lee ANTES de marcar past_due.
-      const { data: antes } = await supabase
-        .from("user_credits")
-        .select("subscription_status, subscription_ends_at")
-        .eq("user_id", userId)
-        .maybeSingle();
-      const primerCobro = esperaPrimerCobro(antes);
-      const graceEndsAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-      await supabase
-        .from("user_credits")
-        .update({
-          subscription_status: "past_due",
-          grace_ends_at: graceEndsAt.toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq("user_id", userId);
-
-      // Email de aviso. Un fallo de Resend NO debe romper el callback.
-      try {
-        const { data: userData } = await supabase.auth.admin.getUserById(userId);
-        const flowUser = userData?.user;
-        if (flowUser?.email) {
-          const nombre = nombreReal(flowUser.user_metadata);
-          await sendPaymentFailedEmail(flowUser.email, nombre, graceEndsAt, { userId, primerCobro });
-        }
-      } catch (e) {
-        console.error("[subscriptions/payment-callback] aviso past_due email error:", e);
-        captureApiWarning(e, {
-          ruta: RUTA,
-          operacion: "email-past-due",
-          extra: contextoFlow(),
-        });
-      }
-    }
-    // status 1 = pendiente → no cambia subscription_status
-
-    return NextResponse.json({ status: "ok" });
-  } catch (err) {
-    console.error("Subscription payment callback error:", err);
-    // 503, no 200. Una excepción acá deja el cargo a medio aplicar (típicamente:
-    // suscripción reactivada, grant sin otorgar) y el 200 lo volvía definitivo.
-    // El contexto de Flow va completo: sin el token y el commerceOrder, este
-    // mismo evento en Sentry no permitió ni identificar el cargo perdido.
-    captureApiError(err, {
-      ruta: RUTA,
-      operacion: "cobro-recurrente",
-      commerceOrder: flowData?.commerceOrder ?? null,
-      tags: { respuesta_a_flow: "503-reintento" },
-      extra: contextoFlow(),
-    });
-    return pedirReintento("error procesando el cobro");
-  }
+  const respuesta = await responderAviso(request, (token) => waitUntil(procesarAvisoDeCobro(token, piezasReales(token))));
+  return NextResponse.json(respuesta.body, { status: respuesta.status });
 }

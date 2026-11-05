@@ -49,15 +49,14 @@ async function fetchWithTimeout(
  * hasta tres timeouts de 8s.
  *
  * Qué se reintenta: timeouts, errores de red y respuestas 5xx — fallas donde el
- * mismo request puede andar en el intento siguiente. Los 4xx NO se reintentan
- * con UNA excepción declarada abajo.
+ * mismo request puede andar en el intento siguiente. Los 4xx NO se reintentan.
  *
- * HIPÓTESIS, no hecho verificado: el 400 con `{"code":105,"message":"No services
- * available"}` que tumbó el callback del 9-ago-2026 parece transitorio (Flow sin
- * backend disponible en ese instante), no un rechazo del request. Lo incluimos en
- * los reintentables a propósito. Si resulta ser permanente, el costo es 3 intentos
- * inútiles y ~1,2s extra antes del mismo error; el backstop real sigue siendo el
- * cron reconcile-subscriptions.
+ * REFUTADO (05-nov-2026): el 400 `{"code":105,"message":"No services available"}`
+ * que tumbaba el aviso de cobro NO era transitorio. Es lo que Flow responde cuando
+ * un servicio se llama con el MÉTODO equivocado: `payment/getStatus` es GET y el
+ * aviso lo pedía por POST (medido en el sandbox: el mismo token por GET da 1700
+ * «Transaction not found»). Reintentarlo no sirve; por eso ya no es reintentable.
+ * Cada servicio va con el método de apiFlow.yaml (lo fija el tier AVISO-COBRO).
  */
 export type FlowRetryOpts = {
   /** Cantidad total de intentos (1 = sin reintento). Default 1. */
@@ -65,7 +64,6 @@ export type FlowRetryOpts = {
 };
 
 const RETRY_BASE_MS = 300;
-const FLOW_CODE_RETRIABLE = 105; // ver nota de arriba: transitorio POR HIPÓTESIS
 
 function esperar(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
@@ -87,20 +85,9 @@ async function pausaEntreIntentos(
   await esperar(RETRY_BASE_MS * Math.pow(3, intento - 1));
 }
 
-/**
- * Decide si vale la pena reintentar una respuesta no-ok de Flow. El `code` viaja
- * en el body JSON de Flow, así que hay que mirar el texto ya leído.
- */
-function respuestaReintentable(status: number, body: string): boolean {
-  if (status >= 500) return true;
-  if (status === 400) {
-    try {
-      return Number((JSON.parse(body) as { code?: unknown })?.code) === FLOW_CODE_RETRIABLE;
-    } catch {
-      return false;
-    }
-  }
-  return false;
+/** Decide si vale la pena reintentar una respuesta no-ok de Flow: solo los 5xx. */
+function respuestaReintentable(status: number): boolean {
+  return status >= 500;
 }
 
 export async function flowPost(
@@ -148,7 +135,7 @@ export async function flowPost(
     // respuestaReintentable); el resto es un rechazo real y se lanza ya.
     const text = await response.text();
     const err = new Error(`Flow API error ${response.status}: ${text}`);
-    if (esUltimo || !respuestaReintentable(response.status, text)) throw err;
+    if (esUltimo || !respuestaReintentable(response.status)) throw err;
     ultimoError = err;
     await pausaEntreIntentos(service, intento, intentos, err);
   }
