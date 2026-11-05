@@ -115,7 +115,10 @@ export function runAvisosTier(): { hard: number } {
   const viejos = avisosDeOtraVersion(ev2, [g("a", 3000, 1), g("c", 2000, 1, "v2"), g("h", 3000, 2, "v2"), g("k", 3000, 8, "v2"), g("f", 3000, 1, "v2")], "v3", ahora).map((x) => x.id);
   if (viejos.join(",") !== "k,h") F(`5 · los de otra versión del motor no son los que tocan, en su orden (${viejos.join(",")})`);
   const cronV = sinComentarios(leer("src/app/api/cron/evaluar-avisos/route.ts"));
-  if (!/otraVersion = avisosDeOtraVersion\(evaluables, guardadas, VERSION_EVALUACION\);/.test(cronV) || !/const cola = dry \? pendientes\.slice\(0, TOPE_DRY\) : \[\.\.\.pendientes, \.\.\.otraVersion\];/.test(cronV)) F("5 · el cron no reevalúa por versión después de los pendientes");
+  // ⚠ ACTA (05-nov-2026, decisión de Fabrizio: la noche usa la edad real del edificio; tier EDAD-NOCHE) · la cola sale de los
+  // evaluables CON la edad conocida (`conEdad`), no de `evaluables`: la regla es la misma —después de los pendientes, los de
+  // otra versión—, cambia de qué lista salen. Lo que la edad agrega a la cola lo fija EDAD-NOCHE.
+  if (!/otraVersion = avisosDeOtraVersion\(conEdad, guardadas, VERSION_EVALUACION\);/.test(cronV) || !/const cola = dry \? pendientes\.slice\(0, TOPE_DRY\) : \[\.\.\.pendientes, \.\.\.otraVersion\];/.test(cronV)) F("5 · el cron no reevalúa por versión después de los pendientes");
 
   // ── 6 · el cron ──
   const cron = sinComentarios(leer("src/app/api/cron/evaluar-avisos/route.ts"));

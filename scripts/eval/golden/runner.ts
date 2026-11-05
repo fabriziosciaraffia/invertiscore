@@ -210,6 +210,7 @@ import { runDatosYPlataTier } from "./datos-y-plata-catch-test";
 import { runSuscripcionTier } from "./suscripcion-catch-test";
 import { runAvisoCobroTier } from "./aviso-cobro-catch-test";
 import { runTarjetaAnalizadaTier } from "./tarjeta-analizada-catch-test";
+import { runEdadNocheTier } from "./edad-noche-catch-test";
 
 const argv = process.argv.slice(2);
 const has = (f: string) => argv.includes(f);
@@ -860,6 +861,10 @@ function printSeed(r: SeedReport) {
   // veredicto y puntaje y «tu informe del 13-oct»—, no la noche; si la noche da distinto, la línea chica «hoy la noche da 82».
   // Dibujadas de verdad: la tarjeta y la lista de Explorar, el compartido, la selección, los guardados y la primera selección. ──
   totalHard += (await runTarjetaAnalizadaTier()).hard;
+  // Tier EDAD-NOCHE (05-nov-2026, 0 tokens, lee la base): la evaluación de cada noche usa la edad real del edificio cuando se
+  // conoce (su ficha o la de otro aviso del edificio), con la misma regla del informe; la fila evaluada con otra edad vuelve
+  // a la cola. En vivo: avisos reales de edificios con año pasan por la noche y por el informe con la misma edad. ──
+  totalHard += (await runEdadNocheTier()).hard;
   // Tier CIERRE-INFORME (01-oct-2026, 0 tokens): el final del informe tiene UNA acción —el ticket, la banda de
   // bienvenida o «Te quedan N análisis.» con «Analizar otro depto»—. ──
   totalHard += runCierreInformeTier().hard;

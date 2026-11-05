@@ -72,12 +72,17 @@ const CANDIDATO = {
   venta: { precioM2UF: 60, fuente: "radio", n: 30, universo: "usado", radio: 800 }, gastosComunes: 80000, medianaComuna: null,
 } as unknown as CandidatoGuia;
 
-/** Una base de juguete para `anios_edificio`: la fila del edificio, si hay, y qué se le preguntó. */
-function baseDe(fila: { anio: number; aviso_id: string } | null) {
+/** Una base de juguete para `anios_edificio` y `fichas_leidas`: la fila del edificio y la de la ficha de ESTE aviso, si hay,
+ *  y qué se le preguntó a cada tabla.
+ *  ⚠ ACTA (05-nov-2026, la noche usa la edad real; tier EDAD-NOCHE) · `antiguedadDelAviso` mira también la última lectura de
+ *  la ficha del aviso (`fichas_leidas`) antes que el edificio, con la regla única `edadConocida`. La base de antes devolvía la
+ *  fila del edificio a CUALQUIER tabla: la ficha propia habría salido con el año del edificio. Ahora cada tabla responde lo
+ *  suyo, y los casos que miraban «el primer pedido» buscan el pedido a `anios_edificio`. */
+function baseDe(fila: { anio: number; aviso_id: string } | null, propia: { anio: number | null } | null = null) {
   const pedidos: Array<{ tabla: string; edificio: unknown }> = [];
   const admin = {
     from: (tabla: string) => ({
-      select: () => ({ eq: (_c: string, edificio: unknown) => ({ maybeSingle: async () => { pedidos.push({ tabla, edificio }); return { data: fila, error: null }; } }) }),
+      select: () => ({ eq: (_c: string, valor: unknown) => ({ maybeSingle: async () => { pedidos.push({ tabla, edificio: valor }); return { data: tabla === "fichas_leidas" ? propia : fila, error: null }; } }) }),
     }),
   };
   return { admin: admin as never, pedidos };
@@ -163,7 +168,11 @@ export async function runEdadEdificioTier(): Promise<{ hard: number }> {
   const b1 = baseDe({ anio: 1966, aviso_id: "otro" });
   const deOtro = await antiguedadDelAviso(b1.admin, CANDIDATO, { leida: true, anio: null }, AHORA);
   if (deOtro.anios !== 60 || deOtro.edad?.fuente !== "edificio" || deOtro.edad?.anio !== 1966) F("3 · con el año de otro aviso del edificio, no dice «edificio»");
-  if (b1.pedidos[0]?.tabla !== "anios_edificio" || b1.pedidos[0]?.edificio !== claveEdificio(CANDIDATO)) F("3 · no busca el año en el edificio del aviso");
+  const alEdificio = b1.pedidos.find((p) => p.tabla === "anios_edificio");
+  if (!alEdificio || alEdificio.edificio !== claveEdificio(CANDIDATO)) F("3 · no busca el año en el edificio del aviso");
+  // La ficha propia ya leída (sin lectura nueva) manda sobre el edificio, como en la noche.
+  const propiaVieja = await antiguedadDelAviso(baseDe({ anio: 1966, aviso_id: "otro" }, { anio: ANIO }).admin, CANDIDATO, { leida: false, anio: null }, AHORA);
+  if (propiaVieja.anios !== 75 || JSON.stringify(propiaVieja.edad) !== JSON.stringify(FICHA)) F("3 · la última lectura de la ficha del aviso no manda sobre el año del edificio");
   const deEste = await antiguedadDelAviso(baseDe({ anio: 1966, aviso_id: "a1" }).admin, CANDIDATO, { leida: false, anio: null }, AHORA);
   if (deEste.edad?.fuente !== "ficha") F("3 · el año que dio la ficha de ESTE aviso (guardado en el edificio) se rotula como de otro aviso");
   const noDice = await antiguedadDelAviso(baseDe(null).admin, CANDIDATO, { leida: true, anio: null }, AHORA);
