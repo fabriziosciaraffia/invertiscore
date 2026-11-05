@@ -80,7 +80,9 @@ export function runCompraTier(): { hard: number } {
   if (!/const entrada = useEntradaPorCodigo\(urlCompra\(estaCompra, true\)\);/.test(cli) || /verifyOtp|signInWithOtp/.test(cli)) F("1 · la compra no usa la entrada por código de /entrar (o la copia)");
   // De vuelta del correo o de Google con sesión: sigue sola a Flow, una vez, salvo que ya tenga el plan o el pack venció.
   const sola = entre(cli, "const siguioSola = useRef(false);", "async function otraCuenta()");
-  if (!/if \(!props\.pagarAlEntrar \|\| !sesion \|\| siguioSola\.current \|\| yaTienePlan\) return;/.test(sola) || !/siguioSola\.current = true;/.test(sola) || !/void handlePay\(\);/.test(sola) || !/if \(esPack && \(oferta === null \|\| !oferta\.vigente\)\) return;/.test(sola)) F("1 · de vuelta de Google o del enlace del correo, no sigue sola a Flow (o paga dos veces, o paga un plan que ya tiene)");
+  // ⚠ ACTA (05-nov-2026, auditoría de promesas parte 2) · tampoco sigue sola a Flow con un plan en la gracia (`pendiente`):
+  // ahí se cambia la tarjeta, no se contrata otro. Verificado en rojo sacando `yaTienePlan` de la condición.
+  if (!/if \(!props\.pagarAlEntrar \|\| !sesion \|\| siguioSola\.current \|\| yaTienePlan \|\| pendiente\) return;/.test(sola) || !/siguioSola\.current = true;/.test(sola) || !/void handlePay\(\);/.test(sola) || !/if \(esPack && \(oferta === null \|\| !oferta\.vigente\)\) return;/.test(sola)) F("1 · de vuelta de Google o del enlace del correo, no sigue sola a Flow (o paga dos veces, o paga un plan que ya tiene)");
   if (urlCompra({ product: "tres_analisis", origen: "planes", volver: "/dashboard" }, true) !== "/checkout?product=tres_analisis&origen=planes&volver=%2Fdashboard&pagar=1" || /pagar=/.test(urlCompra({ product: "single" }))) F("1 · la vuelta de Google o del correo no lleva la compra entera con `pagar`");
   // Quien ya tiene el plan no lo vuelve a contratar: «Ya tienes el Plan Franco» y su cuenta.
   if (!/const yaTienePlan = props\.conPlan && !product\.unico;/.test(cli) || !/\{yaTienePlan \? \(\s*<div data-compra="ya-plan">/.test(cli)) F("1 · a quien ya tiene el plan se le ofrece pagarlo de nuevo");

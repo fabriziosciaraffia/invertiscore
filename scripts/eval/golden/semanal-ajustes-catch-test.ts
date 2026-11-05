@@ -171,8 +171,12 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
       || !/if \(p\.ilimitado\) return "subscriber";/.test(sinComentarios(leer("src/components/analysis/NextAnalysisCTA.tsx"))))
       F("4 · el pie del comparativo le dice «Análisis ilimitados» a cualquier suscriptor");
     const estadoPago = sinComentarios(leer("src/app/api/payments/status/route.ts")), retorno = sinComentarios(leer("src/app/payments/return/page.tsx"));
+    // ⚠ ACTA (05-nov-2026, auditoría de promesas parte 2) · la vuelta de la suscripción ya no dice «Tu suscripción Franco
+    // está activa»: registrar la tarjeta no es pagar, y la pantalla dice «Tarjeta registrada.» (lib/subscriptions/suscripcion.ts,
+    // tier SUSCRIPCION). La regla que este punto fijaba —el plan de 10 no lee «Análisis ilimitados»— se mide ahora sobre la
+    // pantalla entera: no lo dice en ninguna parte. Verificado en rojo poniéndolo en la vuelta de la suscripción.
     if (!/if \(uc\?\.is_unlimited === true\) return \{ saldo: 0, ilimitado: true \};/.test(estadoPago) || /getUserAccessLevel/.test(estadoPago)
-      || !/\? ilimitado \? "Tu suscripción Franco está activa\. Análisis ilimitados\." : "Tu suscripción Franco está activa\."/.test(retorno))
+      || /Análisis ilimitados/.test(retorno))
       F("4 · al activar la suscripción, el plan 10 lee «Análisis ilimitados»");
   }
 

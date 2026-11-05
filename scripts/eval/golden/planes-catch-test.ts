@@ -61,7 +61,10 @@ export function runPlanesTier(): { hard: number } {
   const sc = sinComentarios(leer("src/app/api/subscriptions/create/route.ts"));
   if (!/if \(!seVende\(product\)\) \{\s*return NextResponse\.json\(\{ error: "Este plan ya no se vende" \}, \{ status: 410 \}\);/.test(sc)) F("2 · subscriptions/create acepta planes retirados");
   const rc = sinComentarios(leer("src/app/api/subscriptions/register-callback/route.ts"));
-  const iSeVende = rc.indexOf("if (!seVende(match.key))"), iAlta = rc.indexOf('flowPost("subscription/create"');
+  // ⚠ ACTA (05-nov-2026, auditoría de promesas parte 2) · register-callback ya no llama a Flow directo: abre la suscripción
+  // por abrirPlanUnico (lib/subscriptions/flow-vivas.ts), que cierra antes lo vivo. El corte del plan retirado tiene que ir
+  // antes de ESA llamada. Verificado en rojo apagando el corte.
+  const iSeVende = rc.indexOf("if (!seVende(match.key))"), iAlta = rc.indexOf("const alta = await abrirPlanUnico(");
   if (iSeVende < 0 || iAlta < iSeVende) F("2 · register-callback activa un plan retirado iniciado antes del corte");
   // ⚠ ACTA (19-oct-2026, goal «camino de compra») · lo que la pantalla dice de cada producto vive en lib/compra/compra.ts
   // (resumenCompra), y la pantalla ya no manda a entrar a nadie: «Plan no encontrado» sale antes que la compra (page.tsx
@@ -158,7 +161,9 @@ export function runPlanesTier(): { hard: number } {
   const cta = sinComentarios(leer("src/app/cuenta/page.tsx"));
   const orden = ['data-cuenta="correo"', "data-cuenta={plan ?", "<PerfilBusquedaCasa", 'data-cuenta="entrar"', 'data-cuenta="baja"'].map((t) => cta.indexOf(t));
   if (orden.some((i) => i < 0) || orden.some((i, k) => k > 0 && i < orden[k - 1])) F(`5 · la cuenta no es correo → plan o saldo → perfil → cómo entras → darte de baja (${orden.join(",")})`);
-  if (!/<CorreosCuenta inicial=\{correos\} \/>/.test(cta) || !/<DeleteAccountButton \/>/.test(cta) || !/\{activo && <CancelSubscriptionButton \/>\}/.test(cta)) F("5 · darse de baja no ofrece los correos, eliminar la cuenta o cancelar el plan");
+  // ⚠ ACTA (05-nov-2026, auditoría de promesas parte 2) · «Cancelar el plan» también está en la gracia (y ahí es inmediato,
+  // `ahora`): el botón va con `(activo || pendiente)`. Verificado en rojo sacando el botón.
+  if (!/<CorreosCuenta inicial=\{correos\} \/>/.test(cta) || !/<DeleteAccountButton \/>/.test(cta) || !/\{\(activo \|\| pendiente\) && <CancelSubscriptionButton ahora=\{pendiente \|\| esperando\} \/>\}/.test(cta)) F("5 · darse de baja no ofrece los correos, eliminar la cuenta o cancelar el plan");
   if (!/const conGoogle = \(user\.identities \?\? \[\]\)\.some\(\(i\) => i\.provider === "google"\);/.test(cta) || !/COMO_ENTRAR/.test(leer("src/app/cuenta/cuenta-copy.ts"))) F("5 · «cómo entras» no dice el código ni Google");
   if (/rounded-lg border|bg-\[var\(--franco-card\)\] p-6|StatusBadge|font-mono/.test(cta)) F("5 · la cuenta vuelve a las tarjetas, las insignias o el mono: no es plana");
   const ruta = sinComentarios(leer("src/app/api/cuenta/correos/route.ts"));
