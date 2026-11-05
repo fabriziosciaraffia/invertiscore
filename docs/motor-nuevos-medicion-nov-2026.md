@@ -4,7 +4,8 @@ Goal de solo lectura, pegado por Fabrizio el 05-nov-2026. Nada de este documento
 prompts, el informe ni la base: todo recálculo corre en memoria con los scripts de `scripts/analisis/motor-nuevos/`,
 que llaman al motor real (`runAnalysis`) con los insumos guardados en `avisos_evaluados`.
 
-> **Estado: FASES 0, 1 y 2 con OK (05-nov); FASE 3 terminada, esperando el OK.** El resumen de 10 líneas y la FASE 4 se
+> **Estado: FASES 0 a 3 con OK (05-nov); punto 1 (curva por edad) hecho; FASE 4 en STOP 4a (tabla de supuestos, esperando
+> el OK para correr).** El resumen de 10 líneas y la FASE 4 se
 > escriben al cierre.
 
 ---
@@ -806,3 +807,190 @@ las fuentes de 3.3.
 11. **Los 102 proyectos sin dato de entrega** (de 536): la pasada los trata como entrega inmediata (sin cuotas, arriendo desde
     el mes 1). La ficha sí trae «Estado del proyecto» y «Fecha de entrega» en 9 de 12 leídas: el cruce ya escribe
     `fecha_entrega` cuando la trae; los 102 son fichas sin características o proyectos nunca cruzados.
+
+---
+
+## Punto 1 del STOP 3 · La curva por edad, con lecturas de fichas de usados
+
+### 1.1 Las lecturas
+
+Por el mismo camino del lector del informe (`leerFicha` + `bajarFicha`: la ficha vieja y, si redirige, la nueva; sin
+reintentos; 8 s de tope), con almacén local (nada en `fichas_leidas`, `anios_edificio` ni `publicacion_avisos`; los años en
+`out/9-fichas-usados.json`), de a una con pausa al azar de 5 a 10 s, y la regla de corte de tres respuestas finales seguidas
+que no sean 200 (`9-fichas-usados.ts`).
+
+Antes de leer, con la regla del informe (año de la ficha del aviso o compartido por el edificio en `anios_edificio`), cuatro
+de las seis comunas ya pasaban de 30: Ñuñoa 36, Estación Central 30, San Miguel 48, Vitacura 36; faltaban Providencia (28)
+y La Florida (22). Se priorizaron edificios sin año conocido.
+
+| | n |
+| --- | --- |
+| Chequeos | 100 (el corte saltó en el 100: tres despublicados seguidos, 404) |
+| GET | 200 |
+| 200 (publicado) | 71 |
+| Con año en la ficha | 20 (28 % de los 200; la tasa histórica es 29,5 %) |
+| Despublicados (404) | 29 |
+| Bloqueos (403/429) | **0** |
+| Error o tiempo | 0 |
+| Ritmo | 17 s por chequeo (100 en 28 min, 200 GET en la hora sin bloqueo) |
+
+| comuna | usados activos | con año antes | chequeos | 200 | con año leído | con año ahora |
+| --- | --- | --- | --- | --- | --- | --- |
+| Ñuñoa | 2.122 | 36 | 10 | 7 | 0 | 36 |
+| Estación Central | 1.610 | 30 | 10 | 7 | 3 | 41 |
+| San Miguel | 1.282 | 48 | 10 | 6 | 5 | 58 |
+| Providencia | 1.245 | 29 | 15 | 12 | 4 | 36 |
+| Vitacura | 1.189 | 36 | 9 | 6 | 0 | 36 |
+| La Florida | 957 | 22 | 46 | 33 | 8 | 44 |
+
+Las seis comunas quedaron con n ≥ 30 (por ficha o edificio). El corte llegó por tres 404 seguidos, no por bloqueo: con 200
+GET en una hora desde esta IP la fuente no bloqueó (el tope de producción es 30 por hora). Para el goal de arreglos: los 20
+años leídos y los 29 despublicados detectados no están en la base.
+
+### 1.2 La curva por comuna y tramo de edad
+
+Usados activos limpios con año: **587 de 22.288** (238 por ficha, 328 por edificio, 21 por lectura local). UF/m² es el
+precio publicado; el arriendo por m² es el **sugerido por radio** con que se evaluó el aviso, no el del edificio (la base no
+lo tiene), así que mide lo que el motor le pone y sale plano (9.500 a 10.600 $/m² en todos los tramos): **no sirve para un
+descuento de arriendo por edad.** Celdas con n < 15 marcadas ⚠.
+
+| comuna | tramo | n | UF/m² mediana | p25 | p75 |
+| --- | --- | --- | --- | --- | --- |
+| Gran Santiago (mezcla comunas) | 0-2 | 6 ⚠ | 105,8 | 95,9 | 116,8 |
+| | 3-5 | 38 | 79,8 | 65,4 | 93,4 |
+| | 6-10 | 210 | 52,4 | 44,1 | 63,3 |
+| | 11-20 | 167 | 50,2 | 42,3 | 58,7 |
+| | 21-30 | 59 | 56,3 | 43,2 | 65,3 |
+| | 31+ | 107 | 59,1 | 48,1 | 71,2 |
+| Santiago | 3-5 | 3 ⚠ | 73,4 | 67,6 | 76,5 |
+| | 6-10 | 38 | 57,2 | 47,5 | 61,7 |
+| | 11-20 | 85 | 48,6 | 42,6 | 56,3 |
+| | 21-30 | 23 | 44,4 | 39,6 | 53,8 |
+| | 31+ | 10 ⚠ | 34,6 | 32,4 | 36,6 |
+| San Miguel | 6-10 | 44 | 47,6 | 41,2 | 57,1 |
+| | 11-20 | 9 ⚠ | 53,3 | 50,2 | 56,1 |
+| Las Condes | 21-30 | 9 ⚠ | 66,7 | 65,3 | 78,6 |
+| | 31+ | 32 | 67,1 | 58,4 | 78,3 |
+| La Florida | 3-5 | 15 | 74,3 | 67,8 | 83,2 |
+| | 6-10 | 26 | 57,9 | 51,1 | 73,1 |
+| Estación Central | 6-10 | 32 | 45,2 | 39,8 | 51,4 |
+| | 11-20 | 9 ⚠ | 47,4 | 39,3 | 52,8 |
+| Providencia | 3-5 | 4 ⚠ | 106,3 | 98,5 | 116,0 |
+| | 31+ | 27 | 61,7 | 55,2 | 71,9 |
+| Ñuñoa | 6-10 | 21 | 87,9 | 68,8 | 93,6 |
+| | 31+ | 7 ⚠ | 55,0 | 45,5 | 58,6 |
+| Vitacura | 0-2 | 6 ⚠ | 105,8 | 95,9 | 116,8 |
+| | 3-5 | 5 ⚠ | 97,1 | 80,4 | 110,4 |
+| | 31+ | 14 ⚠ | 73,6 | 65,7 | 84,9 |
+| Independencia | 6-10 | 25 | 47,0 | 42,7 | 51,5 |
+| Lo Barnechea | 11-20 | 11 ⚠ | 72,6 | 67,6 | 84,6 |
+| La Cisterna | 6-10 | 16 | 51,8 | 47,3 | 60,1 |
+| Recoleta | 11-20 | 19 | 50,0 | 41,3 | 53,8 |
+
+(Las celdas que no aparecen tienen n = 0; la tabla entera, con las 13 comunas y los 6 tramos, está en `out/10-curva-edad.stdout`.)
+
+**0-2 contra 3-5 y contra 21-30:** en ninguna comuna hay 0-2 con n ≥ 15 (los 6 de 0-2 son de Vitacura). La única comuna con
+tres tramos de n ≥ 15 es **Santiago**: 6-10 años 57,2 UF/m², 11-20 años 48,6 (**−15 %**), 21-30 años 44,4 (**−22 %**). La Florida
+tiene 3-5 (74,3, n 15) contra 6-10 (57,9, n 26): −22 %. La curva de Gran Santiago no es una curva: el 31+ (59,1) está sobre
+el 11-20 (50,2) porque los edificios viejos están en Providencia, Las Condes y Vitacura y los de 6 a 20 años en Santiago,
+Estación Central e Independencia (composición, no edad).
+
+**Lo que se puede llevar a la FASE 4 (fila opcional):** un descuento por edad en el PRECIO, solo de Santiago (n 38 / 85 / 23):
+−15 % al pasar de 6-10 a 11-20 años y −22 % de 6-10 a 21-30. No hay número para 0-2 ni para el arriendo. Si entra, lo honesto
+es una sensibilidad única para todos, marcada, y no un parámetro por comuna.
+
+---
+
+## FASE 4 · STOP 4a: la tabla de supuestos (antes de correr nada)
+
+La TIR es la del informe: `runAnalysis` → `calcProjections` (20 años, en pesos de hoy) → `calcExitScenario` a 10 años
+(`HORIZONTE_SALIDA_ANIOS`), con `calcIRRPct` del motor sobre el vector anual. No se construye otra TIR: a cada versión se le
+cambian los supuestos de entrada (g, tasa, precio, cuotas) y lo que la función ya expone (`plusvaliaAnual`).
+
+### Qué hace hoy esa función (sin tocar)
+
+| supuesto | valor hoy | de dónde sale |
+| --- | --- | --- |
+| Horizonte | 10 años desde hoy, para todos (entrega futura incluida) | `HORIZONTE_SALIDA_ANIOS = 10`, `calcExitScenario` |
+| Momento cero | pie (o su primera cuota) + escrituración + puesta a punto + corretaje del comprador | `calcInversionInicialCLP`; `flujos[0] = −(inversiónInicial − (pie − cuota))` |
+| Entrega futura: meses sin arriendo ni dividendo | desde hoy hasta `fechaEntrega` (mes y año de la ficha) | `calcMesesHastaEntrega`; en esos meses flujo 0 y saldo del crédito 0 |
+| Entrega futura: cuotas del pie | una por mes desde la promesa hasta la entrega, la primera al firmar; cada cuota se descuenta en el año en que se paga | `cuotasPorDefecto`, `cuotasDelAnio` (obra-nueva.ts), `calcExitScenario:1121` |
+| Crédito | parte en la entrega por el saldo (precio − pie), cuota fija en UF, 30 años, tasa de config | `saldoCredito(creditoCLP, tasa, plazo, mesesCredito)` |
+| Arriendo | +3,5 % nominal = **+0,49 % real** al año, desde el año 1 (también durante la construcción) | `ARRIENDO_REAL = crecimientoReal(0,035)` |
+| Precio del depto | **+3 % real** al año desde el año 0, también durante la construcción | `PLUSVALIA_PROYECCION_ANUAL`, `valorPropiedad = precio × 1,03^año` |
+| Gastos comunes y contribuciones | 0 % real (planos en UF) | `GGCC_REAL = crecimientoReal(0,03) = 0` |
+| Mantención | UF/m² útil/año por edad: 0,02 (≤ 2 años), 0,05 (≤ 7), 0,09 (≤ 15), 0,14 (≤ 25), 0,18 (26+), con techo del 6 % del arriendo; la edad corre desde la entrega (nuevo) o desde la puesta a punto (usado) | `MANTENCION_UF_M2_ANIO`, `MANTENCION_TECHO_ARRIENDO_PCT` (modelo-costos.ts v3) |
+| Venta al año 10 | valor del año 10 menos el sobreprecio de hoy (plano, si la mediana lo marca) menos 2 % de comisión, menos el saldo del crédito | `COMISION_VENTA = 0,02`, `sobreprecioDeHoy` |
+| TIR | anual, sobre [momento cero, flujo año 1 − cuotas, …, flujo año 10 − cuotas + lo que queda al vender] | `calcIRRPct(flujos)` |
+| Ganancia y múltiplo (4.1) | ganancia = lo que queda al vender − todo lo puesto (inversión inicial + flujos mensuales negativos acumulados); múltiplo = recibido ÷ puesto | `gananciaSobreTotal`, `multiplicadorCapital` (ya los emite el motor) |
+
+### Los costos que ya usa el motor (sin tocar)
+
+| costo | valor | de dónde sale |
+| --- | --- | --- |
+| Escrituración (notaría, CBR, timbres, tasación) | 2 % del precio, al momento cero | `GASTOS_CIERRE_PCT = 0,02` |
+| Corretaje del comprador | 2 % del precio en usados; 0 en nuevos (va en el precio) | `CORRETAJE_COMPRA_PCT = 0,02`, `incluyeCorretajeInicial = usado` |
+| Puesta a punto (CapEx del día 1) | UF/m² útil por edad: 0 (≤ 2 años), 0,2–0,4 (≤ 7), 0,5–0,9 (≤ 15), 1,0–1,6 (≤ 25), 1,8–2,6 (26+); el punto medio, redondeado a 5 UF; nuevo 0 | `PUESTA_A_PUNTO_UF_M2` (capex-puesta-a-punto.ts v3) |
+| Contribuciones | avalúo fiscal = 70 % del precio; exención general $61,7 M; 0,893 % anual hasta $220,4 M de avalúo y 1,042 % (+0,025 %) sobre eso; **DFL2**: exime el 50 % del avalúo durante 20 años (≤ 70 m²), 15 (≤ 100) o 10 (≤ 140), contados desde la recepción (nuevo: desde la entrega; usado: su edad) | `estimarContribuciones`, `duracionDfl2` (contribuciones.ts) |
+| Vacancia | 5 % = 0,6 meses al año, constante: arriendo y gastos comunes prorrateados | `vacanciaMeses = 5 % × 12 / 100` (wizard por defecto), `calcFlujoDesglose` |
+| Corretaje de arriendo y recambio | medio mes de arriendo cada 2 años, cada uno (1/24 del arriendo al mes) | `corretajeProrrata`, `recambio` |
+| Administración | 0 (sin administrador) | `usaAdministrador = false` |
+| Gastos comunes | el estimador por comuna: 2.200 / 1.800 / 1.400 $/m²; planos en UF; solo pesan en la vacancia | `getGgccFallback`, `ggccVacancia` |
+
+### Lo que cambia en cada versión
+
+| versión | precio del depto (g) | arriendo | respaldo (FASE 3.3) | cómo se corre |
+| --- | --- | --- | --- | --- |
+| **motor de hoy** | +3 % real | +0,49 % real | CLAPES RM deptos 4,4 % (2007–2023) y GfK 10 años 2,8 % | `runAnalysis` tal cual |
+| **g = 1 %** | +1 % real | **+1 % real** | GfK últimos 5 años (0,4 a 3,7 % por comuna; Gran Santiago ~1,5 %) | `calcProjections({plusvaliaAnual: 0,01})` + arriendo reescalado + `calcExitScenario` |
+| **g = 0 %** | 0 % | **0 %** | INCOIN último año (−2 a +3 %, cerca de 0) | `calcProjections({plusvaliaAnual: 0})` + arriendo reescalado + `calcExitScenario` |
+
+El reescalado del arriendo: `calcProjections` tiene el +0,49 % como constante del módulo, no como parámetro. En las dos
+versiones nuevas se toma la proyección del motor y se corrige el arriendo de cada año por ((1 + g) / (1 + 0,49 %))^(año − 1),
+y el flujo anual por la diferencia de arriendo × (1 − vacancia/12 − 1/24 − 1/24): los costos que van con el arriendo
+(vacancia, corretaje, recambio) se mueven con él; dividendo, gastos comunes, contribuciones y mantención quedan. Lo demás
+(venta, saldo, cuotas, TIR) lo calcula `calcExitScenario` del motor sobre esa proyección. Es cambiar un supuesto, no otra TIR.
+
+### Lo que entra desde las fases anteriores
+
+| supuesto | valor | de dónde sale / marca |
+| --- | --- | --- |
+| Universo | 5.599 nuevos limpios (base de referencia del universo completo, 79 Comprar) y 21.191 usados limpios (0b, 6.595 Comprar); pie 20 %, 30 años; UF 41.274; tasa 4,07 % | punto 2 del STOP 2; 0b |
+| Los 16 Comprar reactivados sin fecha de entrega | inmediata, marcados y reportados aparte en la celda central | punto 2 del STOP 3 |
+| Descuento de preventa | **0 %**, marcado «foto del mercado actual» (corte transversal: −0,4 a −1,5 % sin pendiente) | FASE 3.2a |
+| Plusvalía durante la construcción (4.1, solo entrega futura, informativa) | precio congelado hoy × ((1 + g)^(meses/12) − 1), en UF, con g = 1 % y 3 % | FASE 3.3; la TIR del motor ya la incluye (precio crece desde el año 0) |
+| **Edad (fila opcional, tú decides si entra)** | el precio de venta al año 10 con un descuento por edad: **−15 %** (el depto cumple 10 años: de 6-10 a 11-20, Santiago, n 38 / 85); sensibilidad única para todos, marcada. En arriendo no hay número (la base trae el arriendo sugerido, no el del edificio). Sin 0-2 ni 3-5 con n ≥ 15 en ninguna comuna | punto 1.2: la única comuna con tres tramos de n ≥ 15 |
+| Premio del nuevo | 3 % parejo sobre el arriendo sugerido | FASE 1 (decisión) |
+
+### Palancas y sensibilidades (4.2 a 4.4)
+
+| palanca | cómo se corre | elegibilidad |
+| --- | --- | --- |
+| Negociar 5 % / 10 % | precio × 0,95 / 0,90 en la fila, misma mediana comunal, todo lo demás igual (`evaluarConMotor`) | todos los nuevos |
+| Subsidio Ley 21.836 | tasa del crédito = tasa de mercado − 0,6 puntos (`tasaModo = "preaprobada"`, `tasaMercado` queda en 4,07): el motor marca `subsidioTasa.aplicado` | nuevo (primera venta) **y** precio ≤ UF 6.000 **y** entrega inmediata o fecha de entrega antes de mayo de 2028 (el crédito se firma en la entrega); el motor hoy no mira la entrega, se agrega acá |
+| Subsidio + Negociar 10 % | las dos juntas | la del subsidio, sobre el precio negociado |
+| Todo el pie a la entrega (sensibilidad) | el mismo vector de flujos del motor con la cuota única del pie movida del momento cero al año de la entrega; `calcIRRPct` del motor sobre ese vector | solo entrega futura |
+
+### La grilla (4.3)
+
+| regla | definición |
+| --- | --- |
+| Flujo de operación | `metrics.flujoNetoMensual` del motor: el mes con arrendatario después de la entrega (sin las cuotas del pie) |
+| TIR | la de la versión g = 0 % en la grilla; en la celda central también g = 1 % y la del motor |
+| Comprar | GATE 1 del motor apagado (sin CoC severo, break-even imposible, sobreprecio con flujo ni flujo severo) **y** flujo ≥ tolerancia **y** TIR ≥ mínima |
+| Ajusta supuestos | lo demás sin GATE 1 (un Comprar del motor que no pasa la regla baja a Ajustar) |
+| Buscar otra | GATE 1 activo (igual que hoy) |
+| Celdas | TIR mínima 4, 5, 6 y 7 % × flujo mínimo 0, −100.000, −200.000 y −300.000; celda central 5 % y −200.000 |
+
+### Sanidad con el Golden Set (4.5)
+
+| análisis | qué es | cómo se corre |
+| --- | --- | --- |
+| 7710a017 | renta larga, Providencia, 2D 60 m², UF 5.500, 4 años, pie 20 %, 25 años, tasa 4,5 % (abril-2026), Ajustar 66, TIR 6,88 | `runAnalysis` con su `input_data` y su mediana guardada; las tres g; regla de la celda central |
+| 17b4e10d | renta larga, Ñuñoa, nuevo 2D 80 m², UF 4.000, pie 20 %, 30 años, tasa 3,4 % (sept-2026), Comprar 79, TIR 13,36 | igual |
+| 5dc42a82 | **renta corta** (short-term), Santiago, 1D, pie 10 %, 25 años, tasa 3,4 %, Buscar otra | no tiene arriendo mensual ni TIR de renta larga: se corre con la ocupación y tarifa de su `input_data` por el motor STR, o se cambia por otro Buscar otra de renta larga; **pregunta** |
+
+**Preguntas antes de correr:**
+1. ¿La fila de edad entra? La única cifra que aguanta es la de Santiago (−15 % en el precio de venta al año 10); no hay número para el arriendo ni por comuna.
+2. 5dc42a82 es un análisis de renta corta: ¿lo corro con el motor STR (otra TIR) o lo reemplazas por un Buscar otra de renta larga?
+3. En la grilla, un Comprar del motor que no pasa la regla baja a Ajustar (no a Buscar otra). ¿Correcto?
