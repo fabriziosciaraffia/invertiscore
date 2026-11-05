@@ -4,9 +4,23 @@ Goal de solo lectura, pegado por Fabrizio el 05-nov-2026. Nada de este documento
 prompts, el informe ni la base: todo recálculo corre en memoria con los scripts de `scripts/analisis/motor-nuevos/`,
 que llaman al motor real (`runAnalysis`) con los insumos guardados en `avisos_evaluados`.
 
-> **Estado: FASES 0 a 3 con OK (05-nov); punto 1 (curva por edad) hecho; FASE 4 en STOP 4a (tabla de supuestos, esperando
-> el OK para correr).** El resumen de 10 líneas y la FASE 4 se
-> escriben al cierre.
+> **Estado: las cuatro fases terminadas (05-nov-2026). Goal cerrado en la rama `claude/nuevos-deptos-medicion-6ec06b`,
+> a la espera del OK para el push.** Orden del documento: resumen, FASE 0, FASE 1, punto 0, FASE 2, punto 2, FASE 3, defectos,
+> punto 1 (edad), FASE 4 (supuestos y resultados), lo que la base no puede responder, preguntas.
+
+## Resumen (10 líneas): qué parte del 1,8 % explica cada cosa
+
+1. **Los errores de datos no explican el 1,8 %: lo inflaban.** Con la UF y la tasa de hoy los nuevos pasan de 36 a 33 Comprar (1,6 %); con la superficie corregida (1.515 nuevos evaluados con m² = 0 por el parser de un decimal), a 29 (1,4 %); el premio medido del nuevo es 2,8 % (el motor ya usa 3 %); gastos comunes no existen en la tabla; el cap de referencia no entra al veredicto.
+2. **El universo completo no cambia la tasa, cambia el tamaño:** 5.599 nuevos limpios (3.513 reactivadas por el cruce estaban fuera de `avisos_evaluados` por `scraped_at`), 79 Comprar (1,4 %); Puente Alto 29 de 90.
+3. **Lo que sí explica el 1,4 % es la aritmética y los gates de flujo:** UF 86/m² contra 63 del usado con arriendo casi igual, flujo mediano −$238.000 contra −$70.000; break-even imposible en 1.639 de 5.599 (29 %), flujo severo 568, sobreprecio comunal con flujo 901.
+4. **La TIR del motor de hoy iguala a nuevos y usados (7,4 % contra 7,5 %):** el 3 % de plusvalía sobre un precio 36 % más alto compensa el flujo. Con TIR ≥ 5 % y flujo ≥ −$200.000 como regla, el motor de hoy daría 2.054 nuevos Comprar (36,7 %) y 10.710 usados (50 %).
+5. **La g lo decide todo:** con g = 1 % (lo que dicen los últimos 5 años de lista) la celda central da 337 nuevos (6,0 %) y 6.851 usados; con g = 0 % (el último año), 27 nuevos (0,5 %) y 2.565 usados; la tolerancia de flujo casi no pesa de 5 % para arriba.
+6. **El precio de salida es el supuesto que separa un nuevo de un usado:** la salida del motor al año 10 está 47 % sobre lo que hoy vale un usado equivalente × m²; vendido a valor usado, el nuevo da TIR −18 % (g 0 %) o −12 % (g 1 %) y solo 38 a 97 cruzan.
+7. **Plusvalía de entrega y edad no salen de la base:** el corte transversal da 0 % de descuento por esperar (−0,4 a −1,5 %, sin pendiente); 98,8 % de los usados sin año; la única curva que aguanta (Santiago: −15 % de 6-10 a 11-20 años) como sensibilidad deja 3 nuevos Comprar. Las fuentes sostienen g de 0, 1 y 3 % (INCOIN, GfK 5 años, CLAPES/GfK 10 años).
+8. **Palancas:** Negociar 10 % lleva a 305 Comprar del motor (5,4 %) y 130 con g = 0 %; el subsidio (3.723 elegibles) a 149 y 88; juntos, 456 (8,1 %) y 290 (5,2 %); con g = 1 %, 2.007 (36 %).
+9. **El Golden no se mueve:** 17b4e10d sigue Comprar en todas las versiones (hasta a valor usado), 7710a017 Ajustar, f3522eac Buscar otra.
+10. **Para arreglar antes que el motor:** el m² a un decimal, el `scraped_at` de las unidades, las 5.362 reactivadas fuera de Explorar, los 2.015 nuevos sin reevaluar desde octubre, los 60 proyectos evaluados al «desde» y el Golden sin Buscar otra de renta larga (sección «Para el goal de los defectos»).
+
 
 ---
 
@@ -808,6 +822,10 @@ las fuentes de 3.3.
     el mes 1). La ficha sí trae «Estado del proyecto» y «Fecha de entrega» en 9 de 12 leídas: el cruce ya escribe
     `fecha_entrega` cuando la trae; los 102 son fichas sin características o proyectos nunca cruzados.
 
+12. **El Golden Set no tiene un caso Buscar otra de renta larga.** 5dc42a82 es de renta corta; para la sanidad de la FASE 4
+    se usó f3522eac (Santiago, usado de 15 años, 12-oct-2026, Buscar otra por sobreprecio comunal con flujo negativo). Agregar
+    un Buscar otra de renta larga al Golden (o fijar f3522eac) cuando se toque el runner.
+
 ---
 
 ## Punto 1 del STOP 3 · La curva por edad, con lecturas de fichas de usados
@@ -994,3 +1012,180 @@ y el flujo anual por la diferencia de arriendo × (1 − vacancia/12 − 1/24 �
 1. ¿La fila de edad entra? La única cifra que aguanta es la de Santiago (−15 % en el precio de venta al año 10); no hay número para el arriendo ni por comuna.
 2. 5dc42a82 es un análisis de renta corta: ¿lo corro con el motor STR (otra TIR) o lo reemplazas por un Buscar otra de renta larga?
 3. En la grilla, un Comprar del motor que no pasa la regla baja a Ajustar (no a Buscar otra). ¿Correcto?
+
+---
+
+## FASE 4 · La TIR en UF a 10 años como segundo criterio (resultados)
+
+Corrida (`11-fase4.ts`, 37 minutos, 2.481 celdas de usados consultadas en vivo, nada escrito): 26.788 filas con corrida
+completa, **5.597 nuevos limpios y 21.191 usados**, UF 41.274, tasa 4,07 %, pie 20 %, 30 años. Control: el vector anual
+reconstruido reproduce la TIR del motor en las 1.246 unidades con cuotas (1.246 de 1.246). Sin celda de usados para la salida a
+valor usado: 203 nuevos y 636 usados (m² o tipología sin 15 usados en la comuna). Los Comprar reactivados sin fecha de
+entrega son 19 en esta corrida (16 en la del punto 2: tres cambian con la evaluación de hoy); van aparte en la celda central.
+
+Gates en la base: nuevos con sobreprecio comunal con flujo 901, break-even imposible 1.639, flujo severo 568, CoC severo 0;
+usados 8.486 / 1.558 / 690 / 0. **En la grilla siguen** CoC severo y sobreprecio comunal con flujo (las señales graves);
+**la tolerancia de flujo reemplaza** a break-even imposible, flujo severo y al GATE 2; el GATE 3 tampoco corre.
+
+### 4.1 TIR, ganancia y múltiplo por versión
+
+| universo | versión | n con TIR | TIR mediana | p25 | p75 | ganancia UF mediana | múltiplo mediano | flujo de operación mediano |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| nuevos | motor de hoy (3 % precio, 0,49 % arriendo) | 5.597 | 7,4 % | 5,8 | 8,5 | 1.062 | 1,75 | −$238.266 |
+| nuevos inmediata | motor | 4.019 | 7,3 % | 5,7 | 8,4 | 1.062 | 1,76 | −$224.612 |
+| nuevos futura | motor | 1.578 | 7,6 % | 6,1 | 9,0 | 1.062 | 1,73 | −$269.334 |
+| usados | motor | 21.185 | 7,5 % | 3,9 | 10,2 | 747 | 1,93 | −$69.733 |
+| nuevos | g = 1 % | 5.595 | 2,0 % | −0,5 | 3,2 | 230 | 1,16 | |
+| usados | g = 1 % | 20.924 | 2,6 % | −2,7 | 6,1 | 215 | 1,24 | |
+| nuevos | g = 0 % | 5.577 | −2,1 % | −5,4 | −0,7 | −232 | 0,86 | |
+| usados | g = 0 % | 20.082 | −1,0 % | −7,6 | 2,9 | −153 | 0,87 | |
+| nuevos | salida a valor usado, g = 0 % | 3.181 | −17,6 % | −31,0 | −8,1 | −1.427 | 0,11 | |
+| usados | salida a valor usado, g = 0 % | 19.449 | −0,9 % | −8,0 | 4,8 | −136 | 0,87 | |
+| nuevos | salida a valor usado, g = 1 % | 4.171 | −12,0 % | −20,8 | −4,4 | −1.068 | 0,31 | |
+| usados | salida a valor usado, g = 1 % | 20.084 | 2,6 % | −3,5 | 7,6 | 207 | 1,23 | |
+| nuevos | edad: g = 0 %, venta × 0,85 | 5.301 | −10,3 % | −15,5 | −8,0 | −863 | 0,48 | |
+| usados | edad: g = 0 %, venta × 0,85 | 16.548 | −6,1 % | −13,6 | −1,7 | −723 | 0,44 | |
+
+(«n con TIR» baja cuando el vector no tiene raíz: con salida a valor usado y g = 0 %, 2.416 nuevos pierden plata en todos los
+años y la TIR no existe.)
+
+**Lectura:** con el motor de hoy la TIR de un nuevo (7,4 %) es igual a la de un usado (7,5 %), porque el 3 % de plusvalía se
+compone sobre un precio 36 % más alto por m² y compensa el flujo: el caso del nuevo es entero la plusvalía. Con g = 1 % la TIR
+mediana cae a 2 % y con g = 0 % a −2 %; y si el nuevo se vende al año 10 a lo que vale hoy un usado de su comuna y tipología,
+la TIR es −18 % (g 0 %) o −12 % (g 1 %): el precio de salida del motor (precio nuevo × 1,03^10 − sobreprecio) está **47 % por
+encima** de la mediana del usado de hoy × m² (Gran Santiago, mediana de 5.394 nuevos; de −33 % en Cerrillos a −61 % en
+Pudahuel), es decir, **el motor supone que un nuevo a los 10 años vale 1,9 veces lo que hoy vale un usado equivalente**.
+Para los usados tampoco coincide (salida del motor UF 3.651 contra valor usado UF 2.726, −27 %): la regla de salida a valor
+usado se aplicó a todos por igual.
+
+**Entrega futura (1.246 unidades con cuotas):** cuota mensual mediana $1.798.243, 19 meses de cuotas en mediana (máximo
+43), máximo acumulado antes de la entrega UF 881 en mediana; plusvalía durante la construcción, informativa, UF 64 (g 1 %) y
+UF 194 (g 3 %) en mediana; con todo el pie a la entrega la TIR g 0 % pasa de −3,6 % a −3,9 % (mediana): mover el pie no cambia
+el veredicto de casi nadie (28 contra 27 Comprar en la celda central).
+
+### 4.3 La grilla (g = 0 %, salida del motor)
+
+Cada celda: nuevos Comprar (inmediata / futura / sin dato) · usados Comprar · Comprar del motor que dejarían de serlo (de
+ellos nuevos) / Ajustar del motor que pasarían a Comprar (de ellos nuevos). Base: 79 nuevos y 6.595 usados Comprar del motor.
+
+| TIR mínima \ flujo mínimo | ≥ $0 | ≥ −$100.000 | ≥ −$200.000 | ≥ −$300.000 |
+| --- | --- | --- | --- | --- |
+| 4 % | nuevos 41 (33/1/7) · usados 3.630 · −3.005 (38) / +2 (0) | nuevos 62 (44/3/15) · usados 3.630 · −2.986 (19) / +4 (2) | nuevos 63 (45/3/15) · usados 3.630 · −2.985 (18) / +4 (2) | nuevos 63 (45/3/15) · usados 3.630 · −2.985 (18) / +4 (2) |
+| 5 % | nuevos 27 (22/0/5) · usados 2.565 · −4.082 (52) / +0 | nuevos 27 · usados 2.565 · −4.082 (52) / +0 | **nuevos 27 (22/0/5) · usados 2.565 · −4.082 (52) / +0** | nuevos 27 · usados 2.565 · −4.082 (52) / +0 |
+| 6 % | nuevos 11 (7/0/4) · usados 1.794 · −4.869 (68) / +0 | nuevos 11 · usados 1.794 | nuevos 11 · usados 1.794 | nuevos 11 · usados 1.794 |
+| 7 % | nuevos 7 (4/0/3) · usados 1.226 · −5.441 (72) / +0 | nuevos 7 · usados 1.226 | nuevos 7 · usados 1.226 | nuevos 7 · usados 1.226 |
+
+Con g = 0 % la TIR manda y la tolerancia de flujo casi no mueve nada: de 5 % para arriba las columnas son iguales. Los usados
+caen de 6.595 Comprar a 2.565 con TIR ≥ 5 % y a 1.226 con 7 %.
+
+### 4.4 La celda central (TIR ≥ 5 %, flujo ≥ −$200.000)
+
+| versión | nuevos Comprar | inmediata | futura | sin dato | de ellos reactivados sin fecha (19) | usados Comprar | −/+ vs motor (todos) | −/+ vs motor (nuevos) | Buscar otra del motor que pasan a Comprar | Comprar que hoy son break-even imposible (nuevos / usados) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| g = 0 % (la de la grilla) | 27 (0,5 %) | 22 | 0 | 5 | 3 | 2.565 | −4.082 / +0 | −52 / +0 | 0 | 0 / 0 |
+| g = 1 % | 337 (6,0 %) | 220 | 19 | 98 | 19 | 6.851 | −385 / +899 | −0 / +258 | 0 | 0 / 0 |
+| motor de hoy (3 % / 0,49 %) | **2.054 (36,7 %)** | 1.429 | 439 | 186 | 19 | 10.710 | −6 / +5.614 | −0 / +1.559 | 482 | 13 / 0 |
+| salida a valor usado, g = 0 % | 38 (0,7 %) | 28 | 1 | 9 | 2 | 4.641 | −2.295 / +300 | −66 / +25 | 0 | 0 / 0 |
+| salida a valor usado, g = 1 % | 97 (1,7 %) | 81 | 2 | 14 | 2 | 7.233 | −717 / +1.371 | −54 / +72 | 2 | 0 / 0 |
+| edad: g = 0 %, venta × 0,85 (Santiago) | 3 (0,1 %) | 3 | 0 | 0 | 0 | 608 | −6.063 / +0 | −76 / +0 | 0 | 0 / 0 |
+| g = 0 %, todo el pie a la entrega | 28 (0,5 %) | 22 | 1 | 5 | 3 | 2.565 | −4.081 / +0 | −51 / +0 | 0 | 0 / 0 |
+
+**Punto 5 (Comprar que hoy caen en break-even imposible):** con g = 0 % y g = 1 %, **ninguno** (nuevos 0, usados 0): un depto
+que no se paga solo con la tasa a 0 % tampoco llega a TIR 5 % sin plusvalía. Con el motor de hoy (3 %) entran 13 nuevos y 0
+usados por ese camino (y 482 Buscar otra del motor pasan a Comprar, todos por break-even imposible o flujo severo que la
+tolerancia ya no castiga). Por comuna no hay tabla porque no hay casos.
+
+**Palancas (nuevos; elegibles al subsidio 3.723 de 5.597: precio ≤ UF 6.000 y entrega inmediata o antes de mayo de 2028):**
+
+| palanca | Comprar del motor | inmediata / futura | regla central g 0 % | inmediata / futura | regla central g 1 % | regla central motor | regla central valor usado g 0 % |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| base | 79 | 52 / 3 | 27 | 22 / 0 | 337 | 2.054 | 38 |
+| Negociar 5 % | 166 | 97 / 6 | 61 | 43 / 3 | 627 | 2.711 | 73 |
+| Negociar 10 % | 305 | 190 / 14 | 130 | 85 / 5 | 1.129 | 3.525 | 156 |
+| Subsidio 0,6 pp | 149 | 100 / 5 | 88 | 61 / 2 | 816 | 2.677 | 59 |
+| Subsidio + Negociar 10 % | 456 | 316 / 21 | 290 | 177 / 9 | 2.007 | 3.595 | 213 |
+
+Negociar 10 % multiplica por 4 los Comprar del motor (79 → 305) y por 5 los de la regla con g = 0 % (27 → 130); el subsidio,
+por 2 y por 3; juntos, 456 del motor (8,1 %) y 290 con g = 0 % (5,2 %). Con g = 1 %, subsidio + Negociar 10 % llega a 2.007
+(36 %).
+
+**Por comuna, nuevos, celda central:**
+
+| comuna | nuevos | Comprar motor | regla g 0 % | g 1 % | valor usado g 0 % | edad | Negociar 10 % | subsidio | subsidio + Neg. 10 % | usados Comprar regla g 0 % |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Santiago | 1.206 | 0 | 0 | 12 | 0 | 0 | 0 | 0 | 7 | 840 |
+| Ñuñoa | 896 | 5 | 2 | 31 | 25 | 1 | 6 | 6 | 22 | 71 |
+| La Florida | 584 | 11 | 3 | 65 | 2 | 0 | 19 | 13 | 53 | 112 |
+| Macul | 522 | 3 | 0 | 18 | 1 | 0 | 8 | 4 | 17 | 52 |
+| Providencia | 481 | 0 | 0 | 4 | 0 | 0 | 1 | 0 | 1 | 61 |
+| Independencia | 342 | 0 | 0 | 9 | 0 | 0 | 1 | 0 | 8 | 215 |
+| Las Condes | 217 | 2 | 0 | 9 | 2 | 0 | 9 | 5 | 5 | 185 |
+| La Cisterna | 171 | 4 | 1 | 15 | 2 | 0 | 6 | 6 | 14 | 70 |
+| Vitacura | 162 | 2 | 1 | 2 | 1 | 0 | 2 | 1 | 1 | 82 |
+| Recoleta | 116 | 1 | 0 | 1 | 0 | 0 | 1 | 1 | 1 | 73 |
+| Maipú | 116 | 2 | 0 | 25 | 0 | 0 | 4 | 3 | 24 | 104 |
+| Pudahuel | 93 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 10 |
+| Puente Alto | 90 | 29 | 10 | 80 | 0 | 0 | 41 | 27 | 87 | 28 |
+| Estación Central | 85 | 3 | 1 | 12 | 1 | 0 | 3 | 3 | 9 | 304 |
+| Lo Barnechea | 74 | 0 | 0 | 9 | 2 | 0 | 5 | 0 | 0 | 76 |
+| Quilicura | 65 | 4 | 2 | 7 | 1 | 1 | 5 | 4 | 7 | 15 |
+| Peñalolén | 63 | 1 | 1 | 3 | 1 | 1 | 3 | 1 | 1 | 16 |
+| Cerrillos | 61 | 3 | 0 | 12 | 0 | 0 | 3 | 3 | 11 | 9 |
+| Conchalí | 59 | 1 | 0 | 1 | 0 | 0 | 1 | 1 | 1 | 22 |
+| otras 7 comunas (Huechuraba, San Miguel, Quinta Normal, El Bosque, San Joaquín, Renca, La Reina) | 194 | 8 | 6 | 22 | 0 | 0 | 12 | 10 | 21 | 176 |
+
+Puente Alto es el único lugar donde el nuevo cruza con g = 0 % (10 de 90) y casi entero con g = 1 % (80 de 90): precio UF
+37/m² de usado contra UF 47 de nuevo, arriendo parejo. Santiago (1.206 nuevos), Providencia e Independencia no cruzan con
+ninguna g ni palanca, salvo subsidio + Negociar 10 % con g = 1 %.
+
+### 4.5 Sanidad con el Golden Set
+
+| análisis | guardado | reproducido hoy (motor) | TIR g 1 % / g 0 % / valor usado g 0 % / edad | regla central |
+| --- | --- | --- | --- | --- |
+| 7710a017 · Providencia · usado 4 años · pie 20 % · 25 años · 4,5 % (abril-2026) | Ajustar 66 · TIR 6,88 · flujo −$283.194 | Ajustar 64 · TIR 8,58 · flujo −$259.761 (el motor de hoy, pesos de hoy y r3, sobre un informe de abril) | 4,1 / 0,7 / — (sin mediana en el snapshot de abril) / −5,2 | Ajustar en las tres g |
+| 17b4e10d · Ñuñoa · nuevo 2D 80 m² · pie 20 % · 30 años · 3,4 % (sept-2026) | Comprar 79 · TIR 13,36 · flujo +$46.295 | Comprar 80 · TIR 13,43 · flujo +$49.232 | 9,5 / 6,3 / 15,8 / 1,2 | Comprar en todas, también a valor usado (su precio UF 50/m² está bajo la mediana del usado, 76) |
+| f3522eac · Santiago · usado 15 años · pie 20 % · 25 años · 4,07 % (oct-2026; reemplaza a 5dc42a82, de renta corta) | Buscar otra 59 · TIR 5,74 · flujo −$110.844 | idéntico | −0,2 / −5,2 / −5,1 / −17,8 | Buscar otra en todas: sobreprecio comunal con flujo negativo, señal grave que sigue |
+
+Ninguno cambia de veredicto en la celda central; el nuevo de Ñuñoa es el único que cruza también vendiéndolo a valor de usado.
+
+---
+
+## Lo que la base no puede responder hoy, y qué habría que leer o guardar
+
+| pregunta | por qué no sale | qué haría falta |
+| --- | --- | --- |
+| Gastos comunes reales (de un aviso o de un edificio) | `scraped_properties.gastos_comunes` está vacío en las 41.038 filas activas; el listado y la ficha pública de obra nueva no los traen | leer la ficha HTML de arriendo (la trae) por el lector actual, con tope; guardar por edificio |
+| Premio de arriendo del nuevo por edad real | 81 arriendos con año de edificio; ninguno de 0 a 3 años | el año del edificio en los avisos de arriendo (misma lectura de ficha, compartida por edificio) |
+| Curva de precio por edad por comuna | 587 usados con año de 22.288 (2,6 %); solo Santiago tiene tres tramos con n ≥ 15 | guardar los años leídos (hoy 20 quedaron en un archivo local) y seguir leyendo: ~75 lecturas buenas por comuna (2.000 GET) para cinco tramos |
+| Plusvalía de entrega del mismo proyecto | la base guarda solo la `fecha_entrega` vigente; la serie de precios no la lleva y no tiene 90 días de historia en nuevos | guardar la fecha de entrega con cada vista de precio y escribir el precio de las unidades cada noche (hoy el cruce no escribe precios) |
+| Precio real por unidad de obra nueva, hoy | el precio por unidad quedó congelado el 01-oct (GraphQL retirado); la ficha pública da solo desde/hasta y el estimado tiene |error| mediano 3,5 % | decidir si manda el estimado por m² (el que ya se calcula) y cada cuántos días vence el real |
+| Pie en cuotas, bono pie, descuentos, subsidio por proyecto | no están en la ficha pública (0 de 12) | solo con cotización (pide lead) o con otra fuente |
+| Cuántas unidades hay detrás de los 60 proyectos sin unidades | la base solo tiene la fila del proyecto (4376614 esconde 306) | 120 GET a `api-ficha` y que el cruce cree filas de unidades |
+| Arriendo del edificio (no el sugerido por radio) para un nuevo | los arriendos de la base no saben en qué edificio están (105 de 8.648 con dirección) | geocodificación de arriendos y llave de edificio compartida con las unidades |
+| Cap de referencia de celda en comunas con pocos arriendos | 144 nuevos siguen en BDO o nacional por el lado del arriendo (n < 15) | más arriendos (otra fuente) o aceptar el peldaño comuna para el hallazgo |
+| Si la pasada reevaluara con la tasa del mes | la evaluación guarda `motor_version` y precio, no la UF ni la tasa (hoy se reconstruyen por la fecha) | guardar UF y tasa en cada fila de `avisos_evaluados` |
+
+---
+
+## Preguntas para Fabrizio antes de diseñar el motor
+
+1. **La g.** El 3 % del motor es defendible como tasa larga (CLAPES 4,4 % real en transacciones 2007-2023), pero con 3 %
+   un nuevo y un usado rinden igual (7,4 % contra 7,5 %) y la regla de TIR abriría 2.054 nuevos y 10.710 usados. Con 1 % abre
+   337 y 6.851; con 0 %, 27 y 2.565. ¿Qué g (o qué banda, con cuál manda) va al segundo criterio, y es la misma para precio y
+   arriendo?
+2. **El precio de salida.** El motor vende el nuevo al año 10 a precio nuevo × 1,03^10, que está 47 % sobre el usado
+   equivalente de hoy. ¿Un nuevo a los 10 años vale como un usado de su comuna (y entonces el nuevo casi nunca cruza), o
+   conserva parte del premio (cuánto)? Es el supuesto que decide el veredicto del nuevo.
+3. **La tolerancia de flujo.** De 5 % de TIR para arriba la tolerancia no mueve nada; a 4 % sí (41 contra 63 nuevos). ¿La
+   regla es «TIR mínima con un piso de flujo» o «flujo mínimo con una TIR que lo justifique»? Y los gates que hoy
+   reemplaza (break-even imposible, flujo severo, GATE 2): ¿salen del todo o quedan como aviso?
+4. **El subsidio en la pasada.** Hoy la noche evalúa sin subsidio; 3.723 nuevos son elegibles y con él los Comprar del
+   motor pasan de 79 a 149. ¿«Convienen» se cuenta con o sin subsidio para quien califica?
+5. **Negociar.** Con 10 % de descuento los nuevos Comprar del motor se multiplican por 4 (79 → 305). ¿El «− Ajustar» de
+   Explorar debería mostrar el descuento a Comprar también para nuevos (hoy lo calcula para todos los Ajustar: ya está)?
+6. **Los 19 reactivados sin fecha de entrega** que hoy son Comprar como inmediata: ¿se evalúan como inmediata (como hoy) o
+   quedan fuera hasta tener entrega?
+7. **El descuento por edad** (−15 % en Santiago) deja 3 nuevos Comprar: ¿entra como supuesto del motor, como sensibilidad
+   del informe, o se espera a tener la curva (2.000 GET)?
+8. **El orden de los arreglos.** ¿Primero los defectos (m², `scraped_at`, reactivadas, reevaluación mensual con la tasa) y
+   después el motor, o las dos cosas en un goal?
