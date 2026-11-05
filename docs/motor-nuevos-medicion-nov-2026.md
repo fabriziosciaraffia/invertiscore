@@ -4,7 +4,7 @@ Goal de solo lectura, pegado por Fabrizio el 05-nov-2026. Nada de este documento
 prompts, el informe ni la base: todo recálculo corre en memoria con los scripts de `scripts/analisis/motor-nuevos/`,
 que llaman al motor real (`runAnalysis`) con los insumos guardados en `avisos_evaluados`.
 
-> **Estado: FASES 0 y 1 con OK (05-nov); FASE 2 terminada, esperando el OK.** El resumen de 10 líneas y las fases 3 y 4 se
+> **Estado: FASES 0, 1 y 2 con OK (05-nov); FASE 3 terminada, esperando el OK.** El resumen de 10 líneas y la FASE 4 se
 > escriben al cierre.
 
 ---
@@ -557,3 +557,252 @@ Contra las 70.000 a 80.000 unidades nuevas que Fabrizio estima para Santiago: **
 incertidumbres que la base no resuelve: cuántas unidades hay detrás de los 60 proyectos sin unidades (una lectura de 60
 fichas lo cierra, a 2 GET cada una) y qué parte del stock está en comunas o portales que Franco no lee (la base cubre 26
 comunas del Gran Santiago, una sola fuente).
+
+---
+
+## Punto 2 del STOP 2 · La base de referencia sobre el universo completo de nuevos
+
+Las unidades activas sin evaluación pasaron por la misma función de la pasada nocturna, `evaluarAviso` (sugerencias de
+arriendo y venta por radio, mediana comunal y cap de referencia en vivo, `runAnalysis`), con la base de referencia: m²
+legible con dos decimales, premio 3 % parejo, UF 41.274 y tasa 4,07 % (`6-universo-completo.ts`, concurrencia 3, 1,4 s por
+aviso, 84 minutos, 0 fallas, nada escrito). De las 5.623 sin evaluación, **3.732 son evaluables** con el filtro de la pasada
+(`avisosEvaluables`: completas, plausibles, sin duplicado exacto ni «fuera»); las 1.891 que no pasan son en su mayoría
+duplicados exactos (misma comuna, m², dormitorios, baños, precio y punto: unidades iguales del mismo proyecto) y filas de
+proyecto sin dormitorios o baños. Control: la cadena de la fila (`contextoDeFila`) reproduce `evaluarAviso` en 3.730 de
+3.732 (las dos que no, por un peso de redondeo del arriendo).
+
+| universo (nuevos limpios: sin sospechosos ni degradados, con arriendo) | n | Comprar | inmediata | futura | sin dato | Ajustar | Buscar otra | break-even imposible | flujo severo | sobreprecio con flujo |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 2.072 evaluadas (0b) | 2.016 | 29 (1,4 %) | 21 | 3 | 5 | 887 | 1.100 | 553 | 210 | 345 |
+| reactivadas por el cruce | 3.513 | 46 (1,3 %) | 30 | 0 | 16 | 1.299 | 2.168 | 1.073 | 351 | 546 |
+| viejas sin cruce | 70 | 4 (5,7 %) | 1 | 0 | 3 | 35 | 31 | 13 | 7 | 10 |
+| **universo completo (base de referencia de las FASES 3 y 4)** | **5.599** | **79 (1,4 %)** | 52 | 3 | 24 | 2.221 | 3.299 | 1.639 | 568 | 901 |
+
+Usados: sin cambio, 21.191 limpios y 6.595 Comprar (0b). **El universo completo no cambia la tasa de Comprar de los nuevos
+(1,4 % en los dos), pero casi triplica el número (29 → 79)**, y mueve el mapa: Puente Alto pasa de 4 a 29 Comprar (de 90),
+Renca de 2 a 5 (de 14), La Cisterna de 0 a 4, Macul de 0 a 3, Ñuñoa de 2 a 5. Santiago sigue en 0 de 1.206, Providencia en 0
+de 481, Independencia en 0 de 342.
+
+| comuna | n 2.072 | Comprar 2.072 | n completo | Comprar completo | % completo | inmediata / futura (completo) |
+| --- | --- | --- | --- | --- | --- | --- |
+| Santiago | 309 | 0 | 1.206 | 0 | 0,0 % | 0 / 0 |
+| Ñuñoa | 274 | 2 | 896 | 5 | 0,6 % | 2 / 0 |
+| La Florida | 313 | 7 | 584 | 11 | 1,9 % | 11 / 0 |
+| Macul | 190 | 0 | 522 | 3 | 0,6 % | 3 / 0 |
+| Providencia | 162 | 0 | 481 | 0 | 0,0 % | 0 / 0 |
+| Independencia | 118 | 0 | 342 | 0 | 0,0 % | 0 / 0 |
+| Las Condes | 103 | 2 | 217 | 2 | 0,9 % | 2 / 0 |
+| La Cisterna | 46 | 0 | 173 | 4 | 2,3 % | 3 / 0 |
+| Vitacura | 74 | 2 | 162 | 2 | 1,2 % | 1 / 1 |
+| Recoleta | 54 | 0 | 116 | 1 | 0,9 % | 1 / 0 |
+| Maipú | 22 | 2 | 116 | 2 | 1,7 % | 2 / 0 |
+| Pudahuel | 35 | 0 | 93 | 0 | 0,0 % | 0 / 0 |
+| Puente Alto | 29 | 4 | 90 | 29 | 32,2 % | 18 / 0 |
+| Estación Central | 48 | 1 | 85 | 3 | 3,5 % | 0 / 0 |
+| Lo Barnechea | 32 | 0 | 74 | 0 | 0,0 % | 0 / 0 |
+| Quilicura | 35 | 3 | 65 | 4 | 6,2 % | 4 / 0 |
+| Peñalolén | 32 | 0 | 63 | 1 | 1,6 % | 1 / 0 |
+| Cerrillos | 21 | 3 | 61 | 3 | 4,9 % | 0 / 2 |
+| Conchalí | 12 | 0 | 59 | 1 | 1,7 % | 0 / 0 |
+| Huechuraba | 31 | 0 | 58 | 1 | 1,7 % | 0 / 0 |
+| San Miguel | 34 | 0 | 53 | 0 | 0,0 % | 0 / 0 |
+| Quinta Normal | 10 | 0 | 26 | 0 | 0,0 % | 0 / 0 |
+| El Bosque | 18 | 1 | 19 | 2 | 10,5 % | 0 / 0 |
+| San Joaquín | 6 | 0 | 17 | 0 | 0,0 % | 0 / 0 |
+| Renca | 5 | 2 | 14 | 5 | 35,7 % | 4 / 0 |
+| La Reina | 3 | 0 | 7 | 0 | 0,0 % | 0 / 0 |
+
+(«inmediata / futura» no suma el total de Comprar donde hay «sin dato»: 16 de los 46 Comprar reactivados vienen de fichas
+sin características, sin fecha de entrega.)
+
+---
+
+## FASE 3 · Plusvalía de entrega y edad
+
+### 3.1 La curva de precio por edad: no medible desde la base
+
+De los 22.288 usados activos con evaluación, **22.015 (98,8 %) no tienen año en ninguna parte**: la columna `antiguedad` está
+vacía en toda la tabla, 242 tienen año en `fichas_leidas` y 273 por edificio en `anios_edificio`. No se fuerza la medición.
+
+Para tener **n ≥ 30 con año por comuna** en las 8 comunas con más usados, con el lector del informe (que ya saca el año de la
+ficha; 271 de las 918 lecturas con código 200 trajeron año: **29,5 %**):
+
+| comuna | usados activos | fichas leídas | con año hoy | lecturas buenas que faltan | GET (hasta 2 por chequeo) |
+| --- | --- | --- | --- | --- | --- |
+| Santiago | 5.915 | 222 | 50 | 0 | 0 |
+| Las Condes | 2.615 | 103 | 33 | 0 | 0 |
+| Ñuñoa | 2.122 | 96 | 18 | 41 | 82 |
+| Estación Central | 1.610 | 26 | 7 | 78 | 156 |
+| San Miguel | 1.282 | 36 | 11 | 65 | 130 |
+| Providencia | 1.245 | 88 | 26 | 14 | 28 |
+| Vitacura | 1.189 | 41 | 17 | 44 | 88 |
+| La Florida | 957 | 24 | 10 | 68 | 136 |
+| **total** | | | | **310** | **620** |
+
+Con el tope de 30 fichas por hora, son unas 21 horas de lectura (tres noches). Y n ≥ 30 por comuna da una mediana por comuna,
+no una curva: para 5 tramos de edad con n ≥ 15 cada uno harían falta unas 75 lecturas buenas por comuna, 2.000 GET en total.
+Lo que la base sí sabe de la edad en arriendo (FASE 1.2, 81 arriendos con año): los edificios de 4 a 10 años arriendan 6,7 %
+bajo su celda y los de 11 a 20, 1,9 % bajo; n chico y sin tramo 0-3.
+
+### 3.2 Plusvalía de entrega
+
+**a) Corte transversal, entrega futura contra inmediata** (`7-plusvalia.ts`; 7.579 unidades activas con precio real
+plausible: 4.837 inmediata, 2.414 futura, 328 sin dato; celdas comuna × tipología con n ≥ 10 por lado):
+
+| comuna | tipología | n inmediata | UF/m² inmediata | n futura | UF/m² futura | futura / inmediata | meses a la entrega (mediana) |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Santiago | 1D | 553 | 96,5 | 332 | 93,5 | −3,2 % | 19 |
+| Santiago | 2D | 346 | 81,3 | 273 | 76,3 | −6,1 % | 19 |
+| Santiago | studio | 85 | 111,2 | 153 | 104,3 | −6,2 % | 7 |
+| Ñuñoa | 2D | 372 | 94,6 | 161 | 94,3 | −0,3 % | 7 |
+| Ñuñoa | 1D | 237 | 109,0 | 135 | 100,3 | −8,0 % | 7 |
+| Macul | 2D | 289 | 82,7 | 143 | 73,9 | −10,6 % | 13 |
+| Macul | 1D | 127 | 104,8 | 83 | 89,2 | −14,9 % | 25 |
+| Macul | 3D | 75 | 75,1 | 21 | 70,0 | −6,8 % | 13 |
+| La Florida | 2D | 284 | 78,0 | 49 | 76,3 | −2,2 % | 13 |
+| La Florida | 1D | 183 | 91,9 | 31 | 91,0 | −0,9 % | 13 |
+| Providencia | 2D | 128 | 122,8 | 140 | 124,5 | +1,4 % | 19 |
+| Providencia | 3D | 77 | 113,5 | 43 | 115,5 | +1,7 % | 19 |
+| Providencia | 1D | 52 | 138,6 | 49 | 143,3 | +3,3 % | 25 |
+| Independencia | 2D | 167 | 69,3 | 51 | 75,2 | +8,5 % | 19 |
+| Independencia | 1D | 100 | 83,0 | 33 | 92,5 | +11,4 % | 19 |
+| Independencia | 3D | 31 | 63,7 | 26 | 73,7 | +15,8 % | 19 |
+| Las Condes | 2D | 35 | 129,1 | 24 | 152,0 | +17,7 % | 7 |
+| Las Condes | 3D | 55 | 122,7 | 12 | 117,7 | −4,0 % | 7 |
+| Las Condes | 1D | 11 | 123,2 | 39 | 158,6 | +28,7 % | 1 |
+| Vitacura | 2D | 57 | 145,4 | 28 | 148,5 | +2,2 % | 37 |
+| Vitacura | 3D | 46 | 144,7 | 10 | 124,6 | −13,9 % | 7 |
+| Peñalolén | 3D | 50 | 76,7 | 93 | 93,7 | +22,1 % | 7 |
+| Estación Central | 2D | 61 | 61,9 | 11 | 59,0 | −4,6 % | 13 |
+| Estación Central | 1D | 35 | 71,3 | 13 | 69,6 | −2,5 % | 13 |
+| Pudahuel | 2D / 3D | 12 / 12 | 73,9 / 68,4 | 37 / 26 | 77,7 / 72,9 | +5,3 % / +6,6 % | 1 |
+
+Cada unidad futura contra la mediana inmediata de su comuna y tipología, por meses hasta la entrega:
+
+| meses a la entrega | n futuras | descuento mediano | p25 | p75 |
+| --- | --- | --- | --- | --- |
+| 1 a 6 | 358 | −0,4 % | −10,1 % | +6,4 % |
+| 7 a 12 | 420 | +0,5 % | −5,2 % | +11,4 % |
+| 13 a 24 | 705 | −1,5 % | −11,5 % | +10,3 % |
+| 25 o más | 563 | −0,6 % | −16,4 % | +8,8 % |
+
+**Lectura:** el mercado no pone, en el precio de lista, un descuento medible por esperar. La mediana está en 0 (−0,4 % a −1,5 %
+según el tramo, sin pendiente con los meses) y el rango entre cuartiles es de ±10 puntos: lo que separa a una celda de otra
+es el proyecto (Macul −11 %, Independencia +11 %, Las Condes +18 %), no la fecha de entrega. **Plusvalía de entrega
+implícita en el corte transversal: 0 %, confianza baja** (es un corte entre proyectos distintos, no el mismo depto antes y
+después).
+
+**b) Serie de precios.** `scraped_properties_precios` tiene 27.138 filas de 10.423 propiedades nuevas (activas o en
+bajas), pero **ninguna propiedad nueva tiene 90 días de historia, y menos 180**: las unidades se escribieron entre el 03-ago y
+el 01-oct (largo máximo de la serie: 59 días; mediana 0) y desde el 02-oct nadie les escribe precio (0.c). Las 337 unidades
+con más de una vista bajaron **3,2 % en mediana** en esas semanas (p25 −3,9 %, p75 +3,5 %): es un ajuste de lista de agosto a
+septiembre, no plusvalía. Las 10 filas de proyecto con cambio («desde»): +0,3 %. El sesgo del «desde» (sube cuando se venden
+las baratas) no alcanza a pesar porque no hay serie. **No medible.**
+
+**c) Mismo proyecto antes y después de la entrega.** La base guarda solo la `fecha_entrega` vigente (la escribe el cruce
+cada noche) y la serie de precios no lleva la entrega: no hay forma de ver un proyecto que pasó de futura a inmediata con
+precios de los dos lados. **No medible.** Lo que haría falta: guardar la fecha de entrega con cada vista de precio.
+
+### 3.3 Qué tienen las tablas de plusvalía y qué g sostienen
+
+| tabla | fuente | qué mide | cobertura | sirve para g |
+| --- | --- | --- | --- | --- |
+| `plusvalia_fuentes_raw` (207 filas) | GfK / NielsenIQ | precio de oferta de deptos nuevos, UF/m², promedio anual o trimestral, por comuna | 31 comunas; 15 con serie 2015→2025-Q1, el resto solo 2024 y 2025-Q1; más «PROMEDIO GS» 2015→2025-Q4 | sí: crecimiento real (UF) de 10 y de 5 años por comuna, con sesgo de mezcla (cambia qué se vende) |
+| `plusvalia_fuentes_raw` (180 filas) | INCOIN (Tinsa) | UF/m² trimestral 2024-Q4→2025-Q4 por comuna; en oriente y periferia mezcla casas y deptos | 36 comunas | solo el último año |
+| `plusvalia_fuentes_raw` (77 filas) | Arenas & Cayo, Colliers, CChC | UF por depto 2014-2024 (27 comunas), oficinas y resúmenes | referencia | no (unidad depto, no m²) |
+| `plusvalia_indices_raw` (680 filas) | CLAPES UC – RealData | índice hedónico de transacciones del CBR en UF (variación real), trimestral 2007-Q1→2023-Q4, deptos y casas, RM y 4 zonas | zonas, no comunas | sí: la tasa real larga de transacciones (no de lista) |
+| `plusvalia_estimado` (25 filas) | GfK + INCOIN | nivel UF/m² de cierre 2025 por comuna (no una tasa) | 25 comunas | no, es nivel |
+
+Crecimiento real anual del precio (UF): GfK precio de oferta deptos nuevos, INCOIN último año, CLAPES por zona (zona
+asignada en este goal: CLAPES publica RM y cuatro zonas sin lista de comunas).
+
+| comuna | GfK 10 años (2015→2025-Q1) | GfK 5 años (2020→2025-Q1) | INCOIN 2024-Q4→2025-Q4 | CLAPES zona 2007→2023 |
+| --- | --- | --- | --- | --- |
+| Santiago | 4,3 % | 2,2 % | −1,9 % | Centro-Norte 3,9 % |
+| Ñuñoa | 3,0 % | 0,9 % | −4,5 % (mezcla casas) | Oriente 4,8 % |
+| Macul | 4,3 % | 3,7 % | −0,2 % (mezcla) | Sur-Oriente 4,0 % |
+| La Florida | 5,0 % | 3,5 % | +2,9 % (mezcla) | Sur-Oriente 4,0 % |
+| Providencia | 2,5 % | 1,5 % | +0,8 % (mezcla) | Oriente 4,8 % |
+| Las Condes | 3,0 % | 1,6 % | +1,3 % (mezcla) | Oriente 4,8 % |
+| Vitacura | 3,3 % | 2,1 % | +2,7 % (mezcla) | Oriente 4,8 % |
+| Lo Barnechea | 2,1 % | 0,4 % | 0,0 % (mezcla) | Oriente 4,8 % |
+| La Reina | 2,8 % | 1,3 % | +5,6 % (mezcla) | Oriente 4,8 % |
+| Estación Central | 2,8 % | 1,0 % | −2,3 % | Centro-Norte 3,9 % |
+| San Miguel | 4,3 % | 3,5 % | −2,8 % | Sur-Poniente 3,9 % |
+| Maipú | 3,2 % | 0,6 % | +0,7 % (mezcla) | Sur-Poniente 3,9 % |
+| Puente Alto | 4,3 % | 2,1 % | −7,3 % (mezcla) | Sur-Oriente 4,0 % |
+| Quilicura | 6,0 % | 1,7 % | +0,9 % (mezcla) | Centro-Norte 3,9 % |
+| Conchalí | 8,9 % | 4,9 % | +1,7 % | Centro-Norte 3,9 % |
+| Independencia, Recoleta, La Cisterna, Cerrillos, Pudahuel, Peñalolén, Quinta Normal, Huechuraba, Renca, San Joaquín | sin serie larga (GfK solo 2024-2025) | — | −2,2 % a +17,6 % | zona 3,9–4,8 % |
+| **Gran Santiago** | **2,8 % (GfK, 2015→2025-Q4)** | | | **RM deptos 4,4 %** |
+
+**Lectura para la g de la FASE 4:** la tasa larga de transacciones (CLAPES, 2007-2023) es 4,4 % real al año en la RM y 3,9 a
+4,8 % por zona; la de precios de lista de obra nueva (GfK) es 2,8 % en 10 años y cae a 0,4–3,7 % en los últimos 5; el último
+año (INCOIN) está en torno a 0. **El 3 % del motor es defendible como tasa larga; g = 1 % es lo que dicen los últimos 5 años de
+lista, y g = 0 % el último año.** Ninguna fuente da plusvalía de entrega ni descuento por edad.
+
+### 3.4 Tabla por comuna
+
+Plusvalía de entrega implícita (corte transversal, mediana de las celdas de la comuna con n ≥ 10 por lado), serie de
+precios, mismo proyecto, y crecimiento histórico; confianza por n (alta: ≥ 500 unidades y ≥ 3 celdas; media: ≥ 150 y 2
+celdas; baja: menos, o un solo camino).
+
+| comuna | corte transversal (n unidades, celdas) | serie de precios | mismo proyecto | GfK 10 / 5 años | CLAPES zona | confianza |
+| --- | --- | --- | --- | --- | --- | --- |
+| Santiago | −6,1 % (1.742, 3) | no medible | no medible | 4,3 % / 2,2 % | 3,9 % | media (el corte es entre proyectos) |
+| Ñuñoa | −1,9 % (996, 3) | no medible | no medible | 3,0 % / 0,9 % | 4,8 % | media |
+| Macul | −10,6 % (738, 3) | no medible | no medible | 4,3 % / 3,7 % | 4,0 % | media |
+| La Florida | −0,9 % (614, 3) | no medible | no medible | 5,0 % / 3,5 % | 4,0 % | media |
+| Providencia | +1,7 % (489, 3) | no medible | no medible | 2,5 % / 1,5 % | 4,8 % | media |
+| Independencia | +11,4 % (408, 3) | no medible | no medible | — | 3,9 % | baja (futura más cara: proyectos distintos) |
+| Las Condes | +17,7 % (176, 3) | no medible | no medible | 3,0 % / 1,6 % | 4,8 % | baja |
+| Peñalolén | +22,1 % (143, 1) | no medible | no medible | — | 4,8 % | baja |
+| Vitacura | −5,8 % (141, 2) | no medible | no medible | 3,3 % / 2,1 % | 4,8 % | baja |
+| Estación Central | −3,5 % (120, 2) | no medible | no medible | 2,8 % / 1,0 % | 3,9 % | baja |
+| Pudahuel | +5,9 % (87, 2) | no medible | no medible | — | 3,9 % | baja |
+| resto (15 comunas) | sin celda con n ≥ 10 por lado | no medible | no medible | tabla 3.3 | 3,9–4,8 % | sin número |
+| **Gran Santiago** | **−0,6 % (2.046 futuras contra su celda)** | −3,2 % en 2 meses (n 337, no es plusvalía) | no medible | 2,8 % / — | 4,4 % | **plusvalía de entrega: 0 %, baja** |
+
+**Lo que entra a la FASE 4 desde acá:** plusvalía de entrega 0 % (se corre sin ese efecto y queda marcado); descuento por edad
+en arriendo y precio: sin número (se corre sin ese efecto y queda marcado); g: 3 % (motor), 1 % y 0 %, las tres sostenidas por
+las fuentes de 3.3.
+
+---
+
+## Para el goal de los defectos (fuera de este goal; se arreglan juntos, en este orden)
+
+1. **El m² con dos decimales.** `respuestasDeAviso` escribe el m² con dos decimales y `DEC.superficie` admite uno: 1.515
+   nuevos y 217 usados activos se evaluaron con superficie 0 (sin gastos comunes, mediana, cap, mantención ni CapEx). El
+   arreglo (m² a un decimal en `respuestasDeAviso`, o `DEC.superficie = 2`) mueve 4 nuevos y 8 usados de Comprar a Ajustar.
+2. **El `scraped_at` que el cruce no marca.** La pasada de unidades quedó congelada el 02-oct y el cruce con la ficha nueva
+   solo escribe `seen_pass_id`, `is_active`, entrega y precio estimado: 2.061 unidades tienen `scraped_at` del 29-sep al 01-oct
+   y toda lectura filtra 7 días. Marcar `scraped_at` (o filtrar por `seen_pass_id`) devuelve las unidades a Explorar, /deptos,
+   el semanal y el cron.
+3. **Los 2.015 nuevos sin reevaluar desde octubre.** `avisosEvaluables` solo toma lo visto en 7 días por `scraped_at`, así que
+   la evaluación de los nuevos quedó con la tasa 4,04 % y la UF del 05 y 06-oct. Con el punto 2 el cron los retoma solo
+   (`avisosDeOtraVersion` al cambiar `VERSION_EVALUACION`, o por precio); hoy daría 3 Comprar menos.
+4. **Los 403 nunca cruzados (392 unidades y 11 filas de proyecto de 59 proyectos, evaluados).** El cruce no leyó esos
+   proyectos (sin ficha legible o fuera de la lista del pase): están activos y evaluados sin que nadie confirme que siguen
+   disponibles. Hay que cruzarlos o darlos de baja por edad de `seen_pass_id`.
+5. **Las 5.362 unidades reactivadas sin `scraped_at`.** En algún cruce no aparecieron en la lista, quedaron inactivas,
+   `cerrar_bajas` las sacó de `avisos_evaluados` y un cruce posterior las volvió a activar: hoy son unidades disponibles según
+   la ficha, fuera de Explorar y del semanal (el universo de nuevos evaluado es el 27 % del activo). El cruce que reactiva
+   tiene que marcar `scraped_at` y el cron tiene que retomarlas (una baja no debería ser permanente si la unidad vuelve).
+6. **Las 211 unidades y filas viejas que siguen activas** (113 proyectos, creadas entre marzo y agosto, nunca cruzadas, sin
+   precio estimado): o se recruzan o se dan de baja; hoy la referencia de la zona y la mediana nueva las cuentan.
+7. **Los 99 usados que cambian solo por UF y tasa.** 6.702 usados Comprar hoy son 6.603 con la UF y la tasa de hoy; si la pasada
+   reevaluara todo cuando cambia la tasa del mes (hoy solo cambia por precio o por versión del motor), el número de
+   «convienen» se movería cada mes con la tasa, que es lo que la persona ve en el banco. Costo: ~24 mil evaluaciones a 0,9 s
+   con concurrencia 3 (dos horas), una vez al mes.
+8. **El cruce no crea filas de unidades ni de proyectos nuevos desde el 02-oct.** Una unidad que la ficha lista y la base no
+   tiene se cuenta como «nueva sin precio» y no entra; un proyecto nuevo entra solo como fila del listado. El stock evaluado
+   envejece: todas las unidades conocidas son anteriores al 29-sep.
+9. **La pasada evalúa con el precio real de septiembre, no con el rango de hoy.** `precio` es el del GraphQL viejo (29-sep al
+   01-oct); el cruce actualiza `precio_estimado_uf` cada noche (|error| mediano 3,5 %) pero la pasada no lo lee hasta los 90
+   días, y solo para la mediana. Decidir qué precio manda cuando el real tiene más de N días.
+10. **Los 60 proyectos sin unidades, evaluados al «desde».** La fila del proyecto se evalúa con el precio «desde» y la
+    tipología del listado; detrás puede haber de 6 a 300 unidades (4376614 en Estación Central lista 306). Cerrarlo cuesta
+    120 GET (2 por proyecto) y que el cruce cree las unidades.
+11. **Los 102 proyectos sin dato de entrega** (de 536): la pasada los trata como entrega inmediata (sin cuotas, arriendo desde
+    el mes 1). La ficha sí trae «Estado del proyecto» y «Fecha de entrega» en 9 de 12 leídas: el cruce ya escribe
+    `fecha_entrega` cuando la trae; los 102 son fichas sin características o proyectos nunca cruzados.
