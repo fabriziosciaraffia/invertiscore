@@ -4,7 +4,7 @@ Goal de solo lectura, pegado por Fabrizio el 05-nov-2026. Nada de este documento
 prompts, el informe ni la base: todo recálculo corre en memoria con los scripts de `scripts/analisis/motor-nuevos/`,
 que llaman al motor real (`runAnalysis`) con los insumos guardados en `avisos_evaluados`.
 
-> **Estado: FASE 0 con OK (05-nov); FASE 1 terminada, esperando el OK.** El resumen de 10 líneas y las fases 2 a 4 se
+> **Estado: FASES 0 y 1 con OK (05-nov); FASE 2 terminada, esperando el OK.** El resumen de 10 líneas y las fases 3 y 4 se
 > escriben al cierre.
 
 ---
@@ -389,3 +389,171 @@ no los fabricó, los empujó uno o dos puntos.
 3. Para el goal de los defectos: el arreglo del m² mueve 4 nuevos y 8 usados de Comprar a Ajustar, y 1.515 nuevos recuperan
    mediana comunal y cap de referencia; el de `scraped_at` devuelve 2.061 unidades a Explorar, /deptos y el semanal (y al
    cron, que las reevaluaría con la tasa de hoy: −3 Comprar).
+
+---
+
+## Punto 0 · Confirmaciones antes de la FASE 2 (respuesta al STOP 1)
+
+**a) Subsidio a la tasa.** Confirmado: la pasada evalúa nuevos y usados con la misma `config.tasa_hipotecaria`, sin
+subsidio. `respuestasDeAviso` pone `tasaModo = "estimada"` y `tasaInteres = cfg.tasa`; el motor calcula igual
+`subsidioTasa.califica` pero solo lo aplica si la tasa que entra es la rebajada (`aplicado = califica && tasaInteres ≤
+tasaConSubsidio`), y en la pasada nunca lo es. Regla de elegibilidad del wizard (`src/lib/constants/subsidio.ts`,
+`calificaSubsidio`): **vivienda nueva en primera venta (`tipoPropiedad = "nuevo"`) con precio ≤ UF 6.000**, Ley 21.836,
+vigente hasta mayo de 2028; rebaja de referencia 0,6 puntos sobre la tasa de mercado. El wizard la ofrece como tasa
+sugerida cuando califica; un usado recién estrenado no califica (la ley exige primera venta).
+
+**b) Flujo y TIR del informe.** Todo en pesos de hoy (= UF): el dividendo es fijo en UF; el arriendo crece 3,5 % nominal, que
+son **0,49 % real al año** (`ARRIENDO_REAL = crecimientoReal(0,035)`); gastos comunes y contribuciones 0 % real; el valor
+del depto crece **3 % real desde el año 0** (`valorPropiedad = precio × 1,03^año`, también durante la construcción). La pasada
+usa mes y año de entrega en tres cosas: `estadoVenta = "futura"` + `fechaEntrega` → meses sin arriendo ni dividendo
+(`calcMesesHastaEntrega`), la edad para mantención cuenta desde la entrega, y las cuotas del pie por defecto (una por mes
+hasta la entrega, `cuotasPorDefecto`). La TIR del informe es anual, a 10 años desde hoy (`HORIZONTE_SALIDA_ANIOS`), **con
+fechas**: los años previos a la entrega llevan flujo operativo 0, crédito 0 y las cuotas del pie del año (`cuotasDelAnio`); la
+primera cuota y los gastos de cierre van en t0; el crédito parte en la entrega y la venta es al año 10 contado desde hoy. Lo
+que no hace: no descuenta el precio por esperar ni mete riesgo de tasa (desde r3, 02-oct, tampoco resta puntaje por la espera).
+
+**c) `precio_estimado_uf`.** Lo escribe el cruce con la ficha nueva (`scrape-unidades-nuevas` › `estimarPrecioUnidadUF`):
+**por unidad**, interpolando entre el «desde» y el «hasta» que publica hoy la ficha del proyecto según el **m² útil de la
+unidad**, entre el m² más chico y el más grande de todas las unidades conocidas del proyecto (ensayo del 02-oct: p50 3,9 %,
+p90 10,2 %; medido hoy sobre 7.020 unidades: |error| mediano 3,5 %, p90 14,2 %, 60 % dentro de ±5 %). La pasada usa **`precio`**
+(el real por unidad que trajo el GraphQL viejo entre el 29-sep y el 01-oct); el estimado solo lo lee la mediana de venta nueva
+cuando la fila pasa de 90 días (`precioVentaNueva`, se activa a fines de diciembre). **No hay unidades creadas después del
+02-oct**: el cruce nunca crea filas ni escribe precios (decisión de Fabrizio, 02-oct); una unidad nueva que la ficha lista y
+no tenemos se cuenta como «nueva sin precio» y no entra.
+
+**d) 7.585 unidades activas y 2.072 evaluadas.** Hoy son 7.693 filas activas (la base creció en el día). Las no evaluadas:
+- **5.362 unidades de 334 proyectos, vistas por el cruce el 04 o el 05-nov, con precio estimado.** 4.593 están en
+  `bajas_avisos` (baja entre el 06-oct y el 04-nov): en algún cruce no aparecieron en la lista de disponibles, quedaron
+  `is_active = false`, `cerrar_bajas` las sacó de `avisos_evaluados`, y un cruce posterior las volvió a ver y las reactivó
+  («vista hoy, y activa si había salido»). Como el cron solo evalúa lo visto en 7 días por `scraped_at`, nunca vuelven.
+  **Son unidades disponibles hoy según la ficha y no están en Explorar ni en el semanal.**
+- 118 unidades y 93 filas de proyecto sin marca (113 proyectos), creadas entre marzo y el 03-ago: lo que trajo el listado
+  antes del pase de unidades, nunca cruzado; 50 unidades «fuera@» (la ficha nueva nunca las listó: salen por diseño).
+- Y entre las evaluadas hay 392 unidades y 11 filas de proyecto sin marca (59 proyectos): el cruce nunca leyó esos
+  proyectos (sin ficha legible o fuera de la lista del pase), así que no se sabe si siguen disponibles.
+
+---
+
+## FASE 2 · Proyectos, unidades y ficha
+
+### 2.1 Proyectos detrás de los avisos nuevos
+
+**La llave de proyecto es la URL de la ficha** (`url`; en las unidades `source_id = url#<número>`). Revisada a mano en 20
+proyectos al azar con 3 o más unidades: en los 20, una sola comuna, un solo punto (lat, lng), una dirección, un título y una
+entrega, con m² distintos por unidad (tabla en `out/4-proyectos.stdout`). Sobre los 536 proyectos activos, ninguno mezcla
+comunas y 4 tienen dos puntos (una unidad geocodificada aparte: Sky Park, Vista Egaña, Edificio Angular, Hernán Cortés).
+**Confiabilidad: alta.**
+
+| universo | avisos | proyectos | unidades por proyecto (mediana / máx) | tipologías por proyecto (mediana / máx) | proyectos: inmediata / futura / sin dato |
+| --- | --- | --- | --- | --- | --- |
+| evaluados (2.072) | 2.070 | 448 | 2 / 87 | 1 / 4 | 327 / 77 / 44 |
+| todos los nuevos activos | 7.693 | 536 | 5 / 210 | 2 / 4 | 347 / 87 / 102 |
+
+Proyectos por comuna (evaluados · todos; unidades evaluadas · activas): Santiago 70 · 81 (309 · 1.779), Ñuñoa 70 · 80 (290 ·
+1.111), Macul 26 · 28 (191 · 754), La Florida 56 · 65 (314 · 750), Providencia 42 · 48 (164 · 517), Independencia 16 · 19
+(118 · 415), Peñalolén 8 · 8 (51 · 312), La Cisterna 16 · 19 (45 · 243), Las Condes 31 · 39 (106 · 238), Vitacura 28 · 29
+(79 · 190), Recoleta 6 · 8 (55 · 182), Puente Alto 6 · 6 (32 · 163), Maipú 7 · 8 (23 · 139), Estación Central 14 · 15 (48 ·
+136), Conchalí 4 · 5 (12 · 132), Pudahuel 3 · 3 (36 · 96), Lo Barnechea 10 · 17 (33 · 92), Quilicura 4 · 4 (35 · 87),
+Huechuraba 2 · 11 (31 · 87), Cerrillos 8 · 10 (21 · 69), Quinta Normal 4 · 5 (10 · 65), San Miguel 7 · 12 (34 · 60), El
+Bosque 1 · 1 (19 · 27), San Joaquín 4 · 6 (6 · 21), Renca 3 · 5 (5 · 18), La Reina 2 · 4 (3 · 10). La mitad de las unidades
+activas está en Santiago, Ñuñoa, Macul y La Florida; **las evaluadas son el 27 % de las activas**, y en Santiago el 17 %.
+
+Precio en moneda distinta de UF o con estimado: 7.474 de 7.585 unidades están en UF (111 en pesos); 7.029 traen
+`precio_estimado_uf` (todas las vistas por el cruce); ninguna evaluada usa el estimado (ver 0.c).
+
+### 2.2 El «desde» contra la unidad mediana y la más cara (sin lecturas)
+
+Con los precios reales por unidad del GraphQL de septiembre, por proyecto y tipología con 3 o más unidades (543 celdas, 343
+proyectos, 6.992 unidades): la unidad **mediana** está **6,1 % sobre el desde** (p25 3,0 %, p75 11,8 %) y la **más cara 15,9 %**.
+
+| grupo | celdas | unidades | mediana / desde | p25 | p75 | máxima / desde |
+| --- | --- | --- | --- | --- | --- | --- |
+| Gran Santiago | 543 | 6.992 | 6,1 % | 3,0 % | 11,8 % | 15,9 % |
+| 1D | 152 | 2.303 | 5,0 % | 2,6 % | 11,9 % | 12,8 % |
+| 2D | 251 | 3.205 | 7,5 % | 3,8 % | 12,4 % | 17,5 % |
+| 3D | 90 | 942 | 5,7 % | 2,7 % | 10,6 % | 14,4 % |
+| 4D | 14 | 118 | 7,0 % | 4,2 % | 10,4 % | 20,0 % |
+| Ñuñoa | 99 | 1.019 | 6,9 % | 3,8 % | 12,0 % | 16,2 % |
+| Santiago | 91 | 1.674 | 5,3 % | 2,7 % | 9,6 % | 13,8 % |
+| La Florida | 67 | 674 | 5,1 % | 2,5 % | 9,9 % | 12,7 % |
+| Providencia | 46 | 439 | 9,5 % | 4,9 % | 19,2 % | 23,8 % |
+| Macul | 42 | 718 | 6,4 % | 2,8 % | 18,0 % | 15,2 % |
+| Las Condes | 29 | 191 | 7,2 % | 3,4 % | 11,4 % | 22,4 % |
+| Vitacura | 24 | 141 | 11,4 % | 4,9 % | 18,8 % | 22,5 % |
+| Independencia | 23 | 391 | 7,8 % | 4,1 % | 14,6 % | 19,9 % |
+| La Cisterna | 20 | 222 | 4,5 % | 2,5 % | 9,8 % | 10,1 % |
+| Peñalolén | 15 | 309 | 7,4 % | 5,3 % | 9,2 % | 26,1 % |
+| Estación Central | 13 | 120 | 3,9 % | 1,7 % | 6,6 % | 6,6 % |
+| Recoleta | 11 | 175 | 3,5 % | 1,0 % | 8,1 % | 7,1 % |
+| otras 9 comunas (5 a 10 celdas) | 57 | 657 | 2,6–8,8 % | | | 5,9–23,9 % |
+
+**Ojo con la lectura:** como la pasada evalúa cada unidad con su precio real, el «desde» no la sesga; sesga a la mediana
+comunal de venta nueva solo cuando use el estimado (desde los 90 días) y a cualquier lectura que tome el «desde» del
+proyecto como precio del aviso. La celda proyecto × tipología es también la que un comprador ve en la cotización: la unidad
+mediana cuesta 6 % más que el precio del anuncio.
+
+### 2.3 Lo que trae la ficha nueva (12 proyectos, por el camino del cruce)
+
+El cruce nocturno ya baja, por proyecto, dos JSON de `api-ficha` (`/property/<id>` y `/property/<id>/floors-units`): el rango
+«desde/hasta» en UF, el estado y la fecha de entrega, y los disponibles con número, dormitorios, baños, piso y m² útiles y
+totales. Se leyeron esos mismos dos JSON para 12 proyectos (2 de los 29 Comprar, 3 con break-even imposible, 2 de entrega
+futura, 5 diversos en comuna y tipología; 1 GET de prueba + 24, de a uno con 4 s de pausa, sin HTML; crudos en
+`out/fichas/`, no se commitean). Inventario de campos (sí / no, con ejemplo):
+
+| campo | proyectos con el dato | ejemplo |
+| --- | --- | --- |
+| unidades disponibles por tipología | **12 de 12** | 1526403 Macul: 34 (1D, 2D y 3D) |
+| precio por unidad | **0 de 12** | la lista solo tiene número, piso, dormitorios, baños y m²; el precio aparece tras la precotización (pide lead) |
+| precio desde / hasta del proyecto | 9 de 12 | 1186728 Puente Alto: UF 2.670–3.135 |
+| fecha de entrega real | 9 de 12 | «2do Semestre 2027», «Inmediata», «Disponible» (3 fichas sin características) |
+| pie en cuotas / bono pie | 0 de 12 | — |
+| gastos comunes estimados | 0 de 12 | — |
+| año de recepción o permiso | 0 de 12 (1 falso positivo: «recepción» en la descripción, es la recepción del edificio) | — |
+| estacionamiento / bodega | 4 de 12 (solo como texto de descripción) | 4376614 Estación Central |
+| descuento / promoción | 0 de 12 | — |
+| subsidio | 0 de 12 | — |
+
+Tres fichas (3886983 Providencia, 1721526 San Miguel, 2004251 La Florida) responden sin `characteristics` ni rango: traen
+disponibles, pero ni precio ni entrega. **Conclusión:** las lecturas no agregan ningún campo al cruce; todo lo que la ficha
+sabe ya se guarda, salvo el m² total por unidad. Lo que falta (precio por unidad, pie, bono, gastos comunes, año) no está en
+la fuente pública.
+
+Precio «desde» contra la unidad mediana en la muestra (precios reales de nuestras unidades; el «desde» de la ficha coincide
+con la unidad más barata en los 9 casos con rango):
+
+| proyecto | disponibles hoy | unidades activas en la base | desde (ficha) | mediana (base) | mediana / desde |
+| --- | --- | --- | --- | --- | --- |
+| 1186728 Puente Alto (Comprar) | 21 | 21 | 2.670 | 2.911 | 9,0 % |
+| 4376614 Estación Central (Comprar) | 306 | 0 | 1.447 | — | el aviso evaluado es la fila del proyecto, al «desde» |
+| 3971670 Santiago (break-even) | 4 | 4 | 3.379 | 3.840 | 13,6 % |
+| 3734878 Ñuñoa (break-even) | 3 | 3 | 3.548 | 4.250 | 19,8 % |
+| 1526403 Macul (break-even) | 34 | 34 | 3.464 | 5.119 | 47,8 % |
+| 4027541 Estación Central (futura) | 10 | 12 | 2.182 | 2.268 | 3,9 % |
+| 3886983 Providencia (futura) | 10 | 10 | — | 7.240 | — |
+| 3325926 Huechuraba | 47 | 67 | 4.690 | 5.180 | 10,4 % |
+| 1721526 San Miguel | 2 | 2 | — | 2.600 | — |
+| 2004251 La Florida | 88 | 88 | — | 3.313 | — |
+| 1552423 Pudahuel | 32 | 31 | 2.907 | 4.068 | 39,9 % |
+| 1723740 Las Condes | 6 | 6 | 17.966 | 18.573 | 3,4 % |
+
+El estimado por unidad contra el precio real no se pudo medir contra la ficha (no trae precio por unidad); contra el precio
+real que ya tenemos: |error| mediano 3,5 %, p90 14,2 %, 60,1 % dentro de ±5 % y 81,8 % dentro de ±10 % (7.020 unidades).
+
+### 2.4 Unidades detrás de los avisos nuevos activos
+
+En la muestra, **disponibles de la ficha / unidades activas en la base = 1,00 en mediana** (0,70 a 1,03, n 11): el cruce
+mantiene la base igual a la ficha, salvo un proyecto que lista 306 unidades donde la base solo tiene la fila del proyecto
+(4376614). Con eso:
+
+| | unidades |
+| --- | --- |
+| Unidades activas conocidas (vistas por el cruce el 04 o 05-nov) | 7.029 |
+| Unidades activas sin cruce (nunca leídas) | 510 |
+| Filas de proyecto sin unidades (60 proyectos) × 6 a 17 unidades (mediana y p75 por proyecto) | 360 a 1.020 |
+| Proyectos como 4376614 (306 unidades detrás de una fila): no se puede acotar sin leer las 60 fichas | +0 a +2.000 |
+| **Estimación** | **7.900 a 10.500 unidades en 536 proyectos de 26 comunas** |
+
+Contra las 70.000 a 80.000 unidades nuevas que Fabrizio estima para Santiago: **cobertura de 10 a 15 %**, con dos
+incertidumbres que la base no resuelve: cuántas unidades hay detrás de los 60 proyectos sin unidades (una lectura de 60
+fichas lo cierra, a 2 GET cada una) y qué parte del stock está en comunas o portales que Franco no lee (la base cubre 26
+comunas del Gran Santiago, una sola fuente).
