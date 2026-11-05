@@ -19,6 +19,7 @@ import { contextoDeFila, type CandidatoGuia } from "../../../src/lib/guia/guia-s
 import { runAnalysis } from "../../../src/lib/analysis";
 import { readVeredicto } from "../../../src/lib/results-helpers";
 import type { Entrega } from "../../../src/lib/avisos/fecha-entrega";
+import { DEC } from "../../../src/components/formulario-v4/wizardV4Nodes";
 
 export const PAGINA = 1000;
 
@@ -153,6 +154,18 @@ export interface OpcionesMotor {
    *  cuotas del pie por defecto de una entrega futura se cuentan desde hoy (helpers-wizard.ts › mesesHastaEntrega), y
    *  la pasada las contó desde el día en que evaluó. Solo para reproducir filas viejas; los escenarios van sin esto. */
   congelarHoy?: boolean;
+}
+
+/**
+ * LA SUPERFICIE LEGIBLE CON DOS DECIMALES (decisión de Fabrizio, FASE 1): `respuestasDeAviso` escribe el m² con dos
+ * decimales y `DEC.superficie` admite uno, así que `leerNum` lo lee como 0. Acá, y solo mientras corre `fn`, el campo
+ * admite dos: la misma cadena de la pasada con el m² entero. En memoria; el repo no cambia.
+ */
+export function conSuperficieDosDecimales<T>(fn: () => T): T {
+  const dec = DEC as unknown as { superficie: number };
+  const antes = dec.superficie;
+  dec.superficie = 2;
+  try { return fn(); } finally { dec.superficie = antes; }
 }
 
 /** Corre `fn` con `Date` apuntando a `instante` como «ahora» (los `new Date(x)` con argumento no cambian). */
