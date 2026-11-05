@@ -15,6 +15,24 @@ import type { TipoCorreo } from "@/lib/medicion-correo";
 /** Los correos comerciales que respetan la baja general (además del semanal y el del día, que la leen al armarse). */
 export const TIPOS_CON_BAJA: ReadonlySet<TipoCorreo> = new Set<TipoCorreo>(["checkout_abandonado", "recordatorio_pack"]);
 
+/**
+ * LA CUENTA QUE PIDIÓ ELIMINARSE (05-nov-2026, auditoría de promesas parte 2): al pedirlo se detienen los correos, aunque el
+ * borrado sea manual. api/account/request-deletion pone las dos bajas de perfil_busqueda (frenan el semanal, el del día, la
+ * renta corta, el aviso inmediato y los dos de arriba) y esta marca en el app_metadata de la cuenta, que el único punto de
+ * envío mira para el resto de lo que no es transaccional. Quedan fuera, a propósito: la confirmación de la eliminación, la
+ * boleta y el pago confirmado (comprobantes), y los avisos internos a hola@. El semanal y el aviso inmediato no van en la
+ * lista porque ya los frenan las bajas antes de armarse (y así el cron no lee una cuenta por correo).
+ */
+export const MARCA_ELIMINACION = "eliminacion_solicitada_at";
+export const TIPOS_QUE_FRENA_LA_ELIMINACION: ReadonlySet<TipoCorreo> = new Set<TipoCorreo>([
+  "bienvenida", "informe_listo", "pago_fallido", "checkout_abandonado", "recordatorio_pack", "aviso_pedido", "pregunta_horizonte", "premio_referido", "plan_aumento", "tarjeta_registrada",
+]);
+
+/** ¿La cuenta pidió eliminarse? (la marca en su app_metadata). */
+export function eliminacionPedida(appMetadata: Record<string, unknown> | null | undefined): boolean {
+  return !!appMetadata && typeof appMetadata[MARCA_ELIMINACION] === "string";
+}
+
 /** De estas personas, las que se dieron de baja de los correos. De a 100 ids (la lista va en la URL). */
 export async function conBajaDeCorreos(admin: SupabaseClient, userIds: readonly string[]): Promise<Set<string>> {
   const fuera = new Set<string>();

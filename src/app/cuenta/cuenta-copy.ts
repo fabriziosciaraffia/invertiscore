@@ -65,6 +65,22 @@ export const CUENTA_COPY = {
   },
 } as const;
 
+/** Pedir la eliminación de la cuenta (05-nov-2026): al pedirlo se detienen los correos y se cancela el plan en Flow. */
+export const ELIMINAR_COPY = {
+  boton: "Solicitar eliminación de cuenta",
+  pregunta: "¿Estás seguro? Pedimos eliminar tu cuenta y todos tus datos. Desde ya dejas de recibir correos de Franco, y si tienes un plan, se cancela en Flow.",
+  si: "Sí, solicitar eliminación",
+  enviando: "Enviando solicitud...",
+  no: "Cancelar",
+  listo: "Recibimos tu solicitud. Ya no te mandamos correos.",
+  planCancelado: "Tu plan quedó cancelado en Flow.",
+  planPendiente: "Tu plan no se pudo cancelar en Flow todavía; lo cancelamos a mano.",
+  conConfirmacion: "Te mandamos la confirmación por correo.",
+  sinConfirmacion: "No pudimos mandarte la confirmación por correo, pero la solicitud quedó recibida.",
+  error: "No se pudo enviar la solicitud.",
+  escribenos: "Escríbenos a hola@refranco.ai",
+} as const;
+
 /** El nombre de lo comprado, para «Tus compras». */
 export function etiquetaCompra(product: string): string {
   switch (product) {

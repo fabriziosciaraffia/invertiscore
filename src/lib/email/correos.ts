@@ -120,7 +120,9 @@ export function correoCheckoutAbandonado(p: { nombre: string | null; producto: s
 // el titular deja de ser el saludo («Hola X,») y pasa a «Recibimos tu solicitud»; el
 // saludo abre el primer párrafo. Los dos rótulos en mono («QUÉ PASA AHORA», «¿FUE UN ERROR?») se
 // vuelven frases en negrita. Sin botón: no hay una acción principal.
-export function correoEliminacionUsuario(p: { nombre: string | null }): Correo {
+// 05-nov-2026 (auditoría de promesas parte 2): al pedirlo se detienen los correos y se cancela el plan en Flow, aunque el
+// borrado sea manual; el correo lo dice. Si Flow no confirmó la cancelación (planCancelado: false), no lo afirma.
+export function correoEliminacionUsuario(p: { nombre: string | null; planCancelado?: boolean }): Correo {
   return {
     subject: "Recibimos tu solicitud de eliminación de cuenta",
     html: plantillaClara({
@@ -129,6 +131,9 @@ export function correoEliminacionUsuario(p: { nombre: string | null }): Correo {
       titular: "Recibimos tu solicitud",
       parrafos: [
         `${saludoDe(p.nombre)} recibimos tu solicitud para eliminar tu cuenta de Franco. Queremos que sepas exactamente qué va a pasar.`,
+        p.planCancelado === false
+          ? "<b>Desde ya.</b> Dejamos de mandarte correos. Tu plan todavía no quedó cancelado en Flow; lo cancelamos a mano."
+          : "<b>Desde ya.</b> Dejamos de mandarte correos, y si tenías un plan, quedó cancelado en Flow: no se te cobra nada más.",
         "<b>Qué pasa ahora.</b> Vamos a eliminar de forma permanente tu cuenta y todos tus datos asociados: tus análisis, tu saldo disponible y tu información de perfil. Te confirmamos a este mismo correo cuando el proceso esté completo.",
         `<b>¿Fue un error?</b> Si no hiciste esta solicitud o cambiaste de opinión, escríbenos a ${enlace("mailto:hola@refranco.ai", "hola@refranco.ai")} lo antes posible. Una vez eliminada, la información no se puede recuperar.`,
       ],
@@ -139,7 +144,7 @@ export function correoEliminacionUsuario(p: { nombre: string | null }): Correo {
 
 // ── Eliminación de cuenta, aviso interno a hola@ ─────────────────────────────
 // el titular pierde el rojo; los ids y montos pierden el mono.
-export function correoEliminacionInterna(p: { email: string; userId: string; solicitadaEl: string; analisis: number; creditos: number; motivo?: string }): Correo {
+export function correoEliminacionInterna(p: { email: string; userId: string; solicitadaEl: string; analisis: number; creditos: number; motivo?: string; flow?: string; correos?: string }): Correo {
   return {
     subject: "Solicitud de eliminación de cuenta",
     html: plantillaClara({
@@ -156,6 +161,9 @@ export function correoEliminacionInterna(p: { email: string; userId: string; sol
           { etiqueta: "Motivo", valor: p.motivo && p.motivo.trim() ? escaparHtml(p.motivo.trim()) : "No especificado" },
           { etiqueta: "Análisis creados", valor: String(p.analisis) },
           { etiqueta: "Créditos restantes", valor: String(p.creditos) },
+          // 05-nov-2026: lo que ya pasó al pedirlo (la baja de la cuenta sigue siendo manual).
+          { etiqueta: "Suscripción en Flow", valor: escaparHtml(p.flow ?? "—") },
+          { etiqueta: "Correos", valor: escaparHtml(p.correos ?? "—") },
         ],
       },
       legal: "Correo interno de Franco. Procesar la baja y la eliminación de datos según la política de retención.",

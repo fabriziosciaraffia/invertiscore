@@ -3,7 +3,7 @@ import { FLOW_PRODUCTS, type FlowProductKey } from './flow-products';
 import { capturarServidor } from "./posthog-servidor";
 import { eventoCorreoEnviado, identidadCorreo, tagsCorreo, type TipoCorreo } from "./medicion-correo";
 import { cuentasDePruebaSinCorreo, destinoBloqueado } from "./correo-destino";
-import { conBajaDeCorreos, TIPOS_CON_BAJA } from "./correo-baja";
+import { conBajaDeCorreos, eliminacionPedida, TIPOS_CON_BAJA, TIPOS_QUE_FRENA_LA_ELIMINACION } from "./correo-baja";
 import { createServiceClient as adminCorreo } from "./supabase/service";
 import { correoRecordatorioPack } from "./lo-que-sigue/recordatorio";
 import { correoAlertaCron, correoResumenCrons, correoAlertaPago, correoAlertaPagoFallido, correoBienvenida, correoBoleta, correoCheckoutAbandonado, correoEliminacionInterna, correoEliminacionUsuario, correoAvisoPedido, correoInformeListo, correoPagoConfirmado, correoPagoFallido, correoPlanAumento, correoPremioReferido, correoTarjetaRegistrada } from "./email/correos";
@@ -52,6 +52,15 @@ async function enviarCorreo(
     const deBaja = await conBajaDeCorreos(adminCorreo(), [userId]).then((s) => s.has(userId), () => true);
     if (deBaja) {
       console.info(`[email] ${tipo} no sale: la persona se dio de baja`);
+      return { data: null, error: null };
+    }
+  }
+  // La cuenta que pidió eliminarse (05-nov-2026, correo-baja.ts): lo que no es transaccional ya no le sale. Si la cuenta no
+  // se puede leer, el correo sale (la marca es la excepción, no el caso común).
+  if (TIPOS_QUE_FRENA_LA_ELIMINACION.has(tipo) && userId) {
+    const { data: cuenta } = await adminCorreo().auth.admin.getUserById(userId).catch(() => ({ data: null }));
+    if (eliminacionPedida(cuenta?.user?.app_metadata as Record<string, unknown> | undefined)) {
+      console.info(`[email] ${tipo} no sale: la cuenta pidió eliminarse`);
       return { data: null, error: null };
     }
   }
@@ -427,6 +436,9 @@ export async function sendAnalysisReadyEmail(to: string, name: string, analysisT
 // propagan para que el route devuelva 500 si falla (la solicitud de baja es
 // crítica y no debe perderse en silencio).
 
+// 05-nov-2026 (auditoría de promesas parte 2): enviarCorreo DEVUELVE el error de Resend en vez de lanzarlo, así que el
+// `await` de antes nunca fallaba y la solicitud se perdía en silencio. Ahora se mira el resultado: si el correo no salió
+// (error de Resend, o sin RESEND_API_KEY), LANZA.
 export async function sendAccountDeletionInternalEmail(params: {
   email: string;
   userId: string;
@@ -434,15 +446,22 @@ export async function sendAccountDeletionInternalEmail(params: {
   analysisCount: number;
   credits: number;
   reason?: string;
+  /** Qué pasó con la suscripción en Flow (cancelada, sin suscripción o «cancelar a mano»). */
+  flow?: string;
+  /** Si los correos quedaron detenidos. */
+  correos?: string;
 }): Promise<void> {
-  const { email, userId, requestedAt, analysisCount, credits, reason } = params;
-  const { subject, html } = correoEliminacionInterna({ email, userId, solicitadaEl: requestedAt, analisis: analysisCount, creditos: credits, motivo: reason });
-  await enviarCorreo("eliminacion_interna", userId, { from: FROM_EMAIL, to: 'hola@refranco.ai', subject, html });
+  const { email, userId, requestedAt, analysisCount, credits, reason, flow, correos } = params;
+  const { subject, html } = correoEliminacionInterna({ email, userId, solicitadaEl: requestedAt, analisis: analysisCount, creditos: credits, motivo: reason, flow, correos });
+  // Sin userId en el envío: el aviso va a un buzón de Franco y no lo frena ni la baja ni la marca de eliminación.
+  const { data, error } = await enviarCorreo("eliminacion_interna", null, { from: FROM_EMAIL, to: 'hola@refranco.ai', subject, html });
+  if (error || !data) throw new Error(`El aviso interno de eliminación no salió: ${error?.message ?? "Resend no configurado"}`);
 }
 
-export async function sendAccountDeletionUserEmail(to: string, name: string, opts: CorreoOpts = {}): Promise<void> {
-  const { subject, html } = correoEliminacionUsuario({ nombre: name });
-  await enviarCorreo("eliminacion_usuario", opts.userId, { from: FROM_EMAIL, to, subject, html });
+export async function sendAccountDeletionUserEmail(to: string, name: string, opts: CorreoOpts & { planCancelado?: boolean } = {}): Promise<void> {
+  const { subject, html } = correoEliminacionUsuario({ nombre: name, planCancelado: opts.planCancelado !== false });
+  const { data, error } = await enviarCorreo("eliminacion_usuario", opts.userId, { from: FROM_EMAIL, to, subject, html });
+  if (error || !data) throw new Error(`La confirmación de eliminación no salió: ${error?.message ?? "sin envío"}`);
 }
 
 /**

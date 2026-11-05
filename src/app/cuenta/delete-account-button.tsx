@@ -1,11 +1,17 @@
 "use client";
 
+// Pedir la eliminación de la cuenta (05-nov-2026, auditoría de promesas parte 2): al pedirlo se detienen los correos y se
+// cancela el plan en Flow, aunque el borrado sea manual (api/account/request-deletion). La pantalla dice lo que pasó: si la
+// confirmación por correo no salió, o Flow no confirmó la cancelación, no lo afirma.
 import { useState } from "react";
+import { ELIMINAR_COPY } from "./cuenta-copy";
 
 type State = "idle" | "confirm" | "sending" | "sent" | "error";
 
 export function DeleteAccountButton() {
   const [state, setState] = useState<State>("idle");
+  const [resultado, setResultado] = useState<{ confirmacion: boolean; planCancelado: boolean } | null>(null);
+  const C = ELIMINAR_COPY;
 
   async function handleRequest() {
     setState("sending");
@@ -15,6 +21,8 @@ export function DeleteAccountButton() {
         setState("error");
         return;
       }
+      const d = (await res.json().catch(() => ({}))) as { confirmacion?: boolean; planCancelado?: boolean };
+      setResultado({ confirmacion: d.confirmacion !== false, planCancelado: d.planCancelado !== false });
       setState("sent");
     } catch {
       setState("error");
@@ -23,21 +31,21 @@ export function DeleteAccountButton() {
 
   if (state === "sent") {
     return (
-      <p className="font-body text-sm text-ink-400">
-        Solicitud enviada — Recibirás confirmación por email
+      <p className="font-body text-sm text-[var(--franco-text-secondary)]" data-eliminar="listo">
+        {C.listo} {resultado?.planCancelado === false ? C.planPendiente : C.planCancelado} {resultado?.confirmacion === false ? C.sinConfirmacion : C.conConfirmacion}
       </p>
     );
   }
 
   if (state === "error") {
     return (
-      <p className="font-body text-sm text-[var(--franco-text-muted)]">
-        No se pudo enviar la solicitud.{" "}
+      <p className="font-body text-sm text-[var(--franco-text-muted)]" data-eliminar="error">
+        {C.error}{" "}
         <a
           href="mailto:hola@refranco.ai?subject=Solicitud%20eliminación%20de%20cuenta"
           className="text-signal-red hover:underline"
         >
-          Escríbenos a hola@refranco.ai
+          {C.escribenos}
         </a>
       </p>
     );
@@ -46,9 +54,7 @@ export function DeleteAccountButton() {
   if (state === "confirm" || state === "sending") {
     return (
       <div>
-        <p className="font-body text-sm text-[var(--franco-text)] mb-3">
-          ¿Estás seguro? Se enviará una solicitud para eliminar tu cuenta y todos tus datos.
-        </p>
+        <p className="font-body text-sm text-[var(--franco-text)] mb-3">{C.pregunta}</p>
         <div className="flex items-center gap-3">
           <button
             type="button"
@@ -62,10 +68,10 @@ export function DeleteAccountButton() {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
-                Enviando solicitud...
+                {C.enviando}
               </span>
             ) : (
-              "Sí, solicitar eliminación"
+              C.si
             )}
           </button>
           <button
@@ -74,7 +80,7 @@ export function DeleteAccountButton() {
             disabled={state === "sending"}
             className="font-body text-sm text-[var(--franco-text-muted)] hover:text-[var(--franco-text)] transition-colors disabled:opacity-50"
           >
-            Cancelar
+            {C.no}
           </button>
         </div>
       </div>
@@ -87,7 +93,7 @@ export function DeleteAccountButton() {
       onClick={() => setState("confirm")}
       className="font-body text-sm text-[var(--franco-text-muted)] hover:text-signal-red transition-colors"
     >
-      Solicitar eliminación de cuenta
+      {C.boton}
     </button>
   );
 }
