@@ -29,6 +29,8 @@ import { faltanDelPerfil, MINUTOS_CUPO_DEL_DIA, type FaltaDelPerfil } from "@/li
 import { rellenarDeLaNoche } from "@/lib/guia/del-dia-servidor";
 import { comunasVecinas } from "@/lib/comunas-vecinas";
 import { informesDeAvisos } from "@/lib/guia/seleccion-pagina-servidor";
+import type { ResumenInforme } from "@/lib/informe-propio";
+import { resumenesDeInformes } from "@/lib/informe-propio-servidor";
 
 export interface FinanzasPrimeros {
   tasa: number | null;
@@ -55,6 +57,8 @@ export interface PrimerosDeLaCuenta {
   faltan: FaltaDelPerfil[];
   saldo: EstadoSaldo;
   finanzas: FinanzasPrimeros;
+  /** El resumen de cada informe propio, por id (05-nov-2026, lib/informe-propio.ts): el depto ya analizado dice SU informe. */
+  resumenes?: Record<string, ResumenInforme>;
   /** Sin saldo, el pack va al precio del ticket (la cuenta tiene menos de 24 horas). Lo pone la ruta, que tiene la cuenta. */
   ticket?: boolean;
   /** Con el ticket vivo (22-oct-2026): cuándo nació la cuenta, para la línea del ticket con saldo. Lo pone la ruta. */
@@ -99,8 +103,9 @@ export async function primerosDeLaCuenta(admin: SupabaseClient, userId: string, 
       condicionesDeAvisos(admin, items.filter((i) => !i.condicion).map((i) => i.avisoId)),
     ]);
     const at = new Map(((pubs ?? []) as Array<{ aviso_id: string; chequeado_at: string }>).map((p) => [p.aviso_id, p.chequeado_at]));
+    const resumenes = await resumenesDeInformes(admin, userId, Object.values(informes));
     return {
-      revisando, token, regaloVence, fuente: "del_dia", origenId: fila.origen_analysis_id, combinacion: comboFila, faltan: [], saldo, finanzas,
+      revisando, token, regaloVence, fuente: "del_dia", origenId: fila.origen_analysis_id, combinacion: comboFila, faltan: [], saldo, finanzas, resumenes,
       vecinas: items.every((i) => i.tramo === "vecina"),
       items: items.slice(0, MAX_PRIMEROS).map((i) => conCondicion(i, delAviso)).map((i) => ({
         avisoId: i.avisoId, comuna: i.comuna, tipologia: i.tipologia, m2: i.m2, precioUF: i.precioUF, veredicto: i.veredicto ?? "COMPRAR",
@@ -150,8 +155,9 @@ export async function primerosDeLaCuenta(admin: SupabaseClient, userId: string, 
     if (!enSeleccion) return primerosDeLaCuenta(admin, userId, ahora);
   }
   const [finanzas, informes] = await Promise.all([finanzasDe(origenId, elegidos.map((d) => d.avisoId)), informesDeAvisos(admin, userId, elegidos.map((d) => d.avisoId))]);
+  const resumenes = await resumenesDeInformes(admin, userId, Object.values(informes));
   return {
-    revisando, token: enSeleccion ? token : null, regaloVence, fuente: "noche", origenId, combinacion, faltan: [], saldo, finanzas,
+    revisando, token: enSeleccion ? token : null, regaloVence, fuente: "noche", origenId, combinacion, faltan: [], saldo, finanzas, resumenes,
     items: elegidos.map((d) => ({ ...d, enSeleccion, informeId: informes[d.avisoId] ?? null })), vecinas: deLaNoche.length === 0 && vecinas.length > 0,
   };
 }

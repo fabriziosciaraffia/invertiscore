@@ -113,6 +113,9 @@
 .sel-fila-ojo { font-size: 13px; display: flex; align-items: center; gap: 8px; min-width: 0; }
 .sel-fila-ya { font-size: 12px; font-weight: 600; color: var(--verdict-comprar); padding-left: 28px; }
 :root:not([data-theme="light"]) .sel-fila-ya { color: #8DB0E3; }
+/* El ya analizado dice su informe (05-nov-2026, ChipInformePropio): el chip con el veredicto de su informe, alineado como
+   «Ya lo analizaste». */
+.sel-fila-informe { padding-left: 28px; min-width: 0; }
 .sel-fila-ver { font-size: 13px; font-weight: 600; color: var(--franco-text); white-space: nowrap; text-decoration: underline; text-underline-offset: 3px; flex: none; }
 .sel-fila:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; }
 

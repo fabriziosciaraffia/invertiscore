@@ -45,6 +45,9 @@ import { clasePinDeItem } from "@/lib/casa/mapa-casa";
 import { LineaPuertaExplorar } from "@/components/explorar/LineaPuertaExplorar";
 import { convienenEnSeleccion, lineaConvienen } from "@/lib/explorar/puerta-correos";
 import type { PrimerosDeLaCuenta } from "@/lib/deptos/primeros-servidor";
+import { ChipInformePropio } from "@/components/guia/ChipInformePropio";
+import { ChipVeredictoTokens } from "@/components/analysis/shared/ChipVeredicto";
+import type { ResumenInforme } from "@/lib/informe-propio";
 import type { PrimerDepto } from "@/lib/deptos/servidor";
 import "@/app/deptos/deptos.css";
 
@@ -53,11 +56,14 @@ const ESPERA_MS = 4000;
 const PREGUNTAS_MAX = 25;
 const ESPERA_EN_CURSO_MS = 4000;
 
-export function PrimeraSeleccion({ encabezado = "dentro" }: {
+export function PrimeraSeleccion({ encabezado = "dentro", inicial = null }: {
   /** Dónde se monta: en «Estás dentro» (el kicker y el título) o en la casa (el título de sección de la casa). */
   encabezado?: "dentro" | "casa";
+  /** La respuesta de /api/deptos/primeros ya leída: solo el gate TARJETA-ANALIZADA, para dibujarla con datos. En la app no
+   *  se pasa y la lista se lee al montar. */
+  inicial?: PrimerosDeLaCuenta | null;
 }) {
-  const [datos, setDatos] = useState<PrimerosDeLaCuenta | null>(null);
+  const [datos, setDatos] = useState<PrimerosDeLaCuenta | null>(inicial);
   const [fallo, setFallo] = useState(false);
   const [generando, setGenerando] = useState<string | null>(null);
   const [error, setError] = useState<{ avisoId: string; texto: string } | null>(null);
@@ -67,6 +73,8 @@ export function PrimeraSeleccion({ encabezado = "dentro" }: {
   const [informe, setInforme] = useState<PasoInforme | null>(null);
   const [listoSinAbrir, setListoSinAbrir] = useState<{ id: string; ruta: string; depto: string; t0: number } | null>(null);
   const [informesAqui, setInformesAqui] = useState<Record<string, string>>({});
+  // El resumen de los informes hechos en esta visita (05-nov-2026): lo que respondió la ruta al crearlo.
+  const [resumenesAqui, setResumenesAqui] = useState<Record<string, ResumenInforme>>({});
   const ultimoAnalisis = useRef<{ it: PrimerDepto; eleccion?: EleccionAnalizar } | null>(null);
   const soltarCarga = useRef<(() => void) | null>(null);
   const [eleccion, setEleccion] = useState<ValorBusqueda>({ comunas: [], tipologia: TIPOLOGIA_POR_DEFECTO, rango: ELECCIONES_POR_DEFECTO.rango });
@@ -164,6 +172,8 @@ export function PrimeraSeleccion({ encabezado = "dentro" }: {
         }
         const d = (await res.json().catch(() => ({}))) as { id?: string; error?: string; veredicto?: string | null; score?: number | null };
         if (res.ok && d.id) {
+          const nuevo = d.id;
+          setResumenesAqui((m) => ({ ...m, [nuevo]: { veredicto: d.veredicto ?? null, score: d.score ?? null, fecha: new Date().toISOString() } }));
           // Listo: el pop-up lo abre solo; si con los datos de hoy salió otro veredicto, lo dice primero.
           const listo = informeListo(paso0, { id: d.id, ruta: `/analisis/${d.id}`, veredicto: d.veredicto ?? null, score: d.score ?? null });
           setInforme(listo);
@@ -265,13 +275,21 @@ export function PrimeraSeleccion({ encabezado = "dentro" }: {
           {listoSinAbrir && <InformeListoAviso depto={listoSinAbrir.depto} ruta={listoSinAbrir.ruta} id={listoSinAbrir.id} t0={listoSinAbrir.t0} alCerrar={() => setListoSinAbrir(null)} />}
           {items.length > 0 && (
             <div className="sel-lista" data-primera="lista">
+              {/* El chip del informe propio (05-nov-2026): /deptos no monta el CSS del chip; en la casa se repite y no estorba. */}
+              <ChipVeredictoTokens />
               {visibles.map((it, i) => {
                 const neg = (it.flujo ?? 0) < 0;
                 const puede = puedeAnalizarPrimero(datos, it);
+                // YA LO ANALIZÓ (05-nov-2026, lib/informe-propio.ts): lo que dice SU informe, no la noche (ni su flujo).
+                const informe = it.informeId ?? informesAqui[it.avisoId] ?? null;
+                const resumen = informe ? datos.resumenes?.[informe] ?? resumenesAqui[informe] : undefined;
                 return (
                   <article key={it.avisoId} className="sel-av" data-primera="depto" data-n={i + 1}>
                     <div className="sel-ojo"><PinTarjeta n={i + 1} clase={clasePinDeItem(it)} />{lineaDepto(it)}</div>
                     <div className="sel-precio">UF {miles(it.precioUF)}</div>
+                    {informe ? (
+                      resumen && <div className="sel-dos" data-primera="informe-propio"><ChipInformePropio resumen={resumen} noche={{ veredicto: it.veredicto, score: it.score }} /></div>
+                    ) : (
                     <div className="sel-dos">
                       <div>
                         <span className="sel-k">{GUIA.veredicto}</span>
@@ -286,11 +304,12 @@ export function PrimeraSeleccion({ encabezado = "dentro" }: {
                         )}
                       </div>
                     </div>
+                    )}
                     {error?.avisoId === it.avisoId && <p className="sel-error" role="alert">{error.texto}</p>}
-                    {it.informeId ?? informesAqui[it.avisoId] ? (
+                    {informe ? (
                       <p className="sel-ya" data-primera="ya-analizado">
                         <span>{YA_ANALIZADO.texto} ·</span>
-                        <EnlaceCarga href={`/analisis/${it.informeId ?? informesAqui[it.avisoId]}`}>{YA_ANALIZADO.enlace}</EnlaceCarga>
+                        <EnlaceCarga href={`/analisis/${informe}`}>{YA_ANALIZADO.enlace}</EnlaceCarga>
                       </p>
                     ) : puede && (
                       <button type="button" className="sel-btn" data-primario={i === 0 ? "1" : undefined} onClick={() => { setError(null); setConfirmar({ it, sin: false }); }} disabled={!!generando} {...botonOcupado(generando === it.avisoId)} data-primera="analizar">

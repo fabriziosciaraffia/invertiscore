@@ -9,6 +9,7 @@ import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 import { capRatePct, flujoTexto, pctUno, ufPorM2 } from "./explorar";
 import { urlDePortal, FILTROS_GLOBALES } from "./portal";
 import { PIE_POR_DEFECTO, PLAZO_POR_DEFECTO } from "@/lib/deptos/estandar";
+import type { ResumenInforme } from "@/lib/informe-propio";
 
 export interface DeptoGuardado {
   avisoId: string;
@@ -25,6 +26,8 @@ export interface DeptoGuardado {
   activo: boolean;
   /** Su informe, si ya lo analizó. */
   informeId: string | null;
+  /** Lo que dice ese informe (05-nov-2026, lib/informe-propio.ts): la fila de un analizado lo dice a él, no a la noche. */
+  resumen?: ResumenInforme | null;
 }
 
 export const COMPARAR_MIN_GUARDADOS = 2;

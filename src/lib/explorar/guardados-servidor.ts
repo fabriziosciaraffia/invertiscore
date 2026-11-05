@@ -9,6 +9,7 @@ import { condicionDe } from "@/lib/guia/linea-depto";
 import { informesDeExplorar } from "./servidor";
 import type { DeptoGuardado } from "./guardados";
 import { PLAZO_POR_DEFECTO } from "@/lib/deptos/estandar";
+import { resumenesDeInformes } from "@/lib/informe-propio-servidor";
 
 /** Las columnas de la noche con el plazo por defecto: a 30 años, la evaluación de siempre; a 25, las columnas `*_25`. */
 const COLS = PLAZO_POR_DEFECTO === 30 ? { v: "veredicto_20", s: "score_20", f: "flujo_20" } : { v: "veredicto_20_25", s: "score_20_25", f: "flujo_20_25" };
@@ -29,6 +30,8 @@ export async function guardadosParaCasa(admin: SupabaseClient, userId: string): 
   ]);
   reportarFalloQuery(e1, { ruta: RUTA, operacion: "avisos", userId });
   reportarFalloQuery(e2, { ruta: RUTA, operacion: "evaluados", userId });
+  // Lo que dice el informe de los que ya analizó (05-nov-2026): la fila lo muestra a él, no a la noche.
+  const resumenes = await resumenesDeInformes(admin, userId, ids.map((id) => informes[id]).filter((x): x is string => !!x));
   const avisos = new Map(((sp ?? []) as Array<Record<string, unknown>>).map((r) => [String(r.id), r]));
   const evals = new Map(((ae ?? []) as unknown as Array<Record<string, unknown>>).map((r) => [String(r.aviso_id), r]));
   const num = (v: unknown) => (v == null || !Number.isFinite(Number(v)) ? null : Number(v));
@@ -45,6 +48,7 @@ export async function guardadosParaCasa(admin: SupabaseClient, userId: string): 
       veredicto: (e?.[COLS.v] as string | null) ?? null, score: num(e?.[COLS.s]), flujo: num(e?.[COLS.f]),
       arriendo: arriendo != null && arriendo > 0 ? arriendo : null,
       activo: a.is_active === true, informeId: informes[id] ?? null,
+      resumen: informes[id] ? resumenes[informes[id]] ?? null : null,
     }];
   });
 }

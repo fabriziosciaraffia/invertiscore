@@ -49,6 +49,7 @@ export function SeleccionEnCasa({ sel, autoAnalizar, primera }: {
       conTitulo={!sel.cortoPrimero}
       cierre={!sel.corto || sel.cortoPrimero}
       informes={sel.largo.informes}
+      resumenes={sel.largo.resumenes}
     />
   );
   const listaCorta = sel.corto && (
@@ -65,6 +66,7 @@ export function SeleccionEnCasa({ sel, autoAnalizar, primera }: {
       cierre={!sel.cortoPrimero}
       noDan={sel.corto.noDan}
       informes={sel.corto.informes}
+      resumenes={sel.corto.resumenes}
     />
   );
   return (

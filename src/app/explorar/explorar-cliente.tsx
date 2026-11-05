@@ -60,6 +60,7 @@ import {
 import type { RespuestaUniverso } from "@/lib/explorar/portal-servidor";
 import { TarjetaPin } from "./tarjeta-pin";
 import { ChipVeredicto, ChipVeredictoTokens } from "@/components/analysis/shared/ChipVeredicto";
+import type { ResumenInforme } from "@/lib/informe-propio";
 import {
   capaDeLaNoche, capaNegociarDisponible, capaVisible, conCifrasNegociado, descompactarNegociados, esNegociado, EVENTO_NEGOCIAR, EVENTO_SOLO_COMPRAR, NEGOCIAR_COPY, negociadosVisibles, ordenarNegociados, propsNegociar,
   propsSoloComprar, type Negociacion, type NegociadosCompactos, type PinNegociado,
@@ -104,6 +105,8 @@ const ESPERA_EN_CURSO_MS = 4000;
 /** Lo que el servidor sabe de la cuenta (portal-servidor.ts › CuentaPortal), sin nada que no se pueda mostrar. */
 export interface CuentaCliente {
   analizados: Record<string, string>;
+  /** El resumen de cada informe propio, por id (05-nov-2026, lib/informe-propio.ts). */
+  resumenes: Record<string, ResumenInforme>;
   guardados: string[];
   saldo: EstadoSaldo;
   suscrito: boolean;
@@ -178,7 +181,7 @@ const TOAST_MS = 2400;
 
 /** Lo que se muestra sin cuenta: nada de la persona, sin saldo. */
 const CUENTA_VACIA: CuentaCliente = {
-  analizados: {}, guardados: [], saldo: { tipo: "sin" }, suscrito: false, ticket: false, cuentaCreadaAt: null,
+  analizados: {}, resumenes: {}, guardados: [], saldo: { tipo: "sin" }, suscrito: false, ticket: false, cuentaCreadaAt: null,
   finanzas: { uf: null, tasa: null }, miBusqueda: null, busquedaActual: null, explorarEnMes: 0,
 };
 /** El pop-up que usa el regalo habla solo del regalo (ofertas de a una, 29-oct-2026): sin la línea del ticket. */
@@ -251,6 +254,8 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
   const [informe, setInforme] = useState<PasoInforme | null>(null);
   const [listoSinAbrir, setListoSinAbrir] = useState<{ id: string; ruta: string; depto: string; t0: number } | null>(null);
   const [analizadosAqui, setAnalizadosAqui] = useState<Record<string, string>>({});
+  // El resumen de los informes hechos en esta visita (05-nov-2026): lo que respondió la ruta al crearlo.
+  const [resumenesAqui, setResumenesAqui] = useState<Record<string, ResumenInforme>>({});
   const ultimoAnalisis = useRef<{ it: PinMapa; eleccion?: EleccionAnalizar } | null>(null);
   const soltarCarga = useRef<(() => void) | null>(null);
   const [caidos, setCaidos] = useState<string[]>([]);
@@ -500,6 +505,7 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
   const calculando = !universo && (progreso != null || !universoDeLaNoche(filtros));
   // Los analizados de la cuenta y los de esta visita (un informe listo que no se abrió).
   const analizadosVivos = useMemo(() => ({ ...cuenta.analizados, ...analizadosAqui }), [cuenta.analizados, analizadosAqui]);
+  const resumenesVivos = useMemo(() => ({ ...(cuenta.resumenes ?? {}), ...resumenesAqui }), [cuenta.resumenes, resumenesAqui]);
   const analizadosSet = useMemo(() => new Set(Object.keys(analizadosVivos)), [analizadosVivos]);
   /** Cuántos darían unos filtros, sobre lo cargado (la hoja de filtros); null si hay que traer otro universo. */
   const contar = useCallback((f: FiltrosPortal): number | null => {
@@ -664,6 +670,8 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
         }
         const d = (await res.json().catch(() => ({}))) as { id?: string; error?: string; estado?: string; porQue?: string | null; publicacion?: string | null; negociado?: Negociacion & { p: number }; tope?: number; veredicto?: string | null; score?: number | null };
         if (res.ok && d.id) {
+          const nuevo = d.id;
+          setResumenesAqui((m) => ({ ...m, [nuevo]: { veredicto: d.veredicto ?? null, score: d.score ?? null, fecha: new Date().toISOString() } }));
           // El embudo de la puerta E: «regalo usado» (el análisis salió con el regalo de alta).
           if (usaRegalo(cuenta.saldo)) posthog?.capture(EVENTOS_ABIERTO.regaloUsado, { aviso_id: it.avisoId, analysis_id: d.id, modalidad: filtros.modalidad });
           // Listo: el pop-up lo abre solo (InformeEnCamino); si con los datos de hoy salió otro veredicto, lo dice primero.
@@ -1077,6 +1085,7 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
               seleccionado={sel!}
               uf={uf}
               analizados={analizadosVivos}
+              resumenes={resumenesVivos}
               guardados={guardados}
               generando={generando}
               error={error}
@@ -1108,6 +1117,7 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
             orden={orden}
             uf={uf}
             analizados={analizadosVivos}
+            resumenes={resumenesVivos}
             guardados={guardados}
             alOrden={cambiarOrden}
             alAbrir={abrirDesdeLista}
@@ -1161,6 +1171,7 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
           tope={compartido?.tope ?? null}
           sinCuenta={sinCuenta}
           informe={casoComp.tipo === "pin" ? analizadosVivos[casoComp.pin.avisoId] ?? null : null}
+          resumenes={resumenesVivos}
           generando={generando}
           alAnalizar={analizarDesdeHoja}
           alVerInforme={recordarVuelta}

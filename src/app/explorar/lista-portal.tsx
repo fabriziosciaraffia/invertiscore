@@ -19,13 +19,15 @@ import { BORROSO } from "@/lib/explorar/abierto";
 import { esNegociado, NEGOCIAR_COPY, type PinNegociado } from "@/lib/explorar/capa-negociar";
 import { LineasDesglose } from "./desglose";
 import { Borroso, BotonCompartir, Corazon, ImagenDepto, VeredictoDelPin, VeredictosNegociado } from "./tarjeta-pin";
+import { ChipInformePropio } from "@/components/guia/ChipInformePropio";
+import type { ResumenInforme } from "@/lib/informe-propio";
 
 const TANDA = 30;
 /** Cuánto hay que deslizar hacia abajo (px) para cerrar la hoja en el teléfono. */
 const CIERRE_DESLIZANDO_PX = 90;
 const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
 
-export function ListaPortal({ pines, negociados = [], tope = null, desglose, calculando, orden, analizados, guardados, alOrden, alAbrir, alGuardar, alCompartir, alPrepararCompartir, alAvisame, alCerrar, sinCuenta = false }: {
+export function ListaPortal({ pines, negociados = [], tope = null, desglose, calculando, orden, analizados, resumenes = {}, guardados, alOrden, alAbrir, alGuardar, alCompartir, alPrepararCompartir, alAvisame, alCerrar, sinCuenta = false }: {
   pines: PinMapa[];
   /** Los − Ajustar (vacía si la capa no se ve): van después de los que convienen. */
   negociados?: PinNegociado[];
@@ -38,6 +40,8 @@ export function ListaPortal({ pines, negociados = [], tope = null, desglose, cal
   orden: OrdenPortal;
   uf: number | null;
   analizados: Record<string, string>;
+  /** El resumen de cada informe propio, por id (05-nov-2026): la fila de un analizado dice SU informe, no la noche. */
+  resumenes?: Record<string, ResumenInforme>;
   guardados: ReadonlySet<string>;
   alOrden: (o: OrdenPortal) => void;
   alAbrir: (avisoId: string) => void;
@@ -122,9 +126,16 @@ export function ListaPortal({ pines, negociados = [], tope = null, desglose, cal
                       <span className="ex-fila-datos">
                         <span className="ex-ojo">{lineaDepto(p)}</span>
                         <b className="ex-precio-l">UF {miles(p.precioUF)}{negociado && <span className="ex-publicado"> {NEGOCIAR_COPY.publicado}</span>}</b>
-                        {negociado ? <VeredictosNegociado p={p} /> : (
+                        {analizados[p.avisoId] && !sinCuenta ? (
+                          // YA LO ANALIZÓ (05-nov-2026, lib/informe-propio.ts): lo que dice SU informe, no la noche (ni su flujo).
+                          <span className="ex-linea2" data-explorar="informe-propio">
+                            {resumenes[analizados[p.avisoId]]
+                              ? <ChipInformePropio resumen={resumenes[analizados[p.avisoId]]} noche={{ veredicto: p.veredicto, score: p.score }} enColumna={false} />
+                              : <b className="ex-ver">{PORTAL_COPY.analizado}</b>}
+                          </span>
+                        ) : negociado ? <VeredictosNegociado p={p} /> : (
                           <span className="ex-linea2">
-                            {analizados[p.avisoId] ? <b className="ex-ver">{PORTAL_COPY.analizado}</b> : <VeredictoDelPin p={p} />}
+                            <VeredictoDelPin p={p} />
                             {sinCuenta ? <> · <Borroso texto={BORROSO.flujo} /></> : p.flujo != null && <> · <b className={neg ? "ex-neg" : undefined}>{flujoTexto(p.flujo)}</b></>}
                           </span>
                         )}

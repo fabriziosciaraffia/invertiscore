@@ -26,7 +26,7 @@ const ETIQUETAS: Record<Veredicto, Record<FormaEtiqueta, string>> = {
   "BUSCAR OTRA": { banda: "BUSCAR OTRO", frase: "Buscar otro", corta: "Buscar" },
 };
 
-const esVeredicto = (v: unknown): v is Veredicto => typeof v === "string" && v in ETIQUETAS;
+export const esVeredicto = (v: unknown): v is Veredicto => typeof v === "string" && v in ETIQUETAS;
 
 /** Etiqueta visible de un veredicto persistido. `fallback` para valores que no son
  *  veredicto (legacy, null): por defecto devuelve el valor tal cual (o ""). */

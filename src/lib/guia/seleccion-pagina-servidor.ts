@@ -18,6 +18,8 @@ import { bloqueDelDestacado, type FilaPaginaSemanal } from "@/lib/guia/semanal";
 import { resumenSeleccion, type ResumenBloque } from "@/lib/guia/seleccion-casa";
 import { clasePinDeItem } from "@/lib/casa/mapa-casa";
 import type { ClasePin } from "@/lib/explorar/colores-pin";
+import type { ResumenInforme } from "@/lib/informe-propio";
+import { resumenesDeInformes } from "@/lib/informe-propio-servidor";
 import {
   condicionesDeAvisos, conCondicion, finanzasDeSeleccion, informesEnRentaCorta, noDanEnRentaCorta, seleccionDeEstaSemana, seleccionPorToken, seleccionViva, type ItemSemanal, type SeleccionPorToken,
 } from "@/lib/guia/semanal-servidor";
@@ -31,6 +33,9 @@ export interface BloquePagina {
   finanzas: { tasa: number | null; uf: number | null; arriendos: Record<string, number> };
   noDan: string[];
   informes: Record<string, string>;
+  /** El resumen de cada informe de la persona que muestra la página (05-nov-2026, informe-propio.ts): la tarjeta de un ya
+   *  analizado dice su informe, no la noche. Por id de informe. */
+  resumenes: Record<string, ResumenInforme>;
 }
 
 export interface SeleccionPagina {
@@ -134,6 +139,10 @@ export async function cargarSeleccionPagina(admin: SupabaseClient, user: { id: s
     sel.corto ? informesEnRentaCorta(admin, userId, idsCortos) : Promise.resolve({} as Record<string, string>),
     informesDeAvisos(admin, userId, ids),
   ]);
+  // LA TARJETA DE UN ANALIZADO DICE SU INFORME (05-nov-2026): el resumen de cada informe de la persona que la página muestra,
+  // de los mapas y de los ítems que ya lo traen (lo visto como «analizado»).
+  const idsDeInformes = (fs: typeof filas, mapa: Record<string, string>) => [...Object.values(mapa), ...fs.flatMap((f) => [f.item.informeId, f.reemplazo?.informeId])];
+  const resumenes = await resumenesDeInformes(admin, userId, [...idsDeInformes(filas, informesLargos), ...idsDeInformes(filasCortas, informesCortos)]);
   const ingresosCortos: Record<string, number> = {};
   for (const f of filasCortas) for (const it of [f.item, ...(f.reemplazo ? [f.reemplazo] : [])]) if (it.ingresoMensual != null && it.ingresoMensual > 0) ingresosCortos[it.avisoId] = it.ingresoMensual;
   return {
@@ -145,10 +154,10 @@ export async function cargarSeleccionPagina(admin: SupabaseClient, user: { id: s
     ticket,
     cuentaCreadaAt: ticket ? (user.created_at ?? null) : null,
     destacado: a,
-    largo: sel.conLargo ? { origenId: sel.origen_analysis_id, combinacion: sel.combinacion, filas: primero(filas), finanzas, noDan: [], informes: informesLargos } : null,
+    largo: sel.conLargo ? { origenId: sel.origen_analysis_id, combinacion: sel.combinacion, filas: primero(filas), finanzas, noDan: [], informes: informesLargos, resumenes } : null,
     corto: sel.corto ? {
       origenId: sel.corto.origenId, combinacion: sel.corto.combinacion, filas: primero(filasCortas),
-      finanzas: { tasa: finanzasCorto?.tasa ?? null, uf: cfg.uf, arriendos: ingresosCortos }, noDan, informes: informesCortos,
+      finanzas: { tasa: finanzasCorto?.tasa ?? null, uf: cfg.uf, arriendos: ingresosCortos }, noDan, informes: informesCortos, resumenes,
     } : null,
     cortoPrimero: sel.conLargo && sel.corto != null && bloqueDelDestacado(a, filas, filasCortas) === "corto",
   };

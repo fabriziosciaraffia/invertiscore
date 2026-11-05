@@ -21,6 +21,8 @@ import { conCifrasNegociado, esNegociado, NEGOCIAR_COPY } from "@/lib/explorar/c
 import { YA_ANALIZADO } from "@/lib/guia/semanal-str";
 import { Borroso, ImagenDepto, useCalle, VeredictoDelPin, VeredictosNegociado } from "./tarjeta-pin";
 import { CompartidoCaido } from "./compartido-caido";
+import { ChipInformePropio } from "@/components/guia/ChipInformePropio";
+import type { ResumenInforme } from "@/lib/informe-propio";
 
 const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
 
@@ -28,13 +30,15 @@ export type CasoCompartido =
   | { tipo: "pin"; pin: PinMapa }
   | { tipo: "caido"; estado: EstadoCaido; depto: DeptoCompartido | null; parecidos: PinMapa[] };
 
-export function HojaCompartida({ caso, tope = null, sinCuenta, informe = null, generando = null, alAnalizar, alVerInforme, alAbrirParecido, alCerrar }: {
+export function HojaCompartida({ caso, tope = null, sinCuenta, informe = null, resumenes = {}, generando = null, alAnalizar, alVerInforme, alAbrirParecido, alCerrar }: {
   caso: CasoCompartido;
   /** El tope del enlace de un negociado (el título de «ya no llega»). */
   tope?: number | null;
   sinCuenta: boolean;
   /** El informe del depto si la cuenta ya lo analizó: en vez de «Analizar este», «Ya lo analizaste · Ver informe». */
   informe?: string | null;
+  /** El resumen de cada informe propio, por id (05-nov-2026): la tarjeta de un analizado dice SU informe, no la noche. */
+  resumenes?: Record<string, ResumenInforme>;
   generando?: string | null;
   /** Con cuenta, el pop-up de «Analizar este»; sin cuenta, la hoja de registro (lo decide quien la monta, como la tarjeta). */
   alAnalizar: (p: PinMapa) => void;
@@ -67,7 +71,10 @@ export function HojaCompartida({ caso, tope = null, sinCuenta, informe = null, g
             <div className="ex-comp-datos">
             <span className="ex-ojo" data-explorar="linea">{lineaDepto(p)}</span>
             <b className="ex-precio ex-comp-precio" data-explorar="precio">UF {miles(p.precioUF)}{esNegociado(p) && <span className="ex-publicado"> {NEGOCIAR_COPY.publicado}</span>}</b>
-            {esNegociado(p) ? (
+            {informe && !sinCuenta ? (
+              // YA LO ANALIZÓ (05-nov-2026, lib/informe-propio.ts): lo que dice SU informe, no la noche (ni su flujo).
+              resumenes[informe] && <span className="ex-linea2" data-explorar="informe-propio"><ChipInformePropio resumen={resumenes[informe]} noche={{ veredicto: p.veredicto, score: p.score }} /></span>
+            ) : esNegociado(p) ? (
               <VeredictosNegociado p={p} />
             ) : (
               <>

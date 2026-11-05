@@ -42,6 +42,9 @@ import { nombreDelDepto } from "@/lib/guia/compra-desde-depto";
 import { alCerrarQueda, informeFallo, informeGenerando, informeListo, type MotivoFallo, type PasoInforme } from "@/lib/guia/informe-en-camino";
 import { InformeListoAviso } from "./InformeEnCamino";
 import type { EstadoSaldo } from "@/lib/casa-saldo";
+import { ChipInformePropio } from "./ChipInformePropio";
+import { ChipVeredictoTokens } from "@/components/analysis/shared/ChipVeredicto";
+import type { ResumenInforme } from "@/lib/informe-propio";
 import "./guia.css";
 
 type Item = { avisoId: string; comuna: string; tipologia: string | null; m2: number; precioUF: number; distancia: string; veredicto: string | null; score: number | null; flujo: number | null; arriendo?: number | null };
@@ -77,6 +80,8 @@ export function GuiaBusqueda({ analysisId, veredicto, conSesion: conSesionInicia
   const [informe, setInforme] = useState<PasoInforme | null>(null);
   const [listoSinAbrir, setListoSinAbrir] = useState<{ id: string; ruta: string; depto: string; t0: number } | null>(null);
   const [informesAqui, setInformesAqui] = useState<Record<string, string>>({});
+  // El resumen de los informes hechos en esta visita (05-nov-2026): lo que respondió la ruta al crearlo.
+  const [resumenesAqui, setResumenesAqui] = useState<Record<string, ResumenInforme>>({});
   const ultimoAnalisis = useRef<Item | null>(null);
   const soltarCarga = useRef<(() => void) | null>(null);
   const precarga = rutaPrecarga(analysisId);
@@ -149,6 +154,8 @@ export function GuiaBusqueda({ analysisId, veredicto, conSesion: conSesionInicia
         }
         const d = (await res.json().catch(() => ({}))) as { id?: string; estado?: string; error?: string; veredicto?: string | null; score?: number | null };
         if (res.ok && d.id) {
+          const nuevo = d.id;
+          setResumenesAqui((m) => ({ ...m, [nuevo]: { veredicto: d.veredicto ?? null, score: d.score ?? null, fecha: new Date().toISOString() } }));
           capturarLqs(posthog, EVENTOS_LQS.guiaInformeCreado, ctx, { aviso_id: it.avisoId, nuevo_id: d.id, ya: d.estado === "ya-creado" });
           // Listo: el pop-up lo abre solo; si con los datos de hoy salió otro veredicto, lo dice primero.
           const listo = informeListo(paso0, { id: d.id, ruta: `/analisis/${d.id}`, veredicto: d.veredicto ?? null, score: d.score ?? null });
@@ -228,8 +235,13 @@ export function GuiaBusqueda({ analysisId, veredicto, conSesion: conSesionInicia
           {/* El informe quedó listo y no se abrió (03-nov-2026): el aviso queda arriba de la lista hasta que la persona lo quite. */}
           {listoSinAbrir && <InformeListoAviso depto={listoSinAbrir.depto} ruta={listoSinAbrir.ruta} id={listoSinAbrir.id} t0={listoSinAbrir.t0} alCerrar={() => setListoSinAbrir(null)} />}
           <div className="guia-lista">
+            {/* El chip del informe propio (05-nov-2026): esta página no monta el CSS del chip. */}
+            <ChipVeredictoTokens />
             {r.items.map((it) => {
               const neg = (it.flujo ?? 0) < 0;
+              // YA LO ANALIZÓ (05-nov-2026, lib/informe-propio.ts): lo que dice SU informe, no la noche (ni su flujo).
+              const informePropio = informesAqui[it.avisoId] ?? null;
+              const resumen = informePropio ? resumenesAqui[informePropio] : undefined;
               return (
                 <article key={it.avisoId} className="guia-av">
                   <div className="guia-top">
@@ -237,6 +249,9 @@ export function GuiaBusqueda({ analysisId, veredicto, conSesion: conSesionInicia
                     <span className="guia-dist">a {it.distancia}</span>
                   </div>
                   <div className="guia-precio">UF {miles(it.precioUF)}</div>
+                  {informePropio ? (
+                    resumen && <div className="guia-dos" data-guia="informe-propio"><ChipInformePropio resumen={resumen} noche={{ veredicto: it.veredicto, score: it.score }} /></div>
+                  ) : (
                   <div className="guia-dos">
                     <div>
                       <div className="guia-k">{GUIA.veredicto}</div>
@@ -252,6 +267,7 @@ export function GuiaBusqueda({ analysisId, veredicto, conSesion: conSesionInicia
                       )}
                     </div>
                   </div>
+                  )}
                   {registrando === it.avisoId ? (
                     <RegistroEnTarjeta ctx={ctx} next={typeof window === "undefined" ? "/" : window.location.pathname + window.location.search} alEntrar={() => { setConSesion(true); setRegistrando(null); setConfirmar({ it, sin: false }); }} />
                   ) : informesAqui[it.avisoId] ? (

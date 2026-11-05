@@ -51,6 +51,8 @@ import "@/app/dashboard/casa.css";
 import { CASA } from "@/app/dashboard/casa-copy";
 import { PinTarjeta } from "@/app/dashboard/mapa-casa";
 import { clasePinDeItem } from "@/lib/casa/mapa-casa";
+import { ChipInformePropio } from "@/components/guia/ChipInformePropio";
+import type { ResumenInforme } from "@/lib/informe-propio";
 
 const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
 const pct = (n: number) => String(Math.round(n * 10) / 10).replace(".", ",");
@@ -66,7 +68,7 @@ const REINTENTOS_CREDITO = 4;
 
 export function SemanalLista({
   token, origenId, combinacion, filas, destacado, saldo, variante, inmediato = false, finanzas = { tasa: null, uf: null, arriendos: {} },
-  modalidad = "ltr", bloque = null, conTitulo = true, cierre = true, noDan = [], informes = {}, ticket = false, cuentaCreadaAt = null, autoAnalizar = null, enCasa = false, aLaVista = null, desdeN = 1,
+  modalidad = "ltr", bloque = null, conTitulo = true, cierre = true, noDan = [], informes = {}, resumenes = {}, ticket = false, cuentaCreadaAt = null, autoAnalizar = null, enCasa = false, aLaVista = null, desdeN = 1,
 }: {
   token: string;
   origenId: string | null;
@@ -91,6 +93,9 @@ export function SemanalLista({
   noDan?: string[];
   /** Los que ya analizó, por aviso, con su informe: en renta corta desde el 15-oct-2026, en renta larga desde el 21-oct-2026. */
   informes?: Record<string, string>;
+  /** El resumen de cada informe de la persona, por id (05-nov-2026, lib/informe-propio.ts): la fila de un ya analizado dice
+   *  SU informe —veredicto, puntaje y fecha—, no la noche. */
+  resumenes?: Record<string, ResumenInforme>;
   /** La cuenta tiene menos de 24 horas y no pagó el pack: va al precio del ticket. */
   ticket?: boolean;
   /** Con el ticket vivo (22-oct-2026): cuándo nació la cuenta, para la línea del ticket con saldo en el pop-up. */
@@ -128,6 +133,8 @@ export function SemanalLista({
   const [informe, setInforme] = useState<PasoInforme | null>(null);
   const [listoSinAbrir, setListoSinAbrir] = useState<{ id: string; ruta: string; depto: string; t0: number } | null>(null);
   const [informesAqui, setInformesAqui] = useState<Record<string, string>>({});
+  // El resumen de los informes hechos en esta visita (05-nov-2026): lo que respondió la ruta al crearlo.
+  const [resumenesAqui, setResumenesAqui] = useState<Record<string, ResumenInforme>>({});
   const ultimoAnalisis = useRef<{ it: ItemSemanal; recienPagado: boolean; eleccion?: EleccionAnalizar; igual: boolean } | null>(null);
   const soltarCarga = useRef<(() => void) | null>(null);
   const conSaldo = saldo.tipo !== "sin";
@@ -191,6 +198,8 @@ export function SemanalLista({
         }
         const d = (await res.json().catch(() => ({}))) as { id?: string; error?: string; estado?: string; alternativas?: string[]; publicacion?: string | null; porQue?: string | null; saldo?: EstadoSaldo | null; veredicto?: string | null; score?: number | null };
         if (res.ok && d.id) {
+          const nuevo = d.id;
+          setResumenesAqui((m) => ({ ...m, [nuevo]: { veredicto: d.veredicto ?? null, score: d.score ?? null, fecha: new Date().toISOString() } }));
           // Listo: el pop-up lo abre solo (también en renta corta, que mide con la tarjeta); si salió otro veredicto, lo dice primero.
           const listo = informeListo(paso0, { id: d.id, ruta: corta ? `/analisis/renta-corta/${d.id}` : `/analisis/${d.id}`, veredicto: d.veredicto ?? null, score: d.score ?? null });
           setPopup(null);
@@ -283,7 +292,9 @@ export function SemanalLista({
   // Ya lo analizó: en renta corta, el informe de la medición fina (15-oct-2026); en renta larga, el que trae el depto ya
   // visto (19-oct-2026) o, desde el 21-oct-2026, el que leyó el servidor recién (en vivo, al volver del informe).
   const informeDe = (it: ItemSemanal): string | undefined => it.informeId ?? informes[it.avisoId] ?? informesAqui[it.avisoId];
-  const nombre = (it: ItemSemanal) => [ojoDe(it), `UF ${miles(it.precioUF)}`, it.veredicto ? `${etiquetaVeredicto(it.veredicto, "frase")}${it.score != null ? ` ${it.score}` : ""}` : null].filter(Boolean).join(" · ");
+  // EL YA ANALIZADO DICE SU INFORME (05-nov-2026, lib/informe-propio.ts): el depto y su precio; el veredicto y el puntaje son
+  // los de su informe (ChipInformePropio), no los de la noche.
+  const nombre = (it: ItemSemanal) => [ojoDe(it), `UF ${miles(it.precioUF)}`].join(" · ");
   const acciones = (it: ItemSemanal): JSX.Element => {
     // Renta corta: medido fino y no dio. Queda dicho, sin botón.
     if (corta && noDa.has(it.avisoId)) return <p className="sel-estado" data-semanal="no-da">{MARCA_NO_DA}</p>;
@@ -312,15 +323,23 @@ export function SemanalLista({
 
   // EL YA ANALIZADO, EN SU POSICIÓN (24-oct-2026, mockup 3b): una fila compacta y gris —el pin, el depto con su veredicto,
   // «Ya lo analizaste» y «Ver informe»—, no una tarjeta ni al final.
-  const filaAnalizada = (it: ItemSemanal, informe: string, n: number | null): JSX.Element => (
-    <EnlaceCarga key={it.avisoId} href={corta ? `/analisis/renta-corta/${informe}` : `/analisis/${informe}`} className="sel-fila" data-semanal="ya-analizado" data-n={n ?? undefined}>
-      <span className="sel-fila-txt">
-        <span className="sel-fila-ojo">{n != null && <PinTarjeta n={n} clase="analizado" />}{nombre(it)}</span>
-        <span className="sel-fila-ya">{YA_ANALIZADO.texto}</span>
-      </span>
-      <span className="sel-fila-ver">{YA_ANALIZADO.enlace}</span>
-    </EnlaceCarga>
-  );
+  const resumenDe = (informe: string): ResumenInforme | undefined => resumenes[informe] ?? resumenesAqui[informe];
+  const filaAnalizada = (it: ItemSemanal, informe: string, n: number | null): JSX.Element => {
+    const resumen = resumenDe(informe);
+    return (
+      <EnlaceCarga key={it.avisoId} href={corta ? `/analisis/renta-corta/${informe}` : `/analisis/${informe}`} className="sel-fila" data-semanal="ya-analizado" data-n={n ?? undefined}>
+        <span className="sel-fila-txt">
+          <span className="sel-fila-ojo">{n != null && <PinTarjeta n={n} clase="analizado" />}{nombre(it)}</span>
+          {resumen ? (
+            <span className="sel-fila-informe"><ChipInformePropio resumen={resumen} noche={{ veredicto: it.veredicto, score: it.score }} /></span>
+          ) : (
+            <span className="sel-fila-ya">{YA_ANALIZADO.texto}</span>
+          )}
+        </span>
+        <span className="sel-fila-ver">{YA_ANALIZADO.enlace}</span>
+      </EnlaceCarga>
+    );
+  };
 
   const tarjeta = (it: ItemSemanal, clave: string = it.avisoId, n: number | null = null): JSX.Element => {
     const informe = informeDe(it);

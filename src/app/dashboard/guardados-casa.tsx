@@ -11,6 +11,7 @@ import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { lineaDepto } from "@/lib/guia/linea-depto";
 import { COMPARAR_MAX_GUARDADOS, COMPARAR_MIN_GUARDADOS, GUARDADOS_COPY, hrefEnMapa, lineaGuardado, tablaComparacion, type DeptoGuardado } from "@/lib/explorar/guardados";
 import { FilaPlegada } from "./casa";
+import { ChipInformePropio } from "@/components/guia/ChipInformePropio";
 
 const C = GUARDADOS_COPY;
 const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
@@ -42,7 +43,10 @@ export function GuardadosCasa({ inicial, uf }: { inicial: DeptoGuardado[]; uf: n
               <div className="ca-guardado-datos">
                 <span className="ca-guardado-ojo">{lineaDepto(d)}</span>
                 {d.precioUF != null && <b className="ca-guardado-precio">UF {miles(d.precioUF)}</b>}
-                <span className="ca-guardado-linea">{lineaGuardado(d)}</span>
+                {/* YA LO ANALIZÓ (05-nov-2026, lib/informe-propio.ts): lo que dice SU informe, no la noche (ni su flujo). */}
+                {d.informeId && d.activo ? (
+                  d.resumen && <span className="ca-guardado-linea" data-casa="informe-propio"><ChipInformePropio resumen={d.resumen} noche={{ veredicto: d.veredicto, score: d.score }} enColumna={false} /></span>
+                ) : <span className="ca-guardado-linea">{lineaGuardado(d)}</span>}
                 <span className="ca-guardado-acciones">
                   {d.informeId
                     ? <EnlaceCarga href={`/analisis/${d.informeId}`}>{C.verInforme}</EnlaceCarga>

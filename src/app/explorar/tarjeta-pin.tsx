@@ -33,6 +33,8 @@ import { conCifrasNegociado, esNegociado, NEGOCIAR_COPY, type PinNegociado } fro
 import { AL_PRECIO_PUBLICADO } from "@/lib/precio-publicado";
 import type { Veredicto } from "@/lib/types";
 import { COMPARTIR_COPY } from "@/lib/explorar/compartir";
+import { ChipInformePropio } from "@/components/guia/ChipInformePropio";
+import type { ResumenInforme } from "@/lib/informe-propio";
 
 const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
 
@@ -101,12 +103,14 @@ export function VeredictosNegociado({ p }: { p: PinNegociado }) {
   );
 }
 
-export function TarjetaPin({ pines, seleccionado, uf, analizados, guardados, generando, error, alCambiar, alCerrar, alGuardar, alAnalizar, alCompartir, alPrepararCompartir, alVerInforme, sinCuenta = false, recien = null }: {
+export function TarjetaPin({ pines, seleccionado, uf, analizados, resumenes = {}, guardados, generando, error, alCambiar, alCerrar, alGuardar, alAnalizar, alCompartir, alPrepararCompartir, alVerInforme, sinCuenta = false, recien = null }: {
   /** Los cercanos, el tocado primero. */
   pines: PinMapa[];
   seleccionado: string;
   uf: number | null;
   analizados: Record<string, string>;
+  /** El resumen de cada informe propio, por id (05-nov-2026): la tarjeta de un analizado dice SU informe, no la noche. */
+  resumenes?: Record<string, ResumenInforme>;
   guardados: ReadonlySet<string>;
   generando: string | null;
   error: { avisoId: string; texto: string } | null;
@@ -198,7 +202,16 @@ export function TarjetaPin({ pines, seleccionado, uf, analizados, guardados, gen
                     </span>
                   </div>
                   <b className="ex-precio" data-explorar="precio">UF {miles(p.precioUF)}{esNegociado(p) && <span className="ex-publicado"> {NEGOCIAR_COPY.publicado}</span>}</b>
-                  {esNegociado(p) ? (
+                  {informe && !sinCuenta ? (
+                    // YA LO ANALIZÓ (05-nov-2026, lib/informe-propio.ts): lo que dice SU informe —veredicto, puntaje y fecha—, no la
+                    // noche (ni su flujo); si la noche hoy da distinto, la línea chica. Las cifras de la publicación siguen.
+                    <>
+                      {resumenes[informe] && <span className="ex-linea2" data-explorar="informe-propio"><ChipInformePropio resumen={resumenes[informe]} noche={{ veredicto: p.veredicto, score: p.score }} /></span>}
+                      <span className="ex-linea3" data-explorar="cifras">
+                        {[cap != null ? `${PORTAL_COPY.capRate} ${pctUno(cap)}` : null, m2 != null ? `${miles(m2)} ${PORTAL_COPY.porM2}` : null].filter(Boolean).join(" · ")}
+                      </span>
+                    </>
+                  ) : esNegociado(p) ? (
                     <VeredictosNegociado p={p} />
                   ) : sinCuenta ? (
                     <>
