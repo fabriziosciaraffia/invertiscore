@@ -266,7 +266,8 @@ export async function runExplorarRecorridoTier(): Promise<{ hard: number }> {
   }
   if (!/\.ex-tarjeta\[data-recien="1"\] \.ex-linea2, \.ex-tarjeta\[data-recien="1"\] \.ex-linea3 \{ animation: ex-desbloquear/.test(css) || !/@keyframes ex-desbloquear \{ from \{ filter: blur\(5px\);[^}]*\} to \{ filter: none;/.test(css)) F("7 · la vuelta no pasa de borroso a nítido");
   const efecto = cli.slice(cli.indexOf("const v = vuelta.current;"), cli.indexOf("}, [listaVuelta, universo]);"));
-  if (!/setRecien\(\{ avisoId: it\.avisoId, regalo: usaRegalo\(cuenta\.saldo\) \}\)/.test(efecto) || /pedirAnalisis|setConfirmar/.test(efecto) || !/recien=\{recien\}/.test(cli)) F("7 · al volver no se marca la tarjeta del pin (o se abre el pop-up solo)");
+  // ⚠ ACTA (05-nov-2026, auditoría de promesas parte 3) · la marca lleva también el motivo sin regalo (`sinRegalo`).
+  if (!/setRecien\(\{ avisoId: it\.avisoId, regalo: usaRegalo\(cuenta\.saldo\), sinRegalo: cuenta\.sinRegalo \?\? null \}\)/.test(efecto) || /pedirAnalisis|setConfirmar/.test(efecto) || !/recien=\{recien\}/.test(cli)) F("7 · al volver no se marca la tarjeta del pin (o se abre el pop-up solo)");
   try {
     const { AvisoAntesDeAnalizar } = require(join(RAIZ, "src/components/guia/AvisoAntesDeAnalizar")) as { AvisoAntesDeAnalizar: FC<Record<string, unknown>> };
     const base = { depto: PIN, combinacion: { piePct: 20, plazoAnios: 30 }, finanzas: { tasa: 4.07, uf: 39000, arriendo: PIN.arriendo }, uso: { tipo: "con", n: 2, noVencen: false }, rutaCompra: "/x", alAnalizar() {}, alCancelar() {} };

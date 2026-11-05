@@ -127,7 +127,9 @@ export function runPlanesTier(): { hard: number } {
   const C = PLANES_COPY;
   const exactos4: Array<[string, string]> = [
     [C.bajada, "Con cualquiera de los tres recibes cada semana los deptos que convienen según tu perfil. La diferencia es cuántos análisis tienes para los que te interesan."],
-    [C.gratis.incluye.join(" | "), "Cada semana, los deptos que convienen según tu perfil | Un análisis gratis al crear tu cuenta | Un análisis más por cada amigo que invites"],
+    // ⚠ ACTA (05-nov-2026, goal de Fabrizio, auditoría de promesas parte 3) · «por cada amigo que invites» prometía de más: el
+    // premio sale cuando el invitado hace su primer análisis, hasta 5, vigente 60 días (referido.ts › REGLA_REFERIDO).
+    [C.gratis.incluye.join(" | "), "Cada semana, los deptos que convienen según tu perfil | Un análisis gratis al crear tu cuenta | Un análisis más cuando un invitado hace su primer análisis (hasta 5, vigente 60 días)"],
     [C.pack.nombre, "Pack de 3"], [C.pack.detalle, "Todo lo de Gratis, más 3 análisis"], [`${C.pack.precio} ${C.pack.unidad}`, "$19.990 pago único"],
     [C.pack.ahorro, "$6.663 cada uno, en vez de $9.990"], [C.pack.condicion, "No vencen"], [C.pack.boton, "Comprar el pack"],
     [C.plan.detalle, "Todo lo de Gratis, más 20 análisis cada mes"], [`${C.plan.precio} ${C.plan.unidad}`, "$39.990 al mes"],

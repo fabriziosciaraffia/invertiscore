@@ -175,7 +175,10 @@ export async function runExplorarNegociarTier(): Promise<{ hard: number }> {
     // ⚠ ACTA (04-nov-2026, la pasada de Fabrizio por /explorar, tier EXPLORAR-PASADA-0411) · el aviso del precio movido es el texto que dictó Fabrizio («Desde anoche entraron avisos nuevos en
     // la zona y el precio al que conviene cambió: hoy llega a Comprar con UF 2.085…»): el precio al que conviene es el negociado, dicho
     // en la misma frase.
-    const FUERA = ["PORTAL_COPY.pestana", "PORTAL_COPY.v2.financiamiento.tooltip", "BIENVENIDA_COPY.paso1", "NEGOCIAR_COPY.movido()"];
+    // ⚠ ACTA (05-nov-2026, goal de Fabrizio, auditoría de promesas parte 3) · «Listo.» de «Avísame» dice el texto que dictó
+    // Fabrizio para lo que de verdad llega («Cada lunes te mandamos los nuevos que convienen; si marcas Quiero comprar ya, cada
+    // día que aparezca uno»; guia/aviso-nuevos.ts): describe el correo, no un precio del mapa, y es el mismo en todo el sitio.
+    const FUERA = ["PORTAL_COPY.pestana", "PORTAL_COPY.v2.financiamiento.tooltip", "BIENVENIDA_COPY.paso1", "NEGOCIAR_COPY.movido()", "PORTAL_COPY.aviso.listo"];
     const textos: [string, string][] = [["deptosN(0)", po.deptosN(0)], ["DESGLOSE_COPY.ninguno(10)", po.DESGLOSE_COPY.ninguno(10)]];
     const recorrer = (o: object, ruta: string) => {
       for (const [k, v] of Object.entries(o)) {

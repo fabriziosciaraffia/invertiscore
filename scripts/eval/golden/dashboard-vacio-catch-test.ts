@@ -60,13 +60,15 @@ export function runDashboardVacioTier(): { hard: number } {
   if (BIENVENIDA.titular !== "Esto es lo que Franco hace por ti.") F("6 · el titular no es «Esto es lo que Franco hace por ti.»");
   if (BIENVENIDA.hace.length !== 2 || BIENVENIDA.hace[0]?.titulo !== "Analiza tus deptos.") F("6 · no son los dos bloques, o el primero no es «Analiza tus deptos.»");
   if (BIENVENIDA.hace[1]?.titulo !== "Te hace llegar oportunidades de inversión.") F("6 · el título del bloque de oportunidades no es «Te hace llegar oportunidades de inversión.»");
-  if (BIENVENIDA.hace[1]?.texto !== "Franco tiene un portafolio de deptos para invertir, y todos pasaron por el mismo análisis que vas a hacer tú. Estamos abriendo el acceso: te escribimos apenas tengamos uno que calce con lo que buscas.") F("6 · el texto del bloque de oportunidades no es el aprobado");
+  // ACTA (05-nov-2026, auditoría de promesas parte 3): los textos de los bloques son funciones (la cifra de comparables en
+  // vivo entra por parámetro, comparables-vivos.ts); el de oportunidades no lleva cifra y se llama sin argumento.
+  if (BIENVENIDA.hace[1]?.texto() !== "Franco tiene un portafolio de deptos para invertir, y todos pasaron por el mismo análisis que vas a hacer tú. Estamos abriendo el acceso: te escribimos apenas tengamos uno que calce con lo que buscas.") F("6 · el texto del bloque de oportunidades no es el aprobado");
   if (!/\{i === 1 && perfil && <ChipsPerfil perfil=\{perfil\} demo=\{demo\} \/>\}/.test(b)) F("6 · los chips del perfil no van dentro del segundo bloque");
   if (!/className="flex flex-nowrap items-center gap-2 overflow-x-auto \[scrollbar-width:none\]"/.test(b) || (b.match(/<span aria-hidden="true">\{/g) ?? []).length !== 3 || (b.match(/<select aria-label=/g) ?? []).length !== 3 || !/fetch\("\/api\/lo-que-sigue\/perfil"/.test(b)) F("6 · los chips del perfil no son tres, editables y en una línea");
   if (!/if \(demo\) return;/.test(b)) F("6 · la demo escribe el perfil");
   if (!/\.from\("perfiles_inversion"\)[\s\S]{0,200}\.eq\("user_id", user\.id\)/.test(pag) || !/pref_tipologia \?\? perfilRow\.tipologia/.test(pag)) F("6 · la página no lee el perfil (con lo editado primero)");
   // 7
-  const textos = [BIENVENIDA.saludo("x"), BIENVENIDA.saludo(null), BIENVENIDA.titular, ...BIENVENIDA.hace.flatMap((h) => [h.titulo, h.texto]), BIENVENIDA.boton(true), BIENVENIDA.boton(false)];
+  const textos = [BIENVENIDA.saludo("x"), BIENVENIDA.saludo(null), BIENVENIDA.titular, ...BIENVENIDA.hace.flatMap((h) => [h.titulo, h.texto()]), BIENVENIDA.boton(true), BIENVENIDA.boton(false)];
   for (const t of textos) if (VOSEO.test(t)) F(`7 · voseo: «${t}»`);
   // 8 · corta
   const copy = sinComentarios(leer("src/app/dashboard/bienvenida-copy.ts"));

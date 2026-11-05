@@ -187,9 +187,12 @@ export async function runUnidadesTier(): Promise<{ hard: number }> {
     // ⚠ ACTA (22-oct-2026, VEREDICTO-GUARDADO) · la foto se relee en UN solo lugar (lib/analysis/mediana-snapshot.ts ›
     // medianaDesdeSnapshot), que copia «estimada» con el universo y los cuartiles; las dos páginas la llaman.
     if (!/\.\.\.\(snap\.estimada \? \{ estimada: true \} : \{\}\)/.test(leer("src/lib/analysis/mediana-snapshot.ts"))) F("8 · medianaDesdeSnapshot relee la foto sin «estimada»: el informe la olvida");
-    for (const p of ["src/app/analisis/[id]/documento/page.tsx", "src/app/analisis/[id]/informe-ltr.tsx"]) {
+    // ⚠ ACTA (05-nov-2026, auditoría de promesas parte 3) · el recálculo del informe se mudó a lib/analysis/resultados-del-
+    // informe.ts (la portada, sus metadatos, la OG y la tarjeta dicen el mismo puntaje); el informe lo llama.
+    for (const p of ["src/app/analisis/[id]/documento/page.tsx", "src/lib/analysis/resultados-del-informe.ts"]) {
       if (!/medianaDesdeSnapshot\(medianaSnapshot, /.test(leer(p))) F(`8 · ${p} no relee la foto con medianaDesdeSnapshot`);
     }
+    if (!/\(await resultadosPorId\(/.test(leer("src/app/analisis/[id]/informe-ltr.tsx"))) F("8 · el informe no relee la foto por resultados-del-informe");
     if (!/estimada: medianaComunaVentaUF\?\.estimada/.test(sinComentarios(leer("src/lib/analysis.ts")))) F("8 · el motor no pasa «estimada» a precioVsComuna");
     const zona = sinComentarios(leer("src/components/analysis/zona/ZonaLtr.tsx"));
     if ((zona.match(/m2\.estimada \? ` · \$\{REFERENCIA_ESTIMADA\}` : ""/g) ?? []).length !== 2) F("8 · la zona del informe no dice «referencia estimada» en la fuente y en la glosa del m²");

@@ -30,6 +30,7 @@ import { textoUso } from "../../../src/lib/guia/aviso-analizar";
 import { CASA, lineaSaldo } from "../../../src/app/dashboard/casa-copy";
 import { SELECCION_CASA, deEstaSemana, esDesdeSemanal, origenDeInforme, resumenSeleccion, textoOrigenArchivo } from "../../../src/lib/guia/seleccion-casa";
 import { textoCierre } from "../../../src/lib/cierre-informe";
+import { TIEMPO_ANALISIS } from "../../../src/lib/stats";
 
 const RAIZ = join(__dirname, "..", "..", "..");
 const leer = (p: string) => readFileSync(join(RAIZ, p), "utf8").replace(/\r\n/g, "\n");
@@ -182,7 +183,10 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
 
   // ── 5 · MIENTRAS MIDE ──────────────────────────────────────────────────────────
   {
-    if (STR.MIDIENDO !== "Midiendo con los datos de su dirección, unos 30 segundos" || STR.MIDIENDO_TOPE_MS !== 60_000) F("5 · el texto o el tope de la medición no son los aprobados");
+    // ⚠ ACTA (05-nov-2026, goal de Fabrizio, auditoría de promesas parte 3: «"30 segundos / 2 minutos" pasa a una sola cifra
+    // medida») · la medición dice la cifra única de stats.ts (TIEMPO_ANALISIS, medida sobre pipeline_timing). Y §10 suma
+    // `publicaciones` al bloque corto: la tarjeta «no da» conserva el enlace a la publicación.
+    if (STR.MIDIENDO !== `Midiendo con los datos de su dirección: toma ${TIEMPO_ANALISIS}` || STR.MIDIENDO_TOPE_MS !== 60_000) F("5 · el texto o el tope de la medición no son los aprobados");
     const acciones = cuerpo(lista, "const acciones = (it: ItemSemanal): JSX.Element => {", "\n  };\n");
     if (!/if \(corta && generando === it\.avisoId\) \{[\s\S]*?<Loader2 className="h-4 w-4 shrink-0 animate-spin[^"]*" aria-hidden \/>\s*<span>\{MIDIENDO\}<\/span>/.test(acciones)) F("5 · al medir, el botón no pasa al indicador giratorio con su texto");
     if (!/const reloj = corta \? window\.setTimeout\(\(\) => control\.abort\(\), MIDIENDO_TOPE_MS\) : null;/.test(lista) || !/signal: control\.signal,/.test(lista) || !/if \(corta && control\.signal\.aborted\) \{ setConfirmar\(null\); setTardo\(it\.avisoId\); \}/.test(lista))
@@ -231,8 +235,12 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
     // ⚠ ACTA (28-oct-2026, RESPALDO-MAPA) · la tarjeta se numera desde el número de su bloque (`desdeN`: el segundo bloque sigue la cuenta del primero).
     if (/NO_DA|parecidos|alternativas|popup/.test(enLista) || !/\) : tarjeta\(f\.item, f\.item\.avisoId, i \+ desdeN\)\)\)\}/.test(enLista)) F("6 · algo del «no da» se inserta en la lista");
     // La tarjeta original: marcada, sin botón.
+    // ⚠ ACTA (05-nov-2026, goal de Fabrizio, auditoría de promesas parte 3: «"Te mostramos la publicación igual" también en la
+    // tarjeta: conserva el enlace y "Analizar igual"») · la tarjeta que no dio sigue marcada, y ahora conserva lo que el
+    // pop-up ofrecía: el enlace a la publicación y «Analizar igual». (PROMESAS-TEXTOS §6 fija los dos dentro de esta rama.)
     const acciones = cuerpo(lista, "const acciones = (it: ItemSemanal): JSX.Element => {", "\n  };\n");
-    if (!/if \(corta && noDa\.has\(it\.avisoId\)\) return <p className="sel-estado" data-semanal="no-da">\{MARCA_NO_DA\}<\/p>;/.test(acciones)) F("6 · la tarjeta que no dio no queda marcada sin botón");
+    const ramaNoDa = acciones.match(/if \(corta && noDa\.has\(it\.avisoId\)\) \{[\s\S]*?\n {4}\}\n/)?.[0] ?? "";
+    if (!/<div data-semanal="no-da">\s*<p className="sel-estado">\{MARCA_NO_DA\}<\/p>/.test(ramaNoDa) || !/data-semanal="ver-publicacion"/.test(ramaNoDa) || !/data-semanal="analizar-igual"/.test(ramaNoDa)) F("6 · la tarjeta que no dio no queda marcada, con la publicación y «Analizar igual»");
     // También al volver: la página lee las que no dieron y no se cobraron.
     const noDan = cuerpo(srv, "export async function noDanEnRentaCorta(");
     if (!/\.from\("comparaciones_zona_str"\)\.select\("aviso_id"\)\s*\.eq\("user_id", userId\)\.in\("aviso_id", avisoIds\)\.neq\("fino_veredicto", "COMPRAR"\)\.eq\("cobrado", false\);/.test(noDan)) F("6 · al volver a la página no se sabe cuáles no dieron (o se marcan los cobrados)");
@@ -421,7 +429,7 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
     if (!/const mediciones = await medicionesDePersona\(admin, userId\);/.test(prepStrFn) || !/return aplicarMedicion\(evaluarStrCon\(body, zona\.estimacion, cfg, c\.medianaComuna, asOf\), med\?\.m, med\?\.informe\);/.test(prepStrFn))
       F("10 · el armado (y el prechequeo) no aplican lo que la persona ya midió");
     if (!/\.\.\.\(ev\.informeId \? \{ informeId: ev\.informeId \} : \{\}\),/.test(srv)) F("10 · la selección no guarda el informe de lo ya analizado");
-    if (!/\.eq\("fino_veredicto", "COMPRAR"\)\.not\("analysis_id", "is", null\);/.test(cuerpo(srv, "export async function informesEnRentaCorta(")) || !/informesEnRentaCorta\(admin, userId, idsCortos\)/.test(pagina) || !/noDan, informes: informesCortos,/.test(pagina) || !/informes=\{sel\.corto\.informes\}/.test(pagina))
+    if (!/\.eq\("fino_veredicto", "COMPRAR"\)\.not\("analysis_id", "is", null\);/.test(cuerpo(srv, "export async function informesEnRentaCorta(")) || !/informesEnRentaCorta\(admin, userId, idsCortos\)/.test(pagina) || !/noDan, publicaciones, informes: informesCortos,/.test(pagina) ||!/informes=\{sel\.corto\.informes\}/.test(pagina))
       F("10 · la página no sabe cuáles ya analizó");
     const acciones = cuerpo(lista, "const acciones = (it: ItemSemanal): JSX.Element => {", "\n  };\n");
     // ⚠ ACTA (19-oct-2026, «lo ya visto no ocupa lugar») · el informe sale de `informeDe`: en renta corta, el de la medición

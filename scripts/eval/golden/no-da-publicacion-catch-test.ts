@@ -136,7 +136,12 @@ export async function runNoDaPublicacionTier(): Promise<{ hard: number }> {
   if (promesa !== "Si da, el informe incluye el enlace a la publicación; si no da, no gastas y te mostramos la publicación igual.") F(`5 · la promesa de renta corta no es la pedida: «${promesa}»`);
   if (`${AVISO_ANALIZAR.incluye.antes}${AVISO_ANALIZAR.incluye.fuerte}${AVISO_ANALIZAR.incluye.despues}` !== "El informe incluye el enlace a la publicación.") F("5 · la de renta larga cambió");
   const aviso = codigo("src/components/guia/AvisoAntesDeAnalizar.tsx");
-  if (!/const incluye = modalidad === "str" \? AVISO_ANALIZAR\.incluyeCorta : AVISO_ANALIZAR\.incluye;/.test(aviso)
+  // ⚠ ACTA (05-nov-2026, goal de Fabrizio, auditoría de promesas parte 3: «"Si no da, no gastas" pasa a "no usas un análisis"
+  // al comprar») · sin saldo, la persona está comprando y «no gastas» al lado de «Comprar» se leía como «no pagas»: el pop-up
+  // dice la variante de comprar. Con saldo, la de siempre.
+  const promesaComprando = `${AVISO_ANALIZAR.incluyeCortaComprando.antes}${AVISO_ANALIZAR.incluyeCortaComprando.fuerte}${AVISO_ANALIZAR.incluyeCortaComprando.despues}`;
+  if (promesaComprando !== "Si da, el informe incluye el enlace a la publicación; si no da, no usas un análisis y te mostramos la publicación igual.") F(`5 · comprando, la promesa de renta corta no es la pedida: «${promesaComprando}»`);
+  if (!/const incluye = modalidad === "str" \? \(sin \? AVISO_ANALIZAR\.incluyeCortaComprando : AVISO_ANALIZAR\.incluyeCorta\) : AVISO_ANALIZAR\.incluye;/.test(aviso)
     || !/<span className=\{modalidad === "str" \? "av-incluye av-incluye-corta" : "av-incluye"\} data-aviso="incluye">\{incluye\.antes\}<b>\{incluye\.fuerte\}<\/b>\{incluye\.despues\}<\/span>/.test(aviso)) F("5 · el pop-up de antes no dice la promesa de renta corta en renta corta");
   if (!/\.wz-modal-compacto \.av-incluye-corta \{ white-space: normal; \}/.test(leer("src/components/formulario-v4/wizard-v4.css"))) F("5 · en el modo compacto la promesa de renta corta se corta con puntos suspensivos");
 

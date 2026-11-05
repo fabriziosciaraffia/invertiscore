@@ -138,7 +138,10 @@ export function runCorreosTier(): { hard: number } {
     const tb = txt(bv.html);
     if (bv.subject !== "Ya estás en Franco" || !/<title>Ya estás en Franco<\/title>/.test(bv.html) || !bv.html.includes(">Ya estás en Franco<")) F("8 · la bienvenida no se llama «Ya estás en Franco» (asunto y título)");
     if (!bv.html.includes(`mso-hide: all;">${BIENVENIDA.titular}</div>`)) F("8 · el texto previo de la bienvenida no es «Esto es lo que Franco hace por ti.»");
-    for (const b of BIENVENIDA.hace) if (!tb.includes(b.titulo) || !tb.includes(b.texto.slice(0, 40))) F(`8 · la bienvenida no lleva el bloque del dashboard «${b.titulo}»`);
+    // ACTA (05-nov-2026, auditoría de promesas parte 3): el texto de cada bloque es una función (la cifra de comparables en
+    // vivo entra por parámetro, comparables-vivos.ts); sin argumento da el texto con el respaldo, que es lo que el correo
+    // de esta prueba recibe (no le pasa la cifra).
+    for (const b of BIENVENIDA.hace) if (!tb.includes(b.titulo) || !tb.includes(b.texto().slice(0, 40))) F(`8 · la bienvenida no lleva el bloque del dashboard «${b.titulo}»`);
     if (/Cómo funciona/.test(tb)) F("8 · la bienvenida vuelve a «Cómo funciona»");
     if (!/>Analizar un depto<\/a>/.test(bv.html)) F("8 · el botón de la bienvenida no es «Analizar un depto»");
     const ca = txt(correoCheckoutAbandonado({ nombre: "Camila", producto: "1 análisis", tipo: "single" }).html);

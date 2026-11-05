@@ -18,7 +18,7 @@
 // ============================================================================
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
-import { COMPARABLES_CIFRA, COMPARABLES_MEDIDOS, COMPARABLES_PISO, COMPARABLES_TEXTO } from "../../../src/lib/stats";
+import { COMPARABLES_CIFRA, COMPARABLES_MEDIDOS, COMPARABLES_PISO, COMPARABLES_TEXTO, cifraComparables, pisoComparables, textoComparables } from "../../../src/lib/stats";
 
 const RAIZ = join(__dirname, "..", "..", "..");
 const sinComentarios = (s: string) =>
@@ -62,23 +62,27 @@ export function runCifraComparablesTier(): { hard: number } {
   // ACTA (27-sep-2026, decisión de Fabrizio): de «más de 40 mil» a dos formas del mismo piso,
   // «+40.000» sola y grande y «más de 40.000» en una frase. La regla no cambia: se deriva del número
   // medido, hacia abajo, y nunca promete más.
-  const piso = Math.floor(COMPARABLES_MEDIDOS / 10_000) * 10_000;
-  const puntos = piso.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-  if (COMPARABLES_PISO !== piso) F(`1 · COMPARABLES_PISO vale ${COMPARABLES_PISO} y lo medido (${COMPARABLES_MEDIDOS}) redondeado hacia abajo da ${piso}`);
-  if (COMPARABLES_TEXTO !== `más de ${puntos}`) F(`1 · COMPARABLES_TEXTO dice «${COMPARABLES_TEXTO}» y tendría que decir «más de ${puntos}»`);
-  if (COMPARABLES_CIFRA !== `+${puntos}`) F(`1 · COMPARABLES_CIFRA dice «${COMPARABLES_CIFRA}» y tendría que decir «+${puntos}»`);
-  for (const [nombre, t] of [["TEXTO", COMPARABLES_TEXTO], ["CIFRA", COMPARABLES_CIFRA]] as const) {
-    const prometido = Number((t.match(/(\d{1,3}(?:\.\d{3})+)/) ?? [])[1]?.replace(/\./g, ""));
-    if (!(prometido > 0) || prometido > COMPARABLES_MEDIDOS) F(`1 · COMPARABLES_${nombre} promete ${prometido} y se midieron ${COMPARABLES_MEDIDOS}`);
+  // ACTA (05-nov-2026, auditoría de promesas parte 3, goal de Fabrizio «"+40.000" sale del conteo vivo»): el número ya no
+  // es la constante medida a mano el 25-sep (41.976), sino el conteo de la base cada hora (comparables-vivos.ts); la
+  // constante queda de respaldo. Y el piso pasa a MILES: el conteo vivo dio 39.950, que a decenas de miles habría dicho
+  // «+30.000» y saltado entre 30 y 40 mil de una noche a otra. Lo que se fija es la REGLA —las funciones de stats.ts—,
+  // probada sobre varios conteos, no la cifra de hoy; y el respaldo sale de las mismas funciones.
+  for (const n of [999, 39_950, 41_976, 40_000, 100_001]) {
+    const piso = Math.floor(n / 1000) * 1000;
+    const puntos = piso.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    if (pisoComparables(n) !== piso) F(`1 · el piso de ${n} es ${pisoComparables(n)}, no ${piso} (hacia abajo, a miles)`);
+    if (textoComparables(n) !== `más de ${puntos}`) F(`1 · el texto de ${n} dice «${textoComparables(n)}» y tendría que decir «más de ${puntos}»`);
+    if (cifraComparables(n) !== `+${puntos}`) F(`1 · la cifra de ${n} dice «${cifraComparables(n)}» y tendría que decir «+${puntos}»`);
+    for (const t of [textoComparables(n), cifraComparables(n)]) {
+      const prometido = Number((t.match(/(\d{1,3}(?:\.\d{3})*)/) ?? [])[1]?.replace(/\./g, ""));
+      if (prometido > n) F(`1 · «${t}» promete ${prometido} y se contaron ${n}`);
+    }
   }
-  const fuente = readFileSync(join(RAIZ, FUENTE), "utf8");
-  if (
-    !/export const COMPARABLES_PISO = Math\.floor\(COMPARABLES_MEDIDOS \/ 10_000\) \* 10_000;/.test(fuente) ||
-    !/export const COMPARABLES_CIFRA = `\+\$\{conPuntos\(COMPARABLES_PISO\)\}`;/.test(fuente) ||
-    !/export const COMPARABLES_TEXTO = `más de \$\{conPuntos\(COMPARABLES_PISO\)\}`;/.test(fuente)
-  ) {
-    F("1 · las dos formas ya no se derivan de COMPARABLES_MEDIDOS: vuelve a haber una cifra escrita a mano");
-  }
+  if (COMPARABLES_PISO !== pisoComparables(COMPARABLES_MEDIDOS) || COMPARABLES_TEXTO !== textoComparables(COMPARABLES_MEDIDOS) || COMPARABLES_CIFRA !== cifraComparables(COMPARABLES_MEDIDOS))
+    F("1 · el respaldo ya no sale de las mismas funciones: vuelve a haber una cifra escrita a mano");
+  const vivos = readFileSync(join(RAIZ, "src/lib/comparables-vivos.ts"), "utf8");
+  if (!/return \{ n, piso: pisoComparables\(n\), cifra: cifraComparables\(n\), texto: textoComparables\(n\) \};/.test(vivos))
+    F("1 · el conteo vivo no arma sus dos formas con las funciones de stats.ts");
 
   // ── 2 · nadie la escribe a mano ──
   const rutas = archivos(join(RAIZ, "src"))
@@ -93,26 +97,35 @@ export function runCifraComparablesTier(): { hard: number } {
   }
   if (rutas.length < 300) F(`0 · el barrido leyó ${rutas.length} archivos de src/: no está leyendo el repo`);
 
-  // ── 3 · las superficies que la citan la leen de la fuente ──
-  for (const rel of CONSUMIDORES) {
-    const src = sinComentarios(readFileSync(join(RAIZ, rel), "utf8"));
-    // ACTA (27-sep-2026): con dos formas, la superficie importa la que usa. La cifra grande de la
-    // landing no se interpola en un texto: se pasa entera al contador que la escribe.
-    const imp = src.match(/import \{([^}]*)\} from ["'](?:@\/lib|\.)\/stats["'];/);
-    const usadas = imp ? (imp[1].match(/\bCOMPARABLES_(?:TEXTO|CIFRA)\b/g) ?? []) : [];
-    const sinImport = imp ? src.replace(imp[0], "") : src;
-    // la cita: interpolada en un texto («${COMPARABLES_TEXTO}») o pasada entera a un prop («={COMPARABLES_CIFRA}»)
-    const cita = (u: string) => sinImport.includes("${" + u) || sinImport.includes("={" + u + "}");
-    if (usadas.length === 0 || !usadas.some(cita)) {
-      F(`3 · ${rel} no cita la cifra desde ${FUENTE} (COMPARABLES_TEXTO o COMPARABLES_CIFRA)`);
-    }
-  }
+  // ── 3 · las superficies que la citan la leen del conteo vivo ──
+  // ACTA (05-nov-2026, conteo vivo): ya no importan la constante de stats.ts. Cada superficie que la dice, o la lee ella
+  // misma (`comparablesVivos()`) y cita lo que devuelve, o la recibe por parámetro y la interpola —y entonces quien la
+  // dibuja la lee del conteo vivo y se la pasa—. Cada par se fija por separado: que el parámetro exista no prueba que
+  // alguien le pase la cifra viva.
+  const s = (rel: string) => sinComentarios(readFileSync(join(RAIZ, rel), "utf8").replace(/\r\n/g, "\n"));
+  const reglas: Array<[string, RegExp, string]> = [
+    ["src/app/metodologia/page.tsx", /const \{ texto: COMPARABLES_TEXTO \} = await comparablesVivos\(\);[\s\S]*\$\{COMPARABLES_TEXTO\} deptos comparables/, "lee el conteo vivo y lo cita"],
+    ["src/app/layout.tsx", /const \{ texto: COMPARABLES_VIVOS \} = await comparablesVivos\(\);[\s\S]*\$\{COMPARABLES_VIVOS\} propiedades/, "lee el conteo vivo y lo cita en su descripción"],
+    ["src/app/page.tsx", /const \{ texto \} = await comparablesVivos\(\);[\s\S]*contra \$\{texto\} deptos comparables/, "lee el conteo vivo para su descripción"],
+    ["src/app/page.tsx", /comparables\] = await Promise\.all\(\[leerDatosLanding\(\), comparablesVivos\(\)\]\)[\s\S]*<PorQueCreerle comparables=\{comparables\} \/>/, "le pasa el conteo vivo a «Por qué creerle»"],
+    ["src/components/landing-v14/Secciones.tsx", /<ContadorComparables final=\{comparables\.cifra\} piso=\{comparables\.piso\} \/>/, "dice la cifra que recibe"],
+    ["src/lib/faq-data.ts", /\$\{comparables\} propiedades/, "interpola la cifra que recibe"],
+    ["src/app/faq/page.tsx", /const \{ texto \} = await comparablesVivos\(\);[\s\S]*faqSecciones\(texto\)/, "le pasa el conteo vivo al FAQ"],
+    ["src/app/dashboard/bienvenida-copy.ts", /\(comparables: string = COMPARABLES_TEXTO\) => `[^`]*\$\{comparables\} propiedades/, "interpola la cifra que recibe (con el respaldo por defecto)"],
+    ["src/app/dashboard/bienvenida.tsx", /\{h\.texto\(comparables\)\}/, "le pasa la cifra a su texto"],
+    ["src/app/dashboard/page.tsx", /<Bienvenida [^>]*comparables=\{\(await comparablesVivos\(\)\)\.texto\}/, "le pasa el conteo vivo a la bienvenida"],
+    ["src/lib/email/correos.ts", /analiza\.texto\(p\.comparables\)/, "el correo de bienvenida interpola la cifra que recibe"],
+    ["src/lib/email.ts", /comparablesVivos\(\)\)\.then\(\(c\) => c\.texto\)[\s\S]{0,200}correoBienvenida\(\{[^}]*comparables \}/, "le pasa el conteo vivo al correo de bienvenida"],
+  ];
+  for (const [rel, re, que] of reglas) if (!re.test(s(rel))) F(`3 · ${rel} no ${que}`);
+  if (reglas.length < CONSUMIDORES.length) F("3 · hay superficies de la lista sin regla");
+  for (const rel of CONSUMIDORES) if (!reglas.some(([r]) => r === rel)) F(`3 · ${rel} cita la cifra y no tiene regla`);
 
   if (fallas.length) {
     console.log(`  ✗ CIFRA-COMPARABLES · ${fallas.length} falla(s):`);
     for (const f of fallas.slice(0, 30)) console.log(`     · ${f}`);
   } else {
-    console.log(`  ✓ VERDE — «${COMPARABLES_CIFRA}» y «${COMPARABLES_TEXTO}» salen de ${COMPARABLES_MEDIDOS} medidos; ${CONSUMIDORES.length} superficies la leen de ${FUENTE} y ninguna de ${rutas.length} archivos la escribe a mano`);
+    console.log(`  ✓ VERDE — la cifra sale del conteo vivo con piso a miles (respaldo «${COMPARABLES_CIFRA}»); ${CONSUMIDORES.length} superficies la reciben de comparablesVivos() y ninguna de ${rutas.length} archivos la escribe a mano`);
   }
   return { hard: fallas.length };
 }

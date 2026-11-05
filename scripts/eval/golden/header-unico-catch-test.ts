@@ -55,7 +55,9 @@ const EXCEPCIONES_HEADER: { archivo: string; clase: RegExp; razon: string }[] = 
 const PAGINAS = [
   "src/app/page.tsx", "src/app/about/page.tsx", "src/app/aprende/page.tsx", "src/app/checkout/page.tsx",
   "src/app/cobertura/page.tsx", "src/app/comunas/page.tsx", "src/app/comunas/[slug]/page.tsx", "src/app/contact/page.tsx",
-  "src/app/faq/page.tsx", "src/app/metodologia/page.tsx", "src/app/payments/return/page.tsx", "src/app/pricing/page.tsx",
+  // (05-nov-2026, auditoría de promesas parte 3) el FAQ se partió: la página lee la cifra viva en el servidor y el acordeón,
+  // con el header, es faq-cliente.tsx.
+  "src/app/faq/faq-cliente.tsx", "src/app/metodologia/page.tsx", "src/app/payments/return/page.tsx", "src/app/pricing/page.tsx",
   "src/app/privacy/page.tsx", "src/app/terms/page.tsx", "src/app/cuenta/page.tsx", "src/app/perfil/page.tsx",
   "src/app/comparar/page.tsx", "src/app/dashboard/page.tsx", "src/app/login/page.tsx", "src/app/register/page.tsx",
   "src/app/recuperar/page.tsx", "src/app/restablecer/page.tsx", "src/components/formulario-v4/WizardV4.tsx",

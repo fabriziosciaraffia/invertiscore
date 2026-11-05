@@ -91,7 +91,9 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
   const aprobado: Array<[string, string]> = [
     // 02-oct-2026: el título y «usa 1 de tus N» con el saldo real (§11 fija los casos 0, 1 y sin saldo).
     [GUIA_SALDO.titulo(3), "Tienes 3 análisis. Empieza por estos."],
-    [GUIA.cuerpo, "Deptos publicados hoy, parecidos y cercanos al que analizaste. Franco los revisó con tu pie y tu plazo: estos son los mejores."],
+    // ⚠ ACTA (05-nov-2026, goal de Fabrizio, auditoría de promesas parte 3: «"Publicados hoy" solo si se vio en las últimas 24 h»)
+    // · la guía muestra avisos vistos en la semana cuya ficha Franco revisó al armarla: «que siguen publicados» es lo que se sabe.
+    [GUIA.cuerpo, "Deptos que siguen publicados, parecidos y cercanos al que analizaste. Franco los revisó con tu pie y tu plazo: estos son los mejores."],
     [GUIA_SALDO.usaUno(3) ?? "", "usa 1 de tus 3"],
     [`${GUIA.otroDepto} ${GUIA.otroDeptoEnlace}`, "¿Tienes otro depto en mente? Analízalo con tus números ya cargados"],
     [GUIA.ajustada, "Ajustamos tu pie y tu plazo porque ninguno calzaba con esa combinación; estos son los mejores."],
@@ -573,7 +575,9 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
     }
     if (DESPUES_DE_PAGAR.titular(2) !== "Tienes 2 análisis." || DESPUES_DE_PAGAR.titular(0) !== "Ya usaste tus análisis." || /\d/.test(DESPUES_DE_PAGAR.titular(null))) F("11 · sin guía, el titular no dice el saldo real (o inventa un número sin saldo)");
     if (!/saldo = null, pago = null(?:, enCasa)?(?:, estado)? \}: \{[^}]*saldo\?: number \| null; pago\?: LlavePago \| null(?:; enCasa\?: \{ titulo: string \})?(?:; estado\?: EstadoSaldo)? \}/.test(gb)) F("11 · GuiaBusqueda no recibe el saldo y la llave como props opcionales (rompe a quien la usa con sesión)");
-    if (!/<GuiaBusqueda[\s\S]{0,200}?saldo=\{saldo\}[\s\S]{0,60}?pago=\{llavePago\}/.test(ret) || !/sinGuia=\{<DespuesDePagar [^>]*saldo=\{saldo\} \/>\}\s*\/>\s*\) : \(\s*<DespuesDePagar [^>]*saldo=\{saldo\} \/>/.test(ret)) F("11 · la pantalla de después de pagar no pasa el saldo real a la guía o a «Tienes N análisis»");
+    // ⚠ ACTA (05-nov-2026, auditoría de promesas parte 3: «"Abajo, deptos parecidos" solo si los hay») · cuando la guía cae a
+    // `sinGuia` no mostró deptos, y DespuesDePagar lo sabe con `sinParecidos` (después del saldo).
+    if (!/<GuiaBusqueda[\s\S]{0,200}?saldo=\{saldo\}[\s\S]{0,60}?pago=\{llavePago\}/.test(ret) || !/sinGuia=\{<DespuesDePagar [^>]*saldo=\{saldo\} sinParecidos \/>\}\s*\/>\s*\) : \(\s*<DespuesDePagar [^>]*saldo=\{saldo\} \/>/.test(ret)) F("11 · la pantalla de después de pagar no pasa el saldo real a la guía o a «Tienes N análisis»");
     if (!/setSaldo\(typeof data\.saldo === "number" && !data\.ilimitado \? data\.saldo : null\);/.test(ret)) F("11 · la pantalla no toma el saldo de /api/payments/status");
     // Ningún «3» fijo dicho a quien pagó: ni en la guía, ni en después de pagar, ni en la vuelta sin sesión.
     for (const f of ["src/components/guia/GuiaBusqueda.tsx", "src/components/lo-que-sigue/DespuesDePagar.tsx", "src/app/payments/return/page.tsx", "src/lib/guia/copy.ts"]) {

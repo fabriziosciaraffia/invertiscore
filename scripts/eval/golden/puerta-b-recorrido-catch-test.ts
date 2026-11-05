@@ -158,7 +158,9 @@ export async function runPuertaBRecorridoTier(): Promise<{ hard: number }> {
     // ⚠ ACTA (22-oct-2026, ENTRADA-ALTA) · lo que la pantalla hace con la respuesta del alta vive en aplicarAlta (lo usan el
     // alta de siempre y la entrada por código); terminarAlta solo la pide, con tope.
     const terminar = entre(dc, "const aplicarAlta = useCallback(", "}, [posthog, router]);");
-    if (!/if \(pasoActual\.current === "dentro"\) return;\s*iniciarCarga\(claveActual\(\)\);\s*router\.push\("\/dashboard"\);/.test(terminar) || !/pasoActual\.current = paso;/.test(dc)) F("2 · el alta puede llevar sola al dashboard estando en «Estás dentro» (o se va sin la barra)");
+    // ⚠ ACTA (05-nov-2026, auditoría de promesas parte 3: quien topa ve por qué) · la cuenta que ya existía va al dashboard con
+    // `?regalo=existente`, para que diga por qué no hay regalo; la regla de no salir de «Estás dentro» no cambia.
+    if (!/if \(pasoActual\.current === "dentro"\) return;\s*iniciarCarga\(claveActual\(\)\);\s*router\.push\(d\.estado === "existente" \? DASHBOARD_SIN_REGALO_EXISTENTE : "\/dashboard"\);/.test(terminar) || !/pasoActual\.current = paso;/.test(dc)) F("2 · el alta puede llevar sola al dashboard estando en «Estás dentro» (o se va sin la barra)");
     const efecto = entre(dc, 'const entro = new URLSearchParams(window.location.search).get("entro");', "}, [sesion, terminarAlta");
     if (!/\|\| altaPedida\.current\) return;\s*const entro = /.test(dc) || !/altaPedida\.current = true;\s*window\.history\.replaceState\(window\.history\.state, "", window\.location\.pathname\);/.test(efecto) || efecto.indexOf("claveDeDestino(") > efecto.indexOf("replaceState(")) F("2 · el `?entro=1` vuelve a correr el alta después del refresco (o la clave de Google se lee después de limpiar la dirección)");
     // ⚠ ACTA (23-oct-2026, mockup 2) · «Ir a mi dashboard», un enlace con la barra (EnlaceCarga), al final de «Estás dentro».

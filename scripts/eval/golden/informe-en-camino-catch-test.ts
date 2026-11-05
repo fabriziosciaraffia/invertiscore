@@ -28,6 +28,7 @@ import { join } from "node:path";
 import React, { createElement, type FC } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import * as ie from "../../../src/lib/guia/informe-en-camino";
+import { RETORNO } from "../../../src/lib/compra/compra";
 
 (globalThis as { React?: unknown }).React = React;
 (require as unknown as { extensions: Record<string, (m: { exports: unknown }) => void> }).extensions[".css"] = (m) => { m.exports = {}; };
@@ -109,7 +110,9 @@ export async function runInformeEnCaminoTier(): Promise<{ hard: number }> {
     if (!/if \(paso\.paso !== "listo" \|\| abierto\.current === paso\.id\) return;\s*abierto\.current = paso\.id;/.test(abre) || !/try \{ if \(reemplazar\) router\.replace\(paso\.ruta\); else router\.push\(paso\.ruta\); \}/.test(abre) || !/anotarViaje\(almacen\(\), \{ id: paso\.id, t0: paso\.t0, desde: desde \?\? desdeDeRuta\(window\.location\.pathname\), via: "auto" \}\)/.test(abre)) F("1 · con el informe listo, el pop-up no lo abre solo (o no anota el viaje)");
     if (!/const \{ ahora, anotar \} = useInformeEnCamino\(paso\);/.test(cuerpo(comp, "export function InformeEnCamino("))) F("1 · el pop-up no usa el gancho que abre el informe solo");
     const aviso = codigo("src/components/guia/AvisoAntesDeAnalizar.tsx");
-    if (!/if \(informe\) return <InformeEnCamino paso=\{informe\} alCerrar=\{alCerrarInforme \?\? alCancelar\} alReintentar=\{alReintentarInforme\} \/>;/.test(aviso)) F("1 · el pop-up de «Analizar este» no pasa a «Generando el informe…»: se cierra o se reemplaza por otro");
+    // ⚠ ACTA (05-nov-2026, goal de Fabrizio, auditoría de promesas parte 3: «si no se pudo analizar, lo dice y los créditos quedan
+    // a la vista») · el pop-up le pasa el saldo de lo que mostraba (con N, el regalo = 1, sin = 0; el plan, sin cifra).
+    if (!/if \(informe\) return <InformeEnCamino paso=\{informe\} alCerrar=\{alCerrarInforme \?\? alCancelar\} alReintentar=\{alReintentarInforme\} saldo=\{uso\.tipo === "con" \? uso\.n : uso\.tipo === "regalo" \? 1 : uso\.tipo === "sin" \? 0 : null\} \/>;/.test(aviso)) F("1 · el pop-up de «Analizar este» no pasa a «Generando el informe…»: se cierra o se reemplaza por otro");
     for (const s of pantallas) {
       const analizar = cuerpo(s.src, "async function analizar(");
       const exito = bloque(analizar, "if (res.ok && d.id) {");
@@ -257,7 +260,9 @@ export async function runInformeEnCaminoTier(): Promise<{ hard: number }> {
     const dv = vu(dist, T0 + 6_500);
     if (!texto(dv).includes("Con los datos de hoy dio Ajustar 68, no Comprar 82. Igual puedes verlo completo.") || !/<a href="\/analisis\/inf-2"[^>]*data-informe="abrir"[^>]*>Ver el informe<\/a>/.test(dv)) F(`7 · la vuelta no dice el veredicto distinto antes de abrir: «${texto(dv)}»`);
     const e = vu(ie.informeFallo(gen, "error"), T0 + 3_000, true);
-    if (texto(e) !== `${ie.INFORME_COPY.falloTitulo} ${ie.INFORME_COPY.falloQue} ${ie.INFORME_COPY.reintentar} Volver a los deptos` || !/data-informe="reintentar"/.test(e) || !/<a [^>]*href="\/dashboard"[^>]*>Volver a los deptos<\/a>/.test(e)) F(`7 · la vuelta no dice el fallo con palabras, «Reintentar» y la vuelta a los deptos: «${texto(e)}»`);
+    // ⚠ ACTA (05-nov-2026, auditoría de promesas parte 3) · después del fallo, el saldo real (no se usó ninguno): «Te quedan 3
+    // análisis para otro depto.» (la prueba dibuja con saldo 3).
+    if (texto(e) !== `${ie.INFORME_COPY.falloTitulo} ${ie.INFORME_COPY.falloQue} ${RETORNO.quedanSinUsar(3)} ${ie.INFORME_COPY.reintentar} Volver a los deptos` || !/data-informe="reintentar"/.test(e) || !/<a [^>]*href="\/dashboard"[^>]*>Volver a los deptos<\/a>/.test(e)) F(`7 · la vuelta no dice el fallo con palabras, «Reintentar» y la vuelta a los deptos: «${texto(e)}»`);
     const p = vu(ie.informeFallo(gen, "despublicado"), T0 + 3_000, true);
     if (!texto(p).includes(ie.INFORME_COPY.despublicadoTitulo) || !texto(p).includes(ie.textoFallo("despublicado", "seleccion").que) || /data-informe="reintentar"/.test(p) || !/>Volver a los deptos<\/a>/.test(p)) F("7 · la vuelta no dice que el depto se dio de baja (o ofrece reintentarlo)");
     // La página: genera con lo que mostró la tarjeta, le pasa el informe a la vuelta y no se va sola a ningún lado.
@@ -280,7 +285,9 @@ export async function runInformeEnCaminoTier(): Promise<{ hard: number }> {
       if (bien?.esperado?.veredicto !== "COMPRAR" || bien.esperado.score !== 82 || modC.leerDeptoDelPago({ ...base, esperado: { veredicto: 7 } })?.esperado !== null || modC.leerDeptoDelPago(base)?.esperado !== null) F("7 · el veredicto de la tarjeta se pierde o pasa sin sanear");
     }
     // Un informe ya hecho (el suelto, el desbloqueo): si a los 10 s sigue en «Abriendo tu análisis…», «Abrir informe».
-    if (!/const abrirDestino = \(href: string\) => \{ setDestino\(href\); router\.push\(href\); \};/.test(ret) || (ret.match(/abrirDestino\(/g) ?? []).length !== 3 || (ret.match(/router\.push\(/g) ?? []).length !== 1) F("7 · el suelto o el desbloqueo navegan sin dejar «Abrir informe» por si no abre");
+    // ⚠ ACTA (05-nov-2026, auditoría de promesas parte 3: la vuelta de renta corta analiza sola) · una cuarta ida pasa por
+    // abrirDestino: la vuelta al depto con `analizar=1`; sigue sin un router.push suelto.
+    if (!/const abrirDestino = \(href: string\) => \{ setDestino\(href\); router\.push\(href\); \};/.test(ret) || (ret.match(/abrirDestino\(/g) ?? []).length !== 4 || (ret.match(/router\.push\(/g) ?? []).length !== 1) F("7 · el suelto o el desbloqueo navegan sin dejar «Abrir informe» por si no abre");
     if (!/const t = window\.setTimeout\(\(\) => setConAbrir\(true\), ABRIR_INFORME_TRAS_MS\);/.test(ret) || !/\{destino && conAbrir && \(\s*<div className=\{PLANO\.seccion\}>\s*<a href=\{destino\} className=\{PLANO\.principal\} data-informe="abrir">\{INFORME_COPY\.abrir\}<\/a>/.test(ret)) F("7 · «Abriendo tu análisis…» no ofrece «Abrir informe» a los 10 s");
   }
 

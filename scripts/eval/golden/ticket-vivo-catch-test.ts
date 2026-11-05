@@ -9,7 +9,7 @@
 //       pasadas las 24 horas, no. EN ROJO CON EL CÓDIGO DE HOY: exigía «el primero».
 //   2 · EL DASHBOARD: la tarjeta de la oferta se muestra mientras el ticket viva, con o sin saldo; con saldo dice «3 más
 //       por $14.990» y hasta cuándo, y la línea del saldo lo repite como enlace cuando la tarjeta de arriba es otra.
-//   3 · EL POP-UP de «Analizar este» con saldo: se usa el saldo como siempre y debajo una sola línea, «Hoy, 3 más por
+//   3 · EL POP-UP de «Analizar este» con saldo: se usa el saldo como siempre y debajo una sola línea, «3 más por
 //       $14.990 · vence mañana 11:17», como enlace, sin frenar.
 //   4 · EL COPY del ticket para quien ya tiene cuenta: «Para tres deptos más de tu selección, o cualquier otro que te
 //       interese.», sin «al comprar quedas registrado».
@@ -108,7 +108,9 @@ export function runTicketVivoTier(): { hard: number } {
   try {
     const l = compra.lineaTicketConSaldo(hace(5), "/checkout?product=pack3", ahora);
     const vence = cuandoVenceCorto(hace(5), ahora);
-    if (l.texto !== `Hoy, 3 más por $14.990 · vence ${vence}` || !/^(hoy|mañana) \d{2}:\d{2}$/.test(vence)) F(`3 · la línea del ticket con saldo no es «Hoy, 3 más por $14.990 · vence mañana 11:17»: ${l.texto}`);
+    // ⚠ ACTA (05-nov-2026, goal de Fabrizio, auditoría de promesas parte 3: «se quita "Hoy" de "Hoy, 3 más… vence mañana"») ·
+    // el ticket vence a las 24 horas, así que «Hoy,» al lado de «vence mañana» se contradecía.
+    if (l.texto !== `3 más por $14.990 · vence ${vence}` || !/^(hoy|mañana) \d{2}:\d{2}$/.test(vence)) F(`3 · la línea del ticket con saldo no es «3 más por $14.990 · vence mañana 11:17»: ${l.texto}`);
     const d = compra.ticketConSaldoDelDepto({ token: TOKEN, avisoId: AVISO, origen: "semanal", variante: "tarjetas", cuentaCreadaAt: hace(5), ahora });
     const q = d ? new URL(d.href, "https://x.cl").searchParams : null;
     if (!d || !q || q.get("product") !== "pack3" || q.get("origen") !== "semanal" || q.get("variante") !== "tarjetas" || !compra.analizaAlVolver(q.get("volver")) || compra.deptoDeVolver(q.get("volver"))?.a !== AVISO) F(`3 · desde un depto, la línea no compra el pack del ticket de vuelta a ese depto: ${d?.href}`);

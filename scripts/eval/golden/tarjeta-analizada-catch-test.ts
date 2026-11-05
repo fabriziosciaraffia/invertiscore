@@ -169,10 +169,17 @@ export async function runTarjetaAnalizadaTier(): Promise<{ hard: number }> {
   // ── 4 · el cableado ────────────────────────────────────────────────────────
   try {
     const srv = sc("src/lib/informe-propio-servidor.ts");
-    if (!/\.select\("id, score, veredicto:results->>veredicto, created_at"\)\s*\.eq\("user_id", userId\)\s*\.in\("id", ids\.slice\(i, i \+ 100\)\)/.test(srv)) F("4 · el resumen no lee el veredicto y el puntaje GUARDADOS de los informes de esa persona (de a 100)");
+    // ⚠ ACTA (05-nov-2026, goal de Fabrizio, auditoría de promesas parte 3: «la vista previa del informe usa el mismo puntaje que
+    // el informe») · el veredicto sigue siendo el GUARDADO (el informe lo impone sobre el recálculo), pero el puntaje de renta
+    // larga es el de la portada: el informe recalcula al abrir y la columna `score` difiere en 1 o 2 puntos en los de
+    // septiembre. La tarjeta lee lo que el recálculo necesita y llama al mismo (resultados-del-informe.ts); en renta corta,
+    // la columna.
+    if (!/\.select\("id, score, veredicto:results->>veredicto, created_at, tipo_analisis, results, input_data, mediana_comuna_snapshot, capref_comuna_snapshot"\)\s*\.eq\("user_id", userId\)\s*\.in\("id", ids\.slice\(i, i \+ 100\)\)/.test(srv)) F("4 · el resumen no lee el veredicto guardado y lo que el puntaje de la portada necesita, de los informes de esa persona (de a 100)");
+    if (!/if \(f\.tipo_analisis === "long-term"\) \{\s*try \{ score = \(await puntajeDelInforme\(admin, f, uf\)\) \?\? score; \}/.test(srv) || !/veredicto: f\.veredicto \?\? null, score, fecha: f\.created_at/.test(srv)) F("4 · la tarjeta de renta larga no dice el puntaje de la portada (o pierde el veredicto guardado)");
     const servidores: Array<[string, RegExp]> = [
       ["src/lib/explorar/portal-servidor.ts", /const resumenes = await resumenesDeInformes\(admin, user\.id, Object\.values\(analizados\)\);[\s\S]*?analizados, resumenes, guardados,/],
-      ["src/lib/guia/seleccion-pagina-servidor.ts", /const resumenes = await resumenesDeInformes\(admin, userId, \[\.\.\.idsDeInformes\(filas, informesLargos\), \.\.\.idsDeInformes\(filasCortas, informesCortos\)\]\);[\s\S]*?informes: informesLargos, resumenes \}[\s\S]*?informes: informesCortos, resumenes,/],
+      // (05-nov-2026, auditoría de promesas parte 3) el resumen se lee junto con las publicaciones de los que no dieron.
+      ["src/lib/guia/seleccion-pagina-servidor.ts", /const \[resumenes, publicaciones\] = await Promise\.all\(\[\s*resumenesDeInformes\(admin, userId, \[\.\.\.idsDeInformes\(filas, informesLargos\), \.\.\.idsDeInformes\(filasCortas, informesCortos\)\]\),[\s\S]*?informes: informesLargos, resumenes \}[\s\S]*?informes: informesCortos, resumenes,/],
       ["src/lib/explorar/guardados-servidor.ts", /const resumenes = await resumenesDeInformes\(admin, userId, ids\.map\(\(id\) => informes\[id\]\)[^;]*\);[\s\S]*?resumen: informes\[id\] \? resumenes\[informes\[id\]\] \?\? null : null,/],
     ];
     for (const [ruta, re] of servidores) if (!re.test(sc(ruta))) F(`4 · ${ruta} no lee el resumen de los informes o no lo entrega`);

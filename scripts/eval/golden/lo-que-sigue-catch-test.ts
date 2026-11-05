@@ -114,7 +114,9 @@ export function runLoQueSigueTier(): { hard: number } {
     // por análisis (tier OFERTA-TICKET §4). La regla no cambia: los dos salen de los montos del catálogo.
     if (!/const precio = fmtCLP\(PACK_PRECIO_CLP\);/.test(tk) || !/data-lqs="ticket-linea">\{TICKET_PACK\.linea\(precio\)\}<\/p>/.test(tk) || !/<s>\{fmtCLP\(PACK_UNITARIO_REFERENCIA_CLP\)\}<\/s>\{TICKET_PACK\.cadaUno\(fmtCLP\(PACK_UNITARIO_CLP\)\)\}/.test(tk)) F("2 · la primera línea del ticket no sale de los montos del catálogo");
     if (!/\{TICKET_PACK\.boton\(precio\)\}/.test(tk) || !/\{TICKET_PACK\.pestana\(precio, hora\)\}/.test(tk)) F("2 · el precio del botón o de la pestaña no sale de PACK_PRECIO_CLP");
-    if (!/\{TICKET_PACK\.despedidaAhorro\(fmtCLP\(PACK_AHORRO_CLP\)\)\}/.test(tk) || fmtCLP(PACK_AHORRO_CLP) !== "$15.000") F("2 · la despedida no dice «$15.000 menos» desde el catálogo");
+    // ACTA (05-nov-2026, auditoría de promesas parte 3, goal de Fabrizio: «"$15.000 menos" pasa a "$14.980"»): el ahorro es
+    // el EXACTO —tres sueltos menos el pack—, no redondeado al mil. Se fija la regla, no la cifra (también PROMESAS-TEXTOS §4).
+    if (!/\{TICKET_PACK\.despedidaAhorro\(fmtCLP\(PACK_AHORRO_CLP\)\)\}/.test(tk) || PACK_AHORRO_CLP !== PACK_ANALISIS * PACK_UNITARIO_REFERENCIA_CLP - PACK_PRECIO_CLP) F("2 · la despedida no dice el ahorro exacto desde el catálogo");
   }
   const create = sinComentarios(leer("src/app/api/payments/create/route.ts"));
   // ⚠ ACTA (21-oct-2026, recorrido real de Fabrizio por la puerta B) · el ticket es de toda cuenta nueva: sin informe

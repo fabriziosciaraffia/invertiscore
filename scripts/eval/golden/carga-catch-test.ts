@@ -213,7 +213,11 @@ export function runCargaTier(): { hard: number } {
   const cuenta = (s: string, re: RegExp) => (s.match(re) ?? []).length;
   // ⚠ ACTA (23-oct-2026, mockup 2) · «Ir a mi dashboard» es un enlace (EnlaceCarga: la barra la enciende él); quedan dos idas por
   // código: el alta de una cuenta existente sin comunas nuevas y «Sí, agregar»/«No».
-  if (cuenta(deptos, /router\.push\("\/dashboard"\)/g) !== 2 || cuenta(deptos, /iniciarCarga\(claveActual\(\)\);\s*router\.push\("\/dashboard"\);/g) !== 2) F("4 · en /deptos alguna ida al dashboard (el alta, sumar comunas) no enciende la barra");
+  // ⚠ ACTA (05-nov-2026, auditoría de promesas parte 3: quien topa ve por qué) · las dos idas de una cuenta que ya existía
+  // llevan `?regalo=existente` (DASHBOARD_SIN_REGALO_EXISTENTE), para que el dashboard diga por qué no hay regalo. Siguen
+  // siendo dos, y las dos encienden la barra.
+  const IDA = String.raw`router\.push\((?:"\/dashboard"|DASHBOARD_SIN_REGALO_EXISTENTE|d\.estado === "existente" \? DASHBOARD_SIN_REGALO_EXISTENTE : "\/dashboard")\);`;
+  if (cuenta(deptos, /router\.push\(/g) !== 2 || cuenta(deptos, new RegExp(String.raw`iniciarCarga\(claveActual\(\)\);\s*` + IDA, "g")) !== 2) F("4 · en /deptos alguna ida al dashboard (el alta, sumar comunas) no enciende la barra");
   if (!/<EnlaceCarga href=\{ESTAS_DENTRO_DEPTOS\.hrefDashboard\} className="dp-boton-contorno" data-deptos="ir-panel">/.test(deptos)) F("4 · «Ir a mi dashboard» no es un EnlaceCarga (se iría sin la barra)");
   if (!/setAltaEnCurso\(true\);\s*const soltar = iniciarCarga\(claveActual\(\)\);\s*try \{/.test(deptos) || !/\} finally \{\s*soltar\(\);\s*setAltaEnCurso\(false\);\s*\}/.test(deptos)) F("4 · el alta de la vuelta por el enlace o por Google no enciende la barra mientras corre (ni la suelta)");
   if (!/setYendo\(si \? "si" : "no"\);/.test(deptos)) F("4 · «Sí, agregar» no se marca yéndose");

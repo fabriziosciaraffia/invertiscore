@@ -31,6 +31,7 @@ import { esPuerta, PUERTAS } from "../../../src/lib/atribucion-puerta";
 import { preguntasPendientes } from "../../../src/lib/casa/reglas";
 import { EVENTO_VISTA, eventoVistaEntrada, paginaDeEntrada } from "../../../src/lib/vista-entrada";
 import { ordenarAlta, type PiezasAlta } from "../../../src/lib/deptos/alta-orden";
+import { AVISO_NUEVOS } from "../../../src/lib/guia/aviso-nuevos";
 
 (globalThis as { React?: unknown }).React = React;
 (require as unknown as { extensions: Record<string, (m: { exports: unknown }) => void> }).extensions[".css"] = (m) => { m.exports = {}; };
@@ -165,8 +166,10 @@ export async function runPuertaETier(): Promise<{ hard: number }> {
     if (!/const r = await conTopeYReintento\(async \(senal\) => \{\s*const res = await fetch\("\/api\/deptos\/alta"/.test(cli) || !/const c = await fetch\("\/api\/explorar\/cuenta"/.test(cli)) F("3 · al volver de Google o del enlace, el alta no corre o la cuenta no se refresca (el regalo no estaría en el saldo)");
     // ⚠ ACTA (30-oct-2026, goal del recorrido real de Fabrizio) · al volver se abre el mismo pin, con su tarjeta desbloqueada y la
     // banda del regalo; el pop-up de «Analizar este» NO se abre solo (EXPLORAR-RECORRIDO §7).
+    // ⚠ ACTA (05-nov-2026, auditoría de promesas parte 3: quien topa ve por qué) · la banda lleva además el motivo si no hubo
+    // regalo (`sinRegalo`, de la cuenta), con «Ver planes».
     const efectoVuelta = cli.slice(cli.indexOf("const v = vuelta.current;"), cli.indexOf("}, [listaVuelta, universo]);"));
-    if (!/if \(it\) \{ setCarrusel\(cercanos\(visibles, it\.avisoId\)\.map\(\(p\) => p\.avisoId\)\); setSel\(it\.avisoId\); \}/.test(efectoVuelta) || !/if \(it && \(v\.motivo === "analizar" \|\| v\.motivo === "guardar"\)\) setRecien\(\{ avisoId: it\.avisoId, regalo: usaRegalo\(cuenta\.saldo\) \}\);/.test(efectoVuelta) || /pedirAnalisis|setConfirmar/.test(efectoVuelta)) F("3 · al volver no se abre el mismo pin con su tarjeta desbloqueada (o se abre el pop-up solo)");
+    if (!/if \(it\) \{ setCarrusel\(cercanos\(visibles, it\.avisoId\)\.map\(\(p\) => p\.avisoId\)\); setSel\(it\.avisoId\); \}/.test(efectoVuelta) || !/if \(it && \(v\.motivo === "analizar" \|\| v\.motivo === "guardar"\)\) setRecien\(\{ avisoId: it\.avisoId, regalo: usaRegalo\(cuenta\.saldo\), sinRegalo: cuenta\.sinRegalo \?\? null \}\);/.test(efectoVuelta) || /pedirAnalisis|setConfirmar/.test(efectoVuelta)) F("3 · al volver no se abre el mismo pin con su tarjeta desbloqueada (o se abre el pop-up solo)");
     if (!/!usaRegalo\(cuenta\.saldo\) \? lineaTicketConSaldo\(/.test(cli) || !/const usaRegalo = \(s: EstadoSaldo\): boolean => s\.tipo === "regalo" \|\| \(s\.tipo === "con" && !!s\.proximoRegalo\);/.test(cli)) F("3 · con el regalo el pop-up habla también del ticket (ofertas de a una)");
     if (!/if \(v\.motivo === "guardar" && it && !guardados\.has\(it\.avisoId\)\) void alternarGuardado\(it\.avisoId, "tarjeta"\);/.test(cli) || !/if \(v\.motivo === "pie-plazo"\) setHojaFiltros\(true\);/.test(cli)) F("3 · al volver no se hace lo que había tocado (guardar, pie y plazo)");
     // LO QUE CAZÓ EL QA (29-oct-2026, local): con las imágenes de la calle de los cercanos ocupando la red, el chunk de la hoja
@@ -195,7 +198,10 @@ export async function runPuertaETier(): Promise<{ hard: number }> {
         ["el material de la tríada", /class="ex-registro ex-triada"/.test(con)],
       ] as const) if (!ok) F(`3 · la hoja de registro no tiene ${que}`);
       const av = texto(dibujar(createElement(modH.HojaRegistro, { pedido: { motivo: "avisame", pin: null }, filtros, orden: "puntaje", origen: "directo", alCerrar() {} })));
-      if (!av.includes("Te regalamos un análisis.") || !av.includes("te avisamos de los nuevos que convienen con estos filtros") || av.includes("Ver este depto")) F("3 · «Avísame» sin cuenta no habla del regalo sin depto");
+      // ⚠ ACTA (05-nov-2026, goal de Fabrizio, auditoría de promesas parte 3: «"Te aviso cuando aparezca uno" pasa a "Cada lunes
+      // te mandamos los nuevos que convienen; si marcas Quiero comprar ya, cada día que aparezca uno"») · «Avísame» dice lo que
+      // de verdad llega, desde guia/aviso-nuevos.ts.
+      if (!av.includes("Te regalamos un análisis.") || !av.includes("busca con estos filtros") || !av.includes(AVISO_NUEVOS) || av.includes("Ver este depto")) F("3 · «Avísame» sin cuenta no habla del regalo sin depto (o promete otra cosa que la que llega)");
       if (/14\.990|ticket|\bpie\b|plazo/i.test(tc + av)) F("3 · la hoja de registro habla del ticket, del pie o del plazo");
     } else F("3 · la hoja de registro no carga");
   }

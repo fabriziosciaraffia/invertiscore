@@ -106,7 +106,10 @@ export function runLandingV14Tier(): { hard: number } {
   if (!/\.lv-cards \.rec-card \{ flex: 1; display: flex; flex-direction: column;/.test(css) || !/\.lv-cards \.rec-card > \.rec-cta \{ margin-top: auto;/.test(css)) F("4 · las cards no se estiran a la altura de la celda con el botón al pie");
 
   // ── 5 · la cifra ──
-  if (!/<ContadorComparables final=\{COMPARABLES_CIFRA\} piso=\{COMPARABLES_PISO\} \/> deptos\s*\n\s*<\/div>/.test(sec)) F("5 · la cifra grande no es «COMPARABLES_CIFRA deptos» en una sola pieza");
+  // ⚠ ACTA (05-nov-2026, goal de Fabrizio, auditoría de promesas parte 3: «"+40.000" sale del conteo vivo») · la cifra grande
+  // ya no es la constante de stats.ts: «Por qué creerle» recibe el conteo vivo (comparables-vivos.ts) y dice su cifra y su
+  // piso; la pieza sigue siendo una sola. (CIFRA-COMPARABLES §3 fija que la página se lo pase.)
+  if (!/<ContadorComparables final=\{comparables\.cifra\} piso=\{comparables\.piso\} \/> deptos\s*\n\s*<\/div>/.test(sec)) F("5 · la cifra grande no es «la cifra viva + deptos» en una sola pieza");
   if (/lv-base|Deptos comparables/.test(sec)) F("5 · vuelve la línea «Deptos comparables» bajo la cifra");
   if (!/toda la oferta comparable en <mark>Santiago<\/mark>\./.test(sec)) F("5 · falta «contra toda la oferta comparable en Santiago.»");
   if (/lv-mono-real/.test(css)) F("5 · la cifra vuelve a mono: va en la misma fuente que «deptos»");

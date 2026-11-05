@@ -264,7 +264,9 @@ export async function runSemanalStrTier(): Promise<{ hard: number }> {
     // ⚠ ACTA (27-oct-2026 · tier NO-DA-PUBLICACION): la respuesta «no-da» trae además el enlace, el porqué y el saldo, y el
     // pop-up los recibe.
     if (!/const r = await analizarStrDeSemanal\(\{/.test(ruta) || !/if \(r\.estado === "no-da"\) \{\s*return salir\(NextResponse\.json\(\{ estado: "no-da", alternativas: r\.alternativas, publicacion, porQue: porQueNoDa\(r\.zona, r\.fino\), saldo: saldoAlMedir \}\)\);\s*\}/.test(ruta)) F("3 · la ruta no pasa por analizarStrDeSemanal o no devuelve los siguientes");
-    if (!/if \(res\.ok && d\.estado === "no-da"\) \{\s*setNoDanAhora\(\(xs\) => \[\.\.\.xs, it\.avisoId\]\);\s*setPopup\(\{ it, parecidos: d\.alternativas \?\? \[\], publicacion: d\.publicacion \?\? null, porQue: d\.porQue \?\? null, uso: usoDelSaldo\(d\.saldo \?\? saldo\) \}\);\s*break;\s*\}/.test(lista))
+    // ⚠ ACTA (05-nov-2026, goal de Fabrizio, auditoría de promesas parte 3: la tarjeta «no da» conserva la publicación) · entre
+    // marcar la tarjeta y abrir el pop-up se guarda el enlace a la publicación para la tarjeta.
+    if (!/if \(res\.ok && d\.estado === "no-da"\) \{\s*setNoDanAhora\(\(xs\) => \[\.\.\.xs, it\.avisoId\]\);\s*if \(d\.publicacion\) setPublicacionesAhora\(\(m\) => \(\{ \.\.\.m, \[it\.avisoId\]: d\.publicacion as string \}\)\);\s*setPopup\(\{ it, parecidos: d\.alternativas \?\? \[\], publicacion: d\.publicacion \?\? null, porQue: d\.porQue \?\? null, uso: usoDelSaldo\(d\.saldo \?\? saldo\) \}\);\s*break;\s*\}/.test(lista))
       F("3 · la página no abre el pop-up con los parecidos cuando no da (o no marca la tarjeta)");
   }
 

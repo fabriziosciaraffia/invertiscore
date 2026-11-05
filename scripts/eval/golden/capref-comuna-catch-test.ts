@@ -180,9 +180,13 @@ export function runCapRefComunaTier(): { hard: number } {
   // (25-sep-2026) El informe salió de la ruta a `informe-*.tsx` para que el demo público lo dibuje igual.
   // (27-sep-2026) La landing lee sus tres ejemplos COMO EL INFORME (landing-vivo.ts): si se quedara sin
   // la referencia, mostraría otro puntaje que el informe que promete.
-  for (const p of ["src/app/analisis/[id]/informe-ltr.tsx", "src/app/analisis/[id]/documento/page.tsx", "src/lib/landing-vivo.ts"]) {
+  // (05-nov-2026, auditoría de promesas parte 3: la vista previa con el mismo puntaje que el informe) El recálculo del
+  // informe se mudó a `lib/analysis/resultados-del-informe.ts`, para que la portada, sus metadatos, la imagen OG y la tarjeta
+  // del analizado digan el mismo puntaje; el informe lo llama.
+  for (const p of ["src/lib/analysis/resultados-del-informe.ts", "src/app/analisis/[id]/documento/page.tsx", "src/lib/landing-vivo.ts"]) {
     if (!/capRefComuna: capRefSnapshot \?\? \(await prefetchCapRefComuna\(/.test(leer(p))) F(`6 · ${p} no lee el snapshot (ni resuelve vivo sin él)`);
   }
+  if (!/\(await resultadosPorId\(/.test(leer("src/app/analisis/[id]/informe-ltr.tsx"))) F("6 · el informe no recalcula con resultados-del-informe (y su referencia guardada)");
   if (!/return \{ \.\.\.mediana, capRefComuna \};/.test(leer("src/lib/api-helpers/analisis-pipeline.ts"))) F("6 · el prefetch de la mediana no trae la referencia");
   // ⚠ ACTA (25-sep-2026) · RETIRO DE LA IA, PARTE 2: se fue el chequeo de que la generación usara la misma referencia; el
   // generador ya no existe.

@@ -77,6 +77,7 @@ import { MANUAL_VACIO, perfilDeBusqueda, validarCambiosPerfil } from "../../../s
 import { correspondeReactivacion, DIAS_ENTRE_REACTIVACIONES, DIAS_SIN_ANALIZAR_REACTIVACION, queEnviarSemanal, rangoSemanal } from "../../../src/lib/guia/semanal";
 import { origenSintetico } from "../../../src/lib/guia/guia-servidor";
 import { cuandoSeVio, DEL_DIA, LECTURAS_POR_VUELTA_DEL_DIA, MINUTOS_CUPO_DEL_DIA, pasoDelDia, REGLA_DEL_DIA, VUELTAS_MAX_DEL_DIA } from "../../../src/lib/guia/del-dia";
+import { AVISO_NUEVOS } from "../../../src/lib/guia/aviso-nuevos";
 import { TOPE_FICHAS_POR_HORA } from "../../../src/lib/guia/publicacion";
 import { correoSemanal, correoSemanalVacio, textoBusca } from "../../../src/lib/email/correo-semanal";
 import {
@@ -245,7 +246,10 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       // son los del mockup (el tercero hasta UF 6.000). Mutaciones: Q1 el titular sin «publicados» · Q2 la nota con el pie ·
       // Q3 vuelve la etiqueta · Q4 el rango viejo.
       if (con.titular !== "29 de 1.008 publicados convienen" || con.cifra !== "29 de 1.008" || con.resto !== "de 1.008 publicados convienen" || con.alternativa) F(`2 · la respuesta no es el número («29 de 1.008 publicados convienen»): ${con.titular}`);
-      if (con.nota !== "Publicados anoche. Cambia la búsqueda y el número cambia." || "etiqueta" in con || "detalle" in con || /pie|plazo/i.test(con.nota)) F(`2 · la nota no es «Publicados anoche…» o vuelve la etiqueta o el pie: ${con.nota}`);
+      // ⚠ ACTA (05-nov-2026, auditoría de promesas parte 3: «hoy» y «publicados» solo si es verdad) · «Publicados anoche»
+      // prometía de más: el número es de la evaluación de anoche sobre los avisos vistos en la semana. La nota dice «Evaluados
+      // anoche».
+      if (con.nota !== "Evaluados anoche. Cambia la búsqueda y el número cambia." || "etiqueta" in con || "detalle" in con || /pie|plazo/i.test(con.nota)) F(`2 · la nota no es «Evaluados anoche…» o vuelve la etiqueta o el pie: ${con.nota}`);
       const tres = respuestaDeptos(validarElecciones({ comunas: ["Ñuñoa", "Macul", "La Reina"], tipologias: ["3"], rango: "4000-6000" }) as Extract<ReturnType<typeof validarElecciones>, { ok: true }>, [c("Ñuñoa", 10, 1, 1)], []);
       if (tres.resto !== "de 10 publicados conviene" || tres.titular !== "1 de 10 publicados conviene") F(`2 · con uno, el resto no va en singular: ${tres.titular}`);
       if (RANGOS_UF.map((r) => r.id).join() !== "hasta-3000,3000-4000,4000-6000,6000-mas" || RANGOS_UF[2].max !== 6000 || RANGOS_UF[3].min !== 6000) F("2 · los rangos no son los del mockup (hasta 3.000 / 3.000 a 4.000 / 4.000 a 6.000 / más de 6.000)");
@@ -254,11 +258,14 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       if ("estandar" in DEPTOS_COPY || /lo estándar/.test(leer("src/app/deptos/deptos-cliente.tsx") + leer("src/lib/deptos/respuesta.ts"))) F("2 · vuelve la frase del estándar");
       const pie = respuestaDeptos(v, [c("Ñuñoa", 143, 0, 4)], [c("Macul", 171, 0, 17)]);
       if (pie.convienen !== 0 || pie.titular !== "0 de 143 publicados convienen" || pie.alternativa !== "Con pie 30 %, 4 sí convienen.") F(`2 · con cero no dice con qué pie sí: ${pie.alternativa}`);
-      if (!/te avisamos cuando aparezca uno/i.test(pie.registro)) F("2 · con cero no ofrece registrarse («te avisamos cuando aparezca uno»)");
+      // ⚠ ACTA (05-nov-2026, goal de Fabrizio, auditoría de promesas parte 3: «"Te aviso cuando aparezca uno" pasa a "Cada lunes
+      // te mandamos los nuevos que convienen; si marcas Quiero comprar ya, cada día que aparezca uno"»): con cero, el registro
+      // dice lo que de verdad llega, desde guia/aviso-nuevos.ts.
+      if (!pie.registro.startsWith("Regístrate gratis.") || !pie.registro.includes(AVISO_NUEVOS)) F("2 · con cero no ofrece registrarse con lo que de verdad llega");
       const vec = respuestaDeptos(v, [c("Ñuñoa", 143, 0, 0)], [c("Macul", 171, 3, 17), c("La Reina", 6, 1, 1), c("Providencia", 7, 5, 7)]);
       if (vec.alternativa !== "En Providencia, comuna vecina, 5 sí convienen.") F(`2 · con cero no dice en qué comuna vecina sí (la que más da, en una línea): ${vec.alternativa}`);
       const nada = respuestaDeptos(v, [c("Ñuñoa", 143, 0, 0)], [c("Macul", 171, 0, 0)]);
-      if (nada.alternativa !== "Tampoco con pie 30 % ni en comunas vecinas." || !/te avisamos cuando aparezca uno/i.test(nada.registro)) F("2 · sin ninguna alternativa no lo dice o no ofrece registrarse");
+      if (nada.alternativa !== "Tampoco con pie 30 % ni en comunas vecinas." || !nada.registro.includes(AVISO_NUEVOS)) F("2 · sin ninguna alternativa no lo dice o no ofrece registrarse");
       for (const r of [pie, vec, nada]) if ((r.alternativa ?? "").split(/\. /).length !== 1 || (r.alternativa ?? "").length > 60) F(`2 · la alternativa del cero no es una línea corta: ${r.alternativa}`);
       const vacia = respuestaDeptos(v, [], []);
       if (vacia.cifra !== null || vacia.titular !== "Ninguno publicado así esta semana") F("2 · sin avisos en el filtro el número inventa un total");
@@ -315,10 +322,13 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
         F(`4 · la hora en que se vio publicado no es la de Chile: ${cuandoSeVio("2026-10-16T06:12:00Z", ahora)}`);
       if (queEnviarSemanal(0, { delDiaReciente: true }) !== "nada" || queEnviarSemanal(0) !== "vacio" || queEnviarSemanal(2, { delDiaReciente: true }) !== "seleccion") F("4 · el lunes después del correo del día no va solo si hay nuevos");
       const base = { variante: "tarjetas" as const, nombre: "Ana", busca: "2 dormitorios, Ñuñoa", piePct: 20, plazoAnios: 25, deptos: [{ comuna: "Ñuñoa", tipologia: "2D2B", m2: 58, precioUF: 3980, veredicto: "COMPRAR", score: 80, flujo: 20000, url: "x" }], saldo: 1, conRegalo: false, urlBoton: "b", urlTres: "t", urlBaja: "z" };
-      const dd = correoSemanal({ ...base, delDia: { publicadosAl: "hoy a las 14:32" }, regaloAltaVence: "2026-11-15T15:00:00Z", presentacion: true });
-      if (dd.subject !== DEL_DIA.asunto || !dd.html.includes("Franco los vio publicados hoy a las 14:32") || !dd.html.includes('data-regalo="alta"')) F("4 · el correo del día no dice cuándo se vieron publicados o no dice el regalo");
+      // ⚠ ACTA (05-nov-2026, auditoría de promesas parte 3: «hoy» solo si fue hoy) · el asunto del correo del día es una función
+      // de su día (del-dia.ts › diaRelativo del chequeo más antiguo); y el vacío ya no dice «Te aviso cuando aparezca uno»,
+      // una alerta que no existe: dice lo que de verdad llega (guia/aviso-nuevos.ts).
+      const dd = correoSemanal({ ...base, delDia: { publicadosAl: "hoy a las 14:32", dia: "ayer" }, regaloAltaVence: "2026-11-15T15:00:00Z", presentacion: true });
+      if (dd.subject !== DEL_DIA.asunto("ayer") ||!dd.html.includes("Franco los vio publicados hoy a las 14:32") || !dd.html.includes('data-regalo="alta"')) F("4 · el correo del día no dice cuándo se vieron publicados o no dice el regalo");
       const ddv = correoSemanalVacio({ nombre: "Ana", urlPerfil: "p", urlBaja: "z", delDia: true, regaloAltaVence: "2026-11-15T15:00:00Z", presentacion: true });
-      if (ddv.subject !== "Te aviso cuando aparezca uno" || !ddv.html.includes(DEL_DIA.regalo)) F("4 · el correo del día sin deptos no avisa ni dice el regalo");
+      if (ddv.subject !== DEL_DIA.vacioAsunto || !ddv.html.includes(AVISO_NUEVOS) || !ddv.html.includes(DEL_DIA.regalo)) F("4 · el correo del día sin deptos no avisa ni dice el regalo");
       const dds = sinComentarios(leer("src/lib/guia/del-dia-servidor.ts"));
       if (!/sinLeer: soloMemoria \|\| presupuesto\.bloqueada \|\| presupuesto\.lecturas >= LECTURAS_POR_VUELTA_DEL_DIA,/.test(dds)) F("4 · el correo del día lee fichas sin el cupo de su vuelta");
       const iEsperar = dds.indexOf(`if (paso === "esperar") {`), iEnviar = dds.indexOf("return enviarDelDia(");
@@ -326,7 +336,7 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       if (!/if \(paso === "enviar_lo_visto"\) g = await elegir\(true\);/.test(dds)) F("4 · pasada la hora no se arma con lo ya visto publicado");
       if (!/\.update\(\{ \.\.\.guardar, estado: "enviada", enviada_at: ahora\.toISOString\(\), intentos: fila\.intentos \+ 1 \}\)\s*\.eq\("id", fila\.id\)\.is\("enviada_at", null\)\.select\("id"\);\s*if \(\(tomada\?\.length \?\? 0\) !== 1\) return "ya";/.test(dds))
         F("4 · el correo del día no se toma antes de mandarse (podría salir dos veces)");
-      if (!/delDia: \{ publicadosAl: cuandoSeVio\(masAntiguo, ahora\) \}/.test(dds)) F("4 · el correo del día no lleva la hora del chequeo más antiguo");
+      if (!/delDia: \{ publicadosAl: cuandoSeVio\(masAntiguo, ahora\), dia: diaRelativo\(masAntiguo, ahora\) \}/.test(dds)) F("4 · el correo del día no lleva la hora del chequeo más antiguo");
       const vj = JSON.parse(leer("vercel.json")) as { crons: Array<{ path: string; schedule: string }> };
       if (!vj.crons.some((x) => x.path === "/api/cron/correo-del-dia" && x.schedule === "*/10 * * * *")) F("4 · la cola del correo del día no corre cada 10 minutos");
       if (!/eq\("tipo", "semanal"\)/.test(leer("src/app/api/cron/semanal-enviar/route.ts")) || !/eq\("tipo", "semanal"\)/.test(leer("src/app/api/cron/semanal-reintento/route.ts"))) F("4 · el envío del lunes podría tomar un correo del día");
@@ -412,7 +422,9 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       const claim = sinComentarios(leer("src/app/api/analisis/claim/route.ts"));
       if (!/await asegurarRegaloDeAlta\(createAdminServiceClient\(\), \{/.test(claim) || claim.indexOf("asegurarRegaloDeAlta(") > claim.indexOf("ensureWelcomeEmail(")) F("5 · el reclamo después del código no da el regalo (o lo da después de la bienvenida)");
       if (!/await asegurarRegaloDeAlta\(createAdminServiceClient\(\), \{/.test(sinComentarios(leer("src/app/auth/callback/route.ts")))) F("5 · el enlace del correo o Google no dan el regalo");
-      if (!/const admin = createServiceClient\(\);\s*await asegurarRegaloDeAlta\(admin, \{/.test(sinComentarios(leer("src/app/dashboard/page.tsx")))) F("5 · el dashboard no es red del regalo");
+      // ⚠ ACTA (05-nov-2026, auditoría de promesas parte 3: quien topa ve por qué bajo «Sin análisis») · el dashboard guarda lo
+      // que decidió el regalo (`regaloAlta`) para decir el motivo; sigue siendo la red, en el mismo lugar.
+      if (!/const admin = createServiceClient\(\);\s*const regaloAlta = await asegurarRegaloDeAlta\(admin, \{/.test(sinComentarios(leer("src/app/dashboard/page.tsx")))) F("5 · el dashboard no es red del regalo");
       const acc = sinComentarios(leer("src/lib/access.ts"));
       if (!/if \(!bienvenidaVigente\(creadaAt\)\) \{\s*bienvenida = false;\s*await asegurarRegaloDeAlta\(supabase, \{ userId, creadaAt, huella: \{ dispositivo: null, ip: null \} \}\);/.test(acc)) F("5 · el cobro todavía regala la bienvenida a una cuenta nueva");
       // Desde la puerta C (16-oct-2026) el alta también sirve a la página del invitado: la puerta es la B salvo que la cuenta
@@ -518,7 +530,9 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       if (DEPTOS_COPY.correo.nota !== "Sin contraseña: te mandamos un código. Nada de spam, solo deptos." || DEPTOS_COPY.correo.boton !== "Quiero verlos" || ALTA_COPY.pedir !== "Quiero verlos" || DEPTOS_COPY.correo.oTuCorreo !== "o con tu correo") F("8 · el copy del correo no es el del mockup");
       const bj = DEPTOS_COPY.correo.bajada(12);
       // ⚠ ACTA (24-oct-2026, recorrido de Fabrizio) · lo que llega es la selección, no los 12: «Los mejores de estos 12».
-      if (`${bj.antes}${bj.fuerte}${bj.despues}` !== "Los mejores de estos 12 te llegan al correo en minutos, con un análisis de regalo para el que más te interese." || bj.fuerte !== "con un análisis de regalo") F("8 · la bajada del correo no dice que los mejores de los 12 llegan al correo con un análisis de regalo");
+      // ⚠ ACTA (05-nov-2026, goal de Fabrizio, auditoría de promesas parte 3: «"te llegan en minutos" pasa a "dentro de la
+      // hora"») · el correo del día sale cuando hay lecturas de ficha, o a los 45 minutos con lo visto (MINUTOS_CUPO_DEL_DIA).
+      if (`${bj.antes}${bj.fuerte}${bj.despues}` !== "Los mejores de estos 12 te llegan al correo dentro de la hora, con un análisis de regalo para el que más te interese." || bj.fuerte !== "con un análisis de regalo") F("8 · la bajada del correo no dice que los mejores de los 12 llegan al correo con un análisis de regalo");
       // Serif solo en el título de la página, el de «Estás dentro» y el del invitado con depto (.dp-que), el número grande y el
       // título de la tarjeta del correo (así en el mockup); el cuerpo en Inter.
       const css = leer("src/app/deptos/deptos.css");
@@ -576,7 +590,9 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       // con que nació la cuenta, para la línea «Buscas: … · Cambiar» (tier PUERTA-B-RECORRIDO §1); sigue sin un salto.
       // ⚠ ACTA (25-oct-2026, «Estás dentro» en menos de 2 s) · el alta se partió en piezas con su orden (lib/deptos/alta-orden.ts › ordenarAlta; tier ALTA-ORDEN): entre el regalo y la búsqueda se anota si el
       // regalo quedó pendiente (la pantalla lo pide); sigue sin un salto.
-      if (!/if \(d\.estado === "nueva"\) \{\s*setRegaloVence\(d\.regaloVence \?\? null\);\s*setRegaloPendiente\(!d\.regaloVence && d\.regalo === "pendiente"\);\s*setBusca\(d\.busqueda \?\? null\);\s*if \(metodo === "email"\) emitirAuthCompletada\(posthog, "signup", "email"\);\s*setPaso\("dentro"\);\s*return;/.test(cli)) F("9 · después del alta no sigue a «Estás dentro»");
+      // ⚠ ACTA (05-nov-2026, auditoría de promesas parte 3) · entre el vencimiento y el pendiente se anota POR QUÉ no hay regalo
+      // (`regaloMotivo`: la pantalla lo dice con «Ver planes»); sigue sin un salto.
+      if (!/if \(d\.estado === "nueva"\) \{\s*setRegaloVence\(d\.regaloVence \?\? null\);\s*setRegaloMotivo\(d\.regaloMotivo \?\? null\);\s*setRegaloPendiente\(!d\.regaloVence && d\.regalo === "pendiente"\);\s*setBusca\(d\.busqueda \?\? null\);\s*if \(metodo === "email"\) emitirAuthCompletada\(posthog, "signup", "email"\);\s*setPaso\("dentro"\);\s*return;/.test(cli)) F("9 · después del alta no sigue a «Estás dentro»");
       const gf = sinComentarios(leer("src/app/api/deptos/google/route.ts"));
       // ⚠ ACTA (22-oct-2026, ENTRADA-ALTA) · lo elegido guarda además la puerta (B o C), para medir alta_perdida.
       // ⚠ ACTA (29-oct-2026, goal «puerta E», mockup docs/puerta-b-mockups/6-puerta-e.html) · la ruta de Google valida por perfilDelPedido (los mismos chips por perfilManualDeElecciones; en la puerta E, también

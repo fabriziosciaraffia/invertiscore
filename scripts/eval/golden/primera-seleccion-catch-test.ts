@@ -51,6 +51,7 @@ import { hojaYaVista, marcarHojaVista } from "../../../src/lib/lo-que-sigue/hoja
 import { crearUsoBanner } from "../../../src/lib/lo-que-sigue/uso-banner";
 import { crearDisparador, ESPERA_FINAL_MS, LECTURA_ACTIVA_MS } from "../../../src/lib/lo-que-sigue/disparo-ticket";
 import { lineasDiagnostico } from "../../../src/lib/lo-que-sigue/diagnostico-ticket";
+import { AVISO_NUEVOS } from "../../../src/lib/guia/aviso-nuevos";
 
 const RAIZ = join(__dirname, "..", "..", "..");
 const leer = (p: string) => readFileSync(join(RAIZ, p), "utf8").replace(/\r\n/g, "\n");
@@ -398,7 +399,10 @@ export async function runPrimeraSeleccionTier(): Promise<{ hard: number }> {
       // sin deptos mientras revisa · T23 da sin deptos con chips por pedir · T24 «ninguno» sale con otra condición.
       // ⚠ ACTA (23-oct-2026, mockup 2) · la marca por tarjeta («Elegido para tu búsqueda.» / «Visto publicado…») se fue: la
       // bajada dice una vez «Publicaciones vigentes…». Mutación: T37 vuelve la marca por tarjeta.
-      const NINGUNO = "Para tu búsqueda no hay uno publicado que convenga por ahora. En unos minutos te llega al correo la confirmación, y Franco te avisa en cuanto aparezca uno.";
+      // ⚠ ACTA (05-nov-2026, goal de Fabrizio, auditoría de promesas parte 3: «"Te aviso cuando aparezca uno" pasa a "Cada
+      // lunes te mandamos los nuevos que convienen; si marcas Quiero comprar ya, cada día que aparezca uno"» y «"te llegan en
+      // minutos" pasa a "dentro de la hora"»): la hoja sin deptos dice las dos cosas, la segunda desde guia/aviso-nuevos.ts.
+      const NINGUNO = `Para tu búsqueda no hay uno publicado que convenga por ahora. Dentro de la hora te llega al correo la confirmación. ${AVISO_NUEVOS}`;
       if ("porConfirmar" in PRIMERA_SELECCION || /data-primera="marca"|marcaVisto/.test(ps)) F("12 · vuelve la marca del chequeo por tarjeta");
       if (PRIMERA_SELECCION.ninguno !== NINGUNO) F(`12 · sin deptos la hoja no dice lo pedido: «${PRIMERA_SELECCION.ninguno}»`);
       for (const [k, t] of Object.entries(PRIMERA_SELECCION)) if (typeof t === "string" && /anoche|correo de esta hora/i.test(t)) F(`12 · «${k}» de la hoja dice «anoche» o «el correo de esta hora»: «${t}»`);

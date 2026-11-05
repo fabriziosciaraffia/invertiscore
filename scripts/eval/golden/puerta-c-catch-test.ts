@@ -7,7 +7,7 @@
 //   2 · EL COBRO DEL CÓDIGO al registrarse, venga por donde venga (el reclamo, el callback, /deptos y la página del
 //       invitado, el ticket, el dashboard): la cuenta nueva queda ligada a quien invitó y con la puerta C; la que YA
 //       TENÍA CUENTA queda anotada y no cuenta; quien abre su propio enlace, nada.
-//   3 · EL PREMIO cuando el invitado contesta el «cuándo» con sesión: un análisis más a quien invitó, vigente 60 días, con
+//   3 · EL PREMIO cuando el invitado hace su primer análisis (05-nov-2026; antes, al contestar el «cuándo» con sesión): un análisis más a quien invitó, vigente 60 días, con
 //       su correo; una vez. TOPE de cinco por persona (también a la vez: el índice único del lugar). MISMO DISPOSITIVO: no.
 //       El invitado no recibe un segundo análisis: el suyo es el regalo de cuenta nueva.
 //   4 · LAS SUPERFICIES: «Invita a alguien» en el dashboard, en el pie del semanal y al compartir un informe; la página
@@ -300,7 +300,10 @@ export async function runPuertaCTier(): Promise<{ hard: number }> {
       const uno = estadoSaldo(datosSaldoDe([{ remaining: 1, expires_at: vence, source: FUENTE_PREMIO_REFERIDO }], null));
       if (dos.tipo !== "con" || dos.n !== 2 || !dos.proximoRegalo || uno.tipo !== "regalo" || uno.vence !== vence) F(`3 · el saldo con el premio no cuenta bien los regalos (${JSON.stringify(dos)}, ${JSON.stringify(uno)})`);
       const correo = correoPremioReferido({ nombre: "Camila", vence, pagados: 1, codigo: "K7M2QX" });
-      if (correo.subject !== "Tu invitado entró: tienes un análisis más" || !correo.html.includes("Hola Camila, tienes un análisis más") || !correo.html.includes("Vence el")) F(`3 · el correo no dice «tu invitado entró, tienes un análisis más»: ${correo.subject}`);
+      // ⚠ ACTA (05-nov-2026, goal de Fabrizio, auditoría de promesas parte 3: «cuando tu invitado hace su primer análisis, tú
+      // recibes uno») · el premio ya no sale de que el invitado «entró» (contestó el «cuándo»), sino de su primer análisis, y
+      // el correo lo dice así.
+      if (correo.subject !== "Tu invitado hizo su primer análisis: tienes uno más" || !correo.html.includes("Hola Camila, tienes un análisis más") || !correo.html.includes("Vence el")) F(`3 · el correo no dice «tu invitado hizo su primer análisis: tienes uno más»: ${correo.subject}`);
       if (!CATALOGO_CORREOS.some((e) => e.id === "premio_referido" && e.tipo === "premio_referido")) F("3 · el correo del premio no está en el catálogo");
 
       // Quien invita es cuenta de prueba: el análisis sí, el correo no.
@@ -344,24 +347,33 @@ export async function runPuertaCTier(): Promise<{ hard: number }> {
       if (pR.estado !== "mismo_dispositivo" || dbR.tabla("credit_grants").length !== 0) F("3 · el dispositivo donde se registró quien invita no cuenta como suyo");
       if (decidirPremio({ dispositivoInvitado: "dX", dispositivosInvitador: ["dX"], pagados: 9 }) !== "mismo_dispositivo" || decidirPremio({ dispositivoInvitado: null, dispositivosInvitador: ["dX"], pagados: 0 }) !== "pagar") F("3 · la decisión del premio no mira primero el dispositivo");
 
-      // EL INVITADO CON CUENTA PREVIA no cobra nada al contestar el «cuándo».
+      // EL INVITADO CON CUENTA PREVIA no cobra nada con su análisis.
       const dbC = escenario();
       dbC.tabla("referidos").push({ invitado_id: "viejo", invitador_id: "invitador", codigo: "K7M2QX", estado: "cuenta_previa", dispositivo_hash: "dV", premio_n: null });
       const pC = await pagarPremioReferido(dbC as never, { invitadoId: "viejo", enviar: enviar as never }, ahora);
       if (pC.estado !== "ya" || dbC.tabla("credit_grants").length !== 0) F("3 · un invitado que ya tenía cuenta le paga el premio a quien lo invitó");
 
-      // EL «CUÁNDO» CON SESIÓN: los dos lugares donde se contesta pagan el premio (después de validar el código).
-      const pb = sinComentarios(leer("src/app/api/perfil-busqueda/route.ts"));
-      if (!/if \(cuando\) waitUntil\(referidoAlContestarCuando\(admin, \{ userId: user\.id, creadaAt: user\.created_at, cookie: cookieInvitacionDeCabeceras\(request\.headers\), huella: huellaDeRequest\(request\) \}\)/.test(pb)) F("3 · contestar el «cuándo» en la página o el dashboard no paga el premio");
-      const lqs = sinComentarios(leer("src/app/api/lo-que-sigue/perfil/route.ts"));
-      if (!/if \(user && cambios\.horizonte_compra\) \{\s*waitUntil\(referidoAlContestarCuando\(admin, \{ userId: user\.id,/.test(lqs)) F("3 · contestar el «cuándo» en «Estás dentro» del informe no paga el premio (o lo paga sin sesión)");
-      if (!/if \(p\.cookie\) await vincularInvitacion\(admin, p\);\s*return pagarPremioReferido\(admin, \{ invitadoId: p\.userId \}\);/.test(leer("src/lib/referido-servidor.ts"))) F("3 · el «cuándo» no cobra el código que quedó sin cobrar antes del premio");
+      // ⚠ ACTA (05-nov-2026, goal de Fabrizio, auditoría de promesas parte 3: «la regla pasa a "cuando tu invitado hace su
+      // primer análisis, tú recibes uno"» y «se quita la dependencia de "¿Cuándo piensas comprar?"») · el disparo se mudó: ya no
+      // lo paga contestar el «cuándo» (las dos rutas no tocan el referido), sino el primer análisis del invitado —las rutas
+      // que crean uno, después de responder, y el dashboard como red—. El código pendiente se sigue cobrando antes del premio.
+      // (El conteo de análisis y el «sin análisis, nada» los fija PROMESAS-TEXTOS §2 con una base de juguete.)
+      for (const r of ["src/app/api/perfil-busqueda/route.ts", "src/app/api/lo-que-sigue/perfil/route.ts"])
+        if (/referido/i.test(sinComentarios(leer(r)))) F(`3 · contestar el «cuándo» todavía toca el referido (${r})`);
+      for (const r of ["src/app/api/analisis/route.ts", "src/app/api/analisis/short-term/route.ts", "src/app/api/lo-que-sigue/guia/analizar/route.ts", "src/app/api/semanal/analizar-str/route.ts"])
+        if (!/waitUntil\(referidoTrasAnalisis\(user\.id\)\)/.test(sinComentarios(leer(r)))) F(`3 · crear un análisis no paga el premio del referido (${r})`);
+      const dsh = sinComentarios(leer("src/app/dashboard/page.tsx"));
+      const iVinc = dsh.indexOf("await vincularInvitacion(admin, {"), iPrem = dsh.indexOf("await referidoAlPrimerAnalisis(admin, { userId: user.id });");
+      if (iVinc < 0 || iPrem < iVinc) F("3 · el dashboard no es red del premio (o lo revisa antes de cobrar el código)");
+      if (!/if \(p\.cookie && p\.huella\) await vincularInvitacion\(admin, \{ userId: p\.userId, creadaAt: p\.creadaAt, cookie: p\.cookie, huella: p\.huella \}\);[\s\S]*?return await pagarPremioReferido\(admin, \{ invitadoId: p\.userId \}, ahora\);/.test(sinComentarios(leer("src/lib/referido-servidor.ts")))) F("3 · el primer análisis no cobra el código que quedó sin cobrar antes del premio");
     }
 
     // ── 4 · LAS SUPERFICIES ──
     {
       // La página del invitado: el titular y la bajada; las preguntas de /deptos con la puerta C y la vuelta a esta página.
-      if (REFERIDO_COPY.titular !== "Te invitaron a Franco." || REFERIDO_COPY.bajada !== "Tu primer análisis va por cuenta de Franco.") F("4 · la página del invitado no dice «Te invitaron a Franco. Tu primer análisis va por cuenta de Franco.»");
+      // ⚠ ACTA (05-nov-2026, goal de Fabrizio, auditoría de promesas parte 3: «el invitado recibe el regalo de alta y lo ve en
+      // "Estás dentro"») · la bajada dice lo que recibe: el regalo de cuenta nueva, no un «primer análisis» aparte.
+      if (REFERIDO_COPY.titular !== "Te invitaron a Franco." || REFERIDO_COPY.bajada !== "Al crear tu cuenta, Franco te regala un análisis.") F("4 · la página del invitado no dice «Te invitaron a Franco. Al crear tu cuenta, Franco te regala un análisis.»");
       if (REFERIDO_COPY.quien(null) !== "Un amigo te invitó a Franco" || REFERIDO_COPY.quien("Camila") !== "Camila te invitó a Franco") F("4 · el invitado no ve «un amigo te invitó a Franco» por defecto (o el nombre cuando se pidió)");
       const cli = sinComentarios(leer("src/app/i/[codigo]/invitacion-cliente.tsx"));
       if (!/<DeptosCliente\s+sesion=\{sesion\}\s+pagina=\{codigo \? rutaInvitacion\(codigo\) : "\/deptos"\}\s+puerta=\{\{ puerta: "C", detalle: `\$\{PREFIJO_DETALLE_INVITACION\}\$\{codigo \?\? ""\}` \}\}\s+origenLead="invitado"/.test(cli)) F("4 · la página del invitado no usa las preguntas de /deptos con la puerta C");

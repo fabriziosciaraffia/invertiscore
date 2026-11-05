@@ -126,7 +126,10 @@ export function runVueltaFlowTier(): { hard: number } {
   // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockups 3b y 4) · desde un depto, el estado C: «Franco está analizando X. En unos segundos se abre el
   // informe.», la barra y cuántos le quedan (tier PUERTA-B-DASHBOARD §7).
   // ⚠ ACTA (03-nov-2026) · el estado C lo dibuja VueltaInforme con el depto del informe en camino, que generarDepto arma con su nombre.
-  if (!/\{RETORNO\.desdeDepto\.antes\}<b className="text-\[var\(--franco-text\)\]">\{paso\.depto\}<\/b>\{RETORNO\.desdeDepto\.despues\}/.test(codigo("src/components/guia/InformeEnCamino.tsx")) || !/const paso0 = informeGenerando\(depto\.nombre, depto\.esperado\);/.test(gen) || !/<p className=\{PLANO\.bajada\}>\{RETORNO\.abriendo\.cuerpo\}<\/p>/.test(ret)) F("3 · mientras genera, la pantalla no dice de qué depto");
+  if (!/\{RETORNO\.desdeDepto\.antes\}<b className="text-\[var\(--franco-text\)\]">\{paso\.depto\}<\/b>\{RETORNO\.desdeDepto\.despues\}/.test(codigo("src/components/guia/InformeEnCamino.tsx")) || !/const paso0 = informeGenerando\(depto\.nombre, depto\.esperado\);/.test(gen) || !/<p className=\{PLANO\.bajada\} data-retorno=\{volviendo \? "volviendo-al-depto" : undefined\}>\{volviendo \? RETORNO\.volviendoAlDepto : RETORNO\.abriendo\.cuerpo\}<\/p>/.test(ret)) F("3 · mientras genera, la pantalla no dice de qué depto");
+  // ⚠ ACTA (05-nov-2026, goal de Fabrizio, auditoría de promesas parte 3: «en renta corta la vuelta analiza sola, como en renta
+  // larga») · sin depto que generar acá (renta corta, Explorar), la bajada dice «Volviendo al depto para analizarlo…» mientras
+  // lleva sola al depto con `analizar=1` (PROMESAS-TEXTOS §6 fija el viaje).
   if (!/: analysisId \? "Tu análisis está desbloqueado\." : RETORNO\.pagado\.uno/.test(ret) || !/<EnlaceCarga href=\{tras\.href\}[^>]*data-retorno-boton="pagado">\s*\{tras\.texto\}/.test(ret)) F("3 · sin depto, la pantalla no dice «Tienes un análisis más» con el botón al dashboard");
   } catch (e) {
     F(`3 · explotó (faltan nombreDelDepto, leerDeptoDelPago o generandoDepto): ${e instanceof Error ? e.message : String(e)}`);

@@ -119,7 +119,10 @@ export function runVeredictoGuardadoTier(): { hard: number } {
 
   // ── 3 · cableado: cuatro lectores, un correo, un color ──
   const lectores: Array<[string, RegExp]> = [
-    ["src/app/analisis/[id]/informe-ltr.tsx", /conVeredictoGuardado\(recomputeResultsForLegacy\(inputDataRaw, ufFrozen, medianaComuna, asOfFrozen\), rawResults\)/],
+    // ⚠ ACTA (05-nov-2026, auditoría de promesas parte 3: la vista previa con el mismo puntaje que el informe) · el lector del
+    // informe se mudó a lib/analysis/resultados-del-informe.ts, que llaman la portada, sus metadatos, la OG y la tarjeta del
+    // analizado; el informe no recalcula por su cuenta (abajo).
+    ["src/lib/analysis/resultados-del-informe.ts", /conVeredictoGuardado\(recomputeResultsForLegacy\(inputDataRaw, ufFrozen, medianaComuna, asOfFrozen\), rawResults\)/],
     ["src/app/analisis/[id]/documento/page.tsx", /conVeredictoGuardado\(recomputeResultsForLegacy\(inputDataRaw, ufFrozen, medianaComuna, asOfFrozen\), rawResults\)/],
     ["src/lib/lo-que-sigue/comparar.ts", /conVeredictoGuardado\(recomputeResultsForLegacy\(inp as never, uf, med as never, asOf\), f\.results as never\)/],
     ["src/lib/landing-vivo.ts", /conVeredictoGuardado\(recomputeResultsForLegacy\(input, uf, medianaComuna, new Date\(fila\.created_at\)\), fila\.results\)/],
@@ -131,6 +134,8 @@ export function runVeredictoGuardadoTier(): { hard: number } {
     if (!/medianaDesdeSnapshot\(/.test(s)) F(`3 · ${p} no lee el snapshot con medianaDesdeSnapshot`);
     if (/\bp25: (medianaSnapshot|snap)\.p25\b/.test(s)) F(`3 · ${p} rearma la mediana a mano (y pierde el universo)`);
   }
+  const informe = codigo("src/app/analisis/[id]/informe-ltr.tsx");
+  if (!/\(await resultadosPorId\(/.test(informe) || /recomputeResultsForLegacy\(/.test(informe)) F("3 · el informe no lee sus resultados de resultados-del-informe (o recalcula por su cuenta)");
   const helper = codigo("src/lib/analysis/mediana-snapshot.ts");
   if (!/\.\.\.\(snap\.universo \? \{ universo: snap\.universo \} : \{\}\)/.test(helper)) F("3 · medianaDesdeSnapshot no copia el universo");
   const ruta = codigo("src/app/api/analisis/route.ts");

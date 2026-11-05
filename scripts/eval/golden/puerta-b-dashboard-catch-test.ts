@@ -121,7 +121,9 @@ export async function runPuertaBDashboardTier(): Promise<{ hard: number }> {
     [CASA.oferta.titulo, "3 análisis por $14.990"],
     [CASA.oferta.boton, "Aprovechar"],
     [CASA.invita.titulo, "Invita a alguien"],
-    [CASA.invita.bajada, "Si entra con tu enlace, los dos reciben un análisis."],
+    // ⚠ ACTA (05-nov-2026, goal de Fabrizio, auditoría de promesas parte 3: «la regla pasa a "cuando tu invitado hace su primer
+    // análisis, tú recibes uno", dicha en todos los textos con el tope de 5 y los 60 días») · la franja dice la regla única.
+    [CASA.invita.bajada, "Cuando tu invitado hace su primer análisis, tú recibes uno: hasta 5 invitados, cada uno vigente 60 días."],
     [CASA.invita.boton, "Compartir"],
     [CASA.seleccion.titulo, "Tu selección de esta semana"],
     [CASA.seleccion.verMas(3), "Ver los 3 que faltan"],
