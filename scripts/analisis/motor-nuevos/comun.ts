@@ -150,6 +150,8 @@ export interface OpcionesMotor {
   medianaComuna?: unknown;
   /** Otro arriendo mensual con que evaluar (escenarios del premio); por defecto, el guardado. */
   arriendo?: number;
+  /** Otra tasa para el crédito (la palanca del subsidio: tasa de mercado − 0,6); la de mercado sigue siendo `cfg.tasa`. */
+  tasaCredito?: number;
   /** Congela «hoy» (`new Date()` sin argumentos y `Date.now`) en `asOf` mientras se arma el body y corre el motor: las
    *  cuotas del pie por defecto de una entrega futura se cuentan desde hoy (helpers-wizard.ts › mesesHastaEntrega), y
    *  la pasada las contó desde el día en que evaluó. Solo para reproducir filas viejas; los escenarios van sin esto. */
@@ -194,8 +196,8 @@ export function evaluarConMotor(f: FilaUniverso, cfg: Config, pie: number, opts:
   const ctx = contextoDeFila(c, cfg);
   if (!ctx || !f.arriendo) return null;
   const arriendo = opts.arriendo ?? f.arriendo.monto;
-  const extra = opts.plazo != null ? { plazo: opts.plazo, tasaMercado: cfg.tasa } : {};
-  const respuestas = respuestasDeAviso(avisoDeFila(f), pie, cfg.tasa, arriendo, extra);
+  const extra = opts.plazo != null || opts.tasaCredito != null ? { ...(opts.plazo != null ? { plazo: opts.plazo } : {}), tasaMercado: cfg.tasa } : {};
+  const respuestas = respuestasDeAviso(avisoDeFila(f), pie, opts.tasaCredito ?? cfg.tasa, arriendo, extra);
   const body = payloadDeAviso(respuestas, { ...ctx, ...(opts.ctxPatch ?? {}) } as typeof ctx);
   Object.assign(body, opts.bodyPatch ?? {});
   const mediana = opts.medianaComuna !== undefined ? opts.medianaComuna : f.mediana_comuna;
