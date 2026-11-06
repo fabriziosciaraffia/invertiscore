@@ -4,7 +4,7 @@ Goal de solo lectura, pegado por Fabrizio el 05-nov-2026. Nada de este documento
 prompts, el informe ni la base: todo recálculo corre en memoria con los scripts de `scripts/analisis/motor-nuevos/`,
 que llaman al motor real (`runAnalysis`) con los insumos guardados en `avisos_evaluados`.
 
-> **Estado: las cuatro fases terminadas (05-nov-2026). Goal cerrado en la rama `claude/nuevos-deptos-medicion-6ec06b`,
+> **Estado: las cuatro fases en master (313ca398, 06-nov-2026); el anexo «salida y escalón» y el arreglo del golden en la rama,
 > a la espera del OK para el push.** Orden del documento: resumen, FASE 0, FASE 1, punto 0, FASE 2, punto 2, FASE 3, defectos,
 > punto 1 (edad), FASE 4 (supuestos y resultados), lo que la base no puede responder, preguntas.
 
@@ -1189,3 +1189,229 @@ Ninguno cambia de veredicto en la celda central; el nuevo de Ñuñoa es el únic
    del informe, o se espera a tener la curva (2.000 GET)?
 8. **El orden de los arreglos.** ¿Primero los defectos (m², `scraped_at`, reactivadas, reevaluación mensual con la tasa) y
    después el motor, o las dos cosas en un goal?
+
+---
+
+## Anexo: salida y escalón (respuesta al STOP 4, 06-nov-2026)
+
+**Resumen (5 líneas)**
+1. Vendido al año 10 como un usado de su radio (el mismo método de comparables del motor, universo usado), un nuevo vale en mediana el **73 % de lo que el motor supone** (p25 64 %, p75 81 %): el escalón por unidad es **UF 1.245 y 29 % del precio pagado** en mediana; el 48 % de los nuevos está más de 30 % sobre su valor como usado (Santiago 38 %, Independencia 38 %, Quilicura 55 %, Ñuñoa 19 %).
+2. Con g = 3 % recuperan el precio pagado al año 10 solo **41 %** de los nuevos (Santiago 7,5 %, Ñuñoa 84 %, Puente Alto 67 %); el **g de empate** mediano es **3,5 %** (Santiago 5,0 %, Ñuñoa 2,2 %): 3.306 de 5.587 necesitan más de 3 % real al año solo para no perder.
+3. Con esa salida y g = 1 %, la celda central (TIR ≥ 5 %, flujo ≥ −200.000) da **100 nuevos (1,8 %)** y 7.229 usados (contra 337 y 6.851 con la salida del motor); con g = 3 %, **621 nuevos (11,1 %)** y 10.481 usados (contra 2.054 y 10.710). Ninguno viene de break-even imposible.
+4. Para los usados el método coincide con la salida del motor en mediana (cociente 100 %; 67 % de las unidades dentro de ±10 %) pero no unidad por unidad: se aplicó la misma regla a todos. Con g = 1 % se caen 534 de los 6.567 usados Comprar de hoy, casi todos por TIR baja (406 con flujo positivo, 126 con flujo negativo dentro de la tolerancia).
+5. La prueba histórica, comuna contra comuna (GfK lista de nuevos 2016-2020 contra reventa de hoy de los edificios de 6 a 10 años), dice lo mismo desde atrás: Santiago −7 %, Estación Central −10 % en UF.
+
+Corrida (`14-anexo-salida.ts`, 84 minutos, 2.604 consultas de comparables usados de a una con pausa, nada escrito): 26.721
+filas, **5.587 nuevos** (5.572 con valor por el radio, 15 por la celda usado de comuna y dormitorios, marcados) y **21.134
+usados** (21.075 por su propia sugerencia de venta guardada, universo usado). UF del día 41.280 (la FASE 4 corrió con 41.274:
+por eso los Comprar del motor son 79 nuevos y 6.567 usados, no 6.595).
+
+**El método.** Valor hoy como usado = `getSugerencias(…, "venta", "usado")`: la mediana de precio por m² de los avisos de
+venta usados del radio (dormitorios iguales, m² ±20 %, radio hasta 800 m, factor publicado→cierre del motor) × m² de la
+unidad; salida al año 10 = ese valor × (1+g)^10, con g para precio y arriendo; la TIR con `calcExitScenario` del motor con
+ese precio de venta reemplazado (valor de mercado: sin descontar sobreprecio). Reemplaza por completo a la salida del motor
+(precio × 1,03^10 − sobreprecio de hoy). Donde el radio no juntó comparables usados (15 nuevos, 57 usados), la celda usado
+de comuna y dormitorios; 2 usados sin valor.
+
+**Los usados: ¿coincide con la salida de hoy?** En mediana sí (salida como usado del radio con g 3 % ÷ salida del motor =
+100,0 %; p25 94 %, p75 108 %; 67 % dentro de ±10 %): para un usado el radio vale lo que se pagó, en promedio. Por unidad
+no coincide (un usado caro frente a su radio sale menos; uno barato, más), así que la misma regla se aplicó a todos.
+
+### 2.1 El escalón, por comuna y por unidad (nuevos)
+
+Salida como usado del radio ÷ salida del motor (g 3 % en las dos: aísla el nivel), y precio pagado − valor hoy como usado.
+
+| comuna | nuevos | escalón mediana | p25 | p75 | precio − valor usado, UF mediana | % mediana | < 10 % | 10–20 % | 20–30 % | > 30 % |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| **Gran Santiago** | 5.587 | **73,1 %** | 63,7 % | 80,8 % | **1.245** | **29,2 %** | 387 | 883 | 1.623 | 2.694 |
+| Santiago | 1.206 | 62,1 % | 57,6 % | 67,7 % | 1.337 | 38,5 % | 2 | 18 | 163 | 1.023 |
+| Ñuñoa | 896 | 83,3 % | 79,9 % | 88,2 % | 800 | 19,3 % | 125 | 368 | 302 | 101 |
+| La Florida | 583 | 73,5 % | 66,2 % | 81,5 % | 1.043 | 28,7 % | 55 | 103 | 162 | 263 |
+| Macul | 522 | 71,7 % | 65,7 % | 75,4 % | 1.294 | 31,2 % | 22 | 28 | 192 | 280 |
+| Providencia | 480 | 74,0 % | 70,0 % | 78,7 % | 2.343 | 27,9 % | 14 | 78 | 191 | 197 |
+| Independencia | 342 | 63,7 % | 60,8 % | 72,3 % | 1.352 | 37,6 % | 5 | 18 | 70 | 249 |
+| Las Condes | 217 | 74,9 % | 68,5 % | 79,5 % | 2.952 | 26,0 % | 9 | 38 | 87 | 83 |
+| La Cisterna | 170 | 79,5 % | 76,5 % | 88,7 % | 667 | 21,9 % | 21 | 43 | 81 | 25 |
+| Vitacura | 159 | 80,6 % | 76,6 % | 87,4 % | 2.602 | 21,0 % | 30 | 42 | 41 | 46 |
+| Recoleta | 116 | 73,4 % | 60,3 % | 77,9 % | 1.005 | 27,6 % | 6 | 14 | 42 | 54 |
+| Maipú | 116 | 77,3 % | 66,5 % | 80,2 % | 1.013 | 24,2 % | 0 | 25 | 51 | 40 |
+| Pudahuel | 93 | 62,0 % | 52,1 % | 62,5 % | 1.603 | 38,9 % | 0 | 0 | 2 | 91 |
+| Puente Alto | 90 | 75,4 % | 74,6 % | 76,9 % | 842 | 24,6 % | 0 | 2 | 86 | 2 |
+| Estación Central | 85 | 70,6 % | 67,2 % | 74,4 % | 751 | 30,3 % | 3 | 9 | 29 | 44 |
+| Lo Barnechea | 74 | 85,2 % | 80,8 % | 94,1 % | 1.614 | 15,4 % | 27 | 20 | 14 | 13 |
+| Quilicura | 65 | 45,2 % | 44,6 % | 47,0 % | 2.390 | 54,8 % | 1 | 0 | 4 | 60 |
+| Peñalolén | 63 | 76,7 % | 71,8 % | 84,8 % | 2.301 | 25,5 % | 8 | 11 | 27 | 17 |
+| Cerrillos | 61 | 88,4 % | 84,8 % | 98,9 % | 373 | 14,0 % | 20 | 28 | 10 | 3 |
+| Conchalí | 59 | 75,8 % | 53,9 % | 80,9 % | 998 | 32,1 % | 3 | 16 | 9 | 31 |
+| Huechuraba | 58 | 91,3 % | 74,3 % | 93,4 % | 601 | 10,5 % | 27 | 6 | 23 | 2 |
+| San Miguel | 53 | 75,8 % | 71,6 % | 79,1 % | 926 | 26,3 % | 3 | 7 | 25 | 18 |
+| Quinta Normal · El Bosque · San Joaquín · Renca · La Reina | 22 · 19 · 17 · 14 · 7 | 58,8 · 51,0 · 66,8 · 85,2 · 65,9 % | | | 1.345 · 1.310 · 1.052 · 374 · 3.369 | 47,4 · 49,8 · 33,2 · 14,8 · 34,1 % | 6 | 9 | 12 | 52 |
+
+(Todas las comunas con valor por el radio en 5.572 de 5.587; la tabla entera, con p25 y p75 de las cinco chicas, en
+`out/15-anexo-tablas.stdout`.)
+
+### 2.2 La prueba del piso (g = 3 %)
+
+Salida como usado del radio al año 10 ÷ precio pagado: ¿recupera lo pagado?
+
+| comuna | nuevos | cociente mediana | p25 | p75 | recuperan el precio | % |
+| --- | --- | --- | --- | --- | --- | --- |
+| **Gran Santiago** | 5.587 | **95,1 %** | 82,4 % | 106,5 % | 2.283 | **40,9 %** |
+| Santiago | 1.206 | 82,7 % | 73,4 % | 89,3 % | 91 | 7,5 % |
+| Ñuñoa | 896 | 108,5 % | 103,0 % | 115,6 % | 750 | 83,7 % |
+| La Florida | 583 | 95,9 % | 84,6 % | 109,3 % | 246 | 42,2 % |
+| Macul | 522 | 92,5 % | 82,9 % | 100,7 % | 152 | 29,1 % |
+| Providencia | 480 | 96,9 % | 87,5 % | 105,8 % | 199 | 41,5 % |
+| Independencia | 342 | 83,9 % | 78,8 % | 96,0 % | 63 | 18,4 % |
+| Las Condes | 217 | 99,5 % | 88,9 % | 106,8 % | 103 | 47,5 % |
+| La Cisterna | 170 | 104,9 % | 98,2 % | 112,9 % | 118 | 69,4 % |
+| Vitacura | 159 | 106,2 % | 92,2 % | 117,3 % | 101 | 63,5 % |
+| Recoleta | 116 | 97,3 % | 81,0 % | 103,1 % | 51 | 44,0 % |
+| Maipú | 116 | 101,9 % | 89,4 % | 106,6 % | 68 | 58,6 % |
+| Pudahuel | 93 | 82,1 % | 69,9 % | 83,9 % | 0 | 0,0 % |
+| Puente Alto | 90 | 101,4 % | 98,2 % | 103,3 % | 60 | 66,7 % |
+| Estación Central | 85 | 93,7 % | 89,0 % | 99,9 % | 21 | 24,7 % |
+| Lo Barnechea | 74 | 113,7 % | 98,4 % | 126,5 % | 51 | 68,9 % |
+| Quilicura | 65 | 60,8 % | 59,3 % | 63,2 % | 4 | 6,2 % |
+| Peñalolén · Cerrillos · Conchalí · Huechuraba · San Miguel | 63 · 61 · 59 · 58 · 53 | 100,1 · 115,6 · 91,2 · 120,3 · 99,1 % | | | 34 · 58 · 23 · 43 · 26 | 54 · 95 · 39 · 74 · 49 % |
+| Quinta Normal · El Bosque · San Joaquín · Renca · La Reina | 22 · 19 · 17 · 14 · 7 | 70,7 · 67,5 · 89,8 · 114,5 · 88,6 % | | | 3 · 2 · 3 · 11 · 2 | 14 · 11 · 18 · 79 · 29 % |
+
+### 2.3 El g de empate
+
+La tasa real anual que necesitan los usados comparables para que la venta al año 10 iguale el precio pagado: (precio ÷ valor
+hoy como usado)^(1/10) − 1.
+
+| comuna | nuevos | g de empate mediana | p25 | p75 | bajo 1 % | 1 a 3 % | sobre 3 % |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| **Gran Santiago** | 5.587 | **3,52 %** | 2,35 % | 5,01 % | 358 | 1.923 | **3.306** |
+| Santiago | 1.206 | 4,98 % | 4,17 % | 6,24 % | 2 | 89 | 1.115 |
+| Ñuñoa | 896 | 2,17 % | 1,51 % | 2,70 % | 116 | 634 | 146 |
+| La Florida | 583 | 3,43 % | 2,09 % | 4,74 % | 50 | 196 | 337 |
+| Macul | 522 | 3,80 % | 2,93 % | 4,95 % | 21 | 129 | 372 |
+| Providencia | 480 | 3,32 % | 2,42 % | 4,39 % | 12 | 187 | 281 |
+| Independencia | 342 | 4,82 % | 3,42 % | 5,48 % | 5 | 58 | 279 |
+| Las Condes | 217 | 3,05 % | 2,32 % | 4,22 % | 9 | 94 | 114 |
+| La Cisterna | 170 | 2,50 % | 1,76 % | 3,19 % | 20 | 98 | 52 |
+| Vitacura | 159 | 2,39 % | 1,37 % | 3,84 % | 26 | 75 | 58 |
+| Recoleta | 116 | 3,28 % | 2,69 % | 5,19 % | 5 | 46 | 65 |
+| Maipú | 116 | 2,80 % | 2,34 % | 4,16 % | 0 | 68 | 48 |
+| Pudahuel | 93 | 5,05 % | 4,82 % | 6,76 % | 0 | 0 | 93 |
+| Puente Alto | 90 | 2,86 % | 2,67 % | 3,19 % | 0 | 60 | 30 |
+| Estación Central | 85 | 3,67 % | 3,01 % | 4,21 % | 2 | 19 | 64 |
+| Lo Barnechea | 74 | 1,69 % | 0,61 % | 3,17 % | 25 | 26 | 23 |
+| Quilicura | 65 | 8,26 % | 7,85 % | 8,53 % | 1 | 3 | 61 |
+| Peñalolén · Cerrillos · Conchalí · Huechuraba · San Miguel | 63 · 61 · 59 · 58 · 53 | 2,99 · 1,52 · 3,95 · 1,12 · 3,10 % | | | 8 · 19 · 3 · 25 · 3 | 26 · 39 · 20 · 18 · 23 | 29 · 3 · 36 · 15 · 27 |
+| Quinta Normal · El Bosque · San Joaquín · Renca · La Reina | 22 · 19 · 17 · 14 · 7 | 6,63 · 7,12 · 4,11 · 1,61 · 4,25 % | | | 2 · 0 · 0 · 3 · 1 | 1 · 2 · 3 · 8 · 1 | 19 · 17 · 14 · 3 · 5 |
+
+**Lectura de 2.1 a 2.3:** el escalón entre el precio del nuevo y lo que vale hoy un usado de su radio es de un tercio del
+precio en Santiago, Independencia, Pudahuel y Quilicura, y de un quinto en Ñuñoa, Vitacura, La Cisterna y Lo Barnechea.
+Para que la venta al año 10 devuelva lo pagado, el usado tiene que subir 3,5 % real al año en mediana, 5 % en Santiago,
+2,2 % en Ñuñoa; la tasa larga de transacciones (CLAPES, 4,4 %) alcanza en el oriente y no en Santiago, y la de los últimos
+cinco años (0,4 a 3,7 % de lista) no alcanza en ninguna comuna grande salvo Ñuñoa.
+
+### 3 Dos grillas con la salida como usado del radio
+
+Regla: Buscar otra solo por las señales graves que siguen (CoC severo y sobreprecio comunal con flujo negativo); Comprar si
+flujo de operación ≥ tolerancia y TIR ≥ mínima; lo demás Ajustar. Cada celda: nuevos Comprar (inmediata / futura / sin dato)
+· usados Comprar · Comprar del motor que dejarían de serlo (de ellos nuevos) / Ajustar del motor que pasarían a Comprar (de
+ellos nuevos). Base: 79 nuevos y 6.567 usados Comprar del motor.
+
+**g = 1 % (precio y arriendo):**
+
+| TIR mínima \ flujo mínimo | ≥ $0 | ≥ −$100.000 | ≥ −$200.000 | ≥ −$300.000 |
+| --- | --- | --- | --- | --- |
+| 4 % | nuevos 16 (9/1/6) · usados 5.716 · −968 (63) / +54 (0) | nuevos 109 (80/7/22) · usados 7.567 · −301 (46) / +1.331 (76) | nuevos 138 (103/9/26) · usados 8.089 · −298 (46) / +1.877 (105) | nuevos 150 (113/11/26) · usados 8.307 · −297 (46) / +2.103 (117) |
+| 5 % | nuevos 15 (8/1/6) · usados 5.474 · −1.184 (64) / +27 (0) | nuevos 85 (61/6/18) · usados 6.851 · −585 (49) / +875 (55) | **nuevos 100 (74/8/18) · usados 7.229 · −583 (49) / +1.265 (70)** | nuevos 110 (82/10/18) · usados 7.370 · −582 (49) / +1.412 (80) |
+| 6 % | nuevos 15 (8/1/6) · usados 5.126 · −1.517 (64) / +12 (0) | nuevos 64 (41/5/18) · usados 6.104 · −1.041 (50) / +563 (35) | nuevos 76 (51/7/18) · usados 6.360 · −1.040 (50) / +830 (47) | nuevos 85 (58/9/18) · usados 6.451 · −1.039 (50) / +926 (56) |
+| 7 % | nuevos 15 (8/1/6) · usados 4.685 · −1.946 (64) / +0 | nuevos 51 (31/5/15) · usados 5.308 · −1.610 (50) / +323 (22) | nuevos 57 (35/7/15) · usados 5.462 · −1.609 (50) / +482 (28) | nuevos 63 (39/9/15) · usados 5.517 · −1.608 (50) / +540 (34) |
+
+**g = 3 % (precio y arriendo):**
+
+| TIR mínima \ flujo mínimo | ≥ $0 | ≥ −$100.000 | ≥ −$200.000 | ≥ −$300.000 |
+| --- | --- | --- | --- | --- |
+| 4 % | nuevos 38 (30/1/7) · usados 6.031 · −758 (41) / +181 (0) | nuevos 300 (194/12/94) · usados 9.354 · −12 (4) / +3.019 (225) | nuevos 771 (574/77/120) · usados 10.538 · −8 (3) / +4.639 (684) | nuevos 958 (713/119/126) · usados 11.150 · −7 (3) / +5.343 (818) |
+| 5 % | nuevos 38 (30/1/7) · usados 6.024 · −760 (41) / +176 (0) | nuevos 262 (179/12/71) · usados 9.323 · −15 (5) / +2.953 (188) | **nuevos 621 (479/47/95) · usados 10.481 · −11 (4) / +4.448 (544)** | nuevos 733 (561/71/101) · usados 11.066 · −10 (4) / +5.100 (637) |
+| 6 % | nuevos 38 (30/1/7) · usados 6.016 · −762 (41) / +170 (0) | nuevos 222 (166/10/46) · usados 9.252 · −20 (8) / +2.847 (151) | nuevos 510 (411/32/67) · usados 10.355 · −16 (7) / +4.226 (438) | nuevos 592 (469/50/73) · usados 10.904 · −15 (7) / +4.832 (513) |
+| 7 % | nuevos 38 (30/1/7) · usados 5.992 · −773 (41) / +157 (0) | nuevos 199 (154/10/35) · usados 9.070 · −37 (14) / +2.660 (134) | nuevos 392 (316/26/50) · usados 10.068 · −33 (13) / +3.842 (326) | nuevos 454 (363/37/54) · usados 10.552 · −32 (13) / +4.376 (384) |
+
+Con la salida como usado, la tolerancia de flujo vuelve a pesar: con flujo ≥ 0 casi ningún nuevo cruza (15 a 38), y de
+−100.000 a −300.000 los nuevos Comprar se duplican o triplican. Con la salida del motor (FASE 4) la tolerancia no movía nada.
+
+**Celda central (TIR ≥ 5 %, flujo ≥ −$200.000), las dos g contra la salida del motor:**
+
+| salida | g | nuevos Comprar | inmediata / futura / sin dato | usados Comprar | Comprar que hoy son break-even imposible (nuevos / usados) |
+| --- | --- | --- | --- | --- | --- |
+| como usado del radio | 1 % | **100 (1,8 %)** | 74 / 8 / 18 | 7.229 (34,2 %) | 0 / 0 |
+| del motor (FASE 4) | 1 % | 337 (6,0 %) | 220 / 19 / 98 | 6.851 | 0 / 0 |
+| como usado del radio | 3 % | **621 (11,1 %)** | 479 / 47 / 95 | 10.481 (49,6 %) | 0 / 0 |
+| del motor (FASE 4) | 3 % | 2.054 (36,7 %) | 1.429 / 439 / 186 | 10.710 | 13 / 0 |
+
+Los nuevos que hoy caen en break-even imposible (1.639 de 5.587) no cruzan con ninguna de las dos g: sin plusvalía sobre
+el precio nuevo, un depto que no se paga solo con la tasa a 0 % no llega a TIR 5 % vendido como usado.
+
+**Por comuna, nuevos Comprar en la celda central:**
+
+| comuna | nuevos | Comprar motor | salida usado g 1 % (inm. / fut.) | salida usado g 3 % (inm. / fut.) | usados Comprar motor | usados g 1 % | usados g 3 % |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Santiago | 1.206 | 0 | 0 | 12 (9 / 2) | 2.502 | 2.357 | 3.309 |
+| Ñuñoa | 896 | 5 | 24 (16 / 0) | 220 (177 / 26) | 179 | 405 | 785 |
+| La Florida | 583 | 11 | 19 (18 / 1) | 121 (111 / 6) | 271 | 320 | 515 |
+| Macul | 522 | 3 | 11 (9 / 0) | 41 (31 / 4) | 153 | 183 | 347 |
+| Providencia | 480 | 0 | 1 (1 / 0) | 4 (4 / 0) | 188 | 311 | 420 |
+| Independencia | 342 | 0 | 4 (4 / 0) | 12 (10 / 0) | 413 | 408 | 555 |
+| Las Condes | 217 | 2 | 5 (5 / 0) | 10 (8 / 2) | 517 | 699 | 900 |
+| La Cisterna | 170 | 4 | 5 (4 / 0) | 40 (37 / 0) | 151 | 182 | 318 |
+| Vitacura | 159 | 2 | 1 (0 / 1) | 2 (1 / 1) | 202 | 264 | 301 |
+| Recoleta | 116 | 1 | 0 | 5 (5 / 0) | 134 | 126 | 176 |
+| Maipú | 116 | 2 | 0 | 0 | 137 | 135 | 156 |
+| Pudahuel | 93 | 0 | 0 | 0 | 20 | 15 | 21 |
+| Puente Alto | 90 | 29 | 0 | 54 (20 / 0) | 47 | 42 | 56 |
+| Estación Central | 85 | 3 | 1 (0 / 0) | 13 (6 / 0) | 698 | 704 | 943 |
+| Lo Barnechea | 74 | 0 | 5 (5 / 0) | 8 (8 / 0) | 123 | 193 | 223 |
+| Quilicura | 65 | 4 | 2 (2 / 0) | 3 (3 / 0) | 28 | 20 | 28 |
+| Peñalolén | 63 | 1 | 3 (1 / 2) | 3 (1 / 2) | 21 | 22 | 27 |
+| Cerrillos | 61 | 3 | 11 (6 / 4) | 31 (21 / 4) | 14 | 16 | 35 |
+| Conchalí | 59 | 1 | 1 (0 / 0) | 4 (2 / 0) | 29 | 26 | 36 |
+| Huechuraba | 58 | 1 | 2 (1 / 0) | 17 (15 / 0) | 13 | 30 | 84 |
+| San Miguel | 53 | 0 | 1 (0 / 0) | 3 (0 / 0) | 332 | 373 | 692 |
+| Quinta Normal · El Bosque · San Joaquín · Renca · La Reina | 22 · 19 · 17 · 14 · 7 | 0 · 2 · 0 · 5 · 0 | 0 · 2 · 0 · 2 · 0 | 2 · 2 · 1 · 12 · 1 | 219 · 5 · 73 · 12 · 28 | 202 · 3 · 84 · 14 · 38 | 270 · 6 · 134 · 18 · 53 |
+
+(Las columnas de usados incluyen San Bernardo, Padre Hurtado y La Granja, que no tienen nuevos: 52 / 5 / 1 con el motor, 64 /
+8 / 1 con g 3 %.)
+
+**Los usados Comprar de hoy que se caen en la celda central y por qué:**
+
+| salida | se caen | TIR baja con flujo positivo | TIR baja con flujo negativo (dentro de la tolerancia) | flujo bajo la tolerancia | señal grave | sin TIR | TIR mediana de los que caen |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| como usado del radio, g 1 % | **534 de 6.567** | 406 | 126 | 1 | 0 | 1 | 4,1 % |
+| como usado del radio, g 3 % | 7 de 6.567 | 6 | 0 | 1 | 0 | 0 | 2,8 % |
+
+Con g = 1 % se caen los usados Comprar que viven del flujo chico y de la plusvalía: TIR mediana 4,1 % (bajo el 5 %), tres
+cuartos con flujo positivo. Con g = 3 % casi ninguno.
+
+### 4 · Prueba histórica: precio de lista cuando eran nuevos contra reventa de hoy
+
+La base no tiene el precio de lista por edificio (las unidades nuevas que conocemos son de 2026). Lo más cercano es la
+serie de GfK / NielsenIQ en `plusvalia_fuentes_raw`: precio de oferta de deptos nuevos por comuna y año (UF/m², promedio
+anual), contra la reventa de hoy de los usados con año conocido de la curva del punto 1.2 (precio publicado UF/m²). Es
+comuna contra comuna, no edificio por edificio, y compara un promedio de lista de obra nueva con una mediana de avisos de
+reventa.
+
+| comuna | edificios de 6 a 10 años (construidos 2016-2020): reventa hoy, UF/m² mediana (n) | GfK, lista de deptos nuevos 2016 → 2020, UF/m² | reventa hoy ÷ lista del año de construcción (mediana 2016-2020) |
+| --- | --- | --- | --- |
+| Santiago | 57,2 (n 38; p25 47,5 · p75 61,7) | 55,3 · 57,1 · 61,6 · 69,2 · 72,3 (mediana 61,6) | **−7 %** (de +3 % contra 2016 a −21 % contra 2020) |
+| Estación Central | 45,2 (n 32; p25 39,8 · p75 51,4) | 46,8 · 48,2 · 50,5 · 54,8 · 57,3 (mediana 50,5) | **−10 %** (de −3 % contra 2016 a −21 % contra 2020) |
+| Santiago, 11 a 20 años (2006-2015) | 48,6 (n 85) | 2015: 52,8 (la serie parte en 2015) | −8 % contra 2015 |
+
+**Lectura:** en las dos comunas la reventa de hoy de un edificio de 6 a 10 años está, en UF, **por debajo de lo que costaba
+nuevo en su año** (−7 % y −10 % contra la mediana del quinquenio; solo contra 2016 empata): es el mismo escalón del punto 2
+visto desde atrás, y dice que en estas comunas el premio del nuevo no se conservó en la reventa. Con el sesgo a favor del
+nuevo: la serie de GfK es de lista (no de cierre) y de todo el stock nuevo de la comuna; la reventa es de avisos publicados
+(también de lista) de los edificios que hoy tienen año, 70 avisos en total.
+
+**Qué fuente lo tendría por edificio y cuánto costaría:** (a) las transacciones del Conservador de Bienes Raíces por rol,
+que es lo que usan CLAPES RealData y Tinsa: precio de la primera venta (la escritura con la inmobiliaria) y de la reventa
+del mismo rol; se compra como base de datos (Tinsa/INCOIN, Real Data, Colliers) o se levanta del CBR por rol, con un costo de
+semanas de trabajo o de un contrato de datos; (b) los archivos históricos del portal (precios de lista de los proyectos
+2016-2020), que no son públicos; (c) hacia adelante, guardar cada noche el precio de las unidades nuevas con su proyecto y
+fecha (lo que el cruce hoy no escribe) para tener la serie propia en dos o tres años.
