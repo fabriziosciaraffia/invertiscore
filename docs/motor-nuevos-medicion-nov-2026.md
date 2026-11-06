@@ -4,8 +4,8 @@ Goal de solo lectura, pegado por Fabrizio el 05-nov-2026. Nada de este documento
 prompts, el informe ni la base: todo recálculo corre en memoria con los scripts de `scripts/analisis/motor-nuevos/`,
 que llaman al motor real (`runAnalysis`) con los insumos guardados en `avisos_evaluados`.
 
-> **Estado: las cuatro fases y el anexo «salida y escalón» en master (53e24204, 06-nov-2026); la celda de continuidad (anexo § 5)
-> en la rama, a la espera del OK para el push.** Orden del documento: resumen, FASE 0, FASE 1, punto 0, FASE 2, punto 2, FASE 3, defectos,
+> **Estado: las cuatro fases y el anexo hasta la celda de continuidad en master (3b1c58b4, 06-nov-2026); los 717 y la salida
+> mixta (anexo § 6 y § 7) en la rama, a la espera del OK para el push.** Orden del documento: resumen, FASE 0, FASE 1, punto 0, FASE 2, punto 2, FASE 3, defectos,
 > punto 1 (edad), FASE 4 (supuestos y resultados), lo que la base no puede responder, preguntas.
 
 ## Resumen (10 líneas): qué parte del 1,8 % explica cada cosa
@@ -1483,3 +1483,87 @@ contaron como inmediata en la FASE 4, pero acá se muestran aparte). Universo: 5
   de 480, Independencia 1 de 342. Con g 3 % y TIR ≥ 8 % (la más cercana de esa tolerancia): Ñuñoa 76, La Florida 61,
   Macul 24, La Cisterna 20, Cerrillos 17, Huechuraba 17, Puente Alto 15, Renca 9, Las Condes 8, Estación Central 7,
   Santiago 4, Providencia 4. Las tablas por comuna y TIR mínima, las cuatro, están en `out/16-anexo-continuidad.stdout`.
+
+### 6 · Los 717 que se caen con flujo ≥ 0: es el flujo del motor, y son Comprar con flujo negativo
+
+Los 717 usados Comprar de hoy que se caen con g = 3 %, flujo ≥ 0 y TIR ≥ 4 % (§ 5), contra los 7 que se caen con flujo ≥
+−200.000 y TIR ≥ 5 % (`17-anexo-mixta.ts`, sin recalcular):
+
+| grupo (g = 3 %) | n | flujo < 0 | flujo < −200.000 | TIR < 4 % | sin TIR | flujo < 0 y TIR ≥ 5 % | flujo ≥ 0 y TIR < 4 % | señal grave | flujo mediana | p25 | p75 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| se caen con flujo ≥ 0 y TIR ≥ 4 % | 717 | 713 | 1 | 4 | 0 | 713 | 4 | 0 | −$9.397 | −$21.517 | −$4.026 |
+| se caen con flujo ≥ −200.000 y TIR ≥ 5 % | 7 | 1 | 1 | 4 | 0 | 1 | 4 | 0 | $28.603 | $21.344 | $32.553 |
+| se caen con la primera y no con la segunda | 712 | 712 | 0 | 0 | 0 | 712 | 0 | 0 | −$9.431 | −$21.564 | −$4.046 |
+
+**Es el mismo número.** El `flujo` de la grilla es `metrics.flujoNetoMensual` del motor (`evaluarConMotor` en `comun.ts`
+lo copia tal cual): arriendo − dividendo − gastos comunes − contribuciones − mantención − prorrata de vacancia y corretaje −
+administración − cuota del pie (`calcFlujoDesglose`, `analysis.ts`). Es el número que lee el gate 3 (`flujoNetoMensual
+≥ 0`), el que el resumen del informe traduce como «se paga sola» (`> 0`) y el que la noche guarda en `flujo_30`. No hay
+otra definición de flujo en el motor, así que la celda de continuidad no se rehace.
+
+**Lo que explica a los 717** es que un Comprar de hoy no necesita flujo ≥ 0: el gate 3 solo **sube** a Comprar (flujo ≥ 0,
+neta ≥ 4, plusvalía inmediata ≥ 0), pero la banda de score (≥ 70) da Comprar sola, y el gate 2 solo baja al Comprar de banda
+con CoC < −10 % o con flujo bajo −5 % del ingreso y CoC negativo. Entre medio quedan **713 de los 6.567 usados Comprar de hoy
+con flujo negativo** (mediana −$9.400 al mes, p25 −$21.500; uno solo bajo −$200.000), que la regla con flujo ≥ 0 no deja
+en Comprar aunque su TIR con salida del radio sea ≥ 5 % (los 712). Los otros 4 tienen flujo positivo y TIR < 4 %, y uno
+flujo bajo −$200.000: esos 5 se caen en las dos celdas (los 7 de la segunda son esos 5 más 2 con flujo ≥ 0 y TIR entre 4 y
+5 %). En los nuevos pasa lo mismo: 38 de los 79 Comprar de hoy tienen flujo negativo.
+
+### 7 · Continuidad con salida mixta: usados con la salida del motor, nuevos con la salida como usado del radio
+
+Misma regla y mismas celdas que § 5, pero la TIR de los usados es la del motor (precio × (1+g)^10 − sobreprecio de hoy): con
+g = 3 % la `tirMotor` de la corrida del anexo (UF 41.280) y con g = 1 % la versión g1 de la FASE 4 (UF 41.274; 171 usados
+de la corrida del anexo no están en la de la FASE 4 y 265 no tienen TIR con raíz: los 436 cuentan como «sin TIR» y, si son
+Comprar de hoy, como «se caen»: son 81). Los nuevos llevan la salida como usado del radio (r3 / r1), así que sus columnas
+son las mismas de § 5, también por comuna (las cuatro tablas por comuna están en `out/17-anexo-mixta.stdout`). La fila
+marcada es TIR ≥ 6 %.
+
+**g = 3 %, flujo ≥ 0** — la más cercana: TIR ≥ 4 % (neto −535)
+
+| TIR mínima | usados Comprar | se caen | entran | neto contra hoy | nuevos Comprar | inmediata / futura / sin fecha | nuevos Comprar (%) |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 4 % | 6.032 | 715 | 180 | −535 | 38 | 30 / 1 / 7 | 0,7 % |
+| 5 % | 6.025 | 719 | 177 | −542 | 38 | 30 / 1 / 7 | 0,7 % |
+| **6 % ◀** | 6.019 | 720 | 172 | −548 | 38 | 30 / 1 / 7 | 0,7 % |
+| 7 % | 6.000 | 726 | 159 | −567 | 38 | 30 / 1 / 7 | 0,7 % |
+| 8 % | 5.941 | 747 | 121 | −626 | 35 | 27 / 1 / 7 | 0,6 % |
+
+**g = 3 %, flujo ≥ −200.000** — la más cercana: TIR ≥ 8 % (neto +2.569)
+
+| TIR mínima | usados Comprar | se caen | entran | neto contra hoy | nuevos Comprar | inmediata / futura / sin fecha | nuevos Comprar (%) |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 4 % | 10.666 | 3 | 4.102 | +4.099 | 771 | 574 / 77 / 120 | 13,8 % |
+| 5 % | 10.654 | 7 | 4.094 | +4.087 | 621 | 479 / 47 / 95 | 11,1 % |
+| **6 % ◀** | 10.563 | 8 | 4.004 | +3.996 | 510 | 411 / 32 / 67 | 9,1 % |
+| 7 % | 10.144 | 14 | 3.591 | +3.577 | 392 | 316 / 26 / 50 | 7,0 % |
+| 8 % | 9.136 | 35 | 2.604 | +2.569 | 292 | 229 / 20 / 43 | 5,2 % |
+
+**g = 1 %, flujo ≥ 0** — la más cercana: TIR ≥ 4 % (neto −816)
+
+| TIR mínima | usados Comprar | se caen | entran | neto contra hoy | nuevos Comprar | inmediata / futura / sin fecha | nuevos Comprar (%) |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 4 % | 5.751 | 896 | 80 | −816 | 16 | 9 / 1 / 6 | 0,3 % |
+| 5 % | 5.555 | 1.060 | 48 | −1.012 | 15 | 8 / 1 / 6 | 0,3 % |
+| **6 % ◀** | 5.099 | 1.491 | 23 | −1.468 | 15 | 8 / 1 / 6 | 0,3 % |
+| 7 % | 3.804 | 2.771 | 8 | −2.763 | 15 | 8 / 1 / 6 | 0,3 % |
+| 8 % | 2.611 | 3.957 | 1 | −3.956 | 15 | 8 / 1 / 6 | 0,3 % |
+
+**g = 1 %, flujo ≥ −200.000** — la más cercana: TIR ≥ 5 % (neto +160)
+
+| TIR mínima | usados Comprar | se caen | entran | neto contra hoy | nuevos Comprar | inmediata / futura / sin fecha | nuevos Comprar (%) |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 4 % | 8.115 | 211 | 1.759 | +1.548 | 138 | 103 / 9 / 26 | 2,5 % |
+| 5 % | 6.727 | 470 | 630 | +160 | 100 | 74 / 8 / 18 | 1,8 % |
+| **6 % ◀** | 5.211 | 1.406 | 50 | −1.356 | 76 | 51 / 7 / 18 | 1,4 % |
+| 7 % | 3.810 | 2.767 | 10 | −2.757 | 57 | 35 / 7 / 15 | 1,0 % |
+| 8 % | 2.615 | 3.954 | 2 | −3.952 | 38 | 20 / 7 / 11 | 0,7 % |
+
+**Lectura.**
+- Con g = 3 % la salida mixta casi no cambia nada respecto de § 5 (los usados con el radio ya coincidían con el motor en
+  mediana): con flujo ≥ 0 sigue faltando medio millar (los 713 con flujo negativo), y con flujo ≥ −200.000 sobran más de
+  2.500 a cualquier TIR mínima.
+- Con g = 1 % la salida del motor es más dura que la del radio para los usados: a TIR ≥ 6 % y flujo ≥ −200.000 quedan 5.211
+  (−1.356; en § 5, con el radio, 6.360), y la más cercana baja a TIR ≥ 5 % (6.727, +160, cambiando 470 por 630). La fila
+  TIR ≥ 6 % con flujo ≥ 0 deja 5.099 usados (−1.468) y 15 nuevos.
+- Los nuevos no se mueven con la salida mixta: a TIR ≥ 6 % son 38 (g 3 %, flujo ≥ 0), 510 (g 3 %, −200.000), 15 (g 1 %,
+  flujo ≥ 0) y 76 (g 1 %, −200.000), los mismos de § 5.
