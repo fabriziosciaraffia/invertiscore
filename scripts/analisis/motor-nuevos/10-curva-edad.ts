@@ -7,7 +7,8 @@
 // que mide lo que el motor le pone, no lo que el edificio cobra: se dice. Solo lectura. Salida: out/10-curva-edad.json
 // ─────────────────────────────────────────────────────────────────────────────
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { cliente, paginar, cuantil, mediana, fmt, tablaMd } from "./comun";
+import { paginar, cuantil, mediana, fmt, tablaMd } from "./comun";
+import { createServiceClient } from "../../../src/lib/supabase/service";
 import { claveEdificio } from "../../../src/lib/guia/ficha-anio";
 import type { LecturaLocal } from "./9-fichas-usados";
 import type { FilaBase } from "./1-base-corregida";
@@ -15,7 +16,7 @@ import type { FilaBase } from "./1-base-corregida";
 const TRAMOS: Array<[string, number, number]> = [["0-2", 0, 2], ["3-5", 3, 5], ["6-10", 6, 10], ["11-20", 11, 20], ["21-30", 21, 30], ["31+", 31, 999]];
 
 async function main() {
-  const sb = cliente();
+  const sb = createServiceClient();
   const hoy = new Date().getFullYear();
   const base = JSON.parse(readFileSync("scripts/analisis/motor-nuevos/out/1-base-corregida.json", "utf8")) as { filas: FilaBase[] };
   const locales: LecturaLocal[] = existsSync("scripts/analisis/motor-nuevos/out/9-fichas-usados.json") ? (JSON.parse(readFileSync("scripts/analisis/motor-nuevos/out/9-fichas-usados.json", "utf8")) as { lecturas: LecturaLocal[] }).lecturas : [];

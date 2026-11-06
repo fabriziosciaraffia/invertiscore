@@ -10,7 +10,8 @@
 // Salida: out/7-plusvalia.json
 // ─────────────────────────────────────────────────────────────────────────────
 import { mkdirSync, writeFileSync } from "node:fs";
-import { cliente, paginar, cuantil, mediana, fmt, tablaMd } from "./comun";
+import { paginar, cuantil, mediana, fmt, tablaMd } from "./comun";
+import { createServiceClient } from "../../../src/lib/supabase/service";
 import { parsearFechaEntrega } from "../../../src/lib/avisos/fecha-entrega";
 import { ventaPlausible } from "../../../src/lib/avisos/plausible";
 
@@ -26,7 +27,7 @@ const ZONA_CLAPES: Record<string, string> = {
 };
 
 async function main() {
-  const sb = cliente();
+  const sb = createServiceClient();
   const uf = Number((await sb.from("config").select("value").eq("key", "uf_value").single()).data?.value);
   const hoy = new Date();
   const filas = await paginar<Fila>((a, b) => sb.from("scraped_properties").select("id, comuna, source_id, superficie_m2, dormitorios, precio, moneda, fecha_entrega, is_active")

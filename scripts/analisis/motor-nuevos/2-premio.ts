@@ -10,7 +10,8 @@
 // Sin amoblados, temporada, corporativos ni piezas (arriendo-tipo.ts › entraComoComparable, la regla de los comparables). Solo lectura. Salida: out/2-premio.json.
 // ─────────────────────────────────────────────────────────────────────────────
 import { mkdirSync, writeFileSync } from "node:fs";
-import { cliente, paginar, cuantil, mediana, fmt, tablaMd } from "./comun";
+import { paginar, cuantil, mediana, fmt, tablaMd } from "./comun";
+import { createServiceClient } from "../../../src/lib/supabase/service";
 import { parsearFechaEntrega } from "../../../src/lib/avisos/fecha-entrega";
 import { entraComoComparable } from "../../../src/lib/arriendo-tipo";
 
@@ -24,7 +25,7 @@ function distanciaM(aLat: number, aLng: number, bLat: number, bLng: number): num
 }
 
 async function main() {
-  const sb = cliente();
+  const sb = createServiceClient();
   const uf = Number((await sb.from("config").select("value").eq("key", "uf_value").single()).data?.value);
   const anio = new Date().getFullYear();
   const arriendos = await paginar<Fila>((a, b) => sb.from("scraped_properties").select("id, comuna, lat, lng, superficie_m2, dormitorios, precio, moneda, titulo, url, fecha_entrega, scraped_at")

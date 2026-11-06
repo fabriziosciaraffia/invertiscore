@@ -6,7 +6,8 @@
 // Solo lectura: nada va a la base.
 // ─────────────────────────────────────────────────────────────────────────────
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { cliente, fmt, mediana, tablaMd } from "./comun";
+import { fmt, mediana, tablaMd } from "./comun";
+import { createServiceClient } from "../../../src/lib/supabase/service";
 import { idProyectoDeUrl, parsearDisponibles, parsearProyecto } from "../../../src/lib/services/scraper/toctoc-unidades";
 import { proxyDispatcher } from "../../../src/lib/services/scraper/toctoc";
 
@@ -43,7 +44,7 @@ const buscar = (texto: string, re: RegExp) => { const m = texto.match(re); retur
 
 async function main() {
   mkdirSync(DIR, { recursive: true });
-  const sb = cliente();
+  const sb = createServiceClient();
   const uf = Number((await sb.from("config").select("value").eq("key", "uf_value").single()).data?.value);
   const muestra = (JSON.parse(readFileSync("scripts/analisis/motor-nuevos/out/4-proyectos.json", "utf8")) as { muestraLecturas: Array<{ url: string; motivo: string; comuna: string; idsUnidades: string[]; unidadesActivas: number }> }).muestraLecturas.slice(0, 12);
   const filasInv: (string | number)[][] = [];
@@ -60,7 +61,7 @@ async function main() {
     const disp = parsearDisponibles(unidades);
     const caracteristicas = ((proyecto as { data?: { characteristics?: Array<{ name?: string; value?: unknown }> } })?.data?.characteristics ?? []).map((c) => `${c.name}: ${String(c.value).slice(0, 30)}`);
     // Nuestras unidades de ese proyecto: precios reales (GraphQL viejo) y estimados.
-    const { data: nuestras } = await sb.from("scraped_properties").select("precio, moneda, superficie_m2, precio_estimado_uf, dormitorios").in("id", p.idsUnidades.slice(0, 300));
+    const { data: nuestras } = await sb.from("scraped_properties").select("precio, moneda, superficie_m2, precio_estimado_uf, dormitorios").in("id", p.idsUnidades.slice(0, 300)).order("id").limit(300);
     const precios = (nuestras ?? []).map((u) => (u.moneda === "UF" ? Number(u.precio) : Number(u.precio) / uf)).filter((x) => x > 300);
     const si = (re: RegExp) => (re.test(texto) ? "sí" : "no");
     const ej = (re: RegExp) => buscar(texto, re) ?? "—";

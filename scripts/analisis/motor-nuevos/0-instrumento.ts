@@ -11,7 +11,8 @@
 //                   (uf-historica.ts): sin eso el flujo no calza al peso, porque la UF cambia todos los días
 // ─────────────────────────────────────────────────────────────────────────────
 import { writeFileSync, mkdirSync } from "node:fs";
-import { cliente, leerConfig, universoActivo, evaluarConMotor, muestraConSemilla, tablaMd, fmt, type Config, type FilaUniverso } from "./comun";
+import { leerConfig, universoActivo, evaluarConMotor, muestraConSemilla, tablaMd, fmt, type Config, type FilaUniverso } from "./comun";
+import { createServiceClient } from "../../../src/lib/supabase/service";
 import { configDeEvaluacion, precargarUf } from "./uf-historica";
 
 const SEMILLA = Number(process.env.SEMILLA ?? 20261105);
@@ -34,7 +35,7 @@ interface Comparacion {
 }
 
 async function main() {
-  const sb = cliente();
+  const sb = createServiceClient();
   const cfg = await leerConfig(sb);
   if (process.env.UF) cfg.uf = Number(process.env.UF);
   if (process.env.TASA) cfg.tasa = Number(process.env.TASA);

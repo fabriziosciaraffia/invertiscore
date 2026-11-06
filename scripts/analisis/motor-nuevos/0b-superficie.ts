@@ -13,7 +13,8 @@
 //   node … scripts/analisis/motor-nuevos/0b-superficie.ts   (lee out/0-instrumento-<SEMILLA>.json)
 // ─────────────────────────────────────────────────────────────────────────────
 import { readFileSync } from "node:fs";
-import { cliente, leerConfig, universoActivo, evaluarConMotor, tablaMd, fmt, type FilaUniverso } from "./comun";
+import { leerConfig, universoActivo, evaluarConMotor, tablaMd, fmt, type FilaUniverso } from "./comun";
+import { createServiceClient } from "../../../src/lib/supabase/service";
 import { configDeEvaluacion, precargarUf } from "./uf-historica";
 import { prefetchMedianaComunaVenta } from "../../../src/lib/api-helpers/analisis-pipeline";
 
@@ -28,7 +29,7 @@ function conSuperficieLegible(f: FilaUniverso): FilaUniverso {
 }
 
 async function main() {
-  const sb = cliente();
+  const sb = createServiceClient();
   const cfgHoy = await leerConfig(sb);
   const inst = JSON.parse(readFileSync(`scripts/analisis/motor-nuevos/out/0-instrumento-${SEMILLA}.json`, "utf8")) as { comparaciones: Array<{ aviso_id: string; pie: number; superficieBody: unknown }> };
   const ids = new Set(inst.comparaciones.filter((c) => c.pie === 20 && Number(c.superficieBody) === 0).map((c) => c.aviso_id));

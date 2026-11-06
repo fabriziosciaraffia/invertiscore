@@ -19,7 +19,8 @@
 //   TOPE=200 para probar.
 // ─────────────────────────────────────────────────────────────────────────────
 import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { cliente, leerConfig, universoActivo, evaluarConMotor, conSuperficieDosDecimales, fmt, type Config, type FilaUniverso, type ResultadoMotor } from "./comun";
+import { leerConfig, universoActivo, evaluarConMotor, conSuperficieDosDecimales, fmt, type Config, type FilaUniverso, type ResultadoMotor } from "./comun";
+import { createServiceClient } from "../../../src/lib/supabase/service";
 import { calcExitScenario, calcProjections, evalGate1Brazos } from "../../../src/lib/analysis";
 import { getComunaMedianaVentaUF } from "../../../src/lib/comuna-stats";
 import { calcIRRPct } from "../../../src/lib/finance/irr";
@@ -152,7 +153,7 @@ function corrida(f: FilaUniverso, cfg: Config, asOf: Date, medianaUsadoUFm2: num
 
 async function main() {
   mkdirSync("scripts/analisis/motor-nuevos/out", { recursive: true });
-  const sb = cliente();
+  const sb = createServiceClient();
   const cfg = await leerConfig(sb);
   const asOf = new Date();
   const base = JSON.parse(readFileSync("scripts/analisis/motor-nuevos/out/1-base-corregida.json", "utf8")) as { filas: FilaBase[] };

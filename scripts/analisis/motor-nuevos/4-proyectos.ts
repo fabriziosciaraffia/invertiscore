@@ -10,7 +10,8 @@
 // Solo lectura. Salida: out/4-proyectos.json (la muestra para las lecturas sale de acá).
 // ─────────────────────────────────────────────────────────────────────────────
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { cliente, paginar, cuantil, mediana, fmt, pct, tablaMd, muestraConSemilla } from "./comun";
+import { paginar, cuantil, mediana, fmt, pct, tablaMd, muestraConSemilla } from "./comun";
+import { createServiceClient } from "../../../src/lib/supabase/service";
 import { parsearFechaEntrega } from "../../../src/lib/avisos/fecha-entrega";
 import { ventaPlausible } from "../../../src/lib/avisos/plausible";
 import type { FilaBase } from "./1-base-corregida";
@@ -18,7 +19,7 @@ import type { FilaBase } from "./1-base-corregida";
 type Fila = { id: string; url: string | null; source_id: string; comuna: string | null; lat: number | string | null; lng: number | string | null; titulo: string | null; direccion: string | null; superficie_m2: number | string | null; dormitorios: number | null; banos: number | null; precio: number | string | null; moneda: string | null; precio_estimado_uf: number | string | null; fecha_entrega: string | null; seen_pass_id: string | null; scraped_at: string; created_at: string | null };
 
 async function main() {
-  const sb = cliente();
+  const sb = createServiceClient();
   const filas = await paginar<Fila>((a, b) => sb.from("scraped_properties")
     .select("id, url, source_id, comuna, lat, lng, titulo, direccion, superficie_m2, dormitorios, banos, precio, moneda, precio_estimado_uf, fecha_entrega, seen_pass_id, scraped_at, created_at")
     .eq("type", "venta").eq("is_active", true).eq("condicion", "nuevo").order("id").range(a, b));

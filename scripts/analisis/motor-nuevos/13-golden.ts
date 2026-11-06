@@ -7,7 +7,8 @@
 // Solo lectura. Salida: out/13-golden.json
 // ─────────────────────────────────────────────────────────────────────────────
 import { mkdirSync, writeFileSync } from "node:fs";
-import { cliente, fmt, tablaMd } from "./comun";
+import { fmt, tablaMd } from "./comun";
+import { createServiceClient } from "../../../src/lib/supabase/service";
 import { ufDelDia } from "./uf-historica";
 import { corridaDe, type Corrida } from "./11-fase4";
 import { runAnalysis } from "../../../src/lib/analysis";
@@ -25,7 +26,7 @@ const gate1Grilla = (c: Corrida) => c.gate1.cocSevero || c.gate1.sobreprecioComu
 const regla = (c: Corrida, tir: number | null) => (gate1Grilla(c) ? "BUSCAR OTRA" : c.flujo != null && c.flujo >= CENTRAL.tol && tir != null && tir >= CENTRAL.tir ? "COMPRAR" : "AJUSTA SUPUESTOS");
 
 async function main() {
-  const sb = cliente();
+  const sb = createServiceClient();
   const filas: (string | number)[][] = [];
   const salida: Record<string, unknown> = {};
   for (const pref of IDS) {

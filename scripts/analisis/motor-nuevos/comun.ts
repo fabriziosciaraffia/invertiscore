@@ -13,7 +13,7 @@
 //     --import "file:///C:/Users/fabri/invertiscore/node_modules/tsx/dist/loader.mjs" \
 //     scripts/analisis/motor-nuevos/<script>.ts
 // ─────────────────────────────────────────────────────────────────────────────
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { payloadDeAviso, respuestasDeAviso, type AvisoParaEvaluar, type FilaEvaluacion } from "../../../src/lib/avisos/evaluar-aviso";
 import { contextoDeFila, type CandidatoGuia } from "../../../src/lib/guia/guia-servidor";
 import { runAnalysis } from "../../../src/lib/analysis";
@@ -23,12 +23,8 @@ import { DEC } from "../../../src/components/formulario-v4/wizardV4Nodes";
 
 export const PAGINA = 1000;
 
-export function cliente(): SupabaseClient {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) throw new Error("faltan NEXT_PUBLIC_SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY en .env.local");
-  return createClient(url, key);
-}
+// El cliente de los scripts es `createServiceClient()` de src/lib/supabase/service.ts (service role): la regla del tier
+// CONFIG-PUBLICA (§6) exige que quien le pasa un cliente a un ayudante que lee `config` lo construya con ese constructor.
 
 export async function paginar<T>(consulta: (desde: number, hasta: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>): Promise<T[]> {
   const out: T[] = [];

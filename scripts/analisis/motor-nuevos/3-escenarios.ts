@@ -11,7 +11,8 @@
 // combinada usado + nuevo (solo para el hallazgo, sin recalcular veredictos). Solo lectura. Salida: out/3-escenarios.json.
 // ─────────────────────────────────────────────────────────────────────────────
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { cliente, universoActivo, evaluarConMotor, conSuperficieDosDecimales, fmt, pct, tablaMd, paginar, type Config } from "./comun";
+import { universoActivo, evaluarConMotor, conSuperficieDosDecimales, fmt, pct, tablaMd, paginar, type Config } from "./comun";
+import { createServiceClient } from "../../../src/lib/supabase/service";
 import type { FilaBase, Cuenta } from "./1-base-corregida";
 import { CASCADA_CAPREF, construirCeldaCapRef, evaluarPeldanoCapRef, capRefSinAvisos, type CeldaCapRef, type MuestraCapRef } from "../../../src/lib/capref-comuna";
 import { filtrarTipologiaObraNueva, PAGINA_POSTGREST } from "../../../src/lib/comuna-stats";
@@ -56,7 +57,7 @@ async function main() {
   const conTope = (p: number) => Math.max(0, Math.min(TOPE, p));
 
   // Las filas de los nuevos, para volver a correr el motor.
-  const sb = cliente();
+  const sb = createServiceClient();
   const filasNuevos = await universoActivo(sb, { condicion: "nuevo" });
   const resultados = new Map<string, Record<Escenario, Cuenta>>();
   let i = 0;
@@ -171,7 +172,7 @@ async function main() {
 
 /** La muestra de un peldaño con el universo de VENTA combinado (usado + nuevo); el arriendo igual que hoy (usado). Es la
  *  misma consulta de capref-comuna-query.ts › traer, con la condición de venta abierta. */
-async function muestraCombinada(sb: ReturnType<typeof cliente>, celda: CeldaCapRef, paso: { nivel: "celda" | "comuna"; ventana: number }, uf: number): Promise<MuestraCapRef> {
+async function muestraCombinada(sb: ReturnType<typeof createServiceClient>, celda: CeldaCapRef, paso: { nivel: "celda" | "comuna"; ventana: number }, uf: number): Promise<MuestraCapRef> {
   const desde = new Date(Date.now() - paso.ventana * 864e5).toISOString();
   type Fila = { precio: unknown; moneda: unknown; superficie_m2: unknown; dormitorios: unknown; condicion: unknown; source_id: unknown };
   const traer = async (lado: "venta" | "arriendo"): Promise<Fila[]> => paginar<Fila>((a, b) => {

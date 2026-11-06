@@ -14,7 +14,8 @@
 //   TOPE_CHEQUEOS=310 por defecto (~620 GET).
 // ─────────────────────────────────────────────────────────────────────────────
 import { existsSync, mkdirSync, readFileSync, writeFileSync, appendFileSync } from "node:fs";
-import { cliente, paginar, fmt, muestraConSemilla, tablaMd } from "./comun";
+import { paginar, fmt, muestraConSemilla, tablaMd } from "./comun";
+import { createServiceClient } from "../../../src/lib/supabase/service";
 import { leerFicha, type AlmacenPublicacion, type LecturaFicha, type ResultadoLectura } from "../../../src/lib/guia/publicacion";
 import { bajarFicha } from "../../../src/lib/guia/ficha-servidor";
 import { claveEdificio } from "../../../src/lib/guia/ficha-anio";
@@ -32,7 +33,7 @@ export interface LecturaLocal { avisoId: string; comuna: string; edificio: strin
 
 async function main() {
   mkdirSync("scripts/analisis/motor-nuevos/out", { recursive: true });
-  const sb = cliente();
+  const sb = createServiceClient();
   const previas: LecturaLocal[] = existsSync(SALIDA) ? (JSON.parse(readFileSync(SALIDA, "utf8")) as { lecturas: LecturaLocal[] }).lecturas : [];
   const yaLeidas = new Set(previas.map((l) => l.avisoId));
 

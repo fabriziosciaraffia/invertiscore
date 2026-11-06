@@ -12,7 +12,8 @@
 //   node … scripts/analisis/motor-nuevos/1-base-corregida.ts      (TOPE=200 para probar)
 // ─────────────────────────────────────────────────────────────────────────────
 import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
-import { cliente, leerConfig, universoActivo, evaluarConMotor, conSuperficieDosDecimales, fmt, tipoEntrega } from "./comun";
+import { leerConfig, universoActivo, evaluarConMotor, conSuperficieDosDecimales, fmt, tipoEntrega } from "./comun";
+import { createServiceClient } from "../../../src/lib/supabase/service";
 import { prefetchMedianaComunaVenta } from "../../../src/lib/api-helpers/analisis-pipeline";
 import { evalGate1Brazos } from "../../../src/lib/analysis";
 
@@ -47,7 +48,7 @@ function medianaDe(m: unknown): MedianaInfo {
 async function main() {
   mkdirSync("scripts/analisis/motor-nuevos/out", { recursive: true });
   writeFileSync(LOG, "");
-  const sb = cliente();
+  const sb = createServiceClient();
   const cfg = await leerConfig(sb);
   log(`config de hoy: UF ${fmt(cfg.uf)} · tasa ${cfg.tasa} %`);
   const t0 = Date.now();

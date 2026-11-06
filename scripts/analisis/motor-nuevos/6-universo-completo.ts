@@ -9,7 +9,8 @@
 // Salida: out/6-universo-completo.json (por fila: la evaluación entera, para que la FASE 4 la reutilice).
 // ─────────────────────────────────────────────────────────────────────────────
 import { existsSync, mkdirSync, readFileSync, writeFileSync, appendFileSync } from "node:fs";
-import { cliente, paginar, leerConfig, fmt, pct, tablaMd, evaluarConMotor, type FilaUniverso } from "./comun";
+import { paginar, leerConfig, fmt, pct, tablaMd, evaluarConMotor, type FilaUniverso } from "./comun";
+import { createServiceClient } from "../../../src/lib/supabase/service";
 import { evaluarAviso, type FilaEvaluacion } from "../../../src/lib/avisos/evaluar-aviso";
 import { avisosEvaluables, type FilaAviso } from "../../../src/lib/avisos/depurar";
 import { evalGate1Brazos } from "../../../src/lib/analysis";
@@ -35,7 +36,7 @@ export interface FilaCompleta {
 async function main() {
   (DEC as unknown as { superficie: number }).superficie = 2;
   mkdirSync("scripts/analisis/motor-nuevos/out", { recursive: true });
-  const sb = cliente();
+  const sb = createServiceClient();
   const cfg = await leerConfig(sb);
   const previas: FilaCompleta[] = existsSync(SALIDA) ? (JSON.parse(readFileSync(SALIDA, "utf8")) as { filas: FilaCompleta[] }).filas : [];
   const hechas = new Set(previas.map((f) => f.id));
