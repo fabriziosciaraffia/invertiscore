@@ -12,11 +12,11 @@ import type { FilaAnexo } from "./14-anexo-salida";
 const TIR_MIN = [4, 5, 6, 7];
 const TOL = [0, -100000, -200000, -300000];
 const CENTRAL = { tir: 5, tol: -200000 };
-type G = "r1" | "r3";
+export type G = "r1" | "r3";
 
-const grave = (f: FilaAnexo) => f.gate1.cocSevero || f.gate1.sobreprecioComunalConFlujo;
-const tirDe = (f: FilaAnexo, g: G) => f[g]?.tir ?? null;
-function regla(f: FilaAnexo, g: G, tirMin: number, tol: number): "COMPRAR" | "AJUSTA SUPUESTOS" | "BUSCAR OTRA" {
+export const grave = (f: FilaAnexo) => f.gate1.cocSevero || f.gate1.sobreprecioComunalConFlujo;
+export const tirDe = (f: FilaAnexo, g: G) => f[g]?.tir ?? null;
+export function regla(f: FilaAnexo, g: G, tirMin: number, tol: number): "COMPRAR" | "AJUSTA SUPUESTOS" | "BUSCAR OTRA" {
   if (grave(f)) return "BUSCAR OTRA";
   const t = tirDe(f, g);
   return f.flujo != null && f.flujo >= tol && t != null && t >= tirMin ? "COMPRAR" : "AJUSTA SUPUESTOS";
@@ -94,4 +94,4 @@ function main() {
   }
 }
 
-main();
+if (process.argv[1]?.replace(/\\/g, "/").endsWith("15-anexo-tablas.ts")) main();
