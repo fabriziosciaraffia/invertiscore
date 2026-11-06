@@ -4,8 +4,8 @@ Goal de solo lectura, pegado por Fabrizio el 05-nov-2026. Nada de este documento
 prompts, el informe ni la base: todo recálculo corre en memoria con los scripts de `scripts/analisis/motor-nuevos/`,
 que llaman al motor real (`runAnalysis`) con los insumos guardados en `avisos_evaluados`.
 
-> **Estado: las cuatro fases en master (313ca398, 06-nov-2026); el anexo «salida y escalón» y el arreglo del golden en la rama,
-> a la espera del OK para el push.** Orden del documento: resumen, FASE 0, FASE 1, punto 0, FASE 2, punto 2, FASE 3, defectos,
+> **Estado: las cuatro fases y el anexo «salida y escalón» en master (53e24204, 06-nov-2026); la celda de continuidad (anexo § 5)
+> en la rama, a la espera del OK para el push.** Orden del documento: resumen, FASE 0, FASE 1, punto 0, FASE 2, punto 2, FASE 3, defectos,
 > punto 1 (edad), FASE 4 (supuestos y resultados), lo que la base no puede responder, preguntas.
 
 ## Resumen (10 líneas): qué parte del 1,8 % explica cada cosa
@@ -1197,7 +1197,7 @@ Ninguno cambia de veredicto en la celda central; el nuevo de Ñuñoa es el únic
 **Resumen (5 líneas)**
 1. Vendido al año 10 como un usado de su radio (el mismo método de comparables del motor, universo usado), un nuevo vale en mediana el **73 % de lo que el motor supone** (p25 64 %, p75 81 %): el escalón por unidad es **UF 1.245 y 29 % del precio pagado** en mediana; el 48 % de los nuevos está más de 30 % sobre su valor como usado (Santiago 38 %, Independencia 38 %, Quilicura 55 %, Ñuñoa 19 %).
 2. Con g = 3 % recuperan el precio pagado al año 10 solo **41 %** de los nuevos (Santiago 7,5 %, Ñuñoa 84 %, Puente Alto 67 %); el **g de empate** mediano es **3,5 %** (Santiago 5,0 %, Ñuñoa 2,2 %): 3.306 de 5.587 necesitan más de 3 % real al año solo para no perder.
-3. Con esa salida y g = 1 %, la celda central (TIR ≥ 5 %, flujo ≥ −200.000) da **100 nuevos (1,8 %)** y 7.229 usados (contra 337 y 6.851 con la salida del motor); con g = 3 %, **621 nuevos (11,1 %)** y 10.481 usados (contra 2.054 y 10.710). Ninguno viene de break-even imposible.
+3. Con esa salida y g = 1 %, la celda central (TIR ≥ 5 %, flujo ≥ −200.000) da **100 nuevos (1,8 %)** y 7.229 usados (contra 337 y 6.851 con la salida del motor); con g = 3 %, **621 nuevos (11,1 %)** y 10.481 usados (contra 2.054 y 10.710). Ninguno viene de break-even imposible. Ninguna TIR mínima de 4 a 8 % deja a los usados donde están (§ 5): la más cercana, g 1 %, flujo ≥ −200.000 y TIR ≥ 6 %, da 6.360 usados (−207, pero cambiando 990 por 783) y 76 nuevos (1,4 %).
 4. Para los usados el método coincide con la salida del motor en mediana (cociente 100 %; 67 % de las unidades dentro de ±10 %) pero no unidad por unidad: se aplicó la misma regla a todos. Con g = 1 % se caen 534 de los 6.567 usados Comprar de hoy, casi todos por TIR baja (406 con flujo positivo, 126 con flujo negativo dentro de la tolerancia).
 5. La prueba histórica, comuna contra comuna (GfK lista de nuevos 2016-2020 contra reventa de hoy de los edificios de 6 a 10 años), dice lo mismo desde atrás: Santiago −7 %, Estación Central −10 % en UF.
 
@@ -1415,3 +1415,71 @@ del mismo rol; se compra como base de datos (Tinsa/INCOIN, Real Data, Colliers) 
 semanas de trabajo o de un contrato de datos; (b) los archivos históricos del portal (precios de lista de los proyectos
 2016-2020), que no son públicos; (c) hacia adelante, guardar cada noche el precio de las unidades nuevas con su proyecto y
 fecha (lo que el cruce hoy no escribe) para tener la serie propia en dos o tres años.
+
+### 5 · La celda de continuidad: qué TIR mínima deja a los usados donde están
+
+Con los resultados del punto 3, sin recalcular (`16-anexo-continuidad.ts` sobre `out/14-anexo-salida.json`): salida como
+usado del radio, la regla del anexo (Buscar otra solo por CoC severo o sobreprecio comunal con flujo; Comprar si flujo ≥
+tolerancia y TIR ≥ mínima; el resto Ajustar), TIR mínima de 4 a 8 % de a uno, para flujo ≥ 0 y flujo ≥ −$200.000, con g =
+3 % y g = 1 %. Los usados Comprar se comparan con los **6.567** Comprar de hoy (motor, UF 41.280): «se caen» son Comprar de
+hoy que la regla no deja en Comprar, «entran» son Ajustar o Buscar otra de hoy que la regla sube, y el neto es la diferencia
+contra 6.567. Los nuevos Comprar van en total y por entrega (inmediata / futura / sin fecha: los 16 sin fecha del punto 2 se
+contaron como inmediata en la FASE 4, pero acá se muestran aparte). Universo: 5.587 nuevos, 21.134 usados.
+
+**g = 3 %, flujo ≥ 0** — la más cercana: TIR ≥ 4 % (neto −536)
+
+| TIR mínima | usados Comprar | se caen | entran | neto contra hoy | nuevos Comprar | inmediata / futura / sin fecha | nuevos Comprar (%) |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| **4 %** | 6.031 | 717 | 181 | −536 | 38 | 30 / 1 / 7 | 0,7 % |
+| 5 % | 6.024 | 719 | 176 | −543 | 38 | 30 / 1 / 7 | 0,7 % |
+| 6 % | 6.016 | 721 | 170 | −551 | 38 | 30 / 1 / 7 | 0,7 % |
+| 7 % | 5.992 | 732 | 157 | −575 | 38 | 30 / 1 / 7 | 0,7 % |
+| 8 % | 5.942 | 753 | 128 | −625 | 35 | 27 / 1 / 7 | 0,6 % |
+
+**g = 3 %, flujo ≥ −200.000** — la más cercana: TIR ≥ 8 % (neto +2.995)
+
+| TIR mínima | usados Comprar | se caen | entran | neto contra hoy | nuevos Comprar | inmediata / futura / sin fecha | nuevos Comprar (%) |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 4 % | 10.538 | 5 | 3.976 | +3.971 | 771 | 574 / 77 / 120 | 13,8 % |
+| 5 % | 10.481 | 7 | 3.921 | +3.914 | 621 | 479 / 47 / 95 | 11,1 % |
+| 6 % | 10.355 | 9 | 3.797 | +3.788 | 510 | 411 / 32 / 67 | 9,1 % |
+| 7 % | 10.068 | 20 | 3.521 | +3.501 | 392 | 316 / 26 / 50 | 7,0 % |
+| **8 %** | 9.562 | 44 | 3.039 | +2.995 | 292 | 229 / 20 / 43 | 5,2 % |
+
+**g = 1 %, flujo ≥ 0** — la más cercana: TIR ≥ 4 % (neto −851)
+
+| TIR mínima | usados Comprar | se caen | entran | neto contra hoy | nuevos Comprar | inmediata / futura / sin fecha | nuevos Comprar (%) |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| **4 %** | 5.716 | 905 | 54 | −851 | 16 | 9 / 1 / 6 | 0,3 % |
+| 5 % | 5.474 | 1.120 | 27 | −1.093 | 15 | 8 / 1 / 6 | 0,3 % |
+| 6 % | 5.126 | 1.453 | 12 | −1.441 | 15 | 8 / 1 / 6 | 0,3 % |
+| 7 % | 4.685 | 1.882 | 0 | −1.882 | 15 | 8 / 1 / 6 | 0,3 % |
+| 8 % | 4.145 | 2.422 | 0 | −2.422 | 15 | 8 / 1 / 6 | 0,3 % |
+
+**g = 1 %, flujo ≥ −200.000** — la más cercana: TIR ≥ 6 % (neto −207)
+
+| TIR mínima | usados Comprar | se caen | entran | neto contra hoy | nuevos Comprar | inmediata / futura / sin fecha | nuevos Comprar (%) |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 4 % | 8.089 | 252 | 1.774 | +1.522 | 138 | 103 / 9 / 26 | 2,5 % |
+| 5 % | 7.229 | 534 | 1.196 | +662 | 100 | 74 / 8 / 18 | 1,8 % |
+| **6 %** | 6.360 | 990 | 783 | −207 | 76 | 51 / 7 / 18 | 1,4 % |
+| 7 % | 5.462 | 1.559 | 454 | −1.105 | 57 | 35 / 7 / 15 | 1,0 % |
+| 8 % | 4.610 | 2.201 | 244 | −1.957 | 38 | 20 / 7 / 11 | 0,7 % |
+
+**Lectura.**
+- **Con flujo ≥ 0 ninguna TIR mínima alcanza a los 6.567**: el tope es 4 % y aun ahí faltan 536 (g 3 %) u 851 (g 1 %). Los
+  Comprar de hoy ya tienen flujo ≥ 0 (lo pide el gate 3), así que los que se caen con flujo ≥ 0 se caen solo por la TIR
+  con salida como usado del radio: 717 con g 3 % y 905 con g 1 % no llegan ni a 4 %. Y la TIR mínima casi no mueve a los
+  nuevos con flujo ≥ 0 (38 de 4 % a 7 %, 15 o 16 con g 1 %): el flujo positivo es la puerta que los nuevos no pasan, no la TIR.
+- **Con flujo ≥ −200.000 y g 3 %, todas dan más usados que hoy** (de +3.971 a +2.995): la tolerancia de flujo deja entrar
+  de 3.039 a 3.976 usados Ajustar de hoy con flujo negativo chico y TIR alta, y ninguna TIR mínima hasta 8 % los frena. La
+  más cercana es 8 % (9.562 usados), con 292 nuevos (229 inmediata, 20 futura): 5,2 %.
+- **La única celda que deja a los usados casi donde están es g 1 %, flujo ≥ −200.000, TIR ≥ 6 %**: 6.360 usados (−207),
+  con 76 nuevos Comprar (1,4 %; 51 inmediata, 7 futura). Pero la cercanía es de número, no de conjunto: en esa celda **se
+  caen 990 y entran 783** (el 15 % de los Comprar de hoy cambia), y el nuevo que pasa casi no se mueve respecto de la celda
+  central del punto 3 (100 con TIR ≥ 5 %). Para que el conjunto de usados no cambie, el criterio tiene que ser el de hoy.
+- Por comuna, los nuevos Comprar de esa celda (g 1 %, −200.000, TIR ≥ 6 %) son Ñuñoa 19, La Florida 10, Macul 10, Cerrillos
+  9, Las Condes 5, La Cisterna 5, Lo Barnechea 4, Peñalolén 3 y nueve comunas con 1 o 2; Santiago 0 de 1.206, Providencia 0
+  de 480, Independencia 1 de 342. Con g 3 % y TIR ≥ 8 % (la más cercana de esa tolerancia): Ñuñoa 76, La Florida 61,
+  Macul 24, La Cisterna 20, Cerrillos 17, Huechuraba 17, Puente Alto 15, Renca 9, Las Condes 8, Estación Central 7,
+  Santiago 4, Providencia 4. Las tablas por comuna y TIR mínima, las cuatro, están en `out/16-anexo-continuidad.stdout`.
