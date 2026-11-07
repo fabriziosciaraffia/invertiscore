@@ -4,8 +4,8 @@ Goal de solo lectura, pegado por Fabrizio el 05-nov-2026. Nada de este documento
 prompts, el informe ni la base: todo recálculo corre en memoria con los scripts de `scripts/analisis/motor-nuevos/`,
 que llaman al motor real (`runAnalysis`) con los insumos guardados en `avisos_evaluados`.
 
-> **Estado: las cuatro fases y el anexo hasta la celda de continuidad en master (3b1c58b4, 06-nov-2026); los 717 y la salida
-> mixta (anexo § 6 y § 7) en la rama, a la espera del OK para el push.** Orden del documento: resumen, FASE 0, FASE 1, punto 0, FASE 2, punto 2, FASE 3, defectos,
+> **Estado: las cuatro fases y el anexo 1 completo en master (aa8f311d, 06-nov-2026); el anexo 2 «salida por ingreso»
+> (07-nov-2026) en la rama, a la espera del OK para el push.** Orden del documento: resumen, FASE 0, FASE 1, punto 0, FASE 2, punto 2, FASE 3, defectos,
 > punto 1 (edad), FASE 4 (supuestos y resultados), lo que la base no puede responder, preguntas.
 
 ## Resumen (10 líneas): qué parte del 1,8 % explica cada cosa
@@ -1567,3 +1567,240 @@ marcada es TIR ≥ 6 %.
   TIR ≥ 6 % con flujo ≥ 0 deja 5.099 usados (−1.468) y 15 nuevos.
 - Los nuevos no se mueven con la salida mixta: a TIR ≥ 6 % son 38 (g 3 %, flujo ≥ 0), 510 (g 3 %, −200.000), 15 (g 1 %,
   flujo ≥ 0) y 76 (g 1 %, −200.000), los mismos de § 5.
+
+## Anexo 2: salida por ingreso (corrida de confirmación del método, 07-nov-2026)
+
+**Resumen (5 líneas)**
+1. Vendido al año 10 por su ingreso (arriendo bruto del año 11 ÷ cap bruto usado de su celda; cap mediano **4,71 %** para los nuevos y **4,92 %** para los usados), un nuevo vale hoy el **75,9 %** de lo que se pagó (Santiago 65,6 %, Independencia 60,2 %, Ñuñoa 92,4 %) y un usado el **98,5 %**: el **premio de estreno por ingreso** es **UF 964 y 24,1 %** del precio en mediana (Santiago 34,4 %, Las Condes 28,3 %, Independencia 39,8 %, Ñuñoa 7,6 %); en los usados, 1,5 %. Es el mismo escalón del anexo 1 medido con otra regla (radio: 73 % y 29 %).
+2. TIR a 10 años en el escenario base (g 3 %, cap de hoy): **nuevos 1,2 %** de mediana (el motor les da 7,4 %), **usados 9,5 %** (motor 7,5 %); con g 1 %, −7,0 % y 4,0 %; con g 0 %, −11,0 % y 0,8 %. Los 50 puntos base de cap restan 3 a 4 puntos de TIR en todos los escenarios.
+3. En la base pasan TIR ≥ 5 % **1.614 nuevos (29 %)**, pero **5.480 de los 5.564 nuevos tienen flujo bajo −5 % del ingreso** (la vara del gate 2): de los que pasan, 38 tienen flujo ≥ 0 y 44 están entre 0 y −5 %. Usados: 15.373 pasan 5 %, 5.987 de ellos con flujo ≥ 0.
+4. Celda TIR ≥ 5 %, flujo ≥ −200.000, las tres salidas lado a lado (26.293 avisos presentes en las tres corridas): ingreso g 3 % **987 nuevos (17,7 %) y 10.217 usados**; motor 2.036 / 10.408; radio 616 / 10.240. Con g 1 %: ingreso 289 / 8.313, motor 337 / 6.643, radio 100 / 7.053. De los 6.540 usados Comprar de hoy quedan con TIR ≥ 5 %: 99,6 % (g 3 %), 99,0 % (g 1 %), 84,4 % (g 0 %) y 63,2 % (g 0 %, cap + 50 pb).
+5. Golden: 17b4e10d (Comprar, nuevo, Ñuñoa) 20,2 % en la base, con valor por ingreso UF 5.436 sobre un precio de 4.000; 7710a017 (Ajustar, Providencia) 13,7 %; f3522eac (Buscar otra, Santiago) 9,0 %, que cae a 3,5 % con g 1 %: con la salida por ingreso los tres pasan 5 % en la base, porque los tres están pagados a su valor por ingreso o por debajo.
+
+**El método.** `18-salida-ingreso.ts` (12,6 minutos, solo lectura): para cada aviso de la base de referencia de la FASE 4 (26.655 avisos · nuevos 5.564 (Comprar del motor 79) · usados 21.091 (Comprar 6.540); se leyeron 27.947 avisos, 24.215 activos con evaluación y 3.732 reactivados, y quedaron 26.655 limpios), el motor real sobre sus insumos guardados (`runAnalysis`, pie 20 %, 30 años, UF 41.285, tasa 4,07 %), la proyección del motor con g para precio y arriendo (como en la FASE 4), y el **precio de venta al año 10 = arriendo bruto anual del año 11 ÷ cap de salida**, con `calcExitScenario` del motor (comisión de venta y saldo del crédito como siempre; precio de venta reemplazado y, como es valor de mercado, sin descontar el sobreprecio de hoy, igual que la salida como usado del radio). **Cap de salida** = el cap bruto que calcula la pasada (`brutoDeMuestra`: mediana del arriendo UF/m²/mes × 12 sobre la mediana del precio UF/m², avisos publicados sin factor), en la celda **comuna × dormitorios con universo usado** para nuevos y usados por igual, con la cascada de la pasada (celda 90 días, celda 180, comuna 90, comuna 180; n ≥ 15 por lado) y, donde la celda cae al respaldo, el cap de la comuna (todas las tipologías), marcado. Dos diferencias con la pasada, declaradas: la celda no lleva la banda de ±20 % de m² del sujeto (haría una celda por aviso; la mediana por m² ya normaliza el tamaño) y las lecturas fueron una por comuna y lado (45 comunas, 8.292 arriendos y 23.838 ventas usadas), con la cascada en memoria; las ventanas de 90 y 180 días coinciden porque todo lo activo tiene `scraped_at` dentro de 90 días. Dos caps (el de hoy y el de hoy + 50 puntos base) × tres g (3 %, 1 %, 0 %) = seis TIR por aviso. Cobertura del cap: celda comuna × dormitorios (usado) en 25.255 avisos · respaldo de la comuna en 1.231 (nuevos 237) · sin cap 169 · cap mediano de los avisos: nuevos 4,71 %, usados 4,92 %.
+
+**El cap por celda** (usado; mediana arriendo UF/m²/mes × 12 ÷ mediana venta UF/m²; n arriendo/n venta; «comuna» = respaldo de la comuna):
+
+| comuna | avisos | 1D | 2D | 3D | 4D |
+| --- | --- | --- | --- | --- | --- |
+| Santiago | 7.039 | 5,02 · 1318/2898 | 4,92 · 724/2491 | 5,17 · 96/742 | 5,16 (comuna) · 2182/6270 |
+| Ñuñoa | 2.845 | 4,00 · 346/596 | 4,05 · 249/1002 | 4,36 · 34/564 | 4,26 (comuna) · 641/2239 |
+| Las Condes | 2.735 | 4,49 · 191/264 | 5,31 · 186/601 | 4,95 · 130/1099 | 5,03 · 73/701 |
+| Estación Central | 1.686 | 4,92 · 460/936 | 5,00 · 277/707 | 5,59 · 20/107 | 5,02 (comuna) · 770/1778 |
+| Providencia | 1.650 | 4,82 · 91/205 | 4,29 · 88/436 | 4,35 · 53/500 | 4,52 · 16/157 |
+| La Florida | 1.530 | 4,23 · 285/251 | 4,56 · 335/449 | 5,25 · 62/295 | 4,82 (comuna) · 687/1009 |
+| San Miguel | 1.286 | 4,62 · 177/344 | 4,63 · 208/615 | 4,49 · 106/365 | 4,77 (comuna) · 497/1362 |
+| Independencia | 1.274 | 5,42 · 260/384 | 5,16 · 203/463 | 5,09 · 56/148 | — |
+| Vitacura | 1.254 | 4,96 (comuna) · 161/1268 | 4,82 · 60/247 | 4,75 · 59/586 | 4,87 · 29/322 |
+| Macul | 1.139 | 4,69 · 151/142 | 4,65 · 176/328 | 4,71 · 24/176 | 4,92 (comuna) · 351/658 |
+| La Cisterna | 725 | 4,32 · 167/168 | 4,42 · 232/268 | 5,33 · 50/153 | 4,62 (comuna) · 451/593 |
+| Lo Barnechea | 717 | 4,57 · 23/17 | 5,04 · 40/172 | 4,66 · 22/337 | 4,79 · 17/223 |
+| Quinta Normal | 469 | 5,14 · 58/97 | 5,28 · 77/181 | 5,42 · 87/207 | — |
+| Recoleta | 421 | 5,48 · 37/69 | 4,93 · 29/139 | 5,25 · 19/117 | 5,24 (comuna) · 85/335 |
+| Maipú | 345 | 6,07 (comuna) · 56/259 | 5,76 · 23/95 | 6,28 · 29/144 | 6,07 (comuna) · 56/259 |
+| San Joaquín | 241 | 4,32 · 39/57 | 4,71 · 78/108 | 5,55 · 29/77 | 4,75 (comuna) · 147/243 |
+| Huechuraba | 230 | 4,64 (comuna) · 39/191 | 4,40 · 19/57 | 4,64 (comuna) · 39/191 | 4,64 (comuna) · 39/191 |
+| Puente Alto | 163 | 6,51 (comuna) · 47/114 | 6,51 (comuna) · 47/114 | 5,85 · 33/66 | 6,51 (comuna) · 47/114 |
+| La Reina | 154 | 4,62 (comuna) · 27/172 | 4,62 (comuna) · 27/172 | 4,62 (comuna) · 27/172 | 4,62 (comuna) · 27/172 |
+| Pudahuel | 127 | — | — | — | — |
+| Cerrillos | 114 | 4,07 · 134/20 | 4,87 · 83/15 | 5,58 (comuna) · 226/65 | — |
+| Peñalolén | 111 | — | 4,32 (comuna) · 21/156 | 4,32 (comuna) · 21/156 | 4,32 (comuna) · 21/156 |
+| Conchalí | 110 | 6,86 (comuna) · 56/74 | 6,86 (comuna) · 56/74 | 6,86 (comuna) · 56/74 | 6,86 (comuna) · 56/74 |
+| San Bernardo | 107 | 5,89 (comuna) · 36/128 | 6,35 · 20/59 | 5,89 (comuna) · 36/128 | 5,89 (comuna) · 36/128 |
+| Quilicura | 105 | 6,77 (comuna) · 24/68 | 6,77 (comuna) · 24/68 | 6,55 · 15/36 | — |
+| Renca | 36 | 6,25 (comuna) · 17/44 | 6,25 (comuna) · 17/44 | 6,25 (comuna) · 17/44 | — |
+| El Bosque | 29 | — | — | — | — |
+| Padre Hurtado | 9 | — | — | — | — |
+| Lampa | 3 | — | — | — | — |
+| La Granja | 1 | — | — | — | — |
+
+### 3 · Reporte, nuevos y usados por separado
+
+**3a · TIR a 10 años por escenario** (mediana · p25 · p75; n con TIR; la TIR del motor como referencia):
+
+| universo | escenario | n con TIR | TIR mediana | p25 | p75 | valor de salida UF mediana | TIR del motor (mediana) |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| nuevos | g 3 %, cap de hoy | 5.280 | 1,2 | -5,9 | 6,1 | 4.000 | 7,4 |
+| nuevos | g 3 %, cap + 50 pb | 5.070 | -2,2 | -10,1 | 3,3 | 3.605 | 7,4 |
+| nuevos | g 1 %, cap de hoy | 4.618 | -7,0 | -16,4 | -0,2 | 3.288 | 7,4 |
+| nuevos | g 1 %, cap + 50 pb | 3.883 | -10,5 | -20,8 | -3,5 | 2.963 | 7,4 |
+| nuevos | g 0 %, cap de hoy | 3.845 | -11,0 | -21,9 | -3,9 | 2.977 | 7,4 |
+| nuevos | g 0 %, cap + 50 pb | 2.940 | -15,0 | -27,8 | -7,4 | 2.683 | 7,4 |
+| usados | g 3 %, cap de hoy | 20.890 | 9,5 | 4,6 | 13,8 | 3.890 | 7,5 |
+| usados | g 3 %, cap + 50 pb | 20.746 | 7,3 | 2,1 | 12,0 | 3.526 | 7,5 |
+| usados | g 1 %, cap de hoy | 20.518 | 4,0 | -1,9 | 9,1 | 3.198 | 7,5 |
+| usados | g 1 %, cap + 50 pb | 20.055 | 1,4 | -5,3 | 7,0 | 2.898 | 7,5 |
+| usados | g 0 %, cap de hoy | 20.009 | 0,8 | -6,0 | 6,4 | 2.895 | 7,5 |
+| usados | g 0 %, cap + 50 pb | 19.079 | -2,1 | -9,9 | 4,2 | 2.623 | 7,5 |
+
+**3b · Cuántos pasan la TIR mínima, con el desglose en tres tramos de flujo** (flujo ≥ 0 / entre 0 y −5 % del ingreso, la vara del gate 2 / bajo −5 % del ingreso). Nuevos (5.564; flujo ≥ 0: 40 · entre 0 y −5 % del ingreso: 44 · bajo −5 %: 5.480): cuántos pasan la TIR mínima, en total y por tramo de flujo (≥ 0 / 0 a −5 % / bajo −5 %):
+
+| escenario | TIR ≥ 4 % | TIR ≥ 5 % | TIR ≥ 6 % | TIR ≥ 7 % | TIR ≥ 8 % |
+| --- | --- | --- | --- | --- | --- |
+| g 3 %, cap de hoy | 1.863 (38 / 44 / 1.781) | 1.614 (38 / 44 / 1.532) | 1.357 (38 / 43 / 1.276) | 1.096 (38 / 43 / 1.015) | 851 (38 / 43 / 770) |
+| g 3 %, cap + 50 pb | 1.115 (38 / 43 / 1.034) | 896 (38 / 43 / 815) | 694 (38 / 43 / 613) | 515 (38 / 41 / 436) | 376 (36 / 38 / 302) |
+| g 1 %, cap de hoy | 441 (36 / 34 / 371) | 329 (35 / 28 / 266) | 234 (34 / 26 / 174) | 158 (25 / 25 / 108) | 93 (16 / 23 / 54) |
+| g 1 %, cap + 50 pb | 159 (33 / 25 / 101) | 103 (24 / 24 / 55) | 64 (15 / 21 / 28) | 45 (13 / 17 / 15) | 29 (12 / 11 / 6) |
+| g 0 %, cap de hoy | 133 (22 / 23 / 88) | 85 (15 / 22 / 48) | 56 (13 / 18 / 25) | 39 (12 / 15 / 12) | 23 (11 / 8 / 4) |
+| g 0 %, cap + 50 pb | 39 (13 / 15 / 11) | 24 (11 / 9 / 4) | 18 (11 / 4 / 3) | 13 (10 / 3 / 0) | 10 (9 / 1 / 0) |
+
+Usados (21.091; flujo ≥ 0: 6.020 · entre 0 y −5 % del ingreso: 1.616 · bajo −5 %: 13.455): cuántos pasan la TIR mínima, en total y por tramo de flujo (≥ 0 / 0 a −5 % / bajo −5 %):
+
+| escenario | TIR ≥ 4 % | TIR ≥ 5 % | TIR ≥ 6 % | TIR ≥ 7 % | TIR ≥ 8 % |
+| --- | --- | --- | --- | --- | --- |
+| g 3 %, cap de hoy | 16.166 (5.987 / 1.610 / 8.569) | 15.373 (5.987 / 1.610 / 7.776) | 14.460 (5.986 / 1.605 / 6.869) | 13.349 (5.983 / 1.596 / 5.770) | 12.274 (5.977 / 1.588 / 4.709) |
+| g 3 %, cap + 50 pb | 13.885 (5.987 / 1.605 / 6.293) | 12.916 (5.983 / 1.597 / 5.336) | 11.894 (5.978 / 1.589 / 4.327) | 10.784 (5.974 / 1.563 / 3.247) | 9.580 (5.965 / 1.496 / 2.119) |
+| g 1 %, cap de hoy | 10.275 (5.961 / 1.518 / 2.796) | 9.182 (5.926 / 1.390 / 1.866) | 8.162 (5.867 / 1.050 / 1.245) | 7.152 (5.714 / 694 / 744) | 6.110 (5.294 / 465 / 351) |
+| g 1 %, cap + 50 pb | 7.631 (5.844 / 872 / 915) | 6.711 (5.615 / 611 / 485) | 5.808 (5.176 / 404 / 228) | 4.995 (4.676 / 245 / 74) | 4.228 (4.093 / 124 / 11) |
+| g 0 %, cap de hoy | 7.086 (5.678 / 676 / 732) | 6.147 (5.301 / 473 / 373) | 5.338 (4.839 / 317 / 182) | 4.542 (4.304 / 180 / 58) | 3.829 (3.726 / 94 / 9) |
+| g 0 %, cap + 50 pb | 4.885 (4.594 / 224 / 67) | 4.214 (4.078 / 123 / 13) | 3.601 (3.552 / 49 / 0) | 3.043 (3.031 / 12 / 0) | 2.567 (2.567 / 0 / 0) |
+
+**3c · Nuevos por comuna e inmediata / futura, escenario base (g 3 %, cap de hoy):** TIR mediana, los que pasan 5 % y 6 % (inmediata / futura / sin fecha) y los que además tienen flujo ≥ 0.
+
+| comuna | nuevos | inmediata / futura / sin fecha | cap (mediana) | TIR mediana | TIR ≥ 5 % | TIR ≥ 6 % | TIR ≥ 5 % y flujo ≥ 0 | TIR ≥ 6 % y flujo ≥ 0 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Gran Santiago | 5.564 | 3727 / 1572 / 265 | 4,71 | 1,2 | 1614 (1101 / 363 / 150) | 1357 (937 / 285 / 135) | 38 | 38 |
+| Santiago | 1.206 | 726 / 463 / 17 | 5,02 | -6,3 | 41 (37 / 2 / 2) | 26 (23 / 2 / 1) | 0 | 0 |
+| Ñuñoa | 880 | 603 / 256 / 21 | 4,05 | 7,1 | 638 (405 / 214 / 19) | 544 (360 / 166 / 18) | 2 | 2 |
+| La Florida | 582 | 493 / 69 / 20 | 4,56 | 4,0 | 259 (224 / 26 / 9) | 217 (186 / 24 / 7) | 4 | 4 |
+| Macul | 521 | 390 / 125 / 6 | 4,65 | 0,3 | 63 (47 / 10 / 6) | 54 (38 / 10 / 6) | 0 | 0 |
+| Providencia | 480 | 247 / 217 / 16 | 4,29 | 0,4 | 109 (64 / 41 / 4) | 85 (50 / 33 / 2) | 0 | 0 |
+| Independencia | 342 | 227 / 110 / 5 | 5,16 | -8,8 | 9 (8 / 0 / 1) | 9 (8 / 0 / 1) | 0 | 0 |
+| Las Condes | 217 | 126 / 79 / 12 | 4,95 | -0,7 | 45 (21 / 19 / 5) | 35 (19 / 12 / 4) | 0 | 0 |
+| La Cisterna | 170 | 165 / 0 / 5 | 4,42 | 4,0 | 75 (72 / 0 / 3) | 63 (60 / 0 / 3) | 2 | 2 |
+| Vitacura | 159 | 114 / 31 / 14 | 4,82 | 0,5 | 42 (27 / 11 / 4) | 35 (22 / 9 / 4) | 2 | 2 |
+| Recoleta | 116 | 105 / 0 / 11 | 4,93 | -1,3 | 3 (3 / 0 / 0) | 1 (1 / 0 / 0) | 1 | 1 |
+| Maipú | 116 | 108 / 7 / 1 | 5,76 | -4,7 | 14 (12 / 2 / 0) | 6 (6 / 0 / 0) | 1 | 1 |
+| Pudahuel | 93 | 30 / 63 / 0 | — | — | 0 (0 / 0 / 0) | 0 (0 / 0 / 0) | 0 | 0 |
+| Puente Alto | 90 | 22 / 0 / 68 | 5,85 | 8,5 | 85 (18 / 0 / 67) | 84 (18 / 0 / 66) | 16 | 16 |
+| Estación Central | 84 | 54 / 19 / 11 | 5,00 | 2,2 | 26 (13 / 7 / 6) | 18 (9 / 3 / 6) | 1 | 1 |
+| Lo Barnechea | 74 | 63 / 10 / 1 | 5,04 | 7,2 | 45 (44 / 0 / 1) | 42 (41 / 0 / 1) | 0 | 0 |
+| Quilicura | 65 | 7 / 58 / 0 | 6,77 | 4,0 | 4 (4 / 0 / 0) | 3 (3 / 0 / 0) | 2 | 2 |
+| Peñalolén | 63 | 23 / 40 / 0 | 4,32 | 6,9 | 42 (16 / 26 / 0) | 37 (15 / 22 / 0) | 1 | 1 |
+| Cerrillos | 61 | 47 / 4 / 10 | 4,07 | 5,9 | 35 (25 / 4 / 6) | 28 (21 / 4 / 3) | 0 | 0 |
+| Huechuraba | 58 | 48 / 5 / 5 | 4,40 | 8,2 | 53 (48 / 1 / 4) | 51 (48 / 0 / 3) | 1 | 1 |
+| Conchalí | 55 | 41 / 10 / 4 | 6,86 | -21,7 | 1 (0 / 0 / 1) | 1 (0 / 0 / 1) | 1 | 1 |
+| San Miguel | 53 | 46 / 0 / 7 | 4,62 | 1,6 | 8 (3 / 0 / 5) | 4 (0 / 0 / 4) | 0 | 0 |
+| Quinta Normal | 22 | 18 / 2 / 2 | 5,28 | -1,3 | 2 (0 / 0 / 2) | 2 (0 / 0 / 2) | 0 | 0 |
+| El Bosque | 19 | 0 / 0 / 19 | — | — | 0 (0 / 0 / 0) | 0 (0 / 0 / 0) | 0 | 0 |
+| San Joaquín | 17 | 10 / 4 / 3 | 4,71 | 0,9 | 1 (1 / 0 / 0) | 1 (1 / 0 / 0) | 0 | 0 |
+| Renca | 14 | 9 / 0 / 5 | 6,25 | 7,4 | 12 (9 / 0 / 3) | 10 (8 / 0 / 2) | 4 | 4 |
+| La Reina | 7 | 5 / 0 / 2 | 4,62 | -9,3 | 2 (0 / 0 / 2) | 1 (0 / 0 / 1) | 0 | 0 |
+
+**3d · El escalón implícito:** valor por ingreso de hoy (arriendo bruto de hoy ÷ cap de salida) ÷ precio pagado, mediana por comuna, nuevos y usados.
+
+| comuna | nuevos | escalón nuevos (mediana) | p25 | p75 | usados | escalón usados (mediana) | p25 | p75 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Gran Santiago | 5.564 | 75,9 % | 65,4 % | 87,3 % | 21.091 | 98,5 % | 85,5 % | 112,7 % |
+| Santiago | 1.206 | 65,6 % | 60,0 % | 73,8 % | 5.833 | 98,4 % | 84,8 % | 113,0 % |
+| Ñuñoa | 880 | 92,4 % | 87,0 % | 99,6 % | 1.965 | 101,3 % | 92,0 % | 112,8 % |
+| Las Condes | 217 | 71,7 % | 64,4 % | 82,6 % | 2.518 | 93,4 % | 80,6 % | 106,5 % |
+| Estación Central | 84 | 76,3 % | 72,2 % | 82,6 % | 1.602 | 101,0 % | 88,0 % | 117,1 % |
+| Providencia | 480 | 76,7 % | 68,1 % | 84,5 % | 1.170 | 98,3 % | 85,5 % | 112,8 % |
+| La Florida | 582 | 83,0 % | 75,5 % | 91,2 % | 948 | 99,0 % | 84,8 % | 115,1 % |
+| San Miguel | 53 | 77,3 % | 73,4 % | 80,9 % | 1.233 | 99,2 % | 88,3 % | 111,8 % |
+| Independencia | 342 | 60,2 % | 53,2 % | 67,5 % | 932 | 98,2 % | 83,1 % | 114,0 % |
+| Vitacura | 159 | 74,8 % | 67,9 % | 84,2 % | 1.095 | 97,7 % | 81,5 % | 112,1 % |
+| Macul | 521 | 75,4 % | 70,2 % | 79,6 % | 618 | 98,8 % | 87,8 % | 110,1 % |
+| La Cisterna | 170 | 83,0 % | 79,4 % | 90,5 % | 555 | 102,0 % | 89,6 % | 113,6 % |
+| Lo Barnechea | 74 | 88,1 % | 74,6 % | 94,0 % | 643 | 98,9 % | 86,3 % | 118,2 % |
+| Quinta Normal | 22 | 69,5 % | 58,4 % | 73,5 % | 447 | 98,7 % | 86,3 % | 109,8 % |
+| Recoleta | 116 | 70,6 % | 66,4 % | 74,6 % | 305 | 99,4 % | 85,3 % | 117,6 % |
+| Maipú | 116 | 64,2 % | 62,6 % | 70,0 % | 229 | 104,7 % | 78,5 % | 145,1 % |
+| San Joaquín | 17 | 76,5 % | 73,4 % | 81,1 % | 224 | 98,1 % | 85,4 % | 110,1 % |
+| Huechuraba | 58 | 93,0 % | 89,2 % | 96,7 % | 172 | 102,0 % | 91,8 % | 111,6 % |
+| Puente Alto | 90 | 84,7 % | 83,4 % | 89,2 % | 73 | 101,0 % | 87,5 % | 120,2 % |
+| La Reina | 7 | 64,0 % | 58,0 % | 84,2 % | 147 | 96,1 % | 82,7 % | 114,2 % |
+| Pudahuel | 93 | — | — | — | 34 | — | — | — |
+| Cerrillos | 61 | 86,9 % | 83,5 % | 92,9 % | 53 | 97,9 % | 81,1 % | 113,6 % |
+| Peñalolén | 63 | 91,1 % | 74,7 % | 100,0 % | 48 | 123,1 % | 104,9 % | 160,0 % |
+| Conchalí | 55 | 52,3 % | 50,5 % | 55,2 % | 55 | 80,4 % | 61,8 % | 110,4 % |
+| San Bernardo | 0 | — | — | — | 107 | 89,7 % | 72,7 % | 121,1 % |
+| Quilicura | 65 | 48,1 % | 45,2 % | 49,6 % | 40 | 91,5 % | 80,4 % | 124,9 % |
+| Renca | 14 | 79,4 % | 76,1 % | 84,0 % | 22 | 90,8 % | 80,7 % | 105,8 % |
+| El Bosque | 19 | — | — | — | 10 | — | — | — |
+| Padre Hurtado | 0 | — | — | — | 9 | — | — | — |
+| Lampa | 0 | — | — | — | 3 | — | — | — |
+| La Granja | 0 | — | — | — | 1 | — | — | — |
+
+**3e · El premio de estreno por ingreso:** precio pagado − valor por ingreso de hoy, UF y % del precio, mediana por comuna (nuevos; usados como control).
+
+| comuna | nuevos | premio UF (mediana) | premio % (mediana) | p25 | p75 | usados | usados: UF (mediana) | usados: % (mediana) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Gran Santiago | 5.564 | 964 | 24,1 % | 12,7 % | 34,6 % | 21.091 | 46 | 1,5 % |
+| Santiago | 1.206 | 1.140 | 34,4 % | 26,2 % | 40,0 % | 5.833 | 36 | 1,6 % |
+| Ñuñoa | 880 | 327 | 7,6 % | 0,4 % | 13,0 % | 1.965 | -64 | -1,3 % |
+| Las Condes | 217 | 3.288 | 28,3 % | 17,4 % | 35,6 % | 2.518 | 611 | 6,6 % |
+| Estación Central | 84 | 573 | 23,7 % | 17,4 % | 27,8 % | 1.602 | -17 | -1,0 % |
+| Providencia | 480 | 2.042 | 23,3 % | 15,5 % | 31,9 % | 1.170 | 115 | 1,7 % |
+| La Florida | 582 | 607 | 17,0 % | 8,8 % | 24,5 % | 948 | 29 | 1,0 % |
+| San Miguel | 53 | 717 | 22,7 % | 19,1 % | 26,6 % | 1.233 | 25 | 0,8 % |
+| Independencia | 342 | 1.477 | 39,8 % | 32,5 % | 46,8 % | 932 | 34 | 1,8 % |
+| Vitacura | 159 | 3.130 | 25,2 % | 15,8 % | 32,1 % | 1.095 | 318 | 2,3 % |
+| Macul | 521 | 983 | 24,6 % | 20,4 % | 29,8 % | 618 | 38 | 1,2 % |
+| La Cisterna | 170 | 508 | 17,0 % | 9,5 % | 20,6 % | 555 | -44 | -2,0 % |
+| Lo Barnechea | 74 | 1.328 | 11,9 % | 6,0 % | 25,4 % | 643 | 135 | 1,1 % |
+| Quinta Normal | 22 | 802 | 30,5 % | 26,5 % | 41,6 % | 447 | 25 | 1,3 % |
+| Recoleta | 116 | 1.001 | 29,4 % | 25,4 % | 33,6 % | 305 | 12 | 0,6 % |
+| Maipú | 116 | 1.397 | 35,8 % | 30,0 % | 37,4 % | 229 | -101 | -4,7 % |
+| San Joaquín | 17 | 798 | 23,5 % | 18,9 % | 26,6 % | 224 | 44 | 1,9 % |
+| Huechuraba | 58 | 416 | 7,0 % | 3,3 % | 10,8 % | 172 | -165 | -2,0 % |
+| Puente Alto | 90 | 512 | 15,3 % | 10,8 % | 16,6 % | 73 | -27 | -1,0 % |
+| La Reina | 7 | 2.432 | 36,0 % | 15,8 % | 42,0 % | 147 | 243 | 3,9 % |
+| Pudahuel | 93 | — | — | — | — | 34 | — | — |
+| Cerrillos | 61 | 372 | 13,1 % | 7,1 % | 16,5 % | 53 | 66 | 2,1 % |
+| Peñalolén | 63 | 802 | 8,9 % | -0,0 % | 25,3 % | 48 | -1.211 | -23,1 % |
+| Conchalí | 55 | 1.536 | 47,7 % | 44,8 % | 49,5 % | 55 | 537 | 19,6 % |
+| San Bernardo | 0 | — | — | — | — | 107 | 278 | 10,3 % |
+| Quilicura | 65 | 2.200 | 51,9 % | 50,4 % | 54,8 % | 40 | 168 | 8,5 % |
+| Renca | 14 | 493 | 20,6 % | 16,0 % | 23,9 % | 22 | 191 | 9,2 % |
+| El Bosque | 19 | — | — | — | — | 10 | — | — |
+| Padre Hurtado | 0 | — | — | — | — | 9 | — | — |
+| Lampa | 0 | — | — | — | — | 3 | — | — |
+| La Granja | 0 | — | — | — | — | 1 | — | — |
+
+**3f · Los usados Comprar de hoy** (6.540): cuántos quedan con TIR ≥ 5 % y ≥ 6 % en cada escenario, y de ellos cuántos con flujo ≥ 0. Con la TIR del motor: ≥ 5 % 6.534, ≥ 6 % 6.532.
+
+| escenario | TIR ≥ 5 % | % | de ellos flujo ≥ 0 | TIR ≥ 6 % | % | de ellos flujo ≥ 0 | sin TIR |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| g 3 %, cap de hoy | 6.513 | 99,6 % | 5.804 | 6.512 | 99,6 % | 5.803 | 27 |
+| g 3 %, cap + 50 pb | 6.510 | 99,5 % | 5.802 | 6.507 | 99,5 % | 5.799 | 27 |
+| g 1 %, cap de hoy | 6.473 | 99,0 % | 5.775 | 6.339 | 96,9 % | 5.741 | 27 |
+| g 1 %, cap + 50 pb | 5.903 | 90,3 % | 5.546 | 5.366 | 82,0 % | 5.125 | 27 |
+| g 0 %, cap de hoy | 5.522 | 84,4 % | 5.246 | 4.979 | 76,1 % | 4.795 | 27 |
+| g 0 %, cap + 50 pb | 4.131 | 63,2 % | 4.046 | 3.572 | 54,6 % | 3.529 | 27 |
+
+### 4 · Las tres salidas lado a lado en la celda TIR ≥ 5 %, flujo ≥ −200.000
+
+Regla del anexo (Buscar otra solo por CoC severo o sobreprecio comunal con flujo; Comprar con flujo ≥ −200.000 y TIR ≥ 5 %; el resto Ajustar), sobre los **26.293 avisos presentes en las tres corridas** (nuevos 5.564, usados 20.729; flujo y gates de la corrida de hoy; la TIR del motor y la del radio vienen de sus corridas, FASE 4 y anexo 1). «Se caen» y «entran» son contra los usados Comprar de hoy de esos 20.729.
+
+| salida | nuevos Comprar | % | inmediata / futura / sin fecha | usados Comprar | % | usados Comprar de hoy que se caen | entran | TIR mediana nuevos | TIR mediana usados |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| motor, g 3 % (precio × 1,03^10 − sobreprecio) | 2.036 | 36,6 % | 1413 / 438 / 185 | 10.408 | 50,2 % | 8 | 4.020 | 7,4 | 7,5 |
+| como usado del radio, g 3 % | 616 | 11,1 % | 475 / 47 / 94 | 10.240 | 49,4 % | 7 | 3.851 | -1,3 | 8,4 |
+| ingreso, g 3 %, cap de hoy | 987 | 17,7 % | 706 / 151 / 130 | 10.217 | 49,3 % | 28 | 3.849 | 1,2 | 9,5 |
+| ingreso, g 3 %, cap + 50 pb | 670 | 12,0 % | 480 / 83 / 107 | 9.891 | 47,7 % | 31 | 3.526 | -2,2 | 7,3 |
+| motor, g 1 % | 337 | 6,1 % | 220 / 19 / 98 | 6.643 | 32,0 % | 384 | 631 | 2,0 | 2,5 |
+| como usado del radio, g 1 % | 100 | 1,8 % | 74 / 8 / 18 | 7.053 | 34,0 % | 521 | 1.178 | -9,6 | 2,6 |
+| ingreso, g 1 %, cap de hoy | 289 | 5,2 % | 219 / 40 / 30 | 8.313 | 40,1 % | 66 | 1.983 | -7,0 | 4,0 |
+| ingreso, g 1 %, cap + 50 pb | 97 | 1,7 % | 76 / 5 / 16 | 6.438 | 31,1 % | 629 | 671 | -10,5 | 1,3 |
+| motor, g 0 % | 27 | 0,5 % | 22 / 0 / 5 | 2.469 | 11,9 % | 3.930 | 3 | -2,1 | -1,1 |
+| ingreso, g 0 %, cap de hoy | 81 | 1,5 % | 64 / 5 / 12 | 5.928 | 28,6 % | 1.000 | 532 | -11,0 | 0,8 |
+| ingreso, g 0 %, cap + 50 pb | 24 | 0,4 % | 14 / 3 / 7 | 4.107 | 19,8 % | 2.363 | 74 | -15,0 | -2,2 |
+
+### 5 · Los tres casos del golden
+
+TIR con salida por ingreso en los seis escenarios (y la del motor), con su cap de hoy (celda comuna × dormitorios, usado) y su valor por ingreso de hoy; cada caso con su input guardado y la UF del día en que se creó, como en la FASE 4.5.
+
+| análisis | veredicto · score · flujo | cap (nivel; n arr/venta) | precio UF · valor por ingreso hoy UF · salida motor UF | TIR motor | g 3 %, cap de hoy | g 3 %, cap + 50 pb | g 1 %, cap de hoy | g 1 %, cap + 50 pb | g 0 %, cap de hoy | g 0 %, cap + 50 pb |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 17b4e10d · Ñuñoa · nuevo · 2D 80 m² | COMPRAR 80 · 49.232 (6,6 % del ingreso) | 4.05 (celda; 249/1002) | 4.000 · 5.436 · 5.376 | 13,43 | 20,2 (UF 7.306) | 18,2 (UF 6.503) | 15,8 (UF 6.005) | 13,6 (UF 5.345) | 13,4 (UF 5.436) | 11,0 (UF 4.839) |
+| f3522eac · Santiago · usado 15 años · 2D 50 m² | BUSCAR OTRA 59 · -110.844 (-22,9 % del ingreso) | 4.92 (celda; 724/2491) | 3.000 · 2.875 · 3.511 | 5,74 | 9,0 (UF 3.864) | 6,9 (UF 3.507) | 3,5 (UF 3.176) | 0,8 (UF 2.883) | 0,1 (UF 2.875) | -3,2 (UF 2.610) |
+| 7710a017 · Providencia · usado 4 años · 2D 60 m² | AJUSTA SUPUESTOS 64 · -259.761 (-27,1 % del ingreso) | 4.29 (celda; 88/436) | 5.500 · 6.713 · 7.392 | 8,58 | 13,7 (UF 9.022) | 11,6 (UF 8.080) | 8,9 (UF 7.415) | 6,4 (UF 6.641) | 6,1 (UF 6.713) | 3,3 (UF 6.012) |
+
+**Lectura.**
+- **El método es coherente consigo mismo en los usados y le pone número al escalón de los nuevos.** Para un usado el valor por ingreso de hoy es el 98,5 % de lo que se paga (p25 85 %, p75 113 %): el mercado usado está en su cap. Para un nuevo es el 75,9 %: el comprador paga un 24 % sobre el ingreso que el depto produce al cap de su comuna, y eso es lo que la salida por ingreso le cobra al año 10. Es el escalón del anexo 1 (73 % con el radio) medido con otra regla, y lo mismo que dijo la prueba histórica.
+- **La salida por ingreso es más generosa con los nuevos que la del radio y más dura que la del motor** (987 contra 616 y 2.036 en la celda central con g 3 %), porque capitaliza el arriendo del nuevo (3 % sobre el usado, y más por m² en unidades chicas) al cap del usado; con g 1 % las tres convergen (289, 100 y 337). Con los usados casi no se distingue del motor ni del radio con g 3 % (10.217, 10.408, 10.240) y le da más Comprar que los dos con g 1 % (8.313 contra 6.643 y 7.053), porque el arriendo crece con g y el valor por ingreso de un usado ya es su precio: es precio × (1+g)^10 sin descontar sobreprecio.
+- **El cuello de los nuevos no es la TIR, es el flujo.** 5.480 de 5.564 tienen flujo bajo −5 % del ingreso; en la base pasan 5 % de TIR 1.614, pero solo 82 de esos tienen flujo ≥ 0 o dentro de la vara de hoy. Cualquier criterio con tolerancia de flujo en pesos (−200.000) deja pasar nuevos por la TIR; cualquier criterio con la vara de hoy (−5 % del ingreso) deja afuera a casi todos, con la salida que sea.
+- **Los 50 puntos base pesan tanto como pasar de g 3 % a g 1 % en los nuevos** (de 1.614 a 896 pasan 5 %; de 987 a 670 en la celda central) y menos en los usados (de 15.373 a 12.916). Los usados Comprar de hoy aguantan la salida por ingreso con g 3 % y g 1 % (99,6 % y 99,0 % siguen sobre 5 %); con g 0 % caen al 84 % y con g 0 % y +50 pb al 63 %.
+- **Cobertura y límites.** 1.231 avisos (237 nuevos) usan el cap de la comuna como respaldo (celdas con menos de 15 arriendos o ventas: Vitacura 1D, Huechuraba, La Reina, Puente Alto 1D y 2D, Conchalí, Peñalolén, Quilicura, Renca) y 169 quedan sin cap (Pudahuel, El Bosque, Padre Hurtado, Lampa, La Granja, y los 4D de Independencia, Quinta Normal y Cerrillos). El cap es de avisos publicados (pedidos, no cerrados) en los dos lados, sin factor, como el de la pasada. La celda no lleva la banda de m² del sujeto. Y el universo de hoy no es el de la FASE 4 (las activas cambian cada noche): 6.540 usados Comprar de hoy contra 6.567 del anexo 1 y 6.595 de la FASE 4.
