@@ -81,12 +81,14 @@ const COLS_AE = "aviso_id, evaluado_at, precio_uf, comuna, condicion, antiguedad
 const COLS_SP = "id, comuna, lat, lng, precio, moneda, superficie_m2, dormitorios, banos, condicion, direccion, fecha_entrega, titulo, url, source_id, gastos_comunes, antiguedad, scraped_at, created_at, precio_estimado_uf";
 
 /** Avisos activos en venta con su última evaluación. Paginado por aviso_id (PostgREST capa en 1.000). */
-export async function universoActivo(sb: SupabaseClient, filtro?: { condicion?: "usado" | "nuevo" }): Promise<FilaUniverso[]> {
+/** `filtro.ids` lee solo esos avisos (las fichas del anexo 2), con la misma forma y el mismo orden. */
+export async function universoActivo(sb: SupabaseClient, filtro?: { condicion?: "usado" | "nuevo"; ids?: string[] }): Promise<FilaUniverso[]> {
   type Cruda = Omit<FilaUniverso, "sp" | "precio_uf"> & { precio_uf: number | string; scraped_properties: FilaUniverso["sp"] };
   const filas = await paginar<Cruda>((a, b) => {
     let q = sb.from("avisos_evaluados").select(`${COLS_AE}, scraped_properties!inner(${COLS_SP})`)
       .eq("scraped_properties.is_active", true).eq("scraped_properties.type", "venta");
     if (filtro?.condicion) q = q.eq("condicion", filtro.condicion);
+    if (filtro?.ids) q = q.in("aviso_id", filtro.ids);
     // PostgREST tipa la relación embebida como lista; con `!inner` por la llave es una fila (lo confirma el runtime).
     return q.order("aviso_id", { ascending: true }).range(a, b) as unknown as PromiseLike<{ data: Cruda[] | null; error: { message: string } | null }>;
   });
