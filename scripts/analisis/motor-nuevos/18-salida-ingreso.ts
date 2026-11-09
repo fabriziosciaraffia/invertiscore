@@ -94,7 +94,7 @@ export function capDe(arr: FilaSP[], venta: FilaSP[], dorms: number, uf: number,
 }
 
 /** La proyección del motor con g para el precio y el arriendo reescalado (la misma de la FASE 4). */
-function proyeccionConG(input: AnalisisInput, r: ResultadoMotor, cfg: Config, asOf: Date, g: number): YearProjection[] {
+export function proyeccionConG(input: AnalisisInput, r: ResultadoMotor, cfg: Config, asOf: Date, g: number): YearProjection[] {
   const proj = calcProjections({ input, metrics: r.resultado.metrics, ufClp: cfg.uf, asOf, plazoVenta: 20, plusvaliaAnual: g });
   const vac = Number(input.vacanciaMeses) || 0;
   const propArriendo = 1 - vac / 12 - 2 / 24;
@@ -106,7 +106,7 @@ function proyeccionConG(input: AnalisisInput, r: ResultadoMotor, cfg: Config, as
   });
 }
 /** calcExitScenario con el precio de venta al año 10 reemplazado por un valor de mercado (sin descontar el sobreprecio de hoy). */
-function exitValorMercado(input: AnalisisInput, r: ResultadoMotor, proj: YearProjection[], precioVentaCLP: number) {
+export function exitValorMercado(input: AnalisisInput, r: ResultadoMotor, proj: YearProjection[], precioVentaCLP: number) {
   const p = proj.map((x, i) => (i === HORIZONTE - 1 ? { ...x, valorPropiedad: Math.round(precioVentaCLP) } : x));
   return calcExitScenario(input, { ...r.resultado.metrics, precioVsComuna: null }, p, HORIZONTE);
 }
