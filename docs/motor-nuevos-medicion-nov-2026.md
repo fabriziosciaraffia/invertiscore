@@ -5,7 +5,7 @@ prompts, el informe ni la base: todo recálculo corre en memoria con los scripts
 que llaman al motor real (`runAnalysis`) con los insumos guardados en `avisos_evaluados`.
 
 > **Estado: las cuatro fases y el anexo 1 completo en master (aa8f311d, 06-nov-2026); el anexo 2 «salida por ingreso»
-> (07-nov-2026) en la rama, a la espera del OK para el push.** Orden del documento: resumen, FASE 0, FASE 1, punto 0, FASE 2, punto 2, FASE 3, defectos,
+> (07-nov-2026), con la tabla por comuna y las ocho fichas (09-nov-2026), en la rama, a la espera del OK para el push.** Orden del documento: resumen, FASE 0, FASE 1, punto 0, FASE 2, punto 2, FASE 3, defectos,
 > punto 1 (edad), FASE 4 (supuestos y resultados), lo que la base no puede responder, preguntas.
 
 ## Resumen (10 líneas): qué parte del 1,8 % explica cada cosa
@@ -1804,3 +1804,334 @@ TIR con salida por ingreso en los seis escenarios (y la del motor), con su cap d
 - **El cuello de los nuevos no es la TIR, es el flujo.** 5.480 de 5.564 tienen flujo bajo −5 % del ingreso; en la base pasan 5 % de TIR 1.614, pero solo 82 de esos tienen flujo ≥ 0 o dentro de la vara de hoy. Cualquier criterio con tolerancia de flujo en pesos (−200.000) deja pasar nuevos por la TIR; cualquier criterio con la vara de hoy (−5 % del ingreso) deja afuera a casi todos, con la salida que sea.
 - **Los 50 puntos base pesan tanto como pasar de g 3 % a g 1 % en los nuevos** (de 1.614 a 896 pasan 5 %; de 987 a 670 en la celda central) y menos en los usados (de 15.373 a 12.916). Los usados Comprar de hoy aguantan la salida por ingreso con g 3 % y g 1 % (99,6 % y 99,0 % siguen sobre 5 %); con g 0 % caen al 84 % y con g 0 % y +50 pb al 63 %.
 - **Cobertura y límites.** 1.231 avisos (237 nuevos) usan el cap de la comuna como respaldo (celdas con menos de 15 arriendos o ventas: Vitacura 1D, Huechuraba, La Reina, Puente Alto 1D y 2D, Conchalí, Peñalolén, Quilicura, Renca) y 169 quedan sin cap (Pudahuel, El Bosque, Padre Hurtado, Lampa, La Granja, y los 4D de Independencia, Quinta Normal y Cerrillos). El cap es de avisos publicados (pedidos, no cerrados) en los dos lados, sin factor, como el de la pasada. La celda no lleva la banda de m² del sujeto. Y el universo de hoy no es el de la FASE 4 (las activas cambian cada noche): 6.540 usados Comprar de hoy contra 6.567 del anexo 1 y 6.595 de la FASE 4.
+
+### 6 · Por comuna, escenario base (g = 3 %, cap de hoy)
+
+`20-anexo2-comunas-fichas.ts`, sobre los vectores de la salida por ingreso ya calculados (nada recalculado ni escrito). Nuevos y
+usados por separado, en el mismo orden (por avisos nuevos). «Comprar de hoy» es el veredicto del motor en la corrida de la salida
+por ingreso (UF 41.285); entre paréntesis, cuántos de ellos tienen flujo negativo. El cap de salida es la mediana de los caps de
+celda de los avisos de la comuna. El flujo en % del arriendo es flujo neto ÷ ingreso mensual del motor (el arriendo más
+estacionamiento y bodega, lo mismo que mide el gate 2). Las dos últimas columnas son el % de los avisos de la comuna con TIR base
+≥ 5 % y flujo **dentro de la vara de hoy** (no peor que −5 % del arriendo), y con TIR base ≥ 5 % y flujo **entre −5 % del
+arriendo y −$200.000**.
+
+**Nuevos**
+
+| comuna | avisos | Comprar de hoy (con flujo < 0) | cap de salida (mediana) | premio de estreno % (mediana) | premio UF (mediana) | flujo mensual mediano | flujo % del arriendo (mediana) | TIR por ingreso (mediana) | TIR del motor (mediana) | TIR ≥ 5 % dentro de la vara | TIR ≥ 5 % entre −5 % y −$200.000 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Gran Santiago | 5.564 | 79 (39) | 4,71 | 24,1 % | 964 | $-238.238 | -47,3 % | 1,2 % | 7,4 % | 1,5 % | 16,7 % |
+| Santiago | 1.206 | 0 (0) | 5,02 | 34,4 % | 1.140 | $-220.140 | -58,6 % | -6,3 % | 6,8 % | 0,0 % | 3,4 % |
+| Ñuñoa | 880 | 5 (3) | 4,05 | 7,6 % | 327 | $-228.930 | -41,6 % | 7,1 % | 7,6 % | 0,6 % | 38,0 % |
+| La Florida | 582 | 11 (7) | 4,56 | 17,0 % | 607 | $-189.122 | -40,3 % | 4,0 % | 7,9 % | 1,9 % | 41,1 % |
+| Macul | 521 | 3 (3) | 4,65 | 24,6 % | 983 | $-247.779 | -49,9 % | 0,3 % | 7,2 % | 0,6 % | 11,3 % |
+| Providencia | 480 | 0 (0) | 4,29 | 23,3 % | 2.042 | $-579.242 | -57,4 % | 0,4 % | 7,1 % | 0,0 % | 0,8 % |
+| Independencia | 342 | 0 (0) | 5,16 | 39,8 % | 1.477 | $-256.476 | -67,2 % | -8,8 % | 6,6 % | 0,0 % | 2,6 % |
+| Las Condes | 217 | 2 (2) | 4,95 | 28,3 % | 3.288 | $-708.206 | -47,4 % | -0,7 % | 7,3 % | 2,3 % | 3,2 % |
+| La Cisterna | 170 | 4 (2) | 4,42 | 17,0 % | 508 | $-155.386 | -42,5 % | 4,0 % | 7,4 % | 2,4 % | 41,8 % |
+| Vitacura | 159 | 2 (0) | 4,82 | 25,2 % | 3.130 | $-757.703 | -48,1 % | 0,5 % | 7,3 % | 1,3 % | 0,0 % |
+| Recoleta | 116 | 1 (0) | 4,93 | 29,4 % | 1.001 | $-181.166 | -43,3 % | -1,3 % | 7,7 % | 0,9 % | 1,7 % |
+| Maipú | 116 | 2 (1) | 5,76 | 35,8 % | 1.397 | $-203.885 | -36,0 % | -4,7 % | 8,1 % | 1,7 % | 10,3 % |
+| Pudahuel | 93 | 0 (0) | — | — | — | $-261.667 | -50,5 % | — | 7,2 % | 0,0 % | 0,0 % |
+| Puente Alto | 90 | 29 (13) | 5,85 | 15,3 % | 512 | $-49.269 | -8,5 % | 8,5 % | 10,7 % | 32,2 % | 62,2 % |
+| Estación Central | 84 | 3 (2) | 5,00 | 23,7 % | 573 | $-118.659 | -35,6 % | 2,2 % | 8,6 % | 3,6 % | 27,4 % |
+| Lo Barnechea | 74 | 0 (0) | 5,04 | 11,9 % | 1.328 | $-449.054 | -26,2 % | 7,2 % | 8,9 % | 0,0 % | 12,2 % |
+| Quilicura | 65 | 4 (2) | 6,77 | 51,9 % | 2.200 | $-291.455 | -60,8 % | 4,0 % | 7,8 % | 6,2 % | 0,0 % |
+| Peñalolén | 63 | 1 (0) | 4,32 | 8,9 % | 802 | $-518.725 | -36,2 % | 6,9 % | 7,8 % | 1,6 % | 3,2 % |
+| Cerrillos | 61 | 3 (3) | 4,07 | 13,1 % | 372 | $-137.790 | -41,9 % | 5,9 % | 7,9 % | 4,9 % | 52,5 % |
+| Huechuraba | 58 | 1 (0) | 4,40 | 7,0 % | 416 | $-231.955 | -28,4 % | 8,2 % | 8,8 % | 1,7 % | 27,6 % |
+| Conchalí | 55 | 1 (0) | 6,86 | 47,7 % | 1.536 | $-174.413 | -43,1 % | -21,7 % | 7,8 % | 1,8 % | 0,0 % |
+| San Miguel | 53 | 0 (0) | 4,62 | 22,7 % | 717 | $-187.615 | -45,4 % | 1,6 % | 7,4 % | 0,0 % | 9,4 % |
+| Quinta Normal | 22 | 0 (0) | 5,28 | 30,5 % | 802 | $-134.785 | -39,6 % | -1,3 % | 7,2 % | 0,0 % | 9,1 % |
+| El Bosque | 19 | 2 (0) | — | — | — | $-77.067 | -23,0 % | — | 9,3 % | 0,0 % | 0,0 % |
+| San Joaquín | 17 | 0 (0) | 4,71 | 23,5 % | 798 | $-195.740 | -47,5 % | 0,9 % | 7,6 % | 0,0 % | 5,9 % |
+| Renca | 14 | 5 (1) | 6,25 | 20,6 % | 493 | $-20.487 | -4,9 % | 7,4 % | 11,5 % | 50,0 % | 35,7 % |
+| La Reina | 7 | 0 (0) | 4,62 | 36,0 % | 2.432 | $-579.897 | -79,1 % | -9,3 % | 5,8 % | 0,0 % | 14,3 % |
+
+**Usados**
+
+| comuna | avisos | Comprar de hoy (con flujo < 0) | cap de salida (mediana) | premio de estreno % (mediana) | premio UF (mediana) | flujo mensual mediano | flujo % del arriendo (mediana) | TIR por ingreso (mediana) | TIR del motor (mediana) | TIR ≥ 5 % dentro de la vara | TIR ≥ 5 % entre −5 % y −$200.000 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Gran Santiago | 21.091 | 6.540 (709) | 4,92 | 1,5 % | 46 | $-70.408 | -13,3 % | 9,5 % | 7,5 % | 36,0 % | 26,2 % |
+| Santiago | 5.833 | 2.499 (304) | 5,02 | 1,6 % | 36 | $-24.524 | -6,3 % | 10,1 % | 8,2 % | 47,4 % | 27,0 % |
+| Ñuñoa | 1.965 | 175 (42) | 4,05 | -1,3 % | -64 | $-198.079 | -29,6 % | 8,6 % | 6,1 % | 9,7 % | 40,0 % |
+| La Florida | 948 | 271 (27) | 4,56 | 1,0 % | 29 | $-71.135 | -15,6 % | 9,3 % | 7,2 % | 32,8 % | 36,9 % |
+| Macul | 618 | 150 (28) | 4,65 | 1,2 % | 38 | $-81.071 | -15,1 % | 9,2 % | 7,3 % | 28,0 % | 46,1 % |
+| Providencia | 1.170 | 183 (58) | 4,35 | 1,7 % | 115 | $-297.627 | -26,9 % | 8,2 % | 6,6 % | 16,0 % | 21,5 % |
+| Independencia | 932 | 411 (7) | 5,16 | 1,8 % | 34 | $-2.996 | -0,8 % | 10,7 % | 8,7 % | 57,5 % | 16,7 % |
+| Las Condes | 2.518 | 517 (97) | 5,03 | 6,6 % | 611 | $-316.172 | -20,0 % | 8,1 % | 7,0 % | 24,0 % | 15,0 % |
+| La Cisterna | 555 | 149 (7) | 4,42 | -2,0 % | -44 | $-44.344 | -12,6 % | 10,0 % | 7,5 % | 32,8 % | 45,6 % |
+| Vitacura | 1.095 | 201 (30) | 4,82 | 2,3 % | 318 | $-501.328 | -20,8 % | 8,7 % | 7,0 % | 21,8 % | 6,3 % |
+| Recoleta | 305 | 129 (2) | 5,25 | 0,6 % | 12 | $-19.350 | -3,9 % | 10,9 % | 8,5 % | 52,1 % | 24,6 % |
+| Maipú | 229 | 137 (3) | 6,28 | -4,7 % | -101 | $81.495 | 14,8 % | 14,5 % | 11,5 % | 68,1 % | 5,2 % |
+| Pudahuel | 34 | 16 (0) | — | — | — | $17.926 | 3,8 % | — | 7,9 % | 0,0 % | 0,0 % |
+| Puente Alto | 73 | 47 (0) | 5,85 | -1,0 % | -27 | $60.773 | 10,9 % | 13,6 % | 9,6 % | 76,7 % | 5,5 % |
+| Estación Central | 1.602 | 702 (18) | 4,92 | -1,0 % | -17 | $-8.972 | -2,9 % | 10,9 % | 8,7 % | 54,0 % | 28,2 % |
+| Lo Barnechea | 643 | 123 (1) | 4,79 | 1,1 % | 135 | $-392.284 | -18,4 % | 9,2 % | 7,6 % | 28,3 % | 8,1 % |
+| Quilicura | 40 | 28 (0) | 6,77 | 8,5 % | 168 | $45.780 | 12,0 % | 11,5 % | 10,2 % | 80,0 % | 0,0 % |
+| Peñalolén | 48 | 22 (0) | 4,32 | -23,1 % | -1.211 | $-52.686 | -4,1 % | 14,7 % | 9,0 % | 50,0 % | 18,8 % |
+| Cerrillos | 53 | 13 (0) | 4,87 | 2,1 % | 66 | $-74.109 | -22,4 % | 8,7 % | 7,2 % | 35,8 % | 28,3 % |
+| Huechuraba | 172 | 13 (0) | 4,64 | -2,0 % | -165 | $-179.006 | -17,7 % | 9,6 % | 7,2 % | 19,2 % | 37,2 % |
+| Conchalí | 55 | 29 (0) | 6,86 | 19,6 % | 537 | $9.519 | 2,0 % | 7,2 % | 8,3 % | 52,7 % | 0,0 % |
+| San Miguel | 1.233 | 328 (67) | 4,62 | 0,8 % | 25 | $-64.898 | -15,1 % | 9,2 % | 7,2 % | 30,4 % | 44,5 % |
+| Quinta Normal | 447 | 221 (5) | 5,28 | 1,3 % | 25 | $961 | 0,3 % | 10,8 % | 9,1 % | 62,4 % | 17,7 % |
+| El Bosque | 10 | 5 (0) | — | — | — | $60.682 | 14,9 % | — | 12,3 % | 0,0 % | 0,0 % |
+| San Joaquín | 224 | 73 (9) | 4,71 | 1,9 % | 44 | $-47.337 | -12,2 % | 9,5 % | 7,7 % | 37,5 % | 35,3 % |
+| Renca | 22 | 12 (0) | 6,25 | 9,2 % | 191 | $31.609 | 7,9 % | 10,4 % | 9,9 % | 77,3 % | 4,5 % |
+| La Reina | 147 | 29 (4) | 4,62 | 3,9 % | 243 | $-252.710 | -24,0 % | 7,8 % | 6,8 % | 24,5 % | 15,0 % |
+| San Bernardo | 107 | 51 (0) | 5,89 | 10,3 % | 278 | $14.788 | 3,2 % | 9,9 % | 9,2 % | 59,8 % | 5,6 % |
+| Padre Hurtado | 9 | 5 (0) | — | — | — | $73.032 | 12,8 % | — | 11,7 % | 0,0 % | 0,0 % |
+| Lampa | 3 | 0 (0) | — | — | — | $-33.410 | -7,7 % | — | 9,2 % | 0,0 % | 0,0 % |
+| La Granja | 1 | 1 (0) | — | — | — | $112.128 | 24,1 % | — | 13,6 % | 0,0 % | 0,0 % |
+
+**Lectura.**
+- **El nuevo mediano pone $238.000 al mes (−47 % del arriendo)**; el usado mediano, $70.000 (−13 %). Con TIR base ≥ 5 % dentro de
+  la vara de hoy queda el **1,5 % de los nuevos** contra el 36 % de los usados.
+- **La banda entre −5 % y −$200.000 es donde están los nuevos con TIR**: el 16,7 % de los nuevos, concentrados en Puente Alto
+  (62 %), Cerrillos (52 %), La Cisterna (42 %), La Florida (41 %) y Ñuñoa (38 %). En Santiago es el 3,4 %, en Providencia el 0,8 % y
+  en Vitacura 0: ahí el flujo mediano (−$580.000 a −$760.000) ya pasa los −$200.000.
+- **Solo dos comunas tienen nuevos dentro de la vara con TIR**: Puente Alto (32 %) y Renca (50 %), las de cap de salida más alto
+  (5,85 % y 6,25 %) y premio de estreno bajo.
+- **Los Comprar de hoy con flujo negativo**: 39 de los 79 nuevos y 709 de los 6.540 usados (Santiago 304, Las Condes 97, San
+  Miguel 67, Providencia 58).
+
+### 7 · Ocho fichas de casos reales
+
+Cada ficha es el aviso **más cercano a la mediana de su grupo** (nunca el mejor ni el peor); el grupo y la variable de la mediana
+van en la primera línea. La selección y las seis TIR salen de los vectores guardados. El resto de la ficha (pie y costos, cuotas,
+saldo, lo que recibes, suma de flujos, ganancia, múltiplo) no quedó guardado: para esos ocho se corrió la misma cadena de la
+corrida de la salida por ingreso (misma UF 41.285, tasa 4,07 % y el mismo «hoy», congelado en el instante de esa corrida; el
+golden con su input y la UF del día en que se creó) y **las seis TIR calzan con las guardadas en las ocho**. Valor de salida,
+saldo, lo que recibes, suma de flujos y ganancia son del escenario base (g 3 %, cap de hoy). **Ganancia y múltiplo con la
+definición del informe**: ganancia = lo que recibes al vender − todo lo que pusiste (pie, costos y los años con flujo negativo);
+múltiplo = lo que recibes ÷ todo lo que pusiste. Una TIR «no calculable» es una venta que no alcanza a devolver lo puesto.
+
+Criterios de dos grupos, declarados: **(b)** «el flujo negativo más grande» se tomó como el decil más negativo de los usados
+Comprar con flujo negativo, y de ahí el más cercano a su mediana (el más negativo de todos sería el peor). **(e)** en Santiago
+centro hay solo 2 nuevos de ese tipo con entrega futura y pie en cuotas, así que el grupo es de todas las comunas. **(f)** «típico
+de Santiago» es la mediana de los nuevos de la comuna de Santiago, que es −6,3 %, no 1,2 %: la TIR base de 1,2 % es la mediana de los nuevos de Gran Santiago; en la comuna de Santiago queda en el percentil 80 (mediana de Santiago -6,3 %).
+
+**(a) Usado Comprar de hoy con flujo negativo típico** — usados Comprar de hoy con flujo < 0, el más cercano a la mediana del flujo (grupo de 709; mediana del grupo flujo $-9.534). Control: las seis TIR calzan con las guardadas.
+
+| dato | valor |
+| --- | --- |
+| aviso | 51f4958b · Santiago · usado, 25 años (supuestos) |
+| tipología y superficie | 1D 1B · 35 m² |
+| precio | UF 1.950 · $80.506.163 · UF 55,7/m² · $2.300.176/m² |
+| arriendo estimado (mensual) | $337.000 · UF 8,2 |
+| flujo mensual | $-9.534 · UF -0,2 · -2,8 % del arriendo |
+| lo que pones hoy (pie + costos) | $21.179.304 · UF 513 (pie $16.101.233 · UF 390 + costos $5.078.071 · UF 123) |
+| veredicto de hoy | COMPRAR · score 70 · por puntaje (≥ 70), sin pagarse sola |
+| cap de entrada (arriendo bruto anual ÷ precio) | 5,02 % |
+| cap de salida (celda, usado) | 5,02 % (comuna × dormitorios; 1318 arriendos / 2898 ventas) |
+| valor de salida al año 10 | por ingreso (g 3 %, cap de hoy) $108.262.709 · UF 2.622 · el que supone el motor $106.614.999 · UF 2.582 |
+| saldo del crédito al año 10 | $50.860.487 · UF 1.232 |
+| lo que recibes al vender (venta − comisión − saldo) | $55.236.968 · UF 1.338 |
+| suma de los flujos de los 10 años (g 3 %) | $3.604.726 · UF 87,3 |
+| ganancia total y múltiplo (definición del informe) | $33.934.809 · UF 822 · múltiplo 2,59× |
+| TIR del motor (salida del motor) | 9,5 % |
+| TIR por ingreso, g 3 %, cap de hoy | 10,9 % |
+| TIR por ingreso, g 3 %, cap + 50 pb | 9,0 % |
+| TIR por ingreso, g 1 %, cap de hoy | 5,5 % |
+| TIR por ingreso, g 1 %, cap + 50 pb | 3,0 % |
+| TIR por ingreso, g 0 %, cap de hoy | 2,2 % |
+| TIR por ingreso, g 0 %, cap + 50 pb | -0,8 % |
+
+*En fácil:* Pones UF 513 y unos $9.500 al mes de tu bolsillo; si los precios suben 3 % real al año, al vender recibes UF 1.338 y rinde 10,9 %; con 1 % rinde 5,5 % y si no suben nada, 2,2 %. Es Comprar por puntaje justo en el borde (70), sin pagarse solo.
+
+**(b) Usado Comprar de hoy con el flujo negativo más grande** — usados Comprar de hoy en el decil de flujo más negativo (flujo ≤ $-46.314), el más cercano a la mediana de ese decil (grupo de 71; mediana del grupo flujo $-61.526). Control: las seis TIR calzan con las guardadas.
+
+| dato | valor |
+| --- | --- |
+| aviso | 30535bd9 · Vitacura · usado, 25 años (supuestos) |
+| tipología y superficie | 4D 4B · 258 m² |
+| precio | UF 17.952 · $741.160.293 · UF 69,6/m² · $2.872.714/m² |
+| arriendo estimado (mensual) | $3.548.000 · UF 85,9 |
+| flujo mensual | $-61.526 · UF -1,5 · -1,7 % del arriendo |
+| lo que pones hoy (pie + costos) | $191.708.946 · UF 4.644 (pie $148.232.059 · UF 3.590 + costos $43.476.887 · UF 1.053) |
+| veredicto de hoy | COMPRAR · score 71 · por puntaje (≥ 70), sin pagarse sola |
+| cap de entrada (arriendo bruto anual ÷ precio) | 5,74 % |
+| cap de salida (celda, usado) | 4,87 % (comuna × dormitorios; 29 arriendos / 322 ventas) |
+| valor de salida al año 10 | por ingreso (g 3 %, cap de hoy) $1.174.919.754 · UF 28.459 · el que supone el motor $996.057.457 · UF 24.126 |
+| saldo del crédito al año 10 | $468.234.626 · UF 11.342 |
+| lo que recibes al vender (venta − comisión − saldo) | $683.186.733 · UF 16.548 |
+| suma de los flujos de los 10 años (g 3 %) | $43.936.684 · UF 1.064 |
+| ganancia total y múltiplo (definición del informe) | $490.739.475 · UF 11.887 · múltiplo 3,55× |
+| TIR del motor (salida del motor) | 10,1 % |
+| TIR por ingreso, g 3 %, cap de hoy | 14,5 % |
+| TIR por ingreso, g 3 %, cap + 50 pb | 12,7 % |
+| TIR por ingreso, g 1 %, cap de hoy | 9,7 % |
+| TIR por ingreso, g 1 %, cap + 50 pb | 7,6 % |
+| TIR por ingreso, g 0 %, cap de hoy | 7,0 % |
+| TIR por ingreso, g 0 %, cap + 50 pb | 4,5 % |
+
+*En fácil:* Un depto grande y caro que casi se paga solo (le pones el 1,7 % del arriendo): lo compras a 5,7 % de cap en una celda que vende a 4,9 %, y por eso rinde 14,5 % con 3 % y todavía 7,0 % sin plusvalía.
+
+**(c) Nuevo Comprar de hoy con flujo negativo** — nuevos Comprar de hoy con flujo < 0, el más cercano a la mediana del flujo (grupo de 39; mediana del grupo flujo $-14.321). Control: las seis TIR calzan con las guardadas.
+
+| dato | valor |
+| --- | --- |
+| aviso | 31273928 · Puente Alto · nuevo, entrega sin dato |
+| tipología y superficie | 3D 2B · 62 m² |
+| precio | UF 3.152 · $130.130.320 · UF 50,8/m² · $2.098.876/m² |
+| arriendo estimado (mensual) | $569.590 · UF 13,8 |
+| flujo mensual | $-14.321 · UF -0,3 · -2,5 % del arriendo |
+| lo que pones hoy (pie + costos) | $28.628.670 · UF 693 (pie $26.026.064 · UF 630 + costos $2.602.606 · UF 63,0) |
+| veredicto de hoy | COMPRAR · score 71 · por puntaje (≥ 70), sin pagarse sola |
+| cap de entrada (arriendo bruto anual ÷ precio) | 5,25 % |
+| cap de salida (celda, usado) | 5,85 % (comuna × dormitorios; 33 arriendos / 66 ventas) |
+| valor de salida al año 10 | por ingreso (g 3 %, cap de hoy) $157.021.744 · UF 3.803 · el que supone el motor $174.884.268 · UF 4.236 |
+| saldo del crédito al año 10 | $82.210.990 · UF 1.991 |
+| lo que recibes al vender (venta − comisión − saldo) | $71.670.319 · UF 1.736 |
+| suma de los flujos de los 10 años (g 3 %) | $6.273.804 · UF 152 |
+| ganancia total y múltiplo (definición del informe) | $42.869.797 · UF 1.038 · múltiplo 2,49× |
+| TIR del motor (salida del motor) | 11,8 % |
+| TIR por ingreso, g 3 %, cap de hoy | 10,8 % |
+| TIR por ingreso, g 3 %, cap + 50 pb | 8,9 % |
+| TIR por ingreso, g 1 %, cap de hoy | 4,5 % |
+| TIR por ingreso, g 1 %, cap + 50 pb | 1,9 % |
+| TIR por ingreso, g 0 %, cap de hoy | 0,4 % |
+| TIR por ingreso, g 0 %, cap + 50 pb | -3,0 % |
+
+*En fácil:* El nuevo que hoy da Comprar: casi se paga solo, pero el motor supone venderlo en UF 4.236 y por su arriendo valdría UF 3.803; rinde 10,8 % si los precios suben 3 % al año y 0,4 % si no suben.
+
+**(d) Nuevo de Santiago centro, entrega inmediata, con TIR ≥ 5 % y flujo entre −5 % del arriendo y −$200.000** — nuevos de la comuna de Santiago, entrega inmediata, TIR base ≥ 5 % y flujo en esa banda, el más cercano a la mediana de la TIR base (grupo de 37; mediana del grupo TIR 6,6 %). Control: las seis TIR calzan con las guardadas.
+
+| dato | valor |
+| --- | --- |
+| aviso | 00e696fb · Santiago · nuevo, entrega inmediata (Disponible) |
+| tipología y superficie | 2D 2B · 53,1 m² |
+| precio | UF 3.388 · $139.873.580 · UF 63,8/m² · $2.632.171/m² |
+| arriendo estimado (mensual) | $494.400 · UF 12,0 |
+| flujo mensual | $-125.063 · UF -3,0 · -25,3 % del arriendo |
+| lo que pones hoy (pie + costos) | $30.772.188 · UF 745 (pie $27.974.716 · UF 678 + costos $2.797.472 · UF 67,8) |
+| veredicto de hoy | AJUSTA SUPUESTOS · score 63 · por puntaje (45 a 69) |
+| cap de entrada (arriendo bruto anual ÷ precio) | 4,24 % |
+| cap de salida (celda, usado) | 4,92 % (comuna × dormitorios; 724 arriendos / 2491 ventas) |
+| valor de salida al año 10 | por ingreso (g 3 %, cap de hoy) $162.056.585 · UF 3.925 · el que supone el motor $187.978.395 · UF 4.553 |
+| saldo del crédito al año 10 | $88.366.382 · UF 2.140 |
+| lo que recibes al vender (venta − comisión − saldo) | $70.449.071 · UF 1.706 |
+| suma de los flujos de los 10 años (g 3 %) | $-8.062.187 · UF -195,3 |
+| ganancia total y múltiplo (definición del informe) | $31.614.696 · UF 766 · múltiplo 1,81× |
+| TIR del motor (salida del motor) | 9,1 % |
+| TIR por ingreso, g 3 %, cap de hoy | 6,6 % |
+| TIR por ingreso, g 3 %, cap + 50 pb | 4,0 % |
+| TIR por ingreso, g 1 %, cap de hoy | -0,5 % |
+| TIR por ingreso, g 1 %, cap + 50 pb | -4,5 % |
+| TIR por ingreso, g 0 %, cap de hoy | -5,5 % |
+| TIR por ingreso, g 0 %, cap + 50 pb | -11,4 % |
+
+*En fácil:* Pones UF 745 y después $125.000 al mes; pagaste UF 63,8 por m² y por su arriendo vale UF 3.925 al año 10 con 3 % de alza (el motor supone UF 4.553): rinde 6,6 % solo si el mercado sube 3 % real todos los años, y pierde plata con 1 %.
+
+**(e) El mismo tipo con entrega futura y pie en cuotas (Gran Santiago: Santiago centro tiene 2)** — nuevos de todas las comunas, entrega futura con pie en cuotas, TIR base ≥ 5 % y flujo en la banda, el más cercano a la mediana de la TIR base (grupo de 94; mediana del grupo TIR 11,1 %). Control: las seis TIR calzan con las guardadas.
+
+| dato | valor |
+| --- | --- |
+| aviso | 92529506 · Las Condes · nuevo, entrega futura (2do Semestre 2028) |
+| tipología y superficie | 1D 1B · 35,5 m² |
+| precio | UF 5.326 · $219.883.910 · UF 150,0/m² · $6.193.913/m² |
+| arriendo estimado (mensual) | $794.130 · UF 19,2 |
+| flujo mensual | $-189.201 · UF -4,6 · -23,8 % del arriendo |
+| lo que pones hoy (pie + costos) | $48.374.460 · UF 1.172 (pie $43.976.782 · UF 1.065 + costos $4.397.678 · UF 107) |
+| pie en cuotas (entrega futura) | al firmar $6.156.749 · UF 149 (costos + primera cuota); 25 cuotas de $1.759.071 · UF 42,6 al mes; 25 meses hasta la entrega |
+| veredicto de hoy | AJUSTA SUPUESTOS · score 62 · por puntaje (45 a 69) |
+| cap de entrada (arriendo bruto anual ÷ precio) | 4,33 % |
+| cap de salida (celda, usado) | 4,49 % (comuna × dormitorios; 191 arriendos / 264 ventas) |
+| valor de salida al año 10 | por ingreso (g 3 %, cap de hoy) $285.232.249 · UF 6.909 · el que supone el motor $295.505.588 · UF 7.158 |
+| saldo del crédito al año 10 | $147.906.089 · UF 3.583 |
+| lo que recibes al vender (venta − comisión − saldo) | $131.621.515 · UF 3.188 |
+| suma de los flujos de los 10 años (g 3 %) | $-6.263.930 · UF -151,7 (aparte, las cuotas del pie: $43.976.782 · UF 1.065) |
+| ganancia total y múltiplo (definición del informe) | $76.762.699 · UF 1.859 · múltiplo 2,40× |
+| TIR del motor (salida del motor) | 10,7 % |
+| TIR por ingreso, g 3 %, cap de hoy | 11,1 % |
+| TIR por ingreso, g 3 %, cap + 50 pb | 8,0 % |
+| TIR por ingreso, g 1 %, cap de hoy | 3,5 % |
+| TIR por ingreso, g 1 %, cap + 50 pb | -0,9 % |
+| TIR por ingreso, g 0 %, cap de hoy | -1,4 % |
+| TIR por ingreso, g 0 %, cap + 50 pb | -7,3 % |
+
+*En fácil:* Firmas con UF 149, pagas $1,76 millones al mes durante 25 meses hasta la entrega y después $189.000 al mes: con 3 % de alza rinde 11,1 % porque el arriendo crece mientras esperas; con 1 % baja a 3,5 % y sin alza pierde. En Santiago centro solo hay dos casos de este tipo, por eso sale de Las Condes.
+
+**(f) Nuevo típico de Santiago centro** — nuevos de la comuna de Santiago, el más cercano a la mediana de la TIR base de Santiago (grupo de 1.174; mediana del grupo TIR -6,3 %). Control: las seis TIR calzan con las guardadas.
+
+| dato | valor |
+| --- | --- |
+| aviso | 2f395699 · Santiago · nuevo, entrega futura (2do Semestre 2028) |
+| tipología y superficie | 2D 2B · 53,7 m² |
+| precio | UF 3.801 · $156.924.285 · UF 70,8/m² · $2.922.240/m² |
+| arriendo estimado (mensual) | $433.630 · UF 10,5 |
+| flujo mensual | $-254.908 · UF -6,2 · -58,8 % del arriendo |
+| lo que pones hoy (pie + costos) | $34.523.343 · UF 836 (pie $31.384.857 · UF 760 + costos $3.138.486 · UF 76,0) |
+| pie en cuotas (entrega futura) | al firmar $4.393.880 · UF 106 (costos + primera cuota); 25 cuotas de $1.255.394 · UF 30,4 al mes; 25 meses hasta la entrega |
+| veredicto de hoy | BUSCAR OTRA · score 48 · gate 1 (break-even imposible) |
+| cap de entrada (arriendo bruto anual ÷ precio) | 3,32 % |
+| cap de salida (celda, usado) | 4,92 % (comuna × dormitorios; 724 arriendos / 2491 ventas) |
+| valor de salida al año 10 | por ingreso (g 3 %, cap de hoy) $142.137.317 · UF 3.443 · el que supone el motor $210.893.117 · UF 5.108 |
+| saldo del crédito al año 10 | $105.555.961 · UF 2.557 |
+| lo que recibes al vender (venta − comisión − saldo) | $33.738.610 · UF 817 |
+| suma de los flujos de los 10 años (g 3 %) | $-17.991.955 · UF -435,8 (aparte, las cuotas del pie: $31.384.857 · UF 760) |
+| ganancia total y múltiplo (definición del informe) | $-18.776.688 · UF -454,8 · múltiplo 0,64× |
+| TIR del motor (salida del motor) | 8,4 % |
+| TIR por ingreso, g 3 %, cap de hoy | -6,3 % |
+| TIR por ingreso, g 3 %, cap + 50 pb | -13,4 % |
+| TIR por ingreso, g 1 %, cap de hoy | -33,6 % |
+| TIR por ingreso, g 1 %, cap + 50 pb | no calculable (la venta no devuelve lo puesto) |
+| TIR por ingreso, g 0 %, cap de hoy | no calculable (la venta no devuelve lo puesto) |
+| TIR por ingreso, g 0 %, cap + 50 pb | no calculable (la venta no devuelve lo puesto) |
+
+*En fácil:* El nuevo típico de Santiago: el arriendo cubre poco más de la mitad del gasto, pones $255.000 al mes, y vendido por su arriendo al año 10 vale UF 3.443, menos de lo que costó (UF 3.801): pierdes aun con 3 % de alza al año (−6,3 %), y con menos alza la venta no te devuelve lo puesto.
+
+**(g) Usado comprado bajo su valor por ingreso** — usados con precio bajo su valor por ingreso de hoy y TIR base sobre la mediana de los usados (9,5 %), el más cercano a la mediana de la TIR de ese grupo (grupo de 9.533; mediana del grupo TIR 14,3 %). Control: las seis TIR calzan con las guardadas.
+
+| dato | valor |
+| --- | --- |
+| aviso | 56b54457 · Ñuñoa · usado, 25 años (supuestos) |
+| tipología y superficie | 2D 2B · 69 m² |
+| precio | UF 4.621 · $190.761.058 · UF 67,0/m² · $2.764.653/m² |
+| arriendo estimado (mensual) | $794.000 · UF 19,2 |
+| flujo mensual | $-77.929 · UF -1,9 · -9,8 % del arriendo |
+| lo que pones hoy (pie + costos) | $49.498.304 · UF 1.199 (pie $38.152.212 · UF 924 + costos $11.346.092 · UF 275) |
+| veredicto de hoy | AJUSTA SUPUESTOS · score 67 · por puntaje (45 a 69) |
+| cap de entrada (arriendo bruto anual ÷ precio) | 4,99 % |
+| cap de salida (celda, usado) | 4,05 % (comuna × dormitorios; 249 arriendos / 1002 ventas) |
+| valor de salida al año 10 | por ingreso (g 3 %, cap de hoy) $316.168.889 · UF 7.658 · el que supone el motor $256.366.911 · UF 6.210 |
+| saldo del crédito al año 10 | $120.515.000 · UF 2.919 |
+| lo que recibes al vender (venta − comisión − saldo) | $189.330.511 · UF 4.586 |
+| suma de los flujos de los 10 años (g 3 %) | $1.998.497 · UF 48,4 |
+| ganancia total y múltiplo (definición del informe) | $137.534.092 · UF 3.331 · múltiplo 3,66× |
+| TIR del motor (salida del motor) | 9,1 % |
+| TIR por ingreso, g 3 %, cap de hoy | 14,3 % |
+| TIR por ingreso, g 3 %, cap + 50 pb | 12,1 % |
+| TIR por ingreso, g 1 %, cap de hoy | 9,6 % |
+| TIR por ingreso, g 1 %, cap + 50 pb | 7,0 % |
+| TIR por ingreso, g 0 %, cap de hoy | 6,9 % |
+| TIR por ingreso, g 0 %, cap + 50 pb | 3,9 % |
+
+*En fácil:* Comprado bajo lo que vale por su arriendo (lo compras a 5,0 % de cap y la celda vende a 4,05 %): rinde 14,3 % con 3 % de alza y 6,9 % aun sin alza, aunque hoy el motor le diga Ajustar por los $78.000 al mes que le pones.
+
+**(h) El nuevo de Ñuñoa del Golden Set** — el análisis 17b4e10d tal como se creó (su input, su mediana guardada y la UF de ese día) (grupo de 1; mediana del grupo —). Control: las seis TIR calzan con las guardadas.
+
+| dato | valor |
+| --- | --- |
+| aviso | 17b4e10d · Ñuñoa · nuevo (análisis del 2026-09-03) |
+| tipología y superficie | 2D 2B · 80 m² |
+| precio | UF 4.000 · $163.512.000 · UF 50,0/m² · $2.043.900/m² |
+| arriendo estimado (mensual) | $750.000 · UF 18,3 |
+| flujo mensual | $49.232 · UF 1,2 · 6,6 % del arriendo |
+| lo que pones hoy (pie + costos) | $35.972.640 · UF 880 (pie $32.702.400 · UF 800 + costos $3.270.240 · UF 80,0) |
+| veredicto de hoy | COMPRAR · score 80 · por puntaje (≥ 70), y además se paga sola |
+| cap de entrada (arriendo bruto anual ÷ precio) | 5,50 % |
+| cap de salida (celda, usado) | 4,05 % (comuna × dormitorios; 249 arriendos / 1002 ventas) |
+| valor de salida al año 10 | por ingreso (g 3 %, cap de hoy) $298.648.000 · UF 7.306 · el que supone el motor $219.746.455 · UF 5.376 |
+| saldo del crédito al año 10 | $100.918.824 · UF 2.469 |
+| lo que recibes al vender (venta − comisión − saldo) | $191.756.216 · UF 4.691 |
+| suma de los flujos de los 10 años (g 3 %) | $16.460.646 · UF 403 |
+| ganancia total y múltiplo (definición del informe) | $155.783.576 · UF 3.811 · múltiplo 5,33× |
+| TIR del motor (salida del motor) | 13,4 % |
+| TIR por ingreso, g 3 %, cap de hoy | 20,2 % |
+| TIR por ingreso, g 3 %, cap + 50 pb | 18,2 % |
+| TIR por ingreso, g 1 %, cap de hoy | 15,8 % |
+| TIR por ingreso, g 1 %, cap + 50 pb | 13,6 % |
+| TIR por ingreso, g 0 %, cap de hoy | 13,4 % |
+| TIR por ingreso, g 0 %, cap + 50 pb | 11,0 % |
+
+*En fácil:* Se paga solo y está comprado a 5,5 % de cap en una celda que vende a 4,05 %: por su arriendo vale UF 7.306 al año 10, contra UF 5.376 que supone el motor, y rinde 20,2 %; sin alza, 13,4 %. Es el caso de prueba más favorable del Golden Set, no un aviso del mercado.
