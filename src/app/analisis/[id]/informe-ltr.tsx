@@ -23,6 +23,7 @@ import { readVeredicto } from "@/lib/results-helpers";
 import { AppFooter } from "@/components/chrome/AppFooter";
 import { emitirVistaInforme } from "@/lib/meta/vista-informe";
 import { publicacionDelInforme } from "@/lib/guia/publicacion-portada";
+import { invierteDelInforme } from "@/lib/invierte/invierte-servidor";
 import { informeBloqueado, rutaPagoBloqueado } from "@/lib/informe-bloqueado";
 import { InformeBloqueado } from "@/components/analysis/InformeBloqueado";
 import { etiquetaAnalisis } from "@/lib/format-direccion";
@@ -203,7 +204,11 @@ export async function InformeLtr({ id, demo = false }: { id: string; demo?: bool
     ? await emitirVistaInforme({ analysisId: analisis.id, userId: analisis.user_id ?? null, email: isOwner ? user?.email ?? null : null, veredicto: veredictoInforme, comuna: analisis.comuna ?? null, modalidad: "ltr", ruta: `/analisis/${analisis.id}` })
     : null;
   // El enlace a la publicación en la portada (27-oct-2026, publicacion-portada.ts): todo informe que salió de un aviso.
-  const publicacion = await publicacionDelInforme(createServiceClient(), inputDataRaw);
+  const publicacionAviso = await publicacionDelInforme(createServiceClient(), inputDataRaw);
+  // «Pronto: Invierte con Franco» (11-nov-2026): solo al dueño, si el aviso es usado y da Comprar o Ajustar negociable. Con la
+  // franja, el enlace a la publicación sale de la portada y va debajo de su botón.
+  const invierte = isOwner && !isDemo ? await invierteDelInforme(createServiceClient(), { inputData: inputDataRaw, analysisId: analisis.id, veredicto: veredictoInforme, score: scoreInforme ?? null, userId: user?.id ?? null }) : null;
+  const publicacion = invierte && publicacionAviso ? { ...publicacionAviso, enFranja: true } : publicacionAviso;
   const alternativaComunas = veredictoInforme !== "COMPRAR" && inputDataRaw
     ? construirAlternativaComunas({ input: inputDataRaw, ufClp: ufFrozen, asOf: asOfFrozen })
     : null;
@@ -401,6 +406,7 @@ export async function InformeLtr({ id, demo = false }: { id: string; demo?: bool
           medianaResolvedAt={medianaResolvedAt}
           alternativaComunas={alternativaComunas}
           publicacion={publicacion}
+          invierte={invierte}
         />
 
         {/* Fallback for old analyses without full results */}

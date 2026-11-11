@@ -24,6 +24,7 @@ import { quienMiraElInforme } from "@/lib/lo-que-sigue/oferta-informe";
 import { emitirVistaInforme } from "@/lib/meta/vista-informe";
 import { leerOfertaPack } from "@/lib/lo-que-sigue/oferta-informe-servidor";
 import { publicacionDelInforme } from "@/lib/guia/publicacion-portada";
+import { invierteDelInforme } from "@/lib/invierte/invierte-servidor";
 import { informeBloqueado, rutaPagoBloqueado } from "@/lib/informe-bloqueado";
 import { InformeBloqueado } from "@/components/analysis/InformeBloqueado";
 import { etiquetaAnalisis } from "@/lib/format-direccion";
@@ -303,11 +304,17 @@ export async function InformeStr({ id, demo = false }: { id: string; demo?: bool
     : null;
 
   // El enlace a la publicación en la portada (27-oct-2026, publicacion-portada.ts): todo informe que salió de un aviso.
-  const publicacion = await publicacionDelInforme(createServiceClient(), data.input_data);
+  const publicacionAviso = await publicacionDelInforme(createServiceClient(), data.input_data);
+  // «Pronto: Invierte con Franco» (11-nov-2026): solo al dueño, con el veredicto que muestra el informe.
+  const invierte = isOwner && !esDemo(data.id) && !modoDemo && veredictoVista
+    ? await invierteDelInforme(createServiceClient(), { inputData: data.input_data, analysisId: data.id, veredicto: veredictoVista, score: (data.score as number | null) ?? null, userId: user?.id ?? null })
+    : null;
+  const publicacion = invierte && publicacionAviso ? { ...publicacionAviso, enFranja: true } : publicacionAviso;
 
   const sharedProps = {
     analysisId: data.id,
     publicacion,
+    invierte,
     results,
     inputData: data.input_data,
     accessLevel,

@@ -219,7 +219,7 @@ export function PortadaInforme({
               <button type="button" className="doc-props-link" onClick={() => setFichaOpen(true)}>
                 Ficha del depto →
               </button>
-              {publicacion && (publicacion.despublicado ? (
+              {publicacion && !publicacion.enFranja && (publicacion.despublicado ? (
                 <span className="doc-props-link doc-props-link-baja" data-publicacion="baja">{PUBLICACION_PORTADA.baja}</span>
               ) : (
                 <a href={publicacion.url} target="_blank" rel="noopener noreferrer" className="doc-props-link" data-publicacion="enlace">

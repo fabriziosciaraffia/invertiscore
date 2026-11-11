@@ -58,8 +58,10 @@ export const BORROSO = { flujo: "+$000.000", capRate: "0,0 %", porM2: "00 UF/m²
 
 // ── LA HOJA DE REGISTRO (estado D) ───────────────────────────────────────────
 /** Lo que la persona tocó y que se hace al terminar el alta. */
-export type MotivoRegistro = "analizar" | "guardar" | "avisame" | "orden" | "flujo" | "pie-plazo";
-export const MOTIVOS_REGISTRO: readonly MotivoRegistro[] = ["analizar", "guardar", "avisame", "orden", "flujo", "pie-plazo"];
+// «invierte» (11-nov-2026, «Pronto: Invierte con Franco»): contestó la hoja de inscripción sin cuenta; al volver con cuenta al mismo
+// pin, la hoja manda lo contestado y confirma.
+export type MotivoRegistro = "analizar" | "guardar" | "avisame" | "orden" | "flujo" | "pie-plazo" | "invierte";
+export const MOTIVOS_REGISTRO: readonly MotivoRegistro[] = ["analizar", "guardar", "avisame", "orden", "flujo", "pie-plazo", "invierte"];
 export const esMotivoRegistro = (x: unknown): x is MotivoRegistro => typeof x === "string" && (MOTIVOS_REGISTRO as readonly string[]).includes(x);
 
 export interface PedidoRegistro {
@@ -78,6 +80,10 @@ export const REGISTRO_COPY = {
   cuerpoAvisame: `Crea tu cuenta gratis y busca con estos filtros. ${AVISO_NUEVOS}`,
   cuerpoCifras: "Crea tu cuenta gratis y ve el flujo, el cap rate y el precio por m² de cada depto.",
   cuerpoPiePlazo: "Crea tu cuenta gratis y elige tu pie y tu plazo.",
+  // «Invierte con Franco» sin cuenta (11-nov-2026): la cuenta nueva trae su análisis de regalo, como por cualquier puerta.
+  invierteTitulo: "Crea tu cuenta para inscribirte.",
+  invierteCuerpo: { antes: "Tu cuenta nueva trae ", fuerte: "un análisis de regalo", despues: "." },
+  inscribirme: "Inscribirme",
   google: "Entrar con Google",
   oTuCorreo: "o con tu correo",
   correo: "Tu correo",
@@ -95,6 +101,9 @@ export const REGISTRO_COPY = {
 
 /** Los textos de la hoja según lo que se tocó: con depto (el pin) o sin él (Avísame, las cifras, pie y plazo). */
 export function textosHoja(p: PedidoRegistro): { titulo: string; linea: string | null; cuerpo: string | { antes: string; fuerte: string; despues: string }; boton: string } {
+  if (p.pin && p.motivo === "invierte") {
+    return { titulo: REGISTRO_COPY.invierteTitulo, linea: `${lineaDepto(p.pin)} · UF ${miles(p.pin.precioUF)}`, cuerpo: REGISTRO_COPY.invierteCuerpo, boton: REGISTRO_COPY.inscribirme };
+  }
   if (p.pin && (p.motivo === "analizar" || p.motivo === "guardar")) {
     return { titulo: REGISTRO_COPY.conDepto, linea: `${lineaDepto(p.pin)} · UF ${miles(p.pin.precioUF)}`, cuerpo: REGISTRO_COPY.cuerpoDepto, boton: REGISTRO_COPY.verDepto };
   }

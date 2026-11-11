@@ -13,7 +13,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 /** El enlace de la portada. null = el informe no salió de un aviso, o el aviso no trae enlace. */
-export type PublicacionPortada = { url: string; despublicado: boolean } | null;
+/** `enFranja` (11-nov-2026, «Pronto: Invierte con Franco»): el enlace sale de la tarjeta oscura y va debajo del botón de la
+ *  franja (FranjaInvierte); la portada no lo repite. */
+export type PublicacionPortada = { url: string; despublicado: boolean; enFranja?: boolean } | null;
 
 /** El aviso del que salió el informe (`input_data.origenAviso.avisoId`), o null. */
 export function avisoDelInforme(inputData: unknown): string | null {

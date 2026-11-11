@@ -1,0 +1,80 @@
+/* ═════════════════════════════════════════════════════════════════════════════
+   «PRONTO: INVIERTE CON FRANCO» (11-nov-2026, mockups docs/invierte-pronto-mockups/).
+   · La franja de la hoja y de la portada: el degradado de la tríada (azul → ciruela → rojo), fijo en claro y en oscuro, con
+     texto en papel. El cuerpo de la hoja, en los tokens de la página (claro y oscuro).
+   · El botón de las tarjetas es SECUNDARIO: contorno en tinta, debajo de «Analizar este». El principal de la hoja, en rojo
+     (es comprar: la regla del rojo); el de la confirmación, en tinta.
+   ═════════════════════════════════════════════════════════════════════════════ */
+.inv-boton { box-sizing: border-box; width: 100%; min-height: 44px; margin-top: 8px; padding: 0 16px; border-radius: 999px;
+  border: 1.5px solid var(--franco-text); background: transparent; color: var(--franco-text);
+  font: 600 14px var(--font-ui, var(--font-body)), "Inter", system-ui, sans-serif; cursor: pointer; }
+.inv-boton:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; }
+.inv-etiqueta { display: inline-flex; align-self: flex-start; align-items: center; margin-top: 8px; padding: 3px 10px; border-radius: 999px;
+  background: rgba(127, 127, 135, 0.16); color: var(--franco-text); font-size: 12px; font-weight: 600; line-height: 1.5; white-space: nowrap; }
+
+/* ── la hoja ── */
+.inv-velo { position: fixed; inset: 0; z-index: 70; display: flex; align-items: flex-end; justify-content: center; background: rgba(15, 15, 15, 0.4); }
+.inv-hoja { box-sizing: border-box; width: 100%; max-width: 480px; max-height: calc(100dvh - 12px); overflow-y: auto; outline: none;
+  border-radius: 22px 22px 0 0; background: var(--franco-card); color: var(--franco-text);
+  font-family: var(--font-ui, var(--font-body)), "Inter", system-ui, sans-serif; display: flex; flex-direction: column; }
+@media (min-width: 768px) {
+  .inv-velo { align-items: center; padding: 24px; }
+  .inv-hoja { border-radius: 22px; max-height: calc(100dvh - 48px); }
+}
+.inv-cab { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; color: #FFFFFF;
+  background: linear-gradient(135deg, #2B558F 0%, #6E4560 55%, #C8323C 100%); }
+.inv-atras { display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 999px; border: 0;
+  background: rgba(255, 255, 255, 0.14); color: #FFFFFF; cursor: pointer; }
+.inv-atras:focus-visible { outline: 2px solid #FFFFFF; outline-offset: 2px; }
+.inv-cab-t { font-size: 15px; font-weight: 600; }
+.inv-cab-hueco { width: 44px; height: 44px; }
+.inv-cuerpo { padding: 20px 20px calc(20px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 16px; margin: 0; }
+.inv-encabezado { display: flex; flex-direction: column; gap: 6px; }
+.inv-pronto { align-self: flex-start; font-size: 12px; font-weight: 700; letter-spacing: 0.02em; color: #D8AECA; background: #35232F; padding: 4px 10px; border-radius: 999px; }
+[data-theme="light"] .inv-pronto { color: #6E4560; background: #F3EDF1; }
+.inv-titulo { margin: 0; font-size: 22px; font-weight: 600; line-height: 1.2; }
+.inv-titulo-listo { font-size: 24px; font-weight: 700; }
+.inv-depto { margin: 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; color: var(--franco-text-secondary); }
+.inv-parrafo { margin: 0; font-size: 15px; line-height: 1.5; color: var(--franco-text-secondary); }
+.inv-pregunta { display: flex; flex-direction: column; gap: 6px; border: 0; margin: 0; padding: 0; min-width: 0; }
+.inv-pregunta legend, .inv-legend { padding: 0; margin-bottom: 6px; font-size: 13px; font-weight: 600; color: var(--franco-text); }
+.inv-aclara { font-weight: 400; color: var(--franco-text-muted); }
+.inv-opciones { display: flex; gap: 8px; flex-wrap: wrap; }
+.inv-opcion { flex: 1 1 30%; min-height: 44px; border: 0; border-radius: 999px; padding: 0 10px; background: var(--franco-elevated, #F4F4F6); color: var(--franco-text);
+  font: 600 13px var(--font-ui, var(--font-body)), "Inter", system-ui, sans-serif; cursor: pointer; }
+[data-theme="light"] .inv-opcion { background: #F4F4F6; }
+.inv-opcion[aria-pressed="true"] { background: var(--franco-text); color: var(--franco-card); }
+.inv-opcion:focus-visible, .inv-campo:focus-visible, .inv-principal:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; }
+.inv-campo { box-sizing: border-box; height: 48px; width: 100%; border: 1px solid var(--franco-border-strong, var(--franco-border)); border-radius: 12px; padding: 0 14px;
+  background: var(--franco-card); color: var(--franco-text); font-size: 16px; font-family: inherit; }
+.inv-nota { margin: 0; font-size: 13px; color: var(--franco-text-secondary); }
+.inv-error { margin: 0; font-size: 13px; color: var(--signal-red, #C8323C); }
+.inv-principal { display: flex; justify-content: center; align-items: center; min-height: 50px; border: 0; border-radius: 999px; padding: 0 16px; text-align: center;
+  background: #C8323C; color: #FFFFFF; font: 600 15px var(--font-ui, var(--font-body)), "Inter", system-ui, sans-serif; cursor: pointer; }
+.inv-principal:disabled { opacity: 0.75; cursor: progress; }
+.inv-principal-tinta { background: var(--franco-text); color: var(--franco-card); }
+.inv-caja { border: 1.5px solid var(--franco-text); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 6px; }
+.inv-caja-t { margin: 0; font-size: 15px; font-weight: 600; }
+.inv-caja-s { margin: 0; font-size: 13px; line-height: 1.45; color: var(--franco-text-secondary); }
+.inv-queda { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; border-radius: 12px; padding: 12px 14px;
+  background: var(--franco-elevated, #F4F4F6); font-size: 13px; }
+[data-theme="light"] .inv-queda { background: #F4F4F6; }
+.inv-queda .inv-etiqueta { margin-top: 0; }
+
+/* ── la franja de la portada del informe ── */
+.inv-franja { position: relative; overflow: hidden; margin-top: 14px; padding: 22px 20px; border-radius: 22px; color: #FFFFFF;
+  background: linear-gradient(110deg, #2B558F 0%, #3E5B8F 45%, #6E4560 75%, #A3343C 100%);
+  display: flex; flex-direction: column; gap: 18px; font-family: var(--font-ui, var(--font-body)), "Inter", system-ui, sans-serif; }
+@media (min-width: 768px) { .inv-franja { flex-direction: row; align-items: center; gap: 28px; padding: 30px 36px; border-radius: 28px; } }
+.inv-franja-texto { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.inv-pronto.inv-pronto-claro, [data-theme="light"] .inv-pronto.inv-pronto-claro { color: #FFFFFF; background: transparent; border: 1.5px solid rgba(255, 255, 255, 0.6); padding: 3px 10px; }
+.inv-franja-t { margin: 0; font-size: 21px; font-weight: 700; line-height: 1.25; color: #FFFFFF; }
+@media (min-width: 768px) { .inv-franja-t { font-size: 24px; } }
+.inv-franja-s { margin: 0; font-size: 15px; line-height: 1.5; color: #E4E6EC; }
+.inv-franja-acciones { display: flex; flex-direction: column; align-items: center; gap: 10px; flex: none; }
+.inv-franja-btn { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 54px; padding: 0 32px; border-radius: 999px; border: 0;
+  background: #FFFFFF; color: #141414; font: 700 17px var(--font-ui, var(--font-body)), "Inter", system-ui, sans-serif; cursor: pointer; white-space: nowrap; }
+@media (min-width: 768px) { .inv-franja-btn { width: auto; min-height: 56px; } }
+.inv-franja-btn:focus-visible, .inv-franja-enlace:focus-visible { outline: 2px solid #FFFFFF; outline-offset: 3px; }
+.inv-franja-enlace { font-size: 14px; font-weight: 600; color: #FFFFFF; text-underline-offset: 3px; }
+.inv-etiqueta-clara { margin-top: 0; align-self: center; background: rgba(255, 255, 255, 0.18); color: #FFFFFF; }

@@ -16,6 +16,8 @@
 // UF 2.950 (−4,2 %) [✓ Comprar · 71]»— y el botón «Analizar a UF 2.950».
 // COMPARTIR (02-nov-2026, goal «Compartir un depto desde Explorar»): junto al corazón, con y sin cuenta, el botón «Compartir»
 // (explorar-cliente.tsx › compartir: la hoja del sistema en el teléfono, copiar el enlace en el PC).
+// «PRONTO: INVIERTE CON FRANCO» (11-nov-2026): en un usado que da ✓ Comprar o − Ajustar negociable, debajo de lo que la tarjeta
+// ya tiene, el botón secundario «Invierte con Franco» (con y sin cuenta); inscrito, la etiqueta. «Analizar este» sigue primero.
 // ─────────────────────────────────────────────────────────────────────────────
 import { useEffect, useRef } from "react";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
@@ -36,6 +38,8 @@ import { COMPARTIR_COPY } from "@/lib/explorar/compartir";
 import { ChipInformePropio } from "@/components/guia/ChipInformePropio";
 import { SIN_REGALO_COPY, VER_PLANES, type MotivoSinRegalo } from "@/lib/regalo-alta";
 import type { ResumenInforme } from "@/lib/informe-propio";
+import { puedeInvertir } from "@/lib/invierte/invierte";
+import { BotonInvierte } from "@/components/invierte/BotonInvierte";
 
 const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
 
@@ -104,7 +108,7 @@ export function VeredictosNegociado({ p }: { p: PinNegociado }) {
   );
 }
 
-export function TarjetaPin({ pines, seleccionado, uf, analizados, resumenes = {}, guardados, generando, error, alCambiar, alCerrar, alGuardar, alAnalizar, alCompartir, alPrepararCompartir, alVerInforme, sinCuenta = false, recien = null }: {
+export function TarjetaPin({ pines, seleccionado, uf, analizados, resumenes = {}, guardados, generando, error, alCambiar, alCerrar, alGuardar, alAnalizar, alCompartir, alPrepararCompartir, alVerInforme, sinCuenta = false, recien = null, inscritos, alInvertir }: {
   /** Los cercanos, el tocado primero. */
   pines: PinMapa[];
   seleccionado: string;
@@ -129,6 +133,9 @@ export function TarjetaPin({ pines, seleccionado, uf, analizados, resumenes = {}
   sinCuenta?: boolean;
   /** Recién registrada desde este pin (30-oct-2026): su tarjeta se desbloquea con la banda; `regalo`, si tiene el análisis de regalo. */
   recien?: { avisoId: string; regalo: boolean; sinRegalo?: MotivoSinRegalo | null } | null;
+  /** «Invierte con Franco» (11-nov-2026): los deptos en que ya está inscrita y qué hacer al tocar el botón. Sin `alInvertir`, no va. */
+  inscritos?: ReadonlySet<string>;
+  alInvertir?: (p: PinMapa) => void;
 }) {
   const fila = useRef<HTMLDivElement>(null);
   const tipos = useCalle(pines.map((p) => p.avisoId));
@@ -246,6 +253,9 @@ export function TarjetaPin({ pines, seleccionado, uf, analizados, resumenes = {}
                 </button>
               )}
               {error?.avisoId === p.avisoId && <p className="ex-error" role="alert">{error.texto}</p>}
+              {alInvertir && puedeInvertir({ condicion: p.condicion, veredicto: p.veredicto, negociable: esNegociado(p) }) && (
+                <BotonInvierte avisoId={p.avisoId} origen="explorar" veredicto={esNegociado(p) ? "AJUSTA SUPUESTOS" : p.veredicto} inscrito={!!inscritos?.has(p.avisoId)} sinCuenta={sinCuenta} alTocar={() => alInvertir(p)} />
+              )}
               </div>
             </article>
           );

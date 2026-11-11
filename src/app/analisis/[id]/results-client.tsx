@@ -35,6 +35,7 @@ import { almacenSesion, marcarRecienDentro, useRecienDentro } from "@/lib/lo-que
 import { PARAM_RECIEN_DENTRO } from "@/lib/guia/del-dia";
 import { hasAiV2 } from "@/lib/prosa-guardada";
 import type { PublicacionPortada } from "@/lib/guia/publicacion-portada";
+import type { InvierteInforme } from "@/lib/invierte/invierte-servidor";
 import { supuestaDelInforme } from "@/lib/guia/edad-edificio";
 
 
@@ -86,9 +87,12 @@ export function PremiumResults({
   medianaResolvedAt,
   alternativaComunas = null,
   publicacion,
+  invierte = null,
 }: {
   /** El enlace a la publicación para la portada (27-oct-2026, publicacion-portada.ts): lo lee `informe-ltr.tsx`. */
   publicacion: PublicacionPortada;
+  /** «Pronto: Invierte con Franco» (11-nov-2026): la franja de la portada, si va (invierte-servidor.ts). */
+  invierte?: InvierteInforme | null;
   results?: FullAnalysisResult | null;
   accessLevel?: "guest" | "free" | "premium" | "subscriber";
   analysisId?: string;
@@ -649,7 +653,7 @@ export function PremiumResults({
             onInformeVisible={onInformeVisible}
             despuesDeLaCard={bannerLqs ? <BannerRegistro ctx={ctxLqs} next={nextLqs} perfil={perfilLqs} pasoInicial={recienDentro ? "dentro" : "oferta"} /> : undefined}
             trasPortada={inputData?.origenAviso && analysisId ? (
-              <InformeDeAviso analysisId={analysisId} veredicto={resolvedVeredicto} supuesta={supuestaDelInforme(inputData)} esDueno={isLoggedIn && !isSharedView && !isSharedLink} />
+              <InformeDeAviso analysisId={analysisId} veredicto={resolvedVeredicto} supuesta={supuestaDelInforme(inputData)} esDueno={isLoggedIn && !isSharedView && !isSharedLink} invierte={invierte} publicacion={publicacion} />
             ) : marcaReanalisis ? (
               <InformeDeReanalisis reanalisis={marcaReanalisis} modalidad="ltr" />
             ) : undefined}

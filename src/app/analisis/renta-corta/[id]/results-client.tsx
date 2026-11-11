@@ -64,6 +64,7 @@ import { formatDireccionDisplay } from "@/lib/format-direccion";
 import { useRecienDentro } from "@/lib/lo-que-sigue/recien-dentro";
 import { DocumentoFrame, PortadaInforme } from "@/components/analysis/portada/PortadaInforme";
 import type { PublicacionPortada } from "@/lib/guia/publicacion-portada";
+import type { InvierteInforme } from "@/lib/invierte/invierte-servidor";
 import { condicionDeInput, useComparablesCercanos } from "@/components/analysis/portada/useComparablesCercanos";
 import { tasaDePortada } from "@/lib/guia/tasa-portada";
 
@@ -80,6 +81,8 @@ interface STRResultsProps {
   analysisId: string;
   /** El enlace a la publicación para la portada (27-oct-2026, publicacion-portada.ts): lo lee `informe-str.tsx`. */
   publicacion: PublicacionPortada;
+  /** «Pronto: Invierte con Franco» (11-nov-2026): la franja de la portada, si va. */
+  invierte?: InvierteInforme | null;
   results: ShortTermResult & { francoScore?: FrancoScoreSTR };
   inputData: Record<string, unknown> | null;
   accessLevel: "guest" | "free" | "premium" | "subscriber";
@@ -134,6 +137,7 @@ interface STRResultsProps {
 export function STRResultsClient({
   analysisId,
   publicacion,
+  invierte = null,
   results,
   inputData,
   accessLevel,
@@ -400,7 +404,7 @@ export function STRResultsClient({
         {/* De qué aviso salió (15-oct-2026): «Analizar este» del semanal; como en renta larga, «Quiero verlo». */}
         {origenAviso && analysisId && (
           <SeccionInforme id="origen-aviso" tono="paper">
-            <InformeDeAviso analysisId={analysisId} veredicto={veredicto} supuesta={supuestaDelInforme(inputData)} esDueno={!!userId && !isSharedView} modalidad="str" />
+            <InformeDeAviso analysisId={analysisId} veredicto={veredicto} supuesta={supuestaDelInforme(inputData)} esDueno={!!userId && !isSharedView} modalidad="str" invierte={invierte} publicacion={publicacion} />
           </SeccionInforme>
         )}
         {/* El re-análisis al precio recomendado (21-oct-2026, lib/reanalisis.ts): lo dice arriba, con el original. */}

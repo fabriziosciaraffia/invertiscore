@@ -84,7 +84,11 @@ import { enlaceCompartido, PARAMS_DE_UNA_VEZ } from "@/lib/explorar/enlace-compa
 import { analizadosDeLaPestana, anotarVolver, hrefDelMapa } from "@/lib/explorar/volver-al-mapa";
 import { recalcularEnCola, respaldoDelFusible, respuestaDeComuna, type AvanceRecalculo } from "@/lib/explorar/cola-recalculo";
 import type { CasoCompartido } from "./compartido-hoja";
+import { useInscritos } from "@/components/invierte/inscritos";
+import { INVIERTE_COPY, type DeptoInvierte } from "@/lib/invierte/invierte";
+import { lineaDepto } from "@/lib/guia/linea-depto";
 import "./explorar.css";
+import "@/components/invierte/invierte.css";
 
 const MapaExplorar = dynamic(() => import("./mapa-explorar"), { ssr: false, loading: () => null });
 // Lo que no hace falta para el primer pintado entra cuando se abre (LCP en el teléfono).
@@ -98,6 +102,10 @@ const Bienvenida = dynamic(() => import("./bienvenida").then((m) => m.Bienvenida
 const HojaCalculo = dynamic(() => import("./hoja-calculo").then((m) => m.HojaCalculo), { ssr: false, loading: () => null });
 const HojaCompartida = dynamic(() => import("./compartido-hoja").then((m) => m.HojaCompartida), { ssr: false, loading: () => null });
 const PopupRecalculo = dynamic(() => import("./recalculo").then((m) => m.PopupRecalculo), { ssr: false, loading: () => null });
+const HojaInvierte = dynamic(() => import("@/components/invierte/HojaInvierte").then((m) => m.HojaInvierte), { ssr: false, loading: () => null });
+
+/** El depto de «Invierte con Franco» desde un pin (11-nov-2026): la línea, el precio publicado y el chip (Ajustar si es negociable). */
+const deptoInvierteDePin = (p: PinMapa): DeptoInvierte => ({ avisoId: p.avisoId, linea: lineaDepto(p), precioUF: p.precioUF, veredicto: esNegociado(p) ? "AJUSTA SUPUESTOS" : p.veredicto, score: esNegociado(p) ? null : p.score });
 
 const ESPERA_EN_CURSO_MS = 4000;
 // Las comunas que se calculan (otro pie u otro plazo, o renta corta) van DE A UNA desde el 04-nov-2026 (eran 3 y, desde el 02-nov,
@@ -264,6 +272,9 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
   const [caidos, setCaidos] = useState<string[]>([]);
   const [avisame, setAvisame] = useState(false);
   const [registro, setRegistro] = useState<{ pedido: PedidoRegistro; filtros: FiltrosPortal; orden: OrdenPortal } | null>(null);
+  // «Invierte con Franco» (11-nov-2026): la hoja de inscripción del pin; `retomar` al volver del registro con lo contestado.
+  const [invierte, setInvierte] = useState<{ pin: PinMapa; retomar: boolean } | null>(null);
+  const inscritos = useInscritos(!sinCuenta);
   const [bienvenida, setBienvenida] = useState(false);
   // «¿Cómo se calcula?» (30-oct-2026): la hoja corta del enlace de la barra de arriba, con y sin cuenta. Abre directo (03-nov-2026).
   const [calculo, setCalculo] = useState(false);
@@ -976,7 +987,8 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
     if (it) { setCarrusel(cercanos(visibles, it.avisoId).map((p) => p.avisoId)); setSel(it.avisoId); }
     // (30-oct-2026, recorrido real de Fabrizio) Desde un pin vuelve a SU tarjeta, desbloqueada y con la banda; el pop-up de
     // «Analizar este» no se abre solo: lo abre la persona.
-    if (it && (v.motivo === "analizar" || v.motivo === "guardar")) setRecien({ avisoId: it.avisoId, regalo: usaRegalo(cuenta.saldo), sinRegalo: cuenta.sinRegalo ?? null });
+    if (it && v.motivo === "invierte") setInvierte({ pin: it, retomar: true });
+    if (it && (v.motivo === "analizar" || v.motivo === "guardar" || v.motivo === "invierte")) setRecien({ avisoId: it.avisoId, regalo: usaRegalo(cuenta.saldo), sinRegalo: cuenta.sinRegalo ?? null });
     if (v.motivo === "guardar" && it && !guardados.has(it.avisoId)) void alternarGuardado(it.avisoId, "tarjeta");
     if (v.motivo === "pie-plazo") setHojaFiltros(true);
     // «Avísame»: la cuenta nueva ya nació con estos filtros como búsqueda; si la cuenta ya existía, se confirma el reemplazo.
@@ -1101,6 +1113,8 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
               alPrepararCompartir={prepararCompartir}
               sinCuenta={sinCuenta}
               recien={recien}
+              inscritos={inscritos}
+              alInvertir={(p) => { if (sinCuenta) void import("./hoja-registro"); setInvierte({ pin: p, retomar: false }); }}
             />
           ) : vista === "mapa" && (
             // LA BARRA DE ABAJO (03-nov-2026): la misma en el teléfono y en el PC (la píldora negra del PC se retiró), con el
@@ -1162,6 +1176,17 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
         />
       )}
 
+      {invierte && (
+        <HojaInvierte
+          depto={deptoInvierteDePin(invierte.pin)}
+          origen="explorar"
+          sinCuenta={sinCuenta}
+          retomar={invierte.retomar}
+          volver={INVIERTE_COPY.listo.volverMapa}
+          alPedirRegistro={() => { const pin = invierte.pin; setInvierte(null); pedirRegistro("invierte", pin); }}
+          alCerrar={() => setInvierte(null)}
+        />
+      )}
       {registro && (
         <HojaRegistro pedido={registro.pedido} filtros={registro.filtros} orden={registro.orden} origen={origen} alCerrar={() => setRegistro(null)} />
       )}

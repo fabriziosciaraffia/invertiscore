@@ -15,6 +15,9 @@
 // a [correo], con el asunto «…».» (19-oct-2026): ese toque no manda nada y no puede decir «Listo».
 // «MANDÁRMELO POR CORREO» (27-oct-2026, decisión de Fabrizio): el enlace a la publicación ya está en la portada, junto a
 // «Ficha del depto» (publicacion-portada.ts); el botón de acá deja de ser «Quiero verlo» y es para tenerlo en el correo.
+// «PRONTO: INVIERTE CON FRANCO» (11-nov-2026, goal de Fabrizio): si el aviso es usado y da Comprar o Ajustar negociable
+// (`invierte`, invierte-servidor.ts › invierteDelInforme), la franja «Mandármelo por correo» se reemplaza por FranjaInvierte,
+// que lleva debajo de su botón el enlace a la publicación (la portada ya no lo repite). En los demás, la franja de siempre.
 // ─────────────────────────────────────────────────────────────────────────────
 import { useState } from "react";
 import { usePostHog } from "@/lib/posthog-react";
@@ -24,12 +27,15 @@ import { cuandoSeEnvio, dicesQueConviene, estadoTrasRespuesta, sePuedeTocar, typ
 import { botonOcupado } from "@/lib/carga-global";
 import { ConfirmacionEnviado } from "./ConfirmacionEnviado";
 import type { SupuestaPor } from "@/lib/guia/edad-edificio";
+import type { PublicacionPortada } from "@/lib/guia/publicacion-portada";
+import type { InvierteInforme } from "@/lib/invierte/invierte-servidor";
+import { FranjaInvierte } from "@/components/invierte/FranjaInvierte";
 import "./guia.css";
 
 /** `demo`: en /dev/lo-que-sigue el toque confirma sin registrar ni mandar el correo. */
 /** `modalidad` (15-oct-2026): también en el informe de renta corta hecho desde un aviso del semanal; mismo botón, misma
  *  ruta y mismo correo. */
-export function InformeDeAviso({ analysisId, veredicto, supuesta, esDueno, demo = false, modalidad = "ltr" }: { analysisId: string; veredicto: string; supuesta: SupuestaPor | null; esDueno: boolean; demo?: boolean; modalidad?: "ltr" | "str" }) {
+export function InformeDeAviso({ analysisId, veredicto, supuesta, esDueno, demo = false, modalidad = "ltr", invierte = null, publicacion = null }: { analysisId: string; veredicto: string; supuesta: SupuestaPor | null; esDueno: boolean; demo?: boolean; modalidad?: "ltr" | "str"; invierte?: InvierteInforme | null; publicacion?: PublicacionPortada }) {
   const posthog = usePostHog();
   const [estado, setEstado] = useState<EstadoQuieroVerlo>({ tipo: "quieto" });
 
@@ -50,7 +56,10 @@ export function InformeDeAviso({ analysisId, veredicto, supuesta, esDueno, demo 
     <div className="qv" data-informe-de-aviso>
       <p className="qv-origen">{INFORME_DE_AVISO.origen}</p>
       {supuesta && <p className="qv-nota" data-antiguedad-supuesta={supuesta}>{INFORME_DE_AVISO.antiguedadSupuesta[supuesta]}</p>}
-      {esDueno && (
+      {esDueno && invierte && (
+        <FranjaInvierte depto={invierte.depto} inscrito={invierte.inscrito} publicacion={publicacion ? { url: publicacion.url, despublicado: publicacion.despublicado } : null} demo={demo} />
+      )}
+      {esDueno && !invierte && (
         <div className="qv-banda" data-qv={estado.tipo} aria-live="polite">
           {estado.tipo === "listo" ? (
             <ConfirmacionEnviado tipo="listo" correo={estado.correo} />

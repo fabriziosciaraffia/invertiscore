@@ -25,6 +25,8 @@
 //   · sin saldo, el aviso ofrece el pack —al precio del ticket si la cuenta tiene menos de 24 horas— y «Comprar solo 1»,
 //     con la vuelta a este depto (lib/guia/compra-desde-depto.ts); al volver pagado (`autoAnalizar`), se analiza solo;
 //   · «Ya lo analizaste · Ver informe» también en renta larga, leído en vivo (`informes`).
+// «PRONTO: INVIERTE CON FRANCO» (11-nov-2026): en un usado que da ✓ Comprar o − Ajustar negociable (`tramo` «negociar»), debajo de
+// lo que la tarjeta ya tiene, el botón secundario «Invierte con Franco»; inscrito, la etiqueta. «Analizar este» sigue primero.
 // ─────────────────────────────────────────────────────────────────────────────
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -49,11 +51,18 @@ import { lineaDepto } from "@/lib/guia/linea-depto";
 import "@/components/guia/guia.css";
 import "@/app/deptos/deptos.css";
 import "@/app/dashboard/casa.css";
+import "@/components/invierte/invierte.css";
 import { CASA } from "@/app/dashboard/casa-copy";
 import { PinTarjeta } from "@/app/dashboard/mapa-casa";
 import { clasePinDeItem } from "@/lib/casa/mapa-casa";
 import { ChipInformePropio } from "@/components/guia/ChipInformePropio";
 import type { ResumenInforme } from "@/lib/informe-propio";
+import dynamic from "next/dynamic";
+import { puedeInvertir } from "@/lib/invierte/invierte";
+import { BotonInvierte } from "@/components/invierte/BotonInvierte";
+import { useInscritos } from "@/components/invierte/inscritos";
+
+const HojaInvierte = dynamic(() => import("@/components/invierte/HojaInvierte").then((m) => m.HojaInvierte), { ssr: false, loading: () => null });
 
 const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
 const pct = (n: number) => String(Math.round(n * 10) / 10).replace(".", ",");
@@ -130,6 +139,9 @@ export function SemanalLista({
   const [analizandoIgual, setAnalizandoIgual] = useState(false);
   // Las tarjetas a la vista (24-oct-2026): las primeras `aLaVista`, y «Ver los N que faltan» para el resto.
   const [verTodos, setVerTodos] = useState(false);
+  // «Invierte con Franco» (11-nov-2026): la hoja de inscripción del depto tocado, y los ya inscritos (la etiqueta).
+  const [invierte, setInvierte] = useState<ItemSemanal | null>(null);
+  const inscritos = useInscritos(true);
   // El aviso antes de gastar (13-oct-2026). `sin`: el servidor dijo que no quedan, aunque la página creyera que sí.
   // `analizando` (21-oct-2026): renta larga, generando con el aviso abierto.
   const [confirmar, setConfirmar] = useState<{ it: ItemSemanal; sin: boolean; analizando?: boolean } | null>(null);
@@ -399,6 +411,9 @@ export function SemanalLista({
         </div>
         {acciones(it)}
         {error?.avisoId === it.avisoId && <p className="sel-error" role="alert">{error.texto}</p>}
+        {!(corta && noDa.has(it.avisoId)) && puedeInvertir({ condicion: it.condicion, veredicto: it.veredicto, negociable: it.tramo === "negociar" }) && (
+          <BotonInvierte avisoId={it.avisoId} origen="seleccion" veredicto={it.veredicto ?? ""} inscrito={inscritos.has(it.avisoId)} alTocar={() => setInvierte(it)} />
+        )}
       </article>
     );
   };
@@ -475,6 +490,13 @@ export function SemanalLista({
           alCerrarInforme={cerrarInforme}
           alReintentarInforme={reintentarInforme}
           avisoId={confirmar.it.avisoId}
+        />
+      )}
+      {invierte && (
+        <HojaInvierte
+          depto={{ avisoId: invierte.avisoId, linea: ojoDe(invierte), precioUF: invierte.precioUF, veredicto: invierte.tramo === "negociar" ? "AJUSTA SUPUESTOS" : invierte.veredicto ?? "", score: invierte.tramo === "negociar" ? null : invierte.score }}
+          origen="seleccion"
+          alCerrar={() => setInvierte(null)}
         />
       )}
     </section>
