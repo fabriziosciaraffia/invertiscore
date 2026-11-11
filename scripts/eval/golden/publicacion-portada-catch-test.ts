@@ -139,7 +139,10 @@ export async function runPublicacionPortadaTier(): Promise<{ hard: number }> {
 
   // ── 2 · la página lo lee y lo pasa; los clientes se lo dan a la portada ──
   const ltr = codigo("src/app/analisis/[id]/informe-ltr.tsx"), str = codigo("src/app/analisis/renta-corta/[id]/informe-str.tsx");
-  const LEE = /const publicacion = await publicacionDelInforme\(createServiceClient\(\), (inputDataRaw|data\.input_data)\);/;
+  // ⚠ ACTA (11-nov-2026, goal «Pronto: Invierte con Franco») · la página lee la publicación del aviso y, si la portada lleva la
+  // franja de «Invierte con Franco», la marca `enFranja` (el enlace va debajo del botón de la franja y la portada no lo repite).
+  // Se exigen las dos líneas: la lectura con el input del informe y la marca solo cuando hay franja.
+  const LEE = /const publicacionAviso = await publicacionDelInforme\(createServiceClient\(\), (inputDataRaw|data\.input_data)\);[\s\S]{0,700}?const publicacion = invierte && publicacionAviso \? \{ \.\.\.publicacionAviso, enFranja: true \} : publicacionAviso;/;
   if (!LEE.test(ltr)) F("2 · informe-ltr.tsx no lee la publicación con publicacionDelInforme y el input del informe");
   if (!LEE.test(str)) F("2 · informe-str.tsx no lee la publicación con publicacionDelInforme y el input del informe");
   if (atributosJsx(elementoJsx(ltr, "PremiumResults")).get("publicacion") !== "publicacion") F("2 · informe-ltr.tsx no le pasa a PremiumResults la publicación que leyó");

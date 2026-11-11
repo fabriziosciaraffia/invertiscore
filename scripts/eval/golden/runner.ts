@@ -179,6 +179,7 @@ import { runTasaEditableTier } from "./tasa-editable-catch-test";
 import { runExplorarCorreosTier } from "./explorar-correos-catch-test";
 import { runExplorarNegociarTier } from "./explorar-negociar-catch-test";
 import { runCompartirDeptoTier } from "./compartir-depto-catch-test";
+import { runInviertePronto } from "./invierte-pronto-catch-test";
 import { runExplorarPasadaTier } from "./explorar-pasada-catch-test";
 import { runInformeEnCaminoTier } from "./informe-en-camino-catch-test";
 import { runExplorarPasada0411Tier } from "./explorar-pasada-0411-catch-test";
@@ -779,6 +780,9 @@ function printSeed(r: SeedReport) {
   // mapa centrado), la vista previa sin cifras más allá del chip, el registro desde el enlace acredita a los dos (C · depto),
   // la vista y el botón medidos, y el que ya no está ofrece parecidos. ──
   totalHard += (await runCompartirDeptoTier()).hard;
+  // Tier INVIERTE-PRONTO (11-nov-2026, 0 tokens): «Pronto: Invierte con Franco» — el botón solo en usados que dan Comprar o
+  // Ajustar negociable, el copy sin comisión, lista ni plazo, la inscripción con depto y con su correo a hola@. ──
+  totalHard += (await runInviertePronto()).hard;
   // Tier EXPLORAR-PASADA (03-nov-2026, 0 tokens + 2 lecturas): la pasada real de Fabrizio — «¿Cómo se calcula?» abre directo y
   // dice lo pedido, de entrada las dos clases (✓ Comprar y − Ajustar hasta 10 %) en el mismo pedido y «Ver solo ✓ Comprar» las
   // deja en una, el desglose de la barra suma, ningún pin usa el rojo, el tooltip queda dentro de la pantalla y el dashboard va

@@ -488,7 +488,9 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
     const iOrigen = ruta.indexOf("body.origenAviso = { avisoId, antiguedad: antiguedad.origen, origenAnalysisId: o.analysisId ?? undefined, desde, ...(tasaElegida != null ? { tasaElegida, tasaMercado: cfg.tasa } : {}), ...camposDeEdad(antiguedad) };"), iBuild = ruta.indexOf("await buildShortTermAnalysisRow(");
     if (iOrigen < 0 || iBuild < 0 || iOrigen > iBuild || !ruta.includes('const desde = desdeExplorar ? "explorar" : "semanal";')) F("11 · el informe de renta corta del semanal no guarda de qué aviso salió");
     const clienteStr = sinComentarios(leer("src/app/analisis/renta-corta/[id]/results-client.tsx"));
-    if (!/\{origenAviso && analysisId && \(\s*<SeccionInforme id="origen-aviso" tono="paper">\s*<InformeDeAviso analysisId=\{analysisId\} veredicto=\{veredicto\} supuesta=\{supuestaDelInforme\(inputData\)\} esDueno=\{!!userId && !isSharedView\} modalidad="str" \/>/.test(clienteStr))
+    // ⚠ ACTA (11-nov-2026, goal «Pronto: Invierte con Franco») · el bloque recibe además la franja de «Invierte con Franco» y el
+    // enlace a la publicación (`invierte`, `publicacion`): con la franja, «Mandármelo por correo» se reemplaza (INVIERTE-PRONTO §2).
+    if (!/\{origenAviso && analysisId && \(\s*<SeccionInforme id="origen-aviso" tono="paper">\s*<InformeDeAviso analysisId=\{analysisId\} veredicto=\{veredicto\} supuesta=\{supuestaDelInforme\(inputData\)\} esDueno=\{!!userId && !isSharedView\} modalidad="str" invierte=\{invierte\} publicacion=\{publicacion\} \/>/.test(clienteStr))
       F("11 · el informe de renta corta no muestra «Quiero verlo»");
     const qvRuta = sinComentarios(leer("src/app/api/lo-que-sigue/quiero-verlo/route.ts"));
     if (!/const d = an \? datosDeInformeDeAviso\(an\) : null;\s*if \(!an \|\| an\.user_id !== user\.id \|\| !d\) return NextResponse\.json\(\{ error: "informe" \}, \{ status: 403 \}\);/.test(qvRuta)) F("11 · la ruta de «Quiero verlo» no lee el informe con datosDeInformeDeAviso");
