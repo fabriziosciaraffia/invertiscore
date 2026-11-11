@@ -60,10 +60,13 @@ function falsoSupabase(t: { aviso?: Record<string, unknown> | null; evaluado?: R
         return t.fallaGuardar ? { data: null, error: { message: "x" } } : { data: { id: "insc-1" }, error: null };
       }
       if (op === "update") { escritos.push({ tabla, op, fila }); return { data: null, error: null }; }
-      if (tabla === "scraped_properties") return { data: t.aviso ? [t.aviso] : [], error: null };
-      if (tabla === "avisos_evaluados") return { data: t.evaluado ?? null, error: null };
-      if (tabla === "invierte_inscripciones") return { data: t.previa ? { id: "insc-1" } : null, error: null };
-      return { data: null, error: null };
+      // Las lecturas del falso, por tabla (claves sin comillas: no es una lectura real, y LECTURA-PAGINADA cuenta los literales).
+      const lecturas: Record<string, () => { data: unknown; error: null }> = {
+        scraped_properties: () => ({ data: t.aviso ? [t.aviso] : [], error: null }),
+        avisos_evaluados: () => ({ data: t.evaluado ?? null, error: null }),
+        invierte_inscripciones: () => ({ data: t.previa ? { id: "insc-1" } : null, error: null }),
+      };
+      return (lecturas[tabla] ?? (() => ({ data: null, error: null })))();
     };
     const q: Record<string, unknown> = {};
     for (const m of ["select", "eq", "order", "limit", "is", "in", "range", "or", "not"]) q[m] = () => q;
