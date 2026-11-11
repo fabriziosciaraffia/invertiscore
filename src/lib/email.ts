@@ -6,7 +6,7 @@ import { cuentasDePruebaSinCorreo, destinoBloqueado } from "./correo-destino";
 import { conBajaDeCorreos, eliminacionPedida, TIPOS_CON_BAJA, TIPOS_QUE_FRENA_LA_ELIMINACION } from "./correo-baja";
 import { createServiceClient as adminCorreo } from "./supabase/service";
 import { correoRecordatorioPack } from "./lo-que-sigue/recordatorio";
-import { correoAlertaCron, correoResumenCrons, correoAlertaPago, correoAlertaPagoFallido, correoBienvenida, correoBoleta, correoCheckoutAbandonado, correoEliminacionInterna, correoEliminacionUsuario, correoAvisoPedido, correoInformeListo, correoPagoConfirmado, correoPagoFallido, correoPlanAumento, correoPremioReferido, correoTarjetaRegistrada } from "./email/correos";
+import { correoAlertaCron, correoResumenCrons, correoAlertaPago, correoAlertaPagoFallido, correoBienvenida, correoBoleta, correoCheckoutAbandonado, correoEliminacionInterna, correoEliminacionUsuario, correoAvisoPedido, correoInformeListo, correoPagoConfirmado, correoPagoFallido, correoPlanAumento, correoPremioReferido, correoTarjetaRegistrada, correoInscripcionInvierte, correoAnuncioInvierte } from "./email/correos";
 
 /** Quién recibe el correo, para atar el evento a su persona de PostHog. Sin id, se deriva del correo. */
 export interface CorreoOpts {
@@ -478,6 +478,38 @@ export async function sendAlertaPagoInterna(p: Parameters<typeof correoAlertaPag
 export async function sendAlertaPagoFallidoInterna(p: Parameters<typeof correoAlertaPagoFallido>[0], userId: string | null): Promise<void> {
   const { subject, html } = correoAlertaPagoFallido(p);
   await enviarCorreo("alerta_pago_fallido", userId, { from: FROM_EMAIL, to: 'hola@refranco.ai', subject, html });
+}
+
+/** Invierte con Franco (11-nov-2026): cada inscripción, a hola@. Sin userId en el envío: es un buzón de Franco y no lo frena
+ *  ni la baja ni la marca de cuenta de prueba (el asunto la marca «[prueba]»). La llave de idempotencia es por inscripción y
+ *  por versión de sus respuestas: el reintento del mismo pedido no duplica, una respuesta nueva sí sale. Devuelve si salió. */
+export async function sendInscripcionInvierteInterna(p: Parameters<typeof correoInscripcionInvierte>[0], idempotencyKey: string): Promise<boolean> {
+  const { subject, html } = correoInscripcionInvierte({ ...p, sitio: SITE_URL });
+  try {
+    const res = await enviarCorreo("invierte_inscripcion", null, { from: FROM_EMAIL, to: "hola@refranco.ai", subject, html, ...(p.correo ? { replyTo: p.correo } : {}) }, { idempotencyKey });
+    if (res.error) console.error("[invierte_inscripcion] no salió:", res.error.message);
+    return !res.error && !!res.data;
+  } catch (error) {
+    console.error("[invierte_inscripcion] no salió:", error);
+    return false;
+  }
+}
+
+/** Invierte con Franco: el anuncio a la base (11-nov-2026). Respeta la baja (TIPOS_CON_BAJA) y la eliminación pedida; lleva el
+ *  «List-Unsubscribe» de un clic. Solo lo llama scripts/invierte-anuncio.ts con `--enviar`. */
+export async function sendAnuncioInvierte(to: string, p: Parameters<typeof correoAnuncioInvierte>[0], userId: string): Promise<{ ok: true; id: string | null } | { ok: false }> {
+  const { subject, html } = correoAnuncioInvierte(p);
+  try {
+    const res = await enviarCorreo("invierte_anuncio", userId, {
+      from: FROM_EMAIL, to, subject, html,
+      headers: { "List-Unsubscribe": `<${p.urlBaja}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" },
+    }, { idempotencyKey: `invierte-anuncio-${userId}` });
+    if (res.error) { console.error("[invierte_anuncio] no salió:", res.error.message); return { ok: false }; }
+    return { ok: true, id: res.data?.id ?? null };
+  } catch (error) {
+    console.error("[invierte_anuncio] no salió:", error);
+    return { ok: false };
+  }
 }
 
 /** «Quiero verlo» (01-oct-2026): el aviso, a la persona que lo pidió. Devuelve si salió de verdad. */

@@ -500,3 +500,78 @@ export function correoCambioCorreoSupabase(): string {
     legal: "Este es un correo sobre la seguridad de tu cuenta en Franco.",
   });
 }
+
+// ── Invierte con Franco: la inscripción, a hola@ (11-nov-2026, goal «Pronto: Invierte con Franco») ───────────────────────
+// Cada inscripción llega al buzón de Franco con el depto, las respuestas y cómo contactar a la persona. Las de «este mes» con el
+// asunto marcado (invierte.ts › asuntoInscripcion). Interno: sale aunque la persona se haya dado de baja.
+export function correoInscripcionInvierte(p: {
+  asunto: string;
+  persona: string;
+  correo: string | null;
+  whatsapp: string;
+  linea: string | null;
+  precioUF: number | null;
+  veredicto: string | null;
+  score: number | null;
+  urgencia: string;
+  pie: string;
+  pieUF: number | null;
+  origen: string;
+  campana: string;
+  avisoId: string;
+  analysisId: string | null;
+  repetida: boolean;
+  sitio?: string;
+}): Correo {
+  const sitio = p.sitio ?? SITIO;
+  const v = p.veredicto ? `${etiquetaVeredicto(p.veredicto, "frase")}${p.score != null ? ` · ${p.score}` : ""}` : "—";
+  const wa = p.whatsapp.replace(/^\+/, "");
+  return {
+    subject: p.asunto,
+    html: plantillaClara({
+      titulo: p.asunto,
+      preencabezado: `${p.persona} quiere invertir con Franco.`,
+      titular: p.repetida ? "Inscripción actualizada" : "Nueva inscripción",
+      parrafos: [`${escaparHtml(p.persona)} se inscribió en Invierte con Franco${p.repetida ? " (ya estaba inscrito en este depto; estas son sus respuestas nuevas)" : ""}.`],
+      detalle: {
+        filas: [
+          { etiqueta: "Depto", valor: escaparHtml([p.linea, p.precioUF != null ? `UF ${Math.round(p.precioUF).toLocaleString("es-CL")}` : null].filter(Boolean).join(" · ") || p.avisoId) },
+          { etiqueta: "Veredicto", valor: escaparHtml(v) },
+          { etiqueta: "¿Cuándo compra?", valor: escaparHtml(p.urgencia) },
+          { etiqueta: `¿Tiene el pie${p.pieUF != null ? ` de UF ${p.pieUF.toLocaleString("es-CL")}` : ""}?`, valor: escaparHtml(p.pie) },
+          { etiqueta: "WhatsApp", valor: enlace(`https://wa.me/${escaparHtml(wa)}`, escaparHtml(p.whatsapp)) },
+          { etiqueta: "Correo", valor: p.correo ? enlace(`mailto:${escaparHtml(p.correo)}`, escaparHtml(p.correo)) : "—" },
+          { etiqueta: "Desde", valor: escaparHtml(p.origen) },
+          { etiqueta: "Campaña", valor: escaparHtml(p.campana) },
+          { etiqueta: "Aviso", valor: escaparHtml(p.avisoId) },
+        ],
+      },
+      boton: { texto: "Ver la lista en el panel", url: `${sitio}/admin/invierte` },
+      despues: p.analysisId ? [`Su informe: ${enlace(`${sitio}/analisis/${escaparHtml(p.analysisId)}`, `${sitio}/analisis/${escaparHtml(p.analysisId)}`)}`] : [],
+    }),
+  };
+}
+
+// ── Invierte con Franco: el anuncio a la base (11-nov-2026, goal «Pronto: Invierte con Franco») ──────────────────────────
+// A las cuentas activas que no se dieron de baja (scripts/invierte-anuncio.ts, que NO envía sin `--enviar`). Lleva a su
+// selección, donde los usados que convienen traen el botón. Sin comisión, sin lista de servicios y sin plazo prometido.
+export const ASUNTO_ANUNCIO_INVIERTE = "Pronto: invierte con Franco";
+export function correoAnuncioInvierte(p: { nombre: string | null; urlSeleccion: string; urlBaja: string }): Correo {
+  return {
+    subject: ASUNTO_ANUNCIO_INVIERTE,
+    html: plantillaClara({
+      titulo: ASUNTO_ANUNCIO_INVIERTE,
+      preencabezado: "Inscríbete en el depto que te interese y sé de los primeros.",
+      titular: "Pronto: Invierte con Franco",
+      parrafos: [
+        `${saludoDe(p.nombre)} estamos preparando una forma nueva de invertir: todo lo que Franco sabe de un depto, puesto a trabajar en tu inversión, hasta el final.`,
+        "En tu selección, los deptos usados que convienen traen ahora el botón «Invierte con Franco». Inscríbete en el que te interese y te avisamos apenas puedas invertir en él.",
+      ],
+      boton: { texto: "Ver mi selección", url: escaparHtml(p.urlSeleccion) },
+      despues: [
+        "Vas a ser de los primeros en saberlo.",
+        `Si prefieres no recibir más correos de Franco, ${enlace(escaparHtml(p.urlBaja), "deja de recibirlos acá")}.`,
+      ],
+    }),
+  };
+}

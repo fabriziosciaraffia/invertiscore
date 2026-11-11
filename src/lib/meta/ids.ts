@@ -66,5 +66,7 @@ export const idCompraPlan = (subscriptionId: string) => `sub-${subscriptionId}`;
 export const idAnalizarEste = (avisoId: string, desde: string) => `ae-${avisoId}-${desde.slice(0, 24)}`;
 /** «Quiero verlo»: uno por informe hecho desde un aviso. */
 export const idQuieroVerlo = (analysisId: string) => `qv-${analysisId}`;
+/** «Invierte con Franco» (11-nov-2026): un Lead por persona y depto inscrito (si repite, la misma inscripción: no sale otro). */
+export const idInvierte = (userId: string, avisoId: string) => `inv-${userId.slice(0, 13)}-${avisoId.slice(0, 40)}`;
 /** Un clic del correo semanal: por selección y por destino (el aviso o la página). */
 export const idSemanalClic = (token: string, destino: string) => `sc-${token.slice(0, 24)}-${destino.slice(0, 40)}`;
