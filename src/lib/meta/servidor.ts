@@ -26,6 +26,7 @@ import { COOKIE_ESPEJO, TOPE_ESPEJO, VIDA_ESPEJO_S, parsearEspejo, type EventoEs
 import { isAdminUser } from "@/lib/admin";
 import { COOKIE_PRUEBA } from "@/lib/meta/cookies";
 import { conPermiso, consentimientoDeCookie } from "@/lib/consentimiento";
+import { fbcDeOrigen, origenDeCabecera } from "@/lib/origen-campana";
 
 /** Lo que el navegador deja saber de sí en un request. */
 export interface ContextoMeta {
@@ -100,7 +101,8 @@ export function contextoDeRequest(request: Request): ContextoMeta {
     ip: h.get("x-forwarded-for")?.split(",")[0]?.trim() || h.get("x-real-ip") || null,
     ua: h.get("user-agent"),
     fbp: leerCookie(cookie, "_fbp"),
-    fbc: leerCookie(cookie, "_fbc"),
+    // Sin `_fbc` todavía, el del fbclid con que llegó (la cookie del origen, 12-nov-2026, lib/origen-campana.ts).
+    fbc: leerCookie(cookie, "_fbc") ?? fbcDeOrigen(origenDeCabecera(cookie)),
     url: h.get("referer") ?? request.url,
     prueba: leerCookie(cookie, COOKIE_PRUEBA) === "1",
     consentimiento: conPermiso(consentimientoDeCookie(cookie)),
@@ -114,7 +116,7 @@ export function contextoDeCabeceras(h: { get(n: string): string | null }, url: s
     ip: h.get("x-forwarded-for")?.split(",")[0]?.trim() || h.get("x-real-ip") || null,
     ua: h.get("user-agent"),
     fbp: leerCookie(cookie, "_fbp"),
-    fbc: leerCookie(cookie, "_fbc"),
+    fbc: leerCookie(cookie, "_fbc") ?? fbcDeOrigen(origenDeCabecera(cookie)),
     url,
     prueba: leerCookie(cookie, COOKIE_PRUEBA) === "1",
     consentimiento: conPermiso(consentimientoDeCookie(cookie)),
@@ -189,25 +191,25 @@ function datosNavegador(e: EventoServidor): Record<string, unknown> | undefined 
 }
 
 /**
- * Lo que sale a la API de conversiones (19-oct-2026). Con el «si» del aviso de cookies, todo lo que ayuda a Meta a
- * reconocer a la persona: el correo (se hashea en capi.ts), el id de la cuenta, `_fbp` y `_fbc`. Sin él, nada de eso:
- * el evento, su valor, la página, la IP y el navegador.
+ * Lo que sale a la API de conversiones. DESDE EL 12-NOV-2026 (campaña de noviembre fase 0, decisión de Fabrizio; /privacy lo
+ * dice) SIEMPRE todo lo que ayuda a Meta a reconocer a la persona: el correo (cifrado en capi.ts), el id de la cuenta
+ * (cifrado), `_fbp` si existe y `_fbc` (o el armado desde el fbclid). Las cuentas de prueba no llegan acá (emitirEventoMeta las
+ * corta antes, salvo en modo prueba con el código). Del 19-oct al 12-nov eso salía solo con el «si» del aviso de cookies.
  */
 export function datosParaMeta(e: EventoServidor, contexto: ContextoMeta | null, codigoPrueba: string | null): MetaCapiEventInput {
-  const permiso = contexto?.consentimiento === true;
   return {
     eventName: e.evento,
     eventId: e.eventId,
-    email: permiso ? e.email ?? null : null,
+    email: e.email ?? null,
     value: e.valor ?? null,
     currency: "CLP",
     datos: e.datos ?? null,
     eventSourceUrl: contexto?.url ?? null,
     clientIp: contexto?.ip ?? null,
     userAgent: contexto?.ua ?? null,
-    fbp: permiso ? contexto?.fbp ?? null : null,
-    fbc: permiso ? contexto?.fbc ?? null : null,
-    externalId: permiso ? e.userId ?? null : null,
+    fbp: contexto?.fbp ?? null,
+    fbc: contexto?.fbc ?? null,
+    externalId: e.userId ?? null,
     testEventCode: codigoPrueba,
     eventTime: e.eventTime ?? null,
   };
@@ -238,8 +240,9 @@ export async function emitirEventoMeta(admin: SupabaseClient, e: EventoServidor)
     if (!nueva || nueva.length === 0) return { estado: "repetido", espejo: null, envio: LISTO };
 
     if (e.userId && tieneNavegador(e.contexto)) await guardarContextoMeta(admin, e.userId, e.contexto);
-    // Sin el «si» del aviso de cookies no hay espejo: el pixel no corre en ese navegador.
-    const espejo: EventoEspejo | null = prueba || contexto?.consentimiento !== true ? null : { evento: e.evento, eventId: e.eventId, ...(datosNavegador(e) ? { datos: datosNavegador(e) } : {}) };
+    // El espejo para el pixel, siempre (el pixel ya no espera el aviso de cookies, 12-nov-2026); en modo prueba no: el pixel no
+    // lleva el código de prueba y contaría el evento como real.
+    const espejo: EventoEspejo | null = prueba ? null : { evento: e.evento, eventId: e.eventId, ...(datosNavegador(e) ? { datos: datosNavegador(e) } : {}) };
 
     const codigoPrueba = process.env.META_TEST_EVENT_CODE?.trim() || null;
     if (prueba && !codigoPrueba) {

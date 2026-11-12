@@ -16,7 +16,7 @@
  * `eventId` = clave de dedup compartida con la API de conversiones: el servidor manda el evento y le pasa al
  * navegador el mismo id (espejo.ts). Lo prueba el tier MEDICION-META.
  */
-import { conPermiso, leerConsentimiento, type Consentimiento } from "@/lib/consentimiento";
+import { leerConsentimiento, type Consentimiento } from "@/lib/consentimiento";
 import { COOKIE_FBC, dominioDeCookie } from "@/lib/meta/cookies";
 
 type Fbq = ((comando: string, evento: string, datos?: Record<string, unknown>, opciones?: { eventID?: string }) => void) & {
@@ -111,11 +111,13 @@ export function colaMeta(): EventoEnCola[] {
 }
 
 /**
- * ¿Puede operar el pixel en este navegador? Solo con el «si» del aviso de cookies (19-oct-2026, lib/consentimiento.ts)
- * y fuera de las cuentas de prueba. Sin elección todavía, no: nada se guarda ni sale hasta que la persona acepta.
+ * ¿Puede operar el pixel en este navegador? SIEMPRE, salvo en una cuenta de prueba (12-nov-2026, campaña de noviembre fase 0,
+ * decisión de Fabrizio: el pixel carga sin esperar el aviso de cookies; el aviso sigue rigiendo para PostHog). Hasta el 12-nov
+ * pedía además el «si» del aviso (19-oct-2026). El consentimiento se recibe y no decide: queda en la firma para que los
+ * llamadores no cambien.
  */
-export function pixelPermitido(c: Consentimiento | null, esPrueba: boolean): boolean {
-  return conPermiso(c) && !esPrueba;
+export function pixelPermitido(_c: Consentimiento | null, esPrueba: boolean): boolean {
+  return !esPrueba;
 }
 
 /**

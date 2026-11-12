@@ -21,7 +21,7 @@
  */
 import { useEffect, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { borrarCookiesMeta, esCuentaDePruebaNavegador, metaTrack, metaTrackCustom, pixelPermitido, vaciarColaMeta } from "@/lib/meta/pixel";
+import { esCuentaDePruebaNavegador, metaTrack, metaTrackCustom, pixelPermitido, vaciarColaMeta } from "@/lib/meta/pixel";
 import { consumirCookieEspejo, espejarMeta } from "@/lib/meta/espejo";
 import { COOKIE_FBC, VIDA_FBC_S, cookiesDeLlegada } from "@/lib/meta/cookies";
 import { cuandoLaPaginaEsteQuieta } from "@/lib/pagina-quieta";
@@ -69,9 +69,9 @@ export function MetaPixel() {
   /** El snippet ya corrió (con la página quieta): desde acá se puede disparar. */
   const [listo, setListo] = useState(false);
   /**
-   * EL CONSENTIMIENTO (19-oct-2026, lib/consentimiento.ts): el pixel —su script, su `_fbp`, el `_fbc` del clic y la
-   * cola— corre SOLO con el «si» del aviso de cookies. Sin elección todavía, no carga; si la persona acepta con la
-   * página abierta, carga en ese momento; si revoca, Meta deja de recibir (`fbq('consent', 'revoke')`).
+   * EL PIXEL CARGA SIEMPRE (12-nov-2026, campaña de noviembre fase 0, decisión de Fabrizio): su script, su `_fbp`, el `_fbc`
+   * del clic y la cola corren sin esperar el aviso de cookies; lo único que lo apaga es una cuenta de prueba
+   * (pixelPermitido). Del 19-oct al 12-nov corría solo con el «si». El aviso sigue rigiendo para PostHog.
    */
   const [permiso, setPermiso] = useState(false);
   useEffect(() => {
@@ -100,11 +100,9 @@ export function MetaPixel() {
   useEffect(() => {
     const w0 = window as unknown as { fbq?: (...a: unknown[]) => void };
     if (!permiso) {
-      // Revocó con el pixel ya cargado en esta página: Meta deja de recibir.
+      // Una cuenta de prueba con el pixel ya cargado en esta página: Meta deja de recibir. Desde el 12-nov-2026 (campaña
+      // de noviembre fase 0) es lo único que lo apaga: el «no» del aviso de cookies ya no apaga el pixel ni borra sus cookies.
       if (typeof w0.fbq === "function") w0.fbq("consent", "revoke");
-      // Y lo que el pixel ya dejó en este navegador se borra (con «no» explícito; sin elección no hay nada suyo).
-      // Antes de mirar PIXEL_ID: el `_fbc` lo pone el middleware aunque el pixel no esté configurado (preview).
-      if (leerConsentimiento() === "no") borrarCookiesMeta();
       setListo(false);
       return;
     }
