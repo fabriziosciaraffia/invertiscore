@@ -4,11 +4,12 @@
 // Un aviso de una línea, con «Aceptar» (lleno) y «Rechazar» (de borde) del mismo tamaño y a un clic (ajuste del
 // 19-oct-2026). La elección vive en una cookie propia de un año
 // (`franco_consentimiento`: «si» o «no») y se cambia desde el pie («Cookies»). Lo que depende de ella:
-//   · el pixel de Meta (y su `_fbc`, `_fbp` y el espejo de eventos) carga SOLO con «si» (MetaPixel.tsx, middleware);
 //   · PostHog mide siempre, pero sin «si» lo hace SIN cookies ni almacenamiento (`persistence: "memory"`) y sin la
-//     grabación de sesiones (posthog-cliente.ts);
-//   · la API de conversiones manda el correo hasheado (y el id de la cuenta) SOLO con «si» (meta/servidor.ts).
-// Sin elección todavía, vale como «no»: nada de lo anterior corre hasta que la persona acepta.
+//     grabación de sesiones (posthog-cliente.ts).
+// Sin elección todavía, vale como «no».
+// META YA NO DEPENDE DE ESTO (12-nov-2026, campaña de noviembre fase 0, decisión de Fabrizio): el pixel carga siempre (salvo
+// en una cuenta de prueba) y la API de conversiones manda el correo cifrado, fbp, fbc y el id de la cuenta en todo registro
+// real. Del 19-oct al 12-nov todo eso pedía el «si». /privacy lo dice.
 //
 // Sin React. Lo de `document` corre solo en el navegador; `consentimientoDeCookie` sirve también en el servidor.
 // Lo fija el tier CONSENTIMIENTO.

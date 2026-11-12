@@ -65,22 +65,23 @@ export default function PrivacyPage() {
           {/* 4 */}
           <section>
             <h2 className="font-heading font-bold text-lg text-[var(--franco-text)]">4. Cookies</h2>
-            {/* Lo mismo que hace el código (19-oct-2026, lib/consentimiento.ts): lo fija el tier CONSENTIMIENTO. */}
+            {/* Lo mismo que hace el código (12-nov-2026, campaña de noviembre fase 0: lib/origen-campana.ts, meta/servidor.ts,
+                MetaPixel.tsx, lib/consentimiento.ts): lo fijan los tiers CONSENTIMIENTO y CAMPANA-FASE0. */}
             <div className="font-body text-[15px] text-[var(--franco-text)] leading-relaxed mt-3 space-y-3">
               <p>
-                Usamos cookies propias, necesarias para que el sitio funcione: tu sesión, tus preferencias y la elección que hiciste sobre cookies. Esas no se pueden apagar.
+                Usamos cookies propias, necesarias para que el sitio funcione: tu sesión, tus preferencias y la elección que hiciste sobre cookies. También guardamos por 30 días de dónde llegaste la primera vez (el anuncio o el enlace, y la página), para saber qué campaña trae a quienes se registran. Esas no se pueden apagar.
+              </p>
+              <p>
+                <strong className="text-[var(--franco-text)]">Meta</strong> (su pixel y su API de conversiones) mide qué anuncios traen a quienes se registran, se inscriben o compran. Su pixel carga siempre. Cuando te registras, te inscribes en Invierte con Franco o compras, le mandamos desde nuestro servidor tu correo cifrado, un número cifrado de tu cuenta y la marca del anuncio por el que llegaste, para que reconozca el registro y no lo cuente dos veces.
               </p>
               <p>Con tu permiso, usamos además:</p>
               <ul className="list-disc pl-5 space-y-2">
-                <li>
-                  <strong className="text-[var(--franco-text)]">Meta</strong> (su pixel y su API de conversiones), para medir qué anuncios traen a quienes se registran o compran. Con tu permiso le mandamos tu correo cifrado, para reconocer el registro o la compra.
-                </li>
                 <li>
                   <strong className="text-[var(--franco-text)]">PostHog</strong>, la grabación de sesiones, para ver dónde se traba la gente. Lo que escribes en los campos va oculto.
                 </li>
               </ul>
               <p>
-                Sin tu permiso, el pixel de Meta no carga y la grabación no corre. PostHog igual cuenta las visitas, pero sin guardar nada en tu navegador. Y de un registro o una compra, a Meta solo le llegan el evento, tu navegador y tu dirección IP, nunca tu correo.
+                Sin tu permiso, la grabación no corre y PostHog cuenta las visitas sin guardar nada en tu navegador.
               </p>
               <p>
                 Tu elección dura un año y la puedes cambiar cuando quieras desde «Cookies», al pie de la página.

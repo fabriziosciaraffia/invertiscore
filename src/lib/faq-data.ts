@@ -152,9 +152,10 @@ export function faqSecciones(comparables: string = COMPARABLES_TEXTO): FAQSectio
       {
         id: "datos-seguros",
         q: "¿Mis datos están seguros?",
-        // LO MISMO QUE /privacy (05-nov-2026, auditoría de promesas parte 3): decía «no compartimos tus datos con terceros» y
-        // /privacy cuenta Meta y PostHog. El correo cifrado va a Meta solo con las cookies aceptadas (lib/meta/servidor.ts).
-        a: "Usamos encriptación SSL, autenticación segura con Supabase y los pagos se procesan a través de Flow.cl. Para medir qué funciona usamos PostHog y, solo si aceptas las cookies, Meta: con tu permiso le mandamos tu correo cifrado, para reconocer el registro o la compra; sin él, nunca tu correo. No vendemos tus datos. El detalle está en la política de privacidad.",
+        // LO MISMO QUE /privacy (05-nov-2026, auditoría de promesas parte 3; al día el 12-nov-2026, campaña de noviembre fase 0):
+        // el pixel de Meta carga siempre y el correo cifrado le llega al registrarse (lib/meta/servidor.ts); las cookies de
+        // PostHog y la grabación, solo con el permiso.
+        a: "Usamos encriptación SSL, autenticación segura con Supabase y los pagos se procesan a través de Flow.cl. Para medir qué funciona usamos Meta y PostHog. A Meta le mandamos tu correo cifrado cuando te registras, te inscribes o compras, para saber qué anuncio te trajo. Las cookies de PostHog y la grabación de sesiones corren solo si las aceptas. No vendemos tus datos. El detalle está en la política de privacidad.",
       },
     ],
   },
