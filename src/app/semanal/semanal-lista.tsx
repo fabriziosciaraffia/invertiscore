@@ -25,7 +25,7 @@
 //   · sin saldo, el aviso ofrece el pack —al precio del ticket si la cuenta tiene menos de 24 horas— y «Comprar solo 1»,
 //     con la vuelta a este depto (lib/guia/compra-desde-depto.ts); al volver pagado (`autoAnalizar`), se analiza solo;
 //   · «Ya lo analizaste · Ver informe» también en renta larga, leído en vivo (`informes`).
-// «PRONTO: INVIERTE CON FRANCO» (11-nov-2026): en un usado que da ✓ Comprar o − Ajustar negociable (`tramo` «negociar»), debajo de
+// «PRONTO: INVIERTE CON FRANCO» (11-nov-2026): en un usado o un nuevo de inmobiliaria que da ✓ Comprar o − Ajustar negociable (`tramo` «negociar»), debajo de
 // lo que la tarjeta ya tiene, el botón secundario «Invierte con Franco»; inscrito, la etiqueta. «Analizar este» sigue primero.
 // ─────────────────────────────────────────────────────────────────────────────
 import { useEffect, useRef, useState } from "react";

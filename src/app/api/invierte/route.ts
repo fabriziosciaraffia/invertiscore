@@ -17,7 +17,7 @@ import { origenDeCabecera } from "@/lib/origen-campana";
 // /api/invierte (11-nov-2026, goal «Pronto: Invierte con Franco»).
 //   GET  → los avisos en que la persona ya está inscrita (la etiqueta de la tarjeta). Sin sesión, ninguno.
 //   POST → inscribe (o actualiza) una inscripción por persona y depto: sin sesión 401 (sin cuenta, la hoja pasa antes por el
-//          registro); sin depto o con datos que no valen, 400; un nuevo de inmobiliaria, 422; si el correo a hola@ no sale, 502
+//          registro); sin depto o con datos que no valen, 400; un aviso sin condición (ni usado ni nuevo), 422; si el correo a hola@ no sale, 502
 //          (la hoja ofrece reintentar y no confirma). Bien: `invierte_inscripcion` a PostHog y el Lead a Meta con el espejo.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -49,7 +49,7 @@ export async function POST(request: Request) {
       esPrueba: (id, email) => esCuentaDePrueba(admin, id, email),
     });
     if (!r.ok) {
-      const status = r.error === "depto" ? 400 : r.error === "nuevo" ? 422 : r.error === "correo" ? 502 : 500;
+      const status = r.error === "depto" ? 400 : r.error === "condicion" ? 422 : r.error === "correo" ? 502 : 500;
       if (r.error === "guardar" || r.error === "correo") captureApiError(new Error(`invierte: ${r.error}`), { ruta: RUTA, operacion: "inscribir", userId: user.id, extra: { avisoId: v.pedido.avisoId } });
       return NextResponse.json({ error: r.error }, { status });
     }

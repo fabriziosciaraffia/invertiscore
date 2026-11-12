@@ -2,7 +2,7 @@
 
 // ─────────────────────────────────────────────────────────────────────────────
 // LA FRANJA DE LA PORTADA DEL INFORME (11-nov-2026, mockup InformePortadaPronto.dc.html, textos tal cual). Reemplaza a «Este depto
-// conviene con tus números · Mandármelo por correo» cuando el informe salió de un aviso usado que da ✓ Comprar o − Ajustar
+// conviene con tus números · Mandármelo por correo» cuando el informe salió de un aviso (usado o nuevo de inmobiliaria) que da ✓ Comprar o − Ajustar
 // negociable (invierte-servidor.ts › invierteDelInforme): PRONTO, «¿Quieres invertir? Pronto Franco te acompaña.», el texto, el
 // botón «Invierte con Franco» y, debajo, «Ver la publicación ↗», que sale de la tarjeta oscura de la portada. Sin la comisión.
 // Inscrito, la misma franja confirma con los textos de la confirmación.

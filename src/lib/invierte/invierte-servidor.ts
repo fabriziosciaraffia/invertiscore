@@ -3,7 +3,7 @@
 // con `invierteDelInforme` si su portada lleva la franja; Explorar y la selección leen con `inscritosDe` qué tarjetas llevan la
 // etiqueta «Inscrito en Invierte con Franco». La tabla `invierte_inscripciones` tiene RLS sin políticas: solo service role.
 //   · UNA POR PERSONA Y DEPTO: si repite, se actualiza (upsert por user_id + aviso_id) y el estado del panel no se pisa.
-//   · SIN DEPTO NO HAY INSCRIPCIÓN: el aviso tiene que existir; un nuevo de inmobiliaria (o sin condición) se rechaza aunque el
+//   · SIN DEPTO NO HAY INSCRIPCIÓN: el aviso tiene que existir; uno cuya condición no se sabe (ni usado ni nuevo) se rechaza aunque el
 //     navegador lo pida.
 //   · CADA INSCRIPCIÓN LLEGA A hola@ (las de «este mes» con el asunto marcado). Si el correo no sale, la ruta responde error y la
 //     hoja ofrece reintentar: no se confirma una inscripción que Franco no recibió.
@@ -15,7 +15,7 @@ import { lineaDepto, condicionDe } from "@/lib/guia/linea-depto";
 import { tipologiaDe } from "@/lib/lo-que-sigue/perfil";
 import { avisoDelInforme } from "@/lib/guia/publicacion-portada";
 import { readVeredicto } from "@/lib/results-helpers";
-import { asuntoInscripcion, INVIERTE_COPY, pieDelDepto, puedeInvertir, type DeptoInvierte, type PedidoInvierte } from "./invierte";
+import { asuntoInscripcion, condicionDeLinea, INVIERTE_COPY, pieDelDepto, puedeInvertir, type DeptoInvierte, type PedidoInvierte } from "./invierte";
 
 export const TABLA_INVIERTE = "invierte_inscripciones";
 
@@ -88,7 +88,7 @@ export function textoCampana(c: Record<string, unknown> | null | undefined): str
 
 export type ResultadoInscripcion =
   | { ok: true; id: string; repetida: boolean; correo: boolean; depto: DeptoInvierte }
-  | { ok: false; error: "depto" | "nuevo" | "guardar" | "correo" };
+  | { ok: false; error: "depto" | "condicion" | "guardar" | "correo" };
 
 export interface DepsInscribir {
   enviarCorreo: (p: Parameters<typeof import("@/lib/email").sendInscripcionInvierteInterna>[0], llave: string) => Promise<boolean>;
@@ -109,7 +109,8 @@ export async function inscribir(
 ): Promise<ResultadoInscripcion> {
   const aviso = await leerAviso(admin, pedido.avisoId);
   if (!aviso) return { ok: false, error: "depto" };
-  if (aviso.condicion !== "usado") return { ok: false, error: "nuevo" };
+  // Usados y, desde el 12-nov-2026, nuevos de inmobiliaria; sin condición, no.
+  if (aviso.condicion !== "usado" && aviso.condicion !== "nuevo") return { ok: false, error: "condicion" };
   const informe = await leerInforme(admin, pedido.analysisId, user.id);
   const analysisId = informe && (!informe.avisoId || informe.avisoId === aviso.avisoId) ? pedido.analysisId ?? null : null;
   const veredicto = (analysisId ? informe?.veredicto : null) ?? aviso.veredicto;
@@ -146,7 +147,7 @@ export async function inscribir(
   const prueba = await deps.esPrueba(user.id, user.email).catch(() => false);
   const H = INVIERTE_COPY.hoja;
   const enviado = await deps.enviarCorreo({
-    asunto: asuntoInscripcion({ urgencia: pedido.urgencia, linea: aviso.linea, precioUF: aviso.precioUF, prueba }),
+    asunto: asuntoInscripcion({ urgencia: pedido.urgencia, linea: aviso.linea, precioUF: aviso.precioUF, prueba, condicion: aviso.condicion }),
     persona: user.nombre ? `${user.nombre} (${user.email ?? "sin correo"})` : user.email ?? user.id,
     correo: user.email,
     whatsapp: pedido.whatsapp,
@@ -188,7 +189,7 @@ export interface InvierteInforme {
 }
 
 /**
- * ¿La portada de este informe lleva «Invierte con Franco»? Solo si salió de un aviso usado y da ✓ Comprar, o − Ajustar con la
+ * ¿La portada de este informe lleva «Invierte con Franco»? Solo si salió de un aviso usado o nuevo de inmobiliaria y da ✓ Comprar, o − Ajustar con la
  * negociación de la noche. Con el veredicto DEL INFORME (lo que la persona está leyendo). Nunca lanza: sin datos, sin franja.
  */
 export async function invierteDelInforme(admin: SupabaseClient, p: { inputData: unknown; analysisId: string; veredicto: string; score: number | null; userId: string | null }): Promise<InvierteInforme | null> {
@@ -220,6 +221,8 @@ export interface FilaPanelInvierte {
   avisoId: string;
   analysisId: string | null;
   linea: string | null;
+  /** Nuevo de inmobiliaria o usado (12-nov-2026), de la línea guardada. */
+  condicion: "nuevo" | "usado" | null;
   precioUF: number | null;
   veredicto: string | null;
   score: number | null;
@@ -257,6 +260,7 @@ export async function leerInscripciones(sb: SupabaseClient, noTest: string | nul
       avisoId: f.aviso_id as string,
       analysisId: (f.analysis_id as string | null) ?? null,
       linea: (f.linea as string | null) ?? null,
+      condicion: condicionDeLinea(f.linea as string | null),
       precioUF: f.precio_uf != null ? Number(f.precio_uf) : null,
       veredicto: (f.veredicto as string | null) ?? null,
       score: f.score != null ? Number(f.score) : null,

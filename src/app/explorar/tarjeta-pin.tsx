@@ -16,7 +16,7 @@
 // UF 2.950 (−4,2 %) [✓ Comprar · 71]»— y el botón «Analizar a UF 2.950».
 // COMPARTIR (02-nov-2026, goal «Compartir un depto desde Explorar»): junto al corazón, con y sin cuenta, el botón «Compartir»
 // (explorar-cliente.tsx › compartir: la hoja del sistema en el teléfono, copiar el enlace en el PC).
-// «PRONTO: INVIERTE CON FRANCO» (11-nov-2026): en un usado que da ✓ Comprar o − Ajustar negociable, debajo de lo que la tarjeta
+// «PRONTO: INVIERTE CON FRANCO» (11-nov-2026): en un usado o un nuevo de inmobiliaria que da ✓ Comprar o − Ajustar negociable, debajo de lo que la tarjeta
 // ya tiene, el botón secundario «Invierte con Franco» (con y sin cuenta); inscrito, la etiqueta. «Analizar este» sigue primero.
 // ─────────────────────────────────────────────────────────────────────────────
 import { useEffect, useRef } from "react";

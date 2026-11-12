@@ -5,8 +5,9 @@
 //   · DÓNDE: la portada del informe (en lugar de la franja «Mandármelo por correo»), y como botón SECUNDARIO en la tarjeta de
 //     Explorar (con y sin cuenta) y en la de la selección del dashboard, debajo de lo que la tarjeta ya tiene. «Analizar este»
 //     sigue siendo la acción principal.
-//   · SOLO EN USADOS que dan ✓ Comprar o − Ajustar negociable (la capa «Si negocias»). Nunca en Buscar otro, nunca en un nuevo de
-//     inmobiliaria, nunca en un depto cuya condición el aviso no dice (`puedeInvertir`).
+//   · EN USADOS Y NUEVOS DE INMOBILIARIA que dan ✓ Comprar o − Ajustar negociable (la capa «Si negocias»). Nunca en Buscar otro,
+//     nunca en Ajustar no negociable, nunca en un depto cuya condición el aviso no dice (`puedeInvertir`). Los nuevos entraron el
+//     12-nov-2026 (goal de Fabrizio), con la misma hoja y la misma confirmación; su correo a hola@ lleva «[NUEVO]».
 //   · EL COPY ES EL DE LOS MOCKUPS, TAL CUAL: sin comisión, sin lista de servicios, sin precio y sin plazo prometido.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -84,11 +85,12 @@ export interface DeptoInvierte {
 }
 
 /**
- * ¿VA EL BOTÓN? Solo un usado que da ✓ Comprar, o − Ajustar con la negociación de la capa «Si negocias». La condición la dice el
- * aviso (`scraped_properties.condicion`): «nuevo» es de inmobiliaria y nunca va; sin condición tampoco (no se supone).
+ * ¿VA EL BOTÓN? Un usado o un nuevo de inmobiliaria que da ✓ Comprar, o − Ajustar con la negociación de la capa «Si negocias».
+ * La condición la dice el aviso (`scraped_properties.condicion`); sin condición no va (no se supone). Hasta el 12-nov-2026 los
+ * nuevos no iban.
  */
 export function puedeInvertir(d: { condicion?: unknown; veredicto?: string | null; negociable?: boolean }): boolean {
-  if (d.condicion !== "usado") return false;
+  if (d.condicion !== "usado" && d.condicion !== "nuevo") return false;
   if (d.veredicto === "COMPRAR") return true;
   return d.veredicto === "AJUSTA SUPUESTOS" && d.negociable === true;
 }
@@ -155,12 +157,23 @@ export function textoError(e: Exclude<ValidacionInvierte, { ok: true }>["error"]
   return INVIERTE_COPY.hoja.error;
 }
 
-/** El asunto del correo a hola@: las de «este mes» van marcadas al principio, para verlas primero en la bandeja. */
-export function asuntoInscripcion(p: { urgencia: UrgenciaInvierte; linea: string | null; precioUF: number | null; prueba?: boolean }): string {
-  const marca = p.urgencia === "este_mes" ? "[ESTE MES] " : "";
+/** El asunto del correo a hola@: las de «este mes» van marcadas al principio, para verlas primero en la bandeja; las de un nuevo de
+ *  inmobiliaria, con «[NUEVO]» (12-nov-2026). */
+export function asuntoInscripcion(p: { urgencia: UrgenciaInvierte; linea: string | null; precioUF: number | null; prueba?: boolean; condicion?: "nuevo" | "usado" }): string {
+  const marca = `${p.urgencia === "este_mes" ? "[ESTE MES] " : ""}${p.condicion === "nuevo" ? "[NUEVO] " : ""}`;
   const depto = [p.linea, p.precioUF != null ? `UF ${Math.round(p.precioUF).toLocaleString("es-CL")}` : null].filter(Boolean).join(" · ") || "un depto";
   return `${p.prueba ? "[prueba] " : ""}${marca}Invierte con Franco: ${depto}`;
 }
+
+/**
+ * La condición de una inscripción, leída de su línea guardada (12-nov-2026): `lineaDepto` termina en «· Nuevo» o «· Usado» cuando
+ * el aviso la dice, y la ruta solo inscribe avisos con condición. null si la línea no la trae.
+ */
+export function condicionDeLinea(linea: string | null | undefined): "nuevo" | "usado" | null {
+  const m = / · (Nuevo|Usado)$/.exec((linea ?? "").trim());
+  return m ? (m[1] === "Nuevo" ? "nuevo" : "usado") : null;
+}
+export const esFiltroCondicion = (x: unknown): x is "nuevo" | "usado" => x === "nuevo" || x === "usado";
 
 // ── LA MEDICIÓN ──────────────────────────────────────────────────────────────
 export const EVENTOS_INVIERTE = {
