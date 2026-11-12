@@ -11,7 +11,8 @@
 //       todas las comunas de la cobertura y sus vecinas, en cero las sin ninguno, y vuelve a contar las de varias tipologías
 //       que alguien pidió; el cron evaluar-avisos lo llama después del resumen; la ruta no cuenta por su cuenta.
 //   4 · BAJO 300 ms CONTRA LA BASE REAL: la búsqueda del Sentry y tres más, cinco veces cada una, ya con su fila guardada:
-//       cada respuesta bajo 300 ms y sin ninguna RPC.
+//       cada respuesta bajo 300 ms y sin ninguna RPC. Desde el 13-nov-2026 la ronda de cinco se repite hasta tres veces si
+//       pasa el tope, y la búsqueda falla solo si las tres lo pasan (la red salta de a ratos; el tope no se sube).
 //
 // ACTA DE MUTACIONES (28-oct-2026), cada una corrida y devuelta:
 //   M1 responderDeptos vuelve a contar con la RPC en cada pedido → ROJO §1 y §4 (§4: «hizo 1 RPC»; el tiempo solo, con la
@@ -34,6 +35,31 @@ const RAIZ = join(__dirname, "..", "..", "..");
 const leer = (p: string) => readFileSync(join(RAIZ, p), "utf8").replace(/\r\n/g, "\n");
 const sinComentarios = (s: string) => s.replace(/^\s*\/\*[\s\S]*?\*\//gm, "").replace(/^\s*\/\/.*$/gm, "").replace(/^\s*\*.*$/gm, "");
 export const TOPE_MS = 300;
+/**
+ * Rondas de medición por búsqueda (13-nov-2026, decisión de Fabrizio). La latencia de red entre este equipo y la base salta
+ * de a ratos (305, 741 ms en el QUICK del 12-nov) y al repetir siempre baja de 100 a 150 ms: una ronda lenta sola no dice que
+ * /deptos se volvió lento. Se repite la ronda hasta tres veces y la búsqueda falla solo si LAS TRES pasan el tope. El tope
+ * no se sube. Una RPC de conteo, en cualquier ronda, falla al tiro: eso es código, no red.
+ */
+export const RONDAS_LATENCIA = 3;
+
+/** Una ronda: los tiempos de sus pedidos y cuántas RPC de conteo hizo. */
+export type RondaLatencia = { ms: number[]; rpcs: number };
+
+/**
+ * Mide hasta RONDAS_LATENCIA rondas y para en la primera que queda bajo el tope o hace una RPC. Lento = las tres rondas con
+ * su peor pedido sobre el tope; con RPC = alguna ronda contó.
+ */
+export async function medirConRondas(ronda: () => Promise<RondaLatencia>, tope: number = TOPE_MS): Promise<{ rondas: RondaLatencia[]; lento: boolean; conRpc: boolean }> {
+  const rondas: RondaLatencia[] = [];
+  for (let i = 0; i < RONDAS_LATENCIA; i++) {
+    const r = await ronda();
+    rondas.push(r);
+    if (r.rpcs > 0) return { rondas, lento: false, conRpc: true };
+    if (Math.max(...r.ms) < tope) return { rondas, lento: false, conRpc: false };
+  }
+  return { rondas, lento: true, conRpc: false };
+}
 
 type Rpc = { comunas: string[]; dorms: number[]; uf_min: number; uf_max: number };
 /** `config` en memoria y una RPC que cuenta por comuna con una tabla dada; registra qué se pidió. */
@@ -164,6 +190,33 @@ export async function runDeptosConteoTier(): Promise<{ hard: number }> {
 
     // ── 4 · bajo 300 ms contra la base real ──
     // Mutación: M1 (la RPC en cada pedido: «hizo 1 RPC»).
+    // 4a · la regla de las rondas, con mediciones sintéticas: falla solo con las tres rondas sobre el tope, no mide una cuarta,
+    // el tope sigue en 300 ms y una RPC falla en la primera ronda.
+    {
+      if (TOPE_MS !== 300) F(`4 · el tope de latencia no es 300 ms (${TOPE_MS})`);
+      if (RONDAS_LATENCIA !== 3) F(`4 · las rondas de latencia no son tres (${RONDAS_LATENCIA})`);
+      const serie = (xs: RondaLatencia[]) => { let i = 0; let n = 0; return { f: async () => { n++; return xs[Math.min(i++, xs.length - 1)]; }, n: () => n }; };
+      const lenta: RondaLatencia = { ms: [120, 741, 110, 115, 118], rpcs: 0 }, rapida: RondaLatencia = { ms: [120, 125, 110, 115, 118], rpcs: 0 };
+      const s1 = serie([lenta, lenta, lenta, rapida]);
+      const r1 = await medirConRondas(s1.f);
+      if (!r1.lento || s1.n() !== 3) F(`4 · tres rondas sobre el tope no fallan, o se mide una cuarta (${s1.n()} rondas, lento=${r1.lento})`);
+      const s2 = serie([lenta, lenta, rapida]);
+      const r2 = await medirConRondas(s2.f);
+      if (r2.lento || s2.n() !== 3) F("4 · una ronda bajo el tope en el tercer intento no salva la búsqueda");
+      const s3 = serie([rapida, lenta]);
+      if ((await medirConRondas(s3.f)).lento || s3.n() !== 1) F("4 · una primera ronda bajo el tope no basta (se sigue midiendo)");
+      const s4 = serie([{ ms: [300, 120, 110, 115, 118], rpcs: 0 }, { ms: [300, 120, 110, 115, 118], rpcs: 0 }, { ms: [300, 120, 110, 115, 118], rpcs: 0 }]);
+      if (!(await medirConRondas(s4.f)).lento) F("4 · 300 ms justos cuentan como bajo el tope");
+      const s5 = serie([{ ms: [120, 110, 115, 118, 100], rpcs: 1 }, rapida]);
+      const r5 = await medirConRondas(s5.f);
+      if (!r5.conRpc || s5.n() !== 1) F("4 · una RPC de conteo no falla en la primera ronda (se repite como si fuera red)");
+      // Cableado: la medición real pasa por las rondas y falla con sus dos salidas (presencia ≠ cableado: se exige el uso).
+      const yo = sinComentarios(leer("scripts/eval/golden/deptos-conteo-catch-test.ts"));
+      // lastIndexOf: este mismo chequeo nombra el ancla más arriba; la medición real es la última aparición.
+      const desde = yo.lastIndexOf("const busquedas = [");
+      const real = yo.slice(desde, yo.indexOf("console.log(`  · medido contra la base", desde));
+      if (!/const medida = await medirConRondas\(async \(\) => \{/.test(real) || !/if \(medida\.conRpc\) F\(/.test(real) || !/if \(medida\.lento\) F\(/.test(real) || /Math\.max\(\.\.\.ms\) >= TOPE_MS|peor >= TOPE_MS/.test(real)) F("4 · la medición contra la base no usa las rondas (o falla por una sola ronda lenta)");
+    }
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL, llave = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!url || !llave) F("4 · NO CORRIÓ la medición: faltan las variables de Supabase (el tier mide contra la base real)");
     else {
@@ -179,19 +232,23 @@ export async function runDeptosConteoTier(): Promise<{ hard: number }> {
         if (!vq.ok) { F(`4 · la búsqueda ${q.comunas.join("+")} no valida`); continue; }
         // La primera vez puede contar y guardar lo que falte (lo mismo que haría el primer pedido en producción).
         await responderDeptos(createClient(url, llave, { auth: { persistSession: false } }), vq);
-        const ms: number[] = [];
-        let rpcs = 0;
-        for (let i = 0; i < 5; i++) {
-          const { sb, llamadas } = contandoRpc(createClient(url, llave, { auth: { persistSession: false } }));
-          const t0 = performance.now();
-          await responderDeptos(sb, vq);
-          ms.push(Math.round(performance.now() - t0));
-          rpcs += llamadas.filter((n) => n === "deptos_conteo").length;
-        }
-        const peor = Math.max(...ms);
-        tiempos.push(`${q.comunas.join("+")} ${q.tipologias.join(",")}D ${q.rango}: ${ms.join("/")} ms`);
-        if (rpcs > 0) F(`4 · ${q.comunas.join("+")}: con la fila ya guardada, /deptos hizo ${rpcs} RPC de conteo`);
-        if (peor >= TOPE_MS) F(`4 · ${q.comunas.join("+")} ${q.rango}: la respuesta tardó ${peor} ms (el tope es ${TOPE_MS} ms)`);
+        // Una ronda: cinco pedidos con la fila ya guardada. Se repite hasta tres veces si su peor pedido pasa el tope (red).
+        const medida = await medirConRondas(async () => {
+          const ms: number[] = [];
+          let rpcs = 0;
+          for (let i = 0; i < 5; i++) {
+            const { sb, llamadas } = contandoRpc(createClient(url, llave, { auth: { persistSession: false } }));
+            const t0 = performance.now();
+            await responderDeptos(sb, vq);
+            ms.push(Math.round(performance.now() - t0));
+            rpcs += llamadas.filter((n) => n === "deptos_conteo").length;
+          }
+          return { ms, rpcs };
+        });
+        tiempos.push(`${q.comunas.join("+")} ${q.tipologias.join(",")}D ${q.rango}: ${medida.rondas.map((r) => r.ms.join("/")).join(" → ")} ms`);
+        const rpcs = medida.rondas.reduce((s, r) => s + r.rpcs, 0);
+        if (medida.conRpc) F(`4 · ${q.comunas.join("+")}: con la fila ya guardada, /deptos hizo ${rpcs} RPC de conteo`);
+        if (medida.lento) F(`4 · ${q.comunas.join("+")} ${q.rango}: las ${RONDAS_LATENCIA} rondas pasaron el tope (peores: ${medida.rondas.map((r) => Math.max(...r.ms)).join(", ")} ms; el tope es ${TOPE_MS} ms)`);
       }
       console.log(`  · medido contra la base: ${tiempos.join(" · ")}`);
     }
@@ -213,3 +270,19 @@ if (require.main === module) {
 
 // ACTA DE MUTACIÓN (30-oct-2026, goal «financiamiento por defecto a 30 años»): D1 la clave del conteo sin el plazo, en ROJO
 // (runner `mutar-recorrido.cjs` en el scratchpad de la sesión cb466df3; cada archivo restaurado byte a byte).
+//
+// ACTA (13-nov-2026, decisión de Fabrizio) · LAS RONDAS DE LATENCIA. El §4 fallaba de a ratos por la red entre este equipo y
+// la base, no por /deptos: 305 ms (12-nov, QUICK de la rama del relleno) y 741 ms (12-nov, QUICK sobre master de Invierte),
+// y al repetir el tier, siempre verde con todas las muestras entre 90 y 155 ms. Un rojo que se va al repetir no se puede leer:
+// no dice si /deptos se puso lento. Desde hoy cada búsqueda mide su ronda de cinco pedidos y, si el peor pasa el tope, la
+// repite, hasta tres rondas; falla solo si las tres lo pasan. El tope SIGUE EN 300 ms, sin tocar. Lo que no se reintenta:
+// una RPC de conteo en cualquier ronda (M1) falla en esa misma ronda, porque eso es código y no red. Antes un solo pedido
+// lento de veinte ponía rojo el tier; ahora hacen falta tres rondas seguidas con un pedido lento cada una. Una regresión real
+// de /deptos (todo sobre 300 ms) sigue saliendo roja en las tres.
+// 8 de 8 en ROJO, una a la vez, con el archivo restaurado byte a byte: L1 una sola ronda · L2 falla con la primera ronda
+// lenta · L3 mide una cuarta ronda · L4 300 ms justos cuentan como bajo el tope · L5 la RPC se repite como si fuera red ·
+// L6 el tope sube a 400 · L7 la medición real ignora lo lento · L8 la medición real no pasa por las rondas.
+// Trampa cazada en el camino: la primera versión del chequeo de cableado buscaba su ancla con indexOf, y el propio chequeo
+// nombra el ancla más arriba; el recorte arrancaba ahí y se tragaba la regex prohibida, así que el tier quedaba ROJO sobre
+// código sano. Las ocho mutaciones habían salido «en rojo» igual, con esa falla falsa sumada: un rojo sin línea base verde
+// no prueba nada. Arreglado con lastIndexOf; la línea base se comprobó verde y las ocho se repitieron, cada una con su falla.
