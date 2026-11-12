@@ -74,6 +74,8 @@ export interface PublicadorDelAviso {
   /** La ficha del aviso en la fuente: hoy la única puerta de contacto que la fuente deja abierta. */
   url: string | null;
   leido: boolean;
+  /** La ficha dijo que ya no está publicado (`publicacion_avisos`): el relleno no lo va a leer. */
+  despublicado: boolean;
 }
 
 /** Los publicadores de varios avisos (los de las inscripciones). Un aviso sin leer vuelve con `leido: false` y el tipo de su URL. */
@@ -81,11 +83,13 @@ export async function publicadoresDeAvisos(admin: SupabaseClient, avisoIds: stri
   const out = new Map<string, PublicadorDelAviso>();
   const ids = Array.from(new Set(avisoIds.filter((x) => /^[0-9a-f-]{36}$/i.test(x)))).slice(0, 500);
   if (!ids.length) return out;
-  const [{ data: props, error: e1 }, { data: links, error: e2 }] = await Promise.all([
+  const [{ data: props, error: e1 }, { data: links, error: e2 }, { data: bajas, error: e4 }] = await Promise.all([
     admin.from("scraped_properties").select("id, url, publicador_tipo").in("id", ids).order("id").limit(500),
     admin.from("avisos_publicador").select("aviso_id, publicador_id, tipo").in("aviso_id", ids),
+    admin.from("publicacion_avisos").select("aviso_id").in("aviso_id", ids).eq("estado", "despublicado"),
   ]);
-  reportarFalloQuery(e1 ?? e2, { ruta: RUTA, operacion: "leer-publicadores-de-avisos" });
+  reportarFalloQuery(e1 ?? e2 ?? e4, { ruta: RUTA, operacion: "leer-publicadores-de-avisos" });
+  const despublicados = new Set((bajas ?? []).map((b) => b.aviso_id as string));
   const pubIds = Array.from(new Set((links ?? []).map((l) => l.publicador_id).filter((x): x is number => x != null)));
   const { data: pubs, error: e3 } = pubIds.length
     ? await admin.from("publicadores").select("id, nombre, clase, sitio_web, telefono, correo, avisos_activos, avisos_convienen").in("id", pubIds)
@@ -107,6 +111,7 @@ export async function publicadoresDeAvisos(admin: SupabaseClient, avisoIds: stri
       avisosConvienen: p?.avisos_convienen != null ? Number(p.avisos_convienen) : null,
       url: (pr.url as string | null) ?? null,
       leido: !!l,
+      despublicado: despublicados.has(pr.id as string),
     });
   }
   return out;

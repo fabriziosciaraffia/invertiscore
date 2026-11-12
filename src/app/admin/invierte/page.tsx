@@ -9,7 +9,7 @@ import { TestToggle } from "../test-toggle";
 import { EstadoSelect } from "./estado-select";
 import { publicadoresDeAvisos, type PublicadorDelAviso } from "@/lib/publicadores/publicadores-servidor";
 import { estadoRelleno } from "@/lib/publicadores/relleno-servidor";
-import { ETIQUETA_CLASE, type TipoPublicador } from "@/lib/publicadores/publicador";
+import { ETIQUETA_CLASE, rotuloPublicador, textoAvisos, type TipoPublicador } from "@/lib/publicadores/publicador";
 
 const TIPO_SIN_FICHA: Record<TipoPublicador, string> = { corredor: "Corredor", dueno: "Dueño directo", inmobiliaria: "Inmobiliaria" };
 
@@ -18,20 +18,19 @@ function CeldaPublicador({ p }: { p: PublicadorDelAviso | undefined }) {
   if (!p) return <span className="text-[var(--franco-text-muted)]">—</span>;
   const clase = p.clase ? ETIQUETA_CLASE[p.clase] : p.tipo ? TIPO_SIN_FICHA[p.tipo] : null;
   return (
-    <div data-publicador={p.leido ? "leido" : "sin-leer"}>
-      <div className="font-medium">{p.nombre ?? (p.leido ? "Sin nombre en la ficha" : "Sin leer todavía")}</div>
+    <div data-publicador={p.despublicado ? "despublicado" : p.leido ? "leido" : "sin-leer"}>
+      <div className="font-medium">{rotuloPublicador(p)}</div>
       {clase && (
         <div className="text-[12px] text-[var(--franco-text-secondary)]">
-          {clase}
-          {p.avisosActivos != null && ` · ${fmtNumber(p.avisosActivos)} avisos`}
-          {p.avisosConvienen ? ` · ${fmtNumber(p.avisosConvienen)} convienen` : ""}
+          {[clase, textoAvisos(p.avisosActivos, p.avisosConvienen)].filter(Boolean).join(" · ")}
         </div>
       )}
       <div className="text-[12px]">
         {p.telefono && <><a href={`tel:${p.telefono.replace(/\s+/g, "")}`} className="underline underline-offset-2">{p.telefono}</a> · </>}
         {p.correo && <><a href={`mailto:${p.correo}`} className="underline underline-offset-2">{p.correo}</a> · </>}
         {p.sitioWeb && <><a href={p.sitioWeb} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">sitio</a> · </>}
-        {p.url && <a href={p.url} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">contactar en el aviso</a>}
+        {/* Un aviso despublicado ya no tiene ficha: su enlace no lleva a ningún contacto. */}
+        {p.url && !p.despublicado && <a href={p.url} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">contactar en el aviso</a>}
       </div>
     </div>
   );

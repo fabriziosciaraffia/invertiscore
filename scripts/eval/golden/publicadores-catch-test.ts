@@ -27,7 +27,7 @@ import { createClient } from "@supabase/supabase-js";
 import { propertyToRow, filaSinPisarCoords } from "../../../src/lib/services/scraper/property-row";
 import type { ScrapedProperty } from "../../../src/lib/services/scraper/toctoc";
 import { leerFicha, TOPE_FICHAS_POR_HORA, type AlmacenPublicacion, type RespuestaFicha, type ResultadoLectura } from "../../../src/lib/guia/publicacion";
-import { claseDelPublicador, parsearPublicadorFicha, tipoDesdeUrl, type PublicadorFicha, type TipoPublicador } from "../../../src/lib/publicadores/publicador";
+import { claseDelPublicador, parsearPublicadorFicha, rotuloPublicador, textoAvisos, tipoDesdeUrl, type PublicadorFicha, type TipoPublicador } from "../../../src/lib/publicadores/publicador";
 import { guardarPublicadorEn } from "../../../src/lib/publicadores/publicadores-servidor";
 import { correrRelleno, evaluarFusible, LOTE_RELLENO, PAUSA_FUSIBLE_MS, RITMO_RELLENO_POR_HORA, type CandidatoRelleno, type DepsRelleno } from "../../../src/lib/publicadores/relleno";
 import { CRONS_VIGILADOS } from "../../../src/lib/cron-heartbeat";
@@ -295,6 +295,25 @@ export async function runPublicadoresTier(): Promise<{ hard: number }> {
     }
   }
 
+  // ── 6 · el panel dice la verdad del aviso (13-nov-2026) ─────────────────────
+  {
+    const casos: Array<[{ nombre: string | null; leido: boolean; despublicado: boolean }, string]> = [
+      [{ nombre: "Unne", leido: true, despublicado: false }, "Unne"],
+      [{ nombre: "Unne", leido: true, despublicado: true }, "Unne"],
+      [{ nombre: null, leido: false, despublicado: true }, "Ya no está publicado"],
+      [{ nombre: null, leido: false, despublicado: false }, "Sin leer todavía"],
+      [{ nombre: null, leido: true, despublicado: false }, "Sin nombre en la ficha"],
+    ];
+    for (const [p, debe] of casos) if (rotuloPublicador(p) !== debe) F(`6 · la celda de ${JSON.stringify(p)} dice «${rotuloPublicador(p)}», no «${debe}»`);
+    const plurales: Array<[number | null, number | null, string]> = [[1, 1, "1 aviso · 1 conviene"], [2, 2, "2 avisos · 2 convienen"], [16, 0, "16 avisos"], [null, null, ""], [1200, 3, "1.200 avisos · 3 convienen"]];
+    for (const [a, c, debe] of plurales) if (textoAvisos(a, c) !== debe) F(`6 · ${a} avisos y ${c} que convienen se dicen «${textoAvisos(a, c)}», no «${debe}»`);
+    const adm = codigo("src/app/admin/invierte/page.tsx");
+    if (!/\{rotuloPublicador\(p\)\}/.test(adm) || !/textoAvisos\(p\.avisosActivos, p\.avisosConvienen\)/.test(adm) || /\$\{fmtNumber\(p\.avisos(Activos|Convienen)\)\} (avisos|convienen)/.test(adm)) F("6 · el panel no usa el rótulo ni el número gramatical de los avisos");
+    if (!/\{p\.url && !p\.despublicado && <a href=/.test(adm)) F("6 · el panel ofrece contactar en un aviso que ya no está publicado");
+    const srv = codigo("src/lib/publicadores/publicadores-servidor.ts");
+    if (!/from\("publicacion_avisos"\)\.select\("aviso_id"\)\.in\("aviso_id", ids\)\.eq\("estado", "despublicado"\)/.test(srv) || !/despublicado: despublicados\.has\(pr\.id as string\)/.test(srv)) F("6 · el publicador del aviso no sabe si el aviso se despublicó");
+  }
+
   for (const f of fallas) console.log(`  ✗ ${f}`);
   console.log(fallas.length ? `  ${fallas.length} falla(s)` : "  ✓ PUBLICADORES verde");
   return { hard: fallas.length };
@@ -317,6 +336,9 @@ if (require.main === module) {
 //   §5 P24 un componente de cliente con el publicador (archivo nuevo, sin commitear: el censo lee el disco, no git) · P25 una
 //      ruta pública que lee publicadores · P26 una política en publicadores · P27 el teléfono a scraped_properties · P28 el
 //      panel sin requireAdminPage.
+// §6 (13-nov-2026, el panel dice la verdad del aviso): 7 de 7 en ROJO. D1 el despublicado dice «Sin leer todavía» · D2 «1
+//   avisos» · D3 «1 convienen» · D4 el panel vuelve a la cuenta a mano · D5 «contactar en el aviso» en un despublicado · D6 el
+//   servidor no mira las bajas · D7 el panel no usa el rótulo.
 // Dos trampas del arnés que este tier evita, las dos medidas el 12-nov-2026: (1) `archivosTrackeados` lee git, y un archivo
 // nuevo que filtre el contacto no estaría en el censo hasta el commit; (2) un HEAD con count sobre una tabla que no existe
 // vuelve SIN error y con count null: la sonda en vivo usa GET (memoria «sonda de existencia: GET, no HEAD+count»).

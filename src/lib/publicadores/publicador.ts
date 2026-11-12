@@ -122,6 +122,25 @@ export function claseDelPublicador(p: { tipo: TipoPublicador | null; nombre: str
   return "corredora";
 }
 
+/**
+ * El nombre que el panel pone en la celda del publicador (13-nov-2026): el del publicador si se conoce; si no, por qué no
+ * está. Un aviso despublicado antes de que se leyera su ficha ya no se va a leer (el relleno lo salta): no está «sin leer
+ * todavía», ya no está publicado.
+ */
+export function rotuloPublicador(p: { nombre: string | null; leido: boolean; despublicado: boolean }): string {
+  if (p.nombre) return p.nombre;
+  if (p.despublicado) return "Ya no está publicado";
+  return p.leido ? "Sin nombre en la ficha" : "Sin leer todavía";
+}
+
+/** «1 aviso · 1 conviene», «3 avisos · 2 convienen»: los conteos del publicador con su número gramatical. */
+export function textoAvisos(activos: number | null, convienen: number | null): string {
+  const partes: string[] = [];
+  if (activos != null) partes.push(`${activos.toLocaleString("es-CL")} ${activos === 1 ? "aviso" : "avisos"}`);
+  if (convienen) partes.push(`${convienen.toLocaleString("es-CL")} ${convienen === 1 ? "conviene" : "convienen"}`);
+  return partes.join(" · ");
+}
+
 /** Cómo se dice cada clase en el panel. */
 export const ETIQUETA_CLASE: Record<ClasePublicador, string> = {
   franquicia: "Franquicia",
