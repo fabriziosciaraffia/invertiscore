@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { conNext, esDestinoSeguro } from "@/lib/auth-next";
 import { guardarAtribucion } from "@/lib/attribution";
+import { origenParaLaCuenta } from "@/lib/origen-campana";
 import { createAdminServiceClient } from "@/lib/admin-auth";
 import { ANON_COOKIE } from "@/lib/api-helpers/anon-cap";
 import { claimAnalisisAnonimos } from "@/lib/anon-claim";
@@ -117,9 +118,12 @@ export async function GET(request: Request) {
     try {
       const user = sessionData?.user;
       if (user?.id) {
+        // Y el origen de la campaña de la primera visita (12-nov-2026, lib/origen-campana.ts), si la cuenta es de las últimas 24 h.
+        const origen = origenParaLaCuenta(request.headers.get("cookie"), user.created_at);
         await guardarAtribucion(createAdminServiceClient(), user.id, {
+          ...origen,
           fbp: cookieStore.get("_fbp")?.value ?? null,
-          fbc: cookieStore.get("_fbc")?.value ?? null,
+          fbc: cookieStore.get("_fbc")?.value ?? origen.fbc ?? null,
         });
       }
     } catch (e) {

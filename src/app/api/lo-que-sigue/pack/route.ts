@@ -25,6 +25,7 @@ import { waitUntil } from "@vercel/functions";
 import { EVENTOS_META, idLead } from "@/lib/meta/ids";
 import { conEspejo, contextoDeRequest, emitirEventoMeta, guardarContextoMeta } from "@/lib/meta/servidor";
 import { guardarAtribucion } from "@/lib/attribution";
+import { origenParaLaCuenta } from "@/lib/origen-campana";
 import { huellaDeRequest } from "@/lib/regalo-alta-servidor";
 import { cookieInvitacionDeCabeceras, vincularInvitacion } from "@/lib/referido-servidor";
 import { encolarPrimeraSeleccion } from "@/lib/guia/del-dia-servidor";
@@ -82,7 +83,9 @@ export async function POST(request: Request) {
     // antes de la puerta A (el premio se paga cuando conteste el «cuándo» con sesión).
     const cookieInv = cookieInvitacionDeCabeceras(request.headers);
     if (cookieInv) await vincularInvitacion(admin, { userId: user.id, creadaAt: user.created_at, cookie: cookieInv, huella: huellaDeRequest(request) });
-    waitUntil(guardarAtribucion(admin, user.id, { puerta: "A", puerta_detalle: "ticket", fbp: contexto.fbp, fbc: contexto.fbc }).then(() => undefined));
+    // Con el origen de la campaña de la primera visita (12-nov-2026, lib/origen-campana.ts).
+    const origen = origenParaLaCuenta(request.headers.get("cookie"), user.created_at);
+    waitUntil(guardarAtribucion(admin, user.id, { ...origen, puerta: "A", puerta_detalle: "ticket", fbp: contexto.fbp, fbc: contexto.fbc ?? origen.fbc ?? null }).then(() => undefined));
     // El correo del día (20-oct-2026, toda puerta): la cuenta que nace con el ticket también lo recibe dentro de la hora.
     await encolarPrimeraSeleccion(admin, user, { sitio: SITE_URL, enSegundoPlano: waitUntil, ruta: "POST /api/lo-que-sigue/pack" });
 

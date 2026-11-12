@@ -8,7 +8,8 @@ import { codigoDeEnlaceCompartido, compartidoDeUrl } from "@/lib/explorar/enlace
 import { COOKIE_FBC, COOKIE_PRUEBA, VIDA_FBC_S, VIDA_PRUEBA_S, cookiesDeLlegada } from "@/lib/meta/cookies";
 import { COOKIE_DISPOSITIVO, VIDA_DISPOSITIVO_S, dispositivoValido } from "@/lib/dispositivo";
 import { COOKIE_INVITACION, VIDA_COOKIE_INVITACION_S, normalizarCodigo, valorCookieInvitacion } from "@/lib/referido";
-import { conPermiso, consentimientoDeCookie } from "@/lib/consentimiento";
+import { consentimientoDeCookie } from "@/lib/consentimiento";
+import { COOKIE_ORIGEN, VIDA_ORIGEN_S, escribirOrigen, leerCookieOrigen, origenDeLlegada, valorCookieOrigen } from "@/lib/origen-campana";
 import { COOKIE_NAVEGADOR, VIDA_COOKIE_NAVEGADOR_S, almacenSupabase, navegadorDeSesion } from "@/lib/agentes-navegador";
 import { createServiceClient } from "@/lib/supabase/service";
 
@@ -31,9 +32,15 @@ function conMedicion(request: NextRequest, res: NextResponse): NextResponse {
     fbcActual: request.cookies.get(COOKIE_FBC)?.value ?? null,
     ahoraMs: Date.now(),
   });
-  // El `_fbc` es del pixel de Meta: solo con el «si» del aviso de cookies (19-oct-2026, lib/consentimiento.ts). Sin
-  // elección, el clic se guarda si la persona acepta con la URL del anuncio todavía abierta (MetaPixel).
-  if (c.fbc && conPermiso(consentimientoDeCookie(request.headers.get("cookie")))) res.cookies.set(COOKIE_FBC, c.fbc.valor, { path: "/", maxAge: VIDA_FBC_S, sameSite: "lax", ...(c.fbc.dominio ? { domain: c.fbc.dominio } : {}) });
+  // El `_fbc` del clic del anuncio, SIEMPRE (12-nov-2026, campaña de noviembre fase 0: el pixel ya no espera el aviso de
+  // cookies; el aviso sigue rigiendo para PostHog). Del 19-oct al 12-nov pedía el «si».
+  if (c.fbc) res.cookies.set(COOKIE_FBC, c.fbc.valor, { path: "/", maxAge: VIDA_FBC_S, sameSite: "lax", ...(c.fbc.dominio ? { domain: c.fbc.dominio } : {}) });
+  // EL ORIGEN DE LA VISITA (12-nov-2026, lib/origen-campana.ts): los UTM, el fbclid, la página de llegada y la hora, 30 días,
+  // primer toque. Al registrarse, el servidor lo deja en la cuenta.
+  const llegada = origenDeLlegada({ pathname: request.nextUrl.pathname, search: request.nextUrl.search, ahoraMs: Date.now() });
+  if (escribirOrigen(leerCookieOrigen(request.cookies.get(COOKIE_ORIGEN)?.value), llegada)) {
+    res.cookies.set(COOKIE_ORIGEN, valorCookieOrigen(llegada), { path: "/", maxAge: VIDA_ORIGEN_S, sameSite: "lax", httpOnly: true, secure: request.nextUrl.protocol === "https:" });
+  }
   if (c.prueba === "prender") res.cookies.set(COOKIE_PRUEBA, "1", { path: "/", maxAge: VIDA_PRUEBA_S, sameSite: "lax" });
   if (c.prueba === "apagar") res.cookies.set(COOKIE_PRUEBA, "", { path: "/", maxAge: 0 });
   if (!dispositivoValido(request.cookies.get(COOKIE_DISPOSITIVO)?.value)) {

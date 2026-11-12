@@ -15,7 +15,6 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { ChipVeredicto } from "@/components/analysis/shared/ChipVeredicto";
 import { botonOcupado } from "@/lib/carga-global";
 import { consumirCookieEspejo, espejarMeta } from "@/lib/meta/espejo";
-import { UTM_STORAGE_KEY } from "@/lib/attribution-claves";
 import type { Veredicto } from "@/lib/types";
 import {
   borrarPendiente, guardarPendiente, INVIERTE_COPY, leerPendiente, pieDelDepto, PIES, textoError, URGENCIAS, validarInscripcion,
@@ -31,14 +30,6 @@ const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
 
 function almacen(): Storage | null {
   try { return window.localStorage; } catch { return null; }
-}
-function utmDeLaVisita(): Record<string, unknown> | null {
-  try {
-    const raw = window.localStorage.getItem(UTM_STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as Record<string, unknown>) : null;
-  } catch {
-    return null;
-  }
 }
 
 /** El depto arriba de la hoja: la línea, el precio y el chip. */
@@ -110,7 +101,7 @@ export function HojaInvierte({ depto, origen, sinCuenta = false, retomar = false
       const res = await fetch("/api/invierte", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ avisoId: depto.avisoId, origen, analysisId: depto.analysisId ?? null, ...r, utm: utmDeLaVisita() }),
+        body: JSON.stringify({ avisoId: depto.avisoId, origen, analysisId: depto.analysisId ?? null, ...r }),
       });
       if (!res.ok) { setError(textoError("red")); setEstado("form"); return; }
       espejarMeta(consumirCookieEspejo());

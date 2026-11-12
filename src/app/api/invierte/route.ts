@@ -11,6 +11,7 @@ import { conEspejo, contextoDeRequest, emitirEventoMeta, esCuentaDePrueba } from
 import type { EventoEspejo } from "@/lib/meta/espejo";
 import { EVENTOS_INVIERTE, validarInscripcion } from "@/lib/invierte/invierte";
 import { inscribir, inscritosDe } from "@/lib/invierte/invierte-servidor";
+import { origenDeCabecera } from "@/lib/origen-campana";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // /api/invierte (11-nov-2026, goal «Pronto: Invierte con Franco»).
@@ -36,7 +37,9 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
   const v = validarInscripcion(body);
   if (!v.ok) return NextResponse.json({ error: v.error }, { status: 400 });
-  const utm = body?.utm && typeof body.utm === "object" ? (body.utm as Record<string, unknown>) : null;
+  // El origen de la campaña, el mismo dato de la cuenta: la cookie de la primera visita (12-nov-2026, lib/origen-campana.ts).
+  const origen = origenDeCabecera(request.headers.get("cookie"));
+  const utm = origen ? ({ ...origen } as Record<string, unknown>) : null;
 
   const admin = createServiceClient();
   let espejo: EventoEspejo | null = null;

@@ -64,7 +64,7 @@ async function leerInforme(admin: SupabaseClient, analysisId: string | null | un
   return { veredicto: v, score: data.score != null ? Number(data.score) : null, avisoId: avisoDelInforme(data.input_data) };
 }
 
-/** La campaña de la cuenta (user_attribution) y la de esta visita (la que el navegador guardó de la URL). */
+/** La campaña de la cuenta (user_attribution) y la de la cookie de la primera visita (franco_origen, el mismo dato que va a la cuenta: lib/origen-campana.ts). */
 async function campanaDe(admin: SupabaseClient, userId: string, sesion: Record<string, unknown> | null): Promise<Record<string, unknown>> {
   const { data } = await admin.from("user_attribution").select("utm_source, utm_medium, utm_campaign, utm_content, referrer, landing_path, puerta, puerta_detalle").eq("user_id", userId).maybeSingle();
   const limpio = (o: Record<string, unknown> | null | undefined) => {

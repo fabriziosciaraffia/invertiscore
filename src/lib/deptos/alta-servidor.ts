@@ -17,6 +17,7 @@
 // («explorar:landing» o «explorar:directo»); la cuenta nace con el perfil del pin que miraba, su regalo y el correo del día,
 // y la atribución queda en E (salvo que sea invitada: la C manda).
 // ─────────────────────────────────────────────────────────────────────────────
+import { origenParaLaCuenta } from "@/lib/origen-campana";
 import { waitUntil } from "@vercel/functions";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { reportarFalloQuery } from "@/lib/observabilidad";
@@ -137,9 +138,13 @@ export async function ejecutarAlta(
     // ── después de responder ──
     vueltaDelDia: async () => { soltarVuelta(); },
     // La puerta B o E (atribucion-puerta.ts): la primera gana; el orgánico cede. La invitada ya tiene la C.
+    // EL ORIGEN DE LA CAMPAÑA (12-nov-2026, lib/origen-campana.ts): los UTM, la página de llegada y el fbc del fbclid, de la
+    // cookie de la primera visita, en la misma escritura; también para la C (invitada), que no lleva puerta acá.
     atribucion: async (puerta) => {
-      if (puerta === "B") await guardarAtribucion(admin, user.id, { puerta: "B", puerta_detalle: "deptos" });
-      if (puerta === "E") await guardarAtribucion(admin, user.id, { puerta: "E", puerta_detalle: detalleExplorar(puertaElegida.detalle) });
+      const origen = origenParaLaCuenta(request.headers.get("cookie"), user.created_at);
+      if (puerta === "B") await guardarAtribucion(admin, user.id, { ...origen, puerta: "B", puerta_detalle: "deptos" });
+      else if (puerta === "E") await guardarAtribucion(admin, user.id, { ...origen, puerta: "E", puerta_detalle: detalleExplorar(puertaElegida.detalle) });
+      else await guardarAtribucion(admin, user.id, origen);
     },
     // CompleteRegistration (22-oct-2026, meta/registro.ts): el mismo id que el espejo que ya salió en la respuesta.
     meta: async (puerta) => { const r = await emitirRegistroAlCrear(admin, user, contexto, { origen: "alta", puerta }); if (r) await r.envio; },
@@ -172,7 +177,9 @@ export async function ejecutarAlta(
  * la cuenta recién nace) que manda el servidor; null en modo prueba, en una cuenta de prueba o sin el «sí» del aviso de
  * cookies —las mismas reglas que meta/servidor.ts › emitirEventoMeta—.
  */
+/** El espejo de CompleteRegistration para el pixel: siempre, salvo en modo prueba (12-nov-2026: el pixel ya no espera el aviso
+ *  de cookies). `consentimiento` se conserva en la firma y ya no decide. */
 export function espejoDeRegistro(p: { userId: string; puerta: PuertaAlta; prueba: boolean; consentimiento: boolean }): EventoEspejo | null {
-  if (p.prueba || !p.consentimiento) return null;
+  if (p.prueba) return null;
   return { evento: EVENTOS_META.registro, eventId: idRegistro(p.userId), datos: datosRegistro({ puerta: p.puerta, cuando: null }) };
 }

@@ -30,6 +30,7 @@ import { createAdminServiceClient } from "@/lib/admin-auth";
 import { tokenAnonDelRequest } from "@/lib/api-helpers/anon-cap";
 import { claimAnalisisAnonimos } from "@/lib/anon-claim";
 import { guardarAtribucion } from "@/lib/attribution";
+import { origenParaLaCuenta } from "@/lib/origen-campana";
 import { esPuerta } from "@/lib/atribucion-puerta";
 import { ensureWelcomeEmail } from "@/lib/welcome";
 import { captureApiError } from "@/lib/observabilidad";
@@ -69,11 +70,11 @@ export async function POST(request: Request) {
     // CompleteRegistration al crear la cuenta (22-oct-2026, meta/registro.ts): la puerta A (o la que traiga el reclamo).
     const registro = await emitirRegistroAlCrear(createAdminServiceClient(), user, contextoDeRequest(request), { origen: "claim", puerta: esPuerta(cuerpo?.puerta) ? cuerpo.puerta : null });
     if (registro) waitUntil(registro.envio);
+    // La puerta y, si la cuenta es de las últimas 24 horas, el origen de la campaña (12-nov-2026, lib/origen-campana.ts).
     const puerta = cuerpo?.puerta;
-    if (esPuerta(puerta)) {
-      const detalle = typeof cuerpo?.puertaDetalle === "string" ? cuerpo.puertaDetalle.slice(0, 60) : null;
-      waitUntil(guardarAtribucion(createAdminServiceClient(), user.id, { puerta, puerta_detalle: detalle }).then(() => undefined));
-    }
+    const origen = origenParaLaCuenta(request.headers.get("cookie"), user.created_at);
+    const detalle = esPuerta(puerta) && typeof cuerpo?.puertaDetalle === "string" ? cuerpo.puertaDetalle.slice(0, 60) : null;
+    waitUntil(guardarAtribucion(createAdminServiceClient(), user.id, { ...origen, ...(esPuerta(puerta) ? { puerta, puerta_detalle: detalle } : {}) }).then(() => undefined));
 
     // El informe anónimo pasa a la cuenta PRIMERO: el correo del día y la primera selección buscan con el perfil de ese
     // informe (visto en el QA del 20-oct-2026: encolado antes del reclamo, la primera vuelta salía vacía).
