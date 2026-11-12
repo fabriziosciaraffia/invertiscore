@@ -7,6 +7,35 @@ import { INVIERTE_COPY, esEstado, esPie, esUrgencia } from "@/lib/invierte/invie
 import { leerInscripciones } from "@/lib/invierte/invierte-servidor";
 import { TestToggle } from "../test-toggle";
 import { EstadoSelect } from "./estado-select";
+import { publicadoresDeAvisos, type PublicadorDelAviso } from "@/lib/publicadores/publicadores-servidor";
+import { estadoRelleno } from "@/lib/publicadores/relleno-servidor";
+import { ETIQUETA_CLASE, type TipoPublicador } from "@/lib/publicadores/publicador";
+
+const TIPO_SIN_FICHA: Record<TipoPublicador, string> = { corredor: "Corredor", dueno: "Dueño directo", inmobiliaria: "Inmobiliaria" };
+
+/** Quién publica el depto y cómo contactarlo, cuando se conoce. Sin contacto abierto, la ficha del aviso es la puerta. */
+function CeldaPublicador({ p }: { p: PublicadorDelAviso | undefined }) {
+  if (!p) return <span className="text-[var(--franco-text-muted)]">—</span>;
+  const clase = p.clase ? ETIQUETA_CLASE[p.clase] : p.tipo ? TIPO_SIN_FICHA[p.tipo] : null;
+  return (
+    <div data-publicador={p.leido ? "leido" : "sin-leer"}>
+      <div className="font-medium">{p.nombre ?? (p.leido ? "Sin nombre en la ficha" : "Sin leer todavía")}</div>
+      {clase && (
+        <div className="text-[12px] text-[var(--franco-text-secondary)]">
+          {clase}
+          {p.avisosActivos != null && ` · ${fmtNumber(p.avisosActivos)} avisos`}
+          {p.avisosConvienen ? ` · ${fmtNumber(p.avisosConvienen)} convienen` : ""}
+        </div>
+      )}
+      <div className="text-[12px]">
+        {p.telefono && <><a href={`tel:${p.telefono.replace(/\s+/g, "")}`} className="underline underline-offset-2">{p.telefono}</a> · </>}
+        {p.correo && <><a href={`mailto:${p.correo}`} className="underline underline-offset-2">{p.correo}</a> · </>}
+        {p.sitioWeb && <><a href={p.sitioWeb} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">sitio</a> · </>}
+        {p.url && <a href={p.url} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">contactar en el aviso</a>}
+      </div>
+    </div>
+  );
+}
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +49,8 @@ export default async function AdminInviertePage({ searchParams }: { searchParams
   const includeTest = leerIncludeTest(searchParams.test);
   const noTest = includeTest ? null : filtroNoTest(await getTestAccountIds(sb));
   const { filas, sinTabla } = await leerInscripciones(sb, noTest);
+  // Quién publica cada depto (12-nov-2026): uso interno, con el service role de la página de admin; no viaja a otra parte.
+  const [publicadores, relleno] = await Promise.all([publicadoresDeAvisos(sb, filas.map((f) => f.avisoId)), estadoRelleno(sb)]);
   const H = INVIERTE_COPY.hoja;
   const esteMes = filas.filter((f) => f.urgencia === "este_mes").length;
   const nuevos = filas.filter((f) => f.estado === "nuevo").length;
@@ -32,6 +63,11 @@ export default async function AdminInviertePage({ searchParams }: { searchParams
           <p className="m-0 mt-1 font-body text-[13px] text-[var(--franco-text-secondary)]">
             {fmtNumber(filas.length)} inscripciones · {fmtNumber(esteMes)} piensan comprar este mes · {fmtNumber(nuevos)} sin contactar.
           </p>
+          <p className="m-0 mt-1 font-body text-[12px] text-[var(--franco-text-muted)]" data-relleno={relleno.fusible ? "fusible" : relleno.configurado ? "andando" : "sin-credencial"}>
+            Publicadores: {relleno.publicadores != null ? fmtNumber(relleno.publicadores) : "—"} conocidos · {relleno.leidas24h != null ? fmtNumber(relleno.leidas24h) : "—"} fichas leídas por el relleno en 24 horas
+            {!relleno.configurado && " · el relleno no lee: falta DECODO_RELLENO_URL"}
+            {relleno.fusible && ` · fusible: ${relleno.fusible.detalle}, detenido hasta ${fmtDateShort(relleno.fusible.hasta.toISOString())}`}
+          </p>
         </div>
         <TestToggle includeTest={includeTest} href={includeTest ? "/admin/invierte" : "/admin/invierte?test=1"} />
       </div>
@@ -41,12 +77,13 @@ export default async function AdminInviertePage({ searchParams }: { searchParams
         </p>
       )}
       <section className="overflow-x-auto rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] shadow-sm">
-        <table className="w-full min-w-[1080px] border-collapse font-body text-[13px]">
+        <table className="w-full min-w-[1280px] border-collapse font-body text-[13px]">
           <thead>
             <tr className="border-b border-[var(--franco-border)] text-left font-mono text-[10px] uppercase tracking-wider text-[var(--franco-text-muted)]">
               <th className="px-3 py-2 font-medium">Fecha</th>
               <th className="px-3 py-2 font-medium">Persona</th>
               <th className="px-3 py-2 font-medium">Depto</th>
+              <th className="px-3 py-2 font-medium">Publica</th>
               <th className="px-3 py-2 font-medium">Veredicto</th>
               <th className="px-3 py-2 font-medium">¿Cuándo?</th>
               <th className="px-3 py-2 font-medium">¿Pie?</th>
@@ -58,7 +95,7 @@ export default async function AdminInviertePage({ searchParams }: { searchParams
           </thead>
           <tbody>
             {filas.length === 0 && (
-              <tr><td colSpan={10} className="px-3 py-6 text-center text-[var(--franco-text-muted)]">Todavía nadie se inscribió.</td></tr>
+              <tr><td colSpan={11}className="px-3 py-6 text-center text-[var(--franco-text-muted)]">Todavía nadie se inscribió.</td></tr>
             )}
             {filas.map((f) => (
               <tr key={f.id} className="border-b border-[var(--franco-border)] align-top last:border-0" data-urgencia={f.urgencia}>
@@ -71,6 +108,7 @@ export default async function AdminInviertePage({ searchParams }: { searchParams
                   {f.precioUF != null && <span className="font-mono text-[12px]"> · UF {Math.round(f.precioUF).toLocaleString("es-CL")}</span>}
                   {f.analysisId && <> · <Link href={`/analisis/${f.analysisId}`} className="underline underline-offset-2">informe</Link></>}
                 </td>
+                <td className="min-w-[200px] px-3 py-2"><CeldaPublicador p={publicadores.get(f.avisoId)} /></td>
                 <td className="whitespace-nowrap px-3 py-2">{f.veredicto ? etiquetaVeredicto(f.veredicto, "frase") : "—"}{f.score != null ? ` · ${f.score}` : ""}</td>
                 <td className={`whitespace-nowrap px-3 py-2 ${f.urgencia === "este_mes" ? "font-semibold" : ""}`}>{esUrgencia(f.urgencia) ? H.urgencias[f.urgencia] : f.urgencia}</td>
                 <td className="whitespace-nowrap px-3 py-2">{esPie(f.pie) ? H.pies[f.pie] : f.pie}{f.pieUF != null && <span className="text-[var(--franco-text-muted)]"> (UF {f.pieUF.toLocaleString("es-CL")})</span>}</td>
