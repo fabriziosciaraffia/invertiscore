@@ -2,7 +2,11 @@
 // TIER INVIERTE-PRONTO — «Pronto: Invierte con Franco» (11-nov-2026, goal de Fabrizio). Rojo con:
 //   1 · EL BOTÓN EN UN DEPTO NUEVO O EN BUSCAR OTRO: la regla (puedeInvertir) y la tarjeta de Explorar dibujada —con y sin
 //       cuenta— lo llevan solo en un usado que da ✓ Comprar o − Ajustar negociable; la selección y el informe usan la misma
-//       regla; el servidor rechaza un nuevo aunque el navegador lo pida. «Analizar este» sigue siendo la acción principal (va antes).
+//       regla; el servidor rechaza un aviso sin condición aunque el navegador lo pida. «Analizar este» sigue siendo la acción
+//       principal (va antes). ⚠ ACTA (12-nov-2026, goal de Fabrizio): los NUEVOS DE INMOBILIARIA entran con las mismas reglas (Comprar
+//       o Ajustar negociable; nunca Buscar otro ni Ajustar sin negociar); hasta el 12-nov este tier exigía que un nuevo no llevara botón.
+//   7 · UNA INSCRIPCIÓN EN UN NUEVO QUE LLEGA SIN LA MARCA: su correo a hola@ lleva «[NUEVO]» en el asunto (y la de un usado no), y
+//       /admin/invierte muestra la condición y filtra por ella.
 //   2 · LA COMISIÓN, UNA LISTA DE SERVICIOS O UN PLAZO PROMETIDO en la franja, la hoja o la confirmación: el copy y el HTML
 //       dibujado, sin «comisión», sin precio, sin lista (<ul>/<li>) y sin plazo (días, semanas, meses o una fecha) fuera de las
 //       opciones de «¿Cuándo piensas comprar?», que son la respuesta de la persona y no una promesa. Los textos, los del goal.
@@ -99,8 +103,12 @@ export async function runInviertePronto(): Promise<{ hard: number }> {
         [{ condicion: "usado", veredicto: "AJUSTA SUPUESTOS", negociable: false }, false, "usado − Ajustar sin negociar"],
         [{ condicion: "usado", veredicto: "BUSCAR OTRA" }, false, "usado Buscar otro"],
         [{ condicion: "usado", veredicto: "BUSCAR OTRA", negociable: true }, false, "usado Buscar otro aunque diga negociable"],
-        [{ condicion: "nuevo", veredicto: "COMPRAR" }, false, "nuevo ✓ Comprar"],
-        [{ condicion: "nuevo", veredicto: "AJUSTA SUPUESTOS", negociable: true }, false, "nuevo − Ajustar negociable"],
+        [{ condicion: "nuevo", veredicto: "COMPRAR" }, true, "nuevo ✓ Comprar"],
+        [{ condicion: "nuevo", veredicto: "AJUSTA SUPUESTOS", negociable: true }, true, "nuevo − Ajustar negociable"],
+        [{ condicion: "nuevo", veredicto: "AJUSTA SUPUESTOS", negociable: false }, false, "nuevo − Ajustar sin negociar"],
+        [{ condicion: "nuevo", veredicto: "BUSCAR OTRA" }, false, "nuevo Buscar otro"],
+        [{ condicion: "nuevo", veredicto: "BUSCAR OTRA", negociable: true }, false, "nuevo Buscar otro aunque diga negociable"],
+        [{ condicion: "otra", veredicto: "COMPRAR" }, false, "condición desconocida ✓ Comprar"],
         [{ condicion: undefined, veredicto: "COMPRAR" }, false, "sin condición ✓ Comprar"],
       ];
       for (const [d, esperado, nombre] of casos) if (inv.puedeInvertir(d) !== esperado) F(`1 · puedeInvertir(${nombre}) debería ser ${esperado}`);
@@ -114,6 +122,7 @@ export async function runInviertePronto(): Promise<{ hard: number }> {
         pin("9bfe6906-1111-4000-8000-000000000004", { condicion: undefined }),
         NEG,
         pin("9bfe6906-1111-4000-8000-000000000006", { veredicto: "AJUSTA SUPUESTOS", score: 55 }),
+        pin("9bfe6906-1111-4000-8000-000000000007", { condicion: "nuevo", veredicto: "BUSCAR OTRA", score: 30 }),
       ];
       for (const sinCuenta of [false, true]) {
         const html = renderToStaticMarkup(createElement(TarjetaPin, {
@@ -123,8 +132,8 @@ export async function runInviertePronto(): Promise<{ hard: number }> {
         }));
         const tarjetas = html.split('data-explorar="tarjeta"').slice(1);
         const con = tarjetas.map((t) => t.includes('data-invierte="boton"'));
-        const esperado = [true, false, false, false, true, false];
-        if (tarjetas.length !== 6 || con.some((c, i) => c !== esperado[i])) F(`1 · ${sinCuenta ? "sin" : "con"} cuenta, el botón está en ${JSON.stringify(con)} y debería estar en ${JSON.stringify(esperado)} (usado Comprar, nuevo, Buscar otro, sin condición, negociado, Ajustar sin negociar)`);
+        const esperado = [true, true, false, false, true, false, false];
+        if (tarjetas.length !== 7 || con.some((c, i) => c !== esperado[i])) F(`1 · ${sinCuenta ? "sin" : "con"} cuenta, el botón está en ${JSON.stringify(con)} y debería estar en ${JSON.stringify(esperado)} (usado Comprar, nuevo Comprar, Buscar otro, sin condición, negociado, Ajustar sin negociar, nuevo Buscar otro)`);
         // Secundario: va DESPUÉS del botón principal de la tarjeta.
         const primera = tarjetas[0] ?? "";
         const iPrincipal = primera.search(sinCuenta ? /data-explorar="registrate"/ : /data-explorar="analizar"/);
@@ -157,12 +166,13 @@ export async function runInviertePronto(): Promise<{ hard: number }> {
       for (const [archivo, nombre] of [["src/app/analisis/[id]/informe-ltr.tsx", "LTR"], ["src/app/analisis/renta-corta/[id]/informe-str.tsx", "STR"]] as const) {
         if (!/const invierte = isOwner && [^;]{0,160}?\? await invierteDelInforme\(/.test(codigo(archivo))) F(`1 · el informe ${nombre} no pregunta la franja solo para el dueño`);
       }
-      // Y el servidor rechaza un nuevo aunque el navegador lo pida.
+      // ⚠ ACTA (12-nov-2026) · el servidor inscribe un nuevo de inmobiliaria (antes lo rechazaba) y rechaza uno sin condición.
       const nuevo = falsoSupabase({ aviso: { ...AVISO_USADO, condicion: "nuevo" }, evaluado: { ...EVALUADO, condicion: "nuevo" } });
       const rNuevo = await inscribir(nuevo.sb, USUARIO, PEDIDO, null, { enviarCorreo: async () => true, esPrueba: async () => false });
-      if (rNuevo.ok || rNuevo.error !== "nuevo" || nuevo.escritos.length) F("1 · el servidor inscribe un depto nuevo de inmobiliaria");
+      if (!rNuevo.ok || !nuevo.escritos.some((e) => e.op === "upsert")) F("1 · el servidor no inscribe un depto nuevo de inmobiliaria");
       const sinCond = falsoSupabase({ aviso: { ...AVISO_USADO, condicion: null }, evaluado: { ...EVALUADO, condicion: null } });
-      if ((await inscribir(sinCond.sb, USUARIO, PEDIDO, null, { enviarCorreo: async () => true, esPrueba: async () => false })).ok) F("1 · el servidor inscribe un depto sin condición");
+      const rSin = await inscribir(sinCond.sb, USUARIO, PEDIDO, null, { enviarCorreo: async () => true, esPrueba: async () => false });
+      if (rSin.ok || rSin.error !== "condicion" || sinCond.escritos.length) F("1 · el servidor inscribe un depto sin condición");
     }
 
     // ── 2 · SIN COMISIÓN, SIN LISTA DE SERVICIOS, SIN PLAZO PROMETIDO ──
@@ -280,6 +290,26 @@ export async function runInviertePronto(): Promise<{ hard: number }> {
       if (r4.ok || r4.error !== "guardar" || llamadas.length !== n0) F("4 · sin poder guardar la inscripción, igual se confirma o se avisa");
     }
 
+    // ── 7 · LOS NUEVOS DE INMOBILIARIA: «[NUEVO]» EN EL CORREO, Y LA CONDICIÓN EN EL PANEL (12-nov-2026) ──
+    {
+      const asuntos: string[] = [];
+      const deps: DepsInscribir = { enviarCorreo: async (p) => { asuntos.push(p.asunto); return true; }, esPrueba: async () => false };
+      const n = falsoSupabase({ aviso: { ...AVISO_USADO, condicion: "nuevo" }, evaluado: { ...EVALUADO, condicion: "nuevo" } });
+      await inscribir(n.sb, USUARIO, { ...PEDIDO, urgencia: "mas_adelante" }, null, deps);
+      await inscribir(n.sb, USUARIO, PEDIDO, null, deps);
+      const u = falsoSupabase({ aviso: AVISO_USADO, evaluado: EVALUADO });
+      await inscribir(u.sb, USUARIO, PEDIDO, null, deps);
+      if (asuntos.length !== 3 || !asuntos[0].startsWith("[NUEVO] ") || !asuntos[1].startsWith("[ESTE MES] [NUEVO] ") || asuntos[2].includes("[NUEVO]")) F(`7 · una inscripción en un nuevo llega a hola@ sin «[NUEVO]» en el asunto (o la de un usado la lleva): ${JSON.stringify(asuntos)}`);
+      const fila = n.escritos.find((e) => e.op === "upsert")?.fila;
+      if (!fila || !String(fila.linea).endsWith(" · Nuevo") || inv.condicionDeLinea(String(fila.linea)) !== "nuevo") F("7 · la inscripción de un nuevo no queda con su condición (la línea no termina en «· Nuevo»)");
+      if (inv.condicionDeLinea("Ñuñoa · 2D2B · 58 m² · Usado") !== "usado" || inv.condicionDeLinea("Ñuñoa · 2D2B · 58 m²") !== null || inv.condicionDeLinea(null) !== null) F("7 · la condición no se lee bien de la línea guardada");
+      // El panel: la columna y el filtro.
+      const panel = codigo("src/app/admin/invierte/page.tsx");
+      if (!/const condicion = esFiltroCondicion\(searchParams\.condicion\) \? searchParams\.condicion : null;\s*const filas = condicion \? todas\.filter\(\(f\) => f\.condicion === condicion\) : todas;/.test(panel)) F("7 · /admin/invierte no filtra por nuevo o usado");
+      if (!/data-admin="invierte-condicion">\{f\.condicion === "nuevo" \? "Nuevo" : f\.condicion === "usado" \? "Usado" : "—"\}/.test(panel)) F("7 · /admin/invierte no muestra si el depto es nuevo o usado");
+      if (!/condicion: condicionDeLinea\(f\.linea as string \| null\),/.test(codigo("src/lib/invierte/invierte-servidor.ts"))) F("7 · la lectura del panel no trae la condición de cada inscripción");
+    }
+
     // ── 5 · LA MEDICIÓN, EL REGISTRO SIN CUENTA Y EL ANUNCIO ──
     {
       if (inv.EVENTOS_INVIERTE.ver !== "invierte_ver" || inv.EVENTOS_INVIERTE.abrir !== "invierte_abrir" || inv.EVENTOS_INVIERTE.inscripcion !== "invierte_inscripcion") F("5 · los eventos no se llaman invierte_ver / invierte_abrir / invierte_inscripcion");
@@ -333,3 +363,9 @@ if (require.main === module) {
 //   M14 sin cuenta no guarda lo contestado · M15 invierte_inscripcion sin la urgencia · M16 el upsert pisa el estado del panel ·
 //   M17 con «Invierte» vuelve «Mandármelo por correo» · M18 una lista en la hoja · M19 el pie al 30 % · M20 Explorar no le pasa
 //   alInvertir a la tarjeta · M21 lo pendiente se borra antes de la respuesta.
+// ── ACTA (12-nov-2026, los nuevos de inmobiliaria) ──────────────────────────
+// §1 reescrito (los nuevos llevan botón con las mismas reglas; el servidor inscribe un nuevo y rechaza uno sin condición) y §7
+// nuevo («[NUEVO]» en el asunto, la condición y el filtro del panel). 13 de 13 en ROJO: N1 Buscar otro pasa · N2 Buscar otro
+// «negociable» pasa · N3 Ajustar sin negociar pasa · N4 los nuevos fuera otra vez · N5 cualquier condición pasa · N6 el asunto sin
+// «[NUEVO]» · N7 «[NUEVO]» a todos · N8 el servidor no pasa la condición al asunto · N9 el servidor rechaza nuevos · N10 acepta sin
+// condición · N11 el panel no filtra · N12 el panel sin la columna · N13 la condición mal leída de la línea.
