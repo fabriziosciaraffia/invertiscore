@@ -3,7 +3,7 @@ import { requireAdminPage } from "@/lib/admin-auth";
 import { filtroNoTest, getTestAccountIds, leerIncludeTest } from "@/lib/admin-rpc";
 import { fmtDateShort, fmtNumber } from "@/lib/admin-format";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
-import { INVIERTE_COPY, esEstado, esPie, esUrgencia } from "@/lib/invierte/invierte";
+import { INVIERTE_COPY, esEstado, esPie, esUrgencia, esFiltroCondicion } from "@/lib/invierte/invierte";
 import { leerInscripciones } from "@/lib/invierte/invierte-servidor";
 import { TestToggle } from "../test-toggle";
 import { EstadoSelect } from "./estado-select";
@@ -48,7 +48,11 @@ export default async function AdminInviertePage({ searchParams }: { searchParams
   const { sb } = await requireAdminPage();
   const includeTest = leerIncludeTest(searchParams.test);
   const noTest = includeTest ? null : filtroNoTest(await getTestAccountIds(sb));
-  const { filas, sinTabla } = await leerInscripciones(sb, noTest);
+  const { filas: todas, sinTabla } = await leerInscripciones(sb, noTest);
+  // Nuevo de inmobiliaria o usado (12-nov-2026): el filtro `?condicion=nuevo|usado`.
+  const condicion = esFiltroCondicion(searchParams.condicion) ? searchParams.condicion : null;
+  const filas = condicion ? todas.filter((f) => f.condicion === condicion) : todas;
+  const hrefCon = (c: "nuevo" | "usado" | null) => `/admin/invierte${[c ? `condicion=${c}` : "", includeTest ? "test=1" : ""].filter(Boolean).join("&").replace(/^./, (x) => `?${x}`)}`;
   // Quién publica cada depto (12-nov-2026): uso interno, con el service role de la página de admin; no viaja a otra parte.
   const [publicadores, relleno] = await Promise.all([publicadoresDeAvisos(sb, filas.map((f) => f.avisoId)), estadoRelleno(sb)]);
   const H = INVIERTE_COPY.hoja;
@@ -69,8 +73,13 @@ export default async function AdminInviertePage({ searchParams }: { searchParams
             {relleno.fusible && ` · fusible: ${relleno.fusible.detalle}, detenido hasta ${fmtDateShort(relleno.fusible.hasta.toISOString())}`}
           </p>
         </div>
-        <TestToggle includeTest={includeTest} href={includeTest ? "/admin/invierte" : "/admin/invierte?test=1"} />
+        <TestToggle includeTest={includeTest} href={`/admin/invierte${[condicion ? `condicion=${condicion}` : "", includeTest ? "" : "test=1"].filter(Boolean).join("&").replace(/^./, (x) => `?${x}`)}`} />
       </div>
+      <nav className="mb-4 flex flex-wrap gap-2 font-body text-[13px]" aria-label="Filtrar por condición" data-admin="invierte-filtro">
+        {([[null, `Todas (${fmtNumber(todas.length)})`], ["nuevo", `Nuevos (${fmtNumber(todas.filter((f) => f.condicion === "nuevo").length)})`], ["usado", `Usados (${fmtNumber(todas.filter((f) => f.condicion === "usado").length)})`]] as const).map(([c, rotulo]) => (
+          <Link key={rotulo} href={hrefCon(c)} aria-current={condicion === c ? "page" : undefined} className={`rounded-full border px-3 py-1 ${condicion === c ? "border-[var(--franco-text)] text-[var(--franco-text)]" : "border-[var(--franco-border)] text-[var(--franco-text-secondary)]"}`} data-condicion={c ?? "todas"}>{rotulo}</Link>
+        ))}
+      </nav>
       {sinTabla && (
         <p className="mb-4 rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-3 font-body text-[13px]" role="alert">
           La tabla <code>invierte_inscripciones</code> todavía no existe: falta aplicar la migración 20261111_invierte_inscripciones.
@@ -83,6 +92,7 @@ export default async function AdminInviertePage({ searchParams }: { searchParams
               <th className="px-3 py-2 font-medium">Fecha</th>
               <th className="px-3 py-2 font-medium">Persona</th>
               <th className="px-3 py-2 font-medium">Depto</th>
+              <th className="px-3 py-2 font-medium">Condición</th>
               <th className="px-3 py-2 font-medium">Publica</th>
               <th className="px-3 py-2 font-medium">Veredicto</th>
               <th className="px-3 py-2 font-medium">¿Cuándo?</th>
@@ -95,7 +105,7 @@ export default async function AdminInviertePage({ searchParams }: { searchParams
           </thead>
           <tbody>
             {filas.length === 0 && (
-              <tr><td colSpan={11}className="px-3 py-6 text-center text-[var(--franco-text-muted)]">Todavía nadie se inscribió.</td></tr>
+              <tr><td colSpan={12} className="px-3 py-6 text-center text-[var(--franco-text-muted)]">Todavía nadie se inscribió.</td></tr>
             )}
             {filas.map((f) => (
               <tr key={f.id} className="border-b border-[var(--franco-border)] align-top last:border-0" data-urgencia={f.urgencia}>
@@ -108,6 +118,7 @@ export default async function AdminInviertePage({ searchParams }: { searchParams
                   {f.precioUF != null && <span className="font-mono text-[12px]"> · UF {Math.round(f.precioUF).toLocaleString("es-CL")}</span>}
                   {f.analysisId && <> · <Link href={`/analisis/${f.analysisId}`} className="underline underline-offset-2">informe</Link></>}
                 </td>
+                <td className="whitespace-nowrap px-3 py-2" data-admin="invierte-condicion">{f.condicion === "nuevo" ? "Nuevo" : f.condicion === "usado" ? "Usado" : "—"}</td>
                 <td className="min-w-[200px] px-3 py-2"><CeldaPublicador p={publicadores.get(f.avisoId)} /></td>
                 <td className="whitespace-nowrap px-3 py-2">{f.veredicto ? etiquetaVeredicto(f.veredicto, "frase") : "—"}{f.score != null ? ` · ${f.score}` : ""}</td>
                 <td className={`whitespace-nowrap px-3 py-2 ${f.urgencia === "este_mes" ? "font-semibold" : ""}`}>{esUrgencia(f.urgencia) ? H.urgencias[f.urgencia] : f.urgencia}</td>
