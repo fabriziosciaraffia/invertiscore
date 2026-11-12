@@ -478,7 +478,9 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
         || !/export function DeptosCliente\(\{ sesion, pagina = "\/deptos", puerta = \{ puerta: "B", detalle: "deptos" \}, origenLead = "seleccion", cabecera, pie, portada \}/.test(cliente)
         || !/<DeptosCliente sesion=\{sesion\} portada=\{portada\} \/>/.test(leer("src/app/deptos/page.tsx"))) F("7 · /deptos no marca la puerta B o no manda el Lead al dejar el correo");
       // ⚠ ACTA (22-oct-2026, ENTRADA-ALTA) · el cuerpo del alta se mudó a lib/deptos/alta-servidor.ts (ejecutarAlta), que comparten la ruta del alta y la entrada por código: la regla se lee en los dos archivos.
-      if (!/guardarAtribucion\(admin, user\.id, \{ puerta: "B", puerta_detalle: "deptos" \}\)/.test(sinComentarios((leer("src/app/api/deptos/alta/route.ts") + "\n" + leer("src/lib/deptos/alta-servidor.ts"))))) F("7 · el alta no fija la puerta B");
+      // ⚠ ACTA (12-nov-2026, campaña de noviembre fase 0) · la escritura de la puerta lleva además el origen de la campaña de la cookie de
+      // la primera visita (`...origen`, lib/origen-campana.ts; lo fija CAMPANA-FASE0). La regla de la puerta no cambia.
+      if (!/guardarAtribucion\(admin, user\.id, \{ \.\.\.origen, puerta: "B", puerta_detalle: "deptos" \}\)/.test(sinComentarios((leer("src/app/api/deptos/alta/route.ts") + "\n" + leer("src/lib/deptos/alta-servidor.ts"))))) F("7 · el alta no fija la puerta B");
       // ⚠ ACTA (22-oct-2026, REGISTRO-META) · CompleteRegistration sale al crear la cuenta, con o sin «cuándo»; la puerta la lleva
       // `datosRegistro` si existe (tier REGISTRO-META fija el resto).
       const registro = leer("src/lib/meta/registro.ts");

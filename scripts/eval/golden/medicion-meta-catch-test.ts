@@ -284,8 +284,10 @@ export async function runMedicionMetaTier(): Promise<{ hard: number }> {
       // ACTA 20-oct-2026 (VISTA-ENTRADA): la respuesta de la landing además pasa por `conVista` —la vista del servidor y su id
       // en `Server-Timing`—, y el pedido es `req` (el mismo, salvo en /i/, que lleva el id de la visita en una cabecera). La
       // regla no cambia: en la landing el middleware responde con `conMedicion` sobre la respuesta de siempre.
+      // ⚠ ACTA (12-nov-2026, campaña de noviembre fase 0) · el `_fbc` se guarda en TODA llegada con fbclid (el pixel ya no espera el
+      // aviso de cookies; CONSENTIMIENTO §2): la condición pasó de `c.fbc && conPermiso(…)` a `c.fbc`.
       const mw = sinComentarios(leer("src/middleware.ts"));
-      if (!/matcher: \["\/", /.test(mw) || !/if \(c\.fbc && conPermiso\(consentimientoDeCookie\(request\.headers\.get\("cookie"\)\)\)\) res\.cookies\.set\(COOKIE_FBC, c\.fbc\.valor,/.test(mw) || !/if \(SOLO_MEDICION\.has\(req\.nextUrl\.pathname\)\) return conVista\(req, conMedicion\(req, NextResponse\.next\(\)\), event, visita\);/.test(mw)) F("2 · el middleware no guarda el clic del anuncio en la llegada a la landing");
+      if (!/matcher: \["\/", /.test(mw) || !/if \(c\.fbc\) res\.cookies\.set\(COOKIE_FBC, c\.fbc\.valor,/.test(mw) || !/if \(SOLO_MEDICION\.has\(req\.nextUrl\.pathname\)\) return conVista\(req, conMedicion\(req, NextResponse\.next\(\)\), event, visita\);/.test(mw)) F("2 · el middleware no guarda el clic del anuncio en la llegada a la landing");
     }
 
     // ── 3 · LAS CUENTAS DE PRUEBA, FUERA ──────────────────────────────────────
@@ -357,8 +359,10 @@ export async function runMedicionMetaTier(): Promise<{ hard: number }> {
         ["src/components/lo-que-sigue/TicketPack.tsx", /marcarPuertaCandidata\("A", "ticket"\);/, "el ticket no marca la puerta A"],
         ["src/components/guia/RegistroEnTarjeta.tsx", /puerta: \{ puerta: "A", detalle: "guia" \}/, "la tarjeta de la guía no fija la puerta A"],
         ["src/components/chrome/HeaderFranco.tsx", /if \(modo === "compartido"\) marcarPuertaCandidata\("C", "informe_compartido"\);/, "el informe compartido no marca la puerta C"],
-        ["src/app/api/lo-que-sigue/pack/route.ts", /guardarAtribucion\(admin, user\.id, \{ puerta: "A", puerta_detalle: "ticket", fbp: contexto\.fbp, fbc: contexto\.fbc \}\)/, "la cuenta del ticket no queda con la puerta A"],
-        ["src/app/api/analisis/claim/route.ts", /if \(esPuerta\(puerta\)\) \{[\s\S]{0,200}guardarAtribucion\(createAdminServiceClient\(\), user\.id, \{ puerta, puerta_detalle: detalle \}\)/, "el reclamo no guarda la puerta que trae"],
+        // ⚠ ACTA (12-nov-2026, campaña de noviembre fase 0) · las dos escrituras llevan además el origen de la campaña de la cookie de
+        // la primera visita (`...origen`, lib/origen-campana.ts); la puerta sigue igual. CAMPANA-FASE0 fija el origen.
+        ["src/app/api/lo-que-sigue/pack/route.ts", /guardarAtribucion\(admin, user\.id, \{ \.\.\.origen, puerta: "A", puerta_detalle: "ticket", fbp: contexto\.fbp, fbc: contexto\.fbc \?\? origen\.fbc \?\? null \}\)/, "la cuenta del ticket no queda con la puerta A"],
+        ["src/app/api/analisis/claim/route.ts", /guardarAtribucion\(createAdminServiceClient\(\), user\.id, \{ \.\.\.origen, \.\.\.\(esPuerta\(puerta\) \? \{ puerta, puerta_detalle: detalle \} : \{\}\) \}\)/, "el reclamo no guarda la puerta que trae"],
         ["src/hooks/useAttributionSync.ts", /\.\.\.puertaParaSincronizar\(\),/, "la sincronización no manda la puerta"],
         ["src/hooks/useAttributionSync.ts", /if \(llegada\) marcarPuertaCandidata\(llegada\.puerta, llegada\.detalle\);/, "la llegada por un referido no marca la candidata"],
         ["src/lib/attribution.ts", /p_puerta: datos\.puerta \?\? null,\s*p_puerta_detalle: datos\.puerta_detalle \?\? null,/, "la RPC no recibe la puerta"],

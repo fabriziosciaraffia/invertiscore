@@ -133,11 +133,12 @@ export async function runAltaOrdenTier(): Promise<{ hard: number }> {
     // ⚠ ACTA (28-oct-2026, recorrido con +qaexplorar) · la vuelta ya no mira si la cuenta es de prueba (lo único que la deja sin
     // correo es enviarCorreo; tier CUENTAS-PRUEBA): después del permiso viene la vuelta misma.
     if (!/if \(deps\.antes\) await deps\.antes;\s*await vuelta\(fila\);/.test(sinComentarios(leer("src/lib/guia/del-dia-servidor.ts")))) F("6 · encolarPrimeraSeleccion no espera el permiso antes de la vuelta");
-    // El espejo con las reglas de emitirEventoMeta: sin espejo en prueba o sin el «sí» de las cookies.
+    // El espejo con las reglas de emitirEventoMeta: sin espejo solo en prueba (⚠ ACTA 12-nov-2026, campaña de noviembre fase 0: el
+    // pixel ya no espera el aviso de cookies, así que sin el «sí» el espejo sale igual; hasta entonces no salía).
     const srv = await import("../../../src/lib/deptos/alta-servidor");
     const e1 = srv.espejoDeRegistro({ userId: "u1", puerta: "C", prueba: false, consentimiento: true });
     if (e1?.evento !== "CompleteRegistration" || e1.eventId !== "reg-u1" || (e1.datos as { puerta?: string; status?: string } | undefined)?.puerta !== "C" || (e1.datos as { status?: string } | undefined)?.status !== "completo"
-      || srv.espejoDeRegistro({ userId: "u1", puerta: "B", prueba: true, consentimiento: true }) !== null || srv.espejoDeRegistro({ userId: "u1", puerta: "B", prueba: false, consentimiento: false }) !== null) F(`6 · el espejo no sigue las reglas del servidor: ${JSON.stringify(e1)}`);
+      || srv.espejoDeRegistro({ userId: "u1", puerta: "B", prueba: true, consentimiento: true }) !== null || srv.espejoDeRegistro({ userId: "u1", puerta: "B", prueba: false, consentimiento: false })?.eventId !== "reg-u1") F(`6 · el espejo no sigue las reglas del servidor: ${JSON.stringify(e1)}`);
     const entrar = sinComentarios(leer("src/app/api/deptos/entrar/route.ts"));
     const iPend = entrar.indexOf("const pendientePrevia = leerPendiente(admin, correo)"), iEntrar = entrar.indexOf("await entrarConCodigo(");
     if (iPend < 0 || iEntrar < 0 || iPend > iEntrar || !/ejecutarAlta\(admin, user, request, \{ ruta: RUTA, crono, pendiente: pendientePrevia, despues: waitUntil \}\)/.test(entrar) || !/const user = cuenta \?\? /.test(entrar) || !/despues: waitUntil,/.test(entrar)) F("6 · la ruta del código no pide lo elegido junto con verificar, pide la cuenta otra vez, o marca la entrada antes de responder");
