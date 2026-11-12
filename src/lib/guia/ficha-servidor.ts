@@ -5,6 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { proxyDispatcher } from "@/lib/services/scraper/toctoc";
 import { causaDeFalla } from "@/lib/services/scraper/falla-red";
 import { reportarFalloQuery } from "@/lib/observabilidad";
+import { guardarPublicadorEn } from "@/lib/publicadores/publicadores-servidor";
 import { TIMEOUT_FICHA_MS, type AlmacenPublicacion, type RespuestaFicha } from "./publicacion";
 
 const RUTA = "lib/guia/ficha";
@@ -55,6 +56,10 @@ export function almacenPublicacion(admin: SupabaseClient): AlmacenPublicacion {
       // Un bloqueo ya no manda correo en el acto (15-oct-2026, cron-alertas.ts): queda en `lecturas_ficha` y en el panel, y
       // la vigilancia avisa solo si pasa un día sin una lectura buena mientras hay bloqueos.
       console.warn(`[ficha] la fuente bloquea: ${l.tipo} · aviso ${l.avisoId} · ${l.codigo ?? "-"} ${l.destino ?? ""}`.trim());
+    },
+    async guardarPublicador(avisoId, publicador, tipo) {
+      // Quién publica (12-nov-2026), de la misma lectura: uso interno, en tablas sin políticas.
+      await guardarPublicadorEn(admin, avisoId, publicador, tipo);
     },
   };
 }

@@ -71,6 +71,8 @@ async function main() {
     guardarPublicacion: async () => {},
     despublicar: async () => {},
     alertarBloqueo: async () => {},
+    // Quién publica (12-nov-2026): esta medición local no lo guarda.
+    guardarPublicador: async () => {},
   };
   const guardar = () => writeFileSync(SALIDA, JSON.stringify({ calculadoAt: new Date().toISOString(), lecturas }, null, 1));
 

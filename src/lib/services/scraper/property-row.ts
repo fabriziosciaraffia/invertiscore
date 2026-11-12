@@ -4,6 +4,7 @@
 // shape. Vivía inline en el route general; se extrajo al abrir la segunda ruta.
 
 import type { ScrapedProperty } from "./toctoc";
+import { tipoDesdeUrl } from "@/lib/publicadores/publicador";
 
 export function propertyToRow(prop: ScrapedProperty) {
   return {
@@ -38,6 +39,9 @@ export function propertyToRow(prop: ScrapedProperty) {
     fecha_entrega: prop.fechaEntrega || null,
     // El título del aviso (30-sep-2026, GetProps [39]): lo lee arriendo-tipo.ts.
     titulo: prop.titulo || null,
+    // Quién publica (12-nov-2026): el listado trae SOLO el tipo, en la URL del aviso (corredor, dueño o inmobiliaria). El
+    // nombre sale de la ficha y vive aparte, en tablas sin políticas (src/lib/publicadores/publicador.ts).
+    publicador_tipo: tipoDesdeUrl(prop.url),
     is_active: true,
     scraped_at: new Date().toISOString(),
     geocode_attempted: false,
@@ -71,6 +75,8 @@ export function filaSinPisarCoords<T extends FilaUpsert>(row: T): T {
   if (out.direccion == null) delete out.direccion;
   // Una fuente sin título (el GraphQL de unidades) no borra el que trajo el GetProps.
   if (out.titulo == null) delete out.titulo;
+  // Una URL que no dice el tipo no borra el que ya se sabía.
+  if (out.publicador_tipo == null) delete out.publicador_tipo;
   return out;
 }
 

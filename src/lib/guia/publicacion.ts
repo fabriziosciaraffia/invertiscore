@@ -19,7 +19,12 @@
 //   · EL AÑO sale del 200 de la ficha nueva, sin GET extra.
 // Puro: el almacén y la bajada se inyectan (el tier GUIA-BUSQUEDA §3 y §9 lo prueba con dobles).
 // ─────────────────────────────────────────────────────────────────────────────
+//   · QUIÉN PUBLICA (12-nov-2026): el 200 de la ficha nueva trae el publicador (`client`: id, nombre, logo) y se guarda en
+//     la misma lectura, sin GET extra (`guardarPublicador`). Es de uso interno: no viaja al navegador.
+//   · EL RELLENO DE PUBLICADORES (12-nov-2026, src/lib/publicadores/relleno.ts) entra por esta misma función con su propio
+//     tope (`opts.tope`) y su propia bajada, por Decodo: no gasta el cupo de las personas ni sale por su IP.
 import { parsearAnioFicha } from "./ficha-anio";
+import { esFichaDeLaFuente, parsearPublicadorFicha, tipoDesdeUrl, type PublicadorFicha, type TipoPublicador } from "@/lib/publicadores/publicador";
 
 /**
  * GETs a la ficha por hora, entre todas las personas (01-oct-2026). El volumen real: un chequeo son dos
@@ -39,7 +44,8 @@ export const TIMEOUT_FICHA_MS = 8000;
 export type MotivoFinal = "publicado" | "despublicado" | "bloqueo" | "error" | "tiempo";
 /** «redirige»: el primer salto, de la ficha vieja a la nueva. No decide nada. */
 export type MotivoFicha = MotivoFinal | "redirige";
-export type TipoLectura = "guia" | "clic";
+/** «relleno»: el relleno de publicadores por Decodo (12-nov-2026), con su tope y su bitácora aparte. */
+export type TipoLectura = "guia" | "clic" | "relleno";
 export type EstadoPublicacion = "publicado" | "despublicado" | "sin-chequeo";
 
 /** Lo que vuelve de UN GET a la ficha, sin seguir redirecciones. */
@@ -98,6 +104,11 @@ export interface AlmacenPublicacion {
   /** Saca el aviso de `avisos_evaluados` (y con eso de la guía). */
   despublicar(avisoId: string): Promise<void>;
   alertarBloqueo(l: LecturaFicha): Promise<void>;
+  /**
+   * Quién publica el aviso (12-nov-2026), en cada 200 de la ficha: el publicador que trae (o null si no viene) y el tipo que
+   * dice la URL. Se llama SIEMPRE que la ficha responde publicada, para que el aviso quede leído aunque no traiga el dato.
+   */
+  guardarPublicador(avisoId: string, publicador: PublicadorFicha | null, tipo: TipoPublicador | null): Promise<void>;
 }
 
 export interface AvisoFicha {
@@ -108,7 +119,17 @@ export interface AvisoFicha {
 
 export type ResultadoLectura =
   | { leida: false; razon: "sin-url" | "tope"; gets: number }
-  | { leida: true; motivo: MotivoFinal; codigo: number | null; anio: number | null; gets: number };
+  | {
+      leida: true;
+      motivo: MotivoFinal;
+      codigo: number | null;
+      anio: number | null;
+      gets: number;
+      /** El publicador que trajo el 200 (null si no vino o la ficha no respondió publicada). */
+      publicador?: PublicadorFicha | null;
+      /** Un 200 que no es la ficha de la fuente (sin los datos de la página): lo que el fusible del relleno llama «raro». */
+      rara?: boolean;
+    };
 
 /** UN chequeo: la ficha vieja y, si redirige a la nueva, la nueva. Cada GET con su cupo y anotado. */
 export async function leerFicha(
@@ -117,12 +138,15 @@ export async function leerFicha(
   almacen: AlmacenPublicacion,
   bajar: (url: string) => Promise<RespuestaFicha>,
   ahora: Date = new Date(),
+  // El tope por hora de ESTA puerta: el de las personas por defecto; el relleno pasa el suyo (lo cuenta su propia bitácora).
+  opts: { tope?: number } = {},
 ): Promise<ResultadoLectura> {
   if (!aviso.url) return { leida: false, razon: "sin-url", gets: 0 };
+  const tope = opts.tope ?? TOPE_FICHAS_POR_HORA;
   let url = aviso.url;
   let gets = 0;
   for (let salto = 0; salto < 2; salto++) {
-    if ((await almacen.lecturasUltimaHora()) >= TOPE_FICHAS_POR_HORA) return { leida: false, razon: "tope", gets };
+    if ((await almacen.lecturasUltimaHora()) >= tope) return { leida: false, razon: "tope", gets };
     let r: RespuestaFicha;
     try {
       r = await bajar(url);
@@ -146,7 +170,15 @@ export async function leerFicha(
     if (motivo === "publicado" || motivo === "despublicado") await almacen.guardarPublicacion(aviso.id, motivo, c.codigo, c.destino);
     if (motivo === "despublicado") await almacen.despublicar(aviso.id);
     if (motivo === "bloqueo") await almacen.alertarBloqueo(final);
-    return { leida: true, motivo, codigo: c.codigo, anio, gets };
+    // Quién publica: del mismo 200, sin GET extra. El tipo, de la URL que respondió (la nueva) o de la del aviso.
+    let publicador: PublicadorFicha | null = null;
+    let rara = false;
+    if (motivo === "publicado" && "status" in r) {
+      publicador = parsearPublicadorFicha(r.html);
+      rara = !esFichaDeLaFuente(r.html);
+      await almacen.guardarPublicador(aviso.id, publicador, tipoDesdeUrl(url) ?? tipoDesdeUrl(aviso.url));
+    }
+    return { leida: true, motivo, codigo: c.codigo, anio, gets, publicador, rara };
   }
   return { leida: false, razon: "tope", gets };
 }
