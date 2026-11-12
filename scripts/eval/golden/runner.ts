@@ -203,6 +203,7 @@ import { runUnidadesTier } from "./unidades-catch-test";
 import { runRadioMonedaTier } from "./radio-moneda-catch-test";
 import { runArriendoAmobladoTier } from "./arriendo-amoblado-catch-test";
 import { runGuiaBusquedaTier } from "./guia-busqueda-catch-test";
+import { runPublicadoresTier } from "./publicadores-catch-test";
 import { runPagoSinSesionTier } from "./pago-sin-sesion-catch-test";
 import { runCierreInformeTier } from "./cierre-informe-catch-test";
 import { runAmbasTier } from "./ambas-recompute";
@@ -849,6 +850,10 @@ function printSeed(r: SeedReport) {
   // Tier GUIA-BUSQUEDA (30-sep-2026, 0 tokens): «Por dónde seguir buscando» — el copy sin palabras vedadas,
   // la línea del ticket solo con la guía, los resguardos de la ficha, el crédito una vez, plazo antes que pie. ──
   totalHard += (await runGuiaBusquedaTier()).hard;
+  // Tier PUBLICADORES (12-nov-2026, 0 tokens, lee la base en §5): quién publica cada aviso — el tipo en cada fila del listado,
+  // el publicador en cada lectura de la ficha, la clase, el relleno por Decodo (200 por hora, su bitácora, el fusible, primero
+  // las inscripciones) y el contacto solo de uso interno (ninguna respuesta pública lo lleva). ──
+  totalHard += (await runPublicadoresTier()).hard;
   // Tier PAGO-SIN-SESION (02-oct-2026, 0 tokens): su informe completo en su navegador, el pago del pack verificado
   // con la firma (y nada sin ella), el pago de otra cuenta lo dice, el STR avisa que está listo, y el precio del
   // pack solo en el ticket (lista blanca). ──

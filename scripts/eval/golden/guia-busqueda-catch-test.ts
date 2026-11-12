@@ -191,6 +191,7 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
       async guardarPublicacion() {},
       async despublicar() { desp++; },
       async alertarBloqueo() {},
+      async guardarPublicador() {},
     };
     const vieja = "https://www.toctoc.com/propiedades/compraparticularsr/departamento/nunoa/depto-x/77";
     const a = { id: "a", url: vieja, edificio: claveEdificio({ comuna: "Ñuñoa", lat: -33.45, lng: -70.6 }) };
@@ -236,7 +237,14 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
   for (const f of archivosSrc()) {
     if (f.startsWith("src/lib/guia/")) continue;
     const s = sinComentarios(leer(f));
-    if (/\bbajarFicha\b|\bleerFicha\(|\bchequearPublicacion\(/.test(s) && !ANALIZAR_ESTE.includes(f) && f !== "src/app/api/lo-que-sigue/quiero-verlo/route.ts") F(`3 · ${f} entra a la ficha por fuera de la guía, de «Analizar este» y de «Quiero verlo»`);
+    // ⚠ ACTA (12-nov-2026, goal «quién publica cada aviso», decisión de Fabrizio) · LA EXCEPCIÓN DEL RELLENO: el relleno de
+    // publicadores (src/lib/publicadores/relleno-servidor.ts) entra a la ficha con `leerFicha`, pero POR DECODO y con su
+    // propio tope (200 fichas por hora) y su propia bitácora (`lecturas_relleno`): no sale por la IP de las personas ni gasta
+    // su cupo de 30. Es el único cron que entra; lo fija este bloque y el tier PUBLICADORES §4. Antes la regla era «ningún
+    // cron ni backfill entra»: se reescribe con su excepción, no se afloja.
+    const RELLENO = "src/lib/publicadores/relleno-servidor.ts";
+    if (/\bbajarFicha\b|\bleerFicha\(|\bchequearPublicacion\(/.test(s) && !ANALIZAR_ESTE.includes(f) && f !== "src/app/api/lo-que-sigue/quiero-verlo/route.ts" && f !== RELLENO) F(`3 · ${f} entra a la ficha por fuera de la guía, de «Analizar este», de «Quiero verlo» y del relleno por Decodo`);
+    if (f === RELLENO && (/\bbajarFicha\b|proxyDispatcher/.test(s) || !/bajarFichaRelleno, new Date\(\), \{ tope: RITMO_RELLENO_POR_HORA \}/.test(s))) F("3 · el relleno entra a la ficha por la bajada de las personas o sin su propio tope");
     // ⚠ ACTA (03-nov-2026, goal «el negociado se comparte con su verdad completa») · la verificación de un negociado compartido
     // (src/lib/explorar/negociado-hoy.ts) arma el informe con `antiguedadDelAviso` SIN LECTURA —`{ leida: false, anio: null }`:
     // la guardada, la del edificio o los años supuestos—, sin entrar a la ficha. La regla es la de la lectura: la antigüedad
@@ -246,6 +254,9 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
     if (conLectura.length && !ANALIZAR_ESTE.includes(f)) F(`3 · ${f} lee la antigüedad de la ficha y no es «Analizar este»`);
   }
   const claude = leer("CLAUDE.md");
+  // Acotado al párrafo de la excepción: otras frases de CLAUDE.md nombran el relleno de pasada y satisfarían un predicado suelto.
+  const excepcion = claude.split("\n").find((l) => /^\s*- \*\*Segunda excepción \(12-nov-2026, decisión de Fabrizio\): el relleno de publicadores, por Decodo\*\*/.test(l)) ?? "";
+  if (!/\*\*va por Decodo\*\* \(`DECODO_RELLENO_URL`/.test(excepcion) || !/\*\*nunca por `PROXY_URL`\*\*/.test(excepcion) || !/\*\*200 fichas por hora\*\*/.test(excepcion) || !/\*\*fusible\*\*/.test(excepcion) || !/`lecturas_relleno`/.test(excepcion) || !/primero los deptos con inscripciones en Invierte con Franco, después los que convienen/.test(excepcion)) F("3 · CLAUDE.md no documenta la excepción del relleno de publicadores por Decodo (su tope, su bitácora y su fusible)");
   if (!/chequeo de publicación de la guía de búsqueda/.test(claude) || !/tope global por hora/.test(claude) || !/sin reintentos/.test(claude) || !/se recuerda 24 horas/.test(claude) || !/25 años supuestos/.test(claude) || !/`TOPE_FICHAS_POR_HORA` = 30/.test(claude)) F("3 · CLAUDE.md no documenta el chequeo de publicación, sus resguardos, el tope y los 25 años supuestos");
 
   // ── 4 · el crédito, una sola vez ────────────────────────────────────────────
@@ -415,6 +426,7 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
       async guardarPublicacion() { guardadas++; },
       async despublicar() { desp++; },
       async alertarBloqueo() { alertas++; },
+      async guardarPublicador() {},
     };
     const av = { id: "x", url: "https://www.toctoc.com/propiedades/venta/departamento/nunoa/y/1", edificio: "e" };
     const resp = (r: RespuestaFicha) => async () => { pedidos++; return r; };
@@ -815,3 +827,8 @@ if (require.main === module) {
 // §14 se aflojó a un prefijo en la línea de respuesta de la ruta: la línea entera la fija §15.
 // Cuarta vuelta (13-oct-2026, el aviso antes de gastar; CORREOS-RECORRIDO §5): 2/2 en rojo. G-a la tarjeta sin la
 // frase del regalo (el saldo entero de la casa) · G-b al entrar con el código se genera de una, sin el aviso.
+// Vuelta del relleno de publicadores (12-nov-2026, la excepción por Decodo; §3): 5/5 en rojo. G1 el relleno lee sin su tope ·
+// G2 CLAUDE.md sin la excepción · G2b la excepción sin el fusible · G2c la excepción sin Decodo · G3 otro cron entra a la
+// ficha. G2 salió VERDE en la primera versión del predicado: otras frases de CLAUDE.md nombran «relleno de publicadores» y
+// «por Decodo» de pasada y lo satisfacían (la falla por vecindad). Se acotó al párrafo de la excepción y salió rojo.
+// De paso, los dobles del almacén suman `guardarPublicador` (quién publica cada aviso; lo prueba el tier PUBLICADORES §2).
