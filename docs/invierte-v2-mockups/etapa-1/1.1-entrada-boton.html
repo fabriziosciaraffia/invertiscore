@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>El botón en el mapa</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2B558F}a:hover{color:#1E3F6B}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #E6EAF0; color: #141414; font-family: 'Inter', system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden">
+<div style="background: linear-gradient(135deg, #2B558F 0%, #6E4560 55%, #C8323C 100%); padding: 54px 20px 14px; display: flex; justify-content: center"><span style="font-size: 15px; font-weight: 600; color: #FFFFFF">Explorar · los que convienen hoy</span></div>
+<div style="flex: 1; display: flex; align-items: center; justify-content: center; font-size: 13px; color: #5A5A5F; border: 1.5px dashed #A8B0BC; margin: 16px; border-radius: 14px">[Mapa de Explorar]</div>
+<div style="background: #FFFFFF; border-radius: 20px 20px 0 0; padding: 20px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; justify-content: space-between; align-items: center; gap: 10px"><div style="display: flex; flex-direction: column; gap: 3px"><span style="font-size: 16px; font-weight: 700">Ñuñoa · 2D2B · 58 m²</span><span style="font-size: 13px; color: #5A5A5F">UF 3.250 · Usado</span></div><span style="background: #2B558F; color: #FFFFFF; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 99px; white-space: nowrap">✓ Comprar · 78</span></div>
+<a href="#" style="display: flex; justify-content: center; align-items: center; min-height: 50px; border-radius: 99px; background: #141414; color: #FFFFFF; font-size: 15px; font-weight: 600; text-decoration: none">Analizar este</a>
+<a href="Contacto.dc.html" style="display: flex; justify-content: center; align-items: center; min-height: 48px; border-radius: 99px; background: #FFFFFF; border: 1.5px solid #C8323C; color: #C8323C; font-size: 15px; font-weight: 600; text-decoration: none">Invierte con Franco</a>
+<span style="font-size: 12px; line-height: 1.45; color: #5A5A5F">El botón es secundario y solo aparece en ✓ Comprar o − Ajustar negociable. También está en la portada del informe. Aquí solo se mide el clic.</span>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>
