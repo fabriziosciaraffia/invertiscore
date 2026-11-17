@@ -176,10 +176,12 @@ export async function runInvierteV2(): Promise<{ hard: number }> {
       if (urlContacto(AVISO, "explorar") !== `/invierte/${AVISO}?desde=explorar`) F("2 · la URL del contacto cambió");
 
       const cliente = codigo("src/app/explorar/explorar-cliente.tsx");
-      if (!/if \(destinoBoton\(\{ acceso: invierteV2, condicion: p\.condicion \}\) === "v2"\) \{ router\.push\(urlContacto\(p\.avisoId, "explorar"\)\); return; \}\s*if \(sinCuenta\) void import\("\.\/hoja-registro"\);\s*setInvierte\(\{ pin: p, retomar: false \}\);/.test(cliente)) F("2 · el mapa no decide con destinoBoton antes de abrir la hoja de Pronto");
+      if (!/if \(destinoBoton\(\{ acceso: invierteV2, condicion: p\.condicion \}\) === "v2"\) \{ setContactoV2\(p\); return; \}\s*if \(sinCuenta\) void import\("\.\/hoja-registro"\);\s*setInvierte\(\{ pin: p, retomar: false \}\);/.test(cliente)) F("2 · el mapa no decide con destinoBoton antes de abrir la hoja de Pronto");
+      // La hoja de contacto: solo se monta con el estado que pone la rama v2 (nadie más lo pone), sobre el mapa, sin navegar.
+      if ((cliente.match(/setContactoV2\(/g) ?? []).length !== 2 || !/\{contactoV2 && \(\s*<HojaContacto depto=\{deptoInvierteDePin\(contactoV2\)\} origen="explorar" sinSesion=\{sinCuenta\} alCerrar=\{\(\) => setContactoV2\(null\)\} \/>/.test(cliente)) F("2 · el mapa abre la hoja de contacto sin la rama v2 (o no la abre encima)");
       if (!/invierteV2 = false/.test(cliente)) F("2 · el mapa no arranca en Pronto sin el booleano");
       const sel = codigo("src/app/semanal/semanal-lista.tsx");
-      if (!/destinoBoton\(\{ acceso: invierteV2, condicion: it\.condicion \}\) === "v2" \? \(iniciarCarga\(claveActual\(\)\), router\.push\(urlContacto\(it\.avisoId, "seleccion"\)\)\) : setInvierte\(it\)/.test(sel) || !/invierteV2 = false/.test(sel)) F("2 · la selección no decide con destinoBoton (o no arranca en Pronto)");
+      if (!/destinoBoton\(\{ acceso: invierteV2, condicion: it\.condicion \}\) === "v2" \? setContactoV2\(it\) : setInvierte\(it\)/.test(sel) || !/invierteV2 = false/.test(sel) || (sel.match(/setContactoV2\(/g) ?? []).length !== 2 || !/\{contactoV2 && \(\s*<HojaContacto /.test(sel)) F("2 · la selección no decide con destinoBoton (o no arranca en Pronto)");
       const inf = codigo("src/lib/invierte-v2/informe.ts");
       if (!/destinoBoton\(\{ acceso, condicion: condicionDeLinea\(invierte\.depto\.linea\) \}\) !== "v2"\) return invierte;/.test(inf)) F("2 · la portada del informe no decide con destinoBoton");
       for (const a of ["src/app/analisis/[id]/informe-ltr.tsx", "src/app/analisis/renta-corta/[id]/informe-str.tsx"]) if (!/await conFlujoV2\(await invierteDelInforme\(/.test(codigo(a))) F(`2 · ${a} no pasa la franja por conFlujoV2`);
@@ -194,7 +196,14 @@ export async function runInvierteV2(): Promise<{ hard: number }> {
       const v2 = renderToStaticMarkup(createElement(FranjaInvierte, { depto: D, inscrito: true, publicacion: null, flujoV2: urlContacto(AVISO, "informe") }));
       if (v2.includes(">PRONTO<") || v2.includes("Inscrito en Invierte con Franco") || !v2.includes('data-invierte="boton"')) F("2 · la franja del flujo nuevo muestra PRONTO o la etiqueta de inscrito");
       const franja = codigo("src/components/invierte/FranjaInvierte.tsx");
-      if (!/if \(flujoV2 && !demo\) \{ window\.location\.assign\(flujoV2\); return; \}/.test(franja)) F("2 · la franja del flujo nuevo no lleva al contacto");
+      if (!/if \(flujoV2 && !demo\) \{ setContactoV2\(true\); return; \}/.test(franja) || !/\{contactoV2 && flujoV2 && !demo && \(\s*<HojaContacto depto=\{depto\} origen="informe"/.test(franja)) F("2 · la franja del flujo nuevo no abre la hoja de contacto");
+      // Ningún botón lleva a la página de respaldo del contacto (/invierte/[avisoId]).
+      for (const f of ["src/app/explorar/explorar-cliente.tsx", "src/app/semanal/semanal-lista.tsx", "src/components/invierte/FranjaInvierte.tsx", "src/app/invierte/[avisoId]/firma/page.tsx", "src/components/invierte-v2/HojaContacto.tsx"]) if (/urlContacto\(/.test(codigo(f))) F(`2 · ${f} lleva a la página de respaldo del contacto`);
+      // La hoja: el patrón de Pronto (sus clases) sin tocar a Pronto; cerrar no navega; quien ya firmó va a Partimos.
+      const hoja = codigo("src/components/invierte-v2/HojaContacto.tsx");
+      if (!/className="inv-velo iv2-velo"/.test(hoja) || !/className="inv-hoja iv2-hoja"/.test(hoja) || !/onClick=\{alCerrar\} aria-label="Cerrar"/.test(hoja) || /router\.(push|replace|back)\([^)]*\)[^;]*;\s*\}\s*\}\s*>/.test(hoja)) F("2 · la hoja de contacto no usa el patrón de la hoja de Pronto o cerrar navega");
+      if (!/if \(d\?\.firmo\) \{ router\.push\(URL_PARTIMOS\); return; \}/.test(hoja)) F("2 · la hoja no manda a Partimos a quien ya firmó");
+      if (!/max-height: calc\(100dvh - 88px\)/.test(leer("src/components/invierte-v2/invierte-v2.css"))) F("2 · en el celular la hoja no deja asomar el mapa");
     }
 
     // ── 3 · EL CACHÉ ──
@@ -456,6 +465,34 @@ export async function runInvierteV2(): Promise<{ hard: number }> {
       if (!/orden\.copiaEnviadaAt \? \([\s\S]{0,200}\) : \([\s\S]{0,120}\{P\.copiaPendiente\}/.test(codigo("src/app/invierte/partimos/page.tsx"))) F("11 · Partimos no dice cuando la copia no ha salido");
     }
 
+    // ── 12 · EL FORMATO: la hoja, la firma y Partimos en el PC, y el modo «todos» sin sesión (18-nov-2026) ──
+    {
+      const marco = codigo("src/components/invierte-v2/MarcoInvierte.tsx");
+      if (!/\{pc && \(\s*<div className="iv2-solo-pc" data-inv2="header-pc">\s*<HeaderFranco /.test(marco)) F("12 · el PC no lleva el HeaderFranco real (o se ve en el celular)");
+      const firmaPag = codigo("src/app/invierte/[avisoId]/firma/page.tsx");
+      if (!/layout="firma" pc=\{\{ sesionEmail: user\.email \?\? null, rotulo: FLUJO_COPY\.rotuloFirma \}\}/.test(firmaPag) || !/volver=\{volverAlOrigen\(depto\.avisoId, origen, analysisId\)\}/.test(firmaPag)) F("12 · la firma no va en dos columnas con el header (o «Volver» no vuelve a la superficie)");
+      if (!/layout="partimos" pc=\{\{ sesionEmail: user\.email \?\? null, rotulo: FLUJO_COPY\.rotuloPartimos \}\}/.test(codigo("src/app/invierte/partimos/page.tsx"))) F("12 · Partimos no va en dos columnas con el header");
+      const { volverAlOrigen } = await import("../../../src/lib/invierte-v2/paginas");
+      for (const [o, a] of [["explorar", null], ["seleccion", null], ["informe", "6db7a9ac-f030-4ccf-b5a8-5232ae997fb1"], ["informe", null]] as const) if (/^\/invierte\//.test(volverAlOrigen(AVISO, o, a))) F(`12 · «Volver» desde ${o} lleva a la página de respaldo del contacto`);
+      if (volverAlOrigen(AVISO, "explorar", null) !== `/explorar?a=${AVISO}`) F("12 · «Volver» al mapa no abre el mismo depto");
+      const css = leer("src/components/invierte-v2/invierte-v2.css");
+      if (!/\.iv2-firma \{ display: grid; grid-template-columns: 420px minmax\(0, 1fr\);/.test(css) || !/\.iv2-firma \.iv2-bloque-orden \{ grid-column: 2;[^}]*position: sticky;/.test(css) || !/\.iv2-firma \.iv2-orden \{ height: 480px; \}/.test(css)) F("12 · la orden del PC no va a la derecha, fija y con alto fijo");
+      if (!/\.iv2-partimos \{ display: grid; grid-template-columns: 460px minmax\(0, 1fr\);/.test(css)) F("12 · Partimos del PC no va en dos columnas");
+      const form = codigo("src/components/invierte-v2/FirmaForm.tsx");
+      if (!/className="inv-pregunta iv2-bloque-orden"/.test(form) || !/<span className="iv2-solo-movil">\{F\.desliza\}<\/span><span className="iv2-solo-pc">\{F\.deslizaPc\}<\/span>/.test(form)) F("12 · la firma no dice «Lee hasta el final…» en el PC y «Desliza…» en el celular");
+      if (FLUJO_COPY.firma.deslizaPc !== "Lee hasta el final para poder firmar. El botón se activa cuando llegas al último párrafo.") F("12 · el texto de la firma del PC no es el de la lámina");
+      if (!/te llegó una copia por correo/.test(FLUJO_COPY.partimos.guardada)) F("12 · Partimos no dice que la copia llegó (cuando llegó)");
+      // El estado de la hoja: 404 sin acceso.
+      const ruta = codigo("src/app/api/invierte-v2/contacto/route.ts");
+      if (!/export async function GET\(\) \{\s*const user = await personaConAcceso\(\);\s*if \(!user\) return NO_EXISTE\(\);/.test(ruta)) F("12 · el estado de la hoja responde sin acceso");
+      // El modo «todos» sin sesión: la hoja no pregunta el estado, el contacto queda en el navegador y la firma pide la cuenta.
+      const hoja = codigo("src/components/invierte-v2/HojaContacto.tsx");
+      if (!/useEffect\(\(\) => \{\s*if \(sinSesion\) return;/.test(hoja)) F("12 · sin sesión, la hoja pregunta el estado");
+      const contacto = codigo("src/components/invierte-v2/ContactoForm.tsx");
+      if (!/if \(sinSesion\) \{[\s\S]{0,200}window\.localStorage\.setItem\(CLAVE_PENDIENTE_V2,[\s\S]{0,120}router\.push\(urlFirma\(depto\.avisoId, origen, analysisId\)\);/.test(contacto)) F("12 · sin sesión, el contacto no queda en el navegador antes de ir a la firma");
+      if (!/if \(!user\) redirect\(`\/register\?next=\$\{encodeURIComponent\(urlFirma\(depto\.avisoId, origen, analysisId\)\)\}`\);/.test(firmaPag)) F("12 · sin sesión, la firma no pide la cuenta (con vuelta a la firma)");
+    }
+
     // ── 10 · EL LENGUAJE frente a la persona ──
     {
       const o = ordenVigente({ nombre: "", rut: "", depto: "Ñuñoa" });
@@ -497,3 +534,8 @@ if (require.main === module) {
 //   Sentry sin el motivo · C11 la bitácora sin el motivo · C12 la baja sin motivo · C13 la copia no recoge el motivo · C14 el admin
 //   sin la pastilla · C15 Partimos no lo dice. La C3 salió VERDE la primera vez por el arnés —una promesa eterna dejó a Node sin nada
 //   pendiente y el proceso salió con 0 sin terminar—: los casos «cuelga» van con una demora finita y el runner exige la línea final.
+// §2 y §12 (18-nov-2026, el contacto pasa a ser HOJA y la firma y Partimos tienen su PC). 14 de 14 en ROJO: B1 el mapa abre la hoja
+//   sin destinoBoton · B2 vuelve a navegar a la página · B3 la selección sin destinoBoton · B4 la franja navega · B5 la hoja no manda a
+//   Partimos al que firmó · B6 la hoja tapa el mapa en el celular · B7 el PC sin el header · B8 la firma sin dos columnas · B9 «Volver» a
+//   la página de respaldo · B10 la orden del PC sin alto fijo · B11 «Desliza» en el PC · B12 el estado de la hoja sin acceso · B13 sin
+//   sesión la firma no pide cuenta · B14 sin sesión no guarda lo contestado.

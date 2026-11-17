@@ -139,7 +139,7 @@ const AUDITADOS: Array<[string, number]> = [
   // búsqueda tampoco (segunda entrega, mismo día).
   ["src/components/guia/GuiaBusqueda.tsx", 0],
   ["src/components/deptos/PrimeraSeleccion.tsx", 0],
-  ["src/app/semanal/semanal-lista.tsx", 1], // ⚠ ACTA (18-nov-2026): «Invierte con Franco» con acceso va al flujo nuevo, con la barra encendida antes
+  ["src/app/semanal/semanal-lista.tsx", 0], // ⚠ ACTA (18-nov-2026): el flujo nuevo de «Invierte con Franco» abre su hoja de contacto, no navega
   ["src/components/guia/InformeEnCamino.tsx", 1],
   ["src/components/formulario-v4/ModalPlausibilidad.tsx", 0],
   ["src/components/guia/InformeDeAviso.tsx", 0],

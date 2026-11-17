@@ -158,7 +158,9 @@ export async function runInviertePronto(): Promise<{ hard: number }> {
       // ya no exige que no haya NADA antes de setInvierte: exige la hoja de Pronto Y que lo que se desvía esté guardado por destinoBoton.
       const alInv = elTarjeta.slice(elTarjeta.indexOf("alInvertir={"));
       const abreLaHoja = /setInvierte\(\{ pin: p, retomar: false \}\)/.test(alInv);
-      const desvioGuardado = !/router\.push|return;/.test(alInv) || /if \(destinoBoton\(\{ acceso: invierteV2, condicion: p\.condicion \}\) === "v2"\) \{ router\.push\(urlContacto\(p\.avisoId, "explorar"\)\); return; \}/.test(alInv);
+      // ⚠ ACTA (18-nov-2026, el contacto pasa a ser hoja): el desvío ya no navega, abre la hoja de contacto (`setContactoV2`). Sigue
+      // exigiendo que lo único que se desvía esté guardado por destinoBoton y que, si no, se abra la hoja de Pronto.
+      const desvioGuardado = !/router\.push|setContactoV2|return;/.test(alInv) || /if \(destinoBoton\(\{ acceso: invierteV2, condicion: p\.condicion \}\) === "v2"\) \{ setContactoV2\(p\); return; \}/.test(alInv);
       if (!/inscritos=\{(invierteV2 \? undefined : )?inscritos\}/.test(elTarjeta) || !abreLaHoja || !desvioGuardado) F("1 · Explorar no le pasa a la tarjeta los inscritos y la hoja de «Invierte con Franco»");
       // La selección del dashboard usa la misma regla, con el `tramo` «negociar» como negociable.
       const sel = codigo("src/app/semanal/semanal-lista.tsx");
@@ -382,3 +384,6 @@ if (require.main === module) {
 // conFlujoV2. Reescritos sin aflojarlos: siguen exigiendo la hoja de Pronto y la franja solo al dueño, y además que el desvío esté
 // guardado por destinoBoton. 5 de 5 en ROJO: P1 el mapa ya no abre la hoja · P2 desvía sin guardia · P3 no pasa los inscritos ·
 // P4 la franja LTR sin isOwner · P5 la STR sin isOwner. Las 34 del 11 y el 12-nov siguen siendo las del tier.
+// ── ACTA (18-nov-2026, el contacto del flujo nuevo pasa a ser hoja) ──────────
+// El desvío de Explorar ya no navega: abre la hoja de contacto (setContactoV2). Predicado reescrito con la misma exigencia (la hoja de
+// Pronto si no hay acceso y un usado; el desvío, solo bajo destinoBoton). 2 de 2 en ROJO: P2b desvía sin guardia · P1b no abre la hoja.
