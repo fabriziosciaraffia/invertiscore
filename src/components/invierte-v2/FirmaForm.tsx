@@ -110,7 +110,7 @@ export function FirmaForm({ depto, deptoCorto, origen, analysisId, sinContacto }
           onBlur={() => { const n = normalizarRut(rut); if (n) setRut(formatearRut(n)); }}
           aria-invalid={rut.trim() !== "" && !rutValido ? true : undefined} data-inv2="rut" />
       </div>
-      <div className="inv-pregunta">
+      <div className="inv-pregunta iv2-bloque-orden">
         <div className="iv2-orden-cab"><span>{F.tuOrden}</span><span className="iv2-version">{F.version(VERSION_ORDEN)}</span></div>
         <div ref={caja} className="iv2-orden" tabIndex={0} role="document" aria-label={orden.titulo} onScroll={revisarFinal} data-inv2="orden">
           <p className="iv2-orden-t">{orden.titulo}</p>
@@ -118,7 +118,7 @@ export function FirmaForm({ depto, deptoCorto, origen, analysisId, sinContacto }
           {orden.clausulas.map((c) => <p key={c.n}><b>{c.n}. {c.titulo}.</b> {c.texto}</p>)}
           <p className="iv2-orden-pie">{orden.pie}</p>
         </div>
-        <span className="iv2-desliza" data-listo={leyo ? "1" : undefined}>{F.desliza}</span>
+        <span className="iv2-desliza" data-listo={leyo ? "1" : undefined}><span className="iv2-solo-movil">{F.desliza}</span><span className="iv2-solo-pc">{F.deslizaPc}</span></span>
       </div>
       <label className="iv2-casilla">
         <input type="checkbox" checked={acepto} onChange={(e) => { setAcepto(e.target.checked); setError(null); }} data-inv2="acepto" />

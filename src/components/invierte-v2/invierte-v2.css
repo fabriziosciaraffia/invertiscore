@@ -52,3 +52,46 @@
 .iv2-porque { border: 1px solid var(--franco-border); border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; }
 .iv2-porque h2 { margin: 0; font-size: 14px; font-weight: 600; }
 .iv2-porque p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--franco-text-secondary); }
+
+/* ── 1.2 CONTACTO COMO HOJA (18-nov-2026): las clases de la hoja de Pronto + esto. En el celular sube desde abajo con el mapa
+      asomando arriba; en el PC, ventana centrada con ✕ (el mismo botón cambia de ícono). ── */
+.iv2-solo-pc { display: none; }
+.iv2-hoja { max-height: calc(100dvh - 88px); }
+.iv2-hoja .iv2-paso { color: #FFFFFF; }
+@media (min-width: 768px) {
+  .iv2-hoja { max-height: calc(100dvh - 48px); }
+  .iv2-hoja .iv2-solo-pc { display: block; }
+  .iv2-hoja .iv2-solo-movil { display: none; }
+}
+
+/* ── FIRMA Y PARTIMOS EN EL PC (18-nov-2026, láminas 2.1-firma-pc y 2.2-partimos-pc): el HeaderFranco real, ancho de escritorio
+      y dos columnas. En el celular se quedan como estaban (la cabecera con el degradado). ── */
+.iv2-pc-barra { display: none; }
+@media (min-width: 1024px) {
+  .iv2-con-pc .iv2-solo-pc { display: block; }
+  .iv2-con-pc .iv2-solo-movil { display: none; }
+  .iv2-con-pc { background: var(--franco-card); }
+  .iv2-con-pc .iv2-marco { max-width: 1080px; min-height: auto; margin: 0 auto; border: 0; border-radius: 0; overflow: visible; background: transparent; padding: 0 0 48px; }
+  .iv2-con-pc .inv-cab { display: none; }
+  .iv2-con-pc .iv2-pc-barra { display: flex; flex-direction: column; gap: 10px; padding: 28px 0 8px; }
+  .iv2-pc-volver { align-self: flex-start; font-size: 14px; font-weight: 600; color: var(--franco-text); text-decoration: none; }
+  .iv2-pc-volver:hover { text-decoration: underline; text-underline-offset: 3px; }
+  .iv2-eyebrow { font-family: var(--font-mono, "JetBrains Mono", ui-monospace, monospace); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--franco-text-muted); }
+  .iv2-con-pc .inv-cuerpo { padding: 8px 0 0; }
+
+  /* La firma: datos, casilla y botón a la izquierda; la orden a la derecha, siempre a la vista, con alto fijo (así el botón se
+     habilita solo al llegar al final del texto, aunque la pantalla sea grande). El orden del DOM es el del celular. */
+  .iv2-firma { display: grid; grid-template-columns: 420px minmax(0, 1fr); column-gap: 56px; row-gap: 16px; align-items: start; }
+  .iv2-firma > * { grid-column: 1; }
+  .iv2-firma .iv2-bloque-orden { grid-column: 2; grid-row: 1 / span 8; position: sticky; top: 24px; }
+  .iv2-firma .iv2-orden { height: 480px; }
+  .iv2-firma .iv2-acciones { margin-top: 4px; }
+
+  /* Partimos: confirmación y acción a la izquierda; lo que sigue a la derecha, con el primer paso marcado. */
+  .iv2-partimos { display: grid; grid-template-columns: 460px minmax(0, 1fr); column-gap: 64px; row-gap: 20px; align-items: start; }
+  .iv2-partimos > * { grid-column: 1; }
+  .iv2-partimos .iv2-bloque-pasos { grid-column: 2; grid-row: 1 / span 6; }
+  .iv2-partimos .iv2-pasos li:first-child .iv2-num { background: var(--franco-text); color: var(--franco-card); }
+  .iv2-partimos .iv2-acciones { margin-top: 0; }
+  .iv2-partimos .iv2-guardada { text-align: left; }
+}

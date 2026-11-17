@@ -33,6 +33,14 @@ export function origenDe(sp: Record<string, string | string[] | undefined>): Ori
   return esOrigen(d) ? d : "explorar";
 }
 
+/** Adónde vuelve «Volver»: a la superficie de donde salió (el mapa con su depto, la selección o el informe), nunca a la página de
+ *  respaldo del contacto. */
+export function volverAlOrigen(avisoId: string, origen: OrigenInvierte, analysisId: string | null): string {
+  if (origen === "explorar") return `/explorar?a=${encodeURIComponent(avisoId)}`;
+  if (origen === "seleccion") return "/dashboard#seleccion";
+  return analysisId ? `/analisis/${analysisId}` : "/dashboard";
+}
+
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export function analysisDe(sp: Record<string, string | string[] | undefined>): string | null {
   const a = sp.a;

@@ -86,7 +86,7 @@ import { recalcularEnCola, respaldoDelFusible, respuestaDeComuna, type AvanceRec
 import type { CasoCompartido } from "./compartido-hoja";
 import { useInscritos } from "@/components/invierte/inscritos";
 import { INVIERTE_COPY, type DeptoInvierte } from "@/lib/invierte/invierte";
-import { destinoBoton, urlContacto } from "@/lib/invierte-v2/destino";
+import { destinoBoton } from "@/lib/invierte-v2/destino";
 import { lineaDepto } from "@/lib/guia/linea-depto";
 import "./explorar.css";
 import "@/components/invierte/invierte.css";
@@ -104,6 +104,8 @@ const HojaCalculo = dynamic(() => import("./hoja-calculo").then((m) => m.HojaCal
 const HojaCompartida = dynamic(() => import("./compartido-hoja").then((m) => m.HojaCompartida), { ssr: false, loading: () => null });
 const PopupRecalculo = dynamic(() => import("./recalculo").then((m) => m.PopupRecalculo), { ssr: false, loading: () => null });
 const HojaInvierte = dynamic(() => import("@/components/invierte/HojaInvierte").then((m) => m.HojaInvierte), { ssr: false, loading: () => null });
+// Invierte con Franco, comprador (18-nov-2026): la hoja de contacto del flujo nuevo, solo con acceso y un usado.
+const HojaContacto = dynamic(() => import("@/components/invierte-v2/HojaContacto").then((m) => m.HojaContacto), { ssr: false, loading: () => null });
 
 /** El depto de «Invierte con Franco» desde un pin (11-nov-2026): la línea, el precio publicado y el chip (Ajustar si es negociable). */
 const deptoInvierteDePin = (p: PinMapa): DeptoInvierte => ({ avisoId: p.avisoId, linea: lineaDepto(p), precioUF: p.precioUF, veredicto: esNegociado(p) ? "AJUSTA SUPUESTOS" : p.veredicto, score: esNegociado(p) ? null : p.score });
@@ -277,6 +279,7 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
   const [registro, setRegistro] = useState<{ pedido: PedidoRegistro; filtros: FiltrosPortal; orden: OrdenPortal } | null>(null);
   // «Invierte con Franco» (11-nov-2026): la hoja de inscripción del pin; `retomar` al volver del registro con lo contestado.
   const [invierte, setInvierte] = useState<{ pin: PinMapa; retomar: boolean } | null>(null);
+  const [contactoV2, setContactoV2] = useState<PinMapa | null>(null);
   const inscritos = useInscritos(!sinCuenta);
   const [bienvenida, setBienvenida] = useState(false);
   // «¿Cómo se calcula?» (30-oct-2026): la hoja corta del enlace de la barra de arriba, con y sin cuenta. Abre directo (03-nov-2026).
@@ -1119,7 +1122,7 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
               inscritos={invierteV2 ? undefined : inscritos}
               alInvertir={(p) => {
                 // Con acceso y un usado, el flujo nuevo; si no, la hoja de Pronto de siempre (invierte-v2/destino.ts).
-                if (destinoBoton({ acceso: invierteV2, condicion: p.condicion }) === "v2") { router.push(urlContacto(p.avisoId, "explorar")); return; }
+                if (destinoBoton({ acceso: invierteV2, condicion: p.condicion }) === "v2") { setContactoV2(p); return; }
                 if (sinCuenta) void import("./hoja-registro");
                 setInvierte({ pin: p, retomar: false });
               }}
@@ -1184,6 +1187,9 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
         />
       )}
 
+      {contactoV2 && (
+        <HojaContacto depto={deptoInvierteDePin(contactoV2)} origen="explorar" sinSesion={sinCuenta} alCerrar={() => setContactoV2(null)} />
+      )}
       {invierte && (
         <HojaInvierte
           depto={deptoInvierteDePin(invierte.pin)}

@@ -13,6 +13,7 @@ import { FLUJO_COPY } from "@/lib/invierte-v2/flujo";
 import { INVIERTE_COPY, EVENTOS_INVIERTE, type DeptoInvierte } from "@/lib/invierte/invierte";
 import { PUBLICACION_PORTADA } from "@/lib/guia/copy";
 import { HojaInvierte } from "./HojaInvierte";
+import { HojaContacto } from "@/components/invierte-v2/HojaContacto";
 import "./invierte.css";
 
 const F = INVIERTE_COPY.franja;
@@ -29,6 +30,7 @@ export function FranjaInvierte({ depto, inscrito: inscritoInicial, publicacion, 
 }) {
   const posthog = usePostHog();
   const [hoja, setHoja] = useState(false);
+  const [contactoV2, setContactoV2] = useState(false);
   const [inscritoPronto, setInscrito] = useState(inscritoInicial);
   const inscrito = !flujoV2 && inscritoPronto;
   useEffect(() => {
@@ -65,7 +67,7 @@ export function FranjaInvierte({ depto, inscrito: inscritoInicial, publicacion, 
             data-invierte="boton"
             onClick={() => {
               posthog?.capture(EVENTOS_INVIERTE.abrir, { aviso_id: depto.avisoId, origen: "informe", veredicto: depto.veredicto, sin_cuenta: false });
-              if (flujoV2 && !demo) { window.location.assign(flujoV2); return; }
+              if (flujoV2 && !demo) { setContactoV2(true); return; }
               setHoja(true);
             }}
           >
@@ -78,6 +80,9 @@ export function FranjaInvierte({ depto, inscrito: inscritoInicial, publicacion, 
           <a href={publicacion.url} target="_blank" rel="noopener noreferrer" className="inv-franja-enlace" data-publicacion="enlace">{PUBLICACION_PORTADA.enlace} ↗</a>
         ))}
       </div>
+      {contactoV2 && flujoV2 && !demo && (
+        <HojaContacto depto={depto} origen="informe" analysisId={depto.analysisId ?? null} alCerrar={() => setContactoV2(false)} />
+      )}
       {hoja && !demo && (
         <HojaInvierte depto={depto} origen="informe" alInscrito={() => setInscrito(true)} alCerrar={() => setHoja(false)} />
       )}

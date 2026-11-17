@@ -16,6 +16,10 @@ export const FLUJO_COPY = {
   cabecera: "Invierte con Franco",
   paso1: "1 de 2",
   paso2: "2 de 2",
+  /** El rótulo de arriba en el PC (láminas 2.1-firma-pc y 2.2-partimos-pc). */
+  rotuloFirma: "Invierte con Franco · 2 de 2",
+  rotuloPartimos: "Invierte con Franco · orden firmada",
+  rotuloContacto: "Invierte con Franco · 1 de 2",
   volver: "Volver",
   contacto: {
     titulo: "Invierte en este depto con Franco",
@@ -37,6 +41,8 @@ export const FLUJO_COPY = {
     tuOrden: "Tu orden de visita y acompañamiento",
     version: (v: number) => `VERSIÓN ${v}`,
     desliza: "Desliza hasta el final para poder firmar.",
+    /** En el PC (lámina 2.1-firma-pc). */
+    deslizaPc: "Lee hasta el final para poder firmar. El botón se activa cuando llegas al último párrafo.",
     acepto: "Leí la orden y la acepto.",
     firmar: "Firmar y partir",
     firmando: "Firmando…",
@@ -57,7 +63,9 @@ export const FLUJO_COPY = {
       { titulo: "Te acompañamos hasta la escritura", texto: "La oferta, la promesa y el crédito, con los números de Franco en la mano." },
     ],
     perfil: "Hacer mi perfil de inversión",
-    guardada: "Tu orden firmada queda guardada en tu cuenta.",
+    /** Solo cuando la copia de verdad salió (lámina 2.2-partimos-pc); si no, `copiaPendiente`. */
+    guardada: "Tu orden firmada queda guardada en tu cuenta y te llegó una copia por correo.",
+    loQueSigue: "Lo que sigue",
     /** Si la copia por correo todavía no salió (18-nov-2026): honesto, con la orden a mano. */
     copiaPendiente: "Todavía no pudimos mandarte la copia por correo; tu orden ya está guardada y la puedes ver aquí.",
     verOrden: "Ver mi orden",

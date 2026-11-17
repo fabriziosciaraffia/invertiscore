@@ -21,11 +21,13 @@ export default async function PartimosPage() {
   const P = FLUJO_COPY.partimos;
   const comuna = orden.deptoLinea.split(" · ")[0]?.trim() || null;
   return (
-    <MarcoInvierte volver={null} pantalla="partimos">
+    <MarcoInvierte volver={null} pantalla="partimos" layout="partimos" pc={{ sesionEmail: user.email ?? null, rotulo: FLUJO_COPY.rotuloPartimos }}>
       <div className="inv-encabezado">
         <h1 className="iv2-titulo-grande" id="iv2-t">{P.titulo(primerNombre(orden.nombre))}</h1>
         <p className="inv-parrafo">{P.parrafo(comuna)}</p>
       </div>
+      <div className="iv2-bloque-pasos">
+      <span className="iv2-eyebrow iv2-solo-pc">{P.loQueSigue}</span>
       <ol className="iv2-pasos" data-inv2="pasos">
         {P.pasos.map((p, i) => (
           <li key={p.titulo}>
@@ -34,6 +36,7 @@ export default async function PartimosPage() {
           </li>
         ))}
       </ol>
+      </div>
       <div className="iv2-acciones">
         <Link href={URL_PERFIL} className="inv-principal" data-inv2="perfil">{P.perfil}</Link>
         {orden.copiaEnviadaAt ? (

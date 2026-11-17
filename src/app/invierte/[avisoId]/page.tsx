@@ -4,7 +4,7 @@ import { esPie, esUrgencia } from "@/lib/invierte/invierte";
 import { FLUJO_COPY } from "@/lib/invierte-v2/flujo";
 import { URL_PARTIMOS } from "@/lib/invierte-v2/destino";
 import { leerPersona, ordenVigenteDe } from "@/lib/invierte-v2/servidor";
-import { METADATA_FLUJO, analysisDe, deptoParaPagina, origenDe, sesionYAcceso } from "@/lib/invierte-v2/paginas";
+import { METADATA_FLUJO, analysisDe, deptoParaPagina, origenDe, sesionYAcceso, volverAlOrigen } from "@/lib/invierte-v2/paginas";
 import { MarcoInvierte } from "@/components/invierte-v2/MarcoInvierte";
 import { ContactoForm } from "@/components/invierte-v2/ContactoForm";
 
@@ -26,9 +26,8 @@ export default async function ContactoPage({ params, searchParams }: { params: {
     if (persona) inicial = { urgencia: esUrgencia(persona.urgencia) ? persona.urgencia : null, pie: esPie(persona.pie) ? persona.pie : null, whatsapp: persona.whatsapp };
   }
   const origen = origenDe(searchParams);
-  const volver = origen === "explorar" ? `/explorar?a=${encodeURIComponent(depto.avisoId)}` : origen === "seleccion" ? "/dashboard#seleccion" : analysisDe(searchParams) ? `/analisis/${analysisDe(searchParams)}` : "/dashboard";
   return (
-    <MarcoInvierte volver={volver} paso={FLUJO_COPY.paso1} pantalla="contacto">
+    <MarcoInvierte volver={volverAlOrigen(depto.avisoId, origen, analysisDe(searchParams))} paso={FLUJO_COPY.paso1} pantalla="contacto" pc={{ sesionEmail: user?.email ?? null, rotulo: FLUJO_COPY.rotuloContacto }}>
       <ContactoForm depto={depto} origen={origen} analysisId={analysisDe(searchParams)} inicial={inicial} sinSesion={!user} />
     </MarcoInvierte>
   );

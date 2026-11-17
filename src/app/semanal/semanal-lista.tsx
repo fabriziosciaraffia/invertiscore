@@ -60,10 +60,12 @@ import type { ResumenInforme } from "@/lib/informe-propio";
 import dynamic from "next/dynamic";
 import { puedeInvertir } from "@/lib/invierte/invierte";
 import { BotonInvierte } from "@/components/invierte/BotonInvierte";
-import { destinoBoton, urlContacto } from "@/lib/invierte-v2/destino";
+import { destinoBoton } from "@/lib/invierte-v2/destino";
 import { useInscritos } from "@/components/invierte/inscritos";
 
 const HojaInvierte = dynamic(() => import("@/components/invierte/HojaInvierte").then((m) => m.HojaInvierte), { ssr: false, loading: () => null });
+// Invierte con Franco, comprador (18-nov-2026): la hoja de contacto del flujo nuevo, solo con acceso y un usado.
+const HojaContacto = dynamic(() => import("@/components/invierte-v2/HojaContacto").then((m) => m.HojaContacto), { ssr: false, loading: () => null });
 
 const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
 const pct = (n: number) => String(Math.round(n * 10) / 10).replace(".", ",");
@@ -144,6 +146,7 @@ export function SemanalLista({
   const [verTodos, setVerTodos] = useState(false);
   // «Invierte con Franco» (11-nov-2026): la hoja de inscripción del depto tocado, y los ya inscritos (la etiqueta).
   const [invierte, setInvierte] = useState<ItemSemanal | null>(null);
+  const [contactoV2, setContactoV2] = useState<ItemSemanal | null>(null);
   const inscritos = useInscritos(true);
   // El aviso antes de gastar (13-oct-2026). `sin`: el servidor dijo que no quedan, aunque la página creyera que sí.
   // `analizando` (21-oct-2026): renta larga, generando con el aviso abierto.
@@ -416,7 +419,7 @@ export function SemanalLista({
         {error?.avisoId === it.avisoId && <p className="sel-error" role="alert">{error.texto}</p>}
         {!(corta && noDa.has(it.avisoId)) && puedeInvertir({ condicion: it.condicion, veredicto: it.veredicto, negociable: it.tramo === "negociar" }) && (
           <BotonInvierte avisoId={it.avisoId} origen="seleccion" veredicto={it.veredicto ?? ""} inscrito={!invierteV2 && inscritos.has(it.avisoId)}
-            alTocar={() => (destinoBoton({ acceso: invierteV2, condicion: it.condicion }) === "v2" ? (iniciarCarga(claveActual()), router.push(urlContacto(it.avisoId, "seleccion"))) : setInvierte(it))} />
+            alTocar={() => (destinoBoton({ acceso: invierteV2, condicion: it.condicion }) === "v2" ? setContactoV2(it) : setInvierte(it))} />
         )}
       </article>
     );
@@ -495,6 +498,9 @@ export function SemanalLista({
           alReintentarInforme={reintentarInforme}
           avisoId={confirmar.it.avisoId}
         />
+      )}
+      {contactoV2 && (
+        <HojaContacto depto={{ avisoId: contactoV2.avisoId, linea: ojoDe(contactoV2), precioUF: contactoV2.precioUF, veredicto: contactoV2.tramo === "negociar" ? "AJUSTA SUPUESTOS" : contactoV2.veredicto ?? null, score: contactoV2.tramo === "negociar" ? null : contactoV2.score }} origen="seleccion" alCerrar={() => setContactoV2(null)} />
       )}
       {invierte && (
         <HojaInvierte
