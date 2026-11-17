@@ -164,11 +164,15 @@ export async function guardarContacto(admin: SupabaseClient, user: UsuarioInv, p
 // ── LA FIRMA ─────────────────────────────────────────────────────────────────
 export interface DepsFirma {
   generarPdf: (o: OrdenParaPdf) => Promise<Uint8Array>;
-  enviarCopia: (p: { to: string; userId: string | null; nombre: string; depto: string; firmadoAt: string; pdf: Uint8Array; ordenId: string }) => Promise<boolean>;
+  /** `ok: false` con el MOTIVO (sin-llave, bloqueo:…, baja, eliminacion, resend:…, excepcion:…): va a Sentry y a la bitácora. */
+  enviarCopia: (p: { to: string; userId: string | null; nombre: string; depto: string; firmadoAt: string; pdf: Uint8Array; ordenId: string }) => Promise<{ ok: true } | { ok: false; motivo: string }>;
 }
 
+/** De dónde vino el intento de completar la orden (va a la bitácora). */
+export type OrigenIntento = "firma" | "ver" | "cron" | "admin";
+
 export type ResultadoFirma =
-  | { ok: true; ordenId: string; yaFirmada: boolean; pdf: boolean; copia: boolean }
+  | { ok: true; ordenId: string; yaFirmada: boolean; pdf: boolean; copia: boolean; motivoCopia: string | null }
   | { ok: false; error: "sin-contacto" | "depto" | "sin-correo" | "guardar" };
 
 export async function firmar(admin: SupabaseClient, user: UsuarioInv, pedido: PedidoFirma, ctx: ContextoPedido, deps: DepsFirma): Promise<ResultadoFirma> {
@@ -177,7 +181,7 @@ export async function firmar(admin: SupabaseClient, user: UsuarioInv, pedido: Pe
   if (!persona) return { ok: false, error: "sin-contacto" };
   const previa = await ordenVigenteDe(admin, user.id);
   if (previa) {
-    const c = await completarOrden(admin, previa, deps);
+    const c = await completarOrden(admin, previa, deps, "firma");
     return { ok: true, ordenId: previa.id, yaFirmada: true, ...c };
   }
   const aviso = await deptoDelFlujo(admin, pedido.avisoId);
@@ -205,7 +209,7 @@ export async function firmar(admin: SupabaseClient, user: UsuarioInv, pedido: Pe
     // Dos pestañas firmando a la vez: la otra ya la guardó (índice único por cuenta y versión).
     if (error?.code === "23505") {
       const ya = await ordenVigenteDe(admin, user.id);
-      if (ya) return { ok: true, ordenId: ya.id, yaFirmada: true, ...(await completarOrden(admin, ya, deps)) };
+      if (ya) return { ok: true, ordenId: ya.id, yaFirmada: true, ...(await completarOrden(admin, ya, deps, "firma")) };
     }
     console.error("[inv2] firma:", error?.message);
     return { ok: false, error: "guardar" };
@@ -213,12 +217,12 @@ export async function firmar(admin: SupabaseClient, user: UsuarioInv, pedido: Pe
   const orden = aOrden(data as Record<string, unknown>);
   await admin.from(T_PERSONAS).update({ estado: "firmo", updated_at: new Date().toISOString() }).eq("user_id", user.id);
   await anotar(admin, { userId: user.id, email: user.email, ordenId: orden.id, actor: "persona", accion: "firma", detalle: { version: VERSION_ORDEN, aviso_id: aviso.avisoId, texto_sha256: orden.textoSha256 }, ctx, esPrueba });
-  const c = await completarOrden(admin, orden, deps);
+  const c = await completarOrden(admin, orden, deps, "firma");
   return { ok: true, ordenId: orden.id, yaFirmada: false, ...c };
 }
 
 /** Deja la orden completa: su PDF guardado (con huella) y la copia enviada. Idempotente; cada parte que falla se reintenta la próxima vez. */
-export async function completarOrden(admin: SupabaseClient, orden: OrdenInv, deps: DepsFirma): Promise<{ pdf: boolean; copia: boolean }> {
+export async function completarOrden(admin: SupabaseClient, orden: OrdenInv, deps: DepsFirma, origen: OrigenIntento): Promise<{ pdf: boolean; copia: boolean; motivoCopia: string | null }> {
   let pdfBytes: Uint8Array | null = null;
   let pdf = !!orden.pdfPath;
   if (!pdf) {
@@ -238,22 +242,99 @@ export async function completarOrden(admin: SupabaseClient, orden: OrdenInv, dep
     }
   }
   let copia = !!orden.copiaEnviadaAt;
+  let motivoCopia: string | null = null;
+  if (!copia && !pdf) motivoCopia = "sin-pdf";
   if (!copia && pdf) {
     try {
       if (!pdfBytes) pdfBytes = await descargarPdf(admin, orden);
-      if (pdfBytes) {
-        const enviado = await deps.enviarCopia({ to: orden.email, userId: orden.userId, nombre: orden.nombre, depto: deptoDeLinea(orden.deptoLinea), firmadoAt: orden.firmadoAt, pdf: pdfBytes, ordenId: orden.id });
-        if (enviado) {
+      if (!pdfBytes) motivoCopia = "pdf-no-se-pudo-leer";
+      else {
+        const r = await deps.enviarCopia({ to: orden.email, userId: orden.userId, nombre: orden.nombre, depto: deptoDeLinea(orden.deptoLinea), firmadoAt: orden.firmadoAt, pdf: pdfBytes, ordenId: orden.id });
+        if (r.ok) {
           await admin.from(T_ORDENES).update({ copia_enviada_at: new Date().toISOString() }).eq("id", orden.id).is("copia_enviada_at", null);
           copia = true;
-          await anotar(admin, { userId: orden.userId, email: orden.email, ordenId: orden.id, actor: "sistema", accion: "copia_enviada", detalle: { a: orden.email }, esPrueba: orden.esPrueba });
-        }
+          await anotar(admin, { userId: orden.userId, email: orden.email, ordenId: orden.id, actor: "sistema", accion: "copia_enviada", detalle: { a: orden.email, origen }, esPrueba: orden.esPrueba });
+        } else motivoCopia = r.motivo;
       }
     } catch (e) {
-      console.error("[inv2] copia:", e instanceof Error ? e.message : e);
+      motivoCopia = `excepcion:${(e instanceof Error ? e.message : String(e)).slice(0, 160)}`;
+      console.error("[inv2] copia:", motivoCopia);
+    }
+    if (!copia) {
+      const intento = (await intentosFallidos(admin, orden.id)) + 1;
+      await anotar(admin, { userId: orden.userId, email: orden.email, ordenId: orden.id, actor: "sistema", accion: "copia_fallida", detalle: { motivo: motivoCopia, intento, origen }, esPrueba: orden.esPrueba });
     }
   }
-  return { pdf, copia };
+  return { pdf, copia, motivoCopia };
+}
+
+async function intentosFallidos(admin: SupabaseClient, ordenId: string): Promise<number> {
+  const { data } = await admin.from(T_BITACORA).select("id").eq("orden_id", ordenId).eq("accion", "copia_fallida");
+  return (data ?? []).length;
+}
+
+// ── LAS COPIAS QUE NO SALIERON (18-nov-2026): el estado, el reintento del cron y el aviso a hola@ ────────────────────────
+export interface EstadoCopiaOrden {
+  intentos: number;
+  ultimoIntentoAt: string | null;
+  ultimoMotivo: string | null;
+  avisada: boolean;
+}
+
+/** El estado de la copia de cada orden, leído de la bitácora (copia_fallida y copia_avisada). */
+export async function estadoCopias(admin: SupabaseClient, ordenIds: string[]): Promise<Map<string, EstadoCopiaOrden>> {
+  const out = new Map<string, EstadoCopiaOrden>();
+  for (const id of ordenIds) out.set(id, { intentos: 0, ultimoIntentoAt: null, ultimoMotivo: null, avisada: false });
+  if (!ordenIds.length) return out;
+  const { data } = await admin.from(T_BITACORA).select("orden_id, accion, detalle, created_at").in("orden_id", ordenIds).in("accion", ["copia_fallida", "copia_avisada"]).order("created_at", { ascending: true });
+  for (const f of (data ?? []) as Array<{ orden_id: string; accion: string; detalle: Record<string, unknown> | null; created_at: string }>) {
+    const e = out.get(f.orden_id);
+    if (!e) continue;
+    if (f.accion === "copia_avisada") { e.avisada = true; continue; }
+    e.intentos++;
+    e.ultimoIntentoAt = f.created_at;
+    e.ultimoMotivo = typeof f.detalle?.motivo === "string" ? f.detalle.motivo : null;
+  }
+  return out;
+}
+
+export interface DepsReintento {
+  firma: DepsFirma;
+  /** ¿Este correo puede recibir el reintento? (mientras el modo no sea «todos», solo la lista). */
+  puedeRecibir: (email: string) => boolean;
+  avisar: (p: { ordenId: string; email: string; firmadoAt: string; intentos: number; motivo: string | null }) => Promise<void>;
+  ahora?: () => Date;
+}
+
+/** Reintenta las copias pendientes (las de los últimos 7 días, con PDF, hasta 5 intentos) y avisa a hola@ las de más de una hora. */
+export async function reintentarCopias(admin: SupabaseClient, deps: DepsReintento): Promise<{ revisadas: number; enviadas: number; fallidas: number; avisadas: number; fuera: number }> {
+  const { tocaReintentar, debeAvisar, VENTANA_REINTENTO_DIAS } = await import("./copias");
+  const ahora = (deps.ahora ?? (() => new Date()))();
+  const desde = new Date(ahora.getTime() - VENTANA_REINTENTO_DIAS * 86_400_000).toISOString();
+  const { data, error } = await admin.from(T_ORDENES).select(COLS_ORDEN).is("copia_enviada_at", null).gte("firmado_at", desde).order("firmado_at", { ascending: true }).limit(20);
+  if (error) throw new Error(`inv2 reintento: ${error.message}`);
+  const ordenes = ((data ?? []) as Record<string, unknown>[]).map(aOrden);
+  const estados = await estadoCopias(admin, ordenes.map((o) => o.id));
+  const r = { revisadas: ordenes.length, enviadas: 0, fallidas: 0, avisadas: 0, fuera: 0 };
+  for (const o of ordenes) {
+    if (!deps.puedeRecibir(o.email)) { r.fuera++; continue; }
+    const e = estados.get(o.id)!;
+    let motivo = e.ultimoMotivo;
+    let intentos = e.intentos;
+    if (tocaReintentar({ firmadoAt: o.firmadoAt, intentos: e.intentos, ultimoIntentoAt: e.ultimoIntentoAt }, ahora)) {
+      const c = await completarOrden(admin, o, deps.firma, "cron");
+      if (c.copia) { r.enviadas++; continue; }
+      r.fallidas++;
+      motivo = c.motivoCopia;
+      intentos++;
+    }
+    if (debeAvisar({ firmadoAt: o.firmadoAt, yaAvisada: e.avisada }, ahora)) {
+      await deps.avisar({ ordenId: o.id, email: o.email, firmadoAt: o.firmadoAt, intentos, motivo });
+      await anotar(admin, { userId: o.userId, email: o.email, ordenId: o.id, actor: "sistema", accion: "copia_avisada", detalle: { intentos, motivo }, esPrueba: o.esPrueba });
+      r.avisadas++;
+    }
+  }
+  return r;
 }
 
 export function paraPdf(o: OrdenInv): OrdenParaPdf {
@@ -287,7 +368,7 @@ export async function leerOrdenPorId(admin: SupabaseClient, id: string): Promise
 export interface FilaCrm extends PersonaInv {
   linea: string | null;
   precioUF: number | null;
-  orden: { id: string; version: number; firmadoAt: string; pdf: boolean; copia: boolean; esPrueba: boolean } | null;
+  orden: { id: string; version: number; firmadoAt: string; pdf: boolean; copia: boolean; esPrueba: boolean; copiaIntentos: number; copiaUltimoAt: string | null; copiaMotivo: string | null } | null;
   esPrueba: boolean;
   campanaTexto: string;
 }
@@ -309,6 +390,7 @@ export async function leerCrm(admin: SupabaseClient): Promise<{ filas: FilaCrm[]
   }
   const deprueba = new Set(((pruebas.data ?? []) as Record<string, unknown>[]).map((f) => f.user_id as string));
   const avisoDe = new Map(avisos);
+  const copias = await estadoCopias(admin, Array.from(ordenDe.values()).filter((o) => !o.copiaEnviadaAt).map((o) => o.id));
   return {
     sinTabla: false,
     filas: personas.map((p) => {
@@ -318,7 +400,7 @@ export async function leerCrm(admin: SupabaseClient): Promise<{ filas: FilaCrm[]
         ...p,
         linea: a?.linea ?? null,
         precioUF: a?.precioUF ?? null,
-        orden: o ? { id: o.id, version: o.textoVersion, firmadoAt: o.firmadoAt, pdf: !!o.pdfPath, copia: !!o.copiaEnviadaAt, esPrueba: o.esPrueba } : null,
+        orden: o ? { id: o.id, version: o.textoVersion, firmadoAt: o.firmadoAt, pdf: !!o.pdfPath, copia: !!o.copiaEnviadaAt, esPrueba: o.esPrueba, copiaIntentos: copias.get(o.id)?.intentos ?? 0, copiaUltimoAt: copias.get(o.id)?.ultimoIntentoAt ?? null, copiaMotivo: copias.get(o.id)?.ultimoMotivo ?? null } : null,
         esPrueba: deprueba.has(p.userId),
         campanaTexto: textoCampana(p.campana),
       };

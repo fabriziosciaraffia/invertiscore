@@ -7,6 +7,7 @@ import { leerConfigGuia } from "@/lib/guia/guia-servidor";
 import type { PresupuestoFichas } from "@/lib/guia/semanal-servidor";
 import { delDiaPendientes, procesarDelDia } from "@/lib/guia/del-dia-servidor";
 import { avisarAltasPerdidas } from "@/lib/deptos/entrada-servidor";
+import { diarioYLuegoPaso, TOPE_PASO_COPIAS_MS } from "@/lib/invierte-v2/copias";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // La cola del correo del día (16-oct-2026, la puerta B; del-dia.ts): cada 10 minutos, las cuentas nuevas de /deptos cuyo
@@ -39,28 +40,38 @@ export async function GET(request: Request) {
   } catch (e) {
     capturarFallaDeCron(e, { ruta: `GET /api/cron/${NOMBRE}`, operacion: "altas-perdidas" });
   }
-  try {
-    const filas = await delDiaPendientes(admin);
-    const cuenta = { enviada: 0, espera: 0, descartada: 0, ya: 0, fallida: 0 };
-    if (filas.length > 0) {
-      const cfg = await leerConfigGuia(admin);
-      for (const fila of filas) {
-        if (Date.now() - t0 > PRESUPUESTO_MS) break;
-        const presupuesto: PresupuestoFichas = { lecturas: 0, bloqueada: false };
-        try {
-          cuenta[await procesarDelDia(admin, fila, cfg, SITIO, presupuesto)]++;
-        } catch (e) {
-          cuenta.fallida++;
-          capturarFallaDeCron(e, { ruta: `GET /api/cron/${NOMBRE}`, operacion: "procesar", userId: fila.user_id });
+  // INVIERTE CON FRANCO · LAS COPIAS QUE NO SALIERON (18-nov-2026, condición de Fabrizio): AISLADO. `diarioYLuegoPaso` corre
+  // primero TODO el correo diario —envíos y cierre de su corrida— y recién después el reintento, con su propio try (pasoAislado
+  // nunca lanza) y un tope de tiempo dentro del presupuesto. Devuelve siempre la respuesta del correo diario.
+  return diarioYLuegoPaso(
+    async () => {
+      try {
+        const filas = await delDiaPendientes(admin);
+        const cuenta = { enviada: 0, espera: 0, descartada: 0, ya: 0, fallida: 0 };
+        if (filas.length > 0) {
+          const cfg = await leerConfigGuia(admin);
+          for (const fila of filas) {
+            if (Date.now() - t0 > PRESUPUESTO_MS) break;
+            const presupuesto: PresupuestoFichas = { lecturas: 0, bloqueada: false };
+            try {
+              cuenta[await procesarDelDia(admin, fila, cfg, SITIO, presupuesto)]++;
+            } catch (e) {
+              cuenta.fallida++;
+              capturarFallaDeCron(e, { ruta: `GET /api/cron/${NOMBRE}`, operacion: "procesar", userId: fila.user_id });
+            }
+          }
         }
+        const procesadas = cuenta.enviada + cuenta.descartada + cuenta.espera + cuenta.fallida;
+        // Una corrida sin nadie en la cola terminó bien: cuenta como una corrida exitosa.
+        const conteo = procesadas === 0 ? { procesados: 1, exitosos: 1, fallidos: 0 } : { procesados: procesadas, exitosos: procesadas - cuenta.fallida, fallidos: cuenta.fallida };
+        return await cerrarCron(admin, NOMBRE, conteo, { cola: filas.length, ...cuenta, altasPerdidas });
+      } catch (e) {
+        capturarFallaDeCron(e, { ruta: `GET /api/cron/${NOMBRE}`, operacion: "corrida" });
+        return await cerrarCron(admin, NOMBRE, CORRIDA_FALLIDA, { error: e instanceof Error ? e.message : String(e) });
       }
-    }
-    const procesadas = cuenta.enviada + cuenta.descartada + cuenta.espera + cuenta.fallida;
-    // Una corrida sin nadie en la cola terminó bien: cuenta como una corrida exitosa.
-    const conteo = procesadas === 0 ? { procesados: 1, exitosos: 1, fallidos: 0 } : { procesados: procesadas, exitosos: procesadas - cuenta.fallida, fallidos: cuenta.fallida };
-    return cerrarCron(admin, NOMBRE, conteo, { cola: filas.length, ...cuenta, altasPerdidas });
-  } catch (e) {
-    capturarFallaDeCron(e, { ruta: `GET /api/cron/${NOMBRE}`, operacion: "corrida" });
-    return cerrarCron(admin, NOMBRE, CORRIDA_FALLIDA, { error: e instanceof Error ? e.message : String(e) });
-  }
+    },
+    () => import("@/lib/invierte-v2/copias-servidor").then((m) => m.reintentarCopiasDelCron(admin)),
+    () => Math.min(TOPE_PASO_COPIAS_MS, PRESUPUESTO_MS + 30_000 - (Date.now() - t0)),
+    (e) => capturarFallaDeCron(e, { ruta: `GET /api/cron/${NOMBRE}`, operacion: "inv2-copias" }),
+  );
 }

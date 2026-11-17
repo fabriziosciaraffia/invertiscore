@@ -37,7 +37,7 @@ export async function POST(request: Request) {
         properties: { aviso_id: v.pedido.avisoId, version: v.pedido.version, pdf: r.pdf, copia: r.copia },
       }).catch(() => false);
     }
-    if (!r.pdf || !r.copia) captureApiError(new Error(`inv2: orden incompleta (pdf ${r.pdf}, copia ${r.copia})`), { ruta: "/api/invierte-v2/firma", operacion: "completar", userId: user.id, extra: { ordenId: r.ordenId } });
+    if (!r.pdf || !r.copia) captureApiError(new Error(`inv2: orden incompleta (pdf ${r.pdf}, copia ${r.copia}${r.motivoCopia ? `: ${r.motivoCopia}` : ""})`), { ruta: "/api/invierte-v2/firma", operacion: "completar", userId: user.id, extra: { ordenId: r.ordenId, motivoCopia: r.motivoCopia } });
     return NextResponse.json({ ok: true, ordenId: r.ordenId, yaFirmada: r.yaFirmada }, { headers: { "Cache-Control": "no-store" } });
   } catch (e) {
     captureApiError(e, { ruta: "/api/invierte-v2/firma", operacion: "firmar", userId: user.id });

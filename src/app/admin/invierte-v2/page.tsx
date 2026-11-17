@@ -5,7 +5,7 @@ import { INVIERTE_COPY, esPie, esUrgencia } from "@/lib/invierte/invierte";
 import { estadoInterruptor } from "@/lib/invierte-v2/acceso-servidor";
 import { leerCrm } from "@/lib/invierte-v2/servidor";
 import { RAZON_SOCIAL_POR_CONFIRMAR, VERSION_ORDEN } from "@/lib/invierte-v2/orden";
-import { AgregarCorreo, ModoSelect, QuitarCorreo, ReiniciarPrueba } from "./controles";
+import { AgregarCorreo, ModoSelect, QuitarCorreo, ReenviarCopia, ReiniciarPrueba } from "./controles";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +19,7 @@ export default async function AdminInvierteV2Page() {
   const [{ modo, lista }, { filas, sinTabla }] = await Promise.all([estadoInterruptor(), leerCrm(sb)]);
   const H = INVIERTE_COPY.hoja;
   const firmaron = filas.filter((f) => f.orden).length;
+  const sinCopia = filas.filter((f) => f.orden && !f.orden.copia).length;
 
   return (
     <div data-admin="invierte-v2">
@@ -28,6 +29,11 @@ export default async function AdminInvierteV2Page() {
           {fmtNumber(filas.length)} {filas.length === 1 ? "persona" : "personas"} · {fmtNumber(firmaron)} {firmaron === 1 ? "firmó" : "firmaron"} la orden · orden vigente: versión {VERSION_ORDEN}
           {RAZON_SOCIAL_POR_CONFIRMAR && " · razón social de la orden por confirmar"}
         </p>
+        {sinCopia > 0 && (
+          <p className="m-0 mt-2 inline-flex rounded-full border border-[var(--signal-red)] px-3 py-1 font-body text-[12px] font-semibold text-[var(--signal-red)]" data-admin="inv2-sin-copia">
+            {fmtNumber(sinCopia)} {sinCopia === 1 ? "copia sin enviar" : "copias sin enviar"}
+          </p>
+        )}
       </div>
       {sinTabla && (
         <p className="mb-4 rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-3 font-body text-[13px]" role="alert">
@@ -80,7 +86,13 @@ export default async function AdminInvierteV2Page() {
                   {f.orden ? (
                     <>
                       <a href={`/api/admin/invierte-v2?orden=${f.orden.id}`} target="_blank" rel="noopener" className="underline underline-offset-2" data-admin="inv2-ver">Ver</a>
-                      <span className="text-[12px] text-[var(--franco-text-muted)]"> · v{f.orden.version} · {fmtDateShort(f.orden.firmadoAt)}{!f.orden.pdf && " · sin PDF"}{!f.orden.copia && " · copia sin enviar"}</span>
+                      <span className="text-[12px] text-[var(--franco-text-muted)]"> · v{f.orden.version} · {fmtDateShort(f.orden.firmadoAt)}{!f.orden.pdf && " · sin PDF"}</span>
+                      {!f.orden.copia && (
+                        <div className="mt-1 text-[12px] text-[var(--signal-red)]" data-admin="inv2-copia-pendiente">
+                          Copia sin enviar · {f.orden.copiaIntentos} {f.orden.copiaIntentos === 1 ? "intento" : "intentos"}{f.orden.copiaUltimoAt ? ` · último ${fmtDateShort(f.orden.copiaUltimoAt)}` : ""}{f.orden.copiaMotivo ? ` · ${f.orden.copiaMotivo}` : ""}
+                          <div className="mt-1"><ReenviarCopia ordenId={f.orden.id} /></div>
+                        </div>
+                      )}
                     </>
                   ) : "—"}
                 </td>

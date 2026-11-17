@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { captureApiError } from "@/lib/observabilidad";
 import { createServiceClient } from "@/lib/supabase/service";
 import { capturarServidor } from "@/lib/posthog-servidor";
 import { EVENTOS_INV2 } from "@/lib/invierte-v2/flujo";
@@ -20,7 +21,8 @@ export async function GET(request: Request) {
   let orden = await ultimaOrdenDe(admin, user.id);
   if (!orden) return NO_EXISTE();
   if (!orden.pdfPath || !orden.copiaEnviadaAt) {
-    await completarOrden(admin, orden, DEPS_FIRMA);
+    const c = await completarOrden(admin, orden, DEPS_FIRMA, "ver");
+    if (!c.pdf || !c.copia) captureApiError(new Error(`inv2: orden incompleta al verla (pdf ${c.pdf}, copia ${c.copia}${c.motivoCopia ? `: ${c.motivoCopia}` : ""})`), { ruta: "/api/invierte-v2/orden", operacion: "completar", userId: user.id, extra: { ordenId: orden.id, motivoCopia: c.motivoCopia } });
     orden = (await ultimaOrdenDe(admin, user.id)) ?? orden;
   }
   const url = await urlFirmadaPdf(admin, orden);

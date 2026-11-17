@@ -58,6 +58,8 @@ export const FLUJO_COPY = {
     ],
     perfil: "Hacer mi perfil de inversión",
     guardada: "Tu orden firmada queda guardada en tu cuenta.",
+    /** Si la copia por correo todavía no salió (18-nov-2026): honesto, con la orden a mano. */
+    copiaPendiente: "Todavía no pudimos mandarte la copia por correo; tu orden ya está guardada y la puedes ver aquí.",
     verOrden: "Ver mi orden",
     porQueTitulo: "Por qué te vamos a mostrar más opciones",
     porQueTexto: "El trabajo de Franco no se limita a un depto: buscamos que hagas una buena inversión. Por eso, cuando completes tu perfil te mostraremos otras opciones que convienen y están a tu alcance, para que puedas elegir mejor.",

@@ -81,6 +81,26 @@ export function QuitarCorreo({ email }: { email: string }) {
   );
 }
 
+export function ReenviarCopia({ ordenId }: { ordenId: string }) {
+  const router = useRouter();
+  const [ocupado, setOcupado] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <span className="inline-flex items-center gap-1">
+      <button type="button" disabled={ocupado} className={CLASE_BTN} data-admin="inv2-reenviar"
+        onClick={async () => {
+          setOcupado(true); setError(null);
+          const r = await fetch("/api/admin/invierte-v2", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ accion: "reenviar", ordenId }) }).catch(() => null);
+          const d = r ? ((await r.json().catch(() => ({}))) as { copia?: boolean; motivo?: string | null }) : {};
+          setOcupado(false);
+          if (!d.copia) { setError(`No salió${d.motivo ? `: ${d.motivo}` : ""}`); }
+          router.refresh();
+        }}>Reenviar copia</button>
+      {error && <span className="text-[11px] text-[var(--signal-red)]" role="alert">{error}</span>}
+    </span>
+  );
+}
+
 export function ReiniciarPrueba({ userId, email }: { userId: string; email: string | null }) {
   const router = useRouter();
   const [ocupado, setOcupado] = useState(false);

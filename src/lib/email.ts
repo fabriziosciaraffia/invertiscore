@@ -31,6 +31,14 @@ async function exceptuadoDelBloqueo(tipo: TipoCorreo, motivo: MotivoBloqueo, to:
   return excepcionCopiaOrden(tipo, motivo, enLista);
 }
 
+/** POR QUÉ UN CORREO NO SALIÓ (18-nov-2026, Invierte con Franco): `sin-llave`, `bloqueo:<motivo>`, `baja` o `eliminacion`. El
+ *  envío lo avisa por `opciones.alOmitir` (y al registro) sin cambiar lo que devuelve: los llamadores de siempre no se enteran. */
+export type MotivoOmitido = "sin-llave" | `bloqueo:${MotivoBloqueo}` | "baja" | "eliminacion";
+function omitido(opciones: { alOmitir?: (m: MotivoOmitido) => void }, tipo: TipoCorreo, motivo: MotivoOmitido): void {
+  console.info(`[email] ${tipo} no sale: ${motivo}`);
+  opciones.alOmitir?.(motivo);
+}
+
 /**
  * TODO CORREO SALE POR ACÁ (28-sep-2026, auditoría de la medición): manda con Resend, con los
  * tags `tipo` y `pid`, y si salió emite `correo_enviado` a PostHog. Devuelve lo mismo que
@@ -42,10 +50,10 @@ async function enviarCorreo(
   userId: string | null | undefined,
   mensaje: MensajeResend,
   /** La llave de idempotencia de Resend (04-nov-2026): el mismo correo, con la misma llave, sale una vez. */
-  opciones: { idempotencyKey?: string } = {},
+  opciones: { idempotencyKey?: string; alOmitir?: (m: MotivoOmitido) => void } = {},
 ): Promise<{ data: { id: string } | null; error: { message?: string } | null }> {
   const resend = getResend();
-  if (!resend) return { data: null, error: null };
+  if (!resend) { omitido(opciones, tipo, "sin-llave"); return { data: null, error: null }; }
   const to = Array.isArray(mensaje.to) ? mensaje.to[0] : mensaje.to;
   // A quién no se le manda (26-oct-2026, correo-destino.ts): ni a @refranco.ai que no existe ni a una cuenta de prueba sin
   // `recibe_correos`. Se trata como «sin RESEND_API_KEY»: el llamador sigue, sin correo.
@@ -53,7 +61,7 @@ async function enviarCorreo(
   const bloqueo = destinoBloqueado(String(to ?? ""), userId, await cuentasDePruebaSinCorreo());
   if (bloqueo) {
     if (!(await exceptuadoDelBloqueo(tipo, bloqueo, String(to ?? "")))) {
-      console.info(`[email] ${tipo} no sale: ${bloqueo}`);
+      omitido(opciones, tipo, `bloqueo:${bloqueo}`);
       return { data: null, error: null };
     }
   }
@@ -62,7 +70,7 @@ async function enviarCorreo(
   if (TIPOS_CON_BAJA.has(tipo) && userId) {
     const deBaja = await conBajaDeCorreos(adminCorreo(), [userId]).then((s) => s.has(userId), () => true);
     if (deBaja) {
-      console.info(`[email] ${tipo} no sale: la persona se dio de baja`);
+      omitido(opciones, tipo, "baja");
       return { data: null, error: null };
     }
   }
@@ -71,7 +79,7 @@ async function enviarCorreo(
   if (TIPOS_QUE_FRENA_LA_ELIMINACION.has(tipo) && userId) {
     const { data: cuenta } = await adminCorreo().auth.admin.getUserById(userId).catch(() => ({ data: null }));
     if (eliminacionPedida(cuenta?.user?.app_metadata as Record<string, unknown> | undefined)) {
-      console.info(`[email] ${tipo} no sale: la cuenta pidió eliminarse`);
+      omitido(opciones, tipo, "eliminacion");
       return { data: null, error: null };
     }
   }
@@ -508,18 +516,20 @@ export async function sendInscripcionInvierteInterna(p: Parameters<typeof correo
 
 /** Invierte con Franco, comprador (18-nov-2026): la copia de la orden firmada, con el PDF adjunto, a quien firmó. Transaccional
  *  (no la frenan la baja ni la eliminación pedida). La llave de idempotencia es la orden: la misma orden, un solo correo. */
-export async function sendCopiaOrdenInvierte(p: { to: string; userId: string | null; nombre: string | null; depto: string; fecha: string; pdf: Uint8Array; ordenId: string }): Promise<boolean> {
+export async function sendCopiaOrdenInvierte(p: { to: string; userId: string | null; nombre: string | null; depto: string; fecha: string; pdf: Uint8Array; ordenId: string }): Promise<{ ok: true } | { ok: false; motivo: string }> {
   const { subject, html } = correoCopiaOrden({ nombre: p.nombre, depto: p.depto, fecha: p.fecha, sitio: SITE_URL });
+  let motivoOmitido: MotivoOmitido | null = null;
   try {
     const res = await enviarCorreo("invierte_orden_copia", p.userId, {
       from: FROM_EMAIL, to: p.to, subject, html,
       attachments: [{ filename: "orden-de-visita-franco.pdf", content: Buffer.from(p.pdf) }],
-    }, { idempotencyKey: `invierte-orden-${p.ordenId}` });
-    if (res.error) { console.error("[invierte_orden_copia] no salió:", res.error.message); return false; }
-    return !!res.data;
+    }, { idempotencyKey: `invierte-orden-${p.ordenId}`, alOmitir: (m) => { motivoOmitido = m; } });
+    if (res.error) { console.error("[invierte_orden_copia] no salió:", res.error.message); return { ok: false, motivo: `resend:${(res.error.message ?? "sin mensaje").slice(0, 160)}` }; }
+    if (res.data) return { ok: true };
+    return { ok: false, motivo: motivoOmitido ?? "sin-respuesta" };
   } catch (error) {
     console.error("[invierte_orden_copia] no salió:", error);
-    return false;
+    return { ok: false, motivo: `excepcion:${(error instanceof Error ? error.message : String(error)).slice(0, 160)}` };
   }
 }
 

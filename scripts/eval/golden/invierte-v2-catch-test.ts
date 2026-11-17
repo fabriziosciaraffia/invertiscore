@@ -37,7 +37,9 @@ import { destinoBoton, urlContacto } from "../../../src/lib/invierte-v2/destino"
 import { normalizarRut, formatearRut, dvRut } from "../../../src/lib/invierte-v2/rut";
 import { ordenVigente, plantillaVigente, textoPlano, VERSION_ORDEN, RAZON_SOCIAL_FRANCO, RUT_FRANCO } from "../../../src/lib/invierte-v2/orden";
 import { FLUJO_COPY, EVENTOS_INV2, validarContacto, validarFirma } from "../../../src/lib/invierte-v2/flujo";
-import { firmar, reiniciarPrueba, guardarContacto, type DepsFirma } from "../../../src/lib/invierte-v2/servidor";
+import { firmar, reiniciarPrueba, guardarContacto, completarOrden, reintentarCopias, type DepsFirma, type OrdenInv } from "../../../src/lib/invierte-v2/servidor";
+import { tocaReintentar, debeAvisar, pasoAislado, diarioYLuegoPaso, MAX_INTENTOS_COPIA } from "../../../src/lib/invierte-v2/copias";
+import { puedeRecibirCopia } from "../../../src/lib/invierte-v2/copias-servidor";
 import { htmlOrden } from "../../../src/lib/invierte-v2/orden-pdf";
 import { excepcionCopiaOrden } from "../../../src/lib/correo-destino";
 import { TIPOS_CON_BAJA, TIPOS_QUE_FRENA_LA_ELIMINACION } from "../../../src/lib/correo-baja";
@@ -74,7 +76,7 @@ function falso(datos: Record<string, Record<string, unknown>[]>) {
     let fila: unknown = null;
     let uno = false;
     const filtros: Array<[string, string, unknown]> = [];
-    const pasa = (r: Record<string, unknown>) => filtros.every(([k, t, v]) => (t === "eq" ? r[k] === v : t === "in" ? (v as unknown[]).includes(r[k]) : t === "is" ? (r[k] ?? null) === v : true));
+    const pasa = (r: Record<string, unknown>) => filtros.every(([k, t, v]) => (t === "eq" ? r[k] === v : t === "in" ? (v as unknown[]).includes(r[k]) : t === "is" ? (r[k] ?? null) === v : t === "gte" ? String(r[k]) >= String(v) : true));
     const correr = () => {
       pasos.push({ tabla, op, filtros: [...filtros], fila });
       const filas = (datos[tabla] ??= []);
@@ -98,6 +100,7 @@ function falso(datos: Record<string, Record<string, unknown>[]>) {
       eq: (k: string, v: unknown) => { filtros.push([k, "eq", v]); return b; },
       in: (k: string, v: unknown) => { filtros.push([k, "in", v]); return b; },
       is: (k: string, v: unknown) => { filtros.push([k, "is", v]); return b; },
+      gte: (k: string, v: unknown) => { filtros.push([k, "gte", v]); return b; },
       maybeSingle: () => { uno = true; return Promise.resolve(correr()); },
       single: () => { uno = true; return Promise.resolve(correr()); },
       then: (res: (x: unknown) => unknown, rej: (e: unknown) => unknown) => Promise.resolve(correr()).then(res, rej),
@@ -124,11 +127,11 @@ const avisoUsado = () => ({
 });
 const persona = () => ({ user_id: USER.id, email: USER.email, aviso_origen: AVISO, origen: "explorar", urgencia: "este_mes", pie: "si", pie_uf: 650, whatsapp: "+56912345678", permiso_whatsapp_at: "2026-11-18T14:00:00Z", estado: "contacto", created_at: "x", updated_at: "x" });
 const PEDIDO_FIRMA = { avisoId: AVISO, nombre: "Camila Rojas Pérez", rut: "12345678-5", version: VERSION_ORDEN, acepto: true as const, leyoHastaElFinal: true as const };
-const depsOk = (o: { copia?: boolean; pdf?: boolean } = {}) => {
+const depsOk = (o: { copia?: boolean; pdf?: boolean; motivo?: string } = {}) => {
   const llamadas = { pdf: 0, copia: 0, a: [] as string[] };
   const deps: DepsFirma = {
     generarPdf: async () => { llamadas.pdf++; if (o.pdf === false) throw new Error("sin chromium"); return new Uint8Array([37, 80, 68, 70, 45]); },
-    enviarCopia: async (p) => { llamadas.copia++; llamadas.a.push(p.to); return o.copia !== false; },
+    enviarCopia: async (p) => { llamadas.copia++; llamadas.a.push(p.to); return o.copia === false ? { ok: false as const, motivo: o.motivo ?? "sin-llave" } : { ok: true as const }; },
   };
   return { deps, llamadas };
 };
@@ -368,6 +371,91 @@ export async function runInvierteV2(): Promise<{ hard: number }> {
       }
     }
 
+    // ── 11 · LA COPIA QUE NO SALIÓ: el motivo, el reintento aislado y el aviso ──
+    {
+      const ahora = new Date("2026-11-18T15:00:00.000Z");
+      const hace = (min: number) => new Date(ahora.getTime() - min * 60_000).toISOString();
+      if (!tocaReintentar({ firmadoAt: hace(5), intentos: 0, ultimoIntentoAt: null }, ahora)) F("11 · sin intentos no toca reintentar");
+      if (tocaReintentar({ firmadoAt: hace(30), intentos: 1, ultimoIntentoAt: hace(5) }, ahora) || !tocaReintentar({ firmadoAt: hace(30), intentos: 1, ultimoIntentoAt: hace(11) }, ahora)) F("11 · el segundo intento no espera 10 minutos");
+      if (tocaReintentar({ firmadoAt: hace(600), intentos: MAX_INTENTOS_COPIA, ultimoIntentoAt: hace(500) }, ahora)) F("11 · se reintenta pasados los 5 intentos");
+      if (tocaReintentar({ firmadoAt: hace(8 * 1440), intentos: 1, ultimoIntentoAt: hace(8 * 1440) }, ahora)) F("11 · se reintenta pasados los 7 días");
+      if (debeAvisar({ firmadoAt: hace(59), yaAvisada: false }, ahora) || !debeAvisar({ firmadoAt: hace(61), yaAvisada: false }, ahora) || debeAvisar({ firmadoAt: hace(500), yaAvisada: true }, ahora)) F("11 · el aviso no es a la hora y una sola vez");
+      if (!puedeRecibirCopia("lista", new Set([DE_LA_LISTA]), " Lista@Ejemplo.cl") || puedeRecibirCopia("lista", new Set([DE_LA_LISTA]), "otra@ejemplo.cl") || puedeRecibirCopia("apagado", new Set([DE_LA_LISTA]), "otra@ejemplo.cl") || !puedeRecibirCopia("todos", new Set(), "otra@ejemplo.cl")) F("11 · el reintento con el modo en lista llega a alguien fuera de la lista");
+
+      // EL PASO AISLADO nunca lanza y respeta su tope.
+      let avisos = 0;
+      const lanza = await pasoAislado(async () => { throw new Error("se cayó"); }, 1000, () => { avisos++; });
+      if (lanza.ok || lanza.motivo !== "error" || avisos !== 1) F("11 · el paso que lanza no se contiene (o no se avisa)");
+      const t0 = Date.now();
+      // Una demora FINITA (1,2 s) y no una promesa eterna: una eterna deja a Node sin nada pendiente y el proceso sale con 0 sin
+      // terminar el tier (lo mostró la mutación C3).
+      const cuelga = await pasoAislado(() => new Promise((r) => setTimeout(r, 1200)), 60, () => { avisos++; });
+      if (cuelga.ok || cuelga.motivo !== "tope" || Date.now() - t0 > 1000) F("11 · el paso que no termina no se corta en su tope");
+
+      // LA PRUEBA DEL CORREO DIARIO: corre entero ANTES del paso, y su respuesta sale igual con el reintento fallando o colgado.
+      for (const [nombre, paso] of [
+        ["lanza", async () => { throw new Error("reintento caído"); }],
+        ["cuelga", () => new Promise((r) => setTimeout(r, 1200))],
+        ["no carga", () => Promise.reject(new Error("no se pudo importar copias-servidor"))],
+      ] as Array<[string, () => Promise<unknown>]>) {
+        const orden: string[] = [];
+        const t = Date.now();
+        const r = await diarioYLuegoPaso(async () => { orden.push("diario: envíos"); orden.push("diario: cierre"); return "respuesta-del-diario"; }, async () => { orden.push("paso"); return paso(); }, () => 80, () => { orden.push("paso: falla anotada"); });
+        if (r !== "respuesta-del-diario") F(`11 · con el reintento que ${nombre}, el correo diario no devuelve su respuesta`);
+        if (orden.indexOf("diario: cierre") < 0 || orden.indexOf("paso") < orden.indexOf("diario: cierre")) F(`11 · con el reintento que ${nombre}, el paso corre antes de que cierre el correo diario`);
+        if (Date.now() - t > 1000) F(`11 · con el reintento que ${nombre}, el correo diario se demora`);
+      }
+      const cron = codigo("src/app/api/cron/correo-del-dia/route.ts");
+      if (!/return diarioYLuegoPaso\(\s*async \(\) => \{[\s\S]*?procesarDelDia\([\s\S]*?return await cerrarCron\(admin, NOMBRE, conteo,[\s\S]*?\},\s*\(\) => import\("@\/lib\/invierte-v2\/copias-servidor"\)\.then\(\(m\) => m\.reintentarCopiasDelCron\(admin\)\),\s*\(\) => Math\.min\(TOPE_PASO_COPIAS_MS, PRESUPUESTO_MS \+ 30_000 - \(Date\.now\(\) - t0\)\),/.test(cron)) F("11 · el cron no corre el reintento DESPUÉS del correo diario, aislado y con su tope");
+      if (/reintentarCopias/.test(cron.slice(0, cron.indexOf("return diarioYLuegoPaso(")))) F("11 · el cron llama al reintento antes del correo diario");
+
+      // EL MOTIVO llega a la bitácora y al error.
+      const orden = (x: Partial<OrdenInv>): Record<string, unknown> => ({ id: x.id, user_id: USER.id, email: x.email ?? DE_LA_LISTA, nombre: "Camila", rut: "12345678-5", aviso_id: AVISO, depto_linea: "Ñuñoa · 2D2B · 58 m² · Usado", texto_version: 1, texto_sha256: "a".repeat(64), texto: "t", es_prueba: true, firmado_at: x.firmadoAt ?? hace(120), ip: null, user_agent: null, pdf_path: `ordenes/${x.id}.pdf`, pdf_sha256: "b".repeat(64), copia_enviada_at: null });
+      {
+        const db = falso({ inv_ordenes: [orden({ id: "o-1" })], inv_bitacora: [] });
+        const c = await completarOrden(db.sb, { id: "o-1", userId: USER.id, email: DE_LA_LISTA, nombre: "Camila", rut: "12345678-5", avisoId: AVISO, deptoLinea: "Ñuñoa · 2D2B · 58 m² · Usado", textoVersion: 1, textoSha256: "a".repeat(64), texto: "t", esPrueba: true, firmadoAt: hace(1), ip: null, userAgent: null, pdfPath: "ordenes/o-1.pdf", pdfSha256: "b".repeat(64), copiaEnviadaAt: null }, depsOk({ copia: false, motivo: "sin-llave" }).deps, "firma");
+        const b = db.datos.inv_bitacora.find((x) => x.accion === "copia_fallida") as { detalle?: Record<string, unknown> } | undefined;
+        if (c.copia || c.motivoCopia !== "sin-llave" || b?.detalle?.motivo !== "sin-llave" || b?.detalle?.intento !== 1 || b?.detalle?.origen !== "firma") F("11 · el motivo de la copia no llega a la bitácora (con el intento y el origen)");
+      }
+      for (const r of ["src/app/api/invierte-v2/firma/route.ts", "src/app/api/invierte-v2/orden/route.ts"]) {
+        if (!/copia \$\{[rc]\.copia\}\$\{[rc]\.motivoCopia \? `: \$\{[rc]\.motivoCopia\}` : ""\}\)`\)/.test(codigo(r)) || !/motivoCopia: [rc]\.motivoCopia/.test(codigo(r))) F(`11 · ${r} manda a Sentry «copia false» sin el motivo`);
+      }
+      const email = codigo("src/lib/email.ts");
+      const envio = email.slice(email.indexOf("async function enviarCorreo("), email.indexOf("const distinctId = identidadCorreo("));
+      for (const m of ['omitido\\(opciones, tipo, "sin-llave"\\); return \\{ data: null', 'omitido\\(opciones, tipo, `bloqueo:\\$\\{bloqueo\\}`\\);\\s*return \\{ data: null', 'omitido\\(opciones, tipo, "baja"\\);\\s*return \\{ data: null', 'omitido\\(opciones, tipo, "eliminacion"\\);\\s*return \\{ data: null']) if (!new RegExp(m).test(envio)) F(`11 · enviarCorreo no dice por qué no salió (${m.slice(26, 46)})`);
+      if (!/alOmitir: \(m\) => \{ motivoOmitido = m; \}/.test(email) || !/return \{ ok: false, motivo: motivoOmitido \?\? "sin-respuesta" \};/.test(email)) F("11 · la copia no recoge el motivo de enviarCorreo");
+
+      // EL REINTENTO: solo la lista, el tope de intentos y un solo aviso.
+      {
+        const fallidas = (id: string, n: number) => Array.from({ length: n }, (_, i) => ({ id: `${id}-${i}`, orden_id: id, accion: "copia_fallida", detalle: { motivo: "sin-llave" }, created_at: hace(300 - i), es_prueba: true }));
+        const db = falso({
+          inv_ordenes: [orden({ id: "a" }), orden({ id: "b", email: "otra@ejemplo.cl" }), orden({ id: "c" }), orden({ id: "d", firmadoAt: hace(30) })],
+          inv_bitacora: [...fallidas("c", MAX_INTENTOS_COPIA)],
+        });
+        const avisados: string[] = [];
+        const enviadas: string[] = [];
+        const deps = {
+          firma: { generarPdf: async () => new Uint8Array([1]), enviarCopia: async (p: { ordenId: string }) => { enviadas.push(p.ordenId); return p.ordenId === "a" ? { ok: true as const } : { ok: false as const, motivo: "resend:caído" }; } },
+          puedeRecibir: (e: string) => puedeRecibirCopia("lista", new Set([DE_LA_LISTA]), e),
+          avisar: async (p: { ordenId: string }) => { avisados.push(p.ordenId); },
+          ahora: () => ahora,
+        };
+        const r = await reintentarCopias(db.sb, deps);
+        if (enviadas.includes("b") || r.fuera !== 1) F("11 · el reintento le escribe a alguien fuera de la lista");
+        if (enviadas.includes("c")) F("11 · el reintento pasa de 5 intentos");
+        if (!enviadas.includes("a") || !enviadas.includes("d") || r.enviadas !== 1) F("11 · el reintento no intenta las pendientes que tocan");
+        if (avisados.includes("a") || !avisados.includes("c") || avisados.includes("d") || avisados.includes("b")) F("11 · el aviso a hola@ no es el de las de más de una hora sin copia");
+        const r2 = await reintentarCopias(db.sb, deps);
+        if (r2.avisadas !== 0 || avisados.filter((x) => x === "c").length !== 1) F("11 · el aviso a hola@ se repite");
+      }
+
+      // EL ADMIN Y LA PERSONA.
+      const pag = codigo("src/app/admin/invierte-v2/page.tsx");
+      if (!/data-admin="inv2-sin-copia"/.test(pag) || !/<ReenviarCopia ordenId=\{f\.orden\.id\} \/>/.test(pag) || !/f\.orden\.copiaMotivo/.test(pag) || !/f\.orden\.copiaIntentos/.test(pag)) F("11 · el admin no muestra la pastilla, el motivo, los intentos o «Reenviar copia»");
+      if (!/if \(accion === "reenviar"\) \{[\s\S]{0,400}completarOrden\(sb, orden, DEPS_FIRMA, "admin"\)/.test(codigo("src/app/api/admin/invierte-v2/route.ts"))) F("11 · «Reenviar copia» no completa la orden");
+      if (!/orden\.copiaEnviadaAt \? \([\s\S]{0,200}\) : \([\s\S]{0,120}\{P\.copiaPendiente\}/.test(codigo("src/app/invierte/partimos/page.tsx"))) F("11 · Partimos no dice cuando la copia no ha salido");
+    }
+
     // ── 10 · EL LENGUAJE frente a la persona ──
     {
       const o = ordenVigente({ nombre: "", rut: "", depto: "Ñuñoa" });
@@ -403,3 +491,9 @@ if (require.main === module) {
 // Tras el golden QUICK del 18-nov (otros cuatro tiers leían la forma de enviarCorreo, del dashboard, de config y de la barra):
 // la excepción pasó a `exceptuadoDelBloqueo` dentro de `if (bloqueo)` y la selección enciende la barra antes de navegar. 3 de 3
 // en ROJO: M6b la selección desvía sin destinoBoton · M32b el envío ignora la excepción · M38 la excepción vale para todo tipo.
+// §11 (18-nov-2026, la copia que no salió en el preview: el motivo, el reintento aislado en correo-del-dia y el aviso). 15 de 15 en ROJO:
+//   C1 el paso corre antes del diario · C2 el paso que falla lanza · C3 el paso sin tope · C4 el tope del cron sin techo · C5 el
+//   reintento no espera · C6 sin tope de intentos · C7 ignora la lista · C8 apagado reintenta a todos · C9 el aviso se repite · C10
+//   Sentry sin el motivo · C11 la bitácora sin el motivo · C12 la baja sin motivo · C13 la copia no recoge el motivo · C14 el admin
+//   sin la pastilla · C15 Partimos no lo dice. La C3 salió VERDE la primera vez por el arnés —una promesa eterna dejó a Node sin nada
+//   pendiente y el proceso salió con 0 sin terminar—: los casos «cuelga» van con una demora finita y el runner exige la línea final.

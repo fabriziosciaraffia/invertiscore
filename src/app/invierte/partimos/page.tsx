@@ -36,7 +36,11 @@ export default async function PartimosPage() {
       </ol>
       <div className="iv2-acciones">
         <Link href={URL_PERFIL} className="inv-principal" data-inv2="perfil">{P.perfil}</Link>
-        <p className="iv2-guardada">{P.guardada} <a href={URL_VER_ORDEN} target="_blank" rel="noopener" data-inv2="ver-orden">{P.verOrden}</a></p>
+        {orden.copiaEnviadaAt ? (
+          <p className="iv2-guardada">{P.guardada} <a href={URL_VER_ORDEN} target="_blank" rel="noopener" data-inv2="ver-orden">{P.verOrden}</a></p>
+        ) : (
+          <p className="iv2-guardada" data-inv2="copia-pendiente">{P.copiaPendiente} <a href={URL_VER_ORDEN} target="_blank" rel="noopener" data-inv2="ver-orden">{P.verOrden}</a></p>
+        )}
       </div>
       <section className="iv2-porque" aria-labelledby="iv2-porque-t">
         <h2 id="iv2-porque-t">{P.porQueTitulo}</h2>
