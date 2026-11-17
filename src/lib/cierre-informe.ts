@@ -29,7 +29,7 @@ export interface TextoCierre {
  */
 export function textoCierre(p: { analisis: number; conSesion: boolean; ilimitado: boolean }): TextoCierre {
   const n = Math.max(0, Math.floor(p.analisis));
-  if (n > 0) return { saldo: n === 1 ? "Te queda 1 análisis." : `Te quedan ${n} análisis.`, enlace: ENLACE_CIERRE };
+  if (n > 0) return { saldo: n === 1 ? "Te queda 1 crédito." : `Te quedan ${n} créditos.`, enlace: ENLACE_CIERRE };
   if (p.conSesion && !p.ilimitado) return { saldo: null, enlace: `${ENLACE_CIERRE} · ${fmtCLP(SINGLE_PRICE)}` };
   return { saldo: null, enlace: ENLACE_CIERRE };
 }

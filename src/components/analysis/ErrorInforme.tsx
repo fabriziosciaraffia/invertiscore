@@ -40,7 +40,7 @@ export function ErrorInforme({ error }: { error: Error & { digest?: string } }) 
           Recargar
         </button>
         <Link href="/dashboard" className="font-body text-sm text-[var(--franco-text-secondary)] underline underline-offset-4">
-          Ir a mis análisis
+          Ir a mi panel
         </Link>
       </div>
     </main>

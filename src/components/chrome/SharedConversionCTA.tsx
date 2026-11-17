@@ -93,7 +93,7 @@ export function ConversionCloser({ origen = "resultado_cierre" }: { origen?: Ori
         className="font-body"
         style={{ fontSize: 12, color: RED_TINT, margin: "14px 0 0 0" }}
       >
-        1 análisis gratis · sin tarjeta
+        Tu primer depto gratis · sin tarjeta
       </p>
     </section>
   );

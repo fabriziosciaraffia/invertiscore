@@ -85,14 +85,14 @@ export function faqSecciones(comparables: string = COMPARABLES_TEXTO): FAQSectio
       {
         id: "analizar-varios",
         q: "¿Puedo analizar varios departamentos?",
-        a: "Sí. Puedes analizar cuantos quieras — cada departamento es un análisis. Tu cuenta trae un análisis de regalo; para seguir, compras un pack de 3 análisis o te suscribes al Plan Franco, con 20 al mes.",
+        a: "Sí. Puedes analizar cuantos quieras — cada departamento usa un crédito. Tu cuenta trae un crédito de regalo; para seguir, compras un pack de 3 créditos o te suscribes al Plan Franco, con 20 al mes.",
       },
       {
         id: "comparar-analisis",
-        q: "¿Puedo comparar mis análisis?",
+        q: "¿Puedo comparar mis deptos?",
         // LO QUE EXISTE (05-nov-2026): /comparar acepta de 2 a 4 (comparar-tipos.ts) y muestra veredicto, precio, flujo mensual y
         // resultado a 10 años; no elige un ganador.
-        a: `Sí. Desde tu dashboard eliges de ${COMPARAR_MIN} a ${COMPARAR_MAX} departamentos que ya analizaste y los ves lado a lado: el veredicto, el precio, el flujo mensual y el resultado a 10 años de cada uno.`,
+        a: `Sí. Desde tu dashboard eliges de ${COMPARAR_MIN} a ${COMPARAR_MAX} departamentos que ya viste y los ves lado a lado: el veredicto, el precio, el flujo mensual y el resultado a 10 años de cada uno.`,
       },
       {
         id: "caro-complejo",
@@ -111,18 +111,18 @@ export function faqSecciones(comparables: string = COMPARABLES_TEXTO): FAQSectio
     items: [
       {
         id: "caducan",
-        q: "¿Los análisis caducan?",
-        a: "Los que compras sueltos o en pack no vencen. Los del Plan Franco se acumulan: los de cada mes vencen a los 12 meses. El análisis de regalo vence a los 30 días.",
+        q: "¿Los créditos caducan?",
+        a: "Los que compras sueltos o en pack no vencen. Los del Plan Franco se acumulan: los de cada mes vencen a los 12 meses. El crédito de regalo vence a los 30 días.",
       },
       {
         id: "cambiar-plan",
         q: "¿Qué planes hay?",
-        a: "Uno: el Plan Franco, 20 análisis al mes por $39.990. Si analizas pocos, el pack de 3 por $19.990 no vence. Si ya tenías otro plan, lo sigues teniendo como lo contrataste.",
+        a: "Uno: el Plan Franco, 20 créditos al mes por $39.990. Si ves pocos deptos, el pack de 3 por $19.990 no vence. Si ya tenías otro plan, lo sigues teniendo como lo contrataste.",
       },
       {
         id: "cancelar",
         q: "¿Qué pasa si cancelo?",
-        a: "El plan no se renueva más. Mantienes acceso hasta el fin del mes pagado, y los análisis que ya tienes siguen vigentes hasta que vencen. Lo cancelas en tu cuenta.",
+        a: "El plan no se renueva más. Mantienes acceso hasta el fin del mes pagado, y los créditos que ya tienes siguen vigentes hasta que vencen. Lo cancelas en tu cuenta.",
       },
     ],
   },

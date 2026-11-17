@@ -1278,7 +1278,7 @@ export function lineaConsumo(
   if (!isLoggedIn) {
     return tier?.anonCapAvailable === true
       ? "El primero va por cuenta de Franco."
-      : "Tu análisis gratis ya lo usaste. Crea tu cuenta para seguir.";
+      : "Tu crédito gratis ya lo usaste. Crea tu cuenta para seguir.";
   }
 
   // Sin saldo: compra directa.
@@ -1291,11 +1291,11 @@ export function lineaConsumo(
 
   // Welcome: el backend lo cobra ANTES del ledger, así que manda sobre el saldo.
   if (tier?.welcomeAvailable) {
-    return "Este es tu análisis de bienvenida — el primero va por cuenta de Franco.";
+    return "Esto usa tu crédito de bienvenida: el primero va por cuenta de Franco.";
   }
 
   // El próximo que se gasta es un regalo (16-oct-2026): se dice que se usa el regalo.
-  if (tier?.proximoRegalo) return "Esto usa tu análisis de regalo.";
+  if (tier?.proximoRegalo) return "Esto usa tu crédito de regalo.";
 
   // Saldo finito. Con plan mostramos el total del ciclo ("3 de 10"); sin plan
   // (créditos comprados sueltos) no hay denominador que mostrar.
@@ -1304,7 +1304,7 @@ export function lineaConsumo(
   // guardado el «de N» mentiría y no se dice.
   const totalPlan = tier?.activePlan === "plan10" ? PLAN_ANALISIS_MES : tier?.activePlan === "plan50" ? 50 : null;
   const quedan = saldo === 1 ? "Te queda 1" : `Te quedan ${saldo}`;
-  return `Esto usa uno de tus análisis. ${quedan}${totalPlan && saldo <= totalPlan ? ` de ${totalPlan}` : ""}.`;
+  return `Esto usa uno de tus créditos. ${quedan}${totalPlan && saldo <= totalPlan ? ` de ${totalPlan}` : ""}.`;
 }
 
 function FinalCTA({ mod, isLoggedIn, anonCap, canAnalyze, submitting, incompleto, onAbrir, onTerminal }: { mod: string | undefined; isLoggedIn: boolean; anonCap: boolean; canAnalyze: boolean; submitting: boolean; incompleto: boolean; onAbrir: () => void; onTerminal: () => void }) {

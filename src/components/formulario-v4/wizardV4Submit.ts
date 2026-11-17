@@ -274,7 +274,7 @@ export async function submitAnonimo(
     // pestañas: una generó y la otra tenía el resumen abierto de antes.
     const crudo = err instanceof Error ? err.message : "Error inesperado";
     const error = crudo === "cap_anonimo_consumido"
-      ? "Tu análisis gratis ya lo usaste. Crea tu cuenta para seguir."
+      ? "Tu crédito gratis ya lo usaste. Crea tu cuenta para seguir."
       : crudo;
     return {
       ok: false,

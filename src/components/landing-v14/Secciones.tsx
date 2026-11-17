@@ -127,7 +127,7 @@ export function Cierre({ datos, ahora }: { datos: DatosLanding; ahora: Date }) {
           <div className="lv-cierre-izq">
             <h2 className="lv-h2">Antes de comprar,<br /><mark>evalúa con Franco.</mark></h2>
             <p className="lv-precio">
-              El primer análisis es gratis.
+              Tu primer depto es gratis.
               <span>Los siguientes, <b>{fmtCLP(SINGLE_PRICE)}</b> cada uno.</span>
             </p>
             <LinkMedido href="/pricing" className="lv-planes" evento={EV.planes}>
