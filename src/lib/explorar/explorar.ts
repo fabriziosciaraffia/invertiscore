@@ -153,8 +153,8 @@ export function porPuntaje<T extends { score: number | null; avisoId: string }>(
 export function botonAnalizar(s: EstadoSaldo): string {
   const base = EXPLORAR_COPY.analizar;
   switch (s.tipo) {
-    case "con": return s.proximoRegalo ? `${base} · usa tu análisis de regalo` : s.n === 1 ? `${base} · usa tu último análisis` : `${base} · usa 1 de tus ${s.n}`;
-    case "regalo": return `${base} · usa tu análisis de regalo`;
+    case "con": return s.proximoRegalo ? `${base} · usa tu crédito de regalo` : s.n === 1 ? `${base} · usa tu último crédito` : `${base} · usa 1 de tus ${s.n}`;
+    case "regalo": return `${base} · usa tu crédito de regalo`;
     default: return base;
   }
 }
@@ -231,10 +231,10 @@ export function textoCambio(p: { antes: { pie: number; plazo?: number; tasa?: nu
 }
 
 export const EXPLORAR_COPY = {
-  analizar: "Analizar este",
+  analizar: "Ver este depto",
   /** Lo que ofrece «Cambiar» en el pop-up (24-oct-2026). */
   cambiar: "Cambiar",
-  analizarIgual: "Analizar igual",
+  analizarIgual: "Ver igual",
   /** Con una tasa elegida (30-oct-2026) la casilla la nombra; con la de hoy, como siempre. */
   guardarPerfil: (pie: number, plazo: number, tasa: number | null = null) =>
     tasa != null ? `Guardar ${pie} %, ${plazo} años y tasa ${tasaTxt(tasa)} % como mi perfil de búsqueda` : `Guardar ${pie} % y ${plazo} años como mi perfil de búsqueda`,

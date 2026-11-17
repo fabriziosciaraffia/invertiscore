@@ -41,7 +41,7 @@ export const GUARDADOS_COPY = {
   comparar: (n: number) => (n >= COMPARAR_MIN_GUARDADOS ? `Comparar ${n}` : "Comparar"),
   marca: `Marca de ${COMPARAR_MIN_GUARDADOS} a ${COMPARAR_MAX_GUARDADOS} para compararlos.`,
   verEnMapa: "Ver en el mapa",
-  verInforme: "Ver informe",
+  verInforme: "Ver detalles",
   quitar: "Quitar",
   yaNo: "Ya no está publicado",
   cerrarComparacion: "Cerrar la comparación",

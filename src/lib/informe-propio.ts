@@ -50,12 +50,12 @@ export const INFORME_PROPIO_COPY = {
   /** Lo que va al lado del chip: «tu informe del 13-oct». */
   fecha: (r: ResumenInforme): string => {
     const f = fechaInforme(r.fecha);
-    return f ? `tu informe del ${f}` : "tu informe";
+    return f ? `en tu cuenta desde el ${f}` : "en tu cuenta";
   },
   /** Sin veredicto guardado (filas viejas): solo el informe y su fecha. */
   sinVeredicto: (r: ResumenInforme): string => {
     const f = fechaInforme(r.fecha);
-    return f ? `✓ Tu informe del ${f}` : "✓ Tu informe";
+    return f ? `✓ En tu cuenta desde el ${f}` : "✓ En tu cuenta";
   },
   /** La línea chica cuando la noche da distinto. */
   noche: (n: { veredicto: string | null; score: number | null; cambiaVeredicto: boolean }): string =>

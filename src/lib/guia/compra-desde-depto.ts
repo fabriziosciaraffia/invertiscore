@@ -120,12 +120,12 @@ export function leerDeptoDelPago(x: unknown): DeptoDelPago | null {
 export const COMPRA_DEPTO = {
   /** El secundario del pop-up sin saldo. */
   suelto: `Comprar solo 1 · ${fmtCLP(FLOW_PRODUCTS.single.amount)}`,
-  pack: (precio: number) => `3 análisis · ${fmtCLP(precio)}`,
-  sin: (precio: number) => `Para analizar este depto: 3 análisis por ${fmtCLP(precio)}, sin caducidad.`,
+  pack: (precio: number) => `3 créditos · ${fmtCLP(precio)}`,
+  sin: (precio: number) => `Para ver este depto: 3 créditos por ${fmtCLP(precio)}, sin caducidad.`,
   /** El estado de carga del pop-up (21-oct-2026): el mismo efecto que el wizard, hasta que abre el informe. */
   analizando: "Franco está analizando este depto…",
   /** La pantalla de compra, con el depto puesto. */
-  paraDepto: "Para analizar",
+  paraDepto: "Para ver",
 } as const;
 
 export interface ComprasDelDepto {

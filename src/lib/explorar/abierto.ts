@@ -73,16 +73,16 @@ export interface PedidoRegistro {
 }
 
 export const REGISTRO_COPY = {
-  conDepto: "Te regalamos el análisis de este depto.",
-  sinDepto: "Te regalamos un análisis.",
-  cuerpoDepto: { antes: "Crea tu cuenta gratis y recibe el informe completo, con ", fuerte: "el enlace a la publicación", despues: "." },
+  conDepto: "Accede gratis a todos los detalles de este depto.",
+  sinDepto: "Te regalamos un crédito.",
+  cuerpoDepto: { antes: "Crea tu cuenta y revisa por qué es una buena inversión, con ", fuerte: "el enlace a la publicación", despues: "." },
   // (05-nov-2026, guia/aviso-nuevos.ts) Lo que de verdad llega después de «Avísame».
   cuerpoAvisame: `Crea tu cuenta gratis y busca con estos filtros. ${AVISO_NUEVOS}`,
   cuerpoCifras: "Crea tu cuenta gratis y ve el flujo, el cap rate y el precio por m² de cada depto.",
   cuerpoPiePlazo: "Crea tu cuenta gratis y elige tu pie y tu plazo.",
   // «Invierte con Franco» sin cuenta (11-nov-2026): la cuenta nueva trae su análisis de regalo, como por cualquier puerta.
   invierteTitulo: "Crea tu cuenta para inscribirte.",
-  invierteCuerpo: { antes: "Tu cuenta nueva trae ", fuerte: "un análisis de regalo", despues: "." },
+  invierteCuerpo: { antes: "Tu cuenta nueva trae ", fuerte: "un crédito de regalo", despues: "." },
   inscribirme: "Inscribirme",
   google: "Entrar con Google",
   oTuCorreo: "o con tu correo",
@@ -185,7 +185,7 @@ export const BIENVENIDA_COPY = {
   // «Al precio publicado» (02-nov-2026): conviene quiere decir a ese precio, y se dice.
   titulo: "Deptos en venta que convienen como inversión hoy, al precio publicado.",
   paso1: "Toca uno en el mapa para ver por qué conviene.",
-  paso2: { antes: "Regístrate gratis y ", fuerte: "te regalamos el análisis completo", despues: " del que más te interese." },
+  paso2: { antes: "Regístrate gratis y ", fuerte: "te regalamos el acceso a todos los detalles", despues: " del depto que más te interese." },
   boton: "Ver el mapa",
 } as const;
 

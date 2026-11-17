@@ -28,31 +28,31 @@ export function usoDesdeSaldo(n: number | null | undefined): UsoAnalisis {
 }
 
 export const AVISO_ANALIZAR = {
-  titulo: "¿Analizar este depto?",
-  tituloSin: "No te quedan análisis.",
+  titulo: "¿Ver este depto?",
+  tituloSin: "No te quedan créditos.",
   /** La tarjeta roja del ticket dentro del pop-up sin saldo (24-oct-2026, mockup A). EN DOS LÍNEAS (24-oct-2026, el
    *  pop-up cabe en 390 × 740): «Solo para cuentas nuevas · vence mañana 18:07» en una fila y debajo «3 análisis por
    *  $14.990 · $4.997 cada uno». */
   soloNuevas: "Solo para cuentas nuevas",
   vence: (cuando: string) => `· vence ${cuando}`,
-  packTicket: `3 análisis por ${fmtCLP(PACK_PRECIO_CLP)}`,
+  packTicket: `3 créditos por ${fmtCLP(PACK_PRECIO_CLP)}`,
   unitario: ` · ${fmtCLP(PACK_UNITARIO_CLP)} cada uno`,
   aprovechar: `Aprovechar · 3 por ${fmtCLP(PACK_PRECIO_CLP)}`,
   modalidad: "Renta larga",
   /** El bloque de renta corta del semanal (14-oct-2026). La última línea es la misma que en renta larga, «Usa 1 de tus N
    *  análisis», sin condición (15-oct-2026): la página no habla del cobro. */
   modalidadCorta: "Renta corta",
-  analizar: "Analizar",
+  analizar: "Ver este depto",
   cancelar: "Cancelar",
-  sin: `Para analizar este depto: 3 análisis por ${fmtCLP(TRES_PRECIO_CLP)}, sin caducidad.`,
+  sin: `Para ver este depto: 3 créditos por ${fmtCLP(TRES_PRECIO_CLP)}, sin caducidad.`,
   comprar: TRES_COPY.boton,
   /** La tarjeta gris del depto: qué incluye el informe, en UNA línea corta (24-oct-2026: el pop-up cabe en 390 × 740). */
-  incluye: { antes: "El informe incluye ", fuerte: "el enlace a la publicación", despues: "." },
+  incluye: { antes: "Los detalles incluyen ", fuerte: "el enlace a la publicación", despues: "." },
   /** RENTA CORTA (27-oct-2026, decisión de Fabrizio): la medición fina puede decir que no da, y entonces no hay informe.
    *  La promesa dice los dos casos —y el pop-up «no da» la cumple con «Ver la publicación»—. */
-  incluyeCorta: { antes: "Si da, el informe incluye ", fuerte: "el enlace a la publicación", despues: "; si no da, no gastas y te mostramos la publicación igual." },
+  incluyeCorta: { antes: "Si da, los detalles incluyen ", fuerte: "el enlace a la publicación", despues: "; si no da, no gastas y te mostramos la publicación igual." },
   /** Lo mismo SIN SALDO, mientras compra (05-nov-2026): «no gastas» al lado de «Comprar» se leía como «no pagas». */
-  incluyeCortaComprando: { antes: "Si da, el informe incluye ", fuerte: "el enlace a la publicación", despues: "; si no da, no usas un análisis y te mostramos la publicación igual." },
+  incluyeCortaComprando: { antes: "Si da, los detalles incluyen ", fuerte: "el enlace a la publicación", despues: "; si no da, no usas un crédito y te mostramos la publicación igual." },
   sinRecalculo: "No pudimos recalcular con esa combinación. Prueba otra.",
 } as const;
 
@@ -91,7 +91,7 @@ export function textoUso(u: UsoAnalisis): string {
     case "regalo": return REGALO_COPY.usaRegalo;
     case "plan": return "Tu plan Ilimitado está activo: no descuenta de tu saldo.";
     case "sin": return AVISO_ANALIZAR.sin;
-    default: return "Usa 1 de tus análisis.";
+    default: return "Usa 1 de tus créditos.";
   }
 }
 

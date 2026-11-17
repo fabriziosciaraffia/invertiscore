@@ -130,10 +130,10 @@ export const PRIMERA_SELECCION = {
   tituloSinContar: "Tu selección",
   /** Bajo el título: con el regalo vivo, «Usa tu regalo…»; sin él, «Analiza el que más te interese.». */
   bajadaRegalo: "Publicaciones vigentes y analizadas con tu perfil de búsqueda. Usa tu regalo en el que más te interese.",
-  bajada: "Publicaciones vigentes y analizadas con tu perfil de búsqueda. Analiza el que más te interese.",
+  bajada: "Publicaciones vigentes y analizadas con tu perfil de búsqueda. Elige el que más te interese.",
   /** El botón de cada tarjeta. */
-  analizar: "Analizar este",
-  analizarRegalo: "Analizar este · usa tu regalo",
+  analizar: "Ver este depto",
+  analizarRegalo: "Ver este depto · usa tu regalo",
   verMas: (n: number) => (n === 1 ? "Ver el que falta" : `Ver los ${n} que faltan`),
   faltan: "Para armar tu selección falta un dato:",
   armar: "Ver mis deptos",
@@ -145,7 +145,7 @@ export const PRIMERA_SELECCION = {
   error: "No pudimos traer tus deptos. Intenta de nuevo.",
   reintentar: "Reintentar",
   /** La hoja sobre el informe (la puerta A). */
-  seguirLeyendo: "Seguir leyendo el informe",
+  seguirLeyendo: "Seguir leyendo los detalles",
   verDeNuevo: "Ver mis primeros deptos",
   cerrar: "Cerrar",
 } as const;
@@ -191,7 +191,7 @@ export const DEL_DIA = {
   semanal: "Desde ahora, cada lunes te mandamos los nuevos que convengan.",
   /** «Publicados al [hora]»: el chequeo más antiguo de lo que va en el correo. */
   publicadosAl: (cuando: string) => `Franco los vio publicados ${cuando}. Antes de visitar uno, confirma con quien lo publica que sigue disponible.`,
-  regalo: "Te cargamos un análisis de regalo: úsalo en el depto que quieras.",
+  regalo: "Te cargamos un crédito de regalo: úsalo en el depto que quieras.",
   vacioAsunto: "Hoy no encontré uno que convenga",
   vacio: `Hoy no encontré uno publicado que convenga con lo que buscas. ${AVISO_NUEVOS}`,
   vacioPerfil: "Si quieres buscar en otras comunas o con otro pie, cámbialo en tu perfil:",

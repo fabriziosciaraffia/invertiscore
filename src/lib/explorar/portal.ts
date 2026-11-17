@@ -509,10 +509,10 @@ export const PORTAL_COPY = {
   avisame: "Avísame de nuevos",
   limpiar: "Limpiar",
   cerrar: "Cerrar",
-  analizado: "✓ Analizado",
+  analizado: "✓ En tu cuenta",
   nuevoHoy: "Nuevo hoy",
-  analizar: "Analizar este",
-  verInforme: "Ver informe",
+  analizar: "Ver este depto",
+  verInforme: "Ver detalles",
   guardar: "Guardar",
   guardado: "Guardado",
   capRate: "Cap rate",
@@ -524,7 +524,7 @@ export const PORTAL_COPY = {
   hoja: {
     comunas: "Comunas", masComunas: (n: number) => `+ ${n} más`, menosComunas: "Ver menos", tipologia: "Tipología", precio: "Precio", desde: "Desde UF", hasta: "Hasta UF",
     piePlazo: "Con qué pie y plazo", pie: "Pie", plazo: "Plazo", arriendo: "Arriendo", tradicional: "Tradicional", corta: "Renta corta",
-    cortaNota: "Estimado por zona; se mide al analizar.", flujo: "Solo con flujo positivo", publicados: "Publicados", zona: "Zona del mapa", quitarZona: "Quitar",
+    cortaNota: "Estimado por zona; se mide al abrir sus detalles.", flujo: "Solo con flujo positivo", publicados: "Publicados", zona: "Zona del mapa", quitarZona: "Quitar",
   },
   /** Mientras llega el universo (abajo). El avance por comunas va en el pop-up del recálculo (04-nov-2026, textoRecalculo). */
   calculando: "Calculando…",
@@ -558,7 +558,7 @@ export const PORTAL_COPY = {
   tasaFija: (t: number) => `${tasaTexto(t)} % · promedio de los bancos`,
   usarMiBusqueda: "Usar mi búsqueda",
   /** La vuelta del registro desde un pin (30-oct-2026): la tarjeta desbloqueada con su banda, sin abrir el pop-up sola. */
-  vuelta: { listo: "Listo, ya tienes tu cuenta.", regalo: "Tu análisis de regalo está listo para este depto.", analizarRegalo: "Analizar este · usa tu regalo" },
+  vuelta: { listo: "Listo, ya tienes tu cuenta.", regalo: "Tu regalo está listo para este depto.", analizarRegalo: "Ver este depto · usa tu regalo" },
   anterior: "Depto anterior",
   siguiente: "Depto siguiente",
   /** La confirmación de «Avísame de nuevos». */
@@ -575,7 +575,7 @@ export const PORTAL_COPY = {
     elegir: "Elegir comunas",
     error: "No pudimos guardar tu búsqueda. Intenta de nuevo.",
   },
-  pestana: "Explorar · los deptos que convienen",
+  pestana: "Mapa · los deptos que convienen",
   /** FILTROS V2 (02-nov-2026, mockup 8, estado B): cada grupo es una tarjeta con título, una línea de ayuda y una ⓘ. */
   v2: {
     perfil: {

@@ -23,16 +23,16 @@ export const VEDADAS_GUIA = ["portafolio", "exclusivo", "oportunidad"] as const;
 export const GUIA = {
   // «Publicados hoy» (hasta el 05-nov-2026) prometía de más: son avisos vistos en la semana cuya ficha Franco revisó en las
   // últimas 24 horas (guia-servidor.ts). Lo que es seguro: siguen publicados.
-  cuerpo: "Deptos que siguen publicados, parecidos y cercanos al que analizaste. Franco los revisó con tu pie y tu plazo: estos son los mejores.",
+  cuerpo: "Deptos que siguen publicados, parecidos y cercanos al que viste. Franco los revisó con tu pie y tu plazo: estos son los mejores.",
   ajustada: "Ajustamos tu pie y tu plazo porque ninguno calzaba con esa combinación; estos son los mejores.",
   ninguno: "Ninguno conviene, ni con más plazo ni con más pie. Mejor sigue buscando en otra zona.",
-  analizar: "Analizar este",
+  analizar: "Ver este depto",
   analizando: "Generando…",
   otroDepto: "¿Tienes otro depto en mente?",
   otroDeptoEnlace: "Analízalo con tus números ya cargados",
-  registroTitulo: "Entra con el correo con que pagaste y lo analizamos.",
+  registroTitulo: "Entra con el correo con que pagaste y te lo mostramos.",
   registroEnviado: (correo: string) => `Te mandamos un código a ${correo}.`,
-  entrarYAnalizar: "Entrar y analizar",
+  entrarYAnalizar: "Entrar y verlo",
   // 01-oct-2026: el aviso se despublicó entre la guía y el clic. No se descuenta nada y la guía lo reemplaza.
   despublicado: "Este aviso ya no está publicado.",
   flujo: "Flujo mensual",
@@ -42,7 +42,7 @@ export const GUIA = {
   chipComo: "Como el tuyo:",
   chipRadio: "A menos de",
   chipCombinacion: "Con pie",
-  antiguedad: "Calculado con una antigüedad prudente de 25 años; el informe usa la real si el aviso la tiene.",
+  antiguedad: "Calculado con una antigüedad prudente de 25 años; los detalles usan la real si el aviso la tiene.",
   pie: "Vistos en los últimos 7 días. Los precios son los publicados; el arriendo es el que Franco estima para cada uno en su zona.",
 } as const;
 
@@ -50,9 +50,9 @@ export const GUIA = {
  *  dice: la guía sigue, pero no promete análisis que no hay. */
 export const GUIA_SALDO = {
   titulo: (n: number | null): string =>
-    n == null ? "Tus análisis ya están en tu cuenta. Empieza por estos." : n <= 0 ? "Ya usaste tus análisis. Estos son los que mejor calzan contigo." : `Tienes ${n} análisis. Empieza por estos.`,
+    n == null ? "Tus créditos ya están en tu cuenta. Empieza por estos." : n <= 0 ? "Ya usaste tus créditos. Estos son los que mejor calzan contigo." : `Tienes ${n} ${n === 1 ? "crédito" : "créditos"}. Empieza por estos.`,
   /** Junto a «Analizar este». `null` en cero: no hay de dónde usar uno. */
-  usaUno: (n: number | null): string | null => (n == null ? "usa 1 de tus análisis" : n <= 0 ? null : n === 1 ? "usa el último que te queda" : `usa 1 de tus ${n}`),
+  usaUno: (n: number | null): string | null => (n == null ? "usa 1 de tus créditos" : n <= 0 ? null : n === 1 ? "usa el último que te queda" : `usa 1 de tus ${n}`),
 } as const;
 
 /**

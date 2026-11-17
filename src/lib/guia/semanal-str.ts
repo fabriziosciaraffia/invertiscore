@@ -29,7 +29,7 @@ export const SEMANAL_STR = {
   bloqueCorto: "Para renta corta",
   intro: (n: number, busca: string, pie: string, plazo: number) =>
     `${n === 1 ? "Este depto publicado como los que buscas" : `Estos ${n} deptos publicados como los que buscas`} —${busca}— ${n === 1 ? "resulta" : "resultan"} para renta corta con tu pie de ${pie}% y tu plazo de ${plazo} años.`,
-  zona: "Estimados con la tarifa y la ocupación típicas de su sector. Al analizar uno, Franco lo mide con los datos de esa dirección.",
+  zona: "Estimados con la tarifa y la ocupación típicas de su sector. Al ver uno, Franco lo mide con los datos de esa dirección.",
   /** Quien tiene los dos perfiles y una semana sin ninguno en un bloque. */
   sinLargo: "Para arriendo tradicional, esta semana no apareció ninguno que te convenga.",
   sinCorto: "Para renta corta, esta semana no apareció ninguno que te convenga.",
@@ -56,7 +56,7 @@ export function continuacionNoDa(parecidos: number): string {
 }
 
 /** El botón para quien quiere el informe de todas formas: «Analizar igual · usa 1 de tus 3» (sin el uso, con el plan). */
-export const ANALIZAR_IGUAL = "Analizar igual";
+export const ANALIZAR_IGUAL = "Ver igual";
 export function textoAnalizarIgual(uso: string | null): string {
   return uso ? `${ANALIZAR_IGUAL} · ${uso}` : ANALIZAR_IGUAL;
 }
@@ -117,7 +117,7 @@ export interface MedicionFina {
 }
 
 /** «Ya lo analizaste · Ver informe» en lugar de «Analizar este» (15-oct-2026). */
-export const YA_ANALIZADO = { texto: "Ya lo analizaste", enlace: "Ver informe" } as const;
+export const YA_ANALIZADO = { texto: "Ya lo tienes", enlace: "Ver detalles" } as const;
 
 /**
  * LO YA MEDIDO, EN LAS SELECCIONES SIGUIENTES (15-oct-2026, decisión de Fabrizio). Para cada persona, un depto que ya

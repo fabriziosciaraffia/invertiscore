@@ -26,7 +26,7 @@ export const SELECCION_CASA = {
   /** El archivo del dashboard, en lugar de «SIN DIRECCIÓN». */
   archivo: "Desde tu selección semanal",
   archivoGuia: "Desde tu guía",
-  archivoExplorar: "Desde Explorar",
+  archivoExplorar: "Desde el mapa",
 } as const;
 
 /** La selección en el dashboard (21-oct-2026): con el token del correo y, si se clicó uno, ese depto arriba. Adonde

@@ -49,13 +49,13 @@ export type MotivoFallo = "error" | "despublicado" | "fuera" | "otra-cuenta" | "
 
 export const INFORME_COPY = {
   /** La cabecera del pop-up (el depto va en el título, una sola vez). */
-  cabecera: "Tu informe",
-  generando: (depto: string) => `Generando el informe de ${depto}…`,
+  cabecera: "Tu depto",
+  generando: (depto: string) => `Preparando los detalles de ${depto}…`,
   /** Listo, mientras se abre. */
-  abriendo: (depto: string) => `Abriendo el informe de ${depto}…`,
-  abrir: "Abrir informe",
-  verCompleto: "Ver el informe",
-  falloTitulo: "No pudimos generar el informe. No se usó ningún análisis.",
+  abriendo: (depto: string) => `Abriendo los detalles de ${depto}…`,
+  abrir: "Ver los detalles",
+  verCompleto: "Ver los detalles",
+  falloTitulo: "No pudimos preparar los detalles. No se usó ningún crédito.",
   falloQue: "Prueba de nuevo en unos minutos. Si vuelve a pasar, escríbenos a hola@refranco.ai.",
   reintentar: "Reintentar",
   cerrar: "Cerrar",
@@ -63,18 +63,18 @@ export const INFORME_COPY = {
    *  título dice cuándo lo revisó Franco y de dónde lo saca, según dónde se analizó (despublicadoQue). */
   despublicadoTitulo: "Este depto ya no está publicado.",
   despublicadoQue: (lugar: LugarInforme) =>
-    `Franco lo revisó ${lugar === "lista" ? "al armar tu guía" : "anoche"} y hoy el vendedor lo sacó: los que convienen se van rápido. No se usó ningún análisis. Lo quitamos ${lugar === "mapa" ? "del mapa" : lugar === "lista" ? "de la lista" : "de tu selección"}; elige otro.`,
-  fueraTitulo: "Este depto salió de tu selección. No se usó ningún análisis.",
-  sinDireccionTitulo: "Este depto no trae su dirección en el aviso. No se usó ningún análisis.",
+    `Franco lo revisó ${lugar === "lista" ? "al armar tu guía" : "anoche"} y hoy el vendedor lo sacó: los que convienen se van rápido. No se usó ningún crédito. Lo quitamos ${lugar === "mapa" ? "del mapa" : lugar === "lista" ? "de la lista" : "de tu selección"}; elige otro.`,
+  fueraTitulo: "Este depto salió de tu selección. No se usó ningún crédito.",
+  sinDireccionTitulo: "Este depto no trae su dirección en el aviso. No se usó ningún crédito.",
   sinDireccionQue: "Sin la dirección no se puede medir para renta corta. Elige otro.",
-  medicionTitulo: "La medición de renta corta no respondió. No se usó ningún análisis.",
+  medicionTitulo: "La medición de renta corta no respondió. No se usó ningún crédito.",
   medicionQue: "Prueba de nuevo en unos minutos.",
   fueraQue: "La armamos de nuevo con lo de hoy. Elige otro.",
   otraCuentaQue: "Esa cuenta no es la del pago. Entra con el correo con que pagaste.",
   /** «Con los datos de hoy dio Ajustar 68, no Comprar 82. Igual puedes verlo completo.» */
   distinto: (hoy: VeredictoVisto, antes: VeredictoVisto) =>
     `Con los datos de hoy dio ${conPuntaje(hoy)}, no ${conPuntaje(antes)}. Igual puedes verlo completo.`,
-  listo: (depto: string) => `Tu informe de ${depto} está listo`,
+  listo: (depto: string) => `Los detalles de ${depto} están listos`,
   abrirlo: "Abrirlo",
 } as const;
 

@@ -301,7 +301,7 @@ export function HeaderFranco({ contexto = "sitio", activo, sobreMaterial = false
         <EnlaceCarga href="/pricing" className={`hf-lnk hf-solo-ancho${activo === "planes" ? " on" : ""}`}>Planes</EnlaceCarga>
         <CtaAnalizar origen="nav" className="hf-lnk hf-solo-ancho">Nuevo análisis</CtaAnalizar>
         {modo === "propio" && informe?.compartir ? <span className="hf-oculta-fija" style={{ display: "contents" }}>{informe.compartir}</span> : null}
-        <EnlaceCarga href="/explorar" className="hf-btn hf-oculta-fija" data-hf="explorar">Explorar</EnlaceCarga>
+        <EnlaceCarga href="/explorar" className="hf-btn hf-oculta-fija" data-hf="explorar">Mapa</EnlaceCarga>
         <MenuCuenta email={sesion?.email ?? ""} />
       </>
     );

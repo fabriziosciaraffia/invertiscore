@@ -122,8 +122,8 @@ export const INMEDIATO = {
   vecinas: "En tus comunas no apareció ninguno nuevo que convenga, así que miramos las comunas vecinas.",
   baja: "Dejar de recibir estos avisos",
   bajaSigue: "El resumen de cada semana sigue llegando.",
-  botonConSaldo: "Analizar uno",
-  botonSinSaldo: `Analizar uno · ${fmtCLP(SINGLE_PRICE)}`,
+  botonConSaldo: "Ver uno",
+  botonSinSaldo: `Ver uno · ${fmtCLP(SINGLE_PRICE)}`,
   bajaLista: "Listo. Ya no te avisamos al momento.",
   bajaVolver: "El resumen de cada semana sigue llegando. Si cambias de idea, escríbenos a hola@refranco.ai.",
   pregunta: {

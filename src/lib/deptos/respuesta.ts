@@ -170,10 +170,10 @@ export const DEPTOS_COPY = {
       convienen > 1
         // «Dentro de la hora» (05-nov-2026): el correo del día sale cuando hay lecturas de ficha, o a los 45 minutos con lo
         // visto en la semana (del-dia.ts › MINUTOS_CUPO_DEL_DIA). «En minutos» prometía de más.
-        ? { antes: `Los mejores de estos ${miles(convienen)} te llegan al correo dentro de la hora, `, fuerte: "con un análisis de regalo", despues: " para el que más te interese." }
+        ? { antes: `Los mejores de estos ${miles(convienen)} te llegan al correo dentro de la hora, `, fuerte: "con un crédito de regalo", despues: " para el que más te interese." }
         : convienen === 1
-          ? { antes: "Te llega al correo dentro de la hora, ", fuerte: "con un análisis de regalo", despues: " para analizarlo." }
-          : { antes: "Cada lunes te llegan los nuevos que convienen, ", fuerte: "con un análisis de regalo", despues: " para analizar el que quieras." },
+          ? { antes: "Te llega al correo dentro de la hora, ", fuerte: "con un crédito de regalo", despues: " para verlo." }
+          : { antes: "Cada lunes te llegan los nuevos que convienen, ", fuerte: "con un crédito de regalo", despues: " para ver el que quieras." },
     google: "Entrar con Google",
     oTuCorreo: "o con tu correo",
     placeholder: "nombre@correo.cl",
@@ -198,7 +198,7 @@ export const DEPTOS_COPY = {
     fuerte: revisados ? `las ${masDeMiles(revisados)} publicaciones` : "todas las publicaciones",
     despues: ` en venta de Santiago y calcula cuáles convienen como inversión.${convienen != null ? ` Anoche, ${miles(convienen)} deptos.` : ""}`,
   }),
-  verAnalisis: "Ver un análisis de ejemplo",
+  verAnalisis: "Ver un ejemplo",
   /** Adónde lleva «Ver un análisis de ejemplo» (29-oct-2026: antes «real», en todo el sitio): el demo público. */
   hrefAnalisis: "/demo",
   tope: `Hasta ${MAX_COMUNAS_DEPTOS} comunas.`,
@@ -283,7 +283,7 @@ export const ESTAS_DENTRO_DEPTOS = {
   titulo: "Bienvenido, estás dentro.",
   regalo: {
     kicker: "Regalo de bienvenida",
-    titulo: "Tienes un análisis de regalo.",
+    titulo: "Tienes un crédito de regalo.",
     /** «Úsalo en el depto que más te interese de abajo. Vence el 21 de noviembre.» (la fecha, textoVence). */
     bajada: "Úsalo en el depto que más te interese de abajo.",
   },

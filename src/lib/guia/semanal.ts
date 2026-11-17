@@ -62,7 +62,7 @@ export type TramoSemanal = "propia" | "vecina" | "negociar";
  */
 export type Visto = "mandado" | "analizado";
 export const DIAS_VISTO = 28;
-export const MARCA_VISTO: Record<Visto, string> = { mandado: "Ya te lo mandamos", analizado: "Ya lo analizaste" };
+export const MARCA_VISTO: Record<Visto, string> = { mandado: "Ya te lo mandamos", analizado: "Ya lo tienes" };
 
 /** Lo visto de una persona, por aviso, desde sus correos enviados y sus informes: lo analizado pesa más que lo mandado. El
  *  informe de renta larga, si lo hay, para «Ya lo analizaste · Ver informe». */
@@ -672,12 +672,12 @@ export function textoVence(iso: string, ahora: Date = new Date()): string {
 /** La página adonde lleva el correo (/semanal). */
 export const SEMANAL_PAGINA = {
   /** Volvió de pagar por un depto que salió de la selección (05-nov-2026): no se usó ningún análisis. */
-  yaNoEsta: "El depto que elegiste ya no está en tu selección. No se usó ningún análisis.",
+  yaNoEsta: "El depto que elegiste ya no está en tu selección. No se usó ningún crédito.",
   titulo: "Deptos publicados que Franco revisó para ti",
-  bajada: (pie: string, plazo: number) => `Revisados con tu pie de ${pie}% y tu plazo de ${plazo} años. Analiza el que quieras.`,
-  regalo: "El próximo que analices va por cuenta de Franco.",
-  usaUno: (n: number) => (n === 1 ? "usa tu último análisis" : `usa 1 de tus ${n}`),
-  usaRegalo: "usa tu análisis de regalo",
+  bajada: (pie: string, plazo: number) => `Revisados con tu pie de ${pie}% y tu plazo de ${plazo} años. Elige el que quieras.`,
+  regalo: "El próximo depto que veas va por cuenta de Franco.",
+  usaUno: (n: number) => (n === 1 ? "usa tu último crédito" : `usa 1 de tus ${n}`),
+  usaRegalo: "usa tu crédito de regalo",
   /** Sin análisis, abajo (13-oct-2026): el pack de tres en lugar de «Analizar uno · $9.990». */
   comprar: TRES_COPY.boton,
   comprarBajada: "Sin caducidad: para estos o para cualquier otro depto.",

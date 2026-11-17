@@ -106,5 +106,5 @@ export function pildoraMapa(enSeleccion: number, otros: number, comunas: readonl
  * en el mapa».
  */
 export function botonExplorar(totalNoche: number | null | undefined): string {
-  return totalNoche != null && totalNoche > 0 ? `Explorar los ${miles(totalNoche)} de Santiago` : "Explorar en el mapa";
+  return totalNoche != null && totalNoche > 0 ? `Ver los ${miles(totalNoche)} de Santiago en el mapa` : "Ver el mapa";
 }
