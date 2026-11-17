@@ -1,7 +1,7 @@
 // ============================================================================
 // TIER RECORRIDO-22-OCT — tres arreglos chicos del recorrido real por la puerta B (22-oct-2026, Fabrizio)
 //
-//   1 · LA TARJETA DEL RE-ANÁLISIS: «Analizado a UF X, el precio que Franco recomendó negociar · Ver informe original» deja
+//   1 · LA TARJETA DEL RE-ANÁLISIS: «Analizado a UF X, el precio que Franco recomendó negociar · Ver detalles original» deja
 //       de ser texto plano: es una tarjeta destacada bajo la portada con el material del banner (guia.css › .qv-banda), la
 //       línea como título y el enlace como botón.
 //   2 · «SE RENUEVA EL LUNES 27»: en «Tu selección de esta semana» del dashboard y en el correo; el próximo lunes en la

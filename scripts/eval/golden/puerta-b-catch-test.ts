@@ -7,11 +7,11 @@
 //   2 · EL CERO CON ALTERNATIVA: la respuesta sale de la evaluación de la noche, y con cero dice con qué sí (pie 30 % o
 //       una comuna vecina) y ofrece igual registrarse: «te aviso cuando aparezca uno».
 //   3 · EL PERFIL MANUAL SIN INFORMES: la cuenta sin informes entra al semanal, con su rango y el origen sintético (tasa
-//       de mercado), y «Analizar este» funciona sin informe de origen.
+//       de mercado), y «Ver este depto» funciona sin informe de origen.
 //   4 · LA COLA DEL CORREO DEL DÍA: espera mientras falta cupo de fichas, sale pasada la hora con lo visto publicado y
 //       lo dice con la hora; es el semanal de esa semana: el lunes va solo si hay nuevos.
 //   5 · EL REGALO AL REGISTRARSE: uno por cuenta nueva, vigente 30 días, con tope por dispositivo, IP y día; reemplaza a
-//       la bienvenida; el aviso antes de gastar dice «usa tu análisis de regalo».
+//       la bienvenida; el aviso antes de gastar dice «usa tu crédito de regalo».
 //   6 · LA REACTIVACIÓN: 4 semanas sin analizar, una cada 90 días, con su semanal.
 // Más: el «cuándo» renombrado, la medición con la puerta B y el estándar de 25 años en la evaluación de la noche.
 //   8 · LA PÁGINA QUE CONVIERTE (16-oct-2026, segunda pasada: la única meta es que dejen el correo): ocho comunas a la vista
@@ -307,8 +307,8 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       if (!/const soloManual = informes\.length === 0 && filasStr\.length === 0 && m != null;/.test(pbs) || !/: soloManual && manual\.modalidad !== "str" \? perfilDeBusqueda\(\[\], manual\) : null,/.test(pbs) || !/precioMinUf: num\(m\.precio_min_uf\),/.test(pbs))
         F("3 · el perfil de renta larga de una cuenta sin informes no sale de lo editado a mano (o pierde el piso)");
       const an = sinComentarios(leer("src/app/api/lo-que-sigue/guia/analizar/route.ts"));
-      if (!/const sinOrigen = typeof b\.semanal === "string" && b\.origenId == null;/.test(an) || !/const deLaFila = await combinacionSemanal\(admin, b\.semanal!, user\.id, null, b\.avisoId\);\s*combo = deLaFila \? elegida \?\? deLaFila : null;/.test(an)) F("3 · «Analizar este» no funciona sin informe de origen (o no acepta la combinación elegida en el pop-up, tier PUERTA-B-MOCKUPS §3)");
-      if (/if \(generando \|\| !origenId \|\| !combinacion\) return;/.test(leer("src/app/semanal/semanal-lista.tsx"))) F("3 · el botón «Analizar este» sigue mudo sin informe de origen");
+      if (!/const sinOrigen = typeof b\.semanal === "string" && b\.origenId == null;/.test(an) || !/const deLaFila = await combinacionSemanal\(admin, b\.semanal!, user\.id, null, b\.avisoId\);\s*combo = deLaFila \? elegida \?\? deLaFila : null;/.test(an)) F("3 · «Ver este depto» no funciona sin informe de origen (o no acepta la combinación elegida en el pop-up, tier PUERTA-B-MOCKUPS §3)");
+      if (/if \(generando \|\| !origenId \|\| !combinacion\) return;/.test(leer("src/app/semanal/semanal-lista.tsx"))) F("3 · el botón «Ver este depto» sigue mudo sin informe de origen");
     }
 
     // ── 4 · LA COLA DEL CORREO DEL DÍA ──
@@ -378,7 +378,7 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       const grants = db.tabla("credit_grants");
       if (r1.estado !== "otorgar" || r2.estado !== "ya" || grants.length !== 1) F(`5 · el regalo no es uno por cuenta (${r1.estado}, ${r2.estado}, ${grants.length} lotes)`);
       const g = grants[0];
-      if (g?.source !== FUENTE_REGALO_ALTA || g.amount !== 1 || g.remaining !== 1 || g.expires_at !== new Date(ahora.getTime() + 30 * 864e5).toISOString()) F(`5 · el lote del regalo no es 1 análisis de regalo que vence a los 30 días: ${JSON.stringify(g)}`);
+      if (g?.source !== FUENTE_REGALO_ALTA || g.amount !== 1 || g.remaining !== 1 || g.expires_at !== new Date(ahora.getTime() + 30 * 864e5).toISOString()) F(`5 · el lote del regalo no es 1 crédito de regalo que vence a los 30 días: ${JSON.stringify(g)}`);
       if (db.tabla("user_credits").find((f) => f.user_id === "u1")?.welcome_credit_used !== true) F("5 · el regalo no apaga la bienvenida (serían dos gratis)");
       const r3 = await asegurarRegaloDeAlta(db as never, { userId: "u2", creadaAt: nueva, huella }, ahora);
       if (r3.estado !== "tope_dispositivo" || grants.length !== 1) F("5 · un segundo regalo en el mismo dispositivo se otorga");
@@ -422,7 +422,7 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       const claim = sinComentarios(leer("src/app/api/analisis/claim/route.ts"));
       if (!/await asegurarRegaloDeAlta\(createAdminServiceClient\(\), \{/.test(claim) || claim.indexOf("asegurarRegaloDeAlta(") > claim.indexOf("ensureWelcomeEmail(")) F("5 · el reclamo después del código no da el regalo (o lo da después de la bienvenida)");
       if (!/await asegurarRegaloDeAlta\(createAdminServiceClient\(\), \{/.test(sinComentarios(leer("src/app/auth/callback/route.ts")))) F("5 · el enlace del correo o Google no dan el regalo");
-      // ⚠ ACTA (05-nov-2026, auditoría de promesas parte 3: quien topa ve por qué bajo «Sin análisis») · el dashboard guarda lo
+      // ⚠ ACTA (05-nov-2026, auditoría de promesas parte 3: quien topa ve por qué bajo «Sin créditos») · el dashboard guarda lo
       // que decidió el regalo (`regaloAlta`) para decir el motivo; sigue siendo la red, en el mismo lugar.
       if (!/const admin = createServiceClient\(\);\s*const regaloAlta = await asegurarRegaloDeAlta\(admin, \{/.test(sinComentarios(leer("src/app/dashboard/page.tsx")))) F("5 · el dashboard no es red del regalo");
       const acc = sinComentarios(leer("src/lib/access.ts"));
@@ -436,16 +436,16 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
         || !/const puerta: PuertaAlta = ref && ref\.estado !== "cuenta_previa" \? "C" : puertaElegida\.puerta === "E" \? "E" : "B";/.test(altaB) || !/const regaloP = piezas\.regalo\(puertaP\.then\(\(x\) => x\.puerta\)\);/.test(sinComentarios(leer("src/lib/deptos/alta-orden.ts")))) F("5 · /deptos no da el regalo (o no con la puerta B)");
       if (!/res\.cookies\.set\(COOKIE_DISPOSITIVO, crypto\.randomUUID\(\),/.test(leer("src/middleware.ts"))) F("5 · sin la cookie del dispositivo, el tope por dispositivo no existe");
 
-      // El aviso antes de gastar: «usa tu análisis de regalo» y «usa 1 de tus N».
+      // El aviso antes de gastar: «usa tu crédito de regalo» y «usa 1 de tus N».
       const año = "2027-10-01T00:00:00Z", pronto = "2026-11-15T00:00:00Z";
       const mixto = datosSaldoDe([{ remaining: 1, expires_at: pronto, source: FUENTE_REGALO_ALTA }, { remaining: 3, expires_at: año, source: "pack3" }], null);
       const e1 = estadoSaldo(mixto);
-      if (!mixto.proximoRegalo || e1.tipo !== "con" || textoUso(e1) !== "Usa tu análisis de regalo.") F(`5 · con un regalo que se gasta primero, el aviso no dice «usa tu análisis de regalo»: ${textoUso(e1)}`);
+      if (!mixto.proximoRegalo || e1.tipo !== "con" || textoUso(e1) !== "Usa tu crédito de regalo.") F(`5 · con un regalo que se gasta primero, el aviso no dice «usa tu crédito de regalo»: ${textoUso(e1)}`);
       const otro = datosSaldoDe([{ remaining: 1, expires_at: año, source: FUENTE_REGALO_ALTA }, { remaining: 3, expires_at: pronto, source: "plan10" }], null);
-      if (otro.proximoRegalo || textoUso(estadoSaldo(otro)) !== "Usa 1 de tus 4 análisis.") F(`5 · el aviso dice regalo cuando se gasta otro lote primero: ${textoUso(estadoSaldo(otro))}`);
+      if (otro.proximoRegalo || textoUso(estadoSaldo(otro)) !== "Usa 1 de tus 4 créditos.") F(`5 · el aviso dice regalo cuando se gasta otro lote primero: ${textoUso(estadoSaldo(otro))}`);
       const solo = estadoSaldo(datosSaldoDe([{ remaining: 1, expires_at: pronto, source: FUENTE_REGALO_ALTA }], null));
-      if (solo.tipo !== "regalo" || textoUso(solo) !== "Usa tu análisis de regalo." || !FUENTES_REGALO.has("regalo_semanal")) F("5 · con solo el regalo, el aviso no lo dice (o el regalo viejo dejó de contarse)");
-      if (!/if \(tier\?\.proximoRegalo\) return "Esto usa tu análisis de regalo\.";/.test(leer("src/components/formulario-v4/screenResumen.tsx"))) F("5 · el wizard no dice que usa el regalo");
+      if (solo.tipo !== "regalo" || textoUso(solo) !== "Usa tu crédito de regalo." || !FUENTES_REGALO.has("regalo_semanal")) F("5 · con solo el regalo, el aviso no lo dice (o el regalo viejo dejó de contarse)");
+      if (!/if \(tier\?\.proximoRegalo\) return "Esto usa tu crédito de regalo\.";/.test(leer("src/components/formulario-v4/screenResumen.tsx"))) F("5 · el wizard no dice que usa el regalo");
     }
 
     // ── 6 · LA REACTIVACIÓN ──
@@ -534,7 +534,7 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       // ⚠ ACTA (24-oct-2026, recorrido de Fabrizio) · lo que llega es la selección, no los 12: «Los mejores de estos 12».
       // ⚠ ACTA (05-nov-2026, goal de Fabrizio, auditoría de promesas parte 3: «"te llegan en minutos" pasa a "dentro de la
       // hora"») · el correo del día sale cuando hay lecturas de ficha, o a los 45 minutos con lo visto (MINUTOS_CUPO_DEL_DIA).
-      if (`${bj.antes}${bj.fuerte}${bj.despues}` !== "Los mejores de estos 12 te llegan al correo dentro de la hora, con un análisis de regalo para el que más te interese." || bj.fuerte !== "con un análisis de regalo") F("8 · la bajada del correo no dice que los mejores de los 12 llegan al correo con un análisis de regalo");
+      if (`${bj.antes}${bj.fuerte}${bj.despues}` !== "Los mejores de estos 12 te llegan al correo dentro de la hora, con un crédito de regalo para el que más te interese." || bj.fuerte !== "con un crédito de regalo") F("8 · la bajada del correo no dice que los mejores de los 12 llegan al correo con un crédito de regalo");
       // Serif solo en el título de la página, el de «Estás dentro» y el del invitado con depto (.dp-que), el número grande y el
       // título de la tarjeta del correo (así en el mockup); el cuerpo en Inter.
       const css = leer("src/app/deptos/deptos.css");
@@ -665,9 +665,9 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       // llega la nueva se atenúan juntos.
       if (!/<span className="dp-cifra" data-deptos="cifra">\{miles\(respuesta\.convienen\)\}<\/span><span className="dp-resto">\{respuesta\.resto\}<\/span>/.test(cliD) || /DEPTOS_COPY\.resto\(/.test(cliD)) F("10 · el resto no sale de la misma respuesta que el número (no cambiarían juntos)");
       if (!/\.dp-tarjeta-numero\[data-cargando="1"\] \.dp-numero, \.dp-tarjeta-numero\[data-cargando="1"\] \.dp-ayuda \{ opacity: 0\.55; \}/.test(leer("src/app/deptos/deptos.css"))) F("10 · mientras cambia, el número y la nota no se atenúan juntos");
-      if (!/<p className="dp-prueba-t">\{prueba\.antes\}<b>\{prueba\.fuerte\}<\/b>\{prueba\.despues\}<\/p>\s*<EnlaceCarga href=\{DEPTOS_COPY\.hrefAnalisis\} className="dp-prueba-enlace" data-deptos="ver-analisis">\{DEPTOS_COPY\.verAnalisis\} →<\/EnlaceCarga>/.test(cliD) || DEPTOS_COPY.hrefAnalisis !== "/demo" || DEPTOS_COPY.verAnalisis !== "Ver un análisis de ejemplo")
+      if (!/<p className="dp-prueba-t">\{prueba\.antes\}<b>\{prueba\.fuerte\}<\/b>\{prueba\.despues\}<\/p>\s*<EnlaceCarga href=\{DEPTOS_COPY\.hrefAnalisis\} className="dp-prueba-enlace" data-deptos="ver-analisis">\{DEPTOS_COPY\.verAnalisis\} →<\/EnlaceCarga>/.test(cliD) || DEPTOS_COPY.hrefAnalisis !== "/demo" || DEPTOS_COPY.verAnalisis !== "Ver un ejemplo")
         // ⚠ ACTA (29-oct-2026, goal «puerta E», mockup docs/puerta-b-mockups/6-puerta-e.html) · «Ver un análisis real» pasa a «de ejemplo» en todo el sitio.
-        F("10 · la prueba no lleva la frase con la negrita y «Ver un análisis de ejemplo» al demo");
+        F("10 · la prueba no lleva la frase con la negrita y «Ver un ejemplo» al demo");
       // La banda: el material del banner (degradado), texto en papel, UN botón en papel; es lo único con color de fondo además de
       // la tarjeta roja del regalo (solo en «Estás dentro») y el pin rojo de las tarjetas (mockup 2).
       const cssD = leer("src/app/deptos/deptos.css");

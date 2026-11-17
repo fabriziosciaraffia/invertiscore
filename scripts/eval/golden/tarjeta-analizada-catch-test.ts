@@ -2,7 +2,7 @@
 // GOLDEN · TARJETA-ANALIZADA (05-nov-2026) — catch-test
 // ============================================================================
 //   Decisión de Fabrizio, 05-nov-2026: «La tarjeta de un depto ya analizado muestra lo que dice el informe de esa persona, no
-//   lo de la noche: el chip con el veredicto y puntaje del informe y la fecha («✓ COMPRAR · 79 · tu informe del 13-oct»). Si
+//   lo de la noche: el chip con el veredicto y puntaje del informe y la fecha («✓ COMPRAR · 79 · en tu cuenta desde el 13-oct»). Si
 //   la noche hoy da distinto, una línea chica lo dice («hoy la noche da 82»). Aplica a Explorar, la selección y el dashboard.»
 //   Gate en rojo con una tarjeta analizada que muestra el puntaje de la noche.
 //
@@ -11,7 +11,7 @@
 //   2 · DIBUJADO DE VERDAD, cada tarjeta con un depto analizado cuyo informe dio Comprar · 79 y la noche hoy da 82 (y un flujo
 //       de la noche que no puede asomar): la tarjeta y la lista de Explorar, el depto compartido, la selección del dashboard,
 //       los guardados del dashboard y la primera selección (de /deptos y del dashboard). En cada una: el chip del informe
-//       (79), «tu informe del 13-oct», «hoy la noche da 82» y, fuera de esa línea, NI el 82 NI el flujo de la noche. Con la
+//       (79), «en tu cuenta desde el 13-oct», «hoy la noche da 82» y, fuera de esa línea, NI el 82 NI el flujo de la noche. Con la
 //       noche igual al informe, sin línea; con otro veredicto, la línea lo nombra. Control: el mismo depto SIN analizar sí
 //       muestra la noche (si no, la ausencia del 82 no probaría nada).
 //   3 · LA GUÍA DE BÚSQUEDA (solo con estado de la visita, no se dibuja con datos): la tarjeta de un analizado va al chip y
@@ -70,14 +70,14 @@ export async function runTarjetaAnalizadaTier(): Promise<{ hard: number }> {
 
   // ── 1 · el texto ───────────────────────────────────────────────────────────
   try {
-    if (chipInforme(R) !== "✓ Comprar · 79 · tu informe del 13-oct") F(`1 · el chip del informe dice «${chipInforme(R)}», no «✓ Comprar · 79 · tu informe del 13-oct»`);
+    if (chipInforme(R) !== "✓ Comprar · 79 · en tu cuenta desde el 13-oct") F(`1 · el chip del informe dice «${chipInforme(R)}», no «✓ Comprar · 79 · en tu cuenta desde el 13-oct»`);
     if (fechaInforme(R.fecha) !== "13-oct") F(`1 · la fecha del informe no sale en hora de Chile («${fechaInforme(R.fecha)}»)`);
     if (lineaNoche(R, { veredicto: "COMPRAR", score: 79 }) !== null) F("1 · con la noche igual al informe igual sale la línea de la noche");
     if (lineaNoche(R, { veredicto: "COMPRAR", score: NOCHE_SCORE }) !== "hoy la noche da 82") F(`1 · con la noche en 82 la línea dice «${lineaNoche(R, { veredicto: "COMPRAR", score: NOCHE_SCORE })}», no «hoy la noche da 82»`);
     if (lineaNoche(R, { veredicto: "AJUSTA SUPUESTOS", score: 64 }) !== "hoy la noche da Ajustar · 64") F("1 · con otro veredicto la línea de la noche no lo nombra («hoy la noche da Ajustar · 64»)");
     if (lineaNoche(R, null) !== null || lineaNoche(R, { veredicto: "COMPRAR", score: null }) !== null) F("1 · sin nada que comparar sale una línea de la noche");
     const sinV: ResumenInforme = { veredicto: null, score: null, fecha: R.fecha };
-    if (chipInforme(sinV) !== "✓ Tu informe del 13-oct") F("1 · un informe sin veredicto guardado no dice «✓ Tu informe del 13-oct»");
+    if (chipInforme(sinV) !== "✓ En tu cuenta desde el 13-oct") F("1 · un informe sin veredicto guardado no dice «✓ En tu cuenta desde el 13-oct»");
   } catch (e) {
     F(`1 · el módulo puro revienta: ${(e as Error).message}`);
   }
@@ -141,11 +141,11 @@ export async function runTarjetaAnalizadaTier(): Promise<{ hard: number }> {
       const h = d({ analizado: true });
       const fuera = sinLineaNoche(h);
       if (!h.includes(chip79)) F(`2 · ${nombre}: la tarjeta analizada no lleva el chip del informe (✓ Comprar · 79)`);
-      if (!texto(h).includes("tu informe del 13-oct")) F(`2 · ${nombre}: la tarjeta analizada no dice «tu informe del 13-oct»`);
+      if (!texto(h).includes("en tu cuenta desde el 13-oct")) F(`2 · ${nombre}: la tarjeta analizada no dice «en tu cuenta desde el 13-oct»`);
       if (!/data-informe-propio="noche"[^>]*>hoy la noche da 82</.test(h)) F(`2 · ${nombre}: con la noche en 82 no está la línea chica «hoy la noche da 82»`);
       if (new RegExp(`\\b${NOCHE_SCORE}\\b`).test(texto(fuera)) || fuera.includes(`data-puntaje="${NOCHE_SCORE}"`)) F(`2 · ${nombre}: LA TARJETA ANALIZADA MUESTRA EL PUNTAJE DE LA NOCHE (82) fuera de la línea chica`);
       if (texto(h).includes(NOCHE_FLUJO_TXT)) F(`2 · ${nombre}: la tarjeta analizada muestra el flujo de la noche`);
-      if (/Analizar este/.test(texto(h))) F(`2 · ${nombre}: la tarjeta analizada ofrece «Analizar este»`);
+      if (/Ver este depto/.test(texto(h))) F(`2 · ${nombre}: la tarjeta analizada ofrece «Ver este depto»`);
 
       const igual = d({ analizado: true, noche: { veredicto: "COMPRAR", score: 79 } });
       if (/data-informe-propio="noche"/.test(igual) || !igual.includes(chip79)) F(`2 · ${nombre}: con la noche igual al informe sale la línea de la noche (o se pierde el chip)`);
@@ -241,8 +241,8 @@ if (require.main === module) {
 //   con su acta (ahora exige el depto y su precio, y que el 91 no esté) y verificado en rojo con M4 sobre ese tier.
 //   El QUICK de la rama cazó cuatro predicados más que fijaban la GRAFÍA vieja de la tarjeta, no su conducta: INFORME-EN-CAMINO
 //   §2, PRIMERA-SELECCION §7 y PUERTA-B-RECORRIDO §6 buscaban `it.informeId ?? informesAqui[it.avisoId]` en línea (ahora se
-//   nombra una vez, `const informe = …`, porque lo leen el chip y «Ya lo analizaste»), y SEMANAL-AJUSTES §10 extraía
+//   nombra una vez, `const informe = …`, porque lo leen el chip y «Ya lo tienes»), y SEMANAL-AJUSTES §10 extraía
 //   `filaAnalizada` hasta el `);` de una flecha de expresión (ahora tiene cuerpo). Reescritos con su acta y verificados en
-//   rojo: olvidar los de esta visita (los tres), apagar «Ya lo analizaste» (los tres), «Ver informe» a otro lado, la fila sin
+//   rojo: olvidar los de esta visita (los tres), apagar «Ya lo tienes» (los tres), «Ver detalles» a otro lado, la fila sin
 //   su marca y la fila que vuelve a analizar — 9/9.
 // ============================================================================

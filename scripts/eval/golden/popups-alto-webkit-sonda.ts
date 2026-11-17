@@ -1,11 +1,11 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // SONDA VIVA · LOS POP-UPS CABEN EN UN TELÉFONO (24-oct-2026, decisión de Fabrizio). En WebKit, pantalla de 390 × 740 con
-// perfil de iPhone, contra /dev/popups (next dev o un preview de Vercel), mide los siete estados: «Analizar este» sin saldo
+// perfil de iPhone, contra /dev/popups (next dev o un preview de Vercel), mide los siete estados: «Ver este depto» sin saldo
 // con la oferta de cuentas nuevas (a) y sin ella (a0), con saldo como se abre (d1), con la línea del ticket (d1t), después
 // de «Cambiar» y bajar el pie a 10 % (d2), y el aviso E de Explorar con la oferta (e) y sin ella (e0). En cada uno:
 //   ALTO · el panel entero dentro de la pantalla y su cuerpo SIN SCROLL (scrollHeight ≤ clientHeight): ni la tarjeta roja
 //          ni un botón quedan cortados. Imprime el alto del panel y lo que sobra.
-//   LÍNEAS · «No te quedan análisis.» en una línea; la tarjeta del depto en dos (comuna · tipología · m² · precio, y
+//   LÍNEAS · «No te quedan créditos.» en una línea; la tarjeta del depto en dos (comuna · tipología · m² · precio, y
 //          veredicto · flujo) más la del enlace en UNA; la oferta en una fila («Solo para cuentas nuevas · vence …») y
 //          debajo «3 análisis por $14.990 · $4.997 cada uno» en una línea.
 //   CANCELAR · «Cancelar» (y «Ahora no») es texto, no un botón de borde: sin borde y más bajo que los botones.
@@ -16,7 +16,7 @@
 // de scroll en el cuerpo, el nombre del depto en dos líneas, la línea del enlace en tres, la oferta en dos filas,
 // «Comprar solo 1» tan alto como el principal y «Cancelar» como botón de borde. VERDE con el código nuevo, a 740 y a 664
 // (Safari con sus barras): el más alto es D2 con 549 px; las páginas reales con una cuenta de prueba sin saldo midieron
-// lo mismo (aviso E 458 px, «Analizar este» sin saldo 411 px, sin scroll). Mutaciones, ROJO 8 de 9: sin el modo compacto,
+// lo mismo (aviso E 458 px, «Ver este depto» sin saldo 411 px, sin scroll). Mutaciones, ROJO 8 de 9: sin el modo compacto,
 // la línea del enlace larga, el nombre a 18 px con salto, la oferta a 20 px, la fila de la oferta en mayúsculas con la
 // píldora, «Cancelar» como botón, «Comprar solo 1» alto en el pop-up y en el aviso E. VERDE la novena —devolver los
 // márgenes de antes— y está bien: con las líneas compactas, los márgenes viejos caben igual; no son lo que sostiene la regla.
@@ -121,7 +121,7 @@ async function main(): Promise<void> {
       ok(m.mcScroll != null && m.mcScroll <= 1, `ALTO · el cuerpo del pop-up hace scroll (${m.mcScroll} px de más)`);
       ok(m.cortados.length === 0, `ALTO · quedan cortados: ${m.cortados.join(" | ")}`);
       ok(m.anchos.length === 0, `ANCHO · no caben a lo ancho (se cortan o se salen): ${m.anchos.join(" | ")}`);
-      if (e === "a" || e === "a0") ok(m.titulo === 1, `LÍNEAS · «No te quedan análisis.» ocupa ${m.titulo} líneas`);
+      if (e === "a" || e === "a0") ok(m.titulo === 1, `LÍNEAS · «No te quedan créditos.» ocupa ${m.titulo} líneas`);
       // ⚠ ACTA (30-oct-2026, goal del recorrido real) · el pop-up lleva la imagen del depto a la izquierda de la tarjeta gris
       // (decisión de Fabrizio) y a 390 px sus líneas ya no caben en una: se envuelven, hasta dos cada una, y ninguna se corta
       // (ANCHO, arriba). ALTO sigue igual: el panel entero en 390 × 740, sin scroll. Medido VERDE en el preview del 30-oct, a 740
@@ -129,7 +129,7 @@ async function main(): Promise<void> {
       if (e.startsWith("a") || e.startsWith("d")) {
         ok(m.nombre >= 1 && m.nombre <= 2, `LÍNEAS · comuna · tipología · m² · precio ocupa ${m.nombre} líneas`);
         if (e !== "d2") ok(m.linea >= 1 && m.linea <= 2, `LÍNEAS · veredicto · flujo ocupa ${m.linea} líneas`);
-        ok(m.incluye >= 1 && m.incluye <= 2 && m.incluyeTexto === "El informe incluye el enlace a la publicación.", `LÍNEAS · la línea del enlace: «${m.incluyeTexto}» en ${m.incluye} líneas`);
+        ok(m.incluye >= 1 && m.incluye <= 2 && m.incluyeTexto === "Los detalles incluyen el enlace a la publicación.", `LÍNEAS · la línea del enlace: «${m.incluyeTexto}» en ${m.incluye} líneas`);
       }
       if (e === "a") {
         ok(m.filaUna === true && /^Solo para cuentas nuevas\s*·?\s*vence mañana 18:07$/i.test((m.filaTexto ?? "").replace(/\s+/g, " ")), `LÍNEAS · la oferta no va en una fila: «${m.filaTexto}» (una fila: ${m.filaUna})`);

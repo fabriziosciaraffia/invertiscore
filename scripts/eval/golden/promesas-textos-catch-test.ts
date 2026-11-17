@@ -5,7 +5,7 @@
 //   […] Gates en rojo con cada texto contra su regla.»
 //
 //   1 · EL REGALO: el cupo del día es 500; un lote en fallo se reintenta solo (el cron) y se carga una sola vez; quien topa ve
-//       por qué —en pantalla y bajo «Sin análisis»— con «Ver planes».
+//       por qué —en pantalla y bajo «Sin créditos»— con «Ver planes».
 //   2 · EL REFERIDO: «cuando tu invitado hace su primer análisis, tú recibes uno», con el tope de 5 y los 60 días, en todos
 //       los textos; el invitado recibe el regalo de cuenta nueva; el premio sale del primer análisis, no del «¿Cuándo
 //       piensas comprar?».
@@ -16,7 +16,7 @@
 //   5 · LOS DATOS: el FAQ igual a /privacy, «en este navegador», el id del Lead que Meta no puede cruzar con el correo, y la
 //       vista previa con el mismo puntaje que el informe.
 //   6 · DESPUÉS DE PAGAR DESDE UN DEPTO: si no se pudo analizar, lo dice y deja el saldo a la vista; la renta corta analiza
-//       sola a la vuelta; la tarjeta «no da» conserva la publicación y «Analizar igual»; «no usas un análisis» al comprar.
+//       sola a la vuelta; la tarjeta «no da» conserva la publicación y «Ver igual»; «no usas un crédito» al comprar.
 //   7 · LAS FECHAS: «vence hoy a las 21:04», sin «Hoy,» en el ticket, «Te quedan N» sin restar lo no cobrado, el
 //       recordatorio sin informe al mapa y el carrito abandonado a la compra a medias.
 //   8 · CLAUDE.md al día: el plan da 20, la boleta emite en producción, el informe no se bloquea por nivel.
@@ -175,14 +175,14 @@ export async function runPromesasTextosTier(): Promise<{ hard: number }> {
     if (pasado?.estado !== "otorgar" || t2.credit_grants.length !== 1) F("1 · un «otorgado» sin lote pasada la espera no se carga");
   }
   if (!usa("src/app/api/cron/reconciliar-pagos/route.ts", "reintentarRegalosEnFallo(")) F("1 · el cron diario no barre los regalos en fallo: nadie los reintenta");
-  // Quien topa, lo ve: en pantalla y bajo «Sin análisis», con «Ver planes».
+  // Quien topa, lo ve: en pantalla y bajo «Sin créditos», con «Ver planes».
   {
     const dash = sinImports(sc("src/app/dashboard/page.tsx"));
     const linea = dash.match(/<p[^>]*data-casa="sin-regalo"[\s\S]*?<\/p>/)?.[0] ?? "";
-    if (!/SIN_REGALO_COPY\[sinRegalo\]\.titulo/.test(linea) || !/SIN_REGALO_COPY\[sinRegalo\]\.bajada/.test(linea)) F("1 · el dashboard no dice por qué no hay regalo bajo «Sin análisis»");
+    if (!/SIN_REGALO_COPY\[sinRegalo\]\.titulo/.test(linea) || !/SIN_REGALO_COPY\[sinRegalo\]\.bajada/.test(linea)) F("1 · el dashboard no dice por qué no hay regalo bajo «Sin créditos»");
     if (!/motivoSinRegalo\(regaloAlta\.estado/.test(dash)) F("1 · el motivo del dashboard no sale de lo que decidió el regalo");
     const p = pildoraSaldo({ tipo: "sin" } as Parameters<typeof pildoraSaldo>[0]);
-    if (p.texto !== "Sin análisis" || !p.planes || CASA.verPlanes !== "Ver planes") F("1 · «Sin análisis» no lleva «Ver planes»");
+    if (p.texto !== "Sin créditos" || !p.planes || CASA.verPlanes !== "Ver planes") F("1 · «Sin créditos» no lleva «Ver planes»");
     const deptos = sinImports(sc("src/app/deptos/deptos-cliente.tsx"));
     const sr = deptos.match(/function SinRegalo[\s\S]*?\n}\n/)?.[0] ?? "";
     if (!/SIN_REGALO_COPY\[motivo\]/.test(sr) || !/VER_PLANES\.href/.test(sr) || !/<SinRegalo /.test(deptos)) F("1 · «Estás dentro» no dice por qué no hay regalo, o sin «Ver planes»");
@@ -200,13 +200,15 @@ export async function runPromesasTextosTier(): Promise<{ hard: number }> {
     ["la casa", CASA.invita.bajada], ["el plan Gratis", planGratis],
   ];
   for (const [donde, t] of textosRegla) {
-    if (!/primer análisis/.test(t)) F(`2 · ${donde} no dice que el premio sale del primer análisis del invitado: «${t}»`);
+    // ⚠ ACTA (17-nov-2026, decisión de Fabrizio: «de análisis a créditos») · el premio sale cuando el invitado usa su primer
+    // crédito: es el mismo hecho (referidoAlPrimerAnalisis), dicho con la palabra nueva.
+    if (!/primer crédito/.test(t)) F(`2 · ${donde} no dice que el premio sale del primer crédito del invitado: «${t}»`);
     if (!t.includes(String(TOPE_PREMIOS_REFERIDO)) || !t.includes(`${DIAS_VIGENCIA_PREMIO_REFERIDO} días`)) F(`2 · ${donde} no dice el tope de ${TOPE_PREMIOS_REFERIDO} y los ${DIAS_VIGENCIA_PREMIO_REFERIDO} días: «${t}»`);
     if (/se registr|crea su cuenta|cuándo piensa/i.test(t)) F(`2 · ${donde} todavía dice la regla vieja: «${t}»`);
   }
   for (const [donde, t] of [["el asunto", REFERIDO_COPY.correoAsunto], ["el titular", REFERIDO_COPY.correoTitular], ["lo que quedan", REFERIDO_COPY.correoQuedan(2)]] as const)
-    if (!/primer análisis/.test(t)) F(`2 · el correo a quien invitó (${donde}) no dice que fue el primer análisis`);
-  if (!/regala un análisis/.test(REFERIDO_COPY.bajada) || !REFERIDO_COPY.textoCompartir(null).includes(REFERIDO_COPY.bajada)) F("2 · la página y el mensaje del invitado no dicen su regalo de cuenta nueva");
+    if (!/primer crédito/.test(t)) F(`2 · el correo a quien invitó (${donde}) no dice que fue el primer crédito`);
+  if (!/regala un crédito/.test(REFERIDO_COPY.bajada) || !REFERIDO_COPY.textoCompartir(null).includes(REFERIDO_COPY.bajada)) F("2 · la página y el mensaje del invitado no dicen su regalo de cuenta nueva");
   for (const r of ["src/app/api/perfil-busqueda/route.ts", "src/app/api/lo-que-sigue/perfil/route.ts"])
     if (/referido/i.test(sinImports(sc(r))) || /referido/.test(sc(r).match(/^import[\s\S]*?;$/gm)?.join("\n") ?? "")) F(`2 · ${r} todavía dispara el referido al contestar «¿Cuándo piensas comprar?»`);
   if (/referidoAlContestarCuando/.test(sc("src/lib/referido-servidor.ts"))) F("2 · el disparo por «¿Cuándo piensas comprar?» sigue en referido-servidor");
@@ -350,11 +352,11 @@ export async function runPromesasTextosTier(): Promise<{ hard: number }> {
   // ── 6 · DESPUÉS DE PAGAR DESDE UN DEPTO ─────────────────────────────────────
   for (const m of ["despublicado", "sin-direccion", "medicion", "error", "fuera"] as MotivoFallo[]) {
     const t = textoFallo(m);
-    if (!/No se usó ningún análisis/.test(`${t.titulo} ${t.que}`)) F(`6 · el fallo «${m}» no dice que no se usó ningún análisis`);
+    if (!/No se usó ningún crédito/.test(`${t.titulo} ${t.que}`)) F(`6 · el fallo «${m}» no dice que no se usó ningún análisis`);
   }
   if (textoFallo("sin-direccion").titulo === textoFallo("error").titulo || textoFallo("medicion").titulo === textoFallo("error").titulo) F("6 · «sin dirección» o «medición caída» se dicen como un error genérico");
   if (!/dirección/.test(textoFallo("sin-direccion").titulo) || !/medición/.test(textoFallo("medicion").titulo)) F("6 · el fallo no dice cuál fue el motivo");
-  if (RETORNO.quedanSinUsar(3) !== "Te quedan 3 análisis para otro depto." || !/No te quedan/.test(RETORNO.quedanSinUsar(0))) F("6 · el saldo tras un fallo no es el real");
+  if (RETORNO.quedanSinUsar(3) !== "Te quedan 3 créditos para otro depto." || !/No te quedan/.test(RETORNO.quedanSinUsar(0))) F("6 · el saldo tras un fallo no es el real");
   {
     const iec = sinImports(sc("src/components/guia/InformeEnCamino.tsx"));
     if (!/data-informe="quedan-sin-usar">\{RETORNO\.quedanSinUsar\(saldo\)\}/.test(iec)) F("6 · el pop-up del fallo no deja el saldo a la vista (sin restar el de este depto)");
@@ -375,10 +377,10 @@ export async function runPromesasTextosTier(): Promise<{ hard: number }> {
     const sl = sinImports(sc("src/app/semanal/semanal-lista.tsx"));
     const noDa = sl.match(/if \(corta && noDa\.has\(it\.avisoId\)\) \{[\s\S]*?\n {4}\}\n/)?.[0] ?? "";
     if (!/data-semanal="ver-publicacion"/.test(noDa) || !/href=\{url\}/.test(noDa)) F("6 · LA TARJETA «NO DA» NO CONSERVA EL ENLACE A LA PUBLICACIÓN");
-    if (!/data-semanal="analizar-igual"/.test(noDa) || !/textoAnalizarIgual\(/.test(noDa)) F("6 · la tarjeta «no da» no conserva «Analizar igual»");
+    if (!/data-semanal="analizar-igual"/.test(noDa) || !/textoAnalizarIgual\(/.test(noDa)) F("6 · la tarjeta «no da» no conserva «Ver igual»");
     if (!/publicaciones=/.test(sinImports(sc("src/app/dashboard/seleccion-en-casa.tsx")))) F("6 · la selección del dashboard no le pasa las publicaciones a la tarjeta «no da»");
   }
-  if (!/no usas un análisis/.test(AVISO_ANALIZAR.incluyeCortaComprando.despues) || /no gastas/.test(AVISO_ANALIZAR.incluyeCortaComprando.despues)) F("6 · comprando, «si no da» no dice «no usas un análisis»");
+  if (!/no usas un crédito/.test(AVISO_ANALIZAR.incluyeCortaComprando.despues) || /no gastas/.test(AVISO_ANALIZAR.incluyeCortaComprando.despues)) F("6 · comprando, «si no da» no dice «no usas un crédito»");
   if (!/sin \? AVISO_ANALIZAR\.incluyeCortaComprando : AVISO_ANALIZAR\.incluyeCorta/.test(sinImports(sc("src/components/guia/AvisoAntesDeAnalizar.tsx")))) F("6 · el pop-up sin saldo no usa el texto de comprar («no gastas» al lado de «Comprar»)");
 
   // ── 7 · LAS FECHAS ──────────────────────────────────────────────────────────
@@ -390,7 +392,7 @@ export async function runPromesasTextosTier(): Promise<{ hard: number }> {
     if (!/fechaVence\(/.test(sinImports(sc("src/app/perfil/page.tsx")))) F("7 · /perfil no dice el vencimiento con la hora del mismo día");
   }
   if (/^Hoy/i.test(TICKET_CON_SALDO.linea("$14.990", "mañana 11:17"))) F("7 · el ticket con saldo dice «Hoy,» y vence mañana");
-  if (/\b0 análisis/.test(RETORNO.quedanOtros(0))) F("7 · «Te quedan 0 análisis»");
+  if (/\b0 análisis/.test(RETORNO.quedanOtros(0))) F("7 · «Te quedan 0 créditos»");
   if (DESTINO_SIN_INFORME !== "/explorar" || !correoRecordatorioPack("https://refranco.ai", null).html.includes('href="https://refranco.ai/explorar"')) F("7 · el recordatorio de un pack sin informe no lleva al mapa");
   {
     const pago = { product: "single", analysis_id: "an1", payment_data: { origen: "semanal", volver: "/dashboard?t=abc&a=x" } };
@@ -404,7 +406,7 @@ export async function runPromesasTextosTier(): Promise<{ hard: number }> {
   // ── 8 · CLAUDE.md AL DÍA ────────────────────────────────────────────────────
   {
     const md = leer("CLAUDE.md");
-    if (!/Plan Franco: \$39\.990\/mes — 20 análisis\/mes/.test(md) || /10 análisis\/mes/.test(md)) F("8 · CLAUDE.md no dice que el plan da 20 análisis al mes");
+    if (!/Plan Franco: \$39\.990\/mes — 20 análisis\/mes/.test(md) || /10 análisis\/mes/.test(md)) F("8 · CLAUDE.md no dice que el plan da 20 créditos al mes");
     if (/la emisión está \*\*apagada\*\*/.test(md) || !/\*\*Emite en producción\*\*/.test(md)) F("8 · CLAUDE.md dice que la boleta no emite en producción");
     if (/son solo premium\/subscriber/.test(md) || !/El informe no se bloquea por nivel/.test(md)) F("8 · CLAUDE.md todavía dice que el simulador de renta larga se bloquea por nivel");
     if (!/y 500 en el día/.test(md)) F("8 · CLAUDE.md no dice el cupo de 500 regalos al día");
@@ -439,7 +441,7 @@ if (require.main === module) {
 //   §6  M32 «sin dirección» como error genérico · M33 el fallo en la vuelta resta el saldo · M34 la vuelta de renta corta
 //       no lleva al depto · M35 «analiza sola» acepta el semanal · M36 la tarjeta «no da» sin la publicación · M37 el
 //       pop-up sin saldo dice «no gastas» ............................................................................. ROJO
-//   §7  M38 «vence» sin la hora del mismo día · M39 el ticket vuelve a «Hoy,» · M40 «Te quedan 0 análisis» · M41 el
+//   §7  M38 «vence» sin la hora del mismo día · M39 el ticket vuelve a «Hoy,» · M40 «Te quedan 0 créditos» · M41 el
 //       recordatorio sin informe a planes · M42 el carrito siempre a planes · M43 el cron del carrito sin el enlace ... ROJO
 //   §8  M44 CLAUDE.md con 10 análisis · M45 con la boleta apagada · M46 con el simulador bloqueado .................... ROJO
 //   46/46 en rojo, a la primera. Antes de correrlas se endurecieron dos predicados que habrían quedado verdes: §3 pedía el

@@ -16,7 +16,7 @@
 //   6 · FILTROS EN DOS BLOQUES: «El depto» y «Tu financiamiento», con la tasa del motor fija («4,07 % · promedio de los
 //       bancos»); en el PC, un panel como el de la lista.
 //   7 · LA VUELTA DEL REGISTRO DESDE UN PIN: su tarjeta, desbloqueada (de borroso a nítido) y con la banda del regalo; el
-//       pop-up no se abre solo; y el pop-up de «Analizar este», en todas partes, con la foto de la calle o el mapa chico.
+//       pop-up no se abre solo; y el pop-up de «Ver este depto», en todas partes, con la foto de la calle o el mapa chico.
 //   8 · LAS FLECHAS EN EL PC: ‹ › en la tarjeta y las del teclado.
 //   9 · LOS MAPAS EN OSCURO: el de /explorar (estilo oscuro, al momento), la imagen quieta, el de la selección y el mapa chico,
 //       cada uno con su versión oscura y en caché aparte.
@@ -257,8 +257,8 @@ export async function runExplorarRecorridoTier(): Promise<{ hard: number }> {
     const t = dibujar(createElement(modTar.TarjetaPin, { ...baseTar, recien: { avisoId: PIN2.avisoId, regalo: true } }));
     const suya = t.slice(t.indexOf(`data-aviso="${PIN2.avisoId}"`), t.indexOf(`data-aviso="${PIN3.avisoId}"`));
     if (!/data-recien="1"/.test(suya) || /data-recien/.test(t.replace(suya, ""))) F("7 · al volver, la tarjeta del pin no queda marcada para desbloquearse (o se marcan otras)");
-    if (!texto(suya).includes("Listo, ya tienes tu cuenta. Tu análisis de regalo está listo para este depto.")) F("7 · la tarjeta de la vuelta no dice «Listo, ya tienes tu cuenta. Tu análisis de regalo está listo para este depto.»");
-    if (!/data-explorar="analizar"[^>]*>\s*Analizar este · usa tu regalo/.test(suya)) F("7 · el botón de la vuelta no dice «Analizar este · usa tu regalo»");
+    if (!texto(suya).includes("Listo, ya tienes tu cuenta. Tu regalo está listo para este depto.")) F("7 · la tarjeta de la vuelta no dice «Listo, ya tienes tu cuenta. Tu regalo está listo para este depto.»");
+    if (!/data-explorar="analizar"[^>]*>\s*Ver este depto · usa tu regalo/.test(suya)) F("7 · el botón de la vuelta no dice «Ver este depto · usa tu regalo»");
     if (!/142\.264/.test(suya) || /data-explorar="borroso"/.test(suya)) F("7 · la tarjeta de la vuelta no muestra las cifras nítidas");
     const sinRegalo = texto(dibujar(createElement(modTar.TarjetaPin, { ...baseTar, recien: { avisoId: PIN2.avisoId, regalo: false } })));
     if (!sinRegalo.includes("Listo, ya tienes tu cuenta.") || sinRegalo.includes("regalo")) F("7 · sin regalo, la vuelta igual habla del regalo");

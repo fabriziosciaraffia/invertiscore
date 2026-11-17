@@ -1,11 +1,11 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Tier SEMANAL-STR (14-oct-2026, 0 tokens) — el semanal de renta corta, estimado por zona, y «Analizar este» que mide fino.
+// Tier SEMANAL-STR (14-oct-2026, 0 tokens) — el semanal de renta corta, estimado por zona, y «Ver este depto» que mide fino.
 //
 // Decisiones de Fabrizio del 14-oct-2026: quien tiene perfil de renta corta recibe en el semanal un bloque de renta corta
 // ESTIMADO POR ZONA —el motor de renta corta sobre los avisos de sus comunas con la tarifa y la ocupación típicas de la
 // zona que ya están en caché, sin consultar al proveedor—; quien tiene los dos
 // perfiles recibe UN correo con DOS bloques y quien solo tiene renta corta, solo ese; la línea provisoria del 13-oct
-// salió. Las consultas al proveedor quedan para «Analizar este»: mide fino y, si eso NO DA COMPRAR, no se cobra nunca
+// salió. Las consultas al proveedor quedan para «Ver este depto»: mide fino y, si eso NO DA COMPRAR, no se cobra nunca
 // y se muestran los parecidos que sobreviven. Cada comparación queda registrada. Segunda tanda del 14-oct-2026: el
 // bloque es SOLO COMPRAR (sin negociables; con menos de tres, los que haya) y la regla de cobro es «lo fino da Comprar»
 // (lo de la página —pop-up, marca, medición con tope— y los parecidos que sobreviven, en el tier SEMANAL-AJUSTES).
@@ -39,7 +39,7 @@ const leer = (p: string) => readFileSync(join(RAIZ, p), "utf8").replace(/\r\n/g,
 const sinComentarios = (s: string) => s.replace(/^\s*\/\*[\s\S]*?\*\//gm, "").replace(/^\s*\/\/.*$/gm, "");
 const cuenta = (s: string, sub: string) => s.split(sub).length - 1;
 
-/** Un «Analizar este» de mentira: cuenta cada pieza que se toca. */
+/** Un «Ver este depto» de mentira: cuenta cada pieza que se toca. */
 function dobles(o: { fino: string | null; mostrado?: string; publicado?: boolean; ya?: string | null; sinPreparar?: boolean }) {
   const n = { reclamar: 0, cobrar: 0, crear: 0, registrar: [] as STR.ComparacionStr[], preparar: 0, alternativas: 0 };
   const piezas: PiezasAnalizar = {

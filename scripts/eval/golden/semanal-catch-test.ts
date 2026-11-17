@@ -6,13 +6,13 @@
 //       uno y se para en CINCO publicados; con menos de TRES no hay correo; si faltó cupo, «pendiente».
 //   2 · DOMINGO ARMA, LUNES SALE: la semana es el lunes del envío; los crons en vercel.json y vigilados.
 //   3 · EL REGALO: a los 14 días sin compras ni plan, una vez por persona (marca condicional antes del
-//       crédito), con «El próximo que analices va por cuenta de Franco.»; vence a los 60 días.
+//       crédito), con «El próximo depto que veas va por cuenta de Franco.»; vence a los 60 días.
 //   4 · EL CORREO: el titular, las dos variantes (banda con el hero como imagen y alt; tarjetas sin
 //       banda), cada depto una tarjeta con el precio grande y el veredicto en su color, el botón rojo
-//       «Analizar uno · $9.990» sin saldo (al suelto, nunca al pack) y «Analizar uno» con saldo; la baja.
+//       «Ver uno · $9.990» sin saldo (al suelto, nunca al pack) y «Ver uno» con saldo; la baja.
 //       Sin «oportunidades», «portafolio» ni «exclusivo».
 //   5 · UNA VEZ: la fila se toma antes de mandar y se suelta si Resend falla; solo con tres vigentes.
-//   6 · EL CLIC relee la ficha; «Analizar este» desde el correo usa la combinación de SU selección.
+//   6 · EL CLIC relee la ficha; «Ver este depto» desde el correo usa la combinación de SU selección.
 //   7 · LOS EVENTOS: enviado, abierto, clic, compra que vino del correo, regalo usado.
 //   8 · LA BAJA de un clic (GET del pie y POST del List-Unsubscribe) y las tablas cerradas al cliente.
 //   9 · LA PRUEBA A/B (02-oct-2026): abierto, clic y compra llevan la variante; el regalo dice «Vence el [fecha].».
@@ -33,7 +33,7 @@
 //       reintenta en la siguiente y no cuenta como fallida; solo en la de las 23 UTC es una falla.
 //  15 · LO YA VISTO NO OCUPA LUGAR (19-oct-2026): en el correo y en /semanal, los cinco son primero los que la persona no ha
 //       visto (ni analizados ni mandados en las últimas cuatro semanas); solo si no alcanzan cinco se completa con lo visto,
-//       marcado «Ya te lo mandamos» o «Ya lo analizaste» y siempre al final. El caso: un depto ya analizado y cinco nuevos
+//       marcado «Ya te lo mandamos» o «Ya lo tienes» y siempre al final. El caso: un depto ya analizado y cinco nuevos
 //       disponibles → el analizado no aparece.
 //
 // Verificado EN ROJO por mutación (acta al pie). Corre dentro del QUICK.
@@ -127,7 +127,7 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
   if (iMarcaR < 0 || iCredito < 0 || iMarcaR > iCredito || !/source: FUENTE_REGALO_REACTIVACION/.test(srv)) F("3 · el crédito del regalo no espera a ganar la marca condicional");
   void iMarca;
   if (DIAS_VIGENCIA_REGALO !== 60 || !/DIAS_VIGENCIA_REGALO \* 864e5/.test(srv)) F("3 · el regalo no vence a los 60 días");
-  if (SEMANAL.regalo !== "El próximo que analices va por cuenta de Franco.") F("3 · la frase del regalo no es la aprobada");
+  if (SEMANAL.regalo !== "El próximo depto que veas va por cuenta de Franco.") F("3 · la frase del regalo no es la aprobada");
   // ⚠ ACTA (16-oct-2026) · derogada a propósito «registrarse no regala nada»: desde la puerta B, toda cuenta nueva nace con
   // su análisis de regalo, y lo otorga UN solo lugar (regalo-alta-servidor.ts › asegurarRegaloDeAlta; PUERTA-B §5).
   const reg = sinComentarios(leer("src/app/api/analisis/claim/route.ts")) + sinComentarios(leer("src/lib/welcome.ts"));
@@ -155,14 +155,14 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
     if (/14\.990|14990|pack/i.test(h)) F(`4 · ${n}: el correo ofrece el ticket de $14.990`);
     if (!h.includes('href="https://x/baja"') || !h.includes(SEMANAL.baja)) F(`4 · ${n}: sin el enlace para dejar de recibirlo`);
   }
-  // Sin saldo (13-oct-2026, decisión de Fabrizio): el mismo «Analizar uno» a la selección y, debajo, la línea del pack de
-  // tres (lo fija CORREOS-RECORRIDO). Hasta entonces era «Analizar uno · $9.990» a comprar el suelto.
-  if (!banda.includes(`<a href="https://x/semanal" style="display: inline-block; padding: 15px 30px;`) || !banda.includes(">Analizar uno</a>") || !banda.includes(`<a href="https://x/tres"`) || /\$9\.990/.test(banda)) F("4 · sin saldo el botón no es «Analizar uno» a la selección con la línea del pack debajo");
-  if (!tarjetas.includes(`<a href="https://x/semanal" style="display: inline-block; padding: 15px 30px;`) || !tarjetas.includes(">Analizar uno</a>")) F("4 · con saldo el botón no es «Analizar uno» a la selección");
+  // Sin saldo (13-oct-2026, decisión de Fabrizio): el mismo «Ver uno» a la selección y, debajo, la línea del pack de
+  // tres (lo fija CORREOS-RECORRIDO). Hasta entonces era «Ver uno · $9.990» a comprar el suelto.
+  if (!banda.includes(`<a href="https://x/semanal" style="display: inline-block; padding: 15px 30px;`) || !banda.includes(">Ver uno</a>") || !banda.includes(`<a href="https://x/tres"`) || /\$9\.990/.test(banda)) F("4 · sin saldo el botón no es «Ver uno» a la selección con la línea del pack debajo");
+  if (!tarjetas.includes(`<a href="https://x/semanal" style="display: inline-block; padding: 15px 30px;`) || !tarjetas.includes(">Ver uno</a>")) F("4 · con saldo el botón no es «Ver uno» a la selección");
   if (!regalo.includes(`<b>${SEMANAL.regalo}</b>`) || banda.includes(SEMANAL.regalo)) F("4 · el regalo no sale solo cuando corresponde");
   if (!banda.includes("−$18.000") || !banda.includes(`color: ${ROJO};">−$18.000`)) F("4 · el flujo negativo no va en rojo");
-  // `ir=comprar` sigue llevando al suelto: es lo que ofrecían los correos que ya salieron con «Analizar uno · $9.990».
-  if (RUTA_SUELTO_SEMANAL !== "/checkout?product=single&origen=semanal") F("4 · el «Analizar uno · $9.990» de los correos ya enviados no compra el suelto marcado como del correo");
+  // `ir=comprar` sigue llevando al suelto: es lo que ofrecían los correos que ya salieron con «Ver uno · $9.990».
+  if (RUTA_SUELTO_SEMANAL !== "/checkout?product=single&origen=semanal") F("4 · el «Ver uno · $9.990» de los correos ya enviados no compra el suelto marcado como del correo");
   for (const t of [SEMANAL.titular, SEMANAL.intro(3, base.busca, "20", 30), SEMANAL.regaloBajada, SEMANAL.revisados, SEMANAL.porQue]) if (VOSEO.test(t)) F(`4 · voseo: «${t}»`);
   if (varianteDe("a") === varianteDe("b") && varianteDe("b") === varianteDe("c") && varianteDe("c") === varianteDe("d")) F("4 · las variantes no se reparten");
 
@@ -185,12 +185,12 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
   // ⚠ ACTA (21-oct-2026, recorrido real de Fabrizio por la puerta B) · el clic aterriza en el dashboard (hrefSeleccion): el
   // despublicado va como \`d=1\` por el mismo destino, no por una URL armada a mano.
   if (!/const estado = await chequearAlClic\(admin, avisoId\)/.test(clic) || !/return volver\(hrefSeleccion\(t, avisoId, estado === "despublicado"\)\);/.test(clic)) F("6 · el clic no relee la ficha");
-  if (!/if \(ir === "comprar"\) return volver\(rutaSueltoSemanal\(sel\.variante as "banda" \| "tarjetas" \| null\)\);/.test(clic)) F("6 · «Analizar uno · $9.990» no va a comprar el suelto");
+  if (!/if \(ir === "comprar"\) return volver\(rutaSueltoSemanal\(sel\.variante as "banda" \| "tarjetas" \| null\)\);/.test(clic)) F("6 · «Ver uno · $9.990» no va a comprar el suelto");
   if (!/"clic", almacenPublicacion\(admin\), bajarFicha/.test(srv)) F("6 · el chequeo del clic no usa la memoria y el tope de siempre");
   const ruta = sinComentarios(leer("src/app/api/lo-que-sigue/guia/analizar/route.ts"));
   // ⚠ ACTA (23-oct-2026, mockup D2, tier PUERTA-B-MOCKUPS §3) · la combinación de la selección sigue validando el aviso; la que la
   // persona cambió en el pop-up (`elegida`, ya con el veredicto recalculado a la vista) va en su lugar.
-  if (!/if \(typeof b\.semanal === "string"\) \{\s*const deLaFila = await combinacionSemanal\(admin, b\.semanal, user\.id, o\.analysisId, b\.avisoId\);\s*combo = deLaFila \? elegida \?\? deLaFila : null;/.test(ruta)) F("6 · «Analizar este» desde el correo no usa la combinación de su selección");
+  if (!/if \(typeof b\.semanal === "string"\) \{\s*const deLaFila = await combinacionSemanal\(admin, b\.semanal, user\.id, o\.analysisId, b\.avisoId\);\s*combo = deLaFila \? elegida \?\? deLaFila : null;/.test(ruta)) F("6 · «Ver este depto» desde el correo no usa la combinación de su selección");
   if (!/data\.user_id !== userId \|\| data\.origen_analysis_id !== origenId/.test(srv) || !/some\(\(i\) => i\.avisoId === avisoId\)\) return null;/.test(srv)) F("6 · la combinación del correo no verifica persona, origen y aviso");
 
   // 7 · los eventos
@@ -479,7 +479,7 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
       });
       if (vs.get("a")?.visto !== "mandado" || vs.get("c")?.visto !== "mandado" || vs.get("b")?.visto !== "analizado" || vs.get("b")?.informeLargo !== "inf-b"
         || vs.get("d")?.visto !== "analizado" || vs.get("d")?.informeLargo !== undefined || vs.has("e")) F(`15 · lo visto no se arma de lo mandado y lo analizado (${JSON.stringify(Array.from(vs.entries()))})`);
-      if (DIAS_VISTO !== 28 || MARCA_VISTO.mandado !== "Ya te lo mandamos" || MARCA_VISTO.analizado !== "Ya lo analizaste") F("15 · la ventana no son cuatro semanas o las marcas no son «Ya te lo mandamos» / «Ya lo analizaste»");
+      if (DIAS_VISTO !== 28 || MARCA_VISTO.mandado !== "Ya te lo mandamos" || MARCA_VISTO.analizado !== "Ya lo tienes") F("15 · la ventana no son cuatro semanas o las marcas no son «Ya te lo mandamos» / «Ya lo tienes»");
       // El lunes después del correo del día va solo si hay NUEVOS: lo visto no cuenta.
       if (queEnviarSemanal(3, { delDiaReciente: true, nuevos: 0 }) !== "nada" || queEnviarSemanal(3, { delDiaReciente: true, nuevos: 1 }) !== "seleccion" || queEnviarSemanal(3, { nuevos: 0 }) !== "seleccion") F("15 · después del correo del día sale un lunes solo con lo ya visto (o sin correo del día no sale)");
     } catch (err) {
@@ -505,9 +505,9 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
     if (!/\.from\("semanal_selecciones"\)\.select\("items, items_str"\)\.eq\("user_id", userId\)\.not\("enviada_at", "is", null\)\.gte\("enviada_at", desde\)/.test(vis)
       || !/const desde = new Date\(ahora\.getTime\(\) - DIAS_VISTO \* 864e5\)\.toISOString\(\);/.test(vis)
       || !/\.from\("analisis"\)\.select\("id, tipo_analisis, aviso:input_data->origenAviso->>avisoId"\)\.eq\("user_id", userId\)/.test(vis)) F("15 · lo visto no se lee de los correos de las últimas cuatro semanas y de lo analizado");
-    // La página: la marca y, en renta larga, «Ya lo analizaste · Ver informe».
+    // La página: la marca y, en renta larga, «Ya lo tienes · Ver detalles».
     const pg = sinComentarios(leer("src/app/semanal/semanal-lista.tsx"));
-    // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockup 3b-dashboard.html) · «Ya lo analizaste» ya es la fila compacta (tier PUERTA-B-DASHBOARD §4); las otras marcas, en .sel-estado.
+    // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockup 3b-dashboard.html) · «Ya lo tienes» ya es la fila compacta (tier PUERTA-B-DASHBOARD §4); las otras marcas, en .sel-estado.
     if (!/\{it\.visto && it\.visto !== "analizado" && <p className="sel-estado" data-semanal="visto">\{MARCA_VISTO\[it\.visto\]\}<\/p>\}/.test(pg) || !/if \(informe\) return filaAnalizada\(it, informe, n\);/.test(pg)) F("15 · /semanal no marca lo ya visto");
     // ⚠ ACTA (21-oct-2026) · en renta larga también se lee en vivo lo ya analizado (\`informes\`, del servidor), no solo lo que
     // traía el depto al armarse (tier PUERTA-B-RECORRIDO §6).
@@ -545,7 +545,7 @@ if (require.main === module) {
 //   S18 si Resend falla la fila no se suelta ............................... ROJO (5)
 //   S19 se le manda a quien se dio de baja ................................. ROJO (5)
 //   S20 el clic no relee la ficha .......................................... ROJO (6)
-//   S21 «Analizar este» del correo con la combinación de la guía ........... ROJO (6)
+//   S21 «Ver este depto» del correo con la combinación de la guía ........... ROJO (6)
 //   S22 la selección de otra persona vale .................................. ROJO (6)
 //   S23 sin semanal_abierto ................................................ ROJO (7)
 //   S24 el confirm pierde el origen ........................................ ROJO (7)
@@ -554,7 +554,7 @@ if (require.main === module) {
 //   S27 sin List-Unsubscribe ............................................... ROJO (8)
 //   S28 la RPC abierta al público .......................................... ROJO (8)
 //   S29 el envío un martes ................................................. ROJO (2)
-//   S30 «Analizar uno · $9.990» compra el pack ............................. ROJO (4)
+//   S30 «Ver uno · $9.990» compra el pack ............................. ROJO (4)
 //   30/30 en rojo; cada archivo restaurado byte a byte.
 //   §9 (02-oct-2026, la prueba A/B y el vencimiento): V1 compra sin variante · V2 abierto sin variante · V3 correo
 //   sin tag · V4 webhook sin carga · V5/V6 compra sin variante (evento o confirm) · V7/V8 create o checkout sin
@@ -580,7 +580,7 @@ if (require.main === module) {
 //   cuenta como fallida · R3 el rearmado intermedio cuenta como fallido. Y la excepción de la banda en CORREOS: la banda
 //   también en «tarjetas» y la banda sin alt dan ROJO en CORREOS (2/2).
 //   13-oct-2026 (decisión de Fabrizio: el registrado sin análisis compra el pack de tres; renta corta recibe el semanal):
-//   §4 sin saldo es «Analizar uno» a la selección con la línea del pack debajo (ya no «Analizar uno · $9.990»), §7 el
+//   §4 sin saldo es «Ver uno» a la selección con la línea del pack debajo (ya no «Ver uno · $9.990»), §7 el
 //   checkout lee el origen por origenParam, §11 la lista incluye a quien solo tiene informes de renta corta. 3/3 ROJO:
 //   S-a el correo sin la línea del pack · S-b el checkout pierde el origen · S-c solo renta larga en la lista.
 //   §15 (19-oct-2026, lo ya visto no ocupa lugar; scratchpad rojo-semanal-prod.cjs y mutar-semanal15.cjs, restaurados byte a

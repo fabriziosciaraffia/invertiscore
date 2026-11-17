@@ -9,7 +9,7 @@
 //       perfil de búsqueda» con «Editar» al dashboard y «Ir a mi dashboard»; sin modalidad, sin «cuándo», sin pie ni plazo,
 //       sin lo del correo. La cabecera de «Tu selección» dibujada.
 //   3 · EL POP-UP RECALCULA AL CAMBIAR EL PIE: la combinación elegida se valida, el cambio de veredicto se dice con las cifras
-//       de antes y de ahora, el botón pasa a «Analizar igual», y NUNCA SE COBRA SIN EL VEREDICTO RECALCULADO (bloqueaAnalizar,
+//       de antes y de ahora, el botón pasa a «Ver igual», y NUNCA SE COBRA SIN EL VEREDICTO RECALCULADO (bloqueaAnalizar,
 //       cableado al botón). La ruta de recálculo y la de analizar aceptan la combinación elegida solo sobre una selección
 //       propia (la de otra cuenta, 403 antes de leer nada). D1 dibujado.
 //   4 · EL ORDEN ES FIJO: `ordenFijo` respeta lo que ya estaba y pone lo nuevo después; `elegirSemanal` y `primerosDeptos`
@@ -87,7 +87,7 @@ export async function runPuertaBMockupsTier(): Promise<{ hard: number }> {
       if (!t.includes(R.DEPTOS_COPY.titulo) || !t.includes("Se van rápido.") || !t.includes("¿Qué buscas?") || !t.includes("Elige una comuna") || !t.includes(R.DEPTOS_COPY.eligeYTeDecimos)) F("1 · /deptos sin comuna no muestra el título, la bajada y la tarjeta «¿Qué buscas?» con «Elige una comuna»");
       if (!/<select[^>]*data-campo="comuna"[^>]*data-vacio="1"/.test(sin) || !/<select[^>]*data-campo="tipologia"/.test(sin) || !/<select[^>]*data-campo="rango"/.test(sin)) F("1 · los tres campos no son selects con la comuna vacía marcada");
       if (!/<option value="2" selected="">2 dormitorios<\/option>|<option selected="" value="2">2 dormitorios<\/option>/.test(sin) || !/UF 3\.000 a 4\.000/.test(sin)) F("1 · la tipología y el rango no vienen puestos (2 dormitorios, UF 3.000 a 4.000)");
-      if (!t.includes("las +21.000 publicaciones") || !t.includes("Anoche, 4.886 deptos.") || !/data-deptos="ver-analisis" href="\/demo">Ver un análisis de ejemplo/.test(sin)) F("1 · la prueba con las cifras de la noche y «Ver un análisis de ejemplo» no está"); // ⚠ ACTA (29-oct-2026, goal «puerta E», mockup docs/puerta-b-mockups/6-puerta-e.html) · «real» → «de ejemplo» en todo el sitio.
+      if (!t.includes("las +21.000 publicaciones") || !t.includes("Anoche, 4.886 deptos.") || !/data-deptos="ver-analisis" href="\/demo">Ver un ejemplo/.test(sin)) F("1 · la prueba con las cifras de la noche y «Ver un ejemplo» no está"); // ⚠ ACTA (29-oct-2026, goal «puerta E», mockup docs/puerta-b-mockups/6-puerta-e.html) · «real» → «de ejemplo» en todo el sitio.
       // Con la comuna elegida (la portada con `?comuna=` trae la respuesta): el número y el correo, en ese orden.
       const v = R.validarElecciones({ comunas: ["Providencia"], tipologias: ["2"], rango, modalidad: "ltr" });
       if (!v.ok) throw new Error("validación");
@@ -98,7 +98,7 @@ export async function runPuertaBMockupsTier(): Promise<{ hard: number }> {
       if (!orden(con, ['data-deptos="campos"', 'data-deptos="respuesta"', 'data-deptos="banda"', 'data-deptos="google"', "o con tu correo", 'type="email"', "Quiero verlos", "Sin contraseña: te mandamos un código", 'data-deptos="prueba"']))
         F("1 · con la comuna, el correo no va después del número con Google primero, «o con tu correo», el campo, «Quiero verlos» y la nota, y la prueba al final");
       // ⚠ ACTA (05-nov-2026, goal de Fabrizio, auditoría de promesas parte 3: «"te llegan en minutos" pasa a "dentro de la hora"»).
-      if (!tc.includes("Regístrate gratis y revísalos ahora mismo.") || !tc.includes("Los mejores de estos 12 te llegan al correo dentro de la hora, con un análisis de regalo para el que más te interese.")) F("1 · la tarjeta del correo no dice el título y la bajada del mockup con el número");
+      if (!tc.includes("Regístrate gratis y revísalos ahora mismo.") || !tc.includes("Los mejores de estos 12 te llegan al correo dentro de la hora, con un crédito de regalo para el que más te interese.")) F("1 · la tarjeta del correo no dice el título y la bajada del mockup con el número");
       if (!/<button type="button" class="dp-google"[^>]*data-deptos="google"><svg/.test(con)) F("1 · «Entrar con Google» no lleva la G oficial");
       if (/pie 20|25 años|plazo/i.test(tc)) F("1 · la pantalla de elegir habla del pie o del plazo");
       // Las dos puertas cortan sin comuna en el código, no solo en lo que se dibuja.
@@ -114,7 +114,7 @@ export async function runPuertaBMockupsTier(): Promise<{ hard: number }> {
     try {
       if (!respuesta) throw new Error("no carga respuesta");
       const E = respuesta.ESTAS_DENTRO_DEPTOS;
-      if (E.titulo !== "Bienvenido, estás dentro." || E.regalo.kicker !== "Regalo de bienvenida" || E.regalo.titulo !== "Tienes un análisis de regalo." || E.regalo.bajada !== "Úsalo en el depto que más te interese de abajo."
+      if (E.titulo !== "Bienvenido, estás dentro." || E.regalo.kicker !== "Regalo de bienvenida" || E.regalo.titulo !== "Tienes un crédito de regalo." || E.regalo.bajada !== "Úsalo en el depto que más te interese de abajo."
         || E.perfil.kicker !== "Tu perfil de búsqueda" || E.perfil.editar !== "Editar" || E.perfil.hrefEditar !== "/dashboard#perfil"
         || E.perfil.nota !== "Con este perfil te hacemos llegar una selección actualizada todos los lunes. Puedes editar los parámetros y la frecuencia en tu dashboard."
         || E.dashboard !== "Ir a mi dashboard" || E.hrefDashboard !== "/dashboard") F("2 · el copy de «Estás dentro» no es el del mockup");
@@ -131,8 +131,8 @@ export async function runPuertaBMockupsTier(): Promise<{ hard: number }> {
       const ps = cargar<typeof import("../../../src/components/deptos/PrimeraSeleccion")>("src/components/deptos/PrimeraSeleccion");
       if (!ps || !delDia) throw new Error("no carga la selección");
       // El título cuenta los deptos y el botón dice el regalo (lo que la cabecera dibujada, sin datos, no puede mostrar).
-      if (delDia.tituloSeleccion(5) !== "Franco eligió estos 5 deptos para tu búsqueda." || delDia.textoAnalizar(true) !== "Analizar este · usa tu regalo" || delDia.textoAnalizar(false) !== "Analizar este")
-        F("2 · el título no cuenta los deptos o el botón no dice «Analizar este · usa tu regalo»");
+      if (delDia.tituloSeleccion(5) !== "Franco eligió estos 5 deptos para tu búsqueda." || delDia.textoAnalizar(true) !== "Ver este depto · usa tu regalo" || delDia.textoAnalizar(false) !== "Ver este depto")
+        F("2 · el título no cuenta los deptos o el botón no dice «Ver este depto · usa tu regalo»");
       const html = dibujarConRouter(createElement(ps.PrimeraSeleccion, { encabezado: "dentro" }));
       const th = textos(html);
       if (!/<p class="dp-kicker">Tu selección<\/p><h2 class="dp-h2" data-primera="titulo">Tu selección<\/h2>/.test(html) || !th.includes(delDia.PRIMERA_SELECCION.bajada) || !th.includes(delDia.PRIMERA_SELECCION.cargando)) F("2 · la cabecera de «Tu selección» no se dibuja con el kicker, el título y la bajada");
@@ -162,8 +162,8 @@ export async function runPuertaBMockupsTier(): Promise<{ hard: number }> {
       // ⚠ ACTA (02-nov-2026, goal «Filtros v2 y negociar», tier EXPLORAR-NEGOCIAR) · «conviene» y «Comprar» quieren decir al precio publicado, y la línea lo dice.
       if (A.lineaVeredicto(base) !== "Comprar 88 al precio publicado · flujo +$88.363 te queda" || A.lineaVeredicto(peor) !== "Ajustar 71 al precio publicado · flujo −$45.120 de tu bolsillo" || A.lineaVeredicto(null) !== null || A.lineaVeredicto({ veredicto: null, score: null, flujo: null }) !== null) F("3 · la línea del veredicto no es «Comprar 88 al precio publicado · flujo +$88.363 te queda»");
       // ⚠ ACTA (24-oct-2026, goal «los pop-ups caben en 390 × 740», decisión de Fabrizio) · la línea del enlace es UNA
-      // sola y corta en todos los pop-ups: «El informe incluye el enlace a la publicación.» (la de D1 ocupaba tres líneas).
-      if (`${A.AVISO_ANALIZAR.incluye.antes}${A.AVISO_ANALIZAR.incluye.fuerte}${A.AVISO_ANALIZAR.incluye.despues}` !== "El informe incluye el enlace a la publicación." || A.AVISO_ANALIZAR.incluye.fuerte !== "el enlace a la publicación") F("3 · la tarjeta gris no dice qué incluye el informe (en una línea corta)");
+      // sola y corta en todos los pop-ups: «Los detalles incluyen el enlace a la publicación.» (la de D1 ocupaba tres líneas).
+      if (`${A.AVISO_ANALIZAR.incluye.antes}${A.AVISO_ANALIZAR.incluye.fuerte}${A.AVISO_ANALIZAR.incluye.despues}` !== "Los detalles incluyen el enlace a la publicación." || A.AVISO_ANALIZAR.incluye.fuerte !== "el enlace a la publicación") F("3 · la tarjeta gris no dice qué incluye el informe (en una línea corta)");
       // NUNCA SE COBRA SIN EL VEREDICTO RECALCULADO.
       if (!A.bloqueaAnalizar({ sin: false, esBase: false, recalculando: true, evaluacion: null }) || !A.bloqueaAnalizar({ sin: false, esBase: false, recalculando: false, evaluacion: null })
         || A.bloqueaAnalizar({ sin: false, esBase: false, recalculando: false, evaluacion: peor }) || A.bloqueaAnalizar({ sin: false, esBase: true, recalculando: false, evaluacion: null }) || A.bloqueaAnalizar({ sin: true, esBase: false, recalculando: true, evaluacion: null }))
@@ -210,9 +210,9 @@ export async function runPuertaBMockupsTier(): Promise<{ hard: number }> {
         alAnalizar: () => {}, alCancelar: () => {}, cambio: { recalcular: async () => null, base },
       }));
       const th = textos(html);
-      if (!orden(html, ['data-modal="aviso-analizar"', "¿Analizar este depto?", 'data-aviso="depto"', "Providencia · 2D1B · 46 m² · UF 3.275", 'data-aviso="veredicto"', "Comprar 88 al precio publicado · flujo +$88.363 te queda", "el enlace a la publicación", 'data-aviso="combo"', "Con pie de <b>20 %</b>, plazo de <b>25 años</b> y tasa de <b data-aviso=\"tasa-vista\">4,2 %</b>", "data-modal-cambiar", "Cambiar", 'data-aviso="derivados"', "Dividendo", "Retorno bruto", "Usa tu análisis de regalo.", ">Analizar<", ">Cancelar<"]))
+      if (!orden(html, ['data-modal="aviso-analizar"', "¿Ver este depto?", 'data-aviso="depto"', "Providencia · 2D1B · 46 m² · UF 3.275", 'data-aviso="veredicto"', "Comprar 88 al precio publicado · flujo +$88.363 te queda", "el enlace a la publicación", 'data-aviso="combo"', "Con pie de <b>20 %</b>, plazo de <b>25 años</b> y tasa de <b data-aviso=\"tasa-vista\">4,2 %</b>", "data-modal-cambiar", "Cambiar", 'data-aviso="derivados"', "Dividendo", "Retorno bruto", "Usa tu crédito de regalo.", ">Ver este depto<", ">Cancelar<"]))
         F(`3 · D1 no se dibuja como el mockup: ${th.slice(0, 300)}`);
-      if (/data-aviso="pie"|data-aviso="guardar"|Analizar igual|Precio por m²|Renta larga|de tu perfil|disabled=""/.test(html)) F("3 · D1 muestra los selectores, la casilla, «Analizar igual», lo del wizard o el botón bloqueado antes de tocar «Cambiar»");
+      if (/data-aviso="pie"|data-aviso="guardar"|Ver igual|Precio por m²|Renta larga|de tu perfil|disabled=""/.test(html)) F("3 · D1 muestra los selectores, la casilla, «Ver igual», lo del wizard o el botón bloqueado antes de tocar «Cambiar»");
       // Sin `cambio` (la guía, renta corta): la línea del pie y el plazo sin «Cambiar».
       const sinCambio = dibujarPopup(createElement(cmp.AvisoAntesDeAnalizar, { depto: { comuna: "Ñuñoa", tipologia: "2D1B", m2: 50, precioUF: 3000 }, combinacion: { piePct: 20, plazoAnios: 25 }, finanzas: { tasa: 4.2, uf: 39500, arriendo: 500000 }, uso: { tipo: "con", n: 2, noVencen: true }, rutaCompra: "/x", alAnalizar: () => {}, alCancelar: () => {} }));
       if (/data-modal-cambiar|data-aviso="veredicto"/.test(sinCambio) || !/data-aviso="combo"/.test(sinCambio)) F("3 · sin `cambio` el pop-up ofrece «Cambiar» (o inventa un veredicto)");
@@ -307,7 +307,7 @@ export async function runPuertaBMockupsTier(): Promise<{ hard: number }> {
 // veredicto · M14 la respuesta tardía pisa · M15 ordenFijo no ordena · M16 sin desempate a igual puntaje · M17 la cola del
 // día sin los previos · M18 el domingo sin los previos · M19 los primeros sin el desempate por id · M20 la casa esconde los
 // dormitorios de varios informes · M21 la primera selección analiza con la fila y no con lo elegido · M22 las tarjetas sin
-// el pin · M23 «Analizar este» sin «usa tu regalo» · M24 D1 abre con los selectores · M25 la cola lee los previos del
+// el pin · M23 «Ver este depto» sin «usa tu regalo» · M24 D1 abre con los selectores · M25 la cola lee los previos del
 // encolado y no los de ahora · M26 la tarjeta del cambio en rojo aunque mejore · M27 el dashboard abre el pop-up sin
 // «Cambiar». M7, M23, M25 y M26 salieron VERDES la primera vez: el tier medía el módulo o una sola regla CSS; se le sumó el
 // cableado. M25 nació del QA en WebKit: la primera vuelta de la cola partía con la fila vacía y mandaba el correo con los

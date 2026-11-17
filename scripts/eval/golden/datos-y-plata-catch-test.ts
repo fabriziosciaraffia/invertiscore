@@ -7,7 +7,7 @@
 //       fila con la llave de servicio, y la migración que borra la política está en el repo.
 //   2 · EL INFORME BLOQUEADO NO SE VE SIN PAGAR: pendiente de pago, cada superficie corta antes de calcular y muestra la
 //       portada bloqueada (sin puntaje ni veredicto); la vista previa tampoco los dice.
-//   3 · NUNCA UN CRÉDITO GASTADO SIN INFORME: si la creación falla, el cobro vuelve (el candado de «Analizar este», el
+//   3 · NUNCA UN CRÉDITO GASTADO SIN INFORME: si la creación falla, el cobro vuelve (el candado de «Ver este depto», el
 //       formulario LTR y STR); el pop-up que agota los «en curso» cierra con el fallo.
 //   4 · UN TOQUE, UN ANÁLISIS, EN SU MODALIDAD: la vuelta del pago lleva `m=str` y solo esa lista analiza sola.
 //   5 · ACREDITAR NO SE TRAGA ERRORES: grantCredits lanza, payments/confirm no manda «Pago confirmado» y pide reintento,
@@ -114,7 +114,7 @@ export async function runDatosYPlataTier(): Promise<{ hard: number }> {
     if (!algunoBloqueado([{ pending_payment: false }, { pending_payment: true }], false) || algunoBloqueado([{ pending_payment: false }, null], false)) F("2 · el comparativo no se bloquea con una de sus dos filas pendiente");
     const ruta = rutaPagoBloqueado({ analysisId: "a1", companionStrId: "s1" });
     if (ruta !== "/checkout?product=single&analysisId=a1&companionStrId=s1" || rutaPagoBloqueado({ analysisId: "a1" }) !== "/checkout?product=single&analysisId=a1") F(`2 · el botón de pagar no lleva al suelto con el informe atado (${ruta})`);
-    if (INFORME_BLOQUEADO_COPY.dueno.boton !== "Pagar $9.990 y abrir el informe") F("2 · el botón del dueño no dice el precio del suelto");
+    if (INFORME_BLOQUEADO_COPY.dueno.boton !== "Pagar $9.990 y ver los detalles") F("2 · el botón del dueño no dice el precio del suelto");
     const comp = sc("src/components/analysis/InformeBloqueado.tsx");
     if (/score|veredicto|results|francoScore/i.test(comp)) F("2 · la portada bloqueada recibe o dibuja puntaje, veredicto o resultados");
     // Cada superficie corta ANTES de calcular o dibujar el informe.
@@ -245,7 +245,7 @@ export async function runDatosYPlataTier(): Promise<{ hard: number }> {
   // ── 6 · el saldo cuenta la bienvenida sin usar ────────────────────────────
   {
     const sin = datosSaldoDe([], { credits: 0 }), con = datosSaldoDe([], { credits: 0 }, true);
-    if (estadoSaldo(sin).tipo !== "sin" || con.disponibles !== 1 || estadoSaldo(con).tipo !== "regalo" || con.proximoRegalo !== true) F("6 · la bienvenida sin usar no cuenta como un análisis de regalo");
+    if (estadoSaldo(sin).tipo !== "sin" || con.disponibles !== 1 || estadoSaldo(con).tipo !== "regalo" || con.proximoRegalo !== true) F("6 · la bienvenida sin usar no cuenta como un crédito de regalo");
     const mezcla = datosSaldoDe([{ remaining: 2, expires_at: "2026-12-01T00:00:00Z", source: "single" }], { credits: 0 }, true);
     if (mezcla.disponibles !== 3 || mezcla.proximoRegalo !== true || mezcla.proximoVence !== "2026-12-01T00:00:00Z") F("6 · con la bienvenida y lotes, el saldo, el próximo o el vencimiento salen mal");
     if (!/const bienvenida = uc\?\.is_unlimited !== true && \(await bienvenidaPendiente\(/.test(sc("src/lib/casa-saldo.ts"))) F("6 · leerSaldo no mira la bienvenida");
@@ -265,7 +265,7 @@ export async function runDatosYPlataTier(): Promise<{ hard: number }> {
         if (!bienvenidaVigente(u?.user?.created_at ?? null)) continue;
         medidas++;
         const saldo = await leerSaldo(admin, f.user_id as string);
-        if (saldo.disponibles < 1 || estadoSaldo(saldo).tipo === "sin") F(`6 · la cuenta ${String(f.user_id).slice(0, 8)} tiene la bienvenida sin usar y el saldo dice «Sin análisis»`);
+        if (saldo.disponibles < 1 || estadoSaldo(saldo).tipo === "sin") F(`6 · la cuenta ${String(f.user_id).slice(0, 8)} tiene la bienvenida sin usar y el saldo dice «Sin créditos»`);
       }
       if (filas && filas.length && !medidas) console.log("  · 6 · ninguna cuenta vieja con bienvenida sin usar en la muestra (la parte viva no midió)");
     }
@@ -316,7 +316,7 @@ export async function runDatosYPlataTier(): Promise<{ hard: number }> {
 //       pendiente · la portada bloqueada dibujando el puntaje · el documento compartido sin corte.
 //   3 · el candado sin devolver · la fila de otra solicitud sin devolución · el modo paid sin devolución · el cobro del
 //       ledger sin su lote · el contador viejo sin sumar · devolverLote sin UPDATE condicional · el formulario LTR (insert)
-//       y STR (AirROI caído) sin devolver · «Analizar este» sin devolver · la primera selección girando tras los 409.
+//       y STR (AirROI caído) sin devolver · «Ver este depto» sin devolver · la primera selección girando tras los 409.
 //   4 · la vuelta sin `m=str` · las dos listas analizando · la vuelta de Flow generando renta larga · la vuelta leída
 //       siempre como renta larga.
 //   5 · grantCredits tragando el error · confirm respondiendo 200 · la suscripción tragando el error · sin el cron en

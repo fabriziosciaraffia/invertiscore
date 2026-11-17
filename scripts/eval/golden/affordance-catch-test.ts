@@ -53,15 +53,15 @@ export function runAffordanceTier(): { hard: number } {
   console.log("\n─── TIER AFFORDANCE (tocable y cargando, 0 tokens) ───");
 
   // ── 1 · LO TOCABLE SE VE TOCABLE ───────────────────────────────────────────
-  // ⚠ ACTA (29-oct-2026, goal «puerta E», mockup docs/puerta-b-mockups/6-puerta-e.html) · «Ver un análisis real» pasó a llamarse «Ver un análisis de ejemplo».
+  // ⚠ ACTA (29-oct-2026, goal «puerta E», mockup docs/puerta-b-mockups/6-puerta-e.html) · «Ver un análisis real» pasó a llamarse «Ver un ejemplo».
   // ⚠ ACTA (29-oct-2026, el hero del mapa, opción 3 de 7-landing-puertas) · vuelve al hero como ENLACE DE TEXTO al pie del panel:
   // «Franco te dice si conviene. Ver un ejemplo», subrayado; el campo no lo lleva.
   const entrada = sinComentarios(leer("src/components/landing-v14/Entrada.tsx"));
   const puertas = sinComentarios(leer("src/components/landing-v14/HeroMapa.tsx"));
   const cssLanding = leer("src/components/landing-v14/hero-mapa.css");
-  if (!/<LinkMedido href="\/demo" className="hm-ejemplo-enlace" evento=\{EV\.ejemplo\}/.test(puertas) || !/\.lv-root \.hm-ejemplo-enlace \{[^}]*text-decoration: underline;/.test(cssLanding) || /\/demo|he-pild/.test(entrada)) F("1 · «Ver un análisis de ejemplo» no es un enlace subrayado bajo la segunda puerta (o vuelve al hero)");
+  if (!/<LinkMedido href="\/demo" className="hm-ejemplo-enlace" evento=\{EV\.ejemplo\}/.test(puertas) || !/\.lv-root \.hm-ejemplo-enlace \{[^}]*text-decoration: underline;/.test(cssLanding) || /\/demo|he-pild/.test(entrada)) F("1 · «Ver un ejemplo» no es un enlace subrayado bajo la segunda puerta (o vuelve al hero)");
   const portada = sinComentarios(leer("src/components/formulario-v4/screenEntrada.tsx"));
-  // (01-oct-2026) La dirección del wizard ya no lleva «Ver un análisis de ejemplo»: es un paso del formulario.
+  // (01-oct-2026) La dirección del wizard ya no lleva «Ver un ejemplo»: es un paso del formulario.
   if (/href="\/demo"/.test(portada) && !/className="he-pild"/.test(portada)) F("1 · un enlace al demo en la dirección del wizard no es la píldora");
   // (29-oct-2026) La píldora `he-pild` del pie del hero de la entrada se retiró con ese hero: nadie la montaba.
   const landingCss = leer("src/components/landing-v14/landing.css");

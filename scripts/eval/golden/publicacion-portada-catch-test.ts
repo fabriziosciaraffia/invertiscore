@@ -2,7 +2,7 @@
 // TIER PUBLICACION-PORTADA — el enlace a la publicación, visible en la portada de todo informe que salió de un aviso
 // (27-oct-2026, decisión de Fabrizio)
 //
-//   El caso: un cliente pagó el pack el 26-oct. El pop-up de antes de analizar le prometía «El informe incluye el enlace a
+//   El caso: un cliente pagó el pack el 26-oct. El pop-up de antes de analizar le prometía «Los detalles incluyen el enlace a
 //   la publicación», y el enlace solo llegaba si tocaba «Quiero verlo» y abría el correo. Desde hoy:
 //   1 · CON INFORMES REALES DE LA SELECCIÓN: los últimos informes de renta larga y de renta corta hechos desde un aviso
 //       (`input_data.origenAviso`) pasan por la MISMA función que usa la página (`publicacionDelInforme`), y la portada se

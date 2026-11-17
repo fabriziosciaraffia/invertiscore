@@ -7,7 +7,7 @@
 //   2 · SIN SATURAR: un correo por día por persona (varios van juntos); la fila se toma antes de mandar;
 //       lo avisado no se vuelve a avisar ni se repite en el semanal.
 //   3 · EL CORREO: «Apareció un depto que conviene con lo que buscas», en la plantilla del semanal, con el
-//       depto, su veredicto y su flujo, «Analizar uno · $9.990» sin análisis, y su PROPIA baja que no toca
+//       depto, su veredicto y su flujo, «Ver uno · $9.990» sin análisis, y su PROPIA baja que no toca
 //       el semanal.
 //   4 · EL «YA» VENCE: a los 60 días sin compra se pregunta «¿Cuándo piensas comprar?» con un clic; sin
 //       respuesta, solo el semanal; «Ya» vuelve a correr el plazo.
@@ -97,8 +97,8 @@ export async function runInmediatoTier(): Promise<{ hard: number }> {
     if (!h.includes("font-size: 28px; line-height: 1.1; font-weight: 700;") || !h.includes(">UF 3.891</a>")) F("3 · el depto no va en la tarjeta del semanal con el precio grande");
     if (!h.includes(`color: ${COLOR_VEREDICTO.COMPRAR};">Comprar`)) F("3 · el veredicto no va en su color");
     if (!h.includes(`color: ${ROJO};">−$51.000`)) F("3 · el flujo no va (o no va en rojo cuando es negativo)");
-    if (!h.includes(`<a href="https://x/comprar" style="display: inline-block; padding: 15px 30px;`) || !h.includes(">Analizar uno · $9.990</a>")) F("3 · sin análisis el botón no es «Analizar uno · $9.990» a la compra");
-    if (!conSaldo.html.includes(">Analizar uno</a>") || conSaldo.html.includes("$9.990</a>")) F("3 · con análisis el botón no es «Analizar uno»");
+    if (!h.includes(`<a href="https://x/comprar" style="display: inline-block; padding: 15px 30px;`) || !h.includes(">Ver uno · $9.990</a>")) F("3 · sin análisis el botón no es «Ver uno · $9.990» a la compra");
+    if (!conSaldo.html.includes(">Ver uno</a>") || conSaldo.html.includes("$9.990</a>")) F("3 · con análisis el botón no es «Ver uno»");
     if (!h.includes(`<a href="https://x/baja-aviso" style="color: `) || !h.includes(`>${INMEDIATO.baja}</a>`) || !h.includes(INMEDIATO.bajaSigue)) F("3 · el aviso no trae su propia baja (o no dice que el semanal sigue)");
     if (!dos.html.includes("Aparecieron 2 deptos que convienen con lo que buscas") || (dos.html.match(/font-size: 28px; line-height: 1\.1/g) ?? []).length !== 2) F("3 · dos deptos del día no van juntos en un correo");
     if (/oportunidad|portafolio|exclusiv/i.test(h + dos.html)) F("3 · aparece una palabra vedada");
@@ -147,7 +147,7 @@ export async function runInmediatoTier(): Promise<{ hard: number }> {
     const clic = sinComentarios(leer("src/app/api/semanal/clic/route.ts"));
     // ⚠ ACTA (13-oct-2026) · con `await`, no `void`: la función respondía antes de que saliera el evento.
     if (!/if \(sel\.fuente === "inmediato"\) \{\s*await capturarServidor\(\{ event: "aviso_inmediato_clic"/.test(clic)) F("5 · falta aviso_inmediato_clic");
-    if (!/if \(ir === "comprar" && sel\.fuente === "inmediato"\) return volver\(RUTA_SUELTO_INMEDIATO\);/.test(clic) || RUTA_SUELTO_INMEDIATO !== "/checkout?product=single&origen=inmediato") F("5 · «Analizar uno · $9.990» del aviso no compra el suelto marcado como del aviso");
+    if (!/if \(ir === "comprar" && sel\.fuente === "inmediato"\) return volver\(RUTA_SUELTO_INMEDIATO\);/.test(clic) || RUTA_SUELTO_INMEDIATO !== "/checkout?product=single&origen=inmediato") F("5 · «Ver uno · $9.990» del aviso no compra el suelto marcado como del aviso");
     if (!/origenParam === "inmediato" \? "inmediato"/.test(leer("src/app/checkout/page.tsx"))) F("5 · el checkout no lleva el origen del aviso");
     if (!/\.\.\.\(origenBody === "inmediato" \? \{ origen: "inmediato" \} : \{\}\)/.test(sinComentarios(leer("src/app/api/payments/create/route.ts")))) F("5 · el pago no guarda que vino del aviso");
     const conf = sinComentarios(leer("src/app/api/payments/confirm/route.ts"));

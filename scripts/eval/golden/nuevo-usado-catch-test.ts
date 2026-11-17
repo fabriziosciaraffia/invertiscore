@@ -10,7 +10,7 @@
 //       RPC; lo guardado antes de hoy se completa con la del aviso (conCondicion); y los pines de Explorar, con los que NO
 //       dicen «usado» en la ventana (conCondicionDePines: fuera de esa lista, «usado»; si la lista falló, nada).
 //   3 · LAS FICHAS: Explorar (la tarjeta y la hoja del pin, dibujadas), el correo semanal y el del día (la tarjeta del correo,
-//       también la de la selección diaria y la lista de «los que casi» del vacío), la tarjeta del pop-up de «Analizar este»
+//       también la de la selección diaria y la lista de «los que casi» del vacío), la tarjeta del pop-up de «Ver este depto»
 //       (nombreDelDepto) y las tarjetas de «Estás dentro» y del dashboard; los tres que abren el pop-up le pasan la condición.
 //   4 · EL CABLEADO DEL SERVIDOR: el dashboard y «Estás dentro» completan lo guardado; Explorar lee los no usados en paralelo
 //       con los pines y sin el tope de mil.
@@ -143,7 +143,7 @@ export async function runNuevoUsadoTier(): Promise<{ hard: number }> {
       if (!inm.html.includes("Las Condes · 2D2B · 77 m² · Nuevo")) F("3 · la selección diaria no dice «· Nuevo»");
       const vacio = correoSemanalVacio({ nombre: "Ana", presentacion: false, urlPerfil: "p", urlBaja: "b", casi: [{ ...depto, score: 60, flujo: -1000, condicion: "usado" }] } as Parameters<typeof correoSemanalVacio>[0]);
       if (!vacio.html.includes("Las Condes · 2D2B · 77 m² · Usado")) F("3 · «los que casi» del correo vacío no dicen «· Usado»");
-      // El pop-up de «Analizar este».
+      // El pop-up de «Ver este depto».
       if (nombreDelDepto({ ...depto, condicion: "usado" }) !== "Las Condes · 2D2B · 77 m² · Usado · UF 4.200" || nombreDelDepto(depto) !== "Las Condes · 2D2B · 77 m² · UF 4.200") F(`3 · la tarjeta del pop-up: «${nombreDelDepto({ ...depto, condicion: "usado" })}»`);
       const pop = codigo("src/components/guia/AvisoAntesDeAnalizar.tsx");
       if (!/direccion: nombreDelDepto\(depto\),/.test(pop) || !/depto: \{ comuna: string; tipologia: string \| null; m2: number; precioUF: number; condicion\?: CondicionDepto \};/.test(pop)) F("3 · la tarjeta del pop-up no recibe la condición o no la nombra con nombreDelDepto");

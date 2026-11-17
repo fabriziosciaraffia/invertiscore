@@ -9,7 +9,7 @@
 //       cabe; la de la vuelta a un depto, que medía 206, ya no viaja. EN ROJO CON EL CÓDIGO DE HOY: 206 > 200.
 //   2 · LA PÁGINA LEE LA VUELTA DEL PAGO GUARDADO (`payment_data.volver`), no de la URL; el pack lee su informe del estado
 //       del pago, y el depto también.
-//   3 · PAGADO DESDE UN DEPTO: «Pago confirmado. Generando el informe de Providencia · 2D2B · 59 m² · UF 3.500…», genera y
+//   3 · PAGADO DESDE UN DEPTO: «Pago confirmado. Preparando los detalles de Providencia · 2D2B · 59 m² · UF 3.500…», genera y
 //       abre el informe sola; sin depto, «Tienes un análisis más» (o «3») con «Ir a mi dashboard».
 // Verificado EN ROJO contra el código de hoy y por mutación (acta al pie). Corre dentro del QUICK.
 // Solo:  node --import tsx scripts/eval/golden/vuelta-flow-catch-test.ts
@@ -103,16 +103,16 @@ export function runVueltaFlowTier(): { hard: number } {
   const it = { avisoId: AVISO, comuna: "Providencia", tipologia: "2D2B", m2: 59, precioUF: 3500, veredicto: "COMPRAR", score: 91, flujo: 1 };
   if (nombreDelDepto(it) !== "Providencia · 2D2B · 59 m² · UF 3.500") F(`3 · el depto no se nombra como en las tarjetas: ${nombreDelDepto(it)}`);
   if (nombreDelDepto({ ...it, tipologia: null, m2: 45.6, precioUF: 12345 }) !== "Providencia · 46 m² · UF 12.345") F("3 · sin tipología (o con decimales) el nombre sale mal");
-  if (RETORNO.generandoDepto(nombreDelDepto(it)) !== "Generando el informe de Providencia · 2D2B · 59 m² · UF 3.500…") F(`3 · la pantalla no dice «Generando el informe de [depto]…»: ${RETORNO.generandoDepto(nombreDelDepto(it))}`);
+  if (RETORNO.generandoDepto(nombreDelDepto(it)) !== "Preparando los detalles de Providencia · 2D2B · 59 m² · UF 3.500…") F(`3 · la pantalla no dice «Preparando los detalles de [depto]…»: ${RETORNO.generandoDepto(nombreDelDepto(it))}`);
   if (RETORNO.abriendo.titulo !== "Pago confirmado." || RETORNO.pagado.titulo !== "Pago confirmado.") F("3 · la pantalla pagada no se titula «Pago confirmado.»");
-  if (RETORNO.pagado.uno !== "Tienes un análisis más." || RETORNO.pagado.tres !== "Tienes 3 análisis más." || TRES_COPY.listo !== "Tienes 3 análisis más.") F("3 · sin depto no dice «Tienes un análisis más» / «Tienes 3 análisis más»");
+  if (RETORNO.pagado.uno !== "Tienes un crédito más." || RETORNO.pagado.tres !== "Tienes 3 créditos más." || TRES_COPY.listo !== "Tienes 3 créditos más.") F("3 · sin depto no dice «Tienes un análisis más» / «Tienes 3 análisis más»");
   if (RETORNO.irAlDashboard !== "Ir a mi dashboard" || botonTrasPagar(null).texto !== "Ir a mi dashboard" || botonTrasPagar(null).href !== "/dashboard" || botonTrasPagar("/dashboard").texto !== "Ir a mi dashboard") F("3 · el botón sin depto no es «Ir a mi dashboard»");
   if ("verMisAnalisis" in RETORNO || "analizandoDepto" in RETORNO) F("3 · sobreviven las claves de antes («Ver mis análisis», «Franco está analizando este depto…»)");
   const dep = leerDeptoDelPago({ token: TOKEN, avisoId: AVISO, origenId: null, nombre: "x" });
   if (!dep || dep.origenId !== null || leerDeptoDelPago({ token: "zz", avisoId: AVISO, nombre: "x" }) !== null || leerDeptoDelPago({ token: TOKEN, avisoId: AVISO }) !== null) F("3 · leerDeptoDelPago no sanea lo que llega");
   if (!deptoDeVolver(volverSeguro(volverAlDepto(TOKEN, AVISO))) || !analizaAlVolver(volverAlDepto(TOKEN, AVISO))) F("3 · la vuelta a un depto dejó de pedir el análisis solo");
   // ⚠ ACTA (03-nov-2026, «el informe en camino» en la vuelta del pago, tier INFORME-EN-CAMINO §7) · generarDepto ya no navega: le pasa el
-  // informe a InformeEnLaVuelta, que lo abre EN SU LUGAR (router.replace, como antes) y, a los 10 s, ofrece «Abrir informe». Y si no
+  // informe a InformeEnLaVuelta, que lo abre EN SU LUGAR (router.replace, como antes) y, a los 10 s, ofrece «Ver los detalles». Y si no
   // puede generar ya no vuelve al dashboard en silencio a intentarlo de nuevo: lo dice ahí mismo. Sin la vuelta como argumento.
   if (!/async function generarDepto\(depto: DeptoDelPago\)/.test(ret)) F("3 · la pantalla no tiene generarDepto");
   const iGen = ret.indexOf("async function generarDepto(");
@@ -130,7 +130,7 @@ export function runVueltaFlowTier(): { hard: number } {
   // ⚠ ACTA (05-nov-2026, goal de Fabrizio, auditoría de promesas parte 3: «en renta corta la vuelta analiza sola, como en renta
   // larga») · sin depto que generar acá (renta corta, Explorar), la bajada dice «Volviendo al depto para analizarlo…» mientras
   // lleva sola al depto con `analizar=1` (PROMESAS-TEXTOS §6 fija el viaje).
-  if (!/: analysisId \? "Tu análisis está desbloqueado\." : RETORNO\.pagado\.uno/.test(ret) || !/<EnlaceCarga href=\{tras\.href\}[^>]*data-retorno-boton="pagado">\s*\{tras\.texto\}/.test(ret)) F("3 · sin depto, la pantalla no dice «Tienes un análisis más» con el botón al dashboard");
+  if (!/: analysisId \? "Ya tienes los detalles de este depto\." : RETORNO\.pagado\.uno/.test(ret) || !/<EnlaceCarga href=\{tras\.href\}[^>]*data-retorno-boton="pagado">\s*\{tras\.texto\}/.test(ret)) F("3 · sin depto, la pantalla no dice «Tienes un crédito más» con el botón al dashboard");
   } catch (e) {
     F(`3 · explotó (faltan nombreDelDepto, leerDeptoDelPago o generandoDepto): ${e instanceof Error ? e.message : String(e)}`);
   }

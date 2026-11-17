@@ -14,7 +14,7 @@
 //   modalidad y «cuándo», «Ir a mi panel», «Sí, agregar»/«No», el reintento del alta y el alta de la vuelta por el enlace;
 //   en «Estás dentro» los chips y el «cuándo» (también después de pagar); en el dashboard el perfil de la casa, la
 //   bienvenida y sus chips, «Usar nombre» de la invitación, el PDF de las filas y el borrado del informe; en el informe
-//   «Analizar este» sin la barra al abrir, el PDF del menú de compartir y «Invita a alguien» mientras carga; en la compra
+//   «Ver este depto» sin la barra al abrir, el PDF del menú de compartir y «Invita a alguien» mientras carga; en la compra
 //   «Pagar» mientras manda o verifica el código, «mándalo de nuevo» y Google (también en /entrar y en el registro del
 //   informe); «Entrar con otro correo» en la vuelta. Verificado EN ROJO contra el código de hoy y por mutación (acta al
 //   pie). Corre dentro del QUICK.
@@ -77,10 +77,10 @@ const BOTONES: Array<[string, string, string, number?]> = [
   // son botones con aria-pressed, sin aro propio; la modalidad, el pie y el plazo dejaron de ser chips con autosave.
   ["src/app/dashboard/casa.tsx", "onClick={() => void guardarTodo()}", "la casa · «Guardar» del perfil"],
   ["src/app/dashboard/bienvenida.tsx", 'data-bienvenida="accion"', "la bienvenida · el botón"],
-  ["src/components/guia/GuiaBusqueda.tsx", "onClick={() => abrir(it)}", "la guía · «Analizar este»"],
-  ["src/components/deptos/PrimeraSeleccion.tsx", 'data-primera="analizar"', "la primera selección · «Analizar este»"],
+  ["src/components/guia/GuiaBusqueda.tsx", "onClick={() => abrir(it)}", "la guía · «Ver este depto»"],
+  ["src/components/deptos/PrimeraSeleccion.tsx", 'data-primera="analizar"', "la primera selección · «Ver este depto»"],
   ["src/components/deptos/PrimeraSeleccion.tsx", "{PRIMERA_SELECCION.armar}</button>", "la primera selección · armar"],
-  ["src/app/semanal/semanal-lista.tsx", "onClick={() => { setError(null); setPopup(null); setConfirmar({ it, sin: false }); }}", "la página semanal · «Analizar este»"],
+  ["src/app/semanal/semanal-lista.tsx", "onClick={() => { setError(null); setPopup(null); setConfirmar({ it, sin: false }); }}", "la página semanal · «Ver este depto»"],
   ["src/components/formulario-v4/ModalPlausibilidad.tsx", 'className="wz-cta wz-cta-modal"', "el modal de confirmar · el principal"],
   ["src/components/guia/InformeDeAviso.tsx", "onClick={() => void quieroVerlo()}", "el informe · «Quiero verlo»"],
   ["src/components/invitacion/InvitaAlguien.tsx", "{REFERIDO_COPY.usarNombre}</button>", "la invitación · «Usar nombre»", 2],
@@ -225,8 +225,8 @@ export function runCargaTier(): { hard: number } {
   // ⚠ ACTA (03-nov-2026, «el informe en camino» en la guía) · como las otras superficies: la enciende al tocar «Analizar», la suelta al
   // salir de un intento que no dio informe y al cerrar el pop-up; con el informe listo la abre el pop-up (abajo, en el bucle).
   const iCerrar = guia.indexOf("function cerrarInforme("), cerrarGuia = iCerrar < 0 ? "" : guia.slice(iCerrar, guia.indexOf("function reintentarInforme(", iCerrar));
-  if (!/setGenerando\(it\.avisoId\);\s*const soltar = iniciarCarga\(claveActual\(\)\);\s*soltarCarga\.current = soltar;/.test(guia) || !/\} catch \{\s*fallar\("error"\);\s*\}\s*soltar\(\);\s*setGenerando\(null\);\s*\}/.test(guia) || !/soltarCarga\.current\?\.\(\);/.test(cerrarGuia)) F("4 · «Analizar este» de la guía no enciende la barra hasta abrir el informe (o no la suelta si no abre)");
-  if (!/const soltar = iniciarCarga\(claveActual\(\)\);/.test(codigo("src/components/deptos/PrimeraSeleccion.tsx"))) F("4 · «Analizar este» de la primera selección no enciende la barra");
+  if (!/setGenerando\(it\.avisoId\);\s*const soltar = iniciarCarga\(claveActual\(\)\);\s*soltarCarga\.current = soltar;/.test(guia) || !/\} catch \{\s*fallar\("error"\);\s*\}\s*soltar\(\);\s*setGenerando\(null\);\s*\}/.test(guia) || !/soltarCarga\.current\?\.\(\);/.test(cerrarGuia)) F("4 · «Ver este depto» de la guía no enciende la barra hasta abrir el informe (o no la suelta si no abre)");
+  if (!/const soltar = iniciarCarga\(claveActual\(\)\);/.test(codigo("src/components/deptos/PrimeraSeleccion.tsx"))) F("4 · «Ver este depto» de la primera selección no enciende la barra");
   // ⚠ ACTA (03-nov-2026, «el informe en camino», tier INFORME-EN-CAMINO) · la barra que se encendió al tocar «Analizar» sigue encendida
   // mientras el pop-up abre el informe: en la rama del informe listo, la superficie solo la suelta si el veredicto salió distinto.
   for (const f of ["src/app/explorar/explorar-cliente.tsx", "src/components/deptos/PrimeraSeleccion.tsx", "src/app/semanal/semanal-lista.tsx", "src/components/guia/GuiaBusqueda.tsx"]) {

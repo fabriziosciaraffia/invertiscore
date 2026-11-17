@@ -2,7 +2,7 @@
 // TIER INVIERTE-PRONTO — «Pronto: Invierte con Franco» (11-nov-2026, goal de Fabrizio). Rojo con:
 //   1 · EL BOTÓN EN UN DEPTO NUEVO O EN BUSCAR OTRO: la regla (puedeInvertir) y la tarjeta de Explorar dibujada —con y sin
 //       cuenta— lo llevan solo en un usado que da ✓ Comprar o − Ajustar negociable; la selección y el informe usan la misma
-//       regla; el servidor rechaza un aviso sin condición aunque el navegador lo pida. «Analizar este» sigue siendo la acción
+//       regla; el servidor rechaza un aviso sin condición aunque el navegador lo pida. «Ver este depto» sigue siendo la acción
 //       principal (va antes). ⚠ ACTA (12-nov-2026, goal de Fabrizio): los NUEVOS DE INMOBILIARIA entran con las mismas reglas (Comprar
 //       o Ajustar negociable; nunca Buscar otro ni Ajustar sin negociar); hasta el 12-nov este tier exigía que un nuevo no llevara botón.
 //   7 · UNA INSCRIPCIÓN EN UN NUEVO QUE LLEGA SIN LA MARCA: su correo a hola@ lleva «[NUEVO]» en el asunto (y la de un usado no), y
@@ -159,7 +159,7 @@ export async function runInviertePronto(): Promise<{ hard: number }> {
       if (!/puedeInvertir\(\{ condicion: it\.condicion, veredicto: it\.veredicto, negociable: it\.tramo === "negociar" \}\) && \(\s*<BotonInvierte avisoId=\{it\.avisoId\} origen="seleccion"/.test(sel)) F("1 · la tarjeta de la selección no decide el botón con puedeInvertir (usado + Comprar o negociar)");
       const iAcc = sel.indexOf("{acciones(it)}");
       const iBot = sel.indexOf("<BotonInvierte avisoId={it.avisoId}");
-      if (iAcc < 0 || iBot < iAcc) F("1 · en la selección, el botón no va debajo de «Analizar este»");
+      if (iAcc < 0 || iBot < iAcc) F("1 · en la selección, el botón no va debajo de «Ver este depto»");
       // El informe: el servidor decide con puedeInvertir y el veredicto DEL INFORME, solo al dueño.
       const srv = codigo("src/lib/invierte/invierte-servidor.ts");
       if (!/if \(!aviso \|\| !puedeInvertir\(\{ condicion: aviso\.condicion, veredicto: p\.veredicto, negociable: aviso\.negociable \}\)\) return null;/.test(srv)) F("1 · la portada del informe no decide la franja con puedeInvertir y el veredicto del informe");

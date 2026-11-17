@@ -6,14 +6,14 @@
 //       ni Google. «Estás dentro» dice «Buscas: Santiago · 2D · UF 3.000 a 4.000 · Cambiar», y lo que se cambia se
 //       guarda recién al seguir. EN ROJO CON EL CÓDIGO DE HOY: la portada venía con Santiago y el correo a la vista.
 //   2 · «Estás dentro» no se va sola al dashboard (el `?entro=1` volvía a correr el alta y caía en «sin-pendiente»).
-//   3 · LA TARJETA DEL DASHBOARD ABRE EL POP-UP: la selección se dibuja en el dashboard con «Analizar este», que abre el
+//   3 · LA TARJETA DEL DASHBOARD ABRE EL POP-UP: la selección se dibuja en el dashboard con «Ver este depto», que abre el
 //       aviso antes de gastar («Usa tu análisis de regalo»), sin pasar por /semanal. EN ROJO CON EL CÓDIGO DE HOY.
 //   4 · «Analizar» deja el aviso abierto con «Franco está analizando este depto…» y la barra de carga, hasta el informe.
 //   5 · EL TICKET ES DE TODA CUENTA NUEVA: el primer informe de una cuenta con menos de 24 horas lo lleva, y el aviso sin
 //       saldo ofrece el pack —3 por $14.990 en esas 24 horas, $19.990 después— y debajo «Comprar solo 1 · $9.990», los
 //       dos a la pantalla de compra con el depto puesto, y de vuelta al depto, que se analiza solo. EN ROJO CON EL
 //       CÓDIGO DE HOY.
-//   6 · EL DASHBOARD SE ACTUALIZA SOLO al volver del informe, y el depto ya analizado dice «Ya lo analizaste · Ver
+//   6 · EL DASHBOARD SE ACTUALIZA SOLO al volver del informe, y el depto ya analizado dice «Ya lo tienes · Ver
 //       informe» en vivo, también en renta larga y en la primera selección del día. EN ROJO CON EL CÓDIGO DE HOY.
 //   7 · UNA SOLA PÁGINA: el clic del correo (que se sigue midiendo) y /semanal aterrizan en el dashboard, en la selección,
 //       con el depto clicado arriba.
@@ -182,24 +182,24 @@ export async function runPuertaBRecorridoTier(): Promise<{ hard: number }> {
     for (const p of ["src/app/semanal/semanal-lista.tsx", "src/components/deptos/PrimeraSeleccion.tsx", "src/app/dashboard/seleccion-en-casa.tsx", "src/app/dashboard/casa.tsx", "src/app/dashboard/page.tsx"]) {
       if (/["'`]\/semanal(?:[?"'`]|\$\{)/.test(codigo(p))) F(`3 · ${p} todavía lleva a /semanal`);
     }
-    // La tarjeta, dibujada: «Analizar este» es un botón (abre el aviso), con lo que usa al lado.
+    // La tarjeta, dibujada: «Ver este depto» es un botón (abre el aviso), con lo que usa al lado.
     const { SemanalLista } = require(join(RAIZ, "src/app/semanal/semanal-lista")) as typeof import("../../../src/app/semanal/semanal-lista");
     const filas = [{ item: item("a1"), caido: false, reemplazo: null }, { item: item("a2", { comuna: "Ñuñoa" }), caido: false, reemplazo: null }];
     const base = { token: TOKEN, origenId: null, combinacion: { piePct: 20, plazoAnios: 25 }, filas, destacado: "a2", variante: null } as const;
     const conRegalo = dibujarConRouter(createElement(SemanalLista, { ...base, saldo: { tipo: "regalo", vence: null } }));
-    // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockups 3b y 4) · el botón es `.sel-btn` y con el regalo dice «Analizar este · usa tu regalo» (CASA.seleccion).
-    if (!/<button[^>]*class="sel-btn"[^>]*>Analizar este · usa tu regalo<\/button>/.test(conRegalo)) F("3 · la tarjeta no tiene el botón «Analizar este»");
+    // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockups 3b y 4) · el botón es `.sel-btn` y con el regalo dice «Ver este depto · usa tu regalo» (CASA.seleccion).
+    if (!/<button[^>]*class="sel-btn"[^>]*>Ver este depto · usa tu regalo<\/button>/.test(conRegalo)) F("3 · la tarjeta no tiene el botón «Ver este depto»");
     if (/href="\/semanal/.test(conRegalo)) F("3 · la tarjeta lleva a /semanal");
     if (!textos(conRegalo).toLowerCase().includes("usa tu regalo")) F("3 · la tarjeta no dice que usa el análisis de regalo");
     const sl = codigo("src/app/semanal/semanal-lista.tsx");
-    if (!/onClick=\{\(\) => \{ setError\(null\); setPopup\(null\); setConfirmar\(\{ it, sin: false \}\); \}\}/.test(sl)) F("3 · «Analizar este» no abre el aviso antes de gastar");
-    // El aviso, dibujado: con el regalo dice «Usa tu análisis de regalo.»; con saldo, «Usa 1 de tus 3 análisis.».
+    if (!/onClick=\{\(\) => \{ setError\(null\); setPopup\(null\); setConfirmar\(\{ it, sin: false \}\); \}\}/.test(sl)) F("3 · «Ver este depto» no abre el aviso antes de gastar");
+    // El aviso, dibujado: con el regalo dice «Usa tu crédito de regalo.»; con saldo, «Usa 1 de tus 3 créditos.».
     const { AvisoAntesDeAnalizar } = require(join(RAIZ, "src/components/guia/AvisoAntesDeAnalizar")) as typeof import("../../../src/components/guia/AvisoAntesDeAnalizar");
     const aviso = (uso: unknown, extra: Record<string, unknown> = {}) => dibujarPopup(createElement(AvisoAntesDeAnalizar as unknown as React.FC<Record<string, unknown>>, {
       depto: item("a2"), combinacion: { piePct: 20, plazoAnios: 25 }, finanzas: { tasa: 4.5, uf: 39000, arriendo: 450000 }, uso, rutaCompra: "/checkout?product=tres_analisis", alAnalizar() {}, alCancelar() {}, ...extra,
     }));
-    if (!textos(aviso({ tipo: "regalo", vence: null })).includes(REGALO_COPY.usaRegalo)) F("3 · el aviso con el regalo no dice «Usa tu análisis de regalo.»");
-    if (!textos(aviso({ tipo: "con", n: 3, noVencen: true })).includes(REGALO_COPY.usaUnoDe(3))) F("3 · el aviso con saldo no dice «Usa 1 de tus 3 análisis.»");
+    if (!textos(aviso({ tipo: "regalo", vence: null })).includes(REGALO_COPY.usaRegalo)) F("3 · el aviso con el regalo no dice «Usa tu crédito de regalo.»");
+    if (!textos(aviso({ tipo: "con", n: 3, noVencen: true })).includes(REGALO_COPY.usaUnoDe(3))) F("3 · el aviso con saldo no dice «Usa 1 de tus 3 créditos.»");
   } catch (e) {
     F(`3 · no corrió: ${(e as Error).message}`);
   }
@@ -263,8 +263,8 @@ export async function runPuertaBRecorridoTier(): Promise<{ hard: number }> {
     const conTicket = compra.comprasDelDepto({ token: TOKEN, avisoId: "a2", origen: "semanal", ticket: true });
     const sinTicket = compra.comprasDelDepto({ token: TOKEN, avisoId: "a2", origen: "semanal", ticket: false });
     const q = (href: string) => new URL(href, "https://x.cl").searchParams;
-    if (conTicket.pack.label !== "3 análisis · $14.990" || q(conTicket.pack.href).get("product") !== "pack3") F(`5 · con la cuenta nueva el pack no va a 3 por $14.990: ${conTicket.pack.label} ${conTicket.pack.href}`);
-    if (sinTicket.pack.label !== "3 análisis · $19.990" || q(sinTicket.pack.href).get("product") !== "tres_analisis") F(`5 · sin el ticket el pack no es el de $19.990: ${sinTicket.pack.label}`);
+    if (conTicket.pack.label !== "3 créditos · $14.990" || q(conTicket.pack.href).get("product") !== "pack3") F(`5 · con la cuenta nueva el pack no va a 3 por $14.990: ${conTicket.pack.label} ${conTicket.pack.href}`);
+    if (sinTicket.pack.label !== "3 créditos · $19.990" || q(sinTicket.pack.href).get("product") !== "tres_analisis") F(`5 · sin el ticket el pack no es el de $19.990: ${sinTicket.pack.label}`);
     if (conTicket.suelto.label !== "Comprar solo 1 · $9.990" || q(conTicket.suelto.href).get("product") !== "single") F(`5 · el secundario no es «Comprar solo 1 · $9.990»: ${conTicket.suelto.label}`);
     for (const [n, href] of [["pack", conTicket.pack.href], ["pack de tres", sinTicket.pack.href], ["suelto", conTicket.suelto.href]] as const) {
       const v = q(href).get("volver");
@@ -277,9 +277,9 @@ export async function runPuertaBRecorridoTier(): Promise<{ hard: number }> {
     const sinSaldo = textos(dibujarPopup(createElement(AvisoAntesDeAnalizar as unknown as React.FC<Record<string, unknown>>, {
       depto: item("a2"), combinacion: { piePct: 20, plazoAnios: 25 }, finanzas: { tasa: 4.5, uf: 39000, arriendo: 450000 }, uso: { tipo: "sin" }, rutaCompra: "/x", alAnalizar() {}, alCancelar() {}, compras: conTicket,
     })));
-    const iPack = sinSaldo.indexOf("3 análisis · $14.990"), iSuelto = sinSaldo.indexOf("Comprar solo 1 · $9.990");
+    const iPack = sinSaldo.indexOf("3 créditos · $14.990"), iSuelto = sinSaldo.indexOf("Comprar solo 1 · $9.990");
     if (iPack < 0 || iSuelto < 0 || iSuelto < iPack) F("5 · el aviso sin saldo no ofrece el pack y debajo «Comprar solo 1 · $9.990»");
-    if (!sinSaldo.includes("3 análisis por $14.990")) F("5 · el aviso sin saldo de una cuenta nueva no dice el precio del ticket");
+    if (!sinSaldo.includes("3 créditos por $14.990")) F("5 · el aviso sin saldo de una cuenta nueva no dice el precio del ticket");
     const sl = codigo("src/app/semanal/semanal-lista.tsx"), ps = codigo("src/components/deptos/PrimeraSeleccion.tsx");
     // ⚠ ACTA (04-nov-2026, auditoría de promesas parte 1) · con la modalidad del bloque (DATOS-Y-PLATA §4): la vuelta lo
     // analiza en la que se tocó. El predicado viejo pedía la llamada sin ella.
@@ -310,8 +310,8 @@ export async function runPuertaBRecorridoTier(): Promise<{ hard: number }> {
     const html = dibujarConRouter(createElement(SemanalLista as unknown as React.FC<Record<string, unknown>>, {
       token: TOKEN, origenId: null, combinacion: { piePct: 20, plazoAnios: 25 }, filas, destacado: null, variante: null, saldo: { tipo: "con", n: 2, noVencen: true }, informes: { a1: "inf-1" },
     }));
-    if (!/href="\/analisis\/inf-1"/.test(html) || !textos(html).includes(YA_ANALIZADO.texto)) F("6 · en renta larga, el depto ya analizado no dice «Ya lo analizaste · Ver informe» con lo leído en vivo");
-    if ((html.match(/class="sel-btn"/g) ?? []).length !== 1 || (html.match(/class="sel-fila"/g) ?? []).length !== 1) F(`6 · el ya analizado sigue con «Analizar este» (o el otro lo perdió): ${(html.match(/class="sel-btn"/g) ?? []).length} botones`);
+    if (!/href="\/analisis\/inf-1"/.test(html) || !textos(html).includes(YA_ANALIZADO.texto)) F("6 · en renta larga, el depto ya analizado no dice «Ya lo tienes · Ver detalles» con lo leído en vivo");
+    if ((html.match(/class="sel-btn"/g) ?? []).length !== 1 || (html.match(/class="sel-fila"/g) ?? []).length !== 1) F(`6 · el ya analizado sigue con «Ver este depto» (o el otro lo perdió): ${(html.match(/class="sel-btn"/g) ?? []).length} botones`);
     const sps = codigo("src/lib/guia/seleccion-pagina-servidor.ts");
     if (!/informesDeAvisos\(admin, userId, ids\)/.test(sps) || !/informes: informesLargos/.test(sps)) F("6 · la selección del dashboard no lee en vivo los informes de renta larga");
     const prim = codigo("src/lib/deptos/primeros-servidor.ts");
@@ -321,7 +321,7 @@ export async function runPuertaBRecorridoTier(): Promise<{ hard: number }> {
     // ⚠ ACTA (03-nov-2026, «el informe en camino», tier INFORME-EN-CAMINO) · el ya analizado incluye los de esta visita (`informesAqui`), con su informe.
     // ⚠ ACTA (05-nov-2026, tier TARJETA-ANALIZADA) · el informe se nombra una vez (`const informe = …`, lo leen el chip y esta
     // rama): se exige el nombre con los de esta visita y que el enlace vaya a ese informe.
-    if (!/const informe = it\.informeId \?\? informesAqui\[it\.avisoId\] \?\? null;/.test(ps) || !/\{informe \? \(\s*<p className="sel-ya" data-primera="ya-analizado">[\s\S]{0,200}?href=\{`\/analisis\/\$\{informe\}`\}/.test(ps)) F("6 · la primera selección no dice «Ya lo analizaste · Ver informe»");
+    if (!/const informe = it\.informeId \?\? informesAqui\[it\.avisoId\] \?\? null;/.test(ps) || !/\{informe \? \(\s*<p className="sel-ya" data-primera="ya-analizado">[\s\S]{0,200}?href=\{`\/analisis\/\$\{informe\}`\}/.test(ps)) F("6 · la primera selección no dice «Ya lo tienes · Ver detalles»");
     if (!/window\.addEventListener\("pageshow", alVolver\)/.test(ps)) F("6 · la primera selección no se relee al volver atrás desde el informe");
     // El dashboard se pide de nuevo al volver, sin recargar.
     const fresco = cargar<typeof import("../../../src/app/dashboard/fresco-al-volver")>("src/app/dashboard/fresco-al-volver");
@@ -367,7 +367,7 @@ export async function runPuertaBRecorridoTier(): Promise<{ hard: number }> {
     console.log(`  ✗ ROJO — ${fallas.length} falla(s):`);
     for (const f of fallas.slice(0, 40)) console.log(`     · ${f}`);
   } else {
-    console.log("  ✓ VERDE — /deptos pide la comuna antes del correo y «Estás dentro» dice qué busca y se queda; la selección vive en el dashboard con «Analizar este», el aviso cargando y el ticket de la cuenta nueva con el suelto debajo; lo analizado se ve en vivo y el clic del correo aterriza ahí");
+    console.log("  ✓ VERDE — /deptos pide la comuna antes del correo y «Estás dentro» dice qué busca y se queda; la selección vive en el dashboard con «Ver este depto», el aviso cargando y el ticket de la cuenta nueva con el suelto debajo; lo analizado se ve en vivo y el clic del correo aterriza ahí");
   }
   return { hard: fallas.length };
 }
@@ -375,11 +375,11 @@ export async function runPuertaBRecorridoTier(): Promise<{ hard: number }> {
 // ACTA DE MUTACIÓN (21-oct-2026). CONTRA EL CÓDIGO DE HOY (HEAD 3a84847f, todo `src/` del goal de vuelta a HEAD y los
 // archivos nuevos apartados): 43 fallas, entre ellas «/deptos sin comuna elegida muestra el campo del correo», «el dashboard
 // no dibuja la selección con las tarjetas de la selección», «falta lib/guia/compra-desde-depto» y «en renta larga, el depto
-// ya analizado no dice «Ya lo analizaste · Ver informe»». Y 38 mutaciones, cada una restaurada byte a byte, todas ROJAS:
+// ya analizado no dice «Ya lo tienes · Ver detalles»». Y 38 mutaciones, cada una restaurada byte a byte, todas ROJAS:
 //   R1 la portada trae Santiago · R2 el correo sin comuna · R3 el código sin comuna · R4 la regla deja pedirlo sin comuna ·
 //   R5 el alta sin la búsqueda · R6 un chip guarda en el toque · R7 «Ir a mi panel» no guarda · R8 el rearmado borra la ya
 //   enviada · R9 el alta se va al dashboard · R10 el `?entro` corre dos veces · R11 «Ver tu selección» a /semanal · R12 la
-//   casa con informes sin tarjetas · R13 «Analizar este» genera sin aviso · R14 sin «Franco está analizando» · R15 el aviso
+//   casa con informes sin tarjetas · R13 «Ver este depto» genera sin aviso · R14 sin «Franco está analizando» · R15 el aviso
 //   se cierra al generar · R16 el botón sigue tocable · R17 el ticket sin las 24 horas · R18 el informe de la cuenta sin
 //   ticket · R19 «el primero» sin mirar los anteriores · R20 el ticket cuenta desde el informe · R21 el suelto sin vuelta ·
 //   R22 sin «Comprar solo 1» · R23 el cobro sin el ticket de la cuenta · R24 la vuelta de Flow no sigue · R25 el pack a

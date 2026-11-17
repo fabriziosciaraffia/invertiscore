@@ -6,12 +6,12 @@
 //       para abrir y el primer pintado dice «N convienen en Gran Santiago» con la línea de los supuestos, aunque la cuenta
 //       tenga una búsqueda guardada. «Mi búsqueda» aplica el perfil entero de una vez, solo si se toca.
 //   2 · LA TARJETA DEL PIN SIN LAS LÍNEAS RETIRADAS: la imagen, comuna · tipología · m² · Usado/Nuevo, el precio, el
-//       veredicto con el puntaje, el flujo, cap rate y UF por m², el corazón y «Analizar este»; sin «visto publicado», sin
+//       veredicto con el puntaje, el flujo, cap rate y UF por m², el corazón y «Ver este depto»; sin «visto publicado», sin
 //       «revisado con pie y plazo», sin la caja gris.
 //   3 · LA FOTO DE CALLE SOLO A MENOS DE 40 METROS, Y SI NO EL MAPA CHICO: metadata por coordenadas (exterior, 40 m), de
 //       Google, cámara hacia el punto, etiqueta «Vista de la calle» y nunca «el edificio»; lo demás, el mapa estático con el
 //       pin; la respuesta queda guardada 30 días y un rechazo de Google no se guarda.
-//   4 · SIN SALDO SE EXPLORA Y EL COBRO SALE AL ANALIZAR: nada se cierra sin saldo; «Analizar este» abre el pop-up de compra
+//   4 · SIN SALDO SE EXPLORA Y EL COBRO SALE AL ANALIZAR: nada se cierra sin saldo; «Ver este depto» abre el pop-up de compra
 //       de siempre; el aviso «Para explorar necesitas análisis disponibles» y el mapa cerrado ya no existen.
 //   5 · «AVÍSAME DE NUEVOS» GUARDA EL PERFIL: los filtros activos pasan a `perfil_busqueda` (lo que leen el semanal y la
 //       selección diaria), la confirmación dice cuál reemplaza, y sin comunas no guarda.
@@ -177,7 +177,7 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
       ["el veredicto y el puntaje «Comprar · 84»", t.includes("Comprar · 84")],
       ["el flujo «+$142.264 al mes»", /\+\$142\.264\s*al mes/.test(t)],
       ["el cap rate y la UF por m² «Cap rate 5,8 % · 58 UF/m²»", t.includes("Cap rate 5,8 % · 58 UF/m²")],
-      ["«Analizar este»", /data-explorar="analizar"[^>]*>\s*Analizar este/.test(una)],
+      ["«Ver este depto»", /data-explorar="analizar"[^>]*>\s*Ver este depto/.test(una)],
       ["el corazón", /data-explorar="corazon"/.test(una)],
       ["la imagen", /data-explorar="imagen"/.test(una) && /\/api\/explorar\/calle\//.test(una)],
       ["los puntos para deslizar entre los cercanos", /class="ex-puntos"/.test(html) && /scroll-snap-type: x mandatory/.test(leer("src/app/explorar/explorar.css"))],
@@ -188,7 +188,7 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
   if (/marcaDePin|textoRevisado|vistoAt|ex-revisado/.test(tarSrc) || /\.ex-revisado|\.ex-cifras/.test(leer("src/app/explorar/explorar.css"))) F("2 · quedan en la tarjeta (o en su CSS) las líneas retiradas");
   if (!/\.ex-tarjeta-caja \{[^}]*background: var\(--franco-card\)/.test(leer("src/app/explorar/explorar.css"))) F("2 · la caja de la tarjeta no es la superficie de card (la caja gris volvió)");
   // ⚠ ACTA (29-oct-2026, decisión de Fabrizio) · EL CORAZÓN SIN ROJO: contorno gris y, guardado, relleno en tinta —el token del
-  // fondo de «Analizar este»—. El rojo queda para comprar, la oferta y el regalo. Un SVG y no el carácter ♥ (en iPhone puede
+  // fondo de «Ver este depto»—. El rojo queda para comprar, la oferta y el regalo. Un SVG y no el carácter ♥ (en iPhone puede
   // salir como emoji rojo).
   {
     const css = leer("src/app/explorar/explorar.css");
@@ -285,19 +285,19 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
   }
   const ruta = codigo("src/app/api/explorar/route.ts");
   if (/status: 403|leerSaldo|estadoSaldo/.test(ruta)) F("4 · la API del mapa mira el saldo (sin saldo se explora igual)");
-  // ⚠ ACTA (29-oct-2026, goal «puerta E», mockup docs/puerta-b-mockups/6-puerta-e.html) · sin cuenta, «Analizar este» es «Regístrate
+  // ⚠ ACTA (29-oct-2026, goal «puerta E», mockup docs/puerta-b-mockups/6-puerta-e.html) · sin cuenta, «Ver este depto» es «Regístrate
   // gratis para ver este depto» y abre la hoja de registro; con cuenta y sin saldo, el pop-up de compra de siempre.
-  if (!/function pedirAnalisis\(it: PinMapa\) \{\s*if \(sinCuenta\) \{ pedirRegistro\("analizar", it\); return; \}\s*setError\(null\);\s*setConfirmar\(\{ it, sin: cuenta\.saldo\.tipo === "sin" \}\);/.test(cli) || !/uso=\{confirmar\.sin \? \{ tipo: "sin" \} : cuenta\.saldo\}/.test(cli) || !/compras=\{compras\(confirmar\.it\.avisoId\)\}/.test(cli)) F("4 · «Analizar este» sin saldo no abre el pop-up de compra de siempre");
+  if (!/function pedirAnalisis\(it: PinMapa\) \{\s*if \(sinCuenta\) \{ pedirRegistro\("analizar", it\); return; \}\s*setError\(null\);\s*setConfirmar\(\{ it, sin: cuenta\.saldo\.tipo === "sin" \}\);/.test(cli) || !/uso=\{confirmar\.sin \? \{ tipo: "sin" \} : cuenta\.saldo\}/.test(cli) || !/compras=\{compras\(confirmar\.it\.avisoId\)\}/.test(cli)) F("4 · «Ver este depto» sin saldo no abre el pop-up de compra de siempre");
   if (!/alAnalizar=\{pedirAnalisis\}/.test(cli)) F("4 · la tarjeta no pide el análisis por el pop-up");
   try {
     const { AvisoAntesDeAnalizar } = require(join(RAIZ, "src/components/guia/AvisoAntesDeAnalizar")) as typeof import("../../../src/components/guia/AvisoAntesDeAnalizar");
     const compras = comprasDeExplorar({ filtros: "", avisoId: PIN.avisoId, ticket: false });
     const base = { depto: PIN, combinacion: { piePct: 20, plazoAnios: 25 }, finanzas: { tasa: 4.2, uf: UF, arriendo: PIN.arriendo }, compras, rutaCompra: compras.pack.href, alAnalizar() {}, alCancelar() {} };
     const sin = texto(dibujarPopup(createElement(AvisoAntesDeAnalizar as unknown as FC<Record<string, unknown>>, { ...base, uso: { tipo: "sin" } })));
-    if (!sin.includes("No te quedan análisis.") || !sin.includes(compras.pack.label) || !sin.includes(compras.suelto.label)) F(`4 · el pop-up sin saldo no ofrece la compra de siempre: «${sin.slice(0, 160)}»`);
+    if (!sin.includes("No te quedan créditos.") || !sin.includes(compras.pack.label) || !sin.includes(compras.suelto.label)) F(`4 · el pop-up sin saldo no ofrece la compra de siempre: «${sin.slice(0, 160)}»`);
     // ── 9 (acá, con el pop-up a mano) · la línea del plan, sin frenar: una nota con su enlace bajo el uso del saldo.
     const conPlan = dibujarPopup(createElement(AvisoAntesDeAnalizar as unknown as FC<Record<string, unknown>>, { ...base, uso: SALDO_CON, compras: null, planLinea: po.lineaPlan(3, false) }));
-    if (!/data-modal-plan[^>]*>Llevas 3 este mes\. Con el Plan Franco, 20 al mes por \$39\.990\.</.test(conPlan.replace(/href="[^"]*"\s*/g, "")) || !conPlan.includes(`href="${RUTA_PLAN}"`) || !/¿Analizar este depto\?/.test(texto(conPlan))) F("9 · el pop-up con saldo no suma la línea del plan con el enlace a la compra (o la línea frena el análisis)");
+    if (!/data-modal-plan[^>]*>Llevas 3 este mes\. Con el Plan Franco, 20 al mes por \$39\.990\.</.test(conPlan.replace(/href="[^"]*"\s*/g, "")) || !conPlan.includes(`href="${RUTA_PLAN}"`) || !/¿Ver este depto\?/.test(texto(conPlan))) F("9 · el pop-up con saldo no suma la línea del plan con el enlace a la compra (o la línea frena el análisis)");
     const sinPlan = dibujarPopup(createElement(AvisoAntesDeAnalizar as unknown as FC<Record<string, unknown>>, { ...base, uso: SALDO_CON, compras: null, planLinea: null }));
     if (/data-modal-plan/.test(sinPlan)) F("9 · sin la línea del plan el pop-up igual la dibuja");
   } catch (e) {
@@ -385,7 +385,7 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
   // ⚠ ACTA (03-nov-2026, goal «la pasada real de /explorar») · el botón dice las dos cuentas con los chips de la casa («Ver 1.236
   // ✓ Comprar + 48 − Ajustar», EXPLORAR-PASADA §3): botonVer devuelve las cifras y el chip lo pone la hoja.
   { const v = po.botonVer(1236, 48), v0 = po.botonVer(1, 0); if (v.tipo !== "cuentas" || v.comprar !== "1.236" || v.ajustar !== "48" || v0.tipo !== "cuentas" || v0.ajustar !== null || po.botonVer(null).tipo !== "contando" || po.botonVer(0, 0).tipo !== "ninguno") F("6 · el botón «Ver N ✓ Comprar + M − Ajustar»"); }
-  if (po.PORTAL_COPY.hoja.cortaNota !== "Estimado por zona; se mide al analizar.") F("6 · la renta corta no dice «Estimado por zona; se mide al analizar»");
+  if (po.PORTAL_COPY.hoja.cortaNota !== "Estimado por zona; se mide al abrir sus detalles.") F("6 · la renta corta no dice «Estimado por zona; se mide al abrir sus detalles»");
   const hoja = codigo("src/app/explorar/hoja-filtros.tsx");
   // ⚠ ACTA (02-nov-2026, goal «Filtros v2 y negociar», tier EXPLORAR-NEGOCIAR) · el botón separa las dos cuentas («Ver 201 + 48 si negocias»); sin negociados es «Ver N deptos».
   if (!/const n = contar\(b\);/.test(hoja) || !/const ver = botonVer\(n, m\);/.test(hoja) || !/b\.modalidad === "str" && <p className="ex-nota" data-explorar="nota-corta">\{H\.cortaNota\}<\/p>/.test(hoja)) F("6 · la hoja no cuenta «Ver N deptos» a cada toque, o la renta corta va sin su línea");
@@ -479,7 +479,7 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
 
   // ── 8 · el pin con zoom ──
   if (po.flujoCorto(142264) !== "+$142 mil" || po.flujoCorto(-22100) !== "−$22 mil" || po.flujoCorto(400) !== "+$400") F(`8 · el flujo del pin: ${po.flujoCorto(142264)} / ${po.flujoCorto(-22100)} / ${po.flujoCorto(400)}`);
-  if (po.textoPin({ flujo: 1, alta: s - 60 }, { analizado: true, ahora }).texto !== "✓ Analizado" || po.textoPin({ flujo: 142264, alta: s - 3600 }, { analizado: false, ahora }).texto !== "Nuevo hoy" || po.textoPin({ flujo: 142264, alta: s - 2 * 86400 }, { analizado: false, ahora }).texto !== "+$142 mil") F("8 · lo que dice el pin: «✓ Analizado», «Nuevo hoy» o el flujo");
+  if (po.textoPin({ flujo: 1, alta: s - 60 }, { analizado: true, ahora }).texto !== "✓ En tu cuenta" || po.textoPin({ flujo: 142264, alta: s - 3600 }, { analizado: false, ahora }).texto !== "Nuevo hoy" || po.textoPin({ flujo: 142264, alta: s - 2 * 86400 }, { analizado: false, ahora }).texto !== "+$142 mil") F("8 · lo que dice el pin: «✓ En tu cuenta», «Nuevo hoy» o el flujo");
   if (po.esNuevoHoy({ alta: s - 86401 }, ahora) || !po.esNuevoHoy({ alta: s - 86000 }, ahora)) F("8 · «Nuevo hoy» no son las últimas 24 horas");
   const mapa = codigo("src/app/explorar/mapa-explorar.tsx");
   // ⚠ ACTA (30-oct-2026, goal del recorrido real de Fabrizio), punto 9) · el elegido toma el color del tema (tinta en claro, papel en oscuro).

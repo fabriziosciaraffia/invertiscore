@@ -6,12 +6,12 @@
 //       avance. Y con una combinación distinta de la noche también se calculan los − Ajustar (el descuento mínimo a Comprar, con el
 //       mismo tope), por comuna, en el mismo pedido del universo calculado —o aparte, para pie 20 % o 30 % a 25 años—.
 //   2 · LA BAJA Y EL PRECIO MOVIDO DICEN POR QUÉ: «Este depto ya no está publicado. Franco lo revisó anoche y hoy el vendedor lo sacó:
-//       los que convienen se van rápido. No se usó ningún análisis. Lo quitamos del mapa; elige otro.» (en la selección y el
+//       los que convienen se van rápido. No se usó ningún crédito. Lo quitamos del mapa; elige otro.» (en la selección y el
 //       dashboard, «de tu selección»); «Desde anoche entraron avisos nuevos en la zona y el precio al que conviene cambió: hoy llega
-//       a Comprar con UF 2.085 (−1,0 %), no con UF 2.089. No se usó ningún análisis.»
+//       a Comprar con UF 2.085 (−1,0 %), no con UF 2.089. No se usó ningún crédito.»
 //   3 · EL CHIP EN EL POP-UP DE «ANALIZAR ESTE»: «[✓ Comprar · 84] al precio publicado · flujo +$261.383 te queda».
 //   4 · VOLVER AL MAPA DESDE EL INFORME: arriba, «← Volver al mapa» a /explorar con los mismos filtros y el pin (`a=`); «atrás» vuelve
-//       igual (la entrada del historial queda con el pin); al volver, el pin centrado y su tarjeta en «Ya lo analizaste».
+//       igual (la entrada del historial queda con el pin); al volver, el pin centrado y su tarjeta en «Ya lo tienes».
 //   5 · EL ENLACE COMPARTIDO ABRE EL DEPTO: una hoja como la de bienvenida, «Te compartieron este depto», con la tarjeta grande, el
 //       botón de analizar o de registrarse y «Ver el mapa»; si ya no está, la misma hoja lo dice con los parecidos.
 //   6 · LA VISTA SATELITAL: «Mapa | Satélite» junto al zoom, con el estilo de la casa; en satélite, la foto híbrida sin el estilo de
@@ -154,7 +154,7 @@ export async function runExplorarPasada0411Tier(): Promise<{ hard: number }> {
   // ══ §2 · LA BAJA Y EL PRECIO MOVIDO DICEN POR QUÉ ═════════════════════════
   {
     const baja = (l: ie.LugarInforme) => { const t = ie.textoFallo("despublicado", l); return `${t.titulo} ${t.que}`; };
-    const goal = "Este depto ya no está publicado. Franco lo revisó anoche y hoy el vendedor lo sacó: los que convienen se van rápido. No se usó ningún análisis. Lo quitamos del mapa; elige otro.";
+    const goal = "Este depto ya no está publicado. Franco lo revisó anoche y hoy el vendedor lo sacó: los que convienen se van rápido. No se usó ningún crédito. Lo quitamos del mapa; elige otro.";
     if (baja("mapa") !== goal) F(`2 · la baja en el mapa dice «${baja("mapa")}»`);
     if (baja("seleccion") !== goal.replace("del mapa", "de tu selección")) F(`2 · la baja en la selección y el dashboard dice «${baja("seleccion")}»`);
     if (!baja("lista").includes("Franco lo revisó al armar tu guía y hoy el vendedor lo sacó") || !baja("lista").endsWith("Lo quitamos de la lista; elige otro.")) F(`2 · la baja en la guía dice «${baja("lista")}»`);
@@ -167,7 +167,7 @@ export async function runExplorarPasada0411Tier(): Promise<{ hard: number }> {
       const h = texto(dibujar(createElement(modPop.PopupInforme, { paso, ahora: 1000, lugar: "seleccion", alCerrar: NADA })));
       if (!h.includes(goal.replace("del mapa", "de tu selección"))) F(`2 · el pop-up dibujado no dice la baja con su porqué: «${h}»`);
     }
-    const movido = "Desde anoche entraron avisos nuevos en la zona y el precio al que conviene cambió: hoy llega a Comprar con UF 2.085 (−1,0 %), no con UF 2.089. No se usó ningún análisis.";
+    const movido = "Desde anoche entraron avisos nuevos en la zona y el precio al que conviene cambió: hoy llega a Comprar con UF 2.085 (−1,0 %), no con UF 2.089. No se usó ningún crédito.";
     if (NEGOCIADO_COPY.movido(2085, 1.0, 2089) !== movido) F(`2 · el precio movido dice «${NEGOCIADO_COPY.movido(2085, 1.0, 2089)}»`);
     if (!NEGOCIADO_COPY.noLlega(10).startsWith("Desde anoche entraron avisos nuevos en la zona y el precio al que conviene cambió:")) F("2 · el que ya no llega no dice el porqué");
   }
@@ -209,7 +209,7 @@ export async function runExplorarPasada0411Tier(): Promise<{ hard: number }> {
     const iOk = cli.indexOf("if (res.ok && d.id) {");
     const exito = iOk < 0 ? "" : cli.slice(iOk, cli.indexOf("return;", iOk));
     if (!/recordarVuelta\(it\.avisoId, d\.id\);[\s\S]*setInforme\(listo\);/.test(exito)) F("4 · al llegar el informe no se anota la vuelta antes de abrirlo");
-    if (!/alVerInforme=\{recordarVuelta\}/.test(cli) || !/onClick=\{\(\) => alVerInforme\?\.\(p\.avisoId, informe\)\}/.test(codigo("src/app/explorar/tarjeta-pin.tsx"))) F("4 · «Ver informe» de la tarjeta no anota la vuelta");
+    if (!/alVerInforme=\{recordarVuelta\}/.test(cli) || !/onClick=\{\(\) => alVerInforme\?\.\(p\.avisoId, informe\)\}/.test(codigo("src/app/explorar/tarjeta-pin.tsx"))) F("4 · «Ver detalles» de la tarjeta no anota la vuelta");
     if (!/const deLaPestana = analizadosDeLaPestana\(almacen\);\s*if \(Object\.keys\(deLaPestana\)\.length\) setAnalizadosAqui\(\(m\) => \(\{ \.\.\.deLaPestana, \.\.\.m \}\)\);/.test(cli) || !/const a = new URLSearchParams\(window\.location\.search\)\.get\("a"\);\s*if \(a\) \{ setAbrir\(a\); setSel\(a\); setFocoUsado\(false\); \}/.test(cli)) F("4 · al volver, Explorar no marca el analizado ni abre el pin de la barra");
     if (!/const id = compartido\?\.avisoId \?\? abrir;\s*if \(focoUsado \|\| !id \|\| !universo\) return null;/.test(cli) || !/const \[focoUsado, setFocoUsado\] = useState\(!compartido && !abrirProp\);/.test(cli)) F("4 · al volver, el mapa no se centra en el pin");
     if (!/if \(todos\.some\(\(p\) => p\.avisoId === abrir\)\) setCarrusel\(cercanos\(todos, abrir\)\.map\(\(p\) => p\.avisoId\)\);/.test(cli)) F("4 · el pin abierto de un − Ajustar no abre su tarjeta");
@@ -229,13 +229,13 @@ export async function runExplorarPasada0411Tier(): Promise<{ hard: number }> {
       if (!/class="ex-bienvenida-velo ex-comp-velo"/.test(con) || !/role="dialog"/.test(con) || !/data-explorar="compartido-titulo">Te compartieron este depto</.test(con)) F("5 · la hoja no es la de bienvenida con «Te compartieron este depto»");
       const tarjeta = /data-explorar="compartido-tarjeta"[\s\S]*?<\/article>/.exec(con)?.[0] ?? "";
       if (!/data-explorar="imagen"/.test(tarjeta) || !texto(tarjeta).includes("Providencia · 2D2B · 79 m² · Usado") || !texto(tarjeta).includes("UF 4.591") || !/class="chip-v c"[^>]*>✓ Comprar · 84</.test(tarjeta) || !texto(tarjeta).includes("+$261.383")) F(`5 · la tarjeta grande no trae la foto, la línea, el precio, el chip y el flujo: «${texto(tarjeta)}»`);
-      if (!/data-explorar="compartido-analizar">Analizar este</.test(con) || !/data-explorar="compartido-ver-mapa">Ver el mapa</.test(con)) F("5 · con cuenta, la hoja no ofrece «Analizar este» y «Ver el mapa»");
+      if (!/data-explorar="compartido-analizar">Ver este depto</.test(con) || !/data-explorar="compartido-ver-mapa">Ver el mapa</.test(con)) F("5 · con cuenta, la hoja no ofrece «Ver este depto» y «Ver el mapa»");
       const sin = hoja({ tipo: "pin", pin: PIN }, { sinCuenta: true });
       if (!/data-explorar="compartido-registrate"/.test(sin) || /\+\$261\.383/.test(sin) || !/data-explorar="borroso"/.test(sin)) F("5 · sin cuenta, la hoja no pide registrarse (o muestra el flujo)");
       const n = hoja({ tipo: "pin", pin: NEG });
-      if (!/data-explorar="veredicto-publicado"/.test(n) || !/data-explorar="veredicto-negociado"/.test(n) || !/data-explorar="compartido-analizar">Analizar a UF 2\.950</.test(n)) F("5 · el negociado no muestra los dos veredictos y «Analizar a UF 2.950»");
+      if (!/data-explorar="veredicto-publicado"/.test(n) || !/data-explorar="veredicto-negociado"/.test(n) || !/data-explorar="compartido-analizar">Ver este depto a UF 2\.950</.test(n)) F("5 · el negociado no muestra los dos veredictos y «Ver este depto a UF 2.950»");
       const ya = hoja({ tipo: "pin", pin: PIN }, { informe: "c3333333-3333-4333-8333-333333333333" });
-      if (!/href="\/analisis\/c3333333-3333-4333-8333-333333333333"[^>]*>Ya lo analizaste · Ver informe</.test(ya.replace(/ data-explorar="[^"]*"/g, "").replace(/ class="[^"]*"/g, "")) && !/>Ya lo analizaste · Ver informe</.test(ya)) F("5 · el ya analizado no ofrece «Ya lo analizaste · Ver informe»");
+      if (!/href="\/analisis\/c3333333-3333-4333-8333-333333333333"[^>]*>Ya lo tienes · Ver detalles</.test(ya.replace(/ data-explorar="[^"]*"/g, "").replace(/ class="[^"]*"/g, "")) && !/>Ya lo tienes · Ver detalles</.test(ya)) F("5 · el ya analizado no ofrece «Ya lo tienes · Ver detalles»");
       const caido = hoja({ tipo: "caido", estado: "despublicado", depto: { avisoId: "x", comuna: "Providencia", tipologia: "2D2B", m2: 79, precioUF: 4591, lat: null, lng: null, condicion: "usado" }, parecidos: [PIN] });
       if (!/data-explorar="compartido-titulo">Te compartieron este depto</.test(caido) || !/data-explorar="caido-titulo">Este depto ya no está publicado\.</.test(caido) || (caido.match(/data-explorar="parecido"/g) ?? []).length !== 1 || /compartido-analizar|compartido-registrate/.test(caido)) F("5 · si ya no está, la hoja no lo dice con los parecidos (o igual ofrece analizarlo)");
     }
@@ -289,7 +289,7 @@ if (require.main === module) {
 //      la tasa del motor); §2 P17-P21 (la baja con otro texto, siempre «del mapa», el pop-up sin el lugar, la guía como selección, el
 //      precio movido sin porqué); §3 P22-P24 (el veredicto en texto, sin el CSS del chip, sin nombre accesible); §4 P25-P35 (la vuelta
 //      que analiza de nuevo, la nota que acepta otro destino, sin tope, sin el pin en el historial, sin anotar al llegar el informe
-//      ni en «Ver informe», sin abrir el pin de la barra, sin centrarlo, solo los ✓ Comprar, el informe STR sin el enlace, el enlace
+//      ni en «Ver detalles», sin abrir el pin de la barra, sin centrarlo, solo los ✓ Comprar, el informe STR sin el enlace, el enlace
 //      sin la nota); §5 P36-P42 (otro título, la tarjeta sin el chip, sin cuenta igual analiza, el que no está no lo dice, el
 //      carrusel, la hoja sin montarse, la bienvenida encima); §6 P43-P51 (no se recuerda, estilo en oscuro, satélite sin nombres, el
 //      botón lejos del zoom, la vista o el tema que no cambian el mapa, sin guardar, sin marcar la elegida, la elegida en rojo).

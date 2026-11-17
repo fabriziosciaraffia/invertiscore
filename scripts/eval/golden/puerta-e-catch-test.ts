@@ -165,7 +165,7 @@ export async function runPuertaETier(): Promise<{ hard: number }> {
     const cli = codigo("src/app/explorar/explorar-cliente.tsx");
     if (!/const r = await conTopeYReintento\(async \(senal\) => \{\s*const res = await fetch\("\/api\/deptos\/alta"/.test(cli) || !/const c = await fetch\("\/api\/explorar\/cuenta"/.test(cli)) F("3 · al volver de Google o del enlace, el alta no corre o la cuenta no se refresca (el regalo no estaría en el saldo)");
     // ⚠ ACTA (30-oct-2026, goal del recorrido real de Fabrizio) · al volver se abre el mismo pin, con su tarjeta desbloqueada y la
-    // banda del regalo; el pop-up de «Analizar este» NO se abre solo (EXPLORAR-RECORRIDO §7).
+    // banda del regalo; el pop-up de «Ver este depto» NO se abre solo (EXPLORAR-RECORRIDO §7).
     // ⚠ ACTA (05-nov-2026, auditoría de promesas parte 3: quien topa ve por qué) · la banda lleva además el motivo si no hubo
     // regalo (`sinRegalo`, de la cuenta), con «Ver planes».
     // ⚠ ACTA (11-nov-2026, goal «Pronto: Invierte con Franco») · la vuelta de «invierte» (se inscribió sin cuenta) también abre su
@@ -190,7 +190,7 @@ export async function runPuertaETier(): Promise<{ hard: number }> {
       const con = dibujar(createElement(modH.HojaRegistro, { pedido: { motivo: "analizar", pin: PIN }, filtros, orden: "puntaje", origen: "landing", alCerrar() {} }));
       const tc = texto(con);
       for (const [que, ok] of [
-        ["«Te regalamos el análisis de este depto.»", tc.includes("Te regalamos el análisis de este depto.")],
+        ["«Accede gratis a todos los detalles de este depto.»", tc.includes("Accede gratis a todos los detalles de este depto.")],
         ["el depto en una línea", tc.includes("Providencia · 2D2B · 79 m² · Usado · UF 4.591")],
         ["«el enlace a la publicación» en negrita", /con <strong>el enlace a la publicación<\/strong>\./.test(con)],
         ["primero «Entrar con Google», después el correo", con.indexOf("Entrar con Google") > 0 && con.indexOf("Entrar con Google") < con.indexOf('data-explorar="registro-correo"')],
@@ -203,7 +203,7 @@ export async function runPuertaETier(): Promise<{ hard: number }> {
       // ⚠ ACTA (05-nov-2026, goal de Fabrizio, auditoría de promesas parte 3: «"Te aviso cuando aparezca uno" pasa a "Cada lunes
       // te mandamos los nuevos que convienen; si marcas Quiero comprar ya, cada día que aparezca uno"») · «Avísame» dice lo que
       // de verdad llega, desde guia/aviso-nuevos.ts.
-      if (!av.includes("Te regalamos un análisis.") || !av.includes("busca con estos filtros") || !av.includes(AVISO_NUEVOS) || av.includes("Ver este depto")) F("3 · «Avísame» sin cuenta no habla del regalo sin depto (o promete otra cosa que la que llega)");
+      if (!av.includes("Te regalamos un crédito.") || !av.includes("busca con estos filtros") || !av.includes(AVISO_NUEVOS) || av.includes("Ver este depto")) F("3 · «Avísame» sin cuenta no habla del regalo sin depto (o promete otra cosa que la que llega)");
       if (/14\.990|ticket|\bpie\b|plazo/i.test(tc + av)) F("3 · la hoja de registro habla del ticket, del pie o del plazo");
     } else F("3 · la hoja de registro no carga");
   }
@@ -262,7 +262,7 @@ export async function runPuertaETier(): Promise<{ hard: number }> {
       const b = dibujar(createElement(modB.Bienvenida, { n: 4807, alCerrar() {} }));
       const tb = texto(b);
       // ⚠ ACTA (02-nov-2026, goal «Filtros v2 y negociar», tier EXPLORAR-NEGOCIAR) · la bienvenida dice «al precio publicado».
-      if (!/data-explorar="bienvenida-n">4\.807</.test(b) || !tb.includes("Revisados por Franco") || !tb.includes("Deptos en venta que convienen como inversión hoy, al precio publicado.") || !tb.includes("Toca uno en el mapa para ver por qué conviene.") || !/Regístrate gratis y <strong>te regalamos el análisis completo<\/strong> del que más te interese\./.test(b)) F("5 · la bienvenida no dice lo del mockup");
+      if (!/data-explorar="bienvenida-n">4\.807</.test(b) || !tb.includes("Revisados por Franco") || !tb.includes("Deptos en venta que convienen como inversión hoy, al precio publicado.") || !tb.includes("Toca uno en el mapa para ver por qué conviene.") || !/Regístrate gratis y <strong>te regalamos el acceso a todos los detalles<\/strong> del depto que más te interese\./.test(b)) F("5 · la bienvenida no dice lo del mockup");
       if ((b.match(/<button/g) ?? []).length !== 1 || !/data-explorar="bienvenida-ok">Ver el mapa</.test(b)) F("5 · la bienvenida no tiene un solo botón «Ver el mapa»");
       if (/\bpie\b|plazo|ticket|14\.990/i.test(tb)) F("5 · la bienvenida menciona pie, plazo o el ticket");
       if (!/class="ex-bienvenida-cab ex-triada"/.test(b)) F("5 · el número de la bienvenida no va en la tríada");

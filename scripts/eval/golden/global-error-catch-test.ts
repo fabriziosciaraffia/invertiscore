@@ -14,7 +14,7 @@
 //   2 · `reset` no se usa en ninguna forma en global-error.
 //   3 · El error se sigue mandando a Sentry.
 //   4 · EL INFORME TIENE SU PROPIA PANTALLA DE ERROR (19-oct-2026): /analisis/[id] y /analisis/renta-corta/[id] montan
-//       ErrorInforme —«No pudimos mostrar este informe», que está guardado, «Recargar» que recarga y «Ir a mis análisis»—,
+//       ErrorInforme —«No pudimos mostrar este informe», que está guardado, «Recargar» que recarga y «Ir a mi panel»—,
 //       sin `reset` y con el error a Sentry: un corte de red ya no sube a global-error ni tapa la app.
 //   5 · LOS MAPAS A SENTRY (19-oct-2026): solo el build de producción los genera y sube, se borran después y su log se ve;
 //       sin las opciones viejas, que la versión 10 ignoraba en silencio.
@@ -62,7 +62,7 @@ export function runGlobalErrorTier(): { hard: number } {
     if (/\breset\b/.test(comp)) F("4 · la pantalla de error del informe usa `reset`");
     if (!/import\("@sentry\/nextjs"\)\.then\(\(Sentry\) => Sentry\.captureException\(error\)\)/.test(comp)) F("4 · la pantalla de error del informe no manda el error a Sentry (quedaría en silencio: ya no llega a global-error)");
     if (!/>\s*No pudimos mostrar este informe\s*</.test(comp) || !comp.includes("Puede que se haya cortado la conexión mientras cargaba. El informe está guardado: recarga la página para verlo.")
-      || !/<Link href="\/dashboard"[^>]*>\s*Ir a mis análisis\s*<\/Link>/.test(comp)) F("4 · la pantalla de error del informe no dice qué pasó, que el informe está guardado y cómo salir");
+      || !/<Link href="\/dashboard"[^>]*>\s*Ir a mi panel\s*<\/Link>/.test(comp)) F("4 · la pantalla de error del informe no dice qué pasó, que el informe está guardado y cómo salir");
   }
   for (const ruta of ["src/app/analisis/[id]/error.tsx", "src/app/analisis/renta-corta/[id]/error.tsx"]) {
     const s = existsSync(join(RAIZ, ruta)) ? leer(ruta) : "";

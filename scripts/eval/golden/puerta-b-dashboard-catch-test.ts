@@ -8,7 +8,7 @@
 //       «Se renueva todos los días» con «Quiero comprar ya», el lunes con las otras; la píldora del saldo.
 //   §2  EL ORDEN DEL DASHBOARD (3b): saludo + píldora → oferta → «Invita a alguien» en fila → «Tu selección de esta
 //       semana» con la línea del perfil → el mapa → las tarjetas → plegados, el perfil (con la etiqueta de pendientes) e
-//       «Informes realizados». Y el copy, frase por frase. Lo viejo (el banner, el saldo plano, casa-arriba) ya no existe.
+//       «Deptos vistos». Y el copy, frase por frase. Lo viejo (el banner, el saldo plano, casa-arriba) ya no existe.
 //   §3  EL MAPA (lib/casa/mapa-casa.ts): el encuadre hace entrar a la selección con margen; la proyección cae donde debe;
 //       la URL es cacheable y sin marcadores; dibujado de verdad: los 5 numerados en orden (en el color de su clase desde el
 //       03-nov-2026; antes, en rojo) y los demás en gris;
@@ -92,7 +92,7 @@ export async function runPuertaBDashboardTier(): Promise<{ hard: number }> {
   const lunes = new Date("2026-10-24T15:00:00Z");
   if (reglas.lineaRenueva("ya", lunes) !== "Se renueva todos los días." || !/^Se renueva el lunes 26\.$/.test(reglas.lineaRenueva("meses", lunes)) || !/^Se renueva el lunes 26\.$/.test(reglas.lineaRenueva(null, lunes))) F(`1 · «Se renueva…» no distingue «comprar ya» (diaria) de las otras (lunes): ${reglas.lineaRenueva("ya", lunes)} / ${reglas.lineaRenueva("meses", lunes)}`);
   const pil = reglas.pildoraSaldo;
-  if (pil(sin).texto !== "Sin análisis" || !pil(sin).planes || pil(con).texto !== "Te quedan 2" || pil(con).planes || pil({ tipo: "con", n: 1, noVencen: false }).texto !== "Te queda 1" || pil(regalo).planes || pil(plan).planes) F("1 · la píldora del saldo no dice «Sin análisis · Ver planes» / «Te quedan N»");
+  if (pil(sin).texto !== "Sin créditos" || !pil(sin).planes || pil(con).texto !== "Te quedan 2" || pil(con).planes || pil({ tipo: "con", n: 1, noVencen: false }).texto !== "Te queda 1" || pil(regalo).planes || pil(plan).planes) F("1 · la píldora del saldo no dice «Sin créditos · Ver planes» / «Te quedan N»");
 
   // ── §2 · el orden del dashboard y el copy ──────────────────────────────────
   const pag = codigo("src/app/dashboard/page.tsx");
@@ -113,21 +113,21 @@ export async function runPuertaBDashboardTier(): Promise<{ hard: number }> {
   // RESPALDO-MAPA §4—; lo de renta larga (itemsSel) sigue decidiendo el aviso sin oferta.
   // ⚠ ACTA (28-oct-2026, Explorar como portal) · en la misma lectura van los guardados de Explorar y la UF para su comparación.
   if (!/const \[mapa, portada, sinOferta, guardados, cfgGuia\] = await Promise\.all\(\[\s*enElMapa\.length > 0 \? datosMapaCasa\(admin, user\.id, enElMapa\) : Promise\.resolve\(null\),\s*portadaDeptos\(\),\s*propiaEnSeleccion \? Promise\.resolve\(null\) : leerAvisoSinOferta\([^)]*\),\s*guardadosParaCasa\(admin, user\.id\)\.catch\(\(\) => \[\]\),\s*leerConfigGuia\(admin\)\.catch\(\(\) => null\),\s*\]\);\s*const totalNoche = portada\.noche\?\.convienen \?\? null;/.test(pag) || !/const enElMapa = deptosDelMapa\(sel\);/.test(pag)) F("2 · el mapa no se arma con los deptos de la selección (el reemplazo del caído)");
-  if (!/abierta=\{abrirInformes\}/.test(pag) || !/const abrirInformes = \["q", "mod", "v", "o", "page", "group", "open"\]\.some/.test(pag)) F("2 · «Informes realizados» no llega abierto con un filtro puesto");
+  if (!/abierta=\{abrirInformes\}/.test(pag) || !/const abrirInformes = \["q", "mod", "v", "o", "page", "group", "open"\]\.some/.test(pag)) F("2 · «Deptos vistos» no llega abierto con un filtro puesto");
   for (const viejo of ["BloqueArribaCasa", "SaldoPlano", "ExplorarEnCasa", "GuiaBusqueda", "casa-arriba", "ca-banda", "packDeCasa"]) if (pag.includes(viejo) || casa.includes(viejo)) F(`2 · vuelve lo viejo: ${viejo}`);
   if (existe("src/lib/casa-arriba.ts") || existe("src/app/dashboard/explorar-en-casa.tsx")) F("2 · casa-arriba.ts o explorar-en-casa.tsx siguen en el repo");
   const exactos: Array<[string, string]> = [
     [CASA.oferta.kicker("mañana 11:17"), "Solo para cuentas nuevas · vence mañana 11:17"],
-    [CASA.oferta.titulo, "3 análisis por $14.990"],
+    [CASA.oferta.titulo, "3 créditos (deptos) por $14.990"],
     [CASA.oferta.boton, "Aprovechar"],
     [CASA.invita.titulo, "Invita a alguien"],
     // ⚠ ACTA (05-nov-2026, goal de Fabrizio, auditoría de promesas parte 3: «la regla pasa a "cuando tu invitado hace su primer
     // análisis, tú recibes uno", dicha en todos los textos con el tope de 5 y los 60 días») · la franja dice la regla única.
-    [CASA.invita.bajada, "Cuando tu invitado hace su primer análisis, tú recibes uno: hasta 5 invitados, cada uno vigente 60 días."],
+    [CASA.invita.bajada, "Cuando tu invitado usa su primer crédito, tú recibes uno: hasta 5 invitados, cada uno vigente por 60 días."],
     [CASA.invita.boton, "Compartir"],
     [CASA.seleccion.titulo, "Tu selección de esta semana"],
     [CASA.seleccion.verMas(3), "Ver los 3 que faltan"],
-    [CASA.seleccion.analizar, "Analizar este"],
+    [CASA.seleccion.analizar, "Ver este depto"],
     [CASA.verPlanes, "Ver planes"],
     [CASA.perfil.titulo, "Tu perfil de búsqueda"],
     [CASA.perfil.queBuscas, "¿Qué buscas?"],
@@ -144,13 +144,13 @@ export async function runPuertaBDashboardTier(): Promise<{ hard: number }> {
     [CASA.perfil.guardar, "Guardar"],
     [CASA.perfil.proxima, "Tu próxima selección se arma con esto."],
     [CASA.perfil.agregarComuna, "+ agregar otra comuna"],
-    [CASA.informes, "Informes realizados"],
+    [CASA.informes, "Deptos vistos"],
     // ⚠ ACTA (24-oct-2026, goal «Estás dentro con mapa, el perfil que se pliega y Explorar cerrado», recorrido de Fabrizio) · la píldora dice dónde están los grises y el botón, el total de anoche en Santiago.
     [mapa.pildoraMapa(5, 11, ["Providencia"]), "5 en tu selección · 11 más en Providencia"],
     [mapa.pildoraMapa(5, 11, ["Providencia", "Ñuñoa"]), "5 en tu selección · 11 más en Providencia y Ñuñoa"],
     [mapa.pildoraMapa(5, 0, ["Providencia"]), "5 en tu selección"],
-    [mapa.botonExplorar(4807), "Explorar los 4.807 de Santiago"],
-    [mapa.botonExplorar(null), "Explorar en el mapa"],
+    [mapa.botonExplorar(4807), "Ver los 4.807 de Santiago en el mapa"],
+    [mapa.botonExplorar(null), "Ver el mapa"],
     [lineaBusqueda({ comunas: ["Providencia"], dormitorios: [2], precioMinUf: 3000, precioMaxUf: 4000 }), "Providencia · 2 dormitorios · UF 3.000 a 4.000"],
   ];
   for (const [real, esperado] of exactos) if (real !== esperado) F(`2 · «${real}» debía ser «${esperado}»`);
@@ -203,7 +203,7 @@ export async function runPuertaBDashboardTier(): Promise<{ hard: number }> {
   if (pines.join(",") !== "11,22,33,44,55") F(`3 · el mapa no dibuja los 5 de la selección numerados en su orden (${pines.join(",")})`);
   if ((htmlMapa.match(/<circle/g) ?? []).length !== 8) F("3 · los demás que convienen no van en gris (3 grises + 5 de la selección = 8 círculos)");
   // ⚠ ACTA (24-oct-2026, goal «Estás dentro con mapa, el perfil que se pliega y Explorar cerrado», recorrido de Fabrizio).
-  if (!htmlMapa.includes("5 en tu selección · 307 más en Providencia") || !/href="\/explorar"[^>]*>Explorar los 4\.807 de Santiago</.test(htmlMapa)) F("3 · la píldora o el botón del mapa no dicen lo suyo, o el botón no va a /explorar");
+  if (!htmlMapa.includes("5 en tu selección · 307 más en Providencia") || !/href="\/explorar"[^>]*>Ver los 4\.807 de Santiago en el mapa</.test(htmlMapa)) F("3 · la píldora o el botón del mapa no dicen lo suyo, o el botón no va a /explorar");
   // EL MAPA DE «ESTÁS DENTRO»: solo los pines numerados de la selección —sin grises, sin píldora, sin botón de Explorar—.
   const htmlSel = renderToStaticMarkup(createElement(MapaCasa, { datos: datosMapa, variante: "seleccion", totalNoche: 4807 }));
   const pinesSel = Array.from(htmlSel.matchAll(/<g data-casa="pin" data-n="(\d)" data-clase="comprar">/g)).map((x) => x[1]).join(",");
@@ -240,12 +240,12 @@ export async function runPuertaBDashboardTier(): Promise<{ hard: number }> {
   const fila = htmlLista.slice(htmlLista.indexOf('class="sel-fila"'), htmlLista.indexOf('class="sel-av"'));
   // ⚠ ACTA (05-nov-2026, decisión de Fabrizio: la tarjeta de un analizado dice SU informe, no la noche; tier TARJETA-ANALIZADA)
   // · la fila compacta ya no lleva el veredicto de la noche («Comprar 91»): dice el depto y su precio, y el chip de su informe
-  // si viene su resumen; sin resumen (esta fixture), «Ya lo analizaste». Exigir «Comprar 91» acá era exigir la noche.
-  if (!/href="\/analisis\/informe-a"/.test(fila) || !/Providencia · 2D1B · 59 m² · UF 3\.500/.test(fila) || /Comprar 91|\b91\b/.test(texto(fila)) || !/Ya lo analizaste/.test(fila) || !/Ver informe/.test(fila) || /sel-precio|Analizar este/.test(fila)) F("4 · la fila compacta no dice el depto con su precio, «Ya lo analizaste» y «Ver informe» (o es una tarjeta, o dice la noche)");
+  // si viene su resumen; sin resumen (esta fixture), «Ya lo tienes». Exigir «Comprar 91» acá era exigir la noche.
+  if (!/href="\/analisis\/informe-a"/.test(fila) || !/Providencia · 2D1B · 59 m² · UF 3\.500/.test(fila) || /Comprar 91|\b91\b/.test(texto(fila)) || !/Ya lo tienes/.test(fila) || !/Ver detalles/.test(fila) || /sel-precio|Ver este depto/.test(fila)) F("4 · la fila compacta no dice el depto con su precio, «Ya lo tienes» y «Ver detalles» (o es una tarjeta, o dice la noche)");
   if (!/data-semanal="ver-mas"[^>]*>Ver el que falta</.test(htmlLista)) F("4 · con cuatro deptos y tres a la vista no está «Ver el que falta»");
-  if ((htmlLista.match(/Analizar este/g) ?? []).length !== 2 || /guia-titulo|guia-pie|Revisados con tu pie/.test(htmlLista)) F("4 · las tarjetas visibles no llevan «Analizar este», o la casa repite el título, la bajada o el pie de la lista");
+  if ((htmlLista.match(/Ver este depto/g) ?? []).length !== 2 || /guia-titulo|guia-pie|Revisados con tu pie/.test(htmlLista)) F("4 · las tarjetas visibles no llevan «Ver este depto», o la casa repite el título, la bajada o el pie de la lista");
   const htmlRegalo = dibujarConRouter(createElement(SemanalLista, { ...props, saldo: regalo }));
-  if ((htmlRegalo.match(/Analizar este · usa tu regalo/g) ?? []).length !== 2) F("4 · con el regalo el botón no dice «Analizar este · usa tu regalo»");
+  if ((htmlRegalo.match(/Ver este depto · usa tu regalo/g) ?? []).length !== 2) F("4 · con el regalo el botón no dice «Ver este depto · usa tu regalo»");
   const htmlTodos = dibujarConRouter(createElement(SemanalLista, { ...props, aLaVista: null }));
   if (Array.from(htmlTodos.matchAll(/data-n="(\d)"/g)).map((x) => x[1]).join(",") !== "1,2,3,4" || /ver-mas/.test(htmlTodos)) F("4 · sin tope no salen las cuatro numeradas en orden");
   const lista = codigo("src/app/semanal/semanal-lista.tsx");
@@ -325,7 +325,7 @@ export async function runPuertaBDashboardTier(): Promise<{ hard: number }> {
   // ── §7 · el ticket como oferta ──────────────────────────────────────────────
   const { AvisoAntesDeAnalizar } = require(join(RAIZ, "src/components/guia/AvisoAntesDeAnalizar")) as typeof import("../../../src/components/guia/AvisoAntesDeAnalizar");
   const depto = { comuna: "Providencia", tipologia: "2D1B", m2: 46, precioUF: 3275 };
-  const compras = { pack: { href: "/checkout?product=pack3", label: "3 análisis · $14.990", ticket: true }, suelto: { href: "/checkout?product=single", label: "Comprar solo 1 · $9.990" }, sin: "Para analizar este depto: 3 análisis por $14.990, sin caducidad." };
+  const compras = { pack: { href: "/checkout?product=pack3", label: "3 créditos · $14.990", ticket: true }, suelto: { href: "/checkout?product=single", label: "Comprar solo 1 · $9.990" }, sin: "Para ver este depto: 3 créditos por $14.990, sin caducidad." };
   const base = { depto, combinacion: { piePct: 20, plazoAnios: 25 }, finanzas: { tasa: 4.5, uf: 39000, arriendo: 450000 }, uso: { tipo: "sin" as const }, rutaCompra: "/x", alAnalizar: () => {}, alCancelar: () => {}, cambio: { recalcular: async () => null, base: { veredicto: "COMPRAR", score: 88, flujo: 88363 } } };
   const htmlA7 = dibujarPopup(createElement(AvisoAntesDeAnalizar, { ...base, compras, ticketVence: "mañana 11:17" }));
   const tA = texto(htmlA7);
@@ -334,20 +334,20 @@ export async function runPuertaBDashboardTier(): Promise<{ hard: number }> {
   // («3 análisis por $14.990 · $4.997 cada uno», sin el $9.990 tachado), «Comprar solo 1» como botón de borde MÁS BAJO
   // (wz-btn2-bajo) y «Cancelar» como texto (wz-modal-cancelar). El alto lo mide la sonda popups-alto-webkit-sonda.ts.
   // ⚠ ACTA (02-nov-2026, goal «Filtros v2 y negociar», tier EXPLORAR-NEGOCIAR) · la línea del veredicto dice «al precio publicado» (la regla general del goal).
-  const marcasA = ['data-aviso="sin-titulo"', "No te quedan análisis.", "Providencia · 2D1B · 46 m² · UF 3.275", "Comprar 88 al precio publicado · flujo +$88.363 te queda", "el enlace a la publicación", 'data-aviso="ticket"', "Solo para cuentas nuevas", "· vence mañana 11:17", "3 análisis por $14.990", " · $4.997 cada uno", "Aprovechar · 3 por $14.990", "Comprar solo 1 · $9.990", "Cancelar"];
+  const marcasA = ['data-aviso="sin-titulo"', "No te quedan créditos.", "Providencia · 2D1B · 46 m² · UF 3.275", "Comprar 88 al precio publicado · flujo +$88.363 te queda", "el enlace a la publicación", 'data-aviso="ticket"', "Solo para cuentas nuevas", "· vence mañana 11:17", "3 créditos por $14.990", " · $4.997 cada uno", "Aprovechar · 3 por $14.990", "Comprar solo 1 · $9.990", "Cancelar"];
   const posA = orden(htmlA7, marcasA);
   if (!enOrden(posA)) F(`7 · el pop-up sin saldo con el ticket no es título rojo → tarjeta gris → tarjeta roja → Aprovechar → Comprar solo 1 → Cancelar (${posA.join(",")})`);
-  if (!/<h2 id="modal-plausibilidad-titulo" class="av-sin-titulo" data-aviso="sin-titulo">No te quedan análisis\.<\/h2>/.test(htmlA7)) F("7 · «No te quedan análisis.» no es el título grande en rojo");
+  if (!/<h2 id="modal-plausibilidad-titulo" class="av-sin-titulo" data-aviso="sin-titulo">No te quedan créditos\.<\/h2>/.test(htmlA7)) F("7 · «No te quedan créditos.» no es el título grande en rojo");
   if (!/<button type="button" class="wz-btn2 wz-btn2-bajo" data-modal-secundario(?:="[^"]*")?>Comprar solo 1 · \$9\.990<\/button>/.test(htmlA7)) F("7 · «Comprar solo 1 · $9.990» no es un botón con borde más bajo");
   if (!/<button type="button" class="wz-modal-cancelar" data-modal-cancelar(?:="[^"]*")?>Cancelar<\/button>/.test(htmlA7) || !/class="wz-modal modal-plausibilidad-panel wz-modal-compacto"/.test(htmlA7)) F("7 · el pop-up no va compacto («Cancelar» como texto)");
   if (/Para analizar este depto:|<s>/.test(htmlA7.replace(/wz-modal-consumo[^<]*<[^>]*>[^<]*/g, ""))) F("7 · el pop-up sin saldo vuelve a «Para analizar este depto:» o al precio tachado");
-  if (!/<div class="av-ticket-t">3 análisis por \$14\.990<span class="av-ticket-s"> · \$4\.997 cada uno<\/span><\/div>/.test(htmlA7)) F("7 · la oferta no es una línea: «3 análisis por $14.990 · $4.997 cada uno»");
+  if (!/<div class="av-ticket-t">3 créditos por \$14\.990<span class="av-ticket-s"> · \$4\.997 cada uno<\/span><\/div>/.test(htmlA7)) F("7 · la oferta no es una línea: «3 créditos por $14.990 · $4.997 cada uno»");
   if (/wz-modal-consumo/.test(htmlA7) || /Con pie de|Dividendo|Retorno bruto/.test(tA)) F("7 · con la tarjeta roja el pop-up repite la línea del pack, o muestra el pie y los derivados sin saldo");
-  const htmlSinTicket = dibujarPopup(createElement(AvisoAntesDeAnalizar, { ...base, compras: { ...compras, pack: { ...compras.pack, ticket: false, label: "3 análisis · $19.990" }, sin: "Para analizar este depto: 3 análisis por $19.990, sin caducidad." }, ticketVence: null }));
-  if (/data-aviso="ticket"|Aprovechar/.test(htmlSinTicket) || !texto(htmlSinTicket).includes("3 análisis por $19.990") || !/wz-cta-modal[^>]*>3 análisis · \$19\.990</.test(htmlSinTicket)) F("7 · sin el ticket el pop-up sin saldo no vuelve al pack de tres de siempre");
+  const htmlSinTicket = dibujarPopup(createElement(AvisoAntesDeAnalizar, { ...base, compras: { ...compras, pack: { ...compras.pack, ticket: false, label: "3 créditos · $19.990" }, sin: "Para ver este depto: 3 créditos por $19.990, sin caducidad." }, ticketVence: null }));
+  if (/data-aviso="ticket"|Aprovechar/.test(htmlSinTicket) || !texto(htmlSinTicket).includes("3 créditos por $19.990") || !/wz-cta-modal[^>]*>3 créditos · \$19\.990</.test(htmlSinTicket)) F("7 · sin el ticket el pop-up sin saldo no vuelve al pack de tres de siempre");
   const htmlCon = dibujarPopup(createElement(AvisoAntesDeAnalizar, { ...base, uso: con, compras, ticketVence: "mañana 11:17" }));
-  if (/sin-titulo|data-aviso="ticket"/.test(htmlCon) || !texto(htmlCon).includes("¿Analizar este depto?")) F("7 · con saldo aparecen el título rojo o la tarjeta del ticket");
-  const copyA: Array<[string, string]> = [[AVISO_ANALIZAR.tituloSin, "No te quedan análisis."], [AVISO_ANALIZAR.aprovechar, "Aprovechar · 3 por $14.990"], [AVISO_ANALIZAR.packTicket, "3 análisis por $14.990"], [AVISO_ANALIZAR.unitario, " · $4.997 cada uno"], [AVISO_ANALIZAR.vence("mañana 11:17"), "· vence mañana 11:17"], [AVISO_ANALIZAR.soloNuevas, "Solo para cuentas nuevas"]];
+  if (/sin-titulo|data-aviso="ticket"/.test(htmlCon) || !texto(htmlCon).includes("¿Ver este depto?")) F("7 · con saldo aparecen el título rojo o la tarjeta del ticket");
+  const copyA: Array<[string, string]> = [[AVISO_ANALIZAR.tituloSin, "No te quedan créditos."], [AVISO_ANALIZAR.aprovechar, "Aprovechar · 3 por $14.990"], [AVISO_ANALIZAR.packTicket, "3 créditos por $14.990"], [AVISO_ANALIZAR.unitario, " · $4.997 cada uno"], [AVISO_ANALIZAR.vence("mañana 11:17"), "· vence mañana 11:17"], [AVISO_ANALIZAR.soloNuevas, "Solo para cuentas nuevas"]];
   for (const [real, esperado] of copyA) if (real !== esperado) F(`7 · «${real}» debía ser «${esperado}»`);
   // Los tres llamadores pasan hasta cuándo vence.
   for (const [f, re] of [["src/app/semanal/semanal-lista.tsx", /ticketVence=\{ticket && cuentaCreadaAt \? cuandoVenceCorto\(cuentaCreadaAt\) : null\}/], ["src/components/deptos/PrimeraSeleccion.tsx", /ticketVence=\{datos\.ticket && datos\.cuentaCreadaAt \? cuandoVenceCorto\(datos\.cuentaCreadaAt\) : null\}/], ["src/app/explorar/explorar-cliente.tsx", /ticketVence=\{cuenta\.ticket && cuenta\.cuentaCreadaAt \? cuandoVenceCorto\(cuenta\.cuentaCreadaAt\) : null\}/]] as const) {
@@ -369,7 +369,7 @@ export async function runPuertaBDashboardTier(): Promise<{ hard: number }> {
   if (!/\{alDepto && informe \? \(\s*<InformeEnLaVuelta paso=\{informe\} saldo=\{saldo\}/.test(ret) || !/const paso0 = informeGenerando\(depto\.nombre, depto\.esperado\);/.test(ret)
     || !/\{\(paso\.paso === "generando" \|\| paso\.paso === "listo"\) && \(\s*<>\s*<p className=\{PLANO\.bajada\} data-retorno="al-depto">\{RETORNO\.desdeDepto\.antes\}<b className="text-\[var\(--franco-text\)\]">\{paso\.depto\}<\/b>\{RETORNO\.desdeDepto\.despues\}<\/p>\s*<div [^>]*role="progressbar"[^>]*data-retorno-barra/.test(vi)
     || !/\{saldo != null && saldo > 0 && <p [^>]*data-retorno="quedan">\{RETORNO\.quedanOtros\(saldo - 1\)\}<\/p>\}/.test(vi)) F("7 · «Pago confirmado» desde un depto no dice «Franco está analizando X. En unos segundos se abre el informe.» con la barra y cuántos le quedan");
-  if (`${RETORNO.desdeDepto.antes}X${RETORNO.desdeDepto.despues}` !== "Franco está analizando X. En unos segundos se abre el informe." || RETORNO.quedanOtros(2) !== "Te quedan 2 análisis para cualquier otro depto." || RETORNO.pagado.titulo !== "Pago confirmado.") F("7 · el copy de «Pago confirmado» no es el del mockup");
+  if (`${RETORNO.desdeDepto.antes}X${RETORNO.desdeDepto.despues}` !== "Franco está analizando X. En unos segundos se abren los detalles." || RETORNO.quedanOtros(2) !== "Te quedan 2 créditos para cualquier otro depto." || RETORNO.pagado.titulo !== "Pago confirmado.") F("7 · el copy de «Pago confirmado» no es el del mockup");
   // E · ⚠ ACTA (28-oct-2026, Explorar como portal) · el aviso E de Explorar sin saldo se RETIRÓ: sin saldo se explora todo y el
   // cobro sale al analizar, con el pop-up de compra de siempre (tier EXPLORAR-PORTAL §4). Acá, que no volvió.
   if (existe("src/app/explorar/aviso-sin-saldo.tsx") || /estadoDeEntrada|avisoSinSaldo|AvisoSinSaldoExplorar/.test(codigo("src/app/explorar/explorar-cliente.tsx"))) F("7 · /explorar sin saldo volvió a abrir el aviso E al entrar");

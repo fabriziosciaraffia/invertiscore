@@ -7,7 +7,7 @@
 //       pop-up, marcada a mano.
 //   2 · SOLO LOS COMPRAR: el SQL de la RPC los filtra y la lib los vuelve a filtrar (la segunda red); los pines se leen
 //       de a mil (PostgREST corta ahí sin avisar) y salen por puntaje.
-//   3 · EXPLORAR NO GASTA; ANALIZAR SÍ: ninguna ruta de Explorar cobra; «Analizar este» va por la ruta de la guía con
+//   3 · EXPLORAR NO GASTA; ANALIZAR SÍ: ninguna ruta de Explorar cobra; «Ver este depto» va por la ruta de la guía con
 //       `explorar: true`, el pie y el plazo del pop-up (de sus listas), el origen sintético con la tasa de mercado, un
 //       crédito una vez, `analisis_creado` via = explorar y «explorar_analiza» con el depto.
 //   4 · SIN SALDO SE VE EL MAPA Y EL AVISO E: el mapa se monta igual; encima, el aviso con el pack (el ticket si la cuenta
@@ -15,11 +15,11 @@
 //   5 · EL MAPA CARGA DESPUÉS DEL PRIMER PINTADO: next/dynamic sin SSR, montado con la página quieta; Google Maps no entra
 //       en el grafo de la página ni del cliente; el servidor manda solo las primeras tarjetas.
 //   6 · LA HOJA Y EL PIN: la píldora «312 convienen · 3 ya analizados», el título, la marca «Visto anoche», el cap rate, los
-//       UF por m², «Revisado con pie X y Y años…», «Analizar este · usa 1 de tus N» y los agrupados por celdas.
+//       UF por m², «Revisado con pie X y Y años…», «Ver este depto · usa 1 de tus N» y los agrupados por celdas.
 //   7 · EL POP-UP CON «CAMBIAR»: el pie y el plazo se cambian, el servidor recalcula con la sonda, el aviso dice qué da
-//       («Con pie 10 % este depto da Ajustar.») y, si empeora, el botón dice «Analizar igual»; la elección viaja a analizar.
+//       («Con pie 10 % este depto da Ajustar.») y, si empeora, el botón dice «Ver igual»; la elección viaja a analizar.
 //   8 · LA MEDICIÓN: «explorar_vista» con filtros y pines (la página y cada cambio), «explorar_analiza» con el depto; el
-//       archivo dice «Desde Explorar».
+//       archivo dice «Desde el mapa».
 //   9 · EL DASHBOARD: «Explorar los 312 en el mapa» lleva a /explorar, en las dos casas; las compras vuelven al mapa.
 //  10 · CUALQUIER PIE Y PLAZO (24-oct-2026, decisión de Fabrizio): los chips ofrecen pie de 10 a 50 % y plazo de 15 a 30
 //       años; una combinación que la noche no tiene se calcula en el momento solo para el universo de los filtros, se guarda
@@ -140,12 +140,12 @@ export async function runExplorarTier(): Promise<{ hard: number }> {
   if (!/const desde: "semanal" \| "guia" \| "explorar" = desdeExplorar \? "explorar" : desdeSemanal \? "semanal" : "guia";/.test(an) || !/capturarAnalisisCreado\(\{ userId: user\.id, analysisId: id, modalidad: "ltr", via: desde, precioNegociado \}\)\);/.test(an) || !/body\.origenAviso\.desde = desde;/.test(an)) F("3 · «explorar» no llega a analisis_creado (via) ni al informe (origenAviso.desde)");
   if (!/if \(desdeExplorar\) \{\s*waitUntil\(capturarServidor\(eventoExplorarAnaliza\(\{ userId: user\.id, analysisId: id, avisoId: aviso\.avisoId/.test(an)) F("3 · «explorar_analiza» no sale al crear el informe desde el mapa");
   if (!/idAnalizarEste\(b\.avisoId, desdeExplorar \? "explorar" :/.test(an)) F("3 · el AnalizarEste de Meta desde Explorar no lleva su propio id");
-  // ⚠ ACTA (28-oct-2026, Explorar como portal) · en renta corta el mismo pedido va a la ruta STR (con «Analizar igual» si no da).
-  if (!/fetch\(corta \? "\/api\/semanal\/analizar-str" : "\/api\/lo-que-sigue\/guia\/analizar", \{/.test(cli) || !/body: JSON\.stringify\(\{ avisoId: it\.avisoId, piePct: combinacion\.piePct, plazoAnios: combinacion\.plazoAnios, tasaPct, explorar: true,/.test(cli)) F("3 · «Analizar este» del mapa no va por la ruta de la guía con explorar: true");
+  // ⚠ ACTA (28-oct-2026, Explorar como portal) · en renta corta el mismo pedido va a la ruta STR (con «Ver igual» si no da).
+  if (!/fetch\(corta \? "\/api\/semanal\/analizar-str" : "\/api\/lo-que-sigue\/guia\/analizar", \{/.test(cli) || !/body: JSON\.stringify\(\{ avisoId: it\.avisoId, piePct: combinacion\.piePct, plazoAnios: combinacion\.plazoAnios, tasaPct, explorar: true,/.test(cli)) F("3 · «Ver este depto» del mapa no va por la ruta de la guía con explorar: true");
   // ⚠ ACTA (30-oct-2026, goal «la tasa editable en Filtros») · el pedido lleva también la tasa (TASA-EDITABLE).
   // ⚠ ACTA (28-oct-2026) · «Explorar no gasta; analizar sí» se retiró (lo pidió el goal); lineaSaldo ya no existe.
   if ("lineaSaldo" in ex || /Explorar no gasta/.test(cli + codigo("src/lib/explorar/portal.ts"))) F("3 · volvió la línea «Explorar no gasta»");
-  if (ex.botonAnalizar({ tipo: "con", n: 2, noVencen: false }) !== "Analizar este · usa 1 de tus 2" || ex.botonAnalizar({ tipo: "regalo", vence: null }) !== "Analizar este · usa tu análisis de regalo" || ex.botonAnalizar({ tipo: "sin" }) !== "Analizar este") F("3 · «Analizar este · usa 1 de tus N»");
+  if (ex.botonAnalizar({ tipo: "con", n: 2, noVencen: false }) !== "Ver este depto · usa 1 de tus 2" || ex.botonAnalizar({ tipo: "regalo", vence: null }) !== "Ver este depto · usa tu crédito de regalo" || ex.botonAnalizar({ tipo: "sin" }) !== "Ver este depto") F("3 · «Ver este depto · usa 1 de tus N»");
 
   // ── 4 · sin saldo (⚠ ACTA 28-oct-2026, Explorar como portal) ──
   // El aviso E y Explorar cerrado sin saldo (§4 y §4b del 24-oct) se RETIRARON: sin saldo se explora todo y el cobro sale al
@@ -218,9 +218,9 @@ export async function runExplorarTier(): Promise<{ hard: number }> {
   const av = codigo("src/components/guia/AvisoAntesDeAnalizar.tsx");
   if (!/data-modal-cambiar onClick=\{\(\) => setEditando\(true\)\}>\{EXPLORAR_COPY\.cambiar\}/.test(av)) F("7 · el pop-up no tiene «Cambiar»");
   if (!/void cambio\.recalcular\(combo\)\.then/.test(av)) F("7 · al cambiar no se recalcula con el servidor");
-  // ⚠ ACTA (02-nov-2026, goal «Filtros v2 y negociar», tier EXPLORAR-NEGOCIAR) · un negociado de la capa «Si negocias» dice «Analizar a UF 2.950» (sin «Cambiar»: la noche lo
+  // ⚠ ACTA (02-nov-2026, goal «Filtros v2 y negociar», tier EXPLORAR-NEGOCIAR) · un negociado de la capa «Si negocias» dice «Ver este depto a UF 2.950» (sin «Cambiar»: la noche lo
   // calculó con ese pie y plazo) y sus derivados son a ese precio; para todo lo demás, lo de siempre.
-  if (!/const analizar = negociado \? NEGOCIADO_COPY\.analizarA\(negociado\.precioUF\) : da\?\.empeora \? EXPLORAR_COPY\.analizarIgual : AVISO_ANALIZAR\.analizar;/.test(av)) F("7 · si empeora el botón no dice «Analizar igual»");
+  if (!/const analizar = negociado \? NEGOCIADO_COPY\.analizarA\(negociado\.precioUF\) : da\?\.empeora \? EXPLORAR_COPY\.analizarIgual : AVISO_ANALIZAR\.analizar;/.test(av)) F("7 · si empeora el botón no dice «Ver igual»");
   // ⚠ ACTA (03-nov-2026, «el informe en camino», tier INFORME-EN-CAMINO) · la elección lleva además el veredicto que vio (`vista`).
   if (!/alAnalizar\(cambio \? \{ combinacion: combo, guardarPerfil: cambiada && guardar, vista \} : undefined\)/.test(av)) F("7 · la elección (pie, plazo, guardar) no viaja a analizar");
   if (!/data-modal-guardar>\s*<input type="checkbox" checked=\{guardar\}/.test(av) || !/\{EXPLORAR_COPY\.guardarPerfil\(combo\.piePct, combo\.plazoAnios, combo\.tasaPct\)\}/.test(av)) F("7 · falta la casilla de guardar como perfil");
@@ -248,7 +248,7 @@ export async function runExplorarTier(): Promise<{ hard: number }> {
   // cambios los deja el navegador (los filtros se aplican ahí, sin pedir nada): EXPLORAR-PORTAL §10.
   if (!/void capturarServidor\(eventoPortalVista\(\{ userId: user\.id, filtros, orden, n, robot: robotDeVisita\(headers\(\)\.get\("user-agent"\), headers\(\)\), llegada: llegadaDeExplorar\(sp\.get\("desde"\)\) \}\)\)/.test(codigo("src/app/explorar/page.tsx"))) F("8 · la página no deja «explorar_vista»");
   if (!/posthog\?\.capture\(EVENTOS_PORTAL\.vista, \{ \.\.\.propsDeFiltros\(f, o\), n, fuente \}\)/.test(cli)) F("8 · cambiar un filtro no deja «explorar_vista»");
-  if (textoOrigenArchivo("explorar") !== "Desde Explorar" || origenDeInforme({ avisoId: "x", desde: "explorar" }, new Set()) !== "explorar") F("8 · el archivo no dice «Desde Explorar»");
+  if (textoOrigenArchivo("explorar") !== "Desde el mapa" || origenDeInforme({ avisoId: "x", desde: "explorar" }, new Set()) !== "explorar") F("8 · el archivo no dice «Desde el mapa»");
 
   // ── 10 · cualquier pie y plazo: una combinación que la noche no tiene ──
   const liviano = (leer("supabase/migrations/20261024_explorar_combos.sql").split("create or replace function").find((x) => x.startsWith(" public.explorar_universo_liviano")) ?? "");
@@ -365,14 +365,14 @@ export async function runExplorarTier(): Promise<{ hard: number }> {
   const { botonExplorar } = require(join(RAIZ, "src/lib/casa/mapa-casa")) as typeof import("../../../src/lib/casa/mapa-casa");
   // ⚠ ACTA (24-oct-2026, goal «Estás dentro con mapa, el perfil que se pliega y Explorar cerrado», recorrido de Fabrizio) · el botón dice el total de anoche en Santiago (el de /deptos); al tocarlo, /explorar abre con
   // los filtros del perfil.
-  if (botonExplorar(4807) !== "Explorar los 4.807 de Santiago" || botonExplorar(0) !== "Explorar en el mapa" || botonExplorar(null) !== "Explorar en el mapa") F("9 · el botón del dashboard");
+  if (botonExplorar(4807) !== "Ver los 4.807 de Santiago en el mapa" || botonExplorar(0) !== "Ver el mapa" || botonExplorar(null) !== "Ver el mapa") F("9 · el botón del dashboard");
   const dash = codigo("src/app/dashboard/page.tsx");
   if ((dash.match(/<MapaCasa datos=\{mapa\} totalNoche=\{totalNoche\} \/>/g) ?? []).length !== 1 || !/datosMapaCasa\(admin, user\.id,/.test(dash) || !/const totalNoche = portada\.noche\?\.convienen \?\? null;/.test(dash)) F("9 · el dashboard no lleva el mapa de la selección con el botón a Explorar");
   const enCasa = codigo("src/app/dashboard/mapa-casa.tsx");
   if (!/<EnlaceCarga href="\/explorar"[^\n]*data-casa="explorar-boton"[^\n]*>\s*\{botonExplorar\(totalNoche\)\}/.test(enCasa) || !/pinesExplorar\(admin, filtros\)/.test(codigo("src/lib/casa/mapa-casa-servidor.ts"))) F("9 · el botón no va a /explorar o no cuenta con la misma RPC");
   const c = comprasDeExplorar({ filtros: "c=Providencia&t=2", avisoId: "abc", ticket: false });
   if (!/origen=explorar/.test(c.pack.href) || !/volver=%2Fexplorar%3Fc%3DProvidencia%26t%3D2%26a%3Dabc%26analizar%3D1/.test(c.pack.href) || !/product=single/.test(c.suelto.href) || !/origen=explorar/.test(c.suelto.href)) F(`9 · las compras no vuelven al mapa con el depto: ${c.pack.href} · ${c.suelto.href}`);
-  if (!/product=pack3/.test(comprasDeExplorar({ filtros: "c=x", ticket: true }).pack.href) || comprasDeExplorar({ filtros: "c=x", ticket: true }).pack.label !== "3 análisis · $14.990") F("9 · con el ticket el pack no es el de $14.990");
+  if (!/product=pack3/.test(comprasDeExplorar({ filtros: "c=x", ticket: true }).pack.href) || comprasDeExplorar({ filtros: "c=x", ticket: true }).pack.label !== "3 créditos · $14.990") F("9 · con el ticket el pack no es el de $14.990");
   if (botonTrasPagar("/explorar?c=x&a=abc&analizar=1").texto !== "Volver al mapa" || botonTrasPagar("/explorar?c=x").href !== "/explorar?c=x") F("9 · la vuelta de Flow no vuelve al mapa");
   if (deptoDeVolverExplorar("/explorar?c=x&a=abc&analizar=1") !== "abc" || deptoDeVolverExplorar("/dashboard?t=1&a=abc") !== null) F("9 · deptoDeVolverExplorar");
   // ⚠ ACTA (28-oct-2026, Explorar como portal) · ya no hay mapa cerrado: la vuelta pagada se abre y se analiza siempre.
@@ -395,7 +395,7 @@ export async function runExplorarTier(): Promise<{ hard: number }> {
 // M7 la ruta de la guía sin validar el pie · M8 analisis_creado sin via explorar · M9 el mapa depende del saldo · M10 el aviso
 // E no se cierra · M11 sin «Ahora no» · M12 el mapa con SSR · M13 sin esperar la página quieta · M14 el servidor manda todos
 // los pines · M15 la píldora cuenta las tarjetas · M16 «Revisado con…» sin el enlace · M17 los agrupados por latitud a secas ·
-// M18 «Analizar igual» nunca · M19 la elección no viaja · M20 el recálculo sin validar el pie · M21 explorar_vista sin los
+// M18 «Ver igual» nunca · M19 la elección no viaja · M20 el recálculo sin validar el pie · M21 explorar_vista sin los
 // pines · M22 el botón del dashboard sin el número · M23 la compra no vuelve al mapa · M24 /explorar fuera del middleware ·
 // M25 la URL acepta un pie que la noche no evaluó · M26 TOPE_HOJA desde el cliente. Y el mapa quieto (medido en producción
 // 9,7 s de LCP sin él, mutar-quieto.cjs): Q1 sin precarga · Q2 sin prioridad alta · Q3 se va al crear el mapa y no con las

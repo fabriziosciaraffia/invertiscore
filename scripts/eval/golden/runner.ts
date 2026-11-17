@@ -20,6 +20,13 @@
 //
 // Exit code 0 solo si no hay fallas duras. Drift de cifra clase (a) → warning
 // (candidato a re-baseline, no bloquea).
+//
+// ⚠ ACTA (17-nov-2026, decisión de Fabrizio: «de análisis a créditos») · el copy visible pasó de «análisis» a «crédito»
+// (lo que se gasta), de «Analizar este» a «Ver este depto», de «el informe» a «los detalles» (lo que se recibe) y el botón
+// «Explorar» a «Mapa». Los tiers se reescribieron al texto nuevo. Las CITAS de textos dentro de actas anteriores también
+// se actualizaron a la palabra nueva, para que el grep las encuentre: la fecha de cada acta sigue diciendo cuándo se
+// decidió la regla, no con qué palabra. Excepciones que se quedan: el flujo propio («Nuevo análisis», el wizard), el
+// informe mismo, los prompts, lo legal, el SEO y lo interno.
 // ============================================================================
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -510,7 +517,7 @@ function printSeed(r: SeedReport) {
   // las cuentas de prueba fuera y la baja llega a PostHog. En rojo por mutación.
   totalHard += (await runSemanalSinSilencioTier()).hard;
   // Tier SEMANAL-STR (14-oct-2026, 0 tokens): el bloque de renta corta estimado por zona sin consultar al proveedor, un
-  // correo con dos bloques, «Analizar este» que no cobra si la medición fina cambia el veredicto, y el registro de cada
+  // correo con dos bloques, «Ver este depto» que no cobra si la medición fina cambia el veredicto, y el registro de cada
   // comparación. En rojo por mutación.
   totalHard += (await runSemanalStrTier()).hard;
   // SEMANAL-AJUSTES (14-oct-2026): solo Comprar en renta corta, el plan veraz, el pop-up, la selección en el dashboard.
@@ -692,10 +699,10 @@ function printSeed(r: SeedReport) {
   // primero (`$set.test_account` y `prueba`), y el informe que un pago desbloquea cuenta con `analisis_creado` via = pago. ──
   totalHard += (await runPanelActivacionTier()).hard;
   // Tier PRIMERA-SELECCION (20-oct-2026, 0 tokens): quien se registra ve sus deptos ahí mismo, por cualquier puerta, con
-  // «Analizar este» en cada uno; toda cuenta nueva recibe el correo del día dentro de la hora, por la misma cola. ──
+  // «Ver este depto» en cada uno; toda cuenta nueva recibe el correo del día dentro de la hora, por la misma cola. ──
   totalHard += (await runPrimeraSeleccionTier()).hard;
   // Tier PUERTA-B-RECORRIDO (21-oct-2026, 0 tokens): /deptos pide la comuna antes del correo y «Estás dentro» dice qué busca
-  // y se queda; la selección vive en el dashboard con «Analizar este» y el aviso cargando; el ticket es de toda cuenta nueva
+  // y se queda; la selección vive en el dashboard con «Ver este depto» y el aviso cargando; el ticket es de toda cuenta nueva
   // (el pop-up sin saldo: el pack y «Comprar solo 1»); lo analizado se ve en vivo y el clic del correo aterriza ahí. ──
   totalHard += (await runPuertaBRecorridoTier()).hard;
   // Tier PUERTA-B-MOCKUPS (23-oct-2026, 0 tokens): /deptos según el mockup (sin comuna no hay correo), «Estás dentro» sin las dos
@@ -715,7 +722,7 @@ function printSeed(r: SeedReport) {
   // que usa la página—; despublicado lo dice sin enlace; el botón de abajo es «Mandármelo por correo». En rojo por mutación.
   totalHard += (await runPublicacionPortadaTier()).hard;
   // Tier NO-DA-PUBLICACION (27-oct-2026, 0 tokens): el «no da» de renta corta con la medición real del caso del 26-oct —el
-  // porqué en una línea, «Ver la publicación», «Analizar igual · usa 1 de tus N» que cobra una vez— y el pop-up de antes
+  // porqué en una línea, «Ver la publicación», «Ver igual · usa 1 de tus N» que cobra una vez— y el pop-up de antes
   // prometiendo los dos casos. En rojo por mutación.
   totalHard += (await runNoDaPublicacionTier()).hard;
   // Tier ENTRADA-ALTA (22-oct-2026, 0 tokens): «Entrar» en /deptos con tope de 8 s y un reintento —un alta que no responde
@@ -807,7 +814,7 @@ function printSeed(r: SeedReport) {
   // el resumen de la noche y la selección diaria MEDIDOS bajo 2 s contra la base. ──
   totalHard += (await runPautaArreglosTier()).hard;
   // Tier CUENTAS-PRUEBA (28-oct-2026, 0 tokens): el filtro de cuentas de prueba frena SOLO el correo —una cuenta de prueba
-  // nueva por /deptos ve «Analizar este», la misma selección que una real y el mapa—, y el semanal se les arma al final de la cola. ──
+  // nueva por /deptos ve «Ver este depto», la misma selección que una real y el mapa—, y el semanal se les arma al final de la cola. ──
   totalHard += (await runCuentasPruebaTier()).hard;
   // Tier DEPTOS-CONTEO (28-oct-2026, 0 tokens; mide contra la base): el número de /deptos se lee del conteo que guarda el cron
   // de la evaluación (lo que falta se cuenta una vez y se guarda), bajo 300 ms y sin RPC (Sentry JAVASCRIPT-NEXTJS-1K). ──
@@ -817,7 +824,7 @@ function printSeed(r: SeedReport) {
   totalHard += (await runNuevoUsadoTier()).hard;
   // Tier REGION (28-oct-2026, 0 tokens): las funciones de Node corren en gru1, al lado de la base (sa-east-1). ──
   totalHard += runRegionTier().hard;
-  // Tier RESPALDO-MAPA (28-oct-2026, 0 tokens): toda tarjeta del dashboard tiene «Analizar este», también las del respaldo de la
+  // Tier RESPALDO-MAPA (28-oct-2026, 0 tokens): toda tarjeta del dashboard tiene «Ver este depto», también las del respaldo de la
   // noche, y el mapa dibuja el bloque que tenga la persona (renta larga, corta o las dos), numerado como las tarjetas. ──
   totalHard += (await runRespaldoMapaTier()).hard;
   // Tier SEMANAL-SIN-MINIMO (20-oct-2026, 0 tokens): sin mínimo de tres, el relleno «visto anoche, sin confirmar», el asunto
@@ -872,7 +879,7 @@ function printSeed(r: SeedReport) {
   // llamada a Flow va con el método de su servicio (el POST a payment/getStatus era la causa del aviso perdido). ──
   totalHard += (await runAvisoCobroTier()).hard;
   // Tier TARJETA-ANALIZADA (05-nov-2026, 0 tokens): la tarjeta de un depto ya analizado dice SU informe —el chip con su
-  // veredicto y puntaje y «tu informe del 13-oct»—, no la noche; si la noche da distinto, la línea chica «hoy la noche da 82».
+  // veredicto y puntaje y «en tu cuenta desde el 13-oct»—, no la noche; si la noche da distinto, la línea chica «hoy la noche da 82».
   // Dibujadas de verdad: la tarjeta y la lista de Explorar, el compartido, la selección, los guardados y la primera selección. ──
   totalHard += (await runTarjetaAnalizadaTier()).hard;
   // Tier EDAD-NOCHE (05-nov-2026, 0 tokens, lee la base): la evaluación de cada noche usa la edad real del edificio cuando se
@@ -884,7 +891,7 @@ function printSeed(r: SeedReport) {
   // («hoy» solo si fue hoy), las cifras, los datos, después de pagar, las fechas y CLAUDE.md. ──
   totalHard += (await runPromesasTextosTier()).hard;
   // Tier CIERRE-INFORME (01-oct-2026, 0 tokens): el final del informe tiene UNA acción —el ticket, la banda de
-  // bienvenida o «Te quedan N análisis.» con «Analizar otro depto»—. ──
+  // bienvenida o «Te quedan N créditos.» con «Analizar otro depto»—. ──
   totalHard += runCierreInformeTier().hard;
 
   // ── Tier CANDADO retirado (25-sep-2026): el candado de regeneración se fue con los

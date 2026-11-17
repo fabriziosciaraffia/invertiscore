@@ -111,7 +111,7 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
       F(`3 · renta larga con dos Comprar no los manda (${largaCorta.estado}: ${largaCorta.items.map((x) => `${x.c.avisoId}/${x.tramo}`).join()}), o el relleno ya no apunta a tres`);
     // La regla de cobro: la ruta pasa por el orquestador, que cobra solo si lo fino da Comprar (el detalle, en SEMANAL-STR).
     // ⚠ ACTA (27-oct-2026, decisión de Fabrizio · tier NO-DA-PUBLICACION): el «no da» lleva la medición (para el porqué) y
-    // «Analizar igual» (`igual`) salta la regla a pedido de la persona, que paga ese informe.
+    // «Ver igual» (`igual`) salta la regla a pedido de la persona, que paga ese informe.
     if (!/if \(!p\.igual && !daComprar\(m\.fino\.veredicto\)\) return \{ estado: "no-da", alternativas: await p\.alternativas\(\), zona: m\.zona, fino: m\.fino \};/.test(sinComentarios(leer("src/lib/guia/semanal-str.ts"))))
       F("3 · la regla de cobro no es «si lo fino no da Comprar, no se cobra»");
   }
@@ -139,7 +139,7 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
     // Lo que se lee: «no descuenta» solo para el Ilimitado; el plan 10 ve sus análisis.
     if (!/Ilimitado/.test(CASA.plan.titulo) || !/Ilimitado/.test(textoUso({ tipo: "plan" }))) F("4 · el «no descuenta» no dice que es el Ilimitado");
     const con29 = estadoSaldo(casos[0][1]);
-    if (textoUso(con29) !== "Usa 1 de tus 29 análisis." || lineaSaldo(con29) !== "Te quedan 29 análisis") F(`4 · el plan 10 no ve «Usa 1 de tus N análisis» ni su saldo («${textoUso(con29)}», «${lineaSaldo(con29)}»)`);
+    if (textoUso(con29) !== "Usa 1 de tus 29 créditos." || lineaSaldo(con29) !== "Te quedan 29 créditos") F(`4 · el plan 10 no ve «Usa 1 de tus N créditos» ni su saldo («${textoUso(con29)}», «${lineaSaldo(con29)}»)`);
     // La ruta de renta corta: «sin» antes de medir; con el saldo real.
     const iSaldo = ruta.indexOf('const saldo = estadoSaldo(await leerSaldo(admin, user.id));'), iSin = ruta.indexOf('if (saldo.tipo === "sin") return { ok: false, status: 402, error: "sin-creditos" };');
     const iGeo = ruta.indexOf("await reverseGeocode("), iMide = ruta.indexOf("await buildShortTermAnalysisRow(");
@@ -154,7 +154,7 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
     // del saludo (lib/casa/reglas.ts › pildoraSaldo; tier PUERTA-B-DASHBOARD §1 y §2); en la bienvenida, igual que antes.
     if (!/const pildora = pildoraSaldo\(saldo\);/.test(dash) || !/data-casa="saldo" data-saldo=\{saldo\.tipo\}/.test(dash) || (dash.match(/saldo=\{lineaSaldo\(saldo\)\}/g) ?? []).length !== 1) F("4·7 · el saldo o el plan no está en el dashboard (la casa y la bienvenida)");
     // EL PIE DE LOS INFORMES (14-oct-2026): «ilimitados» solo al Ilimitado; el 10 y el 50, sus análisis.
-    if (textoCierre({ analisis: 0, conSesion: true, ilimitado: false }).enlace !== "Analizar otro depto · $9.990" || /\$/.test(textoCierre({ analisis: 0, conSesion: true, ilimitado: true }).enlace) || textoCierre({ analisis: 29, conSesion: true, ilimitado: false }).saldo !== "Te quedan 29 análisis.")
+    if (textoCierre({ analisis: 0, conSesion: true, ilimitado: false }).enlace !== "Analizar otro depto · $9.990" || /\$/.test(textoCierre({ analisis: 0, conSesion: true, ilimitado: true }).enlace) || textoCierre({ analisis: 29, conSesion: true, ilimitado: false }).saldo !== "Te quedan 29 créditos.")
       F("4 · el cierre del informe no trata al plan 10 como a cualquiera (o al Ilimitado le pone precio)");
     for (const [f, credito] of [["src/app/analisis/[id]/informe-ltr.tsx", "creditsRow"], ["src/app/analisis/renta-corta/[id]/informe-str.tsx", "credits"], ["src/app/analisis/comparativa/page.tsx", "creditsRow"]] as const) {
       const s = sinComentarios(leer(f));
@@ -198,13 +198,13 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
   // ── 6 · EL RESULTADO EN UN POP-UP ──────────────────────────────────────────────
   {
     // ⚠ ACTA (27-oct-2026, decisión de Fabrizio · tier NO-DA-PUBLICACION): `NO_DA` se parte en dos —entre la primera línea y
-    // los parecidos van el porqué, el enlace y «Analizar igual»— y `NINGUNO_DA` pasa a `NINGUNO_MAS`, sin repetir la primera.
+    // los parecidos van el porqué, el enlace y «Ver igual»— y `NINGUNO_DA` pasa a `NINGUNO_MAS`, sin repetir la primera.
     if (STR.continuacionNoDa(2) !== STR.PARECIDOS_DAN || STR.continuacionNoDa(0) !== STR.NINGUNO_MAS) F("6·9 · el pop-up no sigue con los parecidos que dan, o con que no queda ninguno");
     // EL COPY (15-oct-2026, Fabrizio): los textos aprobados, y ninguno habla del cobro.
     if (STR.MARCA_NO_DA !== "No da con los datos de su dirección") F("6 · la marca de la tarjeta no es la aprobada");
     if (STR.NO_DA_DEPTO !== "Con los datos de su dirección, este depto no da para renta corta." || STR.PARECIDOS_DAN !== "Estos sí dan, con esos mismos datos:"
       || STR.NINGUNO_MAS !== "Con esos mismos datos, ninguno más de tu selección da esta semana. Seguimos buscando."
-      || STR.SEMANAL_STR.zona !== "Estimados con la tarifa y la ocupación típicas de su sector. Al analizar uno, Franco lo mide con los datos de esa dirección.")
+      || STR.SEMANAL_STR.zona !== "Estimados con la tarifa y la ocupación típicas de su sector. Al ver uno, Franco lo mide con los datos de esa dirección.")
       F("6 · los textos del pop-up o del bloque no son los aprobados");
     {
       const { SEMANAL_PAGINA } = await import("../../../src/lib/guia/semanal");
@@ -224,7 +224,7 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
       if (conCobro.length || /cobr/i.test(html) || /cobr/i.test(lista) || /cobr/i.test(popup.replace(/^\s*\/\/.*$/gm, ""))) F(`6 · la página, el correo o los pop-ups todavía hablan del cobro (${JSON.stringify(conCobro)}${/cobr/i.test(html) ? " + correo" : ""})`);
     }
     // ⚠ ACTA (27-oct-2026 · tier NO-DA-PUBLICACION): el mensaje es `NO_DA_DEPTO` y la continuación, la de los parecidos;
-    // lo que va entre medio (el porqué, el enlace, «Analizar igual») lo mide NO-DA-PUBLICACION dibujando el pop-up.
+    // lo que va entre medio (el porqué, el enlace, «Ver igual») lo mide NO-DA-PUBLICACION dibujando el pop-up.
     if (!/role="dialog" aria-modal="true"/.test(popup) || !/\{NO_DA_DEPTO\}/.test(popup) || !/\{continuacionNoDa\(parecidos\)\}/.test(popup) || !/\{parecidos > 0 && <div className="guia guia-pop-lista" data-popup="parecidos">\{children\}<\/div>\}/.test(popup))
       F("6 · el pop-up no es un diálogo con el mensaje y los parecidos");
     if (!/\{popup && \(\s*<PopupNoDa\s+parecidos=\{parecidos\.length\}[\s\S]*?>\s*\{parecidos\.map\(\(p\) => tarjeta\(p, `pop-\$\{p\.avisoId\}`\)\)\}\s*<\/PopupNoDa>\s*\)\}/.test(lista))
@@ -236,11 +236,11 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
     if (/NO_DA|parecidos|alternativas|popup/.test(enLista) || !/\) : tarjeta\(f\.item, f\.item\.avisoId, i \+ desdeN\)\)\)\}/.test(enLista)) F("6 · algo del «no da» se inserta en la lista");
     // La tarjeta original: marcada, sin botón.
     // ⚠ ACTA (05-nov-2026, goal de Fabrizio, auditoría de promesas parte 3: «"Te mostramos la publicación igual" también en la
-    // tarjeta: conserva el enlace y "Analizar igual"») · la tarjeta que no dio sigue marcada, y ahora conserva lo que el
-    // pop-up ofrecía: el enlace a la publicación y «Analizar igual». (PROMESAS-TEXTOS §6 fija los dos dentro de esta rama.)
+    // tarjeta: conserva el enlace y "Ver igual"») · la tarjeta que no dio sigue marcada, y ahora conserva lo que el
+    // pop-up ofrecía: el enlace a la publicación y «Ver igual». (PROMESAS-TEXTOS §6 fija los dos dentro de esta rama.)
     const acciones = cuerpo(lista, "const acciones = (it: ItemSemanal): JSX.Element => {", "\n  };\n");
     const ramaNoDa = acciones.match(/if \(corta && noDa\.has\(it\.avisoId\)\) \{[\s\S]*?\n {4}\}\n/)?.[0] ?? "";
-    if (!/<div data-semanal="no-da">\s*<p className="sel-estado">\{MARCA_NO_DA\}<\/p>/.test(ramaNoDa) || !/data-semanal="ver-publicacion"/.test(ramaNoDa) || !/data-semanal="analizar-igual"/.test(ramaNoDa)) F("6 · la tarjeta que no dio no queda marcada, con la publicación y «Analizar igual»");
+    if (!/<div data-semanal="no-da">\s*<p className="sel-estado">\{MARCA_NO_DA\}<\/p>/.test(ramaNoDa) || !/data-semanal="ver-publicacion"/.test(ramaNoDa) || !/data-semanal="analizar-igual"/.test(ramaNoDa)) F("6 · la tarjeta que no dio no queda marcada, con la publicación y «Ver igual»");
     // También al volver: la página lee las que no dieron y no se cobraron.
     const noDan = cuerpo(srv, "export async function noDanEnRentaCorta(");
     if (!/\.from\("comparaciones_zona_str"\)\.select\("aviso_id"\)\s*\.eq\("user_id", userId\)\.in\("aviso_id", avisoIds\)\.neq\("fino_veredicto", "COMPRAR"\)\.eq\("cobrado", false\);/.test(noDan)) F("6 · al volver a la página no se sabe cuáles no dieron (o se marcan los cobrados)");
@@ -335,7 +335,7 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
     ];
     const malos = casosOrigen.filter(([o, esp]) => origenDeInforme(o, sels) !== esp);
     if (malos.length) F(`8 · el origen de un informe no es «semanal» o «guía» según \`desde\` o su selección (${JSON.stringify(malos.map(([o]) => o))})`);
-    if (textoOrigenArchivo("semanal") !== "Desde tu selección semanal" || textoOrigenArchivo("guia") !== "Desde tu guía" || textoOrigenArchivo("explorar") !== "Desde Explorar") F("8 · lo que dice el archivo no es «Desde tu selección semanal» / «Desde tu guía» / «Desde Explorar»");
+    if (textoOrigenArchivo("semanal") !== "Desde tu selección semanal" || textoOrigenArchivo("guia") !== "Desde tu guía" || textoOrigenArchivo("explorar") !== "Desde el mapa") F("8 · lo que dice el archivo no es «Desde tu selección semanal» / «Desde tu guía» / «Desde el mapa»");
     // ⚠ ACTA (17-oct-2026, goal «una sola lista») · el origen ya no reemplaza a «SIN DIRECCIÓN»: TODO informe de Franco
     // lleva la marca «Franco» al lado del nombre, y lo que decía el archivo («Desde tu selección semanal» / «Desde tu
     // guía») es su título. El origen se pide para los de Franco a la vista, no para los sin dirección (tier CASA §11).
@@ -424,7 +424,7 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
     if (r2 !== null || r3 !== null) F("10 · un depto que la medición fina no dio Comprar vuelve a entrar en su selección");
     if (!r4 || r4.veredicto !== "COMPRAR" || r4.score !== 81 || r4.flujo !== 42000 || r4.ingresoMensual !== 1100000 || r4.informeId !== "inf-1") F(`10 · uno que dio Comprar y tiene informe no entra como Comprar con su medición y su informe (${JSON.stringify(r4)})`);
     if (r5 !== ev) F("10 · uno medido Comprar sin informe (el cobro no llegó) deja de valer por su zona");
-    if (STR.YA_ANALIZADO.texto !== "Ya lo analizaste" || STR.YA_ANALIZADO.enlace !== "Ver informe") F("10 · el texto no es «Ya lo analizaste · Ver informe»");
+    if (STR.YA_ANALIZADO.texto !== "Ya lo tienes" || STR.YA_ANALIZADO.enlace !== "Ver detalles") F("10 · el texto no es «Ya lo tienes · Ver detalles»");
     const prepStrFn = cuerpo(strSrv, "export async function prepararSeleccionStr(");
     if (!/const mediciones = await medicionesDePersona\(admin, userId\);/.test(prepStrFn) || !/return aplicarMedicion\(evaluarStrCon\(body, zona\.estimacion, cfg, c\.medianaComuna, asOf\), med\?\.m, med\?\.informe\);/.test(prepStrFn))
       F("10 · el armado (y el prechequeo) no aplican lo que la persona ya midió");
@@ -443,7 +443,7 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
     // ⚠ ACTA (03-nov-2026, «el informe en camino», tier INFORME-EN-CAMINO) · y los de esta visita (un informe listo que no se abrió).
     if (!/const informeDe = \(it: ItemSemanal\): string \| undefined => it\.informeId \?\? informes\[it\.avisoId\] \?\? informesAqui\[it\.avisoId\];/.test(lista)
       || !/const informe = informeDe\(it\);\s*if \(informe\) return filaAnalizada\(it, informe, n\);/.test(ramaInforme) || !/<EnlaceCarga key=\{it\.avisoId\} href=\{corta \? `\/analisis\/renta-corta\/\$\{informe\}` : `\/analisis\/\$\{informe\}`\} className="sel-fila" data-semanal="ya-analizado"/.test(ramaInforme) || !/\{YA_ANALIZADO\.enlace\}/.test(ramaInforme) || /analizar\(|setConfirmar|sel-btn/.test(ramaInforme))
-      F("10 · lo ya analizado no muestra «Ya lo analizaste · Ver informe» en lugar de «Analizar este» (o vuelve a analizar)");
+      F("10 · lo ya analizado no muestra «Ya lo tienes · Ver detalles» en lugar de «Ver este depto» (o vuelve a analizar)");
     // Con la base real: a quien ya midió, su armado deja fuera lo que no dio y trae lo analizado con su informe.
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL, key = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (url && key) {

@@ -18,7 +18,7 @@
 //
 // ACTA DE MUTACIONES (16-oct-2026, scratchpad mutar-puerta-c.cjs, restauradas byte a byte): 51/51 en ROJO, y tres guardas
 // redundantes VERDES a propósito (54/54 como se esperaba). Siete salieron del QA en el navegador: W9–W11 (la invitación
-// cobrada queda «usada»; borrada, el refresh la volvía a dejar), K1 (dos regalos no son «un análisis de regalo») y S15–S17
+// cobrada queda «usada»; borrada, el refresh la volvía a dejar), K1 (dos regalos no son «un crédito de regalo») y S15–S17
 // (el menú de compartir dentro de la pantalla a 390, «Más opciones», el campo del nombre que colapsaba). Primero quedaron verdes P3 (sin la guarda temprana del premio) y T1 (sin el tope de la
 // decisión): las dos están cubiertas por una segunda guarda —el UPDATE condicional `estado = 'pendiente'` y el número del
 // lugar `n > TOPE`—, así que cada una sola no cambia nada. Ahora P3 y T1 quitan las DOS a la vez (rojas), y P3b, P3c y T1b
@@ -298,7 +298,7 @@ export async function runPuertaCTier(): Promise<{ hard: number }> {
       if (fila?.estado !== "pagado" || fila.premio_n !== 1 || fila.grant_id !== g?.id || fila.correo_estado !== "enviado") F(`3 · la invitación no queda pagada con su lugar, su lote y su correo: ${JSON.stringify(fila)}`);
       if (enviados.length !== 1 || enviados[0].to !== "quien@invita.cl" || enviados[0].p.vence !== vence || enviados[0].p.pagados !== 1) F(`3 · el correo «tu invitado entró» no sale a quien invitó: ${JSON.stringify(enviados)}`);
       if (DIAS_VIGENCIA_PREMIO_REFERIDO !== 60 || !FUENTES_REGALO.has(FUENTE_PREMIO_REFERIDO)) F("3 · el premio no vence a los 60 días o no se ve como regalo en el saldo");
-      // El saldo con dos regalos (el de alta y el premio, visto en el QA): «Te quedan 2», no «Tienes un análisis de regalo».
+      // El saldo con dos regalos (el de alta y el premio, visto en el QA): «Te quedan 2», no «Tienes un crédito de regalo».
       const dos = estadoSaldo(datosSaldoDe([{ remaining: 1, expires_at: "2026-11-15T00:00:00Z", source: "regalo_alta" }, { remaining: 1, expires_at: vence, source: FUENTE_PREMIO_REFERIDO }], null));
       const uno = estadoSaldo(datosSaldoDe([{ remaining: 1, expires_at: vence, source: FUENTE_PREMIO_REFERIDO }], null));
       if (dos.tipo !== "con" || dos.n !== 2 || !dos.proximoRegalo || uno.tipo !== "regalo" || uno.vence !== vence) F(`3 · el saldo con el premio no cuenta bien los regalos (${JSON.stringify(dos)}, ${JSON.stringify(uno)})`);
@@ -306,7 +306,7 @@ export async function runPuertaCTier(): Promise<{ hard: number }> {
       // ⚠ ACTA (05-nov-2026, goal de Fabrizio, auditoría de promesas parte 3: «cuando tu invitado hace su primer análisis, tú
       // recibes uno») · el premio ya no sale de que el invitado «entró» (contestó el «cuándo»), sino de su primer análisis, y
       // el correo lo dice así.
-      if (correo.subject !== "Tu invitado hizo su primer análisis: tienes uno más" || !correo.html.includes("Hola Camila, tienes un análisis más") || !correo.html.includes("Vence el")) F(`3 · el correo no dice «tu invitado hizo su primer análisis: tienes uno más»: ${correo.subject}`);
+      if (correo.subject !== "Tu invitado usó su primer crédito: tienes uno más" || !correo.html.includes("Hola Camila, tienes un crédito más") || !correo.html.includes("Vence el")) F(`3 · el correo no dice «tu invitado usó su primer crédito: tienes uno más»: ${correo.subject}`);
       if (!CATALOGO_CORREOS.some((e) => e.id === "premio_referido" && e.tipo === "premio_referido")) F("3 · el correo del premio no está en el catálogo");
 
       // Quien invita es cuenta de prueba: el análisis sí, el correo no.
@@ -376,7 +376,7 @@ export async function runPuertaCTier(): Promise<{ hard: number }> {
       // La página del invitado: el titular y la bajada; las preguntas de /deptos con la puerta C y la vuelta a esta página.
       // ⚠ ACTA (05-nov-2026, goal de Fabrizio, auditoría de promesas parte 3: «el invitado recibe el regalo de alta y lo ve en
       // "Estás dentro"») · la bajada dice lo que recibe: el regalo de cuenta nueva, no un «primer análisis» aparte.
-      if (REFERIDO_COPY.titular !== "Te invitaron a Franco." || REFERIDO_COPY.bajada !== "Al crear tu cuenta, Franco te regala un análisis.") F("4 · la página del invitado no dice «Te invitaron a Franco. Al crear tu cuenta, Franco te regala un análisis.»");
+      if (REFERIDO_COPY.titular !== "Te invitaron a Franco." || REFERIDO_COPY.bajada !== "Al crear tu cuenta, Franco te regala un crédito.") F("4 · la página del invitado no dice «Te invitaron a Franco. Al crear tu cuenta, Franco te regala un crédito.»");
       if (REFERIDO_COPY.quien(null) !== "Un amigo te invitó a Franco" || REFERIDO_COPY.quien("Camila") !== "Camila te invitó a Franco") F("4 · el invitado no ve «un amigo te invitó a Franco» por defecto (o el nombre cuando se pidió)");
       const cli = sinComentarios(leer("src/app/i/[codigo]/invitacion-cliente.tsx"));
       if (!/<DeptosCliente\s+sesion=\{sesion\}\s+pagina=\{codigo \? rutaInvitacion\(codigo\) : "\/deptos"\}\s+puerta=\{\{ puerta: "C", detalle: `\$\{PREFIJO_DETALLE_INVITACION\}\$\{codigo \?\? ""\}` \}\}\s+origenLead="invitado"/.test(cli)) F("4 · la página del invitado no usa las preguntas de /deptos con la puerta C");

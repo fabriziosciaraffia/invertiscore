@@ -6,7 +6,7 @@
 //   propiedad» suelto y el cierre rojo de conversión. Queda, según el caso, UNA de tres:
 //     · el ticket del pack (primer informe anónimo);
 //     · la banda del crédito de bienvenida (este informe lo usó);
-//     · la línea discreta «Te quedan 2 análisis.» con «Analizar otro depto» (sin análisis: solo el enlace,
+//     · la línea discreta «Te quedan 2 créditos.» con «Analizar otro depto» (sin análisis: solo el enlace,
 //       con el precio). Sans, sin mono, sin mayúsculas, sin rojo.
 //   La vista de comparar se queda en el dashboard.
 //
@@ -34,8 +34,8 @@ export function runCierreInformeTier(): { hard: number } {
 
   // ── el texto de la línea ──
   const casos: Array<[Parameters<typeof textoCierre>[0], string | null, string]> = [
-    [{ analisis: 2, conSesion: true, ilimitado: false }, "Te quedan 2 análisis.", "Analizar otro depto"],
-    [{ analisis: 1, conSesion: true, ilimitado: false }, "Te queda 1 análisis.", "Analizar otro depto"],
+    [{ analisis: 2, conSesion: true, ilimitado: false }, "Te quedan 2 créditos.", "Analizar otro depto"],
+    [{ analisis: 1, conSesion: true, ilimitado: false }, "Te queda 1 crédito.", "Analizar otro depto"],
     [{ analisis: 0, conSesion: true, ilimitado: false }, null, "Analizar otro depto · $9.990"],
     [{ analisis: 0, conSesion: true, ilimitado: true }, null, "Analizar otro depto"],
     [{ analisis: 0, conSesion: false, ilimitado: false }, null, "Analizar otro depto"],
@@ -85,7 +85,7 @@ export function runCierreInformeTier(): { hard: number } {
     console.log(`  ✗ CIERRE-INFORME · ${fallas.length} falla(s):`);
     for (const f of fallas) console.log(`     · ${f}`);
   } else {
-    console.log("  ✓ VERDE — el final del informe tiene una acción: el ticket, la banda de bienvenida o «Te quedan N análisis.» con «Analizar otro depto», en sans y sin rojo");
+    console.log("  ✓ VERDE — el final del informe tiene una acción: el ticket, la banda de bienvenida o «Te quedan N créditos.» con «Analizar otro depto», en sans y sin rojo");
   }
   return { hard: fallas.length };
 }

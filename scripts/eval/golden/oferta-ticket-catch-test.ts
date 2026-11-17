@@ -359,15 +359,15 @@ export async function runOfertaTicketTier(): Promise<{ hard: number }> {
     const creado = new Date().toISOString();
     const html = dibujarConRouter(createElement(TicketPack, { ctx: { analysisId: "a1", veredicto: "COMPRAR", modalidad: "ltr" }, createdAt: creado }));
     const t = texto(html);
-    // ⚠ ACTA (08-oct-2026, tercera pasada) · el titular en UNA línea, «Pack · 3 análisis por $14.990»; debajo,
+    // ⚠ ACTA (08-oct-2026, tercera pasada) · el titular en UNA línea, «Pack · 3 créditos (deptos) por $14.990»; debajo,
     // más chico, «$9.990 $4.997 cada uno» con la referencia tachada; el cuerpo en un solo tamaño, tres
     // líneas con salto entre ellas. Se deroga también la línea única «<b>Pack…</b> · <s>$9.990</s> $4.997
     // cada uno».
     // ⚠ ACTA (08-oct-2026, corrección de Fabrizio) · la línea 1 normal y las líneas 2 y 3 ENTERAS en negrita,
     // en el mismo tamaño que la 1. Deroga el «sin negrita» de 24dfe83a (que leyó un texto sin marcas).
-    if (!/<p class="lqs-tk-titular" data-lqs="ticket-linea">Pack · 3 análisis por \$14\.990<\/p>/.test(html)) F("4 · el titular del ticket no es «Pack · 3 análisis por $14.990» solo");
+    if (!/<p class="lqs-tk-titular" data-lqs="ticket-linea">Pack · 3 créditos \(deptos\) por \$14\.990<\/p>/.test(html)) F("4 · el titular del ticket no es «Pack · 3 créditos (deptos) por $14.990» solo");
     if (!/<p class="lqs-tk-precio"><s>\$9\.990<\/s> \$4\.997 cada uno<\/p>/.test(html)) F("4 · debajo del titular no va «$9.990 $4.997 cada uno», con el $9.990 tachado");
-    if (!/<p class="lqs-tk-cuerpo">El mismo informe que acabas de leer, para tres deptos más\.<br\/><b>La mitad del precio, solo para usuarios nuevos\.<\/b><br\/><b>Al comprar quedas registrado y además recibes cada semana oportunidades que puedes evaluar con tu pack\.<\/b><\/p>/.test(html)) F("4 · el cuerpo del ticket no es: línea 1 normal, líneas 2 y 3 enteras en negrita, con salto entre ellas");
+    if (!/<p class="lqs-tk-cuerpo">Todo el detalle de la inversión para tres deptos más\.<br\/><b>A mitad de precio, solo para usuarios nuevos\.<\/b><\/p>/.test(html)) F("4 · el cuerpo del ticket no es: línea 1 normal, línea 2 entera en negrita, con salto entre ellas, y nada más (la tercera salió el 17-nov-2026)");
     {
       // Un solo tamaño: la negrita del cuerpo solo cambia el peso.
       const cssTk = sinComentarios(leer("src/components/lo-que-sigue/lo-que-sigue.css"));
@@ -377,9 +377,9 @@ export async function runOfertaTicketTier(): Promise<{ hard: number }> {
     }
     if (/lqs-tk-negrita/.test(html)) F("4 · el ticket conserva un segundo tamaño de cuerpo (lqs-tk-negrita)");
     if (!/>Comprar por \$14\.990</.test(html)) F("4 · el botón no dice «Comprar por $14.990»");
-    const vence = `Solo para usuarios nuevos, en este informe · hasta ${P.cuandoVence(creado)} · si te vas, guarda el enlace`;
+    const vence = `Solo para usuarios nuevos, en este depto · hasta ${P.cuandoVence(creado)} · si te vas, guarda el enlace`;
     if (!t.includes(vence)) F(`4 · el vencimiento no dice «${vence}»`);
-    if (/Quiero los 3 análisis[^<]*<\/button>\s*<p class="lqs-tk-pie"|Incluye una selección|Revísalos hoy/.test(html)) F("4 · el ticket conserva el copy viejo");
+    if (/Quiero los 3 créditos[^<]*<\/button>\s*<p class="lqs-tk-pie"|Incluye una selección|Revísalos hoy/.test(html)) F("4 · el ticket conserva el copy viejo");
   }
 
   // ── 5 · SIN BARRA; PESTAÑA, HOJA Y DESPEDIDA ───────────────────────────────

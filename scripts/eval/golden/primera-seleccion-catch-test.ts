@@ -16,8 +16,8 @@
 //       una vez por informe y pestaña, con «Ver mis primeros deptos» para reabrirla; en /deptos y en la página del
 //       invitado, en la misma pantalla de «Estás dentro», sin esperar a que conteste el «cuándo».
 //   7 · «TIENES UN ANÁLISIS DE REGALO: ELIGE UNO» arriba (sin regalo, «Tus primeros deptos: elige uno»; sin deptos, sin
-//       «elige uno»: «Tienes un análisis de regalo guardado» o «Tus primeros deptos»), y cada depto con
-//       «Analizar este»: el mismo aviso antes de gastar y la misma ruta que la página semanal, validada por el token.
+//       «elige uno»: «Tienes un crédito de regalo guardado» o «Tus primeros deptos»), y cada depto con
+//       «Ver este depto»: el mismo aviso antes de gastar y la misma ruta que la página semanal, validada por el token.
 //   8 · ANALIZAR DESDE YA: los de la noche quedan escritos en la fila pendiente del día (solo si sigue pendiente, sin
 //       enviar y vacía), y la pantalla solo ofrece el botón cuando el aviso quedó en la selección.
 //   9 · SI EL PERFIL NO ALCANZA, los chips que faltan en un toque (faltanDelPerfil) y se arma.
@@ -250,7 +250,7 @@ export async function runPrimeraSeleccionTier(): Promise<{ hard: number }> {
       // ⚠ ACTA (21-oct-2026, recorrido real de Fabrizio por la puerta B) · la primera selección ya no recibe adónde vuelve la
       // compra: el pack y el suelto vuelven al dashboard con el depto, que se analiza solo (compra-desde-depto.ts). En
       // /deptos se vuelve a armar con «Buscas · Cambiar» (`key={version}`) y se atenúa mientras se cambia; nada la esconde.
-      // Y el ya analizado dice «Ya lo analizaste · Ver informe» en vez del botón (tier PUERTA-B-RECORRIDO §6).
+      // Y el ya analizado dice «Ya lo tienes · Ver detalles» en vez del botón (tier PUERTA-B-RECORRIDO §6).
       const hoja = sinComentarios(leer("src/components/lo-que-sigue/HojaPrimeraSeleccion.tsx"));
       if (!/className="lqs-velo doc-tokens"/.test(hoja) || !/\{abierta && <PrimeraSeleccion \/>\}/.test(hoja) || !/data-lqs="seguir-leyendo">\{PRIMERA_SELECCION\.seguirLeyendo\}/.test(hoja))
         F("6 · la hoja no es el velo del ticket con la selección y «Seguir leyendo el informe»");
@@ -270,35 +270,35 @@ export async function runPrimeraSeleccionTier(): Promise<{ hard: number }> {
     {
       // ⚠ ACTA (23-oct-2026, goal «puerta B, parte 1», mockup `2-estas-dentro.html`) · el título es «Franco eligió estos 5 deptos
       // para tu búsqueda.» (con cuántos; en singular con uno; «Tu selección» mientras no hay qué contar), bajo el kicker «Tu
-      // selección»; el regalo se dice en la tarjeta roja de arriba y en el botón («Analizar este · usa tu regalo»), no en el
+      // selección»; el regalo se dice en la tarjeta roja de arriba y en el botón («Ver este depto · usa tu regalo»), no en el
       // título. Mutaciones: T32 el título sin el número · T33 el botón sin «usa tu regalo» con el regalo · T34 con regalo y sin
       // deptos, «elige».
       if (tituloSeleccion(5) !== "Franco eligió estos 5 deptos para tu búsqueda." || tituloSeleccion(1) !== "Franco eligió este depto para tu búsqueda." || tituloSeleccion(0) !== "Tu selección" || PRIMERA_SELECCION.kicker !== "Tu selección")
         F(`7 · el título no es «Franco eligió estos N deptos para tu búsqueda.»: ${tituloSeleccion(5)}`);
       if (/elige/i.test(tituloSeleccion(0)) || /elige/i.test(tituloSeleccion(3))) F("7 · el título vuelve a pedir que elija uno");
-      if (textoAnalizar(true) !== "Analizar este · usa tu regalo" || textoAnalizar(false) !== "Analizar este") F("7 · el botón no dice «Analizar este · usa tu regalo» con el regalo (y «Analizar este» sin él)");
+      if (textoAnalizar(true) !== "Ver este depto · usa tu regalo" || textoAnalizar(false) !== "Ver este depto") F("7 · el botón no dice «Ver este depto · usa tu regalo» con el regalo (y «Ver este depto» sin él)");
       const ps = sinComentarios(leer("src/components/deptos/PrimeraSeleccion.tsx"));
       if (!/const titulo = tituloSeleccion\(items\.length\);/.test(ps) || !/<h2 className=\{encabezado === "casa" \? "ca-plano-t" : "dp-h2"\} data-primera="titulo">\{titulo\}<\/h2>/.test(ps) || !/const sinDeptos = hojaSinDeptos\(datos\);/.test(ps))
         F("7 · el título no cuenta los deptos de la selección, o no mira si hay deptos con la misma condición que la bajada");
       // ⚠ ACTA (28-oct-2026, recorrido con +qaexplorar) · la condición del botón vive en del-dia.ts › puedeAnalizarPrimero, que
       // el tier CUENTAS-PRUEBA ejercita con una cuenta de prueba nueva por /deptos; acá se prueba la función y que la tarjeta la use.
       const pa = { token: "t", combinacion: { piePct: 20, plazoAnios: 25 } };
-      // ⚠ ACTA (28-oct-2026, decisión de Fabrizio: toda tarjeta de un depto tiene «Analizar este», venga de la selección o del
+      // ⚠ ACTA (28-oct-2026, decisión de Fabrizio: toda tarjeta de un depto tiene «Ver este depto», venga de la selección o del
       // respaldo) · sin token, o fuera de la fila, la tarjeta se analiza como respaldo (tier RESPALDO-MAPA); sin combinación, no.
       if (!puedeAnalizarPrimero(pa, { enSeleccion: true }) || !puedeAnalizarPrimero(pa, { enSeleccion: false }) || !puedeAnalizarPrimero({ ...pa, token: null }, { enSeleccion: true }) || puedeAnalizarPrimero({ ...pa, combinacion: null }, { enSeleccion: true }))
-        F("7 · «Analizar este» falta en una tarjeta con combinación (de la selección o del respaldo), o sale sin combinación");
+        F("7 · «Ver este depto» falta en una tarjeta con combinación (de la selección o del respaldo), o sale sin combinación");
       // ⚠ ACTA (03-nov-2026, «el informe en camino», tier INFORME-EN-CAMINO) · el ya analizado incluye los de esta visita (`informesAqui`).
       // ⚠ ACTA (05-nov-2026, tier TARJETA-ANALIZADA) · el informe se nombra una vez (`const informe = …`): lo leen el chip de su
       // informe y esta rama. Se exige el nombre con los de esta visita y que esta rama lo use.
       if (!/const puede = puedeAnalizarPrimero\(datos, it\);/.test(ps) || !/const informe = it\.informeId \?\? informesAqui\[it\.avisoId\] \?\? null;/.test(ps) || !/\{informe \? \(\s*<p className="sel-ya" data-primera="ya-analizado">[\s\S]{0,400}?<\/p>\s*\) : puede && \(\s*<button type="button" className="sel-btn" data-primario=\{i === 0 \? "1" : undefined\} onClick=\{\(\) => \{ setError\(null\); setConfirmar\(\{ it, sin: false \}\); \}\}[^\n]*data-primera="analizar"/.test(ps))
-        F("7 · «Analizar este» no está en cada depto, o sale sin el token de la selección");
+        F("7 · «Ver este depto» no está en cada depto, o sale sin el token de la selección");
       // ⚠ ACTA (28-oct-2026, RESPALDO-MAPA) · el pedido elige el modo: con su fila, el token de la selección; sin ella, `respaldo: true` (lo prueba RESPALDO-MAPA §2).
-      if (!/fetch\("\/api\/lo-que-sigue\/guia\/analizar", \{\s*method: "POST",[\s\S]{0,300}como === "seleccion"\s*\? \{ origenId: datos\.origenId, [^}]*semanal: datos\.token \}/.test(ps)) F("7 · «Analizar este» no va por la ruta de la guía con el token de la selección");
-      if (!/<AvisoAntesDeAnalizar\s/.test(ps) || !/\{generando === it\.avisoId \? GUIA\.analizando : textoAnalizar\(usaRegalo\)\}/.test(ps) || !/const usaRegalo = saldo\?\.tipo === "regalo" \|\| \(saldo\?\.tipo === "con" && !!saldo\.proximoRegalo\);/.test(ps)) F("7 · falta el aviso antes de gastar, o el botón no dice «Analizar este · usa tu regalo» con el regalo");
+      if (!/fetch\("\/api\/lo-que-sigue\/guia\/analizar", \{\s*method: "POST",[\s\S]{0,300}como === "seleccion"\s*\? \{ origenId: datos\.origenId, [^}]*semanal: datos\.token \}/.test(ps)) F("7 · «Ver este depto» no va por la ruta de la guía con el token de la selección");
+      if (!/<AvisoAntesDeAnalizar\s/.test(ps) || !/\{generando === it\.avisoId \? GUIA\.analizando : textoAnalizar\(usaRegalo\)\}/.test(ps) || !/const usaRegalo = saldo\?\.tipo === "regalo" \|\| \(saldo\?\.tipo === "con" && !!saldo\.proximoRegalo\);/.test(ps)) F("7 · falta el aviso antes de gastar, o el botón no dice «Ver este depto · usa tu regalo» con el regalo");
       // Tres a la vista y «Ver los N que faltan» (mockup 2).
       if (TARJETAS_A_LA_VISTA !== 3 || PRIMERA_SELECCION.verMas(2) !== "Ver los 2 que faltan" || PRIMERA_SELECCION.verMas(1) !== "Ver el que falta" || !/const visibles = verTodos \? items : items\.slice\(0, TARJETAS_A_LA_VISTA\);/.test(ps) || !/data-primera="ver-mas">\{PRIMERA_SELECCION\.verMas\(faltanPorVer\)\}<\/button>/.test(ps)) F("7 · no van tres a la vista con «Ver los N que faltan»");
       // ⚠ ACTA (03-nov-2026, «el informe en camino», tier INFORME-EN-CAMINO) · al llegar el informe no navega la tarjeta: se lo pasa al pop-up
-      // (InformeEnCamino), que lo abre solo y a los 10 s ofrece «Abrir informe».
+      // (InformeEnCamino), que lo abre solo y a los 10 s ofrece «Ver los detalles».
       if (!/informeListo\(paso0, \{ id: d\.id, ruta: `\/analisis\/\$\{d\.id\}`, veredicto: d\.veredicto \?\? null, score: d\.score \?\? null \}\);\s*setInforme\(listo\);/.test(ps)) F("7 · al analizar no lleva al informe");
     }
 
@@ -376,7 +376,7 @@ export async function runPrimeraSeleccionTier(): Promise<{ hard: number }> {
       // analizadas con tu perfil de búsqueda. Usa tu regalo en el que más te interese.» (sin regalo, «Analiza el que más te
       // interese.»): sin pie ni plazo y sin lo del correo. Mutaciones: T35 otra bajada · T36 la bajada con el regalo sin regalo.
       const BAJADA = "Publicaciones vigentes y analizadas con tu perfil de búsqueda. Usa tu regalo en el que más te interese.";
-      if (PRIMERA_SELECCION.bajadaRegalo !== BAJADA || PRIMERA_SELECCION.bajada !== "Publicaciones vigentes y analizadas con tu perfil de búsqueda. Analiza el que más te interese.") F(`12 · el texto bajo el título no es el pedido: «${PRIMERA_SELECCION.bajadaRegalo}»`);
+      if (PRIMERA_SELECCION.bajadaRegalo !== BAJADA || PRIMERA_SELECCION.bajada !== "Publicaciones vigentes y analizadas con tu perfil de búsqueda. Elige el que más te interese.") F(`12 · el texto bajo el título no es el pedido: «${PRIMERA_SELECCION.bajadaRegalo}»`);
       if (/anoche|correo|pie|plazo/i.test(PRIMERA_SELECCION.bajadaRegalo + PRIMERA_SELECCION.bajada)) F("12 · el texto bajo el título dice «anoche», lo del correo, el pie o el plazo");
       const ps = sinComentarios(leer("src/components/deptos/PrimeraSeleccion.tsx"));
       // ⚠ ACTA (03-nov-2026, goal «la pasada real de /explorar»): en el PC el mapa y las tarjetas van en dos columnas (.ca-dos); la
@@ -504,7 +504,7 @@ export async function runPrimeraSeleccionTier(): Promise<{ hard: number }> {
     console.log(`  ✗ PRIMERA-SELECCION · ${fallas.length} falla(s):`);
     for (const f of fallas) console.log(`     · ${f}`);
   } else {
-    console.log("  ✓ VERDE — toda puerta encola el correo del día en el momento; la cuenta nueva ve su primera selección ahí mismo (sobre el informe, o en «Estás dentro»), con «Analizar este» en cada depto y el regalo arriba; los de la noche quedan en la fila del día; faltan chips, se piden; se mide por puerta; tras «Entrar» el ticket sale a los 8 s de la marca y nunca tapa la hoja");
+    console.log("  ✓ VERDE — toda puerta encola el correo del día en el momento; la cuenta nueva ve su primera selección ahí mismo (sobre el informe, o en «Estás dentro»), con «Ver este depto» en cada depto y el regalo arriba; los de la noche quedan en la fila del día; faltan chips, se piden; se mide por puerta; tras «Entrar» el ticket sale a los 8 s de la marca y nunca tapa la hoja");
   }
   return { hard: fallas.length };
 }

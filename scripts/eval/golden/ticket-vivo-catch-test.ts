@@ -9,7 +9,7 @@
 //       pasadas las 24 horas, no. EN ROJO CON EL CÓDIGO DE HOY: exigía «el primero».
 //   2 · EL DASHBOARD: la tarjeta de la oferta se muestra mientras el ticket viva, con o sin saldo; con saldo dice «3 más
 //       por $14.990» y hasta cuándo, y la línea del saldo lo repite como enlace cuando la tarjeta de arriba es otra.
-//   3 · EL POP-UP de «Analizar este» con saldo: se usa el saldo como siempre y debajo una sola línea, «3 más por
+//   3 · EL POP-UP de «Ver este depto» con saldo: se usa el saldo como siempre y debajo una sola línea, «3 más por
 //       $14.990 · vence mañana 11:17», como enlace, sin frenar.
 //   4 · EL COPY del ticket para quien ya tiene cuenta: «Para tres deptos más de tu selección, o cualquier otro que te
 //       interese.», sin «al comprar quedas registrado».
@@ -93,7 +93,7 @@ export function runTicketVivoTier(): { hard: number } {
     if (o(con, false) || o(regalo, false) || o(sin, false)) F("2 · sin ticket va la oferta");
     if (o(plan, true)) F("2 · con el plan va la oferta (analizar no descuenta)");
     if (!o(sin, true)) F("2 · sin saldo y con el ticket vivo, no va la oferta");
-    if (CASA.oferta.titulo !== "3 análisis por $14.990" || CASA.oferta.boton !== "Aprovechar" || !CASA.oferta.kicker("mañana 11:17").endsWith("vence mañana 11:17")) F(`2 · la oferta no dice «3 análisis por $14.990 · Aprovechar» ni hasta cuándo: ${CASA.oferta.titulo}`);
+    if (CASA.oferta.titulo !== "3 créditos (deptos) por $14.990" || CASA.oferta.boton !== "Aprovechar" || !CASA.oferta.kicker("mañana 11:17").endsWith("vence mañana 11:17")) F(`2 · la oferta no dice «3 créditos (deptos) por $14.990 · Aprovechar» ni hasta cuándo: ${CASA.oferta.titulo}`);
     if (new URL(hrefOfertaCasa(), "https://x.cl").searchParams.get("product") !== "pack3" || new URL(hrefOfertaCasa(), "https://x.cl").searchParams.get("volver") !== "/dashboard") F("2 · «Aprovechar» no compra el pack del ticket de vuelta al dashboard");
     const pag = codigo("src/app/dashboard/page.tsx");
     if (!/const ticket = sel\?\.ticket \?\? await ticketDeCuentaDisponible\(admin, user\);/.test(pag) || /saldo\.tipo === "sin" \? \(sel\?\.ticket/.test(pag)) F("2 · la página decide el ticket solo sin saldo");
@@ -121,10 +121,10 @@ export function runTicketVivoTier(): { hard: number } {
     }));
     const html = aviso({ tipo: "con", n: 2, noVencen: true }, { ticketConSaldo: l });
     const t = textos(html);
-    if (!t.includes("Usa 1 de tus 2 análisis.")) F("3 · con saldo, el pop-up dejó de decir que usa el saldo");
+    if (!t.includes("Usa 1 de tus 2 créditos.")) F("3 · con saldo, el pop-up dejó de decir que usa el saldo");
     if (!t.includes(l.texto) || !/<a [^>]*data-modal-ticket="true"[^>]*href="\/checkout\?product=pack3"/.test(html)) F("3 · con saldo y el ticket vivo, el pop-up no lleva la línea del ticket como enlace");
     if (!/<p class="wz-modal-nota" data-modal-nota="true">/.test(html) || html.indexOf("wz-modal-consumo") > html.indexOf("wz-modal-nota")) F("3 · la línea no va debajo de «Usa 1 de tus N análisis»");
-    if (!/<button[^>]*class="wz-cta wz-cta-modal"[^>]*>Analizar/.test(html) || /disabled=""[^>]*class="wz-cta wz-cta-modal"/.test(html)) F("3 · la línea frena el botón de Analizar");
+    if (!/<button[^>]*class="wz-cta wz-cta-modal"[^>]*>Ver este depto/.test(html) || /disabled=""[^>]*class="wz-cta wz-cta-modal"/.test(html)) F("3 · la línea frena el botón de «Ver este depto»");
     if (textos(aviso({ tipo: "sin" }, { ticketConSaldo: l })).includes(l.texto)) F("3 · sin saldo (la compra manda), la línea sale igual");
     if (textos(aviso({ tipo: "con", n: 1, noVencen: true })).includes("3 más por")) F("3 · sin el ticket, el pop-up ofrece «3 más»");
     const sl = codigo("src/app/semanal/semanal-lista.tsx"), ps = codigo("src/components/deptos/PrimeraSeleccion.tsx");
@@ -140,11 +140,13 @@ export function runTicketVivoTier(): { hard: number } {
 
   // ── 4 · el copy para quien ya tiene cuenta ──
   try {
-    if (TICKET_PACK.negritaConCuenta !== "Para tres deptos más de tu selección, o cualquier otro que te interese.") F("4 · el copy del ticket para quien ya tiene cuenta no es el aprobado");
-    if (/quedas registrado/.test(TICKET_PACK.negritaConCuenta ?? "") || !/quedas registrado/.test(TICKET_PACK.negrita)) F("4 · el copy del anónimo y el de la cuenta se mezclaron");
+    // ⚠ ACTA (17-nov-2026, decisión de Fabrizio: «de análisis a créditos») · el cuerpo del ticket queda en dos líneas: salen
+    // la tercera del anónimo («Al comprar quedas registrado…») y la de la cuenta («Para tres deptos más de tu selección…»).
+    // Lo que sigue distinguiendo a la cuenta es el vencimiento (abajo).
+    if ("negrita" in TICKET_PACK || "negritaConCuenta" in TICKET_PACK) F("4 · vuelve la tercera línea del ticket (negrita / negritaConCuenta)");
     if (TICKET_PACK.vencimientoCuenta("mañana a las 11:17") !== "Solo para usuarios nuevos · hasta mañana a las 11:17") F("4 · el vencimiento del ticket de la cuenta dice «en este informe» o «guarda el enlace»");
     const tk = codigo("src/components/lo-que-sigue/TicketPack.tsx");
-    if (!/<b>\{conCuenta \? TICKET_PACK\.negritaConCuenta : TICKET_PACK\.negrita\}<\/b>/.test(tk) || !/\{conCuenta \? TICKET_PACK\.vencimientoCuenta\(cuandoVence\(createdAt\)\) : TICKET_PACK\.vencimiento\(cuandoVence\(createdAt\)\)\}/.test(tk)) F("4 · el ticket no cambia el copy para quien ya tiene cuenta");
+    if (/TICKET_PACK\.negrita/.test(tk) || !/<b>\{TICKET_PACK\.cuerpoFuerte\}<\/b>\s*<\/p>/.test(tk) || !/\{conCuenta \? TICKET_PACK\.vencimientoCuenta\(cuandoVence\(createdAt\)\) : TICKET_PACK\.vencimiento\(cuandoVence\(createdAt\)\)\}/.test(tk)) F("4 · el ticket no cambia el copy para quien ya tiene cuenta");
     for (const [p, re] of [
       ["src/app/analisis/[id]/results-client.tsx", /<TicketPack [^>]*conCuenta=\{isLoggedIn \|\| !!ticketDesde\} \/>/],
       ["src/app/analisis/renta-corta/[id]/results-client.tsx", /<TicketPack [^>]*conCuenta=\{!!userId \|\| !!ticketDesde\} \/>/],
@@ -166,7 +168,7 @@ export function runTicketVivoTier(): { hard: number } {
 // segundo informe sin ticket, «solo el primero» viva, la tarjeta solo sin saldo, la página que decide el ticket solo sin
 // saldo, sin la línea del saldo, sin la línea del pop-up (falta lineaTicketConSaldo) y sin el copy de la cuenta—. Y 10
 // mutaciones, cada una restaurada byte a byte, todas ROJAS: T1 el pack pagado no apaga el ticket · T2 arriba sin la tarjeta
-// con saldo · T3 la tarjeta con saldo dice «3 análisis · $14.990» · T4 la página decide el ticket solo sin saldo · T5 la
+// con saldo · T3 la tarjeta con saldo dice «3 créditos · $14.990» · T4 la página decide el ticket solo sin saldo · T5 la
 // línea del saldo sin el ticket · T6 el pop-up sin la línea · T7 el copy de la cuenta vuelve al del anónimo · T8 el ticket
 // no cambia el copy · T9 la selección no le pasa la línea al pop-up · T10 la oferta del informe ignora el pack pagado.
 // Los gates que fijaban «solo el primer informe» y «solo sin saldo» se reescribieron con su acta: PUERTA-B-RECORRIDO §5,

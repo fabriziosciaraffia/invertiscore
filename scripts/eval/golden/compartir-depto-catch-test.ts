@@ -674,7 +674,7 @@ if (require.main === module) {
 //   G22 la API ignora el tope · G23 la verificación lee la ficha del aviso · G24 la imagen sin el chip Ajustar · G25 el que no
 //   llega sigue en la capa · G26 si la verificación falla, no llega · G27 la API del texto verifica (la hoja esperaría).
 // Y lo que el QUICK cazó en otros tiers con la verificación de hoy, 3 de 3 en ROJO: Z1 y Z2 (GUIA-BUSQUEDA §3, reescrito con
-// su acta: la antigüedad de UNA LECTURA de la ficha solo en «Analizar este») · Z3 (CONFIG-PUBLICA §6: la ficha del enlace lee
+// su acta: la antigüedad de UNA LECTURA de la ficha solo en «Ver este depto») · Z3 (CONFIG-PUBLICA §6: la ficha del enlace lee
 // `config` con el cliente de service role de quien la llama; la verificación es una `function` para que el censo la siga).
 // G28 (la línea del negociado en la imagen cortaba entre «UF» y el número, medido en el preview): entera, ROJO.
 // SIN BORROSO (03-nov-2026, decisión de Fabrizio): el negociado del enlace se ve nítido sin cuenta, sin el flujo. G20 reescrita

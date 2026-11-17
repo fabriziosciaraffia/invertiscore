@@ -8,7 +8,7 @@
 //   2 · EL SALDO REAL: plan / regalo / con N / sin, leído del ledger y del contador legacy.
 //   3 · EL COPY APROBADO, frase por frase.
 //   4 · EL REGISTRADO COMPRA EL PACK DE TRES (13-oct-2026, decisión de Fabrizio; antes, el suelto): el botón del
-//       saldo vacío va al checkout del pack de tres con «3 análisis · $19.990» y vuelve al dashboard; debajo, el
+//       saldo vacío va al checkout del pack de tres con «3 créditos · $19.990» y vuelve al dashboard; debajo, el
 //       suelto «O uno solo · $9.990». El ticket de $14.990 (pack3) no aparece en la casa.
 //   5 · EL ORDEN: saludo → saldo → (comprador) la selección → el perfil → sus informes.
 //   6 · LO EDITADO SE VALIDA Y SOLO LO ESCRIBE EL SERVIDOR: el PUT pide sesión; la tabla no acepta
@@ -93,7 +93,7 @@ export function runCasaTier(): { hard: number } {
   // saliendo de los lotes. El predicado viejo pedía el filtro sin la bienvenida.
   if (!/const regalos = vivos\.filter\(\(g\) => g\.source != null && \(FUENTES_REGALO\.has\(g\.source\) \|\| g\.source === FUENTE_BIENVENIDA\)\);/.test(saldoFuente()) || !/regaloVence: regalos\.filter\(\(g\) => g\.expires_at\)/.test(saldoFuente())) F("2 · el vencimiento del regalo no sale de su lote");
   // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockup 3b-dashboard.html) · el banner y el saldo plano se retiraron: la píldora del
-  // saludo dice «1 análisis de regalo» (lib/casa/reglas.ts › pildoraSaldo, tier PUERTA-B-DASHBOARD §1) y cuándo vence lo
+  // saludo dice «1 crédito de regalo» (lib/casa/reglas.ts › pildoraSaldo, tier PUERTA-B-DASHBOARD §1) y cuándo vence lo
   // dice «Estás dentro» (tier PUERTA-B-MOCKUPS). El vencimiento sigue saliendo del lote (arriba).
   const con = e({ disponibles: 3, plan: false, suscripcion: false, regaloRestante: 1, regaloVence: null, todoSinCaducidad: true });
   if (con.tipo !== "con" || con.n !== 3 || !con.noVencen) F("2 · con 3 (uno regalado) no es «con 3, no vencen»");
@@ -104,13 +104,13 @@ export function runCasaTier(): { hard: number } {
 
   // 3 · el copy
   const exactos: Array<[string, string]> = [
-    [CASA.sin.titulo(1), "Tu primer informe ya está en tu cuenta."],
-    [CASA.sin.bajada, "Para analizar otros: 3 análisis por $19.990, sin caducidad."],
-    [CASA.sin.boton, "3 análisis · $19.990"],
+    [CASA.sin.titulo(1), "Tu primer depto ya está en tu cuenta."],
+    [CASA.sin.bajada, "Para ver otros: 3 créditos por $19.990, sin caducidad."],
+    [CASA.sin.boton, "3 créditos · $19.990"],
     [CASA.sin.suelto, "O uno solo · $9.990"],
-    // ⚠ ACTA (16-oct-2026, goal «la puerta B») · el regalo se llama regalo: «Tienes un análisis de regalo.».
-    [CASA.regalo.titulo, "Tienes un análisis de regalo."],
-    [CASA.con.titulo(3), "Te quedan 3 análisis"],
+    // ⚠ ACTA (16-oct-2026, goal «la puerta B») · el regalo se llama regalo: «Tienes un crédito de regalo.».
+    [CASA.regalo.titulo, "Tienes un crédito de regalo."],
+    [CASA.con.titulo(3), "Te quedan 3 créditos"],
     [CASA.con.noVencen, "No vencen."],
     [CASA.guiaTitulo, "Te recomendamos empezar por estos"],
     [CASA.perfil.titulo, "Tu perfil de búsqueda"],
@@ -125,8 +125,8 @@ export function runCasaTier(): { hard: number } {
   const copy = sinComentarios(leer("src/app/dashboard/casa-copy.ts"));
   const pag = sinComentarios(leer("src/app/dashboard/page.tsx"));
   // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockup 3b-dashboard.html) · el banner del pack, la línea del saldo con el suelto y
-  // packDeCasa se retiraron: sin saldo, la píldora dice «Sin análisis · Ver planes» y el pack lo ofrece el pop-up de
-  // «Analizar este» (el de tres, o el del ticket en las 24 horas de la cuenta: tier PUERTA-B-RECORRIDO §5); mientras el
+  // packDeCasa se retiraron: sin saldo, la píldora dice «Sin créditos · Ver planes» y el pack lo ofrece el pop-up de
+  // «Ver este depto» (el de tres, o el del ticket en las 24 horas de la cuenta: tier PUERTA-B-RECORRIDO §5); mientras el
   // ticket viva, la oferta roja de una fila, con o sin saldo (tier PUERTA-B-DASHBOARD §1 y §2; tier TICKET-VIVO §2). Lo que
   // sigue valiendo: el precio del suelto sale de SINGLE_PRICE y ningún precio va escrito a mano en el copy.
   if (!/fmtCLP\(SINGLE_PRICE\)/.test(copy)) F("4 · el precio del suelto no sale de SINGLE_PRICE");
@@ -134,7 +134,7 @@ export function runCasaTier(): { hard: number } {
 
   // 5 · el orden
   // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockup 3b-dashboard.html) · el orden es el del mockup —saludo y píldora → oferta →
-  // «Invita a alguien» → la selección con su mapa y sus tarjetas → plegados, el perfil e «Informes realizados»— y lo mide
+  // «Invita a alguien» → la selección con su mapa y sus tarjetas → plegados, el perfil e «Deptos vistos»— y lo mide
   // el tier PUERTA-B-DASHBOARD §2, en la única casa (la cuenta con informes y la de /deptos ven la misma). La guía del
   // pack ya no se monta en la casa (vive en la vuelta de Flow) y la bajada «comprador» se fue con ella.
   if (/<GuiaBusqueda|guiaCasa|comprador=/.test(pag)) F("5 · la guía del pack o la bajada «comprador» volvieron a la casa");
@@ -206,9 +206,9 @@ export function runCasaTier(): { hard: number } {
     const query = sinComentarios(leer("src/lib/dashboard-query.ts"));
     // Se fue «Continuar»: la tarjeta grande, las tres chicas y la tira de Análisis, Flujo positivo, Puntaje y Modalidad.
     if (existsSync(join(RAIZ, "src/app/dashboard/continuar.tsx")) || existsSync(join(RAIZ, "src/app/dashboard/stats-strip.tsx")) || /<Continuar\b|<StatsStrip\b|Flujo positivo|Puntaje promedio/.test(pag + arch)) F("11 · «Continuar» o la tira de cifras siguen en el dashboard");
-    // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockup 3b-dashboard.html) ·«Tus informes» pasó a ser la fila plegada «Informes realizados»
+    // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockup 3b-dashboard.html) ·«Tus informes» pasó a ser la fila plegada «Deptos vistos»
     // (tier PUERTA-B-DASHBOARD §2), con «Comparar» arriba de la lista.
-    if (!/<FilaPlegada id="informes" titulo=\{CASA\.informes\} n=\{stats\.total\} marca="informes" abierta=\{abrirInformes\}>/.test(pag) || !/<EnlaceCarga href="\/comparar"[^>]*data-lqs="comparar-entrada">/.test(pag) || pag.indexOf("{CASA.informes}") > pag.indexOf('data-lqs="comparar-entrada"') || pag.indexOf('data-lqs="comparar-entrada"') > pag.indexOf("<Archive")) F("11 · «Informes realizados» no es una fila plegada con «Comparar» y la lista adentro");
+    if (!/<FilaPlegada id="informes" titulo=\{CASA\.informes\} n=\{stats\.total\} marca="informes" abierta=\{abrirInformes\}>/.test(pag) || !/<EnlaceCarga href="\/comparar"[^>]*data-lqs="comparar-entrada">/.test(pag) || pag.indexOf("{CASA.informes}") > pag.indexOf('data-lqs="comparar-entrada"') || pag.indexOf('data-lqs="comparar-entrada"') > pag.indexOf("<Archive")) F("11 · «Deptos vistos» no es una fila plegada con «Comparar» y la lista adentro");
     // La marca de origen: «Franco» al lado del nombre de lo que salió de un aviso; lo del wizard, nada.
     if (ARCHIVO_COPY.marca !== "Franco" || ARCHIVO_COPY.deFranco !== "De Franco" || ARCHIVO_COPY.mios !== "Míos") F("11 · el copy de la marca o del filtro no es «Franco» / «De Franco» / «Míos»");
     const marca = arch.slice(arch.indexOf("export function MarcaFranco("), arch.indexOf("// ─── Chips"));
@@ -246,7 +246,7 @@ export function runCasaTier(): { hard: number } {
     if (!/<ArchiveSearch params=\{params\} \/>/.test(arch) || !/href=\{buildHref\(params, \{ group: !params\.group, open: \[\] \}\)\}\s*role="switch"/.test(arch) || !/Agrupar por propiedad\s*<\/EnlaceCarga>/.test(arch)) F("11 · se fueron buscar o agrupar por propiedad");
   }
 
-  if (fallas.length === 0) console.log("  ✓ CASA: perfil de todos los informes, saldo real, copy aprobado, precios de su fuente, escritura del servidor; «Invita a alguien» con su color; la invitación primero en el menú de compartir; «Informes realizados» plegados");
+  if (fallas.length === 0) console.log("  ✓ CASA: perfil de todos los informes, saldo real, copy aprobado, precios de su fuente, escritura del servidor; «Invita a alguien» con su color; la invitación primero en el menú de compartir; «Deptos vistos» plegados");
   for (const f of fallas) console.log(`  ✗ ${f}`);
   return { hard: fallas.length };
 }

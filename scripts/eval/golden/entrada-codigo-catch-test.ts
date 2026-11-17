@@ -82,9 +82,9 @@ export function runEntradaCodigoTier(): { hard: number } {
   // ── 1 · EL COPY, EXACTO POR CONTEXTO ───────────────────────────────────────
   const esperado: Record<ContextoEntrada, [string, string]> = {
     generico: ["Entra a Franco", "Te mandamos un código a tu correo. Sin contraseña."],
-    pack: ["Entra con el correo con que pagaste", "Ahí están tus 3 análisis y los deptos que Franco revisó para ti. Te mandamos un código."],
-    informe: ["Guarda este informe en tu cuenta.", "Te mandamos un código; el informe queda en tu cuenta."],
-    semanal: ["Entra para analizarlo.", "El depto que elegiste te espera."],
+    pack: ["Entra con el correo con que pagaste", "Ahí están tus 3 créditos y los deptos que Franco revisó para ti. Te mandamos un código."],
+    informe: ["Guarda este depto en tu cuenta.", "Te mandamos un código; el depto queda en tu cuenta."],
+    semanal: ["Entra para verlo.", "El depto que elegiste te espera."],
   };
   for (const [ctx, [t, b]] of Object.entries(esperado) as [ContextoEntrada, [string, string]][]) {
     if (ENTRAR_CONTEXTO[ctx]?.titulo !== t || ENTRAR_CONTEXTO[ctx]?.bajada !== b) F(`1 · el copy del contexto «${ctx}» no es el aprobado`);

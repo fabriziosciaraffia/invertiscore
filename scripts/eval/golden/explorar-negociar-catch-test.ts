@@ -204,7 +204,7 @@ export async function runExplorarNegociarTier(): Promise<{ hard: number }> {
     for (const p of ["src/app/explorar/explorar-cliente.tsx", "src/app/explorar/tarjeta-pin.tsx", "src/app/explorar/lista-portal.tsx", "src/app/explorar/hoja-filtros.tsx", "src/components/guia/AvisoAntesDeAnalizar.tsx"]) {
       for (const m of codigo(p).matchAll(/<ChipVeredicto\b[^>]*\bpuntaje=\{([^}]+)\}[^>]*\/>/g)) {
         const linea = codigo(p).slice(codigo(p).lastIndexOf("\n", m.index ?? 0), codigo(p).indexOf("\n", m.index ?? 0));
-        // ⚠ ACTA (04-nov-2026, la pasada de Fabrizio por /explorar, tier EXPLORAR-PASADA-0411) · el pop-up de «Analizar este» también dibuja el chip con su puntaje (`enTarjeta.score`) y la
+        // ⚠ ACTA (04-nov-2026, la pasada de Fabrizio por /explorar, tier EXPLORAR-PASADA-0411) · el pop-up de «Ver este depto» también dibuja el chip con su puntaje (`enTarjeta.score`) y la
         // frase en la misma línea.
         const ok = ((m[1] === "p.score" || m[1] === "enTarjeta.score ?? null") && /\{AL_PRECIO_PUBLICADO\}/.test(linea)) || (/neg\.s|negociado\.score/.test(m[1]) && /\{siConsigues\.antes\}|\{NEGOCIAR_COPY\.consigues\}/.test(linea));
         if (!ok) F(`1 · ${p}: un chip con número («puntaje={${m[1]}}») sin «al precio publicado» ni «Si consigues» al lado`);
@@ -370,12 +370,12 @@ export async function runExplorarNegociarTier(): Promise<{ hard: number }> {
     const sin = eventoAnalisisCreado({ userId: "u", analysisId: "a", modalidad: "ltr", via: "explorar" }).properties as Record<string, unknown>;
     if (ev.precio_negociado !== true || ev.descuento_pct !== 4.2 || "precio_negociado" in sin) F(`5 · analisis_creado no lleva la marca del precio negociado: ${JSON.stringify(ev)}`);
     // El navegador manda el precio y el tope solo para un negociado con cifras.
-    if (!/esNegociado\(it\) && conCifrasNegociado\(it\) && filtros\.negociar != null \? \{ precioNegociadoUF: it\.neg\.p, topeNegociar: filtros\.negociar \}/.test(cuerpo(cliente, "async function analizar("))) F("5 · «Analizar a UF X» no manda el precio negociado y el tope");
+    if (!/esNegociado\(it\) && conCifrasNegociado\(it\) && filtros\.negociar != null \? \{ precioNegociadoUF: it\.neg\.p, topeNegociar: filtros\.negociar \}/.test(cuerpo(cliente, "async function analizar("))) F("5 · «Ver este depto a UF X» no manda el precio negociado y el tope");
     // El pop-up y la tarjeta: los dos veredictos y el botón.
     const pop = texto(hPopN);
     if (!/Al precio publicado − Ajustar/.test(pop) || !/Si consigues UF 2\.950 \(−4,2 %\) ✓ Comprar · 71/.test(pop)) F(`5 · el pop-up del negociado no dice los dos veredictos: «${pop.slice(0, 200)}»`);
     const tn = texto(hTarjetaN);
-    if (!/UF 3\.080 publicado/.test(tn) || !/Al precio publicado − Ajustar/.test(tn) || !/Si consigues UF 2\.950 \(−4,2 %\) ✓ Comprar · 71/.test(tn) || !/Analizar a UF 2\.950/.test(tn)) F(`5 · la tarjeta del negociado no dice los dos precios y «Analizar a UF 2.950»: «${tn.slice(0, 220)}»`);
+    if (!/UF 3\.080 publicado/.test(tn) || !/Al precio publicado − Ajustar/.test(tn) || !/Si consigues UF 2\.950 \(−4,2 %\) ✓ Comprar · 71/.test(tn) || !/Ver este depto a UF 2\.950/.test(tn)) F(`5 · la tarjeta del negociado no dice los dos precios y «Ver este depto a UF 2.950»: «${tn.slice(0, 220)}»`);
   }
 
   // ── 6 · EL SLIDER DE LA TASA ──
@@ -497,7 +497,7 @@ export async function runExplorarNegociarTier(): Promise<{ hard: number }> {
     // ⚠ ACTA (03-nov-2026, «el informe en camino», tier INFORME-EN-CAMINO) · el error genérico ya no es una nota en la tarjeta:
     // el pop-up lo dice (`fallar("error")`, el de la rama final del pedido); el precio movido se atiende antes, igual que antes.
     const iMov = an.indexOf('res.status === 412 && d.error === "precio-movido"'), iGen = an.indexOf('fallar("error");\n        break;');
-    if (iMov < 0 || iGen < 0 || iMov > iGen) F("10 · «Analizar a UF X» no atiende el precio movido antes del error genérico");
+    if (iMov < 0 || iGen < 0 || iMov > iGen) F("10 · «Ver este depto a UF X» no atiende el precio movido antes del error genérico");
     // ⚠ ACTA (03-nov-2026, INFORME-EN-CAMINO) · el pop-up deja el informe en camino (setInforme(null)) y vuelve con el precio nuevo.
     if (!/setMovidos\(\(m\) => \(\{ \.\.\.m, \[it\.avisoId\]: nuevo \}\)\);\s*setInforme\(null\);\s*setConfirmar\(\{ it: \{ \.\.\.it, neg: nuevo \} as PinNegociado, sin: false, movido: NEGOCIADO_COPY\.movido\(nuevo\.p, nuevo\.d, it\.neg\.p\) \}\);/.test(an)) F("10 · el pop-up no queda con el precio nuevo y su aviso");
     if (!/d\.error === "no-llega"[\s\S]{0,200}setNoLlegan\([\s\S]{0,80}setConfirmar\(\{ it: alPublicado, sin: false, movido: NEGOCIADO_COPY\.noLlega\(/.test(an)) F("10 · el que ya no llega no sale de la capa o el pop-up no ofrece el publicado");
@@ -506,11 +506,11 @@ export async function runExplorarNegociarTier(): Promise<{ hard: number }> {
     // El copy y el pop-up dibujado: el aviso en tinta, el precio nuevo en la línea y en el botón.
     // ⚠ ACTA (04-nov-2026, decisión de Fabrizio en la pasada) · el aviso dice el porqué, para que no se sienta como una falla: desde anoche
     // entraron avisos nuevos en la zona y el precio al que conviene cambió.
-    if (NEGOCIADO_COPY.movido(2085, 1.0, 2089) !== "Desde anoche entraron avisos nuevos en la zona y el precio al que conviene cambió: hoy llega a Comprar con UF 2.085 (−1,0 %), no con UF 2.089. No se usó ningún análisis.") F(`10 · el aviso del precio movido dice «${NEGOCIADO_COPY.movido(2085, 1.0, 2089)}»`);
-    if (NEGOCIADO_COPY.noLlega(5) !== "Desde anoche entraron avisos nuevos en la zona y el precio al que conviene cambió: hoy no llega a Comprar con un descuento de hasta 5 %. No se usó ningún análisis; puedes analizarlo al precio publicado.") F(`10 · el aviso del que ya no llega dice «${NEGOCIADO_COPY.noLlega(5)}»`);
+    if (NEGOCIADO_COPY.movido(2085, 1.0, 2089) !== "Desde anoche entraron avisos nuevos en la zona y el precio al que conviene cambió: hoy llega a Comprar con UF 2.085 (−1,0 %), no con UF 2.089. No se usó ningún crédito.") F(`10 · el aviso del precio movido dice «${NEGOCIADO_COPY.movido(2085, 1.0, 2089)}»`);
+    if (NEGOCIADO_COPY.noLlega(5) !== "Desde anoche entraron avisos nuevos en la zona y el precio al que conviene cambió: hoy no llega a Comprar con un descuento de hasta 5 %. No se usó ningún crédito; puedes verlo al precio publicado.") F(`10 · el aviso del que ya no llega dice «${NEGOCIADO_COPY.noLlega(5)}»`);
     const hMov = popup({ precioUF: 2648, descuentoPct: 4.7, score: 70 }, NEGOCIADO_COPY.movido(2648, 4.7, 2654));
     const aviso = texto(hMov.match(/<p[^>]*data-aviso="precio-movido"[^>]*>[\s\S]*?<\/p>/)?.[0] ?? "");
-    if (aviso !== NEGOCIADO_COPY.movido(2648, 4.7, 2654) || !/Si consigues UF 2\.648 \(−4,7 %\) ✓ Comprar · 70/.test(texto(hMov)) || !/Analizar a UF 2\.648/.test(texto(hMov))) F(`10 · el pop-up no dibuja el precio de hoy con su aviso: «${aviso || texto(hMov).slice(0, 160)}»`);
+    if (aviso !== NEGOCIADO_COPY.movido(2648, 4.7, 2654) || !/Si consigues UF 2\.648 \(−4,7 %\) ✓ Comprar · 70/.test(texto(hMov)) || !/Ver este depto a UF 2\.648/.test(texto(hMov))) F(`10 · el pop-up no dibuja el precio de hoy con su aviso: «${aviso || texto(hMov).slice(0, 160)}»`);
     if (/data-aviso="precio-movido"/.test(hPopN)) F("10 · el pop-up dibuja el aviso del precio movido sin que se haya movido");
     const regla = leer("src/components/formulario-v4/wizard-v4.css").match(/\.av-movido \{([^}]*)\}/)?.[1] ?? "";
     if (!regla || /signal-red|#C8323C|--franco-red|--verdict-buscar|var\(--red/i.test(regla)) F("10 · el aviso del precio movido no está en tinta");
@@ -545,7 +545,7 @@ if (require.main === module) {
 //   §5 N31-N45: la portada sin la línea, sin el publicado o sin el descuento; el informe que no le pasa el precio; el piso
 //      desactivado con un `if (false)`, sin cortar, más ancho que el tope o que acepta el publicado; el informe al precio
 //      publicado o sin los dos precios; `analisis_creado` sin la marca o sin recibirla; el navegador sin mandar el precio; el
-//      pop-up y la tarjeta del negociado sin su Comprar o sin «Analizar a UF».
+//      pop-up y la tarjeta del negociado sin su Comprar o sin «Ver este depto a UF».
 //   §6 N46-N51: «Usar la del mes» que fija la del mes, el paso de 0,01, soltar sin avisar o medido con otro evento, sin la marca,
 //      Filtros sin decir que no hay capa con otra tasa.
 //   §7 N52-N54 · §8 N55-N56 · §9 N57-N61: el perfil sin resumen, sin plazo o sin tooltip; el chip sin medir o sin el tope; la capa

@@ -89,7 +89,7 @@ export function runCorreosTier(): { hard: number } {
   }
 
   // ── el pack se confirma con sus análisis, no como «1 análisis» ─────────────
-  if (!/const n = fp\.capacity \?\? 1;\s*return \{\s*productName: n === 1 \? '1 análisis' : `\$\{n\} análisis`,/.test(email)) F("1 · pago confirmado no toma los análisis de la capacidad del producto (el pack dice «1 análisis»)");
+  if (!/const n = fp\.capacity \?\? 1;\s*return \{\s*productName: n === 1 \? '1 crédito' : `\$\{n\} créditos`,/.test(email)) F("1 · pago confirmado no toma los créditos de la capacidad del producto (el pack dice «1 crédito»)");
   if (PROHIBIDO.test(email)) F("3 · email.ts todavía promete algo que el informe de hoy no tiene (escenarios de salida, refinanciamiento, IA)");
 
   // ── 4 · las etiquetas: todo pasa por enviarCorreo ───────────────────────────

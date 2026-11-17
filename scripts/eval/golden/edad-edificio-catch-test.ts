@@ -9,7 +9,7 @@
 //       de 75 años», con «Edificio de 1951, según la ficha.»), en renta larga y corta.
 //   3 · LA EDAD DEL AVISO: la ficha leída al tocar, o la de otro aviso del edificio (la fuente es «edificio» solo si la dio OTRO
 //       aviso), con el año y la fuente guardados en `origenAviso`; sin año, por qué: la ficha se leyó y no lo dice, o no se pudo
-//       leer (tope, error, bloqueo o sin enlace). Las dos rutas de «Analizar este» lo cablean.
+//       leer (tope, error, bloqueo o sin enlace). Las dos rutas de «Ver este depto» lo cablean.
 //   4 · LA NOTA DICE LA VERDAD: «La publicación no dice la antigüedad; Franco supuso 25 años.» o «No pudimos leer la antigüedad;
 //       Franco supuso 25 años.», sin «lo más prudente»; los informes de antes leen «no dice» (los 44 tuvieron su ficha leída).
 // Verificado EN ROJO por mutación (acta al pie). Corre dentro del QUICK. 0 tokens, sin base.
@@ -191,7 +191,7 @@ export async function runEdadEdificioTier(): Promise<{ hard: number }> {
   if (!/body\.origenAviso = \{[^}\n]*\.\.\.camposDeEdad\(antiguedad\) \};/.test(servidor)) F("3 · el informe de renta larga no guarda el año, la fuente ni el motivo");
   for (const [p, nombre] of [["src/app/api/lo-que-sigue/guia/analizar/route.ts", "renta larga"], ["src/app/api/semanal/analizar-str/route.ts", "renta corta"]] as const) {
     const s = codigo(p);
-    if (!/lecturaAnio = lecturaAnioDe\(c\.lectura\);/.test(s) || !/antiguedadDelAviso\(admin, aviso, lecturaAnio\)/.test(s)) F(`3 · «Analizar este» de ${nombre} no le pasa la lectura de la ficha a la edad`);
+    if (!/lecturaAnio = lecturaAnioDe\(c\.lectura\);/.test(s) || !/antiguedadDelAviso\(admin, aviso, lecturaAnio\)/.test(s)) F(`3 · «Ver este depto» de ${nombre} no le pasa la lectura de la ficha a la edad`);
   }
   const rutaStr = codigo("src/app/api/semanal/analizar-str/route.ts");
   if (!/body\.origenAviso = \{[^\n]*\.\.\.camposDeEdad\(antiguedad\) \};/.test(rutaStr)) F("3 · el informe de renta corta no guarda el año, la fuente ni el motivo");

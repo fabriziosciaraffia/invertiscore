@@ -3,7 +3,7 @@
 //
 //   1 · LA TASA ELEGIDA SE VE: en Filtros («Tu financiamiento»: «La de hoy (X %)» y de 3,0 % a 6,0 %, de a 0,25; sin cuenta,
 //       cerrada y pide registro), en «¿Cómo se calcula?» («Ahora el mapa calcula con tu tasa, 4,5 %; la de hoy es 4,07 %.»),
-//       en el pop-up de «Analizar este» (la línea y «Cambiar», con el veredicto recalculado antes de cobrar) y en la portada
+//       en el pop-up de «Ver este depto» (la línea y «Cambiar», con el veredicto recalculado antes de cobrar) y en la portada
 //       del informe que sale de ahí («Calculado con tu tasa, 4,5 % (tasa promedio sistema financiero: 4,07 %)»).
 //   2 · UNA TASA NUEVA SE CALCULA Y SE GUARDA CON SU CLAVE: nada sale de la noche; lo calculado va a `combos` con la tasa en
 //       la clave («20-30-t4.5»), 24 horas; el crédito se hace con ella y la «de mercado» sigue siendo la del motor.

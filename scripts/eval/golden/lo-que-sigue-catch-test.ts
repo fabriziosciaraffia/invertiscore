@@ -223,7 +223,7 @@ export function runLoQueSigueTier(): { hard: number } {
   // la cuenta nueva corre desde el registro, así que a veces quedaban menos. Reemplaza al acta del 08-oct-2026 («Vence en
   // 24 horas.», sin la hora). El predicado viejo exigía la frase literal: se reescribe, no se afloja. Verificado en ROJO
   // en DATOS-Y-PLATA §8: el texto fijo de vuelta y el ticket sin `cuandoVence`.
-  if (TICKET_PACK.despedida("mañana a las 11:17") !== "Vence mañana a las 11:17." || TICKET_PACK.despedidaAhorro("$15.000") !== "Son $15.000 menos en tus próximos tres análisis. ¿La dejas pasar?") F("5 · la despedida no dice la hora real («Vence mañana a las 11:17.»), en tuteo");
+  if (TICKET_PACK.despedida("mañana a las 11:17") !== "Vence mañana a las 11:17." || TICKET_PACK.despedidaAhorro("$15.000") !== "Son $15.000 menos en tus próximos tres deptos. ¿La dejas pasar?") F("5 · la despedida no dice la hora real («Vence mañana a las 11:17.»), en tuteo");
   if (!/<p className="lqs-despedida-t">\{TICKET_PACK\.despedida\(cuandoVence\(createdAt\)\)\}<\/p>/.test(sinComentarios(leer("src/components/lo-que-sigue/TicketPack.tsx")))) F("5 · el ticket no dice la despedida con la hora real del vencimiento");
   if ("fechaVencimiento" in OfertaPack) F("5 · queda `fechaVencimiento`, que ya no lee nadie");
   // Las frases aprobadas, literales (30-sep-2026; el banner y el ticket, del 08-oct-2026).
@@ -233,12 +233,12 @@ export function runLoQueSigueTier(): { hard: number } {
 // ⚠ ACTA (16-oct-2026, decisión de Fabrizio, goal «la puerta B») · el «cuándo» renombrado en todos lados: «Ya» desaparece,
   // va «Quiero comprar ya» (el valor guardado sigue siendo 'ya'; el mismo día se llamó «Estoy listo para comprar»). Lo fija también el tier PUERTA-B §7.
   if (ESTAS_DENTRO.titular !== "Estás dentro." || ESTAS_DENTRO.cuando !== "¿Cuándo piensas comprar?" || ESTAS_DENTRO.horizontes.map((h) => h.texto).join("|") !== "Quiero comprar ya|En los próximos meses|Solo estoy mirando") F("5 · «Estás dentro» no es el aprobado");
-  if (TICKET_PACK.pestana("$14.990", "21:04") !== "3 análisis por $14.990 · hasta las 21:04" || TICKET_PACK.boton("$14.990") !== "Comprar por $14.990") F("5 · la pestaña o el botón del ticket no son los aprobados");
-  if (TICKET_PACK.vencimiento("hoy a las 21:04") !== "Solo para usuarios nuevos, en este informe · hasta hoy a las 21:04 · si te vas, guarda el enlace") F("5 · el vencimiento del ticket no es el aprobado");
+  if (TICKET_PACK.pestana("$14.990", "21:04") !== "3 créditos por $14.990 · hasta las 21:04" || TICKET_PACK.boton("$14.990") !== "Comprar por $14.990") F("5 · la pestaña o el botón del ticket no son los aprobados");
+  if (TICKET_PACK.vencimiento("hoy a las 21:04") !== "Solo para usuarios nuevos, en este depto · hasta hoy a las 21:04 · si te vas, guarda el enlace") F("5 · el vencimiento del ticket no es el aprobado");
   // (30-sep-2026) El copy nuevo de Fabrizio, con la guía de búsqueda debajo; sin guía, Buscar otro dice la de antes.
   if (DESPUES_DE_PAGAR.fraseVeredicto["BUSCAR OTRA"] !== "Mismo pie, mismo plazo. Abajo, deptos parecidos ya revisados con tus números." || DESPUES_DE_PAGAR.fraseVeredicto["AJUSTA SUPUESTOS"] !== "Compara y mira si alguno conviene sin negociar, y así tienes con qué presionar." || DESPUES_DE_PAGAR.fraseVeredicto.COMPRAR !== "Compara y mira si este sigue siendo el mejor." || DESPUES_DE_PAGAR.buscarSinGuia !== "Mismo pie, mismo plazo. Solo falta el próximo depto.") F("5 · la frase por veredicto de después de pagar no es la aprobada");
-  if (`${DESPUES_DE_PAGAR.titular(3)} ${DESPUES_DE_PAGAR.cuerpo}` !== "Tienes 3 análisis. El próximo es más fácil: tus números del primer informe ya están cargados.") F("5 · después de pagar no dice «Tienes 3 análisis…»");
-  if (CORREO_RECORDATORIO.asunto !== "Te quedan 3 análisis, con tus números ya cargados.") F("5 · el asunto del correo no es el aprobado");
+  if (`${DESPUES_DE_PAGAR.titular(3)} ${DESPUES_DE_PAGAR.cuerpo}` !== "Tienes 3 créditos. El próximo es más fácil: tus números del primer depto ya están cargados.") F("5 · después de pagar no dice «Tienes 3 análisis…»");
+  if (CORREO_RECORDATORIO.asunto !== "Te quedan 3 créditos, con tus números ya cargados.") F("5 · el asunto del correo no es el aprobado");
   for (const f of ["src/components/lo-que-sigue/BannerRegistro.tsx", "src/components/lo-que-sigue/EstasDentro.tsx", "src/components/lo-que-sigue/DespuesDePagar.tsx", "src/components/lo-que-sigue/TicketPack.tsx", "src/app/comparar/comparar-vista.tsx"]) {
     // El texto visible sale de copy.ts: ni voseo ni literales sueltos en JSX.
     const s = sinComentarios(leer(f));
@@ -320,7 +320,7 @@ export function runLoQueSigueTier(): { hard: number } {
     ] as const) if (!re.test(sinComentarios(leer(f)))) F(`9 · ${f} no lleva la modalidad del informe hasta el evento de después de pagar`);
     if (leerRetornoPack(sp("order=x&a=11111111-2222-3333-4444-555555555555")) !== null) F("pago · un retorno que no es del pack muestra la pantalla del pack");
     const ret = sinComentarios(leer("src/app/payments/return/page.tsx"));
-    // (01-oct-2026) Con guía (renta larga) «Tienes N análisis. Empieza por estos.» es la guía; sin ella, DespuesDePagar.
+    // (01-oct-2026) Con guía (renta larga) «Tienes N créditos. Empieza por estos.» es la guía; sin ella, DespuesDePagar.
     // (02-oct-2026) Solo con el pago verificado (`paid`): sin sesión ni firma, la pantalla de entrar.
     if (!/const packPagado = retornoPack && paymentStatus === "paid" \? packInfo : null;/.test(ret) || !/\{packPagado && \(\s*hayGuia\(packPagado\.modalidad\) \? \(\s*<GuiaBusqueda[\s\S]{0,600}?\) : \(\s*<DespuesDePagar/.test(ret) || !/\{!retornoPack && paymentStatus === "paid" && !redirecting && \(/.test(ret)) F("pago · después de pagar el pack se muestra el saldo en vez de «Tienes 3 análisis»");
   }

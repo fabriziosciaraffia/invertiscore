@@ -9,7 +9,7 @@
 //     solo el bloque largo).
 //
 //   1 · LA CUENTA SIN SELECCIÓN Y UN DEPTO DEL RESPALDO: primerosDeLaCuenta trae los de la noche sin token y cada tarjeta
-//       tiene «Analizar este», como respaldo (comoAnalizarPrimero); con su fila del día, por el token.
+//       tiene «Ver este depto», como respaldo (comoAnalizarPrimero); con su fila del día, por el token.
 //   2 · EL RESPALDO SE ANALIZA DE VERDAD: la tarjeta pide `respaldo: true` sin token; la ruta lo acepta con la validación de
 //       Explorar (las listas del pop-up y el origen sintético) y lo cuenta como la selección; sin saldo, la compra vuelve al
 //       depto por Explorar, que lo analiza solo.
@@ -20,7 +20,7 @@
 //       las tarjetas; el dashboard lo dibuja con esos deptos.
 //
 // ACTA DE MUTACIONES (28-oct-2026): el tier se escribió primero y salió ROJO sobre el código del 28-oct («ve 1 depto(s) del
-// respaldo sin "Analizar este"»). Después, cada una corrida y devuelta: M1 el botón exige el token → ROJO §1 · M2 la
+// respaldo sin "Ver este depto"»). Después, cada una corrida y devuelta: M1 el botón exige el token → ROJO §1 · M2 la
 // tarjeta del respaldo pide con `semanal` → ROJO §2 · M3 la ruta no acepta el respaldo → ROJO §2 · M4 el respaldo cuenta
 // como Explorar → ROJO §2 · M5 la ruta no arma el mapa de la casa → ROJO §3 · M6 el mapa lee solo el bloque largo → ROJO
 // §4 · M7 el segundo bloque vuelve a empezar en 1 → ROJO §4 · M8 el depto clicado no manda el orden → ROJO §4.
@@ -85,7 +85,7 @@ function baseFalsa(rpcs: Record<string, (args: Fila) => Fila[]> = {}) {
 }
 
 export async function runRespaldoMapaTier(): Promise<{ hard: number }> {
-  console.log("\n─── TIER RESPALDO-MAPA (toda tarjeta del dashboard con «Analizar este»; el mapa con el bloque que tenga la persona · 0 tokens) ───");
+  console.log("\n─── TIER RESPALDO-MAPA (toda tarjeta del dashboard con «Ver este depto»; el mapa con el bloque que tenga la persona · 0 tokens) ───");
   const fallas: string[] = [];
   const F = (m: string) => fallas.push(m);
   const posthog = process.env.NEXT_PUBLIC_POSTHOG_KEY;
@@ -104,7 +104,7 @@ export async function runRespaldoMapaTier(): Promise<{ hard: number }> {
       const d = await primerosDeLaCuenta(admin, "u-vieja", ahora);
       if (d.fuente !== "noche" || d.items.length !== 1 || d.token !== null) F(`1 · el fixture no es el respaldo sin fila del día (fuente ${d.fuente}, ${d.items.length} deptos, token ${d.token})`);
       const sinBoton = d.items.filter((it) => !puedeAnalizarPrimero(d, it));
-      if (sinBoton.length > 0) F(`1 · la cuenta sin selección ve ${sinBoton.length} depto(s) del respaldo sin «Analizar este»`);
+      if (sinBoton.length > 0) F(`1 · la cuenta sin selección ve ${sinBoton.length} depto(s) del respaldo sin «Ver este depto»`);
       if (d.items.some((it) => comoAnalizarPrimero(d, it) !== "respaldo")) F("1 · un depto del respaldo no se analiza como respaldo");
       const combo = { piePct: 20, plazoAnios: 25 };
       if (comoAnalizarPrimero({ token: "t", combinacion: combo }, { enSeleccion: true }) !== "seleccion" || comoAnalizarPrimero({ token: null, combinacion: combo }, { enSeleccion: false }) !== "respaldo"
@@ -181,7 +181,7 @@ export async function runRespaldoMapaTier(): Promise<{ hard: number }> {
     console.log(`  ✗ RESPALDO-MAPA · ${fallas.length} falla(s):`);
     for (const f of fallas) console.log(`     · ${f}`);
   } else {
-    console.log("  ✓ VERDE — toda tarjeta del dashboard tiene «Analizar este», también las del respaldo (que se analiza como un aviso evaluado y cuenta como la selección); el respaldo de la casa trae su mapa; el mapa dibuja el bloque que tenga la persona, numerado como las tarjetas");
+    console.log("  ✓ VERDE — toda tarjeta del dashboard tiene «Ver este depto», también las del respaldo (que se analiza como un aviso evaluado y cuenta como la selección); el respaldo de la casa trae su mapa; el mapa dibuja el bloque que tenga la persona, numerado como las tarjetas");
   }
   return { hard: fallas.length };
 }

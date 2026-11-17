@@ -250,7 +250,7 @@ export async function runPagoSinSesionTier(): Promise<{ hard: number }> {
 //       no corta en «otra cuenta» · P26 «Entrar con otro correo» sin cerrar la sesión.
 //   6 · P19 el STR manda «listo» también en AMBAS (duplicado con el LTR) · P20 la línea del código cuelga de la
 //       guía (el pack de renta corta queda sin ella).
-//   7 · P21 «3 análisis · $14.990» en DespuesDePagar · P22 PACK_PRECIO_CLP en GuiaBusqueda · P23
+//   7 · P21 «3 créditos · $14.990» en DespuesDePagar · P22 PACK_PRECIO_CLP en GuiaBusqueda · P23
 //       FLOW_PRODUCTS.pack3.amount en /cuenta · P24 la lista blanca crece.
 
 if (require.main === module) {

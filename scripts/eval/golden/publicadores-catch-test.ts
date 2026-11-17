@@ -3,7 +3,7 @@
 //   1 · UN AVISO DEL LISTADO SIN SU TIPO cuando la URL lo trae: la fila de cada noche (propertyToRow, la que escriben el pase
 //       diario y la obra nueva) lleva `publicador_tipo` de la URL —corredor, dueño, inmobiliaria—, y el upsert no lo borra
 //       cuando una fuente no lo trae.
-//   2 · UNA FICHA LEÍDA SIN SU PUBLICADOR GUARDADO cuando el dato venía: todo 200 de leerFicha (la guía, «Analizar este»,
+//   2 · UNA FICHA LEÍDA SIN SU PUBLICADOR GUARDADO cuando el dato venía: todo 200 de leerFicha (la guía, «Ver este depto»,
 //       «Quiero verlo» y el relleno) llama a guardarPublicador con el `client` de la ficha —id, nombre, logo— y el tipo de su
 //       URL; sin `client`, igual queda leído (null). El almacén de verdad lo escribe en avisos_publicador y publicadores, y de
 //       un dueño directo no guarda el nombre. La forma real de la ficha (capturada el 12-nov-2026) se lee.

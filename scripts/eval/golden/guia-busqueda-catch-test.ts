@@ -7,11 +7,11 @@
 //   2 · LA LÍNEA DEL TICKET NO SALE SIN LA GUÍA: el ticket la dice solo donde la guía existe, con el
 //       mismo predicado (`hayGuia`) que la monta después de pagar, y la guía tiene su ruta.
 //   3 · LOS RESGUARDOS DE LA FICHA: un GET sin seguir redirecciones, tope global por hora, sin reintentos, el
-//       año compartido por edificio, por el proxy; solo la guía y «Analizar este» entran por esa puerta.
+//       año compartido por edificio, por el proxy; solo la guía y «Ver este depto» entran por esa puerta.
 //   4 · EL CRÉDITO SE DESCUENTA UNA SOLA VEZ por persona y aviso: doble clic, reintento o falla a mitad.
 //   5 · EL ORDEN: si ninguno conviene, primero MÁS PLAZO (30 años) y después MÁS PIE (hasta tres escalones
 //       dentro del tope); solo los que convienen, hasta tres, el radio más chico; los sospechosos no entran.
-//   7 · DESPUÉS DE PAGAR, UNA IDEA (01-oct-2026): «Tienes 3 análisis. Empieza por estos.», la frase de la
+//   7 · DESPUÉS DE PAGAR, UNA IDEA (01-oct-2026): «Tienes 3 créditos. Empieza por estos.», la frase de la
 //       guía, los chips, las tarjetas y una línea para analizar otro depto con los números cargados. Sin el
 //       bloque de color ni la frase por veredicto. Las tarjetas en Inter, sin mono ni mayúsculas.
 //   8 · QUIEN PAGÓ SIN CUENTA escribe el código en la misma tarjeta y el informe sale al entrar, sin salir
@@ -23,7 +23,7 @@
 //  10 · «QUIERO VERLO» AUTOMÁTICO (01-oct-2026): el aviso le llega a la persona al instante, una sola vez
 //       por interés, nunca si el aviso se despublicó o no se pudo chequear; nada sale a hola@; la vista del
 //       admin es solo lectura.
-//  11 · EL SALDO REAL (02-oct-2026): «Tienes N análisis. Empieza por estos.» y «usa 1 de tus N» con el saldo de
+//  11 · EL SALDO REAL (02-oct-2026): «Tienes N créditos. Empieza por estos.» y «usa 1 de tus N» con el saldo de
 //       la cuenta; en cero lo dice; sin saldo conocido no inventa un número; nada de eso sin el pago verificado.
 //  12 · LA GUÍA CON LLAVE (02-oct-2026): GET /api/lo-que-sigue/guia exige la sesión del dueño del informe o la
 //       firma de un pago PAGADO de ESE informe, antes de leer o calcular nada.
@@ -90,16 +90,16 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
   // ── 1 · el vocabulario ──────────────────────────────────────────────────────
   const aprobado: Array<[string, string]> = [
     // 02-oct-2026: el título y «usa 1 de tus N» con el saldo real (§11 fija los casos 0, 1 y sin saldo).
-    [GUIA_SALDO.titulo(3), "Tienes 3 análisis. Empieza por estos."],
+    [GUIA_SALDO.titulo(3), "Tienes 3 créditos. Empieza por estos."],
     // ⚠ ACTA (05-nov-2026, goal de Fabrizio, auditoría de promesas parte 3: «"Publicados hoy" solo si se vio en las últimas 24 h»)
     // · la guía muestra avisos vistos en la semana cuya ficha Franco revisó al armarla: «que siguen publicados» es lo que se sabe.
-    [GUIA.cuerpo, "Deptos que siguen publicados, parecidos y cercanos al que analizaste. Franco los revisó con tu pie y tu plazo: estos son los mejores."],
+    [GUIA.cuerpo, "Deptos que siguen publicados, parecidos y cercanos al que viste. Franco los revisó con tu pie y tu plazo: estos son los mejores."],
     [GUIA_SALDO.usaUno(3) ?? "", "usa 1 de tus 3"],
     [`${GUIA.otroDepto} ${GUIA.otroDeptoEnlace}`, "¿Tienes otro depto en mente? Analízalo con tus números ya cargados"],
     [GUIA.ajustada, "Ajustamos tu pie y tu plazo porque ninguno calzaba con esa combinación; estos son los mejores."],
     [GUIA.ninguno, "Ninguno conviene, ni con más plazo ni con más pie. Mejor sigue buscando en otra zona."],
-    [GUIA.analizar, "Analizar este"],
-    [GUIA.antiguedad, "Calculado con una antigüedad prudente de 25 años; el informe usa la real si el aviso la tiene."],
+    [GUIA.analizar, "Ver este depto"],
+    [GUIA.antiguedad, "Calculado con una antigüedad prudente de 25 años; los detalles usan la real si el aviso la tiene."],
     [INFORME_DE_AVISO.origen, "Este análisis sale de un aviso publicado."],
     // ⚠ ACTA (03-nov-2026, decisión de Fabrizio · goal «la edad del edificio», tier EDAD-EDIFICIO): la nota dice por qué se
     // supuso —la ficha se leyó y no trae el año, o no se pudo leer— y «lo más prudente» sale de la frase.
@@ -231,7 +231,7 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
   const srv = sinComentarios(leer("src/lib/guia/ficha-servidor.ts"));
   if ((srv.match(/\bfetch\(/g) ?? []).length !== 1 || !/redirect: "manual",/.test(srv) || !/dispatcher: proxyDispatcher,/.test(srv) || !/signal: AbortSignal\.timeout\(TIMEOUT_FICHA_MS\)/.test(srv) || /\bfor\s*\(|\bwhile\s*\(|reintent/i.test(srv)) F("3 · la bajada de la ficha no es UN pedido por el proxy, sin seguir redirecciones y con tiempo máximo");
   if (!/from\("lecturas_ficha"\)\.select\("id", \{ count: "exact", head: true \}\)\.gte\("leido_at", desde\)/.test(srv)) F("3 · el tope por hora no cuenta todas las lecturas (bitácora lecturas_ficha)");
-  // «Analizar este» tiene dos puertas desde el 14-oct-2026: la de renta larga (la guía y el semanal) y la de renta corta
+  // «Ver este depto» tiene dos puertas desde el 14-oct-2026: la de renta larga (la guía y el semanal) y la de renta corta
   // del semanal (/api/semanal/analizar-str), con la misma red: la ficha releída antes de medir y de cobrar.
   const ANALIZAR_ESTE = ["src/app/api/lo-que-sigue/guia/analizar/route.ts", "src/app/api/semanal/analizar-str/route.ts"];
   for (const f of archivosSrc()) {
@@ -243,15 +243,15 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
     // su cupo de 30. Es el único cron que entra; lo fija este bloque y el tier PUBLICADORES §4. Antes la regla era «ningún
     // cron ni backfill entra»: se reescribe con su excepción, no se afloja.
     const RELLENO = "src/lib/publicadores/relleno-servidor.ts";
-    if (/\bbajarFicha\b|\bleerFicha\(|\bchequearPublicacion\(/.test(s) && !ANALIZAR_ESTE.includes(f) && f !== "src/app/api/lo-que-sigue/quiero-verlo/route.ts" && f !== RELLENO) F(`3 · ${f} entra a la ficha por fuera de la guía, de «Analizar este», de «Quiero verlo» y del relleno por Decodo`);
+    if (/\bbajarFicha\b|\bleerFicha\(|\bchequearPublicacion\(/.test(s) && !ANALIZAR_ESTE.includes(f) && f !== "src/app/api/lo-que-sigue/quiero-verlo/route.ts" && f !== RELLENO) F(`3 · ${f} entra a la ficha por fuera de la guía, de «Ver este depto», de «Quiero verlo» y del relleno por Decodo`);
     if (f === RELLENO && (/\bbajarFicha\b|proxyDispatcher/.test(s) || !/bajarFichaRelleno, new Date\(\), \{ tope: RITMO_RELLENO_POR_HORA \}/.test(s))) F("3 · el relleno entra a la ficha por la bajada de las personas o sin su propio tope");
     // ⚠ ACTA (03-nov-2026, goal «el negociado se comparte con su verdad completa») · la verificación de un negociado compartido
     // (src/lib/explorar/negociado-hoy.ts) arma el informe con `antiguedadDelAviso` SIN LECTURA —`{ leida: false, anio: null }`:
     // la guardada, la del edificio o los años supuestos—, sin entrar a la ficha. La regla es la de la lectura: la antigüedad
-    // DE UNA LECTURA de la ficha solo en «Analizar este»; sin lectura, la de lo guardado, en cualquier lado. Antes el predicado
+    // DE UNA LECTURA de la ficha solo en «Ver este depto»; sin lectura, la de lo guardado, en cualquier lado. Antes el predicado
     // prohibía la llamada entera, que era la forma de la regla y no la regla.
     const conLectura = [...s.matchAll(/antiguedadDelAviso\(([^;]*?)\)/g)].filter((m) => !/,\s*\{ leida: false, anio: null \}\s*$/.test(m[1]));
-    if (conLectura.length && !ANALIZAR_ESTE.includes(f)) F(`3 · ${f} lee la antigüedad de la ficha y no es «Analizar este»`);
+    if (conLectura.length && !ANALIZAR_ESTE.includes(f)) F(`3 · ${f} lee la antigüedad de la ficha y no es «Ver este depto»`);
   }
   const claude = leer("CLAUDE.md");
   // Acotado al párrafo de la excepción: otras frases de CLAUDE.md nombran el relleno de pasada y satisfarían un predicado suelto.
@@ -308,10 +308,10 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
     if (s1.estado !== "sin-cobro" || s2.estado !== "creado" || cobros !== 1) F("4 · sin análisis disponibles la fila queda tomada y bloquea el siguiente intento");
   }
   const ruta = sinComentarios(leer("src/app/api/lo-que-sigue/guia/analizar/route.ts"));
-  if (!/const r = await analizarAvisoDeGuia\(\{/.test(ruta) || /analizarUnaVez\(/.test(ruta) || !/return \{ ok: true, piezas: \{\s*async reclamar\(\)/.test(ruta) || (ruta.match(/ensureCreditCharged\(/g) ?? []).length !== 1 || /chargeAnalysisCredit/.test(ruta)) F("4 · «Analizar este» cobra por fuera del candado (analizarUnaVez)");
+  if (!/const r = await analizarAvisoDeGuia\(\{/.test(ruta) || /analizarUnaVez\(/.test(ruta) || !/return \{ ok: true, piezas: \{\s*async reclamar\(\)/.test(ruta) || (ruta.match(/ensureCreditCharged\(/g) ?? []).length !== 1 || /chargeAnalysisCredit/.test(ruta)) F("4 · «Ver este depto» cobra por fuera del candado (analizarUnaVez)");
   if (!/primary key \(user_id, aviso_id\)/.test(leer("supabase/migrations/20260930_guia_busqueda.sql"))) F("4 · guia_analisis no tiene la clave persona + aviso");
   if (!/if \(error\.code !== "23505"\) throw/.test(ruta)) F("4 · el reclamo no distingue «ya existe» de un error real");
-  if (!/const \{ data: \{ user \} \} = await supabase\.auth\.getUser\(\);\s*if \(!user\) return NextResponse\.json\(\{ error: "sin-sesion" \}, \{ status: 401 \}\);/.test(ruta) || !/o\.userId !== user\.id/.test(ruta)) F("4 · «Analizar este» corre sin sesión o sobre la guía de otro");
+  if (!/const \{ data: \{ user \} \} = await supabase\.auth\.getUser\(\);\s*if \(!user\) return NextResponse\.json\(\{ error: "sin-sesion" \}, \{ status: 401 \}\);/.test(ruta) || !/o\.userId !== user\.id/.test(ruta)) F("4 · «Ver este depto» corre sin sesión o sobre la guía de otro");
 
   // ── 5 · el orden: plazo antes que pie; solo los que convienen ───────────────
   const txt = (cs: Combinacion[]) => cs.map((c) => `${c.piePct}/${c.plazoAnios}`).join(" ");
@@ -367,8 +367,8 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
   if (!/\{GUIA\.otroDepto\}\{" "\}\s*<EnlaceCarga href=\{conSesion \? precarga : `\/registro\?next=\$\{encodeURIComponent\(precarga\)\}`\}/.test(gb)) F("7 · falta la línea «¿Tienes otro depto en mente? Analízalo con tus números ya cargados» al wizard precargado");
   // ⚠ ACTA (13-oct-2026) · con el estado de la casa entero (`estado`, para el aviso antes de gastar), la frase sale de él;
   // sin él, del número de siempre.
-  // ⚠ ACTA (16-oct-2026, goal «la puerta B») · con un regalo que se gasta primero, «usa tu análisis de regalo».
-  if (!/\{usaUno && <span className="guia-cr">· \{usaUno\}<\/span>\}/.test(gb) || !/const usaUno = estado \? \(estado\.tipo === "con" \? \(estado\.proximoRegalo \? "usa tu análisis de regalo" : GUIA_SALDO\.usaUno\(estado\.n\)\) : estado\.tipo === "regalo" \? "usa tu análisis de regalo" : null\) : GUIA_SALDO\.usaUno\(saldo\);/.test(gb)) F("7 · la tarjeta no dice «Analizar este · usa 1 de tus N» con el saldo real");
+  // ⚠ ACTA (16-oct-2026, goal «la puerta B») · con un regalo que se gasta primero, «usa tu crédito de regalo».
+  if (!/\{usaUno && <span className="guia-cr">· \{usaUno\}<\/span>\}/.test(gb) || !/const usaUno = estado \? \(estado\.tipo === "con" \? \(estado\.proximoRegalo \? "usa tu crédito de regalo" : GUIA_SALDO\.usaUno\(estado\.n\)\) : estado\.tipo === "regalo" \? "usa tu crédito de regalo" : null\) : GUIA_SALDO\.usaUno\(saldo\);/.test(gb)) F("7 · la tarjeta no dice «Ver este depto · usa 1 de tus N» con el saldo real");
   if (!/capturarLqs\(posthog, EVENTOS_LQS\.postPagoVisto, \{ analysisId, veredicto, modalidad: "ltr" \}/.test(gb)) F("7 · la pantalla de después de pagar dejó de medir post_pago_visto");
   const cssGuia = leer("src/components/guia/guia.css");
   const cssTarjetas = cssGuia.slice(0, cssGuia.indexOf("/* ── el informe que sale de un aviso"));
@@ -380,7 +380,7 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
   if (/router\.push\(`\/registro/.test(gb)) F("8 · quien pagó sin cuenta sale de la pantalla a registrarse");
   // ⚠ ACTA (03-nov-2026, «el informe en camino» en la guía, tier INFORME-EN-CAMINO) · con la sesión vencida al analizar, el pop-up (que ya
   // estaba en «Generando…») se cierra y la tarjeta pide el código: no queda el pop-up generando sin nada que generar.
-  if (!/if \(!sesion\) \{ setError\(null\); setRegistrando\(it\.avisoId\); return; \}/.test(gb) || !/if \(res\.status === 401\) \{ setInforme\(null\); setConfirmar\(null\); setConSesion\(false\); setGenerando\(null\); setRegistrando\(it\.avisoId\); break; \}/.test(gb)) F("8 · sin sesión «Analizar este» no pide el código en la tarjeta");
+  if (!/if \(!sesion\) \{ setError\(null\); setRegistrando\(it\.avisoId\); return; \}/.test(gb) || !/if \(res\.status === 401\) \{ setInforme\(null\); setConfirmar\(null\); setConSesion\(false\); setGenerando\(null\); setRegistrando\(it\.avisoId\); break; \}/.test(gb)) F("8 · sin sesión «Ver este depto» no pide el código en la tarjeta");
   // ⚠ ACTA (13-oct-2026, decisión de Fabrizio) · al entrar con el código sale el aviso antes de gastar de ESA tarjeta, y
   // su «Analizar» genera el informe (CORREOS-RECORRIDO §5). Antes generaba de una.
   if (!/\{registrando === it\.avisoId \? \(\s*<RegistroEnTarjeta ctx=\{ctx\} next=\{[^}]*\}[^>]*alEntrar=\{\(\) => \{ setConSesion\(true\); setRegistrando\(null\); setConfirmar\(\{ it, sin: false \}\); \}\} \/>/.test(gb)
@@ -439,7 +439,7 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
     if (pedidos !== 1) F("9 · un chequeo de hace más de 24 horas se da por bueno");
     mem = { estado: "publicado", chequeadoAt: ahora9 };
     await chequearPublicacion(av, "clic", alm, ok200, { forzar: true, ahora: ahora9 });
-    if (pedidos !== 2) F("9 · «Analizar este» no vuelve a chequear la ficha");
+    if (pedidos !== 2) F("9 · «Ver este depto» no vuelve a chequear la ficha");
     mem = null;
     const m4 = await chequearPublicacion(av, "guia", alm, ok200, { sinLeer: true, ahora: ahora9 });
     if (m4.estado !== "sin-chequeo" || pedidos !== 2) F("9 · sin presupuesto se lee igual, o un aviso sin chequear se da por publicado");
@@ -479,13 +479,13 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
     const p = await correr("publicado");
     if (p.estado !== "creado" || cobros !== 1) F("9 · un aviso publicado no se analiza");
     const ruta9 = sinComentarios(leer("src/app/api/lo-que-sigue/guia/analizar/route.ts"));
-    if (!/chequearPublicacion\(ficha, "clic", almacenPublicacion\(admin\), bajarFicha, \{ forzar: true \}\)/.test(ruta9)) F("9 · «Analizar este» no relee la ficha antes de cobrar");
+    if (!/chequearPublicacion\(ficha, "clic", almacenPublicacion\(admin\), bajarFicha, \{ forzar: true \}\)/.test(ruta9)) F("9 · «Ver este depto» no relee la ficha antes de cobrar");
     // ⚠ ACTA (15-oct-2026) · la respuesta sale por `salir`, que le suma el espejo de AnalizarEste (tier MEDICION-META).
     // ⚠ ACTA (16-oct-2026, goal «la puerta B») · sin informe de origen (origen sintético) no hay guía guardada que rearmar.
     if (!/if \(r\.estado === "despublicado"\) return salir\(NextResponse\.json\(\{ error: "despublicado" \}, \{ status: 410 \}\)\);/.test(ruta9) || !/if \(origen\.analysisId\) await admin\.from\("guias_calculadas"\)\.delete\(\)\.eq\("analysis_id", origen\.analysisId\)/.test(ruta9)) F("9 · un despublicado al clic no responde 410 o no obliga a rearmar la guía");
     if (GUIA.despublicado !== "Este aviso ya no está publicado.") F("9 · la tarjeta no dice «Este aviso ya no está publicado.»");
     // ⚠ ACTA (03-nov-2026, «el informe en camino» en la guía, tier INFORME-EN-CAMINO §4) · el despublicado lo dice primero el pop-up
-    // («Este depto se dio de baja recién. No se usó ningún análisis.»); al cerrarlo, la tarjeta lo dice y la guía se rearma sin él.
+    // («Este depto se dio de baja recién. No se usó ningún crédito.»); al cerrarlo, la tarjeta lo dice y la guía se rearma sin él.
     const cierraGuia = gb.slice(Math.max(0, gb.indexOf("function cerrarInforme(")), gb.indexOf("function reintentarInforme("));
     if (!/if \(res\.status === 410 && d\.error === "despublicado"\) \{ fallar\("despublicado"\); break; \}/.test(gb) || !/const despublicado = informe\?\.paso === "fallo" && informe\.motivo === "despublicado";/.test(cierraGuia) || !/if \(despublicado && it\) \{ setError\(\{ avisoId: it\.avisoId, texto: GUIA\.despublicado \}\); void reemplazar\(\); \}/.test(cierraGuia)) F("9 · la tarjeta no dice que el aviso se despublicó, o la guía no lo reemplaza");
   }
@@ -543,7 +543,7 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
     // El copy del correo, palabra por palabra.
     const m = correoAvisoPedido({ nombre: "Camila Rojas", comuna: "Ñuñoa", url: "https://ejemplo.cl/aviso", veredicto: "COMPRAR", flujo: 12000 });
     const t = m.html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
-    if (m.subject !== "El depto de Ñuñoa que analizaste") F(`10 · el asunto cambió: «${m.subject}»`);
+    if (m.subject !== "El depto de Ñuñoa que viste") F(`10 · el asunto cambió: «${m.subject}»`);
     for (const frase of ["Hola, Camila:", "Acá está el aviso del depto que pediste.", "Ver el aviso", "Franco lo analizó con tu pie y tu plazo: Comprar, +$12.000 al mes.", "Antes de visitarlo, confirma con quien lo publica que sigue disponible y que el precio es el publicado.", "Franco"]) {
       if (!t.includes(frase)) F(`10 · el correo no dice «${frase}»`);
     }
@@ -575,17 +575,17 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
   // ── 11 · el saldo real, no «3» fijo (02-oct-2026) ───────────────────────────
   {
     const casos: Array<[number | null, string, string | null]> = [
-      [3, "Tienes 3 análisis. Empieza por estos.", "usa 1 de tus 3"],
-      [5, "Tienes 5 análisis. Empieza por estos.", "usa 1 de tus 5"],
-      [1, "Tienes 1 análisis. Empieza por estos.", "usa el último que te queda"],
-      [0, "Ya usaste tus análisis. Estos son los que mejor calzan contigo.", null],
-      [null, "Tus análisis ya están en tu cuenta. Empieza por estos.", "usa 1 de tus análisis"],
+      [3, "Tienes 3 créditos. Empieza por estos.", "usa 1 de tus 3"],
+      [5, "Tienes 5 créditos. Empieza por estos.", "usa 1 de tus 5"],
+      [1, "Tienes 1 crédito. Empieza por estos.", "usa el último que te queda"],
+      [0, "Ya usaste tus créditos. Estos son los que mejor calzan contigo.", null],
+      [null, "Tus créditos ya están en tu cuenta. Empieza por estos.", "usa 1 de tus créditos"],
     ];
     for (const [n, titulo, usa] of casos) {
       if (GUIA_SALDO.titulo(n) !== titulo) F(`11 · con saldo ${n} el título dice «${GUIA_SALDO.titulo(n)}», no «${titulo}»`);
       if (GUIA_SALDO.usaUno(n) !== usa) F(`11 · con saldo ${n} la tarjeta dice «${GUIA_SALDO.usaUno(n)}», no «${usa}»`);
     }
-    if (DESPUES_DE_PAGAR.titular(2) !== "Tienes 2 análisis." || DESPUES_DE_PAGAR.titular(0) !== "Ya usaste tus análisis." || /\d/.test(DESPUES_DE_PAGAR.titular(null))) F("11 · sin guía, el titular no dice el saldo real (o inventa un número sin saldo)");
+    if (DESPUES_DE_PAGAR.titular(2) !== "Tienes 2 créditos." || DESPUES_DE_PAGAR.titular(0) !== "Ya usaste tus créditos." || /\d/.test(DESPUES_DE_PAGAR.titular(null))) F("11 · sin guía, el titular no dice el saldo real (o inventa un número sin saldo)");
     if (!/saldo = null, pago = null(?:, enCasa)?(?:, estado)? \}: \{[^}]*saldo\?: number \| null; pago\?: LlavePago \| null(?:; enCasa\?: \{ titulo: string \})?(?:; estado\?: EstadoSaldo)? \}/.test(gb)) F("11 · GuiaBusqueda no recibe el saldo y la llave como props opcionales (rompe a quien la usa con sesión)");
     // ⚠ ACTA (05-nov-2026, auditoría de promesas parte 3: «"Abajo, deptos parecidos" solo si los hay») · cuando la guía cae a
     // `sinGuia` no mostró deptos, y DespuesDePagar lo sabe con `sinParecidos` (después del saldo).
@@ -702,7 +702,7 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
   // entregó y se abrió). El 19-oct a las 12:54 UTC volvió a tocar «Quiero verlo»: la ruta respondió «ya enviado» sin mandar
   // nada, y la pantalla dijo «Listo: te lo mandamos a fsm@sysinmobiliaria.cl», como si acabara de salir.
   {
-    const caso = { ok: true, ya: true, correo: "fsm@sysinmobiliaria.cl", enviadoAt: "2026-10-17T14:59:48.536+00:00", asunto: "El depto de Providencia que analizaste" };
+    const caso = { ok: true, ya: true, correo: "fsm@sysinmobiliaria.cl", enviadoAt: "2026-10-17T14:59:48.536+00:00", asunto: "El depto de Providencia que viste" };
     const ahora = new Date("2026-10-19T12:54:47Z");
     try {
       const e = estadoTrasRespuesta({ status: 200, cuerpo: caso });
@@ -711,7 +711,7 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
       if (sePuedeTocar({ tipo: "ya", correo: null, enviadoAt: null, asunto: null })) F("15 · después de «ya te lo mandamos» el botón se puede tocar");
       // Lo que se lee, palabra por palabra.
       const dice = INFORME_DE_AVISO.ya(caso.correo, cuandoSeEnvio(caso.enviadoAt, ahora), caso.asunto);
-      if (dice !== "Ya te lo mandamos el 17 de octubre a fsm@sysinmobiliaria.cl, con el asunto «El depto de Providencia que analizaste».") F(`15 · el toque repetido dice «${dice}»`);
+      if (dice !== "Ya te lo mandamos el 17 de octubre a fsm@sysinmobiliaria.cl, con el asunto «El depto de Providencia que viste».") F(`15 · el toque repetido dice «${dice}»`);
       // La fecha, en la hora de Chile: hoy, ayer o el día.
       if (cuandoSeEnvio("2026-10-19T12:06:53Z", ahora) !== "hoy" || cuandoSeEnvio("2026-10-18T15:00:00Z", ahora) !== "ayer") F("15 · lo que salió hoy o ayer no se dice «hoy» o «ayer»");
       if (cuandoSeEnvio("2026-10-18T02:00:00Z", ahora) !== "el 17 de octubre") F("15 · la fecha del envío sale en hora UTC y no en la de Chile (02:00 UTC del 18 es el 17 en Santiago)");

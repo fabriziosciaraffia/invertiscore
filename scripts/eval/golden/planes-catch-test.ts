@@ -3,7 +3,7 @@
 // ============================================================================
 //   La oferta (decisión de Fabrizio, 19-oct-2026; src/lib/planes.ts):
 //   1 · CUATRO PRODUCTOS Y NADA MÁS: el suelto $9.990 (en segundo plano), el ticket de 24 h 3 × $14.990, el pack
-//       3 × $19.990 y el Plan Franco, 20 análisis al mes por $39.990 (el producto plan10_mensual de Flow: mismo planId,
+//       3 × $19.990 y el Plan Franco, 20 créditos al mes por $39.990 (el producto plan10_mensual de Flow: mismo planId,
 //       mismo monto). El plan de 50, el ilimitado, los anuales y el informe completo de $4.990 dejan de venderse.
 //   2 · LO RETIRADO NO SE COMPRA, NI ENTRANDO DIRECTO: payments/create, subscriptions/create y register-callback lo
 //       rechazan; el checkout no lo muestra; el carrito abandonado no lo recupera; el anexo AMBAS ya no cobra el
@@ -47,7 +47,7 @@ export function runPlanesTier(): { hard: number } {
   if (FLOW_PRODUCTS.pack3.amount !== 14_990 || PACK_PRECIO_CLP !== 14_990 || FLOW_PRODUCTS.pack3.capacity !== 3) F("1 · el ticket de 24 h no es 3 por $14.990");
   if (FLOW_PRODUCTS.tres_analisis.amount !== 19_990 || TRES_PRECIO_CLP !== 19_990 || FLOW_PRODUCTS.tres_analisis.capacity !== 3) F("1 · el pack no es 3 por $19.990");
   const plan = FLOW_PRODUCTS.plan10_mensual;
-  if (PRODUCTO_PLAN !== "plan10_mensual" || plan.amount !== 39_990 || plan.capacity !== 20 || PLAN_ANALISIS_MES !== 20 || PLAN_PRECIO_CLP !== 39_990) F("1 · el Plan Franco no es 20 análisis al mes por $39.990 (sobre plan10_mensual)");
+  if (PRODUCTO_PLAN !== "plan10_mensual" || plan.amount !== 39_990 || plan.capacity !== 20 || PLAN_ANALISIS_MES !== 20 || PLAN_PRECIO_CLP !== 39_990) F("1 · el Plan Franco no es 20 créditos al mes por $39.990 (sobre plan10_mensual)");
   if (plan.planId !== "franco_plan10_mensual" || plan.billing !== "monthly" || plan.plan !== "plan10" || plan.isUnlimited) F("1 · el Plan Franco cambió de planId o de plan persistido: la suscripción de quien ya lo tiene no renovaría a 20");
   const seVenden = (Object.keys(FLOW_PRODUCTS) as Array<keyof typeof FLOW_PRODUCTS>).filter((k) => seVende(k)).sort().join(",");
   if (seVenden !== ["pack3", "plan10_mensual", "single", "tres_analisis"].join(",")) F(`1 · lo que se vende no son los cuatro productos: ${seVenden}`);
@@ -88,7 +88,7 @@ export function runPlanesTier(): { hard: number } {
   if (!/if \(granted && match\?\.key === PRODUCTO_PLAN && userEmail\) \{\s*try \{[\s\S]{0,400}correspondeAvisoAumento\([\s\S]{0,300}sendPlanAumentoEmail\(/.test(pcg) || !/\} catch \(e\) \{\s*console\.error\("\[processSubscriptionCharge\] aviso del aumento falló:", e\);/.test(pcg))
     F("3 · el correo del aumento no sale solo cuando el cobro otorgó, o puede romper el cobro");
   const correo = correoPlanAumento({ nombre: "Camila", precio: "$39.990" });
-  if (correo.subject !== "Tu plan ahora trae 20 análisis al mes" || !correo.html.includes("20 análisis al mes, el doble, al mismo precio: $39.990") || !correo.html.includes("/analisis/nuevo-v4"))
+  if (correo.subject !== "Tu plan ahora trae 20 créditos al mes" || !correo.html.includes("20 créditos al mes, el doble, al mismo precio: $39.990") || !correo.html.includes("/analisis/nuevo-v4"))
     F(`3 · el correo no lo cuenta como aumento al mismo precio: ${correo.subject}`);
   if (!/"plan_aumento"/.test(leer("src/lib/medicion-correo.ts")) || !/id: "plan_aumento"/.test(leer("src/lib/email/catalogo.ts"))) F("3 · el correo del aumento no se mide o no está en el catálogo de correos");
 
@@ -126,16 +126,17 @@ export function runPlanesTier(): { hard: number } {
   // LOS TEXTOS (19-oct-2026, segunda pasada de Fabrizio), exactos.
   const C = PLANES_COPY;
   const exactos4: Array<[string, string]> = [
-    [C.bajada, "Con cualquiera de los tres recibes cada semana los deptos que convienen según tu perfil. La diferencia es cuántos análisis tienes para los que te interesan."],
+    // ⚠ ACTA (17-nov-2026, decisión de Fabrizio: «de análisis a créditos») · la bajada explica qué es un crédito.
+    [C.bajada, "Franco funciona por créditos. Un crédito te da acceso a todos los detalles de un depto como inversión. Cada semana recibes deptos que te convienen según tu perfil, y los créditos te dan acceso a la información para que puedas invertir."],
     // ⚠ ACTA (05-nov-2026, goal de Fabrizio, auditoría de promesas parte 3) · «por cada amigo que invites» prometía de más: el
     // premio sale cuando el invitado hace su primer análisis, hasta 5, vigente 60 días (referido.ts › REGLA_REFERIDO).
-    [C.gratis.incluye.join(" | "), "Cada semana, los deptos que convienen según tu perfil | Un análisis gratis al crear tu cuenta | Un análisis más cuando un invitado hace su primer análisis (hasta 5, vigente 60 días)"],
-    [C.pack.nombre, "Pack de 3"], [C.pack.detalle, "Todo lo de Gratis, más 3 análisis"], [`${C.pack.precio} ${C.pack.unidad}`, "$19.990 pago único"],
+    [C.gratis.incluye.join(" | "), "Cada semana, los deptos que convienen según tu perfil | Un crédito gratis al crear tu cuenta | Un crédito más cuando un invitado usa su primer crédito (hasta 5, vigente 60 días)"],
+    [C.pack.nombre, "Pack de 3"], [C.pack.detalle, "Todo lo de Gratis, más 3 créditos"], [`${C.pack.precio} ${C.pack.unidad}`, "$19.990 pago único"],
     [C.pack.ahorro, "$6.663 cada uno, en vez de $9.990"], [C.pack.condicion, "No vencen"], [C.pack.boton, "Comprar el pack"],
-    [C.plan.detalle, "Todo lo de Gratis, más 20 análisis cada mes"], [`${C.plan.precio} ${C.plan.unidad}`, "$39.990 al mes"],
+    [C.plan.detalle, "Todo lo de Gratis, más 20 créditos cada mes"], [`${C.plan.precio} ${C.plan.unidad}`, "$39.990 al mes"],
     [C.plan.ahorro, "$2.000 cada uno, en vez de $9.990"],
     [C.plan.condicion, "Los que no uses se acumulan por un año. Cancelas cuando quieras"], [C.plan.boton, "Contratar el plan"],
-    [`${C.demo.antes} ${C.demo.enlace}`, "¿Quieres ver cómo es un análisis? Mira uno real"],
+    [`${C.demo.antes} ${C.demo.enlace}`, "¿Quieres ver qué te da un crédito? Mira un ejemplo real"],
   ];
   for (const [real, esperado] of exactos4) if (real !== esperado) F(`4 · «${real}» debía ser «${esperado}»`);
   if (/El informe de cada análisis/.test(JSON.stringify(C))) F("4 · vuelve «El informe de cada análisis»");
@@ -156,8 +157,8 @@ export function runPlanesTier(): { hard: number } {
   if (!/@media \(min-width: 768px\) \{ \.pl-detalle \{ min-height: 2\.7em; \} \}/.test(css)) F("4 · el precio del pack y el del plan quedan a distinta altura");
   // Sin describir qué trae el análisis; para eso, el demo.
   if (/veredicto|comparables|los números|proyecci|escenario/i.test(JSON.stringify(C) + pag)) F("4 · la página describe qué trae el análisis");
-  if (!/<p className="pl-nota" data-planes="demo">\s*\{C\.demo\.antes\} <EnlaceCarga href=\{C\.demo\.ruta\}>\{C\.demo\.enlace\}<\/EnlaceCarga>/.test(pag) || C.demo.ruta !== "/demo" || !existsSync(join(RAIZ, "src/app/demo/page.tsx"))) F("4 · bajo las tarjetas no está «Mira uno real» con el enlace al demo");
-  if (PLANES_COPY.plan.resumen !== "20 análisis al mes") F("4 · la cuenta no dice «20 análisis al mes»");
+  if (!/<p className="pl-nota" data-planes="demo">\s*\{C\.demo\.antes\} <EnlaceCarga href=\{C\.demo\.ruta\}>\{C\.demo\.enlace\}<\/EnlaceCarga>/.test(pag) || C.demo.ruta !== "/demo" || !existsSync(join(RAIZ, "src/app/demo/page.tsx"))) F("4 · bajo las tarjetas no está «Mira un ejemplo real» con el enlace al demo");
+  if (PLANES_COPY.plan.resumen !== "20 créditos al mes") F("4 · la cuenta no dice «20 créditos al mes»");
 
   // 5 · la cuenta
   const cta = sinComentarios(leer("src/app/cuenta/page.tsx"));
@@ -170,9 +171,9 @@ export function runPlanesTier(): { hard: number } {
   if (/rounded-lg border|bg-\[var\(--franco-card\)\] p-6|StatusBadge|font-mono/.test(cta)) F("5 · la cuenta vuelve a las tarjetas, las insignias o el mono: no es plana");
   const ruta = sinComentarios(leer("src/app/api/cuenta/correos/route.ts"));
   if (!/if \(!user\) return NextResponse\.json\(\{ error: "Sin sesión" \}, \{ status: 401 \}\);/.test(ruta) || !/const COLUMNA = \{ semanal: "semanal_baja_at", inmediato: "inmediato_baja_at" \} as const;/.test(ruta) || !/\[COLUMNA\[correo\]\]: body\.recibe \? null : new Date\(\)\.toISOString\(\)/.test(ruta) || !/upsert\(\{ user_id: user\.id,/.test(ruta)) F("5 · los correos de la cuenta no escriben lo mismo que el enlace de baja, o sin sesión");
-  if (nombrePlan("plan10", false) !== "Plan Franco" || nombrePlan("plan50", false) !== "Plan 50" || nombrePlan(null, true) !== "Plan Ilimitado" || etiquetaCompra("plan10_mensual") !== "Plan Franco" || etiquetaCompra("tres_analisis") !== "3 análisis") F("5 · el plan o las compras no se nombran como la oferta (o quien tiene un plan retirado no lo ve con su nombre)");
+  if (nombrePlan("plan10", false) !== "Plan Franco" || nombrePlan("plan50", false) !== "Plan 50" || nombrePlan(null, true) !== "Plan Ilimitado" || etiquetaCompra("plan10_mensual") !== "Plan Franco" || etiquetaCompra("tres_analisis") !== "3 créditos") F("5 · el plan o las compras no se nombran como la oferta (o quien tiene un plan retirado no lo ve con su nombre)");
   const dialogo = sinComentarios(leer("src/app/cuenta/cancel-dialog.tsx"));
-  if (/Pro|Free|signal-red\]? bg-transparent|border-signal-red/.test(dialogo) || CUENTA_COPY.cancelar.texto !== "No se renueva más. Los análisis que ya tienes siguen vigentes hasta que vencen.") F("5 · cancelar habla de «Pro» y «Free» o va en rojo");
+  if (/Pro|Free|signal-red\]? bg-transparent|border-signal-red/.test(dialogo) || CUENTA_COPY.cancelar.texto !== "No se renueva más. Los créditos que ya tienes siguen vigentes hasta que vencen.") F("5 · cancelar habla de «Pro» y «Free» o va en rojo");
 
   // 6 · voz
   const textos = [AUMENTO_COPY.asunto, AUMENTO_COPY.cuerpo("$39.990"), AUMENTO_COPY.acumulan, ...Object.values(PLANES_COPY).flatMap((v) => (typeof v === "string" ? [v] : Object.values(v).flatMap((x) => (Array.isArray(x) ? x : [String(x)])))), JSON.stringify(CUENTA_COPY)];

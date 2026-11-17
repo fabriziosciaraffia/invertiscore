@@ -248,7 +248,7 @@ export function runWizardInteriorTier(): { hard: number } {
   // Signal Red la tarjeta del CAMBIO de veredicto solo cuando EMPEORA («Con pie 10 % este depto da Ajustar.»: es atención
   // real) y el aviso de que no pudo recalcular (un error). Nada más del pop-up.
   const PERMITIDOS = new Set([".wz-cta", ".wz-aviso.fuerte", '.wz-input[aria-invalid="true"]', ".wz-modal-o .ov.sosp", ".wz-fe.wz-ilumina", ".wz-error", ".av-fallo", '.av-cambio[data-empeora="1"]', '.av-cambio[data-empeora="1"] b',
-    // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockups 3b y 4) · sin saldo, «No te quedan análisis.» grande en rojo y la tarjeta roja del ticket (mockup A).
+    // ⚠ ACTA (24-oct-2026, goal «Puerta B, parte 2», mockups 3b y 4) · sin saldo, «No te quedan créditos.» grande en rojo y la tarjeta roja del ticket (mockup A).
     ".av-sin-titulo", ".av-ticket"]);
   let rojos = 0;
   for (const regla of css.split("}")) {

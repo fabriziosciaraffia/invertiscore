@@ -45,11 +45,11 @@ export function runCompraTier(): { hard: number } {
 
   // ── 1 · LA PANTALLA DE COMPRA ──────────────────────────────────────────────
   const esperado: Array<[string, Parameters<typeof resumenCompra>[1], string]> = [
-    ["tres_analisis", {}, "Pack de 3 | $19.990 | pago único | 3 análisis que no vencen."],
-    ["plan10_mensual", {}, "Plan Franco | $39.990 | al mes | 20 análisis al mes. Los que no uses se acumulan por un año. Cancelas cuando quieras."],
-    ["single", {}, "1 análisis | $9.990 | pago único | Un análisis que no vence."],
-    ["single", { analysisId: "a", comuna: "Providencia" }, "Tu análisis en Providencia | $9.990 | pago único | El informe completo de este depto."],
-    ["pack3", { analysisId: "a" }, "Pack de 3 | $14.990 | pago único | 3 análisis que no vencen."],
+    ["tres_analisis", {}, "Pack de 3 | $19.990 | pago único | 3 créditos que no vencen."],
+    ["plan10_mensual", {}, "Plan Franco | $39.990 | al mes | 20 créditos al mes. Los que no uses se acumulan por un año. Cancelas cuando quieras."],
+    ["single", {}, "1 crédito | $9.990 | pago único | Un crédito que no vence."],
+    ["single", { analysisId: "a", comuna: "Providencia" }, "Los detalles de tu depto en Providencia | $9.990 | pago único | Todos los detalles de este depto."],
+    ["pack3", { analysisId: "a" }, "Pack de 3 | $14.990 | pago único | 3 créditos que no vencen."],
   ];
   for (const [k, o, txt] of esperado) {
     const r = resumenCompra(k, o);
@@ -124,7 +124,7 @@ export function runCompraTier(): { hard: number } {
   // PUERTA-B-RECORRIDO §5). La guía sigue con su `rutaCompra`. Las dos ramas caen en la pantalla de compra.
   const comprar = sinComentarios(leer("src/app/semanal/semanal-lista.tsx"));
   if (!/const comprar = \(href: string\) => \{ iniciarCarga\(claveActual\(\)\); router\.push\(href\); \};/.test(aviso) || !/onConfirmar=\{sin \? \(\) => comprar\(compras \? compras\.pack\.href : rutaCompra\) : \(\) => alAnalizar\(/.test(aviso) || !/secundario=\{sin && compras \? \{ label: compras\.suelto\.label, onClick: \(\) => comprar\(compras\.suelto\.href\), boton: true \} : undefined\}/.test(aviso)
-    || !rutaTres("semanal", { volver: "/dashboard?t=x" }).startsWith("/checkout?product=tres_analisis") || !RUTA_SUELTO_SEMANAL.startsWith("/checkout?") || !/compras=\{comprasDelDepto\(\{ token, avisoId: confirmar\.it\.avisoId, origen: origenCompra/.test(comprar)) F("3 · «Analizar este» sin saldo no cae en la pantalla de compra");
+    || !rutaTres("semanal", { volver: "/dashboard?t=x" }).startsWith("/checkout?product=tres_analisis") || !RUTA_SUELTO_SEMANAL.startsWith("/checkout?") || !/compras=\{comprasDelDepto\(\{ token, avisoId: confirmar\.it\.avisoId, origen: origenCompra/.test(comprar)) F("3 · «Ver este depto» sin saldo no cae en la pantalla de compra");
 
   // ── 4 · GRATIS ─────────────────────────────────────────────────────────────
   if (PLANES_COPY.gratis.boton !== "Empezar gratis" || PLANES_COPY.gratis.ruta !== "/deptos?desde=planes") F("4 · el botón de Gratis no dice «Empezar gratis» o no lleva a /deptos desde planes");
@@ -157,7 +157,7 @@ export function runCompraTier(): { hard: number } {
   const textos = [...Object.values(COMPRA).map((v) => (typeof v === "function" ? v("$1") : v)), JSON.stringify(RETORNO), DEPTOS_COPY.desdePlanes.antes, DEPTOS_COPY.desdePlanes.enlace, PLANES_COPY.gratis.boton];
   for (const t of textos) if (VOSEO.test(t)) F(`6 · voseo: «${t.slice(0, 80)}»`);
 
-  if (fallas.length === 0) console.log("  ✓ VERDE — una sola pantalla antes de Flow (sin sesión el correo y el código ahí mismo, con sesión solo pagar), sin pasar por /entrar; la vuelta con un botón, «Ver mis análisis» o «Reintentar»; «Analizar este» sin saldo a la misma pantalla; «Empezar gratis» a /deptos con su línea; entrar y el código, planos, con la misma lógica");
+  if (fallas.length === 0) console.log("  ✓ VERDE — una sola pantalla antes de Flow (sin sesión el correo y el código ahí mismo, con sesión solo pagar), sin pasar por /entrar; la vuelta con un botón, «Ver mis análisis» o «Reintentar»; «Ver este depto» sin saldo a la misma pantalla; «Empezar gratis» a /deptos con su línea; entrar y el código, planos, con la misma lógica");
   for (const f of fallas) console.log(`  ✗ ${f}`);
   return { hard: fallas.length };
 }
@@ -174,7 +174,7 @@ if (require.main === module) {
 //   sola aunque ya tenga el plan · C9 sigue sola dos veces · C10 al que tiene plan se le vende · C11 vuelve la tarjeta ·
 //   C12 sin lo que incluye · C13 el pack incluye otra cosa · C14 se vende lo retirado · C30 el pago no lo inicia el
 //   código (§1) · C15 la vuelta pagada con dos botones · C16 rechazado no reintenta · C17 reintentar pierde el origen ·
-//   C18 desde la semanal no vuelve a los deptos · C19 vuelve el ámbar (§2) · C20 «Analizar este» a otra pantalla (§3) ·
+//   C18 desde la semanal no vuelve a los deptos · C19 vuelve el ámbar (§2) · C20 «Ver este depto» a otra pantalla (§3) ·
 //   C21 gratis vuelve a «Crear mi cuenta» · C22 /deptos sin la línea · C23 «Analízalo gratis» a otro lado (§4) · C24 login
 //   vuelve a la tarjeta · C25 login cambia la lógica · C26 recuperar con otro título · C27 register con el pie de antes ·
 //   C29 serif fuera del título (§5) · C28 voseo (§6). 30/30 ROJO.

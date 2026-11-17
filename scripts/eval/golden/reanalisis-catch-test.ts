@@ -11,7 +11,7 @@
 //   2 · TODO PRECARGADO. El informe vuelve al wizard como respuestas (`respuestasDesdeInforme`), y armar el cuerpo con
 //       ellas da el MISMO cuerpo que el informe de origen (ida y vuelta, LTR y STR); la recomendación cambia solo el
 //       precio, el pie y el plazo. El wizard abre en el resumen y no ofrece el borrador.
-//   3 · EL AVISO ANTES DE GASTAR es el del semanal (`textoUso`): «Usa tu análisis de regalo.» / «Usa 1 de tus N
+//   3 · EL AVISO ANTES DE GASTAR es el del semanal (`textoUso`): «Usa tu crédito de regalo.» / «Usa 1 de tus N
 //       análisis.». Sin saldo, la compra del suelto con el depto y el precio, y al pagar, al informe.
 //   4 · EL INFORME NUEVO DICE ARRIBA «Analizado a UF X, el precio que Franco recomendó negociar» y enlaza al original.
 //       El marcador lo valida el servidor (de la misma cuenta, al precio recomendado); si la persona cambia el precio,
@@ -186,11 +186,11 @@ export function runReanalisisTier(): { hard: number } {
 
   // ── 3 · El aviso antes de gastar, el del semanal; sin saldo, la compra con el depto y el precio ──
   const avisos: Array<[Parameters<typeof usoDesdeTier>[0], string]> = [
-    [{ credits: 0, welcomeAvailable: true }, "Usa tu análisis de regalo."],
-    [{ credits: 1, proximoRegalo: true }, "Usa tu análisis de regalo."],
-    [{ credits: 3 }, "Usa 1 de tus 3 análisis."],
-    [{ credits: 3, welcomeAvailable: true }, "Usa 1 de tus 3 análisis."],
-    [{ credits: 1 }, "Usa tu último análisis."],
+    [{ credits: 0, welcomeAvailable: true }, "Usa tu crédito de regalo."],
+    [{ credits: 1, proximoRegalo: true }, "Usa tu crédito de regalo."],
+    [{ credits: 3 }, "Usa 1 de tus 3 créditos."],
+    [{ credits: 3, welcomeAvailable: true }, "Usa 1 de tus 3 créditos."],
+    [{ credits: 1 }, "Usa tu último crédito."],
   ];
   for (const [t, esperado] of avisos) if (textoUso(usoDesdeTier(t)) !== esperado) F(`3 · con ${JSON.stringify(t)} el aviso dice «${textoUso(usoDesdeTier(t))}», no «${esperado}»`);
   if (usoDesdeTier({ isUnlimited: true, credits: 0 }).tipo !== "plan" || usoDesdeTier({ isAdmin: true, credits: 0 }).tipo !== "plan" || usoDesdeTier({ credits: 0 }).tipo !== "sin") F("3 · el plan o el saldo en cero no se leen como tales");
@@ -206,14 +206,14 @@ export function runReanalisisTier(): { hard: number } {
   if (!/extra: Record<string, unknown> = \{\}/.test(conCredito) || !/postJson\("\/api\/analisis", \{ \.\.\.buildLtrPayload\(a, ctx\), \.\.\.extra \}\)/.test(conCredito) || !/postJson\("\/api\/analisis\/short-term", \{ \.\.\.buildStrPayload\(a, ctx\), \.\.\.extra \}\)/.test(conCredito)) F("3 · el envío con saldo no suma el marcador al cuerpo de una modalidad");
   if (!/extra: Record<string, unknown> = \{\}/.test(locked) || !/const payload = \{ \.\.\.\(mod === "str" \? buildStrPayload\(a, ctx\) : buildLtrPayload\(a, ctx\)\), \.\.\.extra \};/.test(locked)) F("3 · la compra sin saldo no suma el marcador al cuerpo");
   const compra = resumenCompra("single", { analysisId: NUEVO, comuna: "Providencia", reanalisis: { direccion: "Av. Providencia 1234", precioUF: 3131 } });
-  if (compra?.nombre !== "Tu análisis de Av. Providencia 1234" || compra?.incluye !== "El informe completo de este depto a UF 3.131, el precio que Franco recomendó negociar.") F(`3 · la compra no dice el depto y el precio («${compra?.nombre}» · «${compra?.incluye}»)`);
+  if (compra?.nombre !== "Los detalles de Av. Providencia 1234" || compra?.incluye !== "El informe completo de este depto a UF 3.131, el precio que Franco recomendó negociar.") F(`3 · la compra no dice el depto y el precio («${compra?.nombre}» · «${compra?.incluye}»)`);
   const sinMarca = resumenCompra("single", { analysisId: NUEVO, comuna: "Providencia" });
   if (sinMarca?.nombre === compra?.nombre || /recomendó/.test(sinMarca?.incluye ?? "")) F("3 · la compra de un análisis cualquiera habla del precio recomendado");
   const co = sinComentarios(leer("src/app/checkout/page.tsx"));
   if (!/\.select\("comuna, input_data"\)/.test(co) || !/const marca = leerReanalisis\(/.test(co) || !/resumenCompra\(productKey, \{ analysisId, companionStrId, comuna, reanalisis \}\)/.test(co)) F("3 · /checkout no lee el marcador del análisis atado");
   const ret = sinComentarios(leer("src/app/payments/return/page.tsx"));
   // ⚠ ACTA (03-nov-2026, «el informe en camino» en la vuelta del pago, tier INFORME-EN-CAMINO §7) · sigue solo por abrirDestino, que anota
-  // adónde fue para ofrecer «Abrir informe» si a los 10 s la página sigue ahí.
+  // adónde fue para ofrecer «Ver los detalles» si a los 10 s la página sigue ahí.
   if (!/abrirDestino\(`\/analisis\/\$\{data\.payment\.analysis_id\}`\);/.test(ret) || !/const abrirDestino = \(href: string\) => \{ setDestino\(href\); router\.push\(href\); \};/.test(ret)) F("3 · al pagar el suelto no sigue solo al análisis");
 
   // ── 4 · El informe nuevo lo dice arriba y enlaza al original; el servidor valida el marcador ──

@@ -164,7 +164,7 @@ export function runHeaderUnicoTier(): { hard: number } {
   if (!/class="hf-lnk hf-solo-ancho on" href="\/dashboard">Dashboard</.test(conSesion) || !/class="hf-lnk hf-solo-ancho" href="\/pricing">Planes</.test(conSesion)) F("6.1 · con sesión, «Dashboard» y «Planes» no quedan solo desde 768");
   {
     const botones = Array.from(conSesion.matchAll(/<a[^>]*class="hf-btn[^"]*"[^>]*>([^<]*)</g));
-    if (botones.length !== 1 || !/href="\/explorar"/.test(botones[0][0]) || botones[0][1] !== "Explorar") F(`6.1 · con sesión el botón destacado no es «Explorar» a /explorar: ${botones.map((b) => b[0]).join(" | ")}`);
+    if (botones.length !== 1 || !/href="\/explorar"/.test(botones[0][0]) || botones[0][1] !== "Mapa") F(`6.1 · con sesión el botón destacado no es «Mapa» a /explorar: ${botones.map((b) => b[0]).join(" | ")}`);
     if (!/class="hf-lnk hf-solo-ancho" href="\/analisis\/nuevo[^"]*"[^>]*>Nuevo análisis</.test(conSesion)) F("6.1 · con sesión «Nuevo análisis» no queda como enlace de texto desde 768");
     if (/Mis análisis/.test(conSesion + sinSesion + leer("src/components/chrome/HeaderFranco.tsx").replace(/\/\/[^\n]*/g, ""))) F("6.1 · queda «Mis análisis» en el header");
     if (!/class="hf-btn"[^>]*>(?:<span class="hf-largo">)?Analizar departamento/.test(sinSesion) || /href="\/explorar"|>Dashboard</.test(sinSesion)) F("6.1 · sin sesión el header cambió (el botón es «Analizar departamento», sin Explorar ni Dashboard)");

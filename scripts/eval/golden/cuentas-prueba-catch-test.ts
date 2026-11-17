@@ -5,7 +5,7 @@
 //
 // La causa del 28-oct: desde el trigger del 26-oct (marcar_cuenta_interna) las cuentas +… nacen en test_accounts, y la
 // primera vuelta del correo del día (encolarPrimeraSeleccion) descartaba su fila antes de correr. Sin fila pendiente,
-// «Estás dentro» mostraba los de la noche sin el token (sin «Analizar este») y el dashboard no tenía selección con que
+// «Estás dentro» mostraba los de la noche sin el token (sin «Ver este depto») y el dashboard no tenía selección con que
 // dibujar el mapa. Lo mismo hacían la cola del correo del día, el armado y el envío del semanal, su reintento y el aviso
 // inmediato. Ahora el único que mira test_accounts para decidir es enviarCorreo (correo-destino.ts).
 //
@@ -158,13 +158,13 @@ export async function runCuentasPruebaTier(): Promise<{ hard: number }> {
         // ⚠ ACTA (28-oct-2026, RESPALDO-MAPA) · desde que el respaldo también tiene botón, «ve el botón» no alcanza: la cuenta de
         // prueba tiene que analizar POR SU SELECCIÓN (el token de su fila), como una real, no como respaldo.
         const sinBoton = d.items.filter((it) => comoAnalizarPrimero(d, it) !== "seleccion").length;
-        if (sinBoton > 0) F(`1 · la cuenta de prueba nueva por /deptos no ve «Analizar este» en ${sinBoton} de ${d.items.length} deptos (token ${d.token ? "sí" : "no"})`);
-        if (prueba.enBase && d.token !== prueba.enBase.token) F("1 · «Analizar este» de la cuenta de prueba no va con el token de su fila del día");
+        if (sinBoton > 0) F(`1 · la cuenta de prueba nueva por /deptos no ve «Ver este depto» en ${sinBoton} de ${d.items.length} deptos (token ${d.token ? "sí" : "no"})`);
+        if (prueba.enBase && d.token !== prueba.enBase.token) F("1 · «Ver este depto» de la cuenta de prueba no va con el token de su fila del día");
       }
       // Lo mismo que una real: los mismos deptos, en el mismo orden, con el mismo botón, la misma combinación y la misma fuente.
       const vista = (x: typeof d) => JSON.stringify({ fuente: x.fuente, faltan: x.faltan, combinacion: x.combinacion, revisando: x.revisando, items: x.items.map((it) => [it.avisoId, comoAnalizarPrimero(x, it)]) });
       if (vista(d) !== vista(real.datos)) F(`1 · la cuenta de prueba no ve lo mismo que una real: ${vista(d)} contra ${vista(real.datos)}`);
-      if (real.datos.items.length === 0 || real.datos.items.some((it) => comoAnalizarPrimero(real.datos, it) !== "seleccion")) F("1 · la cuenta real del tier no ve «Analizar este» (el instrumento no corrió)");
+      if (real.datos.items.length === 0 || real.datos.items.some((it) => comoAnalizarPrimero(real.datos, it) !== "seleccion")) F("1 · la cuenta real del tier no ve «Ver este depto» (el instrumento no corrió)");
 
       // 2 · el mapa del dashboard se arma con los deptos de la selección de renta larga (page.tsx › itemsSel).
       const s = prueba.sel;
@@ -228,7 +228,7 @@ export async function runCuentasPruebaTier(): Promise<{ hard: number }> {
     console.log(`  ✗ CUENTAS-PRUEBA · ${fallas.length} falla(s):`);
     for (const f of fallas) console.log(`     · ${f}`);
   } else {
-    console.log("  ✓ VERDE — la cuenta de prueba nueva por /deptos ve «Analizar este» y la misma selección que una real, el dashboard tiene con qué dibujar el mapa, el semanal se les arma al final de la cola, y solo enviarCorreo las deja sin correo");
+    console.log("  ✓ VERDE — la cuenta de prueba nueva por /deptos ve «Ver este depto» y la misma selección que una real, el dashboard tiene con qué dibujar el mapa, el semanal se les arma al final de la cola, y solo enviarCorreo las deja sin correo");
   }
   return { hard: fallas.length };
 }

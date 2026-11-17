@@ -49,7 +49,7 @@ test("plan10 con saldo 3 → 'Te quedan 3 de 20'", () => {
   const t: TierInfo = { ...base, credits: 3, activePlan: "plan10" };
   assert.equal(
     lineaConsumo(t, true, true, "ltr", "Providencia"),
-    "Esto usa uno de tus análisis. Te quedan 3 de 20.",
+    "Esto usa uno de tus créditos. Te quedan 3 de 20.",
   );
 });
 
@@ -57,7 +57,7 @@ test("plan50 con saldo 47 → 'Te quedan 47 de 50'", () => {
   const t: TierInfo = { ...base, credits: 47, activePlan: "plan50" };
   assert.equal(
     lineaConsumo(t, true, true, "ltr", undefined),
-    "Esto usa uno de tus análisis. Te quedan 47 de 50.",
+    "Esto usa uno de tus créditos. Te quedan 47 de 50.",
   );
 });
 
@@ -65,7 +65,7 @@ test("saldo 1 usa singular ('Te queda 1')", () => {
   const t: TierInfo = { ...base, credits: 1, activePlan: "plan10" };
   assert.equal(
     lineaConsumo(t, true, true, "ltr", undefined),
-    "Esto usa uno de tus análisis. Te queda 1 de 20.",
+    "Esto usa uno de tus créditos. Te queda 1 de 20.",
   );
 });
 
@@ -73,7 +73,7 @@ test("plan10 con más de un mes acumulado → sin denominador (el «de 20» ment
   const t: TierInfo = { ...base, credits: 34, activePlan: "plan10" };
   assert.equal(
     lineaConsumo(t, true, true, "ltr", undefined),
-    "Esto usa uno de tus análisis. Te quedan 34.",
+    "Esto usa uno de tus créditos. Te quedan 34.",
   );
 });
 
@@ -81,7 +81,7 @@ test("créditos sueltos (sin plan) → sin denominador", () => {
   const t: TierInfo = { ...base, credits: 2, activePlan: null };
   assert.equal(
     lineaConsumo(t, true, true, "ltr", undefined),
-    "Esto usa uno de tus análisis. Te quedan 2.",
+    "Esto usa uno de tus créditos. Te quedan 2.",
   );
 });
 
@@ -89,7 +89,7 @@ test("welcome disponible → análisis de bienvenida (manda sobre el saldo)", ()
   const t: TierInfo = { ...base, credits: 0, welcomeAvailable: true };
   assert.equal(
     lineaConsumo(t, true, true, "ltr", undefined),
-    "Este es tu análisis de bienvenida — el primero va por cuenta de Franco.",
+    "Esto usa tu crédito de bienvenida: el primero va por cuenta de Franco.",
   );
 });
 
@@ -145,17 +145,20 @@ test("guest con el cap ya usado → el botón es registro y la línea lo dice", 
   }
 });
 
-test("ningún mensaje dice 'crédito' (vocabulario de usuario)", () => {
+// ⚠ ACTA (17-nov-2026, decisión de Fabrizio: «de análisis a créditos») · la regla se invierte. Hasta hoy el vocabulario del
+// usuario era «análisis» y ningún mensaje podía decir «crédito»; desde hoy lo que se gasta ES un crédito. La línea que
+// descuenta del saldo (plan, suelto, bienvenida) dice «crédito» y no «análisis». La de compra («Estás comprando este
+// análisis…») es el flujo propio y no entra acá.
+test("la línea que gasta del saldo dice 'crédito', no 'análisis'", () => {
   const casos: Array<[TierInfo | null, boolean, boolean]> = [
     [{ ...base, credits: 3, activePlan: "plan10" }, true, true],
+    [{ ...base, credits: 2 }, true, true],
     [{ ...base, welcomeAvailable: true }, true, true],
-    [{ ...base, credits: 0 }, true, false],
-    [null, false, false],
-    [{ ...base, tier: "guest", anonCapAvailable: true }, false, false],
   ];
   for (const [t, logged, can] of casos) {
-    const linea = lineaConsumo(t, logged, can, "ltr", "Providencia");
-    if (linea) assert.ok(!/crédito/i.test(linea), `dice "crédito": ${linea}`);
+    const linea = lineaConsumo(t, logged, can, "ltr", "Providencia") ?? "";
+    assert.ok(/crédito/i.test(linea), `no dice "crédito": ${linea}`);
+    assert.ok(!/análisis/i.test(linea), `dice "análisis": ${linea}`);
   }
 });
 
