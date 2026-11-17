@@ -36,12 +36,12 @@ export function rutaTres(origen: OrigenTres, opts: { variante?: "banda" | "tarje
 }
 
 export const TRES_COPY = {
-  boton: `3 análisis · ${fmtCLP(TRES_PRECIO_CLP)}`,
+  boton: `3 créditos · ${fmtCLP(TRES_PRECIO_CLP)}`,
   /** La línea del correo semanal para quien no tiene análisis: el enlace va en «3 análisis por $19.990». */
-  lineaCorreo: { antes: "Para analizarlos: ", enlace: `3 análisis por ${fmtCLP(TRES_PRECIO_CLP)}`, despues: ", sin caducidad." },
-  titulo: "Franco — 3 análisis",
-  subtitulo: "3 análisis, sin caducidad",
+  lineaCorreo: { antes: "Para verlos: ", enlace: `3 créditos por ${fmtCLP(TRES_PRECIO_CLP)}`, despues: ", sin caducidad." },
+  titulo: "Franco — 3 créditos",
+  subtitulo: "3 créditos, sin caducidad",
   /** 22-oct-2026 (decisión de Fabrizio): sin «Listo:», como el suelto («Tienes un análisis más»). */
-  listo: "Tienes 3 análisis más.",
+  listo: "Tienes 3 créditos más.",
   seguir: "Seguir",
 } as const;

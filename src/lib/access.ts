@@ -130,7 +130,7 @@ export async function chargeAnalysisCredit(
     return {
       ok: false,
       reason: "no_credits",
-      message: "Te quedaste sin análisis disponibles.",
+      message: "Te quedaste sin créditos disponibles.",
     };
   }
 
@@ -210,7 +210,7 @@ export async function chargeAnalysisCredit(
     return {
       ok: false,
       reason: "no_credits",
-      message: "Te quedaste sin análisis disponibles.",
+      message: "Te quedaste sin créditos disponibles.",
       plan: row.active_plan ?? null,
       subscriptionActive: true,
       nextCharge: row.subscription_ends_at ?? null,
@@ -221,7 +221,7 @@ export async function chargeAnalysisCredit(
   return {
     ok: false,
     reason: "no_credits",
-    message: "Te quedaste sin análisis disponibles.",
+    message: "Te quedaste sin créditos disponibles.",
   };
 }
 

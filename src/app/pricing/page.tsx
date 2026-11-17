@@ -50,7 +50,7 @@ export default async function PricingPage() {
             </ul>
             <div className="pl-accion">
               {user ? (
-                <EnlaceCarga href="/dashboard" className="pl-boton pl-boton-borde" data-planes="boton-gratis">Ir a mis análisis</EnlaceCarga>
+                <EnlaceCarga href="/dashboard" className="pl-boton pl-boton-borde" data-planes="boton-gratis">Ir a mi panel</EnlaceCarga>
               ) : (
                 <EnlaceCarga href={C.gratis.ruta} className="pl-boton pl-boton-borde" data-planes="boton-gratis">{C.gratis.boton}</EnlaceCarga>
               )}

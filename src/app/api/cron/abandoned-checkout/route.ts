@@ -211,7 +211,7 @@ export async function GET(request: Request) {
       const name = nombreReal(u.user_metadata);
       const productKey = row.product as FlowProductKey;
       const productLabel =
-        FLOW_PRODUCTS[productKey]?.subject ?? "tu análisis";
+        FLOW_PRODUCTS[productKey]?.subject ?? "tu crédito";
       // Tipo de checkout abandonado: 'single' (análisis suelto) vs plan
       // (suscripción) → ramifica el copy del email. Derivado del kind del catálogo.
       const productKind = FLOW_PRODUCTS[productKey]?.kind === "recurring" ? "plan" : "single";

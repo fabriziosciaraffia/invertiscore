@@ -124,12 +124,12 @@ function paymentPlanCopy(product: string, analysisId?: string): {
     if (fp.kind === 'one_time') {
       const n = fp.capacity ?? 1;
       return {
-        productName: n === 1 ? '1 análisis' : `${n} análisis`,
+        productName: n === 1 ? '1 crédito' : `${n} créditos`,
         unlocks: n > 1
-          ? `tienes ${n} análisis disponibles, sin caducidad, para usar cuando quieras.`
+          ? `tienes ${n} créditos disponibles, sin caducidad, para usar cuando quieras.`
           : analysisId
-            ? 'tu análisis está listo, con el informe completo desbloqueado.'
-            : 'tienes 1 análisis disponible para usar cuando quieras.',
+            ? 'los detalles de tu depto están listos.'
+            : 'tienes 1 crédito disponible para usar cuando quieras.',
         includes: ANALYSIS_FEATURES,
       };
     }
@@ -140,8 +140,8 @@ function paymentPlanCopy(product: string, analysisId?: string): {
     if (fp.isUnlimited) {
       return {
         productName: `Ilimitado ${ciclo}`,
-        unlocks: `tu plan Ilimitado quedó activo: análisis sin límite mientras esté vigente (facturación ${ciclo}).`,
-        includes: ['Análisis sin límite cada mes', ...ANALYSIS_FEATURES],
+        unlocks: `tu plan Ilimitado quedó activo: créditos sin límite mientras esté vigente (facturación ${ciclo}).`,
+        includes: ['Créditos sin límite cada mes', ...ANALYSIS_FEATURES],
       };
     }
 
@@ -151,8 +151,8 @@ function paymentPlanCopy(product: string, analysisId?: string): {
     const nombre = fp.plan === 'plan10' && fp.billing === 'monthly' ? 'Plan Franco' : `Plan ${fp.plan === 'plan50' ? '50' : '10'} ${ciclo}`;
     return {
       productName: nombre,
-      unlocks: `tu ${nombre} quedó activo: ${cap} análisis al mes (facturación ${ciclo}).`,
-      includes: [`${cap} análisis cada mes`, ...ANALYSIS_FEATURES],
+      unlocks: `tu ${nombre} quedó activo: ${cap} créditos al mes (facturación ${ciclo}).`,
+      includes: [`${cap} créditos cada mes`, ...ANALYSIS_FEATURES],
     };
   }
 
@@ -160,23 +160,23 @@ function paymentPlanCopy(product: string, analysisId?: string): {
   if (product === 'pack3') {
     return {
       productName: 'Pack 3×',
-      unlocks: 'tienes 3 análisis disponibles para usar cuando quieras.',
+      unlocks: 'tienes 3 créditos disponibles para usar cuando quieras.',
       includes: ANALYSIS_FEATURES,
     };
   }
   if (product === 'subscription') {
     return {
       productName: 'Suscripción',
-      unlocks: 'tu suscripción quedó activa: análisis ilimitados mientras esté vigente.',
+      unlocks: 'tu suscripción quedó activa: créditos ilimitados mientras esté vigente.',
       includes: ANALYSIS_FEATURES,
     };
   }
   // "pro" u otra key desconocida → 1 análisis (comportamiento histórico).
   return {
-    productName: '1 análisis',
+    productName: '1 crédito',
     unlocks: analysisId
-      ? 'tu análisis está listo, con el reporte completo desbloqueado.'
-      : 'tienes 1 análisis disponible para usar cuando quieras.',
+      ? 'los detalles de tu depto están listos.'
+      : 'tienes 1 crédito disponible para usar cuando quieras.',
     includes: ANALYSIS_FEATURES,
   };
 }
@@ -212,7 +212,7 @@ export async function sendPaymentConfirmationEmail(to: string, name: string, pro
     : product === "unlock" && ambasIds
       ? 'Ver mi comparativa completa'
       : analysisId
-        ? 'Ver mi análisis'
+        ? 'Ver los detalles'
         : 'Analizar un depto';
 
   const { subject, html } = correoPagoConfirmado({
@@ -270,7 +270,7 @@ export function buildBoletaHtml(p: {
 
 /** El nombre del producto para los correos: «1 análisis», «3 análisis», «Plan 10 mensual»… */
 export function nombreProductoCorreo(product: string, cantidad?: number | null): string {
-  if (product === "single" && cantidad && cantidad > 1) return `${cantidad} análisis`;
+  if (product === "single" && cantidad && cantidad > 1) return `${cantidad} créditos`;
   return paymentPlanCopy(product).productName;
 }
 

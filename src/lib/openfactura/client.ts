@@ -132,14 +132,14 @@ export function conceptoBoleta(
   }
 
   if (product === "single" && opts?.comuna) {
-    return { label: `Análisis en ${opts.comuna}`, frase: `tu análisis en ${opts.comuna}` };
+    return { label: `1 crédito · depto en ${opts.comuna}`, frase: `tu crédito para el depto en ${opts.comuna}` };
   }
 
   if (product === "single") {
     const n = payment.quantity ?? 1;
     return {
-      label: `${n} análisis`,
-      frase: n === 1 ? "tu análisis" : `tu compra de ${n} análisis`,
+      label: n === 1 ? "1 crédito" : `${n} créditos`,
+      frase: n === 1 ? "tu crédito" : `tu compra de ${n} créditos`,
     };
   }
 
@@ -151,7 +151,7 @@ export function conceptoBoleta(
   }
 
   // Fallback (legacy/desconocido) — no debería ocurrir en el path actual.
-  return { label: "Análisis", frase: "tu compra en Franco" };
+  return { label: "Crédito", frase: "tu compra en Franco" };
 }
 
 /**

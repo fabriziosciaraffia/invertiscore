@@ -35,7 +35,7 @@ export type FlowProduct = {
 
 export const FLOW_PRODUCTS: Record<FlowProductKey, FlowProduct> = {
   single: {
-    kind: "one_time", amount: 9990, subject: "Franco — 1 análisis",
+    kind: "one_time", amount: 9990, subject: "Franco — 1 crédito",
     plan: "single", billing: null, capacity: 1,
   },
   // Fase D — desbloqueo one-off del informe íntegro de los hijos de un par AMBAS
@@ -52,13 +52,13 @@ export const FLOW_PRODUCTS: Record<FlowProductKey, FlowProduct> = {
   // `ofertaPackVigente`). Otorga 3 créditos sin caducidad (payments/confirm). Reemplaza al `pack3`
   // legacy de $9.990 que vivía hardcodeado en payments/create.
   pack3: {
-    kind: "one_time", amount: 14990, subject: "Franco — 3 análisis",
+    kind: "one_time", amount: 14990, subject: "Franco — 3 créditos",
     plan: "single", billing: null, capacity: 3,
   },
   // Tres análisis por $19.990 para quien tiene cuenta (13-oct-2026, lib/tres-analisis.ts). 3 créditos sin caducidad.
   // No es el ticket de $14.990 (`pack3`), que sigue solo para el usuario nuevo en sus 24 horas.
   tres_analisis: {
-    kind: "one_time", amount: 19990, subject: "Franco — 3 análisis",
+    kind: "one_time", amount: 19990, subject: "Franco — 3 créditos",
     plan: "single", billing: null, capacity: 3,
   },
   // EL PLAN FRANCO (19-oct-2026, decisión de Fabrizio; lib/planes.ts): 20 análisis al mes por $39.990 —antes 10—. Mismo

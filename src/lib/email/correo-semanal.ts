@@ -60,10 +60,10 @@ export const SEMANAL = {
   presentacionBaja: "Si no los quieres,",
   presentacionBajaEnlace: "deja de recibirlos",
   negociar: MARCA_NEGOCIAR,
-  regalo: "El próximo que analices va por cuenta de Franco.",
+  regalo: "El próximo depto que veas va por cuenta de Franco.",
   regaloBajada: "Ya está cargado en tu cuenta.",
-  saldo: (n: number) => (n === 1 ? "Te queda 1 análisis." : `Te quedan ${n} análisis.`),
-  boton: "Analizar uno",
+  saldo: (n: number) => (n === 1 ? "Te queda 1 crédito." : `Te quedan ${n} créditos.`),
+  boton: "Ver uno",
   /** Sin análisis, bajo el botón: el pack de tres (13-oct-2026). */
   lineaTres: TRES_COPY.lineaCorreo,
   verDepto: "Ver este depto",

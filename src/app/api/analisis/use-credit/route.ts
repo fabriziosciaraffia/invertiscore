@@ -81,7 +81,7 @@ export async function POST(request: Request) {
     const consumed = await consumeCredit(user.id, analysisId);
     if (!consumed) {
       return NextResponse.json(
-        { error: "Sin análisis disponibles" },
+        { error: "Sin créditos disponibles" },
         { status: 402 }
       );
     }

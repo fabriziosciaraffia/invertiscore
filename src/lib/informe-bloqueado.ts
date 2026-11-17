@@ -31,11 +31,11 @@ export function rutaPagoBloqueado(p: { analysisId: string; companionStrId?: stri
 
 export const INFORME_BLOQUEADO_COPY = {
   dueno: {
-    bajada: "Tu informe está listo y se abre al pagar.",
-    boton: `Pagar ${fmtCLP(FLOW_PRODUCTS.single.amount)} y abrir el informe`,
+    bajada: "Los detalles de este depto están listos y se abren al pagar.",
+    boton: `Pagar ${fmtCLP(FLOW_PRODUCTS.single.amount)} y ver los detalles`,
   },
   ajeno: {
-    bajada: "Este informe todavía no está disponible.",
+    bajada: "Estos detalles todavía no están disponibles.",
     boton: "Ir a Franco",
   },
   /** La vista previa al compartir una fila pendiente: sin puntaje ni veredicto. */

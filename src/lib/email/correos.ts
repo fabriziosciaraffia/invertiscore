@@ -68,7 +68,7 @@ export function correoPagoFallido(p: { nombre: string | null; graciaHasta: Date 
       parrafos: [`${saludoDe(p.nombre)} no pudimos cobrar tu suscripción. Suele ser algo simple: una tarjeta vencida, sin cupo o un rechazo del banco.`],
       nota: `Mantienes tu acceso hasta el <b>${fechaLarga(p.graciaHasta)}</b>. Cambia la tarjeta antes de esa fecha para no perderlo.`,
       boton,
-      despues: ["Si no haces nada, el plan se cancela ese día y conservas los análisis que te queden."],
+      despues: ["Si no haces nada, el plan se cancela ese día y conservas los créditos que te queden."],
     }),
   };
 }
@@ -87,7 +87,7 @@ export function correoTarjetaRegistrada(p: { nombre: string | null; plan: string
       titular: "Tarjeta registrada",
       parrafos: [
         `${saludoDe(p.nombre)} tu tarjeta quedó registrada para el <b>${escaparHtml(p.plan)}</b>. Tu plan se activa con el primer cobro, en las próximas horas.`,
-        "Cuando Flow haga el cobro te llega «Pago confirmado» con tus análisis del mes. Si la tarjeta lo rechaza, te lo decimos por correo.",
+        "Cuando Flow haga el cobro te llega «Pago confirmado» con tus créditos del mes. Si la tarjeta lo rechaza, te lo decimos por correo.",
       ],
       boton: { texto: "Ver mi cuenta", url: `${sitio}/cuenta` },
       legal: `Pagos procesados de forma segura por Flow.cl.<br>${LEGAL}`,
@@ -135,7 +135,7 @@ export function correoEliminacionUsuario(p: { nombre: string | null; planCancela
         p.planCancelado === false
           ? "<b>Desde ya.</b> Dejamos de mandarte correos. Tu plan todavía no quedó cancelado en Flow; lo cancelamos a mano."
           : "<b>Desde ya.</b> Dejamos de mandarte correos, y si tenías un plan, quedó cancelado en Flow: no se te cobra nada más.",
-        "<b>Qué pasa ahora.</b> Vamos a eliminar de forma permanente tu cuenta y todos tus datos asociados: tus análisis, tu saldo disponible y tu información de perfil. Te confirmamos a este mismo correo cuando el proceso esté completo.",
+        "<b>Qué pasa ahora.</b> Vamos a eliminar de forma permanente tu cuenta y todos tus datos asociados: tus deptos, tu saldo disponible y tu información de perfil. Te confirmamos a este mismo correo cuando el proceso esté completo.",
         `<b>¿Fue un error?</b> Si no hiciste esta solicitud o cambiaste de opinión, escríbenos a ${enlace("mailto:hola@refranco.ai", "hola@refranco.ai")} lo antes posible. Una vez eliminada, la información no se puede recuperar.`,
       ],
       legal: "Este es un correo sobre la seguridad de tu cuenta en Franco.",
@@ -266,7 +266,7 @@ export function correoResumenCrons(p: { fecha: string; items: Array<{ cron: stri
 // visita ni con la negociación.
 /** El asunto del correo del aviso; también lo dice la pantalla cuando se vuelve a tocar «Quiero verlo» (19-oct-2026). */
 export function asuntoAvisoPedido(comuna: string): string {
-  return `El depto de ${comuna} que analizaste`;
+  return `El depto de ${comuna} que viste`;
 }
 
 export function correoAvisoPedido(p: { nombre: string | null; comuna: string; url: string; veredicto: string | null; flujo: number | null }): Correo {
@@ -460,7 +460,7 @@ export function correoBoleta(p: { para: string; folio: number | string; monto: n
       detalle: {
         filas: [
           { etiqueta: "Documento", valor: `Boleta electrónica N° ${escaparHtml(String(p.folio))}` },
-          { etiqueta: "Concepto", valor: escaparHtml(p.concepto?.label || "Análisis") },
+          { etiqueta: "Concepto", valor: escaparHtml(p.concepto?.label || "Crédito") },
           { etiqueta: "Emitida", valor: escaparHtml(fecha) },
           { etiqueta: "Para", valor: escaparHtml(p.para) },
           { etiqueta: "Total", valor: clp(p.monto) },

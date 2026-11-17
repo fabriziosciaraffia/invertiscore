@@ -18,7 +18,7 @@ import { PRODUCTO_TRES, TRES_PRECIO_CLP } from "@/lib/tres-analisis";
 import { DIAS_VIGENCIA_PREMIO_REFERIDO, TOPE_PREMIOS_REFERIDO } from "@/lib/referido";
 
 /** El referido en la lista de Gratis (05-nov-2026, la regla de referido.ts › REGLA_REFERIDO, corta). */
-const PLAN_REFERIDO = `Un análisis más cuando un invitado hace su primer análisis (hasta ${TOPE_PREMIOS_REFERIDO}, vigente ${DIAS_VIGENCIA_PREMIO_REFERIDO} días)`;
+const PLAN_REFERIDO = `Un crédito más cuando un invitado usa su primer crédito (hasta ${TOPE_PREMIOS_REFERIDO}, vigente ${DIAS_VIGENCIA_PREMIO_REFERIDO} días)`;
 
 /** El producto de Flow del Plan Franco. */
 export const PRODUCTO_PLAN: FlowProductKey = "plan10_mensual";
@@ -50,18 +50,18 @@ const SUELTO_CLP = FLOW_PRODUCTS.single.amount;
  */
 export const PLANES_COPY = {
   titulo: "Elige cómo usar Franco",
-  bajada: "Con cualquiera de los tres recibes cada semana los deptos que convienen según tu perfil. La diferencia es cuántos análisis tienes para los que te interesan.",
+  bajada: "Franco funciona por créditos. Un crédito te da acceso a todos los detalles de un depto como inversión. Cada semana recibes deptos que te convienen según tu perfil, y los créditos te dan acceso a la información para que puedas invertir.",
   gratis: {
     nombre: "Gratis",
     precio: "$0",
-    incluye: ["Cada semana, los deptos que convienen según tu perfil", "Un análisis gratis al crear tu cuenta", PLAN_REFERIDO],
+    incluye: ["Cada semana, los deptos que convienen según tu perfil", "Un crédito gratis al crear tu cuenta", PLAN_REFERIDO],
     // «Empezar gratis» (19-oct-2026, decisión de Fabrizio): a /deptos, que desde planes dice arriba qué hacer ahí.
     boton: "Empezar gratis",
     ruta: "/deptos?desde=planes",
   },
   pack: {
     nombre: "Pack de 3",
-    detalle: "Todo lo de Gratis, más 3 análisis",
+    detalle: "Todo lo de Gratis, más 3 créditos",
     precio: fmtCLP(TRES_PRECIO_CLP),
     unidad: "pago único",
     ahorro: `${porAnalisis(TRES_PRECIO_CLP, 3)} cada uno, en vez de ${fmtCLP(SUELTO_CLP)}`,
@@ -72,16 +72,16 @@ export const PLANES_COPY = {
   },
   plan: {
     nombre: "Plan Franco",
-    detalle: `Todo lo de Gratis, más ${PLAN_ANALISIS_MES} análisis cada mes`,
+    detalle: `Todo lo de Gratis, más ${PLAN_ANALISIS_MES} créditos cada mes`,
     /** Lo que se lee en la cuenta: «Plan Franco · 20 análisis al mes». */
-    resumen: `${PLAN_ANALISIS_MES} análisis al mes`,
+    resumen: `${PLAN_ANALISIS_MES} créditos al mes`,
     precio: fmtCLP(PLAN_PRECIO_CLP),
     unidad: "al mes",
     ahorro: `${porAnalisis(PLAN_PRECIO_CLP, PLAN_ANALISIS_MES)} cada uno, en vez de ${fmtCLP(SUELTO_CLP)}`,
     condicion: "Los que no uses se acumulan por un año. Cancelas cuando quieras",
     boton: "Contratar el plan",
   },
-  demo: { antes: "¿Quieres ver cómo es un análisis?", enlace: "Mira uno real", ruta: "/demo" },
+  demo: { antes: "¿Quieres ver qué te da un crédito?", enlace: "Mira un ejemplo real", ruta: "/demo" },
   /** Para quien ya tiene el plan: el botón no vuelve a venderlo. */
   planActivo: "Ya tienes el Plan Franco",
 } as const;
@@ -96,11 +96,11 @@ export function correspondeAvisoAumento(montos: readonly number[], capacidad: nu
 }
 
 export const AUMENTO_COPY = {
-  asunto: `Tu plan ahora trae ${PLAN_ANALISIS_MES} análisis al mes`,
-  titular: `Ahora son ${PLAN_ANALISIS_MES} análisis al mes`,
+  asunto: `Tu plan ahora trae ${PLAN_ANALISIS_MES} créditos al mes`,
+  titular: `Ahora son ${PLAN_ANALISIS_MES} créditos al mes`,
   cuerpo: (precio: string) =>
-    `Tu plan pasó a llamarse Plan Franco y desde esta renovación trae ${PLAN_ANALISIS_MES} análisis al mes, el doble, al mismo precio: ${precio}. No tienes que hacer nada.`,
-  acumulan: "Los análisis que no uses se acumulan y cada mes vence a los 12 meses, como siempre.",
+    `Tu plan pasó a llamarse Plan Franco y desde esta renovación trae ${PLAN_ANALISIS_MES} créditos al mes, el doble, al mismo precio: ${precio}. No tienes que hacer nada.`,
+  acumulan: "Los créditos que no uses se acumulan y cada mes vence a los 12 meses, como siempre.",
   boton: "Analizar un depto",
 } as const;
 

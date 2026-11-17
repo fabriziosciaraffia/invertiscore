@@ -65,25 +65,25 @@ export function resumenCompra(key: string, opts: { analysisId?: string | null; c
     return { ...base, nombre: PLANES_COPY.plan.nombre, incluye: `${PLANES_COPY.plan.resumen}. ${PLANES_COPY.plan.condicion}.` };
   }
   if (key === PRODUCTO_TRES || key === PRODUCTO_PACK) {
-    return { ...base, nombre: PLANES_COPY.pack.nombre, incluye: `${p.capacity ?? 3} análisis que no vencen.` };
+    return { ...base, nombre: PLANES_COPY.pack.nombre, incluye: `${p.capacity ?? 3} créditos que no vencen.` };
   }
   // El re-análisis al precio recomendado sin saldo (21-oct-2026, lib/reanalisis.ts): el depto y el precio a la vista.
   if (key === "single" && opts.analysisId && opts.reanalisis) {
     return {
       ...base,
-      nombre: opts.reanalisis.direccion ? `Tu análisis de ${opts.reanalisis.direccion}` : opts.comuna ? `Tu análisis en ${opts.comuna}` : "Tu análisis",
+      nombre: opts.reanalisis.direccion ? `Los detalles de ${opts.reanalisis.direccion}` : opts.comuna ? `Los detalles de tu depto en ${opts.comuna}` : "Los detalles de tu depto",
       incluye: REANALISIS_COPY.compraIncluye(opts.reanalisis.precioUF),
     };
   }
   if (key === "single" && opts.analysisId) {
     return {
       ...base,
-      nombre: opts.comuna ? `Tu análisis en ${opts.comuna}` : "Tu análisis",
-      incluye: opts.companionStrId ? "El informe completo de este depto, en renta larga y en renta corta." : "El informe completo de este depto.",
+      nombre: opts.comuna ? `Los detalles de tu depto en ${opts.comuna}` : "Los detalles de tu depto",
+      incluye: opts.companionStrId ? "Todos los detalles de este depto, en renta larga y en renta corta." : "Todos los detalles de este depto.",
     };
   }
-  if (key === "single") return { ...base, nombre: "1 análisis", incluye: "Un análisis que no vence." };
-  return { ...base, nombre: p.subject.replace(/^Franco — /, ""), incluye: unico ? `${p.capacity ?? 1} análisis.` : `${p.capacity ?? ""} análisis al mes.` };
+  if (key === "single") return { ...base, nombre: "1 crédito", incluye: "Un crédito que no vence." };
+  return { ...base, nombre: p.subject.replace(/^Franco — /, ""), incluye: unico ? `${p.capacity ?? 1} ${(p.capacity ?? 1) === 1 ? "crédito" : "créditos"}.` : `${p.capacity ?? ""} créditos al mes.` };
 }
 
 /** La URL de esta misma compra, con todo lo que la acompaña. `pagar` = al volver con sesión (Google o el enlace del
@@ -114,24 +114,24 @@ export function rutaRetomarCompra(p: { product: string | null; analysis_id?: str
 // ── LA VUELTA DE FLOW ───────────────────────────────────────────────────────
 export const RETORNO = {
   procesando: { titulo: "Confirmando tu pago…", cuerpo: "Esto toma unos segundos. No cierres esta página." },
-  abriendo: { titulo: "Pago confirmado.", cuerpo: "Abriendo tu análisis…" },
+  abriendo: { titulo: "Pago confirmado.", cuerpo: "Abriendo los detalles…" },
   /** La vuelta que analiza al llegar (vueltaAnalizaSola, 05-nov-2026). */
-  volviendoAlDepto: "Volviendo al depto para analizarlo…",
+  volviendoAlDepto: "Volviendo al depto…",
   /** La compra salió de un depto de la selección (22-oct-2026, decisión de Fabrizio): la vuelta de Flow genera el
    *  informe sola y lo abre; mientras, dice de cuál (el depto como en las tarjetas: compra-desde-depto.ts › nombreDelDepto). */
-  generandoDepto: (depto: string) => `Generando el informe de ${depto}…`,
+  generandoDepto: (depto: string) => `Preparando los detalles de ${depto}…`,
   /** El estado C del mockup 4-ticket-y-popups.html (24-oct-2026): «Franco está analizando X. En unos segundos se abre el
    *  informe.» y, debajo de la barra, cuántos le quedan para cualquier otro depto. */
-  desdeDepto: { antes: "Franco está analizando ", despues: ". En unos segundos se abre el informe." },
+  desdeDepto: { antes: "Franco está analizando ", despues: ". En unos segundos se abren los detalles." },
   // Con 0 decía «Te quedan 0 análisis…» (05-nov-2026): con el último, se dice así.
-  quedanOtros: (n: number) => (n <= 0 ? "Con este usas tu último análisis." : n === 1 ? "Te queda 1 análisis para cualquier otro depto." : `Te quedan ${n} análisis para cualquier otro depto.`),
+  quedanOtros: (n: number) => (n <= 0 ? "Con este usas tu último crédito." : n === 1 ? "Te queda 1 crédito para cualquier otro depto." : `Te quedan ${n} créditos para cualquier otro depto.`),
   /** EL INFORME NO SALIÓ (05-nov-2026, auditoría de promesas parte 3): no se usó ningún análisis, y los que tiene quedan a la
    *  vista. `n`: el saldo real, sin restar el de este depto. */
-  quedanSinUsar: (n: number) => (n <= 0 ? "No te quedan análisis." : n === 1 ? "Te queda 1 análisis para otro depto." : `Te quedan ${n} análisis para otro depto.`),
+  quedanSinUsar: (n: number) => (n <= 0 ? "No te quedan créditos." : n === 1 ? "Te queda 1 crédito para otro depto." : `Te quedan ${n} créditos para otro depto.`),
   pagado: {
     titulo: "Pago confirmado.",
-    tres: "Tienes 3 análisis más.",
-    uno: "Tienes un análisis más.",
+    tres: "Tienes 3 créditos más.",
+    uno: "Tienes un crédito más.",
   },
   rechazado: { titulo: "El pago no pasó.", cuerpo: "Flow lo rechazó o se canceló. No se hizo ningún cargo." },
   /** Sin depto de por medio (22-oct-2026): «Tienes un análisis más» y este botón. */

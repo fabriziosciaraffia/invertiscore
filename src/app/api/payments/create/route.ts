@@ -138,9 +138,9 @@ export async function POST(request: Request) {
   let subject = catalogSubject;
   if (product === "single") {
     if (analysisComuna) {
-      subject = `Franco — Análisis ${analysisComuna}`;
+      subject = `Franco — 1 crédito · ${analysisComuna}`;
     } else if (quantity > 1) {
-      subject = `Franco — ${quantity} análisis`;
+      subject = `Franco — ${quantity} créditos`;
     }
   } else if (product === "unlock" && analysisComuna) {
     // Unlock atado a un hijo → subject con comuna ("Franco — Informe completo Providencia").

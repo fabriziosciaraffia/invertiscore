@@ -37,12 +37,12 @@ export const REGISTRO_UN_PASO = {
   entrar: "Entrar",
   o: "o",
   google: "Seguir con Google",
-  pie: "Te mandamos un código para entrar. Este informe queda en tu cuenta.",
+  pie: "Te mandamos un código para entrar. Este depto queda en tu cuenta.",
   enviadoTitular: "Revisa tu correo.",
   enviadoPlumon: "El código ya salió.",
-  enviadoCuerpo: (correo: string) => `Lo mandamos a ${correo}. Escríbelo acá y este informe queda en tu cuenta, sin salir de la página.`,
+  enviadoCuerpo: (correo: string) => `Lo mandamos a ${correo}. Escríbelo acá y este depto queda en tu cuenta, sin salir de la página.`,
   // «En este navegador» (05-nov-2026): el reclamo del informe lee la cookie de este navegador (auth/callback).
-  enlaceAlternativa: "El correo también trae un enlace: si lo abres en este navegador, vuelves a este mismo informe con tu cuenta.",
+  enlaceAlternativa: "El correo también trae un enlace: si lo abres en este navegador, vuelves a este mismo depto con tu cuenta.",
   seguir: "Seguir leyendo",
   errorCorreo: "Ese correo no se entiende. Revísalo.",
   errorEnvio: "No pudimos mandar el código. Intenta de nuevo.",
@@ -56,7 +56,7 @@ export const ESTAS_DENTRO = {
   titular: "Estás dentro.",
   cuerpo: "Te escribimos apenas tengamos una oportunidad que calce con lo que buscas:",
   tocaCambiar: "toca para cambiar",
-  aprende: "Cada depto que analices le enseña a Franco qué buscarte.",
+  aprende: "Cada depto que veas le enseña a Franco qué buscarte.",
   /** Cómo se vuelve a entrar (13-oct-2026): la misma frase en la bienvenida y en el primer semanal (COMO_ENTRAR). */
   comoEntrar: "Para entrar: tu correo y un código. Sin contraseña.",
   cuando: "¿Cuándo piensas comprar?",
@@ -92,21 +92,18 @@ export function notaChips(cambiados: boolean): string {
 export const TICKET_PACK = {
   /** El titular, en una línea: «Pack · 3 análisis por $14.990». Debajo, más chico, la referencia tachada
    *  + « $4.997 cada uno» (`cadaUno`). Tercera pasada, 08-oct-2026. */
-  linea: (precio: string) => `Pack · 3 análisis por ${precio}`,
+  linea: (precio: string) => `Pack · 3 créditos (deptos) por ${precio}`,
   cadaUno: (unitario: string) => ` ${unitario} cada uno`,
-  cuerpo: "El mismo informe que acabas de leer, para tres deptos más.",
-  /** El cuerpo son tres líneas en un solo tamaño: `cuerpo` normal, y `cuerpoFuerte` y `negrita` enteras en
-   *  negrita (corrección de Fabrizio, 08-oct-2026). */
-  cuerpoFuerte: "La mitad del precio, solo para usuarios nuevos.",
-  negrita: "Al comprar quedas registrado y además recibes cada semana oportunidades que puedes evaluar con tu pack.",
-  /** Para quien YA tiene cuenta (22-oct-2026, decisión de Fabrizio): no «quedas registrado», sino para qué le sirven. */
-  negritaConCuenta: "Para tres deptos más de tu selección, o cualquier otro que te interese.",
+  cuerpo: "Todo el detalle de la inversión para tres deptos más.",
+  /** El cuerpo son dos líneas en un solo tamaño: `cuerpo` normal y `cuerpoFuerte` entera en negrita (08-oct-2026). La
+   *  tercera línea («Al comprar quedas registrado…» / la de la cuenta) salió el 17-nov-2026, decisión de Fabrizio. */
+  cuerpoFuerte: "A mitad de precio, solo para usuarios nuevos.",
   boton: (precio: string) => `Comprar por ${precio}`,
-  vencimiento: (cuando: string) => `Solo para usuarios nuevos, en este informe · hasta ${cuando} · si te vas, guarda el enlace`,
+  vencimiento: (cuando: string) => `Solo para usuarios nuevos, en este depto · hasta ${cuando} · si te vas, guarda el enlace`,
   /** El ticket de la cuenta (22-oct-2026): va en todos sus informes, no en este; sin «guarda el enlace». */
   vencimientoCuenta: (cuando: string) => `Solo para usuarios nuevos · hasta ${cuando}`,
   placeholderCorreo: "tu@correo.cl",
-  pestana: (precio: string, hora: string) => `3 análisis por ${precio} · hasta las ${hora}`,
+  pestana: (precio: string, hora: string) => `3 créditos por ${precio} · hasta las ${hora}`,
   errorCorreo: "Ese correo no se entiende. Revísalo.",
   errorPago: "No pudimos abrir el pago. Intenta de nuevo.",
   vencido: "Ese precio venció y no vuelve.",
@@ -114,8 +111,8 @@ export const TICKET_PACK = {
   /** LA HORA REAL (04-nov-2026, auditoría de promesas, decisión de Fabrizio): «Vence en 24 horas.» era fijo, y el ticket de la
    *  cuenta nueva corre desde el registro, así que a veces quedaban menos. Ahora «Vence mañana a las 11:17.» (cuandoVence). */
   despedida: (cuando: string) => `Vence ${cuando}.`,
-  despedidaAhorro: (ahorro: string) => `Son ${ahorro} menos en tus próximos tres análisis. ¿La dejas pasar?`,
-  comprar: "Quiero los 3 análisis",
+  despedidaAhorro: (ahorro: string) => `Son ${ahorro} menos en tus próximos tres deptos. ¿La dejas pasar?`,
+  comprar: "Quiero los 3 créditos",
   siSeguir: "Sí, seguir leyendo",
   cerrar: "Cerrar",
 } as const;
@@ -125,8 +122,8 @@ export const TICKET_PACK = {
 // («Abajo, deptos parecidos…»): donde no hay guía (renta corta) va la de antes.
 // 02-oct-2026: el titular dice el SALDO REAL de la cuenta (no «3» fijo); `null` = no se pudo leer.
 export const DESPUES_DE_PAGAR = {
-  titular: (n: number | null): string => (n == null ? "Tus análisis ya están en tu cuenta." : n <= 0 ? "Ya usaste tus análisis." : `Tienes ${n} análisis.`),
-  cuerpo: "El próximo es más fácil: tus números del primer informe ya están cargados.",
+  titular: (n: number | null): string => (n == null ? "Tus créditos ya están en tu cuenta." : n <= 0 ? "Ya usaste tus créditos." : `Tienes ${n} ${n === 1 ? "crédito" : "créditos"}.`),
+  cuerpo: "El próximo es más fácil: tus números del primer depto ya están cargados.",
   boton: "Analizar el próximo",
   fraseVeredicto: {
     "BUSCAR OTRA": "Mismo pie, mismo plazo. Abajo, deptos parecidos ya revisados con tus números.",
@@ -163,10 +160,10 @@ export const PAGO_PACK_NO_PASO = {
 } as const;
 
 export const CHECKOUT_PACK = {
-  titulo: "Franco — 3 análisis",
-  subtitulo: "3 análisis, sin caducidad",
+  titulo: "Franco — 3 créditos",
+  subtitulo: "3 créditos, sin caducidad",
   vence: (dia: "hoy" | "mañana" | "otro", hora: string) => (dia === "otro" ? `Vence a las ${hora}.` : `Vence ${dia} a las ${hora}.`),
-  vencido: "Ese precio venció y no vuelve. Un análisis cuesta $9.990, y los planes siguen en su precio.",
+  vencido: "Ese precio venció y no vuelve. Un crédito cuesta $9.990, y los planes siguen en su precio.",
   /** El ticket como oferta en la pantalla de compra (24-oct-2026, mockup B). */
   soloNuevas: "Solo para cuentas nuevas",
   venceCorto: (cuando: string) => `Vence ${cuando}`,
@@ -175,26 +172,26 @@ export const CHECKOUT_PACK = {
 
 // ── 6 · Comparar ─────────────────────────────────────────────────────────────
 export const COMPARAR = {
-  titulo: "Compara tus análisis",
+  titulo: "Compara tus deptos",
   bajada: "Lado a lado, con el motor de hoy. Elige dos o más.",
   boton: "Comparar",
   filas: { veredicto: "Veredicto", precio: "Precio", flujo: "Flujo mensual", resultado: "Resultado a 10 años" },
   notaPesos: "Montos a 10 años en pesos de hoy.",
-  minimo: "Elige al menos dos análisis.",
+  minimo: "Elige al menos dos deptos.",
 } as const;
 
 // ── 7 · El correo si no usa los análisis ─────────────────────────────────────
 export const CORREO_RECORDATORIO = {
-  asunto: "Te quedan 3 análisis, con tus números ya cargados.",
+  asunto: "Te quedan 3 créditos, con tus números ya cargados.",
   cuerpo: "El próximo toma un minuto: tu pie, tu tasa y tu plazo ya están puestos. Solo falta el depto.",
   boton: "Analizar el próximo",
-  pie: "Tus 3 análisis no vencen. Te escribimos esta vez y no volvemos a insistir.",
+  pie: "Tus 3 créditos no vencen. Te escribimos esta vez y no volvemos a insistir.",
 } as const;
 /** EL PACK SIN INFORME (05-nov-2026, auditoría de promesas parte 3): comprado desde un depto o desde Explorar, no hay números
  *  que precargar. Lleva al mapa, que abre con su búsqueda. Antes iba al formulario vacío prometiendo «números ya cargados». */
 export const CORREO_RECORDATORIO_SIN_INFORME = {
-  asunto: "Te quedan 3 análisis.",
-  cuerpo: "En el mapa están los deptos que convienen hoy con tu búsqueda: elige uno y analízalo.",
+  asunto: "Te quedan 3 créditos.",
+  cuerpo: "En el mapa están los deptos que convienen hoy con tu búsqueda: elige uno y mira sus detalles.",
   boton: "Ver el mapa",
   pie: CORREO_RECORDATORIO.pie,
 } as const;

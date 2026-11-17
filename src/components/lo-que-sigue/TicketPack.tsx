@@ -359,8 +359,6 @@ export function TicketPack({ ctx, createdAt, correoSesion = null, conSesion = fa
                 {TICKET_PACK.cuerpo}
                 <br />
                 <b>{TICKET_PACK.cuerpoFuerte}</b>
-                <br />
-                <b>{conCuenta ? TICKET_PACK.negritaConCuenta : TICKET_PACK.negrita}</b>
               </p>
               {!correoSesion && (
                 <input

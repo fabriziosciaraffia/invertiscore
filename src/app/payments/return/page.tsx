@@ -306,7 +306,7 @@ function PaymentReturnContent() {
   // misma pantalla de compra, con lo que la compra traía (lib/compra/compra.ts).
   // La vuelta (`volver`) solo la traen el pack de tres y, desde el 21-oct-2026, el pack y el suelto comprados desde un depto.
   const tras = analysisId && producto !== PRODUCTO_TRES
-    ? { texto: "Ver mi análisis", href: `/analisis/${analysisId}` }
+    ? { texto: "Ver los detalles", href: `/analisis/${analysisId}` }
     : botonTrasPagar(volver);
   const reintentar = rutaReintentar({
     suscripcion: type === "subscription",
@@ -419,7 +419,7 @@ function PaymentReturnContent() {
               {/* La suscripción ya no llega acá (05-nov-2026): registrar la tarjeta no es pagar; su vuelta es el bloque de arriba. */}
               {producto === PRODUCTO_TRES || producto === PRODUCTO_PACK
                 ? TRES_COPY.listo
-                : analysisId ? "Tu análisis está desbloqueado." : RETORNO.pagado.uno
+                : analysisId ? "Ya tienes los detalles de este depto." : RETORNO.pagado.uno
               }
             </p>
             <div className={PLANO.seccion}>
