@@ -187,6 +187,7 @@ import { runExplorarCorreosTier } from "./explorar-correos-catch-test";
 import { runExplorarNegociarTier } from "./explorar-negociar-catch-test";
 import { runCompartirDeptoTier } from "./compartir-depto-catch-test";
 import { runInviertePronto } from "./invierte-pronto-catch-test";
+import { runInvierteV2 } from "./invierte-v2-catch-test";
 import { runCampanaFase0Tier } from "./campana-fase0-catch-test";
 import { runExplorarPasadaTier } from "./explorar-pasada-catch-test";
 import { runInformeEnCaminoTier } from "./informe-en-camino-catch-test";
@@ -792,6 +793,10 @@ function printSeed(r: SeedReport) {
   // Tier INVIERTE-PRONTO (11-nov-2026, 0 tokens): «Pronto: Invierte con Franco» — el botón solo en usados que dan Comprar o
   // Ajustar negociable, el copy sin comisión, lista ni plazo, la inscripción con depto y con su correo a hola@. ──
   totalHard += (await runInviertePronto()).hard;
+  // Tier INVIERTE-V2 (18-nov-2026, 0 tokens): Invierte con Franco, comprador · etapa 1 — el interruptor por cuenta, el botón que
+  // sin acceso sigue en Pronto, el 404 de lo nuevo, la firma (RUT, casilla, final del texto) y la orden con su huella, el PDF,
+  // la copia, «Reiniciar prueba» solo sobre pruebas, nada a Meta. ──
+  totalHard += (await runInvierteV2()).hard;
   // Tier CAMPANA-FASE0 (12-nov-2026, 0 tokens): el origen de cada registro desde la cookie de la primera visita, Meta con fbc y sin
   // esperar el aviso de cookies, las cuentas de prueba fuera, el panel solo con cuentas reales, /privacy y el FAQ al día. ──
   totalHard += (await runCampanaFase0Tier()).hard;

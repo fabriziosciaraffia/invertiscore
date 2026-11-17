@@ -153,7 +153,13 @@ export async function runInviertePronto(): Promise<{ hard: number }> {
       // Explorar le pasa a la tarjeta qué hacer (con y sin cuenta): sin eso, el botón no aparece en producción.
       const cliente = codigo("src/app/explorar/explorar-cliente.tsx");
       const elTarjeta = cliente.slice(cliente.indexOf("<TarjetaPin"), cliente.indexOf("/>", cliente.indexOf("<TarjetaPin")));
-      if (!/inscritos=\{inscritos\}/.test(elTarjeta) || !/alInvertir=\{\(p\) => \{[^}]*setInvierte\(\{ pin: p, retomar: false \}\)/.test(elTarjeta)) F("1 · Explorar no le pasa a la tarjeta los inscritos y la hoja de «Invierte con Franco»");
+      // ⚠ ACTA (18-nov-2026, Invierte con Franco comprador, etapa 1): `alInvertir` abre la hoja de Pronto salvo que el interruptor
+      // lleve al flujo nuevo (destinoBoton: acceso + usado), y con acceso la tarjeta no recibe los inscritos de Pronto. El predicado
+      // ya no exige que no haya NADA antes de setInvierte: exige la hoja de Pronto Y que lo que se desvía esté guardado por destinoBoton.
+      const alInv = elTarjeta.slice(elTarjeta.indexOf("alInvertir={"));
+      const abreLaHoja = /setInvierte\(\{ pin: p, retomar: false \}\)/.test(alInv);
+      const desvioGuardado = !/router\.push|return;/.test(alInv) || /if \(destinoBoton\(\{ acceso: invierteV2, condicion: p\.condicion \}\) === "v2"\) \{ router\.push\(urlContacto\(p\.avisoId, "explorar"\)\); return; \}/.test(alInv);
+      if (!/inscritos=\{(invierteV2 \? undefined : )?inscritos\}/.test(elTarjeta) || !abreLaHoja || !desvioGuardado) F("1 · Explorar no le pasa a la tarjeta los inscritos y la hoja de «Invierte con Franco»");
       // La selección del dashboard usa la misma regla, con el `tramo` «negociar» como negociable.
       const sel = codigo("src/app/semanal/semanal-lista.tsx");
       if (!/puedeInvertir\(\{ condicion: it\.condicion, veredicto: it\.veredicto, negociable: it\.tramo === "negociar" \}\) && \(\s*<BotonInvierte avisoId=\{it\.avisoId\} origen="seleccion"/.test(sel)) F("1 · la tarjeta de la selección no decide el botón con puedeInvertir (usado + Comprar o negociar)");
@@ -164,7 +170,8 @@ export async function runInviertePronto(): Promise<{ hard: number }> {
       const srv = codigo("src/lib/invierte/invierte-servidor.ts");
       if (!/if \(!aviso \|\| !puedeInvertir\(\{ condicion: aviso\.condicion, veredicto: p\.veredicto, negociable: aviso\.negociable \}\)\) return null;/.test(srv)) F("1 · la portada del informe no decide la franja con puedeInvertir y el veredicto del informe");
       for (const [archivo, nombre] of [["src/app/analisis/[id]/informe-ltr.tsx", "LTR"], ["src/app/analisis/renta-corta/[id]/informe-str.tsx", "STR"]] as const) {
-        if (!/const invierte = isOwner && [^;]{0,160}?\? await invierteDelInforme\(/.test(codigo(archivo))) F(`1 · el informe ${nombre} no pregunta la franja solo para el dueño`);
+        // ⚠ ACTA (18-nov-2026): la franja puede pasar por conFlujoV2 (invierte-v2/informe.ts), que solo le agrega el destino nuevo.
+        if (!/const invierte = isOwner && [^;]{0,160}?\? await (conFlujoV2\(await )?invierteDelInforme\(/.test(codigo(archivo))) F(`1 · el informe ${nombre} no pregunta la franja solo para el dueño`);
       }
       // ⚠ ACTA (12-nov-2026) · el servidor inscribe un nuevo de inmobiliaria (antes lo rechazaba) y rechaza uno sin condición.
       const nuevo = falsoSupabase({ aviso: { ...AVISO_USADO, condicion: "nuevo" }, evaluado: { ...EVALUADO, condicion: "nuevo" } });
@@ -369,3 +376,9 @@ if (require.main === module) {
 // «negociable» pasa · N3 Ajustar sin negociar pasa · N4 los nuevos fuera otra vez · N5 cualquier condición pasa · N6 el asunto sin
 // «[NUEVO]» · N7 «[NUEVO]» a todos · N8 el servidor no pasa la condición al asunto · N9 el servidor rechaza nuevos · N10 acepta sin
 // condición · N11 el panel no filtra · N12 el panel sin la columna · N13 la condición mal leída de la línea.
+// ── ACTA (18-nov-2026, Invierte con Franco comprador, etapa 1) ───────────────
+// Dos predicados de §1 leían la forma exacta del cableado y el flujo nuevo la cambió sin cambiar el comportamiento: Explorar ahora
+// decide con destinoBoton antes de abrir la hoja (y con acceso no pasa los inscritos de Pronto), y el informe pasa la franja por
+// conFlujoV2. Reescritos sin aflojarlos: siguen exigiendo la hoja de Pronto y la franja solo al dueño, y además que el desvío esté
+// guardado por destinoBoton. 5 de 5 en ROJO: P1 el mapa ya no abre la hoja · P2 desvía sin guardia · P3 no pasa los inscritos ·
+// P4 la franja LTR sin isOwner · P5 la STR sin isOwner. Las 34 del 11 y el 12-nov siguen siendo las del tier.
