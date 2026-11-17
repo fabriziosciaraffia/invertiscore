@@ -1,21 +1,30 @@
 Invierte con Franco, comprador. Mockups de la etapa 1 (hasta la firma)
+Tercera entrega, 17-nov-2026: se agregan las laminas de PC y cambia el contacto en celular.
 
-Son las laminas del canvas de diseno, tal como estan publicadas al 17-nov-2026 (segunda entrega: 2.1 trae el texto vigente de la orden, version 1).
-Cada archivo es HTML con estilos en linea: el contenido de la pantalla esta dentro de la etiqueta x-dc.
-Sirven como referencia de estructura, textos, medidas y colores. No son codigo para copiar.
+Son las laminas del canvas de diseno. Cada archivo es HTML con estilos en linea: el contenido de la pantalla esta dentro de la etiqueta x-dc.
+Sirven como referencia de estructura, textos y disposicion. No son codigo para copiar.
 
-Orden del flujo
-1.1-entrada-boton.html   El boton Invierte con Franco en la tarjeta del mapa (ya existe; solo cambia adonde lleva)
-1.2-contacto.html        Paso 1 de 2: cuando compra, pie, WhatsApp y permiso
-2.1-firma.html           Paso 2 de 2: nombre, RUT, orden de visita y firma
-2.2-partimos.html        Confirmacion tras firmar
+Criterio de formato (vale para celular y PC)
+- El contacto (1.2) es una hoja que se abre encima de donde estaba la persona (mapa, seleccion o informe), igual que la hoja de Pronto hoy. No es una pagina.
+- La firma (2.1) y Partimos (2.2) son paginas propias.
+
+Celular (390 px)
+1.1-entrada-boton.html   El boton en la tarjeta del mapa (ya existe; solo cambia adonde lleva)
+1.2-contacto.html        Hoja sobre el mapa: cuando compra, pie, WhatsApp y permiso
+2.1-firma.html           Pagina: nombre, RUT, orden y firma
+2.2-partimos.html        Pagina: confirmacion tras firmar
+
+PC (1280 px)
+1.2-contacto-pc.html     Ventana centrada sobre el mapa oscurecido, con boton de cerrar
+2.1-firma-pc.html        Pagina con el encabezado normal de Franco, dos columnas: a la izquierda datos, casilla y boton; a la derecha la orden, siempre a la vista
+2.2-partimos-pc.html     Pagina a ancho de escritorio, dos columnas: confirmacion y accion; lo que sigue
 
 Que NO tomar de estas laminas
-- La casilla de WhatsApp de 1.2 aparece marcada: en el producto es obligatoria y viene sin marcar.
 - "Analizar este" en 1.1 es copy antiguo: hoy es "Ver este depto".
 - Los textos grises que dicen "Nota de diseno" o explican la lamina no van en el producto.
+- El encabezado de las laminas de PC es un dibujo aproximado: usa el HeaderFranco real.
 - El boton "Hacer mi perfil de inversion" de 2.2 lleva a una pantalla de la etapa 2, que aun no existe.
 - Nombres, RUT y deptos son de ejemplo.
 
 Estilo
-Inter. Ancho de telefono 390 px. Degradado de cabecera #2B558F, #6E4560, #C8323C. Boton principal #C8323C. Usar los tokens y componentes que ya existen en el repo cuando haya equivalentes.
+Las laminas usan Inter y el degradado #2B558F, #6E4560, #C8323C. En el producto: tokens y componentes del repo, y el degradado solo en la cabecera, como ya lo hiciste.
