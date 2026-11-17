@@ -379,6 +379,13 @@ export async function runOfertaTicketTier(): Promise<{ hard: number }> {
     if (!/>Comprar por \$14\.990</.test(html)) F("4 · el botón no dice «Comprar por $14.990»");
     const vence = `Solo para usuarios nuevos, en este depto · hasta ${P.cuandoVence(creado)} · si te vas, guarda el enlace`;
     if (!t.includes(vence)) F(`4 · el vencimiento no dice «${vence}»`);
+    // ⚠ ACTA (17-nov-2026, decisión de Fabrizio) · la tercera línea del cuerpo pasó, acortada, a la letra chica justo debajo de
+    // «Comprar»: «Al comprar quedas registrado y cada semana recibes deptos que te convienen.» Solo para quien no tiene cuenta.
+    const registro = "Al comprar quedas registrado y cada semana recibes deptos que te convienen.";
+    if (!new RegExp(`>Comprar por \\$14\\.990</button><p class="lqs-tk-vence" data-lqs="ticket-registro">${registro.replace(/\./g, "\\.")}</p><p class="lqs-tk-vence" data-lqs="ticket-vence">`).test(html))
+      F("4 · sin cuenta, la letra chica «Al comprar quedas registrado…» no va justo debajo de «Comprar», antes del vencimiento");
+    const htmlCuenta = dibujarConRouter(createElement(TicketPack, { ctx: { analysisId: "a1", veredicto: "COMPRAR", modalidad: "ltr" }, createdAt: creado, conCuenta: true }));
+    if (/quedas registrado|data-lqs="ticket-registro"/.test(htmlCuenta) || !/>Comprar por \$14\.990</.test(htmlCuenta)) F("4 · con cuenta, el ticket le dice que queda registrado (o no dibuja el botón)");
     if (/Quiero los 3 créditos[^<]*<\/button>\s*<p class="lqs-tk-pie"|Incluye una selección|Revísalos hoy/.test(html)) F("4 · el ticket conserva el copy viejo");
   }
 

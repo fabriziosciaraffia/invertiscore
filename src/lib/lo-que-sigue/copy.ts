@@ -98,6 +98,9 @@ export const TICKET_PACK = {
   /** El cuerpo son dos líneas en un solo tamaño: `cuerpo` normal y `cuerpoFuerte` entera en negrita (08-oct-2026). La
    *  tercera línea («Al comprar quedas registrado…» / la de la cuenta) salió el 17-nov-2026, decisión de Fabrizio. */
   cuerpoFuerte: "A mitad de precio, solo para usuarios nuevos.",
+  /** LA LETRA CHICA BAJO «COMPRAR» (17-nov-2026, decisión de Fabrizio): lo que decía la tercera línea del cuerpo, acortado. Solo
+   *  para quien no tiene cuenta: a la cuenta no se le dice que queda registrada. */
+  registro: "Al comprar quedas registrado y cada semana recibes deptos que te convienen.",
   boton: (precio: string) => `Comprar por ${precio}`,
   vencimiento: (cuando: string) => `Solo para usuarios nuevos, en este depto · hasta ${cuando} · si te vas, guarda el enlace`,
   /** El ticket de la cuenta (22-oct-2026): va en todos sus informes, no en este; sin «guarda el enlace». */

@@ -374,6 +374,7 @@ export function TicketPack({ ctx, createdAt, correoSesion = null, conSesion = fa
               )}
               {error && <p className="lqs-tk-error" role="alert">{error}</p>}
               <button type="submit" className="lqs-rojo" disabled={pagando} {...botonOcupado(pagando)}>{TICKET_PACK.boton(precio)}</button>
+              {!conCuenta && <p className="lqs-tk-vence" data-lqs="ticket-registro">{TICKET_PACK.registro}</p>}
               <p className="lqs-tk-vence" data-lqs="ticket-vence">{conCuenta ? TICKET_PACK.vencimientoCuenta(cuandoVence(createdAt)) : TICKET_PACK.vencimiento(cuandoVence(createdAt))}</p>
               <button type="button" className="lqs-seguir" onClick={() => despedirse("seguir")}>{TICKET_PACK.seguir}</button>
             </form>
