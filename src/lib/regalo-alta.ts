@@ -106,15 +106,15 @@ export type MotivoSinRegalo = "tope_dispositivo" | "tope_dia" | "existente";
 export const SIN_REGALO_COPY: Record<MotivoSinRegalo, { titulo: string; bajada: string }> = {
   tope_dispositivo: {
     titulo: "Tu regalo ya se usó en este dispositivo.",
-    bajada: `El análisis de regalo es uno por dispositivo cada ${DIAS_TOPE_DISPOSITIVO} días.`,
+    bajada: `El crédito de regalo es uno por dispositivo cada ${DIAS_TOPE_DISPOSITIVO} días.`,
   },
   tope_dia: {
     titulo: "Hoy se acabaron los regalos del día.",
-    bajada: `Repartimos hasta ${TOPE_REGALOS_DIA} análisis de regalo al día.`,
+    bajada: `Repartimos hasta ${TOPE_REGALOS_DIA} créditos de regalo al día.`,
   },
   existente: {
     titulo: "Este correo ya tenía cuenta.",
-    bajada: "El análisis de regalo es para las cuentas nuevas.",
+    bajada: "El crédito de regalo es para las cuentas nuevas.",
   },
 };
 export const VER_PLANES = { texto: "Ver planes", href: "/pricing" } as const;
@@ -127,8 +127,8 @@ export function motivoSinRegalo(estado: string | null | undefined, motivoGuardad
 
 /** El aviso antes de gastar y el saldo (16-oct-2026): con un regalo, se dice que se usa el regalo. */
 export const REGALO_COPY = {
-  usaRegalo: "Usa tu análisis de regalo.",
-  usaUnoDe: (n: number) => (n === 1 ? "Usa tu último análisis." : `Usa 1 de tus ${n} análisis.`),
-  tienes: "Tienes un análisis de regalo.",
-  cargado: "Te cargamos un análisis de regalo.",
+  usaRegalo: "Usa tu crédito de regalo.",
+  usaUnoDe: (n: number) => (n === 1 ? "Usa tu último crédito." : `Usa 1 de tus ${n} créditos.`),
+  tienes: "Tienes un crédito de regalo.",
+  cargado: "Te cargamos un crédito de regalo.",
 } as const;

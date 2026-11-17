@@ -11,7 +11,7 @@ export const CUENTA_COPY = {
   plan: {
     titulo: "Tu plan",
     renueva: (fecha: string) => `Se renueva el ${fecha}.`,
-    teQuedan: (n: number) => (n === 1 ? "Te queda 1 análisis." : `Te quedan ${n} análisis.`),
+    teQuedan: (n: number) => (n === 1 ? "Te queda 1 crédito." : `Te quedan ${n} créditos.`),
     legado: "Lo sigues teniendo como lo contrataste.",
     cancelado: (fecha: string) => `Lo cancelaste: tienes acceso hasta el ${fecha}.`,
     pendiente: (fecha: string) => `Tu último cobro no se pudo hacer. Tienes acceso hasta el ${fecha}.`,
@@ -25,12 +25,12 @@ export const CUENTA_COPY = {
   },
   saldo: {
     titulo: "Tu saldo",
-    ninguno: "No te quedan análisis.",
+    ninguno: "No te quedan créditos.",
     comprar: "Ver el pack y el plan",
   },
   compras: "Tus compras",
   perfil: {
-    sin: "Todavía no tienes perfil de búsqueda. Se arma con tus informes, o eligiendo comunas, tipología y precio.",
+    sin: "Todavía no tienes perfil de búsqueda. Se arma con los deptos que ya viste, o eligiendo comunas, tipología y precio.",
     armar: "Armarlo ahora",
   },
   entrar: {
@@ -55,10 +55,10 @@ export const CUENTA_COPY = {
   cancelar: {
     boton: "Cancelar el plan",
     pregunta: "¿Cancelas el plan?",
-    texto: "No se renueva más. Los análisis que ya tienes siguen vigentes hasta que vencen.",
+    texto: "No se renueva más. Los créditos que ya tienes siguen vigentes hasta que vencen.",
     // En la gracia o esperando el primer cobro se cancela ahora en Flow (05-nov-2026): al fin del período, Flow seguiría
     // intentando cobrar.
-    textoAhora: "Se cancela ahora y Flow no vuelve a intentar el cobro. Los análisis que ya tienes siguen vigentes hasta que vencen.",
+    textoAhora: "Se cancela ahora y Flow no vuelve a intentar el cobro. Los créditos que ya tienes siguen vigentes hasta que vencen.",
     si: "Sí, cancelar",
     no: "No, mantenerlo",
     cancelando: "Cancelando…",
@@ -84,14 +84,14 @@ export const ELIMINAR_COPY = {
 /** El nombre de lo comprado, para «Tus compras». */
 export function etiquetaCompra(product: string): string {
   switch (product) {
-    case "single": return "1 análisis";
-    case "pack3": case "tres_analisis": return "3 análisis";
+    case "single": return "1 crédito";
+    case "pack3": case "tres_analisis": return "3 créditos";
     case "plan10_mensual": return PLANES_COPY.plan.nombre;
     case "plan10_annual": return "Plan 10 anual";
     case "plan50_mensual": case "plan50_annual": return "Plan 50";
     case "unlimited_mensual": case "unlimited_annual": return "Plan Ilimitado";
     case "unlock": return "Informe completo";
-    case "pro": return "Análisis";
+    case "pro": return "Crédito";
     default: return "Compra";
   }
 }

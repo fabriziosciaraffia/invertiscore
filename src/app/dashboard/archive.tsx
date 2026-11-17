@@ -299,7 +299,7 @@ export function Archive({ rows, items, siblings, total, hasMore, params, stats, 
 
   // El `id` es real: los <EnlaceCarga> de los chips apuntan a #archivo para que filtrar deje la lista a la vista.
   return (
-    <section id="archivo" aria-label="Tus informes" className="scroll-mt-20" data-casa="archivo">
+    <section id="archivo" aria-label="Tus deptos" className="scroll-mt-20" data-casa="archivo">
       <div className="overflow-hidden rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)]">
         {/* ── La búsqueda y «Agrupar por propiedad»; debajo, los filtros (en el teléfono, de lado) ── */}
         <div className="border-b border-[var(--franco-border)] p-3">
@@ -368,7 +368,7 @@ export function Archive({ rows, items, siblings, total, hasMore, params, stats, 
 
         {vacio ? (
           <div className="px-5 py-14 text-center">
-            <p className="font-body text-[13px] text-[var(--franco-text-secondary)]">Ningún análisis coincide con este filtro.</p>
+            <p className="font-body text-[13px] text-[var(--franco-text-secondary)]">Ningún depto coincide con este filtro.</p>
             {filtrando && (
               <EnlaceCarga
                 href={buildHref(params, { q: "", mod: "todas", v: "todos", origen: "todos" })}
@@ -383,7 +383,7 @@ export function Archive({ rows, items, siblings, total, hasMore, params, stats, 
             {/* ── Desde 768: la tabla ── */}
             <div className="hidden overflow-x-auto md:block">
               <table className="w-full table-fixed border-collapse">
-                <caption className="sr-only">Tus informes</caption>
+                <caption className="sr-only">Tus deptos</caption>
                 <colgroup>
                   <col style={{ width: "33%" }} />
                   <col style={{ width: "13%" }} />
@@ -441,7 +441,7 @@ export function Archive({ rows, items, siblings, total, hasMore, params, stats, 
                               <tr key={`${grupo.key}-mas`} className="border-b border-[var(--franco-border)] bg-[color-mix(in_srgb,var(--franco-text)_2%,transparent)]">
                                 <td colSpan={8} className="h-9 pl-9 align-middle">
                                   <EnlaceCarga href={verTodosHref(params, grupo.key)} className="text-[12.5px] text-[var(--franco-text-secondary)] no-underline hover:text-[var(--franco-text)]">
-                                    Ver los {restantes} análisis restantes ↓
+                                    Ver las {restantes} versiones restantes ↓
                                   </EnlaceCarga>
                                 </td>
                               </tr>,
@@ -478,7 +478,7 @@ export function Archive({ rows, items, siblings, total, hasMore, params, stats, 
                     >
                       {/* El padre no navega al análisis: expande. */}
                       {esGrupo ? (
-                        <EnlaceCarga href={toggleGrupoHref(params, grupo.grupo.key)} aria-expanded={abierto} className="absolute inset-0 z-0" aria-label={`${displayDireccion(row)}, ${n} análisis`} />
+                        <EnlaceCarga href={toggleGrupoHref(params, grupo.grupo.key)} aria-expanded={abierto} className="absolute inset-0 z-0" aria-label={`${displayDireccion(row)}, ${n} versiones`} />
                       ) : (
                         <EnlaceCarga href={abrir} aria-label={displayDireccion(row)} className="absolute inset-0 z-0" />
                       )}
@@ -490,7 +490,7 @@ export function Archive({ rows, items, siblings, total, hasMore, params, stats, 
                           {esHija ? (mostrarPrecio ? fmtUF(Number(row.precio)) : modalidadLabel(row) === "CORTA" ? "Renta corta" : modalidadLabel(row) === "AMBAS" ? "Ambas" : "Renta larga") : displayDireccion(row)}
                         </span>
                         {esGrupo ? (
-                          <span className="shrink-0 text-[12px] text-[var(--franco-text-muted)]">{n} análisis</span>
+                          <span className="shrink-0 text-[12px] text-[var(--franco-text-muted)]">{n} versiones</span>
                         ) : (
                           <MarcaFranco row={row} origen={origenes[row.id] ?? null} />
                         )}

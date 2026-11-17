@@ -36,7 +36,7 @@ export async function opcionesComparar(sb: SupabaseClient, userId: string): Prom
     .limit(60);
   return (data ?? []).map((r) => ({
     id: r.id as string,
-    nombre: (r.nombre as string) || "Análisis",
+    nombre: (r.nombre as string) || "Depto",
     comuna: (r.comuna as string) ?? null,
     modalidad: r.tipo_analisis === "short-term" ? "str" : "ltr",
     createdAt: r.created_at as string,
@@ -86,7 +86,7 @@ export async function columnasComparar(sb: SupabaseClient, userId: string, ids: 
           : undefined;
         const r = (inp ? conVeredictoGuardado(recomputeResultsForLegacy(inp as never, uf, med as never, asOf), f.results as never) : f.results) as ResultadoLeido;
         out.push({
-          id, nombre: f.nombre || "Análisis", comuna: f.comuna ?? null, modalidad: "ltr",
+          id, nombre: f.nombre || "Depto", comuna: f.comuna ?? null, modalidad: "ltr",
           veredicto: readVeredicto(r as never) ?? null,
           precioUF: Number(inp?.precio) || null,
           flujoMensualCLP: num(r?.metrics?.flujoNetoMensual),
@@ -106,7 +106,7 @@ export async function columnasComparar(sb: SupabaseClient, userId: string, ids: 
         const persist = await conOcupacionRealizadaDelCache(inp, normalizarResultsStrPersistidos(f.results as never));
         const r = ((inp && recomputeShortTermForLegacy(inp as never, persist, uf, asOf, med)) ?? persist) as ResultadoLeido;
         out.push({
-          id, nombre: f.nombre || "Análisis", comuna: f.comuna ?? null, modalidad: "str",
+          id, nombre: f.nombre || "Depto", comuna: f.comuna ?? null, modalidad: "str",
           veredicto: r?.francoScore?.veredicto ?? readVeredicto(r as never) ?? null,
           precioUF: precioUF || null,
           // La misma fuente que el capítulo del flujo en renta corta (CapitulosInversionStr).
@@ -116,7 +116,7 @@ export async function columnasComparar(sb: SupabaseClient, userId: string, ids: 
         });
       }
     } catch {
-      out.push({ id, nombre: f.nombre || "Análisis", comuna: f.comuna ?? null, modalidad: esStr ? "str" : "ltr", veredicto: null, precioUF: null, flujoMensualCLP: null, resultado10CLP: null, uf: ufLive });
+      out.push({ id, nombre: f.nombre || "Depto", comuna: f.comuna ?? null, modalidad: esStr ? "str" : "ltr", veredicto: null, precioUF: null, flujoMensualCLP: null, resultado10CLP: null, uf: ufLive });
     }
   }
   return out;

@@ -43,9 +43,9 @@ export const ENTRAR = {
 /** Título y bajada de cada contexto. Literales aprobados (01-oct-2026). */
 export const ENTRAR_CONTEXTO: Record<ContextoEntrada, { titulo: string; bajada: string }> = {
   generico: { titulo: "Entra a Franco", bajada: "Te mandamos un código a tu correo. Sin contraseña." },
-  pack: { titulo: "Entra con el correo con que pagaste", bajada: "Ahí están tus 3 análisis y los deptos que Franco revisó para ti. Te mandamos un código." },
-  informe: { titulo: "Guarda este informe en tu cuenta.", bajada: "Te mandamos un código; el informe queda en tu cuenta." },
-  semanal: { titulo: "Entra para analizarlo.", bajada: "El depto que elegiste te espera." },
+  pack: { titulo: "Entra con el correo con que pagaste", bajada: "Ahí están tus 3 créditos y los deptos que Franco revisó para ti. Te mandamos un código." },
+  informe: { titulo: "Guarda este depto en tu cuenta.", bajada: "Te mandamos un código; el depto queda en tu cuenta." },
+  semanal: { titulo: "Entra para verlo.", bajada: "El depto que elegiste te espera." },
 };
 
 /** ¿El destino es un informe? Solo así el copy puede hablar de «este informe». */

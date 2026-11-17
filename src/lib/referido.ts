@@ -122,9 +122,9 @@ export function nombreInvitacion(v: unknown): string | null {
 const quien = (nombre: string | null) => (nombre ? `${nombre} te invitó a Franco` : "Un amigo te invitó a Franco");
 
 /** LA REGLA DEL REFERIDO, en una frase (05-nov-2026): la dicen todos los textos de «Invita a alguien». */
-export const REGLA_REFERIDO = `Cuando tu invitado hace su primer análisis, tú recibes uno: hasta ${TOPE_PREMIOS_REFERIDO} invitados, cada uno vigente ${DIAS_VIGENCIA_PREMIO_REFERIDO} días.`;
+export const REGLA_REFERIDO = `Cuando tu invitado usa su primer crédito, tú recibes uno: hasta ${TOPE_PREMIOS_REFERIDO} invitados, cada uno vigente por ${DIAS_VIGENCIA_PREMIO_REFERIDO} días.`;
 /** Lo que recibe el invitado: su regalo de cuenta nueva (regalo-alta.ts), que ve en «Estás dentro». */
-const REGALO_INVITADO = "Al crear tu cuenta, Franco te regala un análisis.";
+const REGALO_INVITADO = "Al crear tu cuenta, Franco te regala un crédito.";
 
 export const REFERIDO_COPY = {
   // ── La página del invitado ──
@@ -138,7 +138,7 @@ export const REFERIDO_COPY = {
   conDeptoVolver: "Mejor elijo comuna y precio",
   /** Quien ya tiene cuenta abre un enlace de invitación. */
   yaTienesCuenta: "Ya tienes cuenta en Franco.",
-  yaTienesCuentaTexto: "Este enlace es para quien todavía no está. Tus análisis siguen en tu cuenta.",
+  yaTienesCuentaTexto: "Este enlace es para quien todavía no está. Tus deptos y créditos siguen en tu cuenta.",
   irACuenta: "Ir a mi cuenta",
   /** Quien invita abre su propio enlace. */
   tuEnlace: "Este es tu enlace de invitación.",
@@ -158,23 +158,23 @@ export const REFERIDO_COPY = {
   error: "No pudimos armar tu enlace. Intenta de nuevo.",
   cuenta: (pagados: number) =>
     pagados >= TOPE_PREMIOS_REFERIDO
-      ? `Ya sumaste tus ${TOPE_PREMIOS_REFERIDO} análisis por invitar.`
+      ? `Ya sumaste tus ${TOPE_PREMIOS_REFERIDO} créditos por invitar.`
       : pagados === 0
         ? REGLA_REFERIDO
-        : `Llevas ${pagados} de ${TOPE_PREMIOS_REFERIDO}: cada invitado que hace su primer análisis te suma uno, vigente ${DIAS_VIGENCIA_PREMIO_REFERIDO} días.`,
+        : `Llevas ${pagados} de ${TOPE_PREMIOS_REFERIDO}: cada invitado que usa su primer crédito te suma uno, vigente ${DIAS_VIGENCIA_PREMIO_REFERIDO} días.`,
   pieSemanal: `Invita a alguien. ${REGLA_REFERIDO}`,
   menuCompartir: "Invita a alguien",
-  menuCompartirNota: `Recibes uno cuando hace su primer análisis: hasta ${TOPE_PREMIOS_REFERIDO}, vigente ${DIAS_VIGENCIA_PREMIO_REFERIDO} días`,
+  menuCompartirNota: `Recibes uno cuando usa su primer crédito: hasta ${TOPE_PREMIOS_REFERIDO}, vigente ${DIAS_VIGENCIA_PREMIO_REFERIDO} días`,
 
   // ── El correo a quien invitó ──
-  correoAsunto: "Tu invitado hizo su primer análisis: tienes uno más",
-  correoTitular: "Tu invitado hizo su primer análisis.",
-  correoTexto: `Tienes un análisis más en tu cuenta, vigente ${DIAS_VIGENCIA_PREMIO_REFERIDO} días, para el depto que quieras.`,
+  correoAsunto: "Tu invitado usó su primer crédito: tienes uno más",
+  correoTitular: "Tu invitado usó su primer crédito.",
+  correoTexto: `Tienes un crédito más en tu cuenta, vigente ${DIAS_VIGENCIA_PREMIO_REFERIDO} días, para el depto que quieras.`,
   /** Lo mismo después del saludo («Hola Camila, tienes…»). */
-  correoCuerpo: `tienes un análisis más en tu cuenta, vigente ${DIAS_VIGENCIA_PREMIO_REFERIDO} días, para el depto que quieras.`,
+  correoCuerpo: `tienes un crédito más en tu cuenta, vigente ${DIAS_VIGENCIA_PREMIO_REFERIDO} días, para el depto que quieras.`,
   correoQuedan: (pagados: number) =>
     pagados >= TOPE_PREMIOS_REFERIDO
-      ? `Con este sumaste los ${TOPE_PREMIOS_REFERIDO} análisis por invitar.`
-      : `Llevas ${pagados} de ${TOPE_PREMIOS_REFERIDO} invitados: cada uno que hace su primer análisis te suma otro.`,
+      ? `Con este sumaste los ${TOPE_PREMIOS_REFERIDO} créditos por invitar.`
+      : `Llevas ${pagados} de ${TOPE_PREMIOS_REFERIDO} invitados: cada uno que usa su primer crédito te suma otro.`,
   correoBoton: "Analizar un depto",
 } as const;

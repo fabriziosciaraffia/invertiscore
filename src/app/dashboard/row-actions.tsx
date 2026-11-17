@@ -73,7 +73,7 @@ export function RowActions({ id, groupId, hrefAbrir, hrefPdf, variant = "inline"
 
     const mensaje = groupId
       ? "Esto elimina la comparativa y sus dos análisis (renta larga y renta corta). ¿Continuar?"
-      : "¿Estás seguro de eliminar este análisis?";
+      : "¿Eliminar este depto de tu cuenta?";
     if (!confirm(mensaje)) return;
 
     setBorrando(true);
@@ -93,7 +93,7 @@ export function RowActions({ id, groupId, hrefAbrir, hrefPdf, variant = "inline"
         <button
           type="button"
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); setAbierto((v) => !v); }}
-          aria-label="Acciones del análisis"
+          aria-label="Acciones del depto"
           aria-expanded={abierto}
           // Sin borde y angosto (17-oct-2026): vive al final de la tarjeta de una línea del teléfono, que necesita el ancho
           // para el nombre y el veredicto entero.
@@ -108,7 +108,7 @@ export function RowActions({ id, groupId, hrefAbrir, hrefPdf, variant = "inline"
             style={{ boxShadow: "var(--franco-shadow-pop)" }}
           >
             <a href={hrefAbrir} className="flex items-center gap-2.5 px-3.5 py-2.5 font-body text-[13px] text-[var(--franco-text)] no-underline">
-              <ArrowRight className="h-3.5 w-3.5" /> Abrir análisis
+              <ArrowRight className="h-3.5 w-3.5" /> Abrir
             </a>
             {hrefPdf && (
               <button type="button" onClick={descargarPdf} disabled={descargando} {...botonOcupado(descargando)} className="flex w-full items-center gap-2.5 border-t border-[var(--franco-border)] px-3.5 py-2.5 text-left font-body text-[13px] text-[var(--franco-text)]">
@@ -139,8 +139,8 @@ export function RowActions({ id, groupId, hrefAbrir, hrefPdf, variant = "inline"
     >
       <a
         href={hrefAbrir}
-        title="Abrir análisis"
-        aria-label="Abrir análisis"
+        title="Abrir"
+        aria-label="Abrir"
         className="inline-flex h-[26px] w-[26px] items-center justify-center rounded-md border border-[var(--franco-border-hover)] bg-[var(--franco-card)] text-[var(--franco-text-secondary)] no-underline"
       >
         <ArrowRight className="h-3.5 w-3.5" />
@@ -166,8 +166,8 @@ export function RowActions({ id, groupId, hrefAbrir, hrefPdf, variant = "inline"
           disabled={borrando}
           {...botonOcupado(borrando)}
           data-solo-icono
-          title={groupId ? "Eliminar comparativa (borra ambos análisis)" : "Eliminar análisis"}
-          aria-label="Eliminar análisis"
+          title={groupId ? "Eliminar comparativa (borra ambos análisis)" : "Eliminar"}
+          aria-label="Eliminar"
           className="inline-flex h-[26px] w-[26px] items-center justify-center rounded-md border bg-[var(--franco-card)] text-signal-red disabled:opacity-50"
           style={{ borderColor: "color-mix(in srgb, var(--signal-red) 30%, transparent)" }}
         >

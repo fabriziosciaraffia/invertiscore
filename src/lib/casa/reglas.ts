@@ -47,8 +47,8 @@ export function lineaRenueva(horizonte: Horizonte | null, ahora: Date = new Date
 export function pildoraSaldo(s: EstadoSaldo): { texto: string; planes: boolean } {
   switch (s.tipo) {
     case "plan": return { texto: "Plan activo", planes: false };
-    case "regalo": return { texto: "1 análisis de regalo", planes: false };
+    case "regalo": return { texto: "1 crédito de regalo", planes: false };
     case "con": return { texto: s.n === 1 ? "Te queda 1" : `Te quedan ${s.n}`, planes: false };
-    default: return { texto: "Sin análisis", planes: true };
+    default: return { texto: "Sin créditos", planes: true };
   }
 }

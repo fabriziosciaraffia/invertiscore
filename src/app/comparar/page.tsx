@@ -13,7 +13,7 @@ import { CompararVista } from "./comparar-vista";
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const metadata: Metadata = {
-  title: "Comparar análisis",
+  title: "Comparar deptos",
   robots: { index: false, follow: false },
 };
 

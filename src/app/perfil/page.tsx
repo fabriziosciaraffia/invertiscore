@@ -125,7 +125,7 @@ export default async function PerfilPage() {
     planCtaText = null;
   } else if (isSubscriber && isUnlimited) {
     planLabel = "Suscripción Mensual";
-    planDescription = "Análisis ilimitados + todas las variables del panel de ajustes.";
+    planDescription = "Créditos ilimitados + todas las variables del panel de ajustes.";
     planCtaText = "Gestionar";
     planCtaHref = "/pricing";
   } else if (isSubscriber) {
@@ -136,7 +136,7 @@ export default async function PerfilPage() {
     planLabel = activePlan === "plan10" ? PLANES_COPY.plan.nombre : activePlan === "plan50" ? "Plan 50" : "Suscripción";
     planDescription = esperando
       ? SUSCRIPCION_COPY.tarjetaRegistrada
-      : `${credits} ${credits === 1 ? "análisis disponible" : "análisis disponibles"} · todas las variables.`;
+      : `${credits} ${credits === 1 ? "crédito disponible" : "créditos disponibles"} · todas las variables.`;
     planCtaText = "Gestionar";
     planCtaHref = "/cuenta";
   } else if (isPastDueGrace) {
@@ -160,13 +160,13 @@ export default async function PerfilPage() {
     planCtaText = "Volver al Plan Franco →";
     planCtaHref = urlCompra({ product: PRODUCTO_PLAN });
   } else if (credits > 0) {
-    planLabel = "Análisis disponibles";
-    planDescription = `Tienes ${credits} ${credits === 1 ? "análisis disponible" : "análisis disponibles"}. ${proximoVence ? `${credits === 1 ? "Vence" : "El primero vence"} ${fechaVence(proximoVence)}.` : credits === 1 ? "No vence." : "No vencen."}`;
+    planLabel = "Créditos disponibles";
+    planDescription = `Tienes ${credits} ${credits === 1 ? "crédito disponible" : "créditos disponibles"}. ${proximoVence ? `${credits === 1 ? "Vence" : "El primero vence"} ${fechaVence(proximoVence)}.` : credits === 1 ? "No vence." : "No vencen."}`;
     planCtaText = "Comprar más";
     planCtaHref = "/pricing";
   } else {
     planLabel = "Gratuito";
-    planDescription = "Para analizar más: el pack de 3 análisis por $19.990, o el Plan Franco, 20 al mes por $39.990.";
+    planDescription = "Para ver más deptos: el pack de 3 créditos por $19.990, o el Plan Franco, 20 al mes por $39.990.";
     planCtaText = "Ver planes";
     planCtaHref = "/pricing";
   }
@@ -177,7 +177,7 @@ export default async function PerfilPage() {
   }
 
   function fmtProductName(product: string): string {
-    if (product === "pro") return "Análisis";
+    if (product === "pro") return "Crédito";
     if (product === "pack3") return "Pack 3×";
     if (product === "subscription") return "Suscripción";
     return product;
@@ -254,10 +254,10 @@ export default async function PerfilPage() {
             <Sparkles className="mx-auto mb-2 h-5 w-5 text-[#C8323C]" />
             <div className="font-mono text-3xl font-bold text-[#C8323C]">{credits}</div>
             <div className="mt-1 text-sm text-[var(--franco-text-muted)]">
-              {credits === 1 ? "análisis disponible" : "análisis disponibles"}
+              {credits === 1 ? "crédito disponible" : "créditos disponibles"}
             </div>
             <p className="mt-3 text-xs text-[var(--franco-text-muted)]">
-              Úsalo en cualquier análisis tuyo desde la página de resultados.
+              Úsalo en cualquier depto desde sus detalles.
             </p>
           </div>
         )}
@@ -267,13 +267,13 @@ export default async function PerfilPage() {
           <CardHeader>
             <div className="flex items-center gap-2">
               <Clock className="h-5 w-5 text-[#C8323C]" />
-              <CardTitle className="text-[var(--franco-text)]">Historial de análisis</CardTitle>
+              <CardTitle className="text-[var(--franco-text)]">Historial de créditos</CardTitle>
             </div>
           </CardHeader>
           <CardContent>
             {payments.length === 0 ? (
               <p className="text-sm text-[var(--franco-text-secondary)]">
-                Aún no has comprado análisis.
+                Aún no has comprado créditos.
               </p>
             ) : (
               <div className="space-y-3">

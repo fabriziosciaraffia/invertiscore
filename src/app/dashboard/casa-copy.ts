@@ -24,7 +24,7 @@ export const CASA = {
   /** LA OFERTA ROJA (una fila), mientras el ticket viva, con o sin saldo. */
   oferta: {
     kicker: (vence: string) => `Solo para cuentas nuevas · vence ${vence}`,
-    titulo: `3 análisis por ${fmtCLP(PACK_PRECIO_CLP)}`,
+    titulo: `3 créditos (deptos) por ${fmtCLP(PACK_PRECIO_CLP)}`,
     boton: "Aprovechar",
   },
   /** LA FRANJA NEGRA «Invita a alguien». */
@@ -40,33 +40,33 @@ export const CASA = {
     renuevaDiaria: FRECUENCIA_COPY.renuevaDiaria,
     /** Sin selección todavía (la cola del día revisa fichas): la primera selección pregunta sola. */
     verMas: (n: number) => (n === 1 ? "Ver el que falta" : `Ver los ${n} que faltan`),
-    analizar: "Analizar este",
-    analizarRegalo: "Analizar este · usa tu regalo",
-    yaAnalizado: "Ya lo analizaste",
-    verInforme: "Ver informe",
+    analizar: "Ver este depto",
+    analizarRegalo: "Ver este depto · usa tu regalo",
+    yaAnalizado: "Ya lo tienes",
+    verInforme: "Ver detalles",
   },
   sin: {
-    titulo: (informes: number) => (informes === 0 ? "Todavía no tienes análisis." : informes === 1 ? "Tu primer informe ya está en tu cuenta." : `Tus ${informes} informes están en tu cuenta.`),
-    bajada: `Para analizar otros: 3 análisis por ${fmtCLP(TRES_PRECIO_CLP)}, sin caducidad.`,
+    titulo: (informes: number) => (informes === 0 ? "Todavía no has visto ningún depto." : informes === 1 ? "Tu primer depto ya está en tu cuenta." : `Tus ${informes} deptos están en tu cuenta.`),
+    bajada: `Para ver otros: 3 créditos por ${fmtCLP(TRES_PRECIO_CLP)}, sin caducidad.`,
     boton: TRES_COPY.boton,
     suelto: `O uno solo · ${SUELTO}`,
     planes: "Ver planes",
-    plano: "No te quedan análisis.",
+    plano: "No te quedan créditos.",
   },
   // El regalo (16-oct-2026): el de registrarse, el de reactivación o el viejo de los 14 días.
   regalo: {
-    titulo: "Tienes un análisis de regalo.",
+    titulo: "Tienes un crédito de regalo.",
     boton: "Analizar otro depto",
     botonPrimero: "Analizar un depto",
   },
   con: {
-    titulo: (n: number) => (n === 1 ? "Te queda 1 análisis" : `Te quedan ${n} análisis`),
+    titulo: (n: number) => (n === 1 ? "Te queda 1 crédito" : `Te quedan ${n} créditos`),
     noVencen: "No vencen.",
     boton: "Analizar otro depto",
   },
   plan: {
     titulo: "Tu plan Ilimitado está activo.",
-    bajada: "Analizar no descuenta de tu saldo.",
+    bajada: "Ver un depto no descuenta de tu saldo.",
     boton: "Analizar otro depto",
   },
   guiaTitulo: "Te recomendamos empezar por estos",
@@ -103,7 +103,7 @@ export const CASA = {
     error: "No pudimos guardarlo. Intenta de nuevo.",
   },
   /** «INFORMES REALIZADOS», plegado, al final. */
-  informes: "Informes realizados",
+  informes: "Deptos vistos",
 } as const;
 
 /** El saldo en una línea, para el dashboard vacío (14-oct-2026: el saldo o el plan, visible arriba para cualquier
