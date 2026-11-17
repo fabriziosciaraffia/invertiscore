@@ -7,7 +7,7 @@
 //          ni un botón quedan cortados. Imprime el alto del panel y lo que sobra.
 //   LÍNEAS · «No te quedan créditos.» en una línea; la tarjeta del depto en dos (comuna · tipología · m² · precio, y
 //          veredicto · flujo) más la del enlace en UNA; la oferta en una fila («Solo para cuentas nuevas · vence …») y
-//          debajo «3 análisis por $14.990 · $4.997 cada uno» en una línea.
+//          debajo «3 créditos por $14.990 · $4.997 cada uno» en una línea.
 //   CANCELAR · «Cancelar» (y «Ahora no») es texto, no un botón de borde: sin borde y más bajo que los botones.
 //   SUELTO · «Comprar solo 1» es un botón de borde, más bajo que el principal.
 //   ANCHO · ninguna de esas líneas se corta ni se sale a lo ancho (una sola línea no vale si el texto no cabe).
@@ -133,7 +133,7 @@ async function main(): Promise<void> {
       }
       if (e === "a") {
         ok(m.filaUna === true && /^Solo para cuentas nuevas\s*·?\s*vence mañana 18:07$/i.test((m.filaTexto ?? "").replace(/\s+/g, " ")), `LÍNEAS · la oferta no va en una fila: «${m.filaTexto}» (una fila: ${m.filaUna})`);
-        if (e === "a") ok(m.oferta === 1 && m.ofertaTexto === "3 análisis por $14.990 · $4.997 cada uno", `LÍNEAS · «${m.ofertaTexto}» en ${m.oferta} líneas`);
+        if (e === "a") ok(m.oferta === 1 && m.ofertaTexto === "3 créditos por $14.990 · $4.997 cada uno", `LÍNEAS · «${m.ofertaTexto}» en ${m.oferta} líneas`);
       }
       if (e === "a" || e === "a0" || e === "p0") {
         ok(!!m.suelto && m.suelto.borde >= 1 && !!m.principal && m.suelto.alto < m.principal.alto, `SUELTO · «Comprar solo 1» no es un botón de borde más bajo que el principal (${JSON.stringify(m.suelto)} vs ${JSON.stringify(m.principal)})`);
