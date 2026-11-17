@@ -17,6 +17,7 @@ import { lineaRenueva, ofertaEnCasa, pildoraSaldo, preguntasPendientes } from "@
 import { datosMapaCasa } from "@/lib/casa/mapa-casa-servidor";
 import { portadaDeptos } from "@/lib/deptos/portada";
 import { SeleccionEnCasa } from "./seleccion-en-casa";
+import { accesoInvierteV2 } from "@/lib/invierte-v2/acceso-servidor";
 import { AvisoSinOferta } from "./aviso-sin-oferta";
 import { leerAvisoSinOferta } from "@/lib/casa/sin-oferta-servidor";
 import { comunaDeAviso } from "@/lib/guia/semanal-candidatos";
@@ -93,6 +94,8 @@ export default async function DashboardPage({
   if (!user) redirect("/login");
   // En la modalidad que se tocó (`m=str`, 04-nov-2026, compra-desde-depto.ts › volverAlDepto): solo esa lista lo analiza.
   const autoAnalizar = autoAnalizarDeLaVuelta({ analizar: uno("analizar"), a: aSel, m: uno("m") });
+  // Invierte con Franco, comprador (18-nov-2026): el interruptor de esta persona, por pedido y fuera de todo caché.
+  const invierteV2 = await accesoInvierteV2(user);
   const dibujadoAt = Date.now();
 
   const fullName = resolveDisplayName(user.user_metadata, user.email);
@@ -271,7 +274,7 @@ export default async function DashboardPage({
               debajo del otro, como siempre (casa.css › .ca-dos). Sin mapa, las tarjetas a lo ancho. */}
           <div className="ca-dos" data-casa="dos-columnas" data-con-mapa={mapa ? "1" : undefined}>
             {mapa && <div className="ca-dos-mapa"><MapaCasa datos={mapa} totalNoche={totalNoche} /></div>}
-            <div className="ca-dos-tarjetas"><SeleccionEnCasa sel={sel} autoAnalizar={autoAnalizar} primera={!hayDeptos(sel)} /></div>
+            <div className="ca-dos-tarjetas"><SeleccionEnCasa sel={sel} autoAnalizar={autoAnalizar} primera={!hayDeptos(sel)} invierteV2={invierteV2} /></div>
           </div>
           <LineaPuertaExplorar linea={lineaPuerta} consulta={consultaPuerta} donde="dashboard" />
         </section>

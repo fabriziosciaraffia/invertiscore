@@ -25,6 +25,7 @@ import { emitirVistaInforme } from "@/lib/meta/vista-informe";
 import { leerOfertaPack } from "@/lib/lo-que-sigue/oferta-informe-servidor";
 import { publicacionDelInforme } from "@/lib/guia/publicacion-portada";
 import { invierteDelInforme } from "@/lib/invierte/invierte-servidor";
+import { conFlujoV2 } from "@/lib/invierte-v2/informe";
 import { informeBloqueado, rutaPagoBloqueado } from "@/lib/informe-bloqueado";
 import { InformeBloqueado } from "@/components/analysis/InformeBloqueado";
 import { etiquetaAnalisis } from "@/lib/format-direccion";
@@ -307,7 +308,7 @@ export async function InformeStr({ id, demo = false }: { id: string; demo?: bool
   const publicacionAviso = await publicacionDelInforme(createServiceClient(), data.input_data);
   // «Pronto: Invierte con Franco» (11-nov-2026): solo al dueño, con el veredicto que muestra el informe.
   const invierte = isOwner && !esDemo(data.id) && !modoDemo && veredictoVista
-    ? await invierteDelInforme(createServiceClient(), { inputData: data.input_data, analysisId: data.id, veredicto: veredictoVista, score: (data.score as number | null) ?? null, userId: user?.id ?? null })
+    ? await conFlujoV2(await invierteDelInforme(createServiceClient(), { inputData: data.input_data, analysisId: data.id, veredicto: veredictoVista, score: (data.score as number | null) ?? null, userId: user?.id ?? null }), user ?? null)
     : null;
   const publicacion = invierte && publicacionAviso ? { ...publicacionAviso, enFranja: true } : publicacionAviso;
 

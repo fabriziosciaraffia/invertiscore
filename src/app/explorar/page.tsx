@@ -22,6 +22,7 @@ import { fichaCompartida, fichaCompartidaCacheada } from "@/lib/explorar/compart
 import { firmaCompartidoValida } from "@/lib/explorar/firma-compartido";
 import { ExplorarCliente, type CompartidoCliente } from "./explorar-cliente";
 import { EsqueletoExplorar } from "./esqueleto";
+import { accesoInvierteV2 } from "@/lib/invierte-v2/acceso-servidor";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // /explorar COMO PORTAL (28-oct-2026, mockup docs/puerta-b-mockups/5b-explorar-portal.html; reemplaza el del 23-oct).
@@ -153,16 +154,18 @@ async function ExplorarAbierto({ consulta }: { consulta: string }) {
   // UNA SOLA LECTURA DE LA NOCHE (02-nov-2026; con la capa y un sello desde el 03-nov, portal-cache.ts › nocheExplorar): el mapa
   // abierto, la bienvenida y la barra cuentan la misma noche (pie 20 % y 30 años), y el sello baja al navegador para que la API
   // le traiga esa misma.
-  const [noche, tasa, compartido] = await Promise.all([
+  const [noche, tasa, compartido, invierteV2] = await Promise.all([
     nocheExplorar(PIE_ABIERTO, PLAZO_ABIERTO).catch(() => null),
     tasaDelMotor(),
     compartidoDe(sp, topeDelEnlaceEnUrl(sp), false),
+    // Invierte con Franco, comprador (18-nov-2026): sin sesión, solo con el modo «todos». Por pedido, fuera de todo caché.
+    accesoInvierteV2(null),
   ]);
   // La bienvenida dice el número de todo el sitio, aunque la URL traiga filtros; el del mapa es el filtrado. Y, aparte, cuántos
   // más llegan negociando (03-nov-2026), en la vista global: nunca sumados a los que convienen. La barra del primer pintado:
   // los − Ajustar con los filtros de la URL; 0 si la capa no se ve con ellos.
   const { n, convienen, negociadosGlobal, nAjustar } = cifrasDeLaNoche(noche, filtros);
-  return <ExplorarCliente inicial={{ filtros, orden, n, cuenta: null, tasa, convienen, negociadosGlobal, nAjustar, sello: noche?.sello ?? null }} abrir={compartido?.avisoId ?? sp.get("a")} compartido={compartido} origen={origenDeLlegada(sp.get("desde"))} />;
+  return <ExplorarCliente inicial={{ filtros, orden, n, cuenta: null, tasa, convienen, negociadosGlobal, nAjustar, sello: noche?.sello ?? null }} abrir={compartido?.avisoId ?? sp.get("a")} compartido={compartido} origen={origenDeLlegada(sp.get("desde"))} invierteV2={invierteV2} />;
 }
 
 /** La cuenta y el número: lo que el esqueleto no espera. */
@@ -171,12 +174,14 @@ async function ExplorarConDatos({ consulta, user }: { consulta: string; user: Us
   // LA VISTA GLOBAL SIN FILTROS DEL PERFIL: lo que diga la URL, y si no dice nada, la de anoche.
   const { filtros, orden } = portalDeUrl(sp);
   const admin = createServiceClient();
-  const [cuenta, noche, tasa, compartido] = await Promise.all([
+  const [cuenta, noche, tasa, compartido, invierteV2] = await Promise.all([
     cuentaPortal(admin, user),
     // Una sola noche, con su sello (portal-cache.ts › nocheExplorar): el universo y la capa juntos, la misma que bajará la API.
     universoDeLaNoche(filtros) ? nocheExplorar(filtros.pie, filtros.plazo).catch(() => null) : Promise.resolve(null),
     tasaDelMotor(),
     compartidoDe(sp, topeDelEnlaceEnUrl(sp), true),
+    // Invierte con Franco, comprador (18-nov-2026): el interruptor de ESTA persona, por pedido y fuera de todo caché.
+    accesoInvierteV2(user),
   ]);
   // La barra del primer pintado (03-nov-2026): los − Ajustar con estos filtros; 0 si la capa no se ve con ellos.
   const { n, nAjustar } = cifrasDeLaNoche(noche, filtros);
@@ -189,6 +194,7 @@ async function ExplorarConDatos({ consulta, user }: { consulta: string; user: Us
       compartido={compartido}
       autoAnalizar={sp.get("analizar") === "1" ? a : null}
       correo={user.email ?? null}
+      invierteV2={invierteV2}
     />
   );
 }

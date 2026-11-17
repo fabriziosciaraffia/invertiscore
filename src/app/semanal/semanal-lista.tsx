@@ -60,6 +60,7 @@ import type { ResumenInforme } from "@/lib/informe-propio";
 import dynamic from "next/dynamic";
 import { puedeInvertir } from "@/lib/invierte/invierte";
 import { BotonInvierte } from "@/components/invierte/BotonInvierte";
+import { destinoBoton, urlContacto } from "@/lib/invierte-v2/destino";
 import { useInscritos } from "@/components/invierte/inscritos";
 
 const HojaInvierte = dynamic(() => import("@/components/invierte/HojaInvierte").then((m) => m.HojaInvierte), { ssr: false, loading: () => null });
@@ -78,7 +79,7 @@ const REINTENTOS_CREDITO = 4;
 
 export function SemanalLista({
   token, origenId, combinacion, filas, destacado, saldo, variante, inmediato = false, finanzas = { tasa: null, uf: null, arriendos: {} },
-  modalidad = "ltr", bloque = null, conTitulo = true, cierre = true, noDan = [], publicaciones = {}, informes = {}, resumenes = {}, ticket = false, cuentaCreadaAt = null, autoAnalizar = null, enCasa = false, aLaVista = null, desdeN = 1,
+  modalidad = "ltr", bloque = null, conTitulo = true, cierre = true, noDan = [], publicaciones = {}, informes = {}, resumenes = {}, ticket = false, cuentaCreadaAt = null, autoAnalizar = null, enCasa = false, aLaVista = null, desdeN = 1, invierteV2 = false,
 }: {
   token: string;
   origenId: string | null;
@@ -121,6 +122,8 @@ export function SemanalLista({
   aLaVista?: number | null;
   /** El número de la primera tarjeta (28-oct-2026): con dos bloques, el segundo sigue la cuenta del primero, como el mapa. */
   desdeN?: number;
+  /** Invierte con Franco, comprador (18-nov-2026): el interruptor de esta persona, decidido en el servidor. Sin él, Pronto. */
+  invierteV2?: boolean;
 }) {
   const router = useRouter();
   const corta = modalidad === "str";
@@ -412,7 +415,8 @@ export function SemanalLista({
         {acciones(it)}
         {error?.avisoId === it.avisoId && <p className="sel-error" role="alert">{error.texto}</p>}
         {!(corta && noDa.has(it.avisoId)) && puedeInvertir({ condicion: it.condicion, veredicto: it.veredicto, negociable: it.tramo === "negociar" }) && (
-          <BotonInvierte avisoId={it.avisoId} origen="seleccion" veredicto={it.veredicto ?? ""} inscrito={inscritos.has(it.avisoId)} alTocar={() => setInvierte(it)} />
+          <BotonInvierte avisoId={it.avisoId} origen="seleccion" veredicto={it.veredicto ?? ""} inscrito={!invierteV2 && inscritos.has(it.avisoId)}
+            alTocar={() => (destinoBoton({ acceso: invierteV2, condicion: it.condicion }) === "v2" ? router.push(urlContacto(it.avisoId, "seleccion")) : setInvierte(it))} />
         )}
       </article>
     );

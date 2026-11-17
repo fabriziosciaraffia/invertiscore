@@ -86,6 +86,7 @@ import { recalcularEnCola, respaldoDelFusible, respuestaDeComuna, type AvanceRec
 import type { CasoCompartido } from "./compartido-hoja";
 import { useInscritos } from "@/components/invierte/inscritos";
 import { INVIERTE_COPY, type DeptoInvierte } from "@/lib/invierte/invierte";
+import { destinoBoton, urlContacto } from "@/lib/invierte-v2/destino";
 import { lineaDepto } from "@/lib/guia/linea-depto";
 import "./explorar.css";
 import "@/components/invierte/invierte.css";
@@ -211,7 +212,7 @@ const agregarCapa = (cs: Record<string, CapaCalculada>, clave: string, comuna: s
 
 // El mapa quieto del primer pintado (el LCP) NO va acá: es una capa de la página (page.tsx), una sola imagen y antes del header
 // en el HTML. El cliente avisa cuándo el mapa real dibujó sus teselas (`data-mapa`) y la capa se desvanece (explorar.css).
-export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar = null, origen = "directo", correo = null, compartido = null }: {
+export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar = null, origen = "directo", correo = null, compartido = null, invierteV2 = false }: {
   inicial: InicialPortal;
   abrir?: string | null;
   autoAnalizar?: string | null;
@@ -221,6 +222,8 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
   origen?: OrigenExplorar;
   /** Con cuenta: el correo, para el Lead al volver de Google (recién ahí se sabe). */
   correo?: string | null;
+  /** Invierte con Franco, comprador (18-nov-2026): el interruptor de esta persona, decidido en el servidor. Sin él, Pronto. */
+  invierteV2?: boolean;
 }) {
   const router = useRouter();
   const posthog = usePostHog();
@@ -1113,8 +1116,13 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
               alPrepararCompartir={prepararCompartir}
               sinCuenta={sinCuenta}
               recien={recien}
-              inscritos={inscritos}
-              alInvertir={(p) => { if (sinCuenta) void import("./hoja-registro"); setInvierte({ pin: p, retomar: false }); }}
+              inscritos={invierteV2 ? undefined : inscritos}
+              alInvertir={(p) => {
+                // Con acceso y un usado, el flujo nuevo; si no, la hoja de Pronto de siempre (invierte-v2/destino.ts).
+                if (destinoBoton({ acceso: invierteV2, condicion: p.condicion }) === "v2") { router.push(urlContacto(p.avisoId, "explorar")); return; }
+                if (sinCuenta) void import("./hoja-registro");
+                setInvierte({ pin: p, retomar: false });
+              }}
             />
           ) : vista === "mapa" && (
             // LA BARRA DE ABAJO (03-nov-2026): la misma en el teléfono y en el PC (la píldora negra del PC se retiró), con el

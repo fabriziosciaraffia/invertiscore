@@ -9,6 +9,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import { useEffect, useState } from "react";
 import { usePostHog } from "@/lib/posthog-react";
+import { FLUJO_COPY } from "@/lib/invierte-v2/flujo";
 import { INVIERTE_COPY, EVENTOS_INVIERTE, type DeptoInvierte } from "@/lib/invierte/invierte";
 import { PUBLICACION_PORTADA } from "@/lib/guia/copy";
 import { HojaInvierte } from "./HojaInvierte";
@@ -16,24 +17,33 @@ import "./invierte.css";
 
 const F = INVIERTE_COPY.franja;
 
-export function FranjaInvierte({ depto, inscrito: inscritoInicial, publicacion, demo = false }: {
+export function FranjaInvierte({ depto, inscrito: inscritoInicial, publicacion, demo = false, flujoV2 = null }: {
   depto: DeptoInvierte;
   inscrito: boolean;
   /** El enlace a la publicación (sale de la portada y va acá, debajo del botón). */
   publicacion: { url: string; despublicado: boolean } | null;
   demo?: boolean;
+  /** Invierte con Franco, comprador (18-nov-2026): con acceso y un usado, el botón lleva al flujo nuevo, sin PRONTO ni la
+   *  etiqueta de inscrito. Sin él, la franja de Pronto de siempre. */
+  flujoV2?: string | null;
 }) {
   const posthog = usePostHog();
   const [hoja, setHoja] = useState(false);
-  const [inscrito, setInscrito] = useState(inscritoInicial);
+  const [inscritoPronto, setInscrito] = useState(inscritoInicial);
+  const inscrito = !flujoV2 && inscritoPronto;
   useEffect(() => {
     if (!inscritoInicial) posthog?.capture(EVENTOS_INVIERTE.ver, { aviso_id: depto.avisoId, origen: "informe", veredicto: depto.veredicto, sin_cuenta: false });
   }, [depto.avisoId, depto.veredicto, inscritoInicial, posthog]);
   return (
     <div className="inv-franja" data-invierte="franja" data-inscrito={inscrito ? "1" : undefined}>
       <div className="inv-franja-texto">
-        <span className="inv-pronto inv-pronto-claro">{INVIERTE_COPY.pronto}</span>
-        {inscrito ? (
+        {!flujoV2 && <span className="inv-pronto inv-pronto-claro">{INVIERTE_COPY.pronto}</span>}
+        {flujoV2 ? (
+          <>
+            <p className="inv-franja-t">{FLUJO_COPY.contacto.titulo}</p>
+            <p className="inv-franja-s">{FLUJO_COPY.contacto.parrafo}</p>
+          </>
+        ) : inscrito ? (
           <>
             <p className="inv-franja-t">{INVIERTE_COPY.listo.titulo}</p>
             <p className="inv-franja-s">{INVIERTE_COPY.listo.texto} {INVIERTE_COPY.listo.sub}</p>
@@ -55,6 +65,7 @@ export function FranjaInvierte({ depto, inscrito: inscritoInicial, publicacion, 
             data-invierte="boton"
             onClick={() => {
               posthog?.capture(EVENTOS_INVIERTE.abrir, { aviso_id: depto.avisoId, origen: "informe", veredicto: depto.veredicto, sin_cuenta: false });
+              if (flujoV2 && !demo) { window.location.assign(flujoV2); return; }
               setHoja(true);
             }}
           >

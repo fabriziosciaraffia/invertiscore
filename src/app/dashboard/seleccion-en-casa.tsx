@@ -14,12 +14,14 @@ import { SELECCION_CASA, TARJETAS_EN_CASA } from "@/lib/guia/seleccion-casa";
 import { bloquesEnOrden, hayDeptos, type SeleccionPagina } from "@/lib/guia/seleccion-pagina-servidor";
 import type { AutoAnalizar } from "@/lib/guia/compra-desde-depto";
 
-export function SeleccionEnCasa({ sel, autoAnalizar, primera }: {
+export function SeleccionEnCasa({ sel, autoAnalizar, primera, invierteV2 = false }: {
   sel: SeleccionPagina | null;
   /** Volvió pagado desde un depto (`analizar=1`): ese se analiza solo. */
   autoAnalizar: AutoAnalizar | null;
   /** Sin selección con deptos, mostrar la primera selección (la cuenta sin informes). */
   primera: boolean;
+  /** Invierte con Franco, comprador (18-nov-2026): el interruptor de esta persona, decidido en el servidor. */
+  invierteV2?: boolean;
 }) {
   const ancla = { id: SELECCION_CASA.ancla, className: "ca-tarjetas", style: { scrollMarginTop: 72 } };
   if (sel?.otraCuenta) {
@@ -35,7 +37,7 @@ export function SeleccionEnCasa({ sel, autoAnalizar, primera }: {
   const dosBloques = !!sel.largo && !!sel.corto;
   // Numeradas como los pines del mapa (28-oct-2026): el segundo bloque sigue la cuenta del primero.
   const desde = (b: "largo" | "corto") => bloquesEnOrden(sel).find((x) => x.bloque === b)?.desde ?? 1;
-  const comun = { token: sel.token, destacado: sel.destacado, saldo: sel.saldo, variante: sel.variante, ticket: sel.ticket, cuentaCreadaAt: sel.cuentaCreadaAt, autoAnalizar, enCasa: true, aLaVista: TARJETAS_EN_CASA };
+  const comun = { token: sel.token, destacado: sel.destacado, saldo: sel.saldo, variante: sel.variante, ticket: sel.ticket, cuentaCreadaAt: sel.cuentaCreadaAt, autoAnalizar, enCasa: true, aLaVista: TARJETAS_EN_CASA, invierteV2 };
   const listaLarga = sel.largo && (
     <SemanalLista
       {...comun}

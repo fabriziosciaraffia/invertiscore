@@ -57,7 +57,7 @@ export function InformeDeAviso({ analysisId, veredicto, supuesta, esDueno, demo 
       <p className="qv-origen">{INFORME_DE_AVISO.origen}</p>
       {supuesta && <p className="qv-nota" data-antiguedad-supuesta={supuesta}>{INFORME_DE_AVISO.antiguedadSupuesta[supuesta]}</p>}
       {esDueno && invierte && (
-        <FranjaInvierte depto={invierte.depto} inscrito={invierte.inscrito} publicacion={publicacion ? { url: publicacion.url, despublicado: publicacion.despublicado } : null} demo={demo} />
+        <FranjaInvierte depto={invierte.depto} inscrito={invierte.inscrito} publicacion={publicacion ? { url: publicacion.url, despublicado: publicacion.despublicado } : null} demo={demo} flujoV2={invierte.flujoV2 ?? null} />
       )}
       {esDueno && !invierte && (
         <div className="qv-banda" data-qv={estado.tipo} aria-live="polite">

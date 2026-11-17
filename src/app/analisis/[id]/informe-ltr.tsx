@@ -24,6 +24,7 @@ import { AppFooter } from "@/components/chrome/AppFooter";
 import { emitirVistaInforme } from "@/lib/meta/vista-informe";
 import { publicacionDelInforme } from "@/lib/guia/publicacion-portada";
 import { invierteDelInforme } from "@/lib/invierte/invierte-servidor";
+import { conFlujoV2 } from "@/lib/invierte-v2/informe";
 import { informeBloqueado, rutaPagoBloqueado } from "@/lib/informe-bloqueado";
 import { InformeBloqueado } from "@/components/analysis/InformeBloqueado";
 import { etiquetaAnalisis } from "@/lib/format-direccion";
@@ -207,7 +208,8 @@ export async function InformeLtr({ id, demo = false }: { id: string; demo?: bool
   const publicacionAviso = await publicacionDelInforme(createServiceClient(), inputDataRaw);
   // «Pronto: Invierte con Franco» (11-nov-2026): solo al dueño, si el aviso es usado y da Comprar o Ajustar negociable. Con la
   // franja, el enlace a la publicación sale de la portada y va debajo de su botón.
-  const invierte = isOwner && !isDemo ? await invierteDelInforme(createServiceClient(), { inputData: inputDataRaw, analysisId: analisis.id, veredicto: veredictoInforme, score: scoreInforme ?? null, userId: user?.id ?? null }) : null;
+  // Invierte con Franco, comprador (18-nov-2026): con acceso y un usado, la franja lleva al flujo nuevo (invierte-v2/informe.ts).
+  const invierte = isOwner && !isDemo ? await conFlujoV2(await invierteDelInforme(createServiceClient(), { inputData: inputDataRaw, analysisId: analisis.id, veredicto: veredictoInforme, score: scoreInforme ?? null, userId: user?.id ?? null }), user ?? null) : null;
   const publicacion = invierte && publicacionAviso ? { ...publicacionAviso, enFranja: true } : publicacionAviso;
   const alternativaComunas = veredictoInforme !== "COMPRAR" && inputDataRaw
     ? construirAlternativaComunas({ input: inputDataRaw, ufClp: ufFrozen, asOf: asOfFrozen })
