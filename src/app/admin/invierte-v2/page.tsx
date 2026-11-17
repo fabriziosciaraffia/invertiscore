@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
  */
 export default async function AdminInvierteV2Page() {
   const { sb } = await requireAdminPage();
-  const [{ modo, lista }, { filas, sinTabla }] = await Promise.all([estadoInterruptor(sb), leerCrm(sb)]);
+  const [{ modo, lista }, { filas, sinTabla }] = await Promise.all([estadoInterruptor(), leerCrm(sb)]);
   const H = INVIERTE_COPY.hoja;
   const firmaron = filas.filter((f) => f.orden).length;
 

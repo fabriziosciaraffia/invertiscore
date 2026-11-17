@@ -176,7 +176,7 @@ export async function runInvierteV2(): Promise<{ hard: number }> {
       if (!/if \(destinoBoton\(\{ acceso: invierteV2, condicion: p\.condicion \}\) === "v2"\) \{ router\.push\(urlContacto\(p\.avisoId, "explorar"\)\); return; \}\s*if \(sinCuenta\) void import\("\.\/hoja-registro"\);\s*setInvierte\(\{ pin: p, retomar: false \}\);/.test(cliente)) F("2 · el mapa no decide con destinoBoton antes de abrir la hoja de Pronto");
       if (!/invierteV2 = false/.test(cliente)) F("2 · el mapa no arranca en Pronto sin el booleano");
       const sel = codigo("src/app/semanal/semanal-lista.tsx");
-      if (!/destinoBoton\(\{ acceso: invierteV2, condicion: it\.condicion \}\) === "v2" \? router\.push\(urlContacto\(it\.avisoId, "seleccion"\)\) : setInvierte\(it\)/.test(sel) || !/invierteV2 = false/.test(sel)) F("2 · la selección no decide con destinoBoton (o no arranca en Pronto)");
+      if (!/destinoBoton\(\{ acceso: invierteV2, condicion: it\.condicion \}\) === "v2" \? \(iniciarCarga\(claveActual\(\)\), router\.push\(urlContacto\(it\.avisoId, "seleccion"\)\)\) : setInvierte\(it\)/.test(sel) || !/invierteV2 = false/.test(sel)) F("2 · la selección no decide con destinoBoton (o no arranca en Pronto)");
       const inf = codigo("src/lib/invierte-v2/informe.ts");
       if (!/destinoBoton\(\{ acceso, condicion: condicionDeLinea\(invierte\.depto\.linea\) \}\) !== "v2"\) return invierte;/.test(inf)) F("2 · la portada del informe no decide con destinoBoton");
       for (const a of ["src/app/analisis/[id]/informe-ltr.tsx", "src/app/analisis/renta-corta/[id]/informe-str.tsx"]) if (!/await conFlujoV2\(await invierteDelInforme\(/.test(codigo(a))) F(`2 · ${a} no pasa la franja por conFlujoV2`);
@@ -354,7 +354,7 @@ export async function runInvierteV2(): Promise<{ hard: number }> {
       if (excepcionCopiaOrden("invierte_orden_copia", "dominio-propio", true)) F("9 · la copia sale a una dirección de @refranco.ai que no existe");
       if (excepcionCopiaOrden("semanal", "cuenta-de-prueba", true) || excepcionCopiaOrden("bienvenida", "cuenta-de-prueba", true)) F("9 · la excepción vale para otro tipo de correo");
       const email = codigo("src/lib/email.ts");
-      if (!/const exceptuado = bloqueo && tipo === TIPO_COPIA_ORDEN\s*\?\s*excepcionCopiaOrden\(tipo, bloqueo,/.test(email) || !/if \(bloqueo && !exceptuado\) \{/.test(email)) F("9 · el único punto de envío no aplica la excepción solo a la copia");
+      if (!/if \(bloqueo\) \{\s*if \(!\(await exceptuadoDelBloqueo\(tipo, bloqueo, String\(to \?\? ""\)\)\)\) \{/.test(email) || !/if \(tipo !== TIPO_COPIA_ORDEN\) return false;[\s\S]{0,200}return excepcionCopiaOrden\(tipo, motivo, enLista\);/.test(email)) F("9 · el único punto de envío no aplica la excepción solo a la copia");
       if (!/enviarCorreo\("invierte_orden_copia", p\.userId, \{[\s\S]{0,200}attachments: \[\{ filename: "orden-de-visita-franco\.pdf"/.test(email)) F("9 · la copia no sale con su tipo y el PDF adjunto");
       if (!(TIPOS_CORREO as readonly string[]).includes("invierte_orden_copia")) F("9 · invierte_orden_copia no está en TIPOS_CORREO");
       if (TIPOS_CON_BAJA.has("invierte_orden_copia" as never) || TIPOS_QUE_FRENA_LA_ELIMINACION.has("invierte_orden_copia" as never)) F("9 · la copia de la orden la frena la baja o la eliminación (es un comprobante)");
@@ -400,3 +400,6 @@ if (require.main === module) {
 //   M27 la excepción vale para todo correo · M28 la eliminación frena la copia · M29 «informe» frente a la persona · M30 un Lead a
 //   Meta desde el flujo · M31 la copia fallida se marca enviada · M32 el envío ignora la excepción · M33 el PDF sin escapar · M34 el
 //   flujo acepta un nuevo · M35 la hora la pone la ruta · M36 un evento sin prefijo inv2_ · M37 medir desde el navegador.
+// Tras el golden QUICK del 18-nov (otros cuatro tiers leían la forma de enviarCorreo, del dashboard, de config y de la barra):
+// la excepción pasó a `exceptuadoDelBloqueo` dentro de `if (bloqueo)` y la selección enciende la barra antes de navegar. 3 de 3
+// en ROJO: M6b la selección desvía sin destinoBoton · M32b el envío ignora la excepción · M38 la excepción vale para todo tipo.

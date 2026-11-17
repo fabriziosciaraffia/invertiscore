@@ -2,7 +2,7 @@ import { Resend } from 'resend';
 import { FLOW_PRODUCTS, type FlowProductKey } from './flow-products';
 import { capturarServidor } from "./posthog-servidor";
 import { eventoCorreoEnviado, identidadCorreo, tagsCorreo, type TipoCorreo } from "./medicion-correo";
-import { cuentasDePruebaSinCorreo, destinoBloqueado, excepcionCopiaOrden, TIPO_COPIA_ORDEN } from "./correo-destino";
+import { cuentasDePruebaSinCorreo, destinoBloqueado, excepcionCopiaOrden, TIPO_COPIA_ORDEN, type MotivoBloqueo } from "./correo-destino";
 import { conBajaDeCorreos, eliminacionPedida, TIPOS_CON_BAJA, TIPOS_QUE_FRENA_LA_ELIMINACION } from "./correo-baja";
 import { createServiceClient as adminCorreo } from "./supabase/service";
 import { correoRecordatorioPack } from "./lo-que-sigue/recordatorio";
@@ -23,6 +23,14 @@ const FROM_EMAIL = 'Franco <hola@refranco.ai>';
 
 type MensajeResend = Parameters<Resend["emails"]["send"]>[0];
 
+/** La única excepción al bloqueo (18-nov-2026, correo-destino.ts): la copia de la orden firmada a una cuenta de la lista. Sin
+ *  poder leer la lista, no hay excepción. */
+async function exceptuadoDelBloqueo(tipo: TipoCorreo, motivo: MotivoBloqueo, to: string): Promise<boolean> {
+  if (tipo !== TIPO_COPIA_ORDEN) return false;
+  const enLista = await import("@/lib/invierte-v2/acceso-servidor").then((m) => m.correoEnListaInvierteV2(to)).catch(() => false);
+  return excepcionCopiaOrden(tipo, motivo, enLista);
+}
+
 /**
  * TODO CORREO SALE POR ACÁ (28-sep-2026, auditoría de la medición): manda con Resend, con los
  * tags `tipo` y `pid`, y si salió emite `correo_enviado` a PostHog. Devuelve lo mismo que
@@ -41,14 +49,13 @@ async function enviarCorreo(
   const to = Array.isArray(mensaje.to) ? mensaje.to[0] : mensaje.to;
   // A quién no se le manda (26-oct-2026, correo-destino.ts): ni a @refranco.ai que no existe ni a una cuenta de prueba sin
   // `recibe_correos`. Se trata como «sin RESEND_API_KEY»: el llamador sigue, sin correo.
-  const bloqueo = destinoBloqueado(String(to ?? ""), userId, await cuentasDePruebaSinCorreo());
   // La copia de la orden de Invierte con Franco sale a las cuentas de la lista aunque sean de prueba (correo-destino.ts).
-  const exceptuado = bloqueo && tipo === TIPO_COPIA_ORDEN
-    ? excepcionCopiaOrden(tipo, bloqueo, await import("@/lib/invierte-v2/acceso-servidor").then((m) => m.correoEnListaInvierteV2(String(to ?? ""))).catch(() => false))
-    : false;
-  if (bloqueo && !exceptuado) {
-    console.info(`[email] ${tipo} no sale: ${bloqueo}`);
-    return { data: null, error: null };
+  const bloqueo = destinoBloqueado(String(to ?? ""), userId, await cuentasDePruebaSinCorreo());
+  if (bloqueo) {
+    if (!(await exceptuadoDelBloqueo(tipo, bloqueo, String(to ?? "")))) {
+      console.info(`[email] ${tipo} no sale: ${bloqueo}`);
+      return { data: null, error: null };
+    }
   }
   // La baja de los correos (04-nov-2026, lib/correo-baja.ts): la red para los comerciales que la respetan, venga de donde venga
   // el envío. Sin poder leerla, no sale.

@@ -6,7 +6,6 @@
 //     compartido se lo serviría a otra. Lo fija un predicado del tier INVIERTE-V2.
 //   · El modo y la lista se recuerdan 60 s por proceso (el admin los olvida al cambiarlos). Si no se pueden leer: APAGADO.
 // ─────────────────────────────────────────────────────────────────────────────
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServiceClient } from "@/lib/supabase/service";
 import { CLAVE_MODO, TABLA_ACCESO, correoDeLista, leerModo, tieneAcceso, type ModoInvierteV2 } from "./acceso";
 
@@ -18,9 +17,10 @@ export function olvidarAcceso(): void {
 }
 
 /** El modo y la lista, con su minuto de memoria. Sin poder leerlos, apagado y vacía. */
-export async function estadoInterruptor(admin: SupabaseClient = createServiceClient()): Promise<{ modo: ModoInvierteV2; lista: Set<string> }> {
+export async function estadoInterruptor(): Promise<{ modo: ModoInvierteV2; lista: Set<string> }> {
   if (recordado && Date.now() - recordado.at < VIDA_MS) return recordado;
   try {
+    const admin = createServiceClient();
     const [c, l] = await Promise.all([
       admin.from("config").select("value").eq("key", CLAVE_MODO).maybeSingle(),
       admin.from(TABLA_ACCESO).select("email").order("email").range(0, 999),
@@ -35,8 +35,8 @@ export async function estadoInterruptor(admin: SupabaseClient = createServiceCli
 }
 
 /** ¿Esta persona (o nadie, sin sesión) ve el flujo nuevo? */
-export async function accesoInvierteV2(user: { email?: string | null } | null | undefined, admin?: SupabaseClient): Promise<boolean> {
-  const { modo, lista } = await estadoInterruptor(admin);
+export async function accesoInvierteV2(user: { email?: string | null } | null | undefined): Promise<boolean> {
+  const { modo, lista } = await estadoInterruptor();
   return tieneAcceso({ modo, email: user?.email ?? null, lista });
 }
 

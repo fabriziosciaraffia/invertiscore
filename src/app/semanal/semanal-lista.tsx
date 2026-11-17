@@ -416,7 +416,7 @@ export function SemanalLista({
         {error?.avisoId === it.avisoId && <p className="sel-error" role="alert">{error.texto}</p>}
         {!(corta && noDa.has(it.avisoId)) && puedeInvertir({ condicion: it.condicion, veredicto: it.veredicto, negociable: it.tramo === "negociar" }) && (
           <BotonInvierte avisoId={it.avisoId} origen="seleccion" veredicto={it.veredicto ?? ""} inscrito={!invierteV2 && inscritos.has(it.avisoId)}
-            alTocar={() => (destinoBoton({ acceso: invierteV2, condicion: it.condicion }) === "v2" ? router.push(urlContacto(it.avisoId, "seleccion")) : setInvierte(it))} />
+            alTocar={() => (destinoBoton({ acceso: invierteV2, condicion: it.condicion }) === "v2" ? (iniciarCarga(claveActual()), router.push(urlContacto(it.avisoId, "seleccion"))) : setInvierte(it))} />
         )}
       </article>
     );
