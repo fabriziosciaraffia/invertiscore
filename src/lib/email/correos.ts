@@ -575,3 +575,25 @@ export function correoAnuncioInvierte(p: { nombre: string | null; urlSeleccion: 
     }),
   };
 }
+
+// ── Invierte con Franco, comprador: la copia de la orden firmada (etapa 1, 18-nov-2026) ─────────────────────────────────
+// Sale siempre al firmar, a quien firma, con el PDF adjunto. Es respaldo, no recordatorio. Transaccional: no la frenan la baja
+// ni la eliminación pedida. Mientras el modo es «lista», solo la reciben las cuentas de la lista (correo-destino.ts).
+export const ASUNTO_COPIA_ORDEN = "Tu orden de visita firmada";
+export function correoCopiaOrden(p: { nombre: string | null; depto: string; fecha: string; sitio?: string }): Correo {
+  const sitio = p.sitio ?? SITIO;
+  return {
+    subject: ASUNTO_COPIA_ORDEN,
+    html: plantillaClara({
+      titulo: ASUNTO_COPIA_ORDEN,
+      preencabezado: "La copia de tu orden de visita y acompañamiento, en PDF.",
+      titular: "Tu orden quedó firmada",
+      parrafos: [
+        `${saludoDe(p.nombre)} te dejamos adjunta la copia de tu orden de visita y acompañamiento, firmada el ${escaparHtml(p.fecha)}.`,
+        `Partimos por el depto de ${escaparHtml(p.depto)}. La orden también queda guardada en tu cuenta.`,
+      ],
+      boton: { texto: "Ver mi orden en Franco", url: `${sitio}/invierte/partimos` },
+      despues: ["Firmar no te obliga a comprar ni tiene costo. Solo pagas si compras un depto que te presentó Franco."],
+    }),
+  };
+}

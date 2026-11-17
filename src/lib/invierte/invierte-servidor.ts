@@ -186,6 +186,8 @@ export async function inscritosDe(admin: SupabaseClient, userId: string): Promis
 export interface InvierteInforme {
   depto: DeptoInvierte;
   inscrito: boolean;
+  /** Invierte con Franco, comprador (18-nov-2026, invierte-v2/informe.ts): con acceso y un usado, la franja lleva acá. */
+  flujoV2?: string | null;
 }
 
 /**

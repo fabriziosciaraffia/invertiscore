@@ -1,0 +1,54 @@
+/* ═════════════════════════════════════════════════════════════════════════════
+   INVIERTE CON FRANCO, COMPRADOR · ETAPA 1 (18-nov-2026, mockups docs/invierte-v2-mockups/etapa-1/). Las pantallas del flujo
+   nuevo reusan la hoja de Pronto (invierte.css: la cabecera con el degradado, las opciones, el campo, el botón rojo) y suman
+   lo suyo. El degradado SOLO en la cabecera; el cuerpo, en los tokens de la página (claro y oscuro).
+   ═════════════════════════════════════════════════════════════════════════════ */
+.iv2-pagina { min-height: 100dvh; background: var(--franco-bg); color: var(--franco-text); }
+.iv2-marco { box-sizing: border-box; width: 100%; max-width: 480px; min-height: 100dvh; margin: 0 auto; background: var(--franco-card);
+  font-family: var(--font-ui, var(--font-body)), "Inter", system-ui, sans-serif; display: flex; flex-direction: column; }
+@media (min-width: 768px) { .iv2-marco { min-height: auto; margin: 32px auto; border-radius: 22px; overflow: hidden; border: 1px solid var(--franco-border); } }
+.iv2-marco .inv-cab { padding-top: calc(12px + env(safe-area-inset-top, 0px)); }
+.iv2-paso { font-size: 12px; font-weight: 600; width: 44px; text-align: right; color: #FFFFFF; }
+.iv2-cuerpo { flex: 1; }
+.iv2-chip-linea { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0; font-size: 13px; color: var(--franco-text-secondary); }
+
+/* casilla */
+.iv2-casilla { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.45; cursor: pointer; color: var(--franco-text); }
+.iv2-casilla input { width: 20px; height: 20px; margin: 1px 0 0; flex: none; accent-color: var(--franco-text); }
+.iv2-casilla input:disabled + span { color: var(--franco-text-muted); }
+.iv2-casilla input:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; }
+.iv2-nota-boton { margin: 0; font-size: 13px; line-height: 1.45; text-align: center; color: var(--franco-text-secondary); }
+.iv2-acciones { margin-top: auto; display: flex; flex-direction: column; gap: 10px; }
+.iv2-principal:disabled { opacity: 0.45; cursor: not-allowed; }
+.iv2-enlace { display: block; text-align: center; padding: 12px; font-size: 13px; font-weight: 600; color: var(--franco-text); text-underline-offset: 3px; }
+
+/* firma */
+.iv2-info { margin: 0; border-radius: 12px; padding: 12px 14px; font-size: 13px; line-height: 1.5; background: var(--franco-elevated, #EEF2F8); color: var(--franco-text); }
+[data-theme="light"] .iv2-info { background: #EEF2F8; color: #26262A; }
+.iv2-orden-cab { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.iv2-orden-cab span:first-child { font-size: 13px; font-weight: 600; }
+.iv2-version { font-size: 11px; font-weight: 600; letter-spacing: 0.02em; color: var(--franco-text-muted); white-space: nowrap; }
+.iv2-orden { box-sizing: border-box; height: 380px; overflow-y: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--franco-border-strong, var(--franco-border)); border-radius: 12px;
+  padding: 16px; background: var(--franco-bg); display: flex; flex-direction: column; gap: 10px; font-size: 13px; line-height: 1.55; color: var(--franco-text); outline: none; }
+.iv2-orden:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; }
+.iv2-orden p { margin: 0; }
+.iv2-orden-t { font-weight: 700; }
+.iv2-orden-pie { color: var(--franco-text-secondary); }
+.iv2-desliza { font-size: 12px; color: var(--franco-text-secondary); }
+.iv2-desliza[data-listo="1"] { color: var(--franco-text); }
+
+/* partimos */
+.iv2-titulo-grande { margin: 0; font-size: 26px; font-weight: 700; line-height: 1.15; }
+.iv2-pasos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.iv2-pasos li { display: flex; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--franco-border); }
+.iv2-pasos li:last-child { border-bottom: 0; }
+.iv2-num { flex: none; width: 26px; height: 26px; border-radius: 999px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700;
+  background: var(--franco-elevated, #E9E9EC); color: var(--franco-text); }
+[data-theme="light"] .iv2-num { background: #E9E9EC; }
+.iv2-paso-t { margin: 0; font-size: 14px; font-weight: 600; }
+.iv2-paso-s { margin: 2px 0 0; font-size: 13px; line-height: 1.4; color: var(--franco-text-secondary); }
+.iv2-guardada { margin: 0; font-size: 13px; text-align: center; color: var(--franco-text-secondary); }
+.iv2-guardada a { color: var(--franco-text); font-weight: 600; text-underline-offset: 3px; }
+.iv2-porque { border: 1px solid var(--franco-border); border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; }
+.iv2-porque h2 { margin: 0; font-size: 14px; font-weight: 600; }
+.iv2-porque p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--franco-text-secondary); }

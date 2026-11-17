@@ -24,6 +24,16 @@ export function destinoBloqueado(to: string, userId: string | null | undefined, 
   return null;
 }
 
+/**
+ * LA EXCEPCIÓN DE INVIERTE CON FRANCO (18-nov-2026, decisión de Fabrizio): la copia de la orden firmada (`invierte_orden_copia`)
+ * sale a una cuenta de prueba sin `recibe_correos` si su correo está en la lista del flujo nuevo (`invierte_v2_acceso`). Solo
+ * ese tipo y solo ese motivo: una dirección de @refranco.ai que no existe sigue sin salir. No toca `recibe_correos`.
+ */
+export const TIPO_COPIA_ORDEN = "invierte_orden_copia";
+export function excepcionCopiaOrden(tipo: string, motivo: MotivoBloqueo | null, enLista: boolean): boolean {
+  return tipo === TIPO_COPIA_ORDEN && motivo === "cuenta-de-prueba" && enLista;
+}
+
 /** Las cuentas de prueba sin `recibe_correos`, con un minuto de caché. null si no se pudo leer (el correo sale). */
 let guardadas: { ids: Set<string>; at: number } | null = null;
 export async function cuentasDePruebaSinCorreo(): Promise<Set<string> | null> {

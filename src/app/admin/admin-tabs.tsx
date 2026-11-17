@@ -17,6 +17,7 @@ const TABS = [
   { href: "/admin/operacion", label: "Operación" },
   { href: "/admin/quiero-verlo", label: "Quiero verlo" },
   { href: "/admin/invierte", label: "Invierte" },
+  { href: "/admin/invierte-v2", label: "Comprador" },
   { href: "/admin/campana", label: "Campaña" },
   { href: "/admin/finanzas", label: "Finanzas" },
 ] as const;
@@ -29,7 +30,7 @@ export function AdminTabs() {
       {TABS.map((t) => {
         // /admin solo matchea exacto; /admin/usuarios matchea también la ficha
         // de un usuario (/admin/usuarios/[id]).
-        const activa = t.href === "/admin" ? pathname === "/admin" : pathname.startsWith(t.href);
+        const activa = t.href === "/admin" ? pathname === "/admin" : pathname === t.href || pathname.startsWith(`${t.href}/`);
         return (
           <Link
             key={t.href}

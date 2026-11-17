@@ -31,7 +31,8 @@ export function getOrigin(request: Request): string {
   return `${url.protocol}//${url.host}`;
 }
 
-async function launchBrowser(): Promise<Browser> {
+/** Exportada para el PDF de la orden de Invierte con Franco (invierte-v2/orden-pdf.ts), que imprime HTML propio. */
+export async function launchBrowser(): Promise<Browser> {
   // Detección local vs Vercel. En local, CHROME_EXECUTABLE_PATH apunta al
   // chrome del sistema (ej. /Applications/Google Chrome.app/Contents/MacOS/...
   // o C:\Program Files\Google\Chrome\Application\chrome.exe).

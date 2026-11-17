@@ -2,11 +2,11 @@ import { Resend } from 'resend';
 import { FLOW_PRODUCTS, type FlowProductKey } from './flow-products';
 import { capturarServidor } from "./posthog-servidor";
 import { eventoCorreoEnviado, identidadCorreo, tagsCorreo, type TipoCorreo } from "./medicion-correo";
-import { cuentasDePruebaSinCorreo, destinoBloqueado } from "./correo-destino";
+import { cuentasDePruebaSinCorreo, destinoBloqueado, excepcionCopiaOrden, TIPO_COPIA_ORDEN } from "./correo-destino";
 import { conBajaDeCorreos, eliminacionPedida, TIPOS_CON_BAJA, TIPOS_QUE_FRENA_LA_ELIMINACION } from "./correo-baja";
 import { createServiceClient as adminCorreo } from "./supabase/service";
 import { correoRecordatorioPack } from "./lo-que-sigue/recordatorio";
-import { correoAlertaCron, correoResumenCrons, correoAlertaPago, correoAlertaPagoFallido, correoBienvenida, correoBoleta, correoCheckoutAbandonado, correoEliminacionInterna, correoEliminacionUsuario, correoAvisoPedido, correoInformeListo, correoPagoConfirmado, correoPagoFallido, correoPlanAumento, correoPremioReferido, correoTarjetaRegistrada, correoInscripcionInvierte, correoAnuncioInvierte } from "./email/correos";
+import { correoAlertaCron, correoResumenCrons, correoAlertaPago, correoAlertaPagoFallido, correoBienvenida, correoBoleta, correoCheckoutAbandonado, correoEliminacionInterna, correoEliminacionUsuario, correoAvisoPedido, correoInformeListo, correoPagoConfirmado, correoPagoFallido, correoPlanAumento, correoPremioReferido, correoTarjetaRegistrada, correoInscripcionInvierte, correoAnuncioInvierte, correoCopiaOrden } from "./email/correos";
 
 /** Quién recibe el correo, para atar el evento a su persona de PostHog. Sin id, se deriva del correo. */
 export interface CorreoOpts {
@@ -42,7 +42,11 @@ async function enviarCorreo(
   // A quién no se le manda (26-oct-2026, correo-destino.ts): ni a @refranco.ai que no existe ni a una cuenta de prueba sin
   // `recibe_correos`. Se trata como «sin RESEND_API_KEY»: el llamador sigue, sin correo.
   const bloqueo = destinoBloqueado(String(to ?? ""), userId, await cuentasDePruebaSinCorreo());
-  if (bloqueo) {
+  // La copia de la orden de Invierte con Franco sale a las cuentas de la lista aunque sean de prueba (correo-destino.ts).
+  const exceptuado = bloqueo && tipo === TIPO_COPIA_ORDEN
+    ? excepcionCopiaOrden(tipo, bloqueo, await import("@/lib/invierte-v2/acceso-servidor").then((m) => m.correoEnListaInvierteV2(String(to ?? ""))).catch(() => false))
+    : false;
+  if (bloqueo && !exceptuado) {
     console.info(`[email] ${tipo} no sale: ${bloqueo}`);
     return { data: null, error: null };
   }
@@ -491,6 +495,23 @@ export async function sendInscripcionInvierteInterna(p: Parameters<typeof correo
     return !res.error && !!res.data;
   } catch (error) {
     console.error("[invierte_inscripcion] no salió:", error);
+    return false;
+  }
+}
+
+/** Invierte con Franco, comprador (18-nov-2026): la copia de la orden firmada, con el PDF adjunto, a quien firmó. Transaccional
+ *  (no la frenan la baja ni la eliminación pedida). La llave de idempotencia es la orden: la misma orden, un solo correo. */
+export async function sendCopiaOrdenInvierte(p: { to: string; userId: string | null; nombre: string | null; depto: string; fecha: string; pdf: Uint8Array; ordenId: string }): Promise<boolean> {
+  const { subject, html } = correoCopiaOrden({ nombre: p.nombre, depto: p.depto, fecha: p.fecha, sitio: SITE_URL });
+  try {
+    const res = await enviarCorreo("invierte_orden_copia", p.userId, {
+      from: FROM_EMAIL, to: p.to, subject, html,
+      attachments: [{ filename: "orden-de-visita-franco.pdf", content: Buffer.from(p.pdf) }],
+    }, { idempotencyKey: `invierte-orden-${p.ordenId}` });
+    if (res.error) { console.error("[invierte_orden_copia] no salió:", res.error.message); return false; }
+    return !!res.data;
+  } catch (error) {
+    console.error("[invierte_orden_copia] no salió:", error);
     return false;
   }
 }
