@@ -4,7 +4,7 @@ Goal de solo lectura, pegado por Fabrizio el 05-nov-2026. Nada de este documento
 prompts, el informe ni la base: todo recálculo corre en memoria con los scripts de `scripts/analisis/motor-nuevos/`,
 que llaman al motor real (`runAnalysis`) con los insumos guardados en `avisos_evaluados`.
 
-> **Estado: las cuatro fases, el anexo 1 y el anexo 2 en master (9d2da6e5, 10-nov-2026); el anexo 3 «qué es Comprar»
+> **Estado: las cuatro fases y los anexos 1 a 3 en master (5839f71e, 18-nov-2026); el anexo 4 «salida al mayor cap»
 > (18-nov-2026) en la rama, a la espera del OK para el push.** Orden del documento: resumen, FASE 0, FASE 1, punto 0, FASE 2, punto 2, FASE 3, defectos,
 > punto 1 (edad), FASE 4 (supuestos y resultados), lo que la base no puede responder, preguntas.
 
@@ -2443,3 +2443,436 @@ respaldo de la comuna. «Con resguardo» dice «=» si el tope no muerde y «(es
   baja de 11 a 4, Las Condes de 5 a 2 y Vitacura de 2 a 1. Ñuñoa, Macul y La Cisterna no cambian.
 - **La regla A no tiene la puerta de sobreprecio del motor.** Con la vara, 34 de los usados Comprar sin resguardo tienen hoy un
   brazo del gate 1 activo; con resguardo, 8.
+
+## Anexo 4: salida al mayor cap (18-nov-2026)
+
+**Resumen (5 líneas)**
+1. **La regla** (vender al año 10 al arriendo del año 11 ÷ el mayor entre el cap de entrada del depto y el de su celda) cambia la salida en **10.257 avisos**: el 47 % de los usados (los comprados a un cap igual o mayor que el de su celda) y solo el **6,7 % de los nuevos** (365; 212 de ellos en Ñuñoa), porque casi todo nuevo se compra a un cap de entrada de 3,6 % frente a 4,9 % de la celda.
+2. **Con g = 3 % la regla casi no mueve nada**: los usados Comprar de hoy con TIR ≥ 5 % siguen siendo 6.513 (99,6 %) y los que pasan 5 % dentro de la vara son los mismos 82 nuevos y 7.597 usados. Con g = 1 %, 6.461 usados (98,8 %). **Con g = 0 % muerde**: vender al precio pagado deja solo el flujo como retorno, y los usados Comprar de hoy con TIR ≥ 5 % bajan a 2.833 (43 %).
+3. **Regla A (TIR con g = 0 % ≥ 5 % y vara)**: al mayor cap dan **11 nuevos y unos 2.620 usados** Comprar (2.835 sin corregir la estimación), contra 37 y 5.774 con el cap de mercado y 25 y 5.233 con el tope de 1,10. Se caen 68 de los 79 nuevos y 3.707 de los 6.540 usados Comprar de hoy, y entran 0 y 2 Ajustar. La variante con −$200.000 da lo mismo que la vara, porque para llegar a 4 % vendiendo al precio pagado el flujo tiene que ser casi positivo.
+4. **Las fichas y las listas lo muestran unidad por unidad.** Las que se compraron sobre su celda bajan: el Golden 17b4e10d de 20,2 a 14,7 % con g = 3 % y de 13,4 a 6,3 % con g = 0 %; el usado de Ñuñoa (g) de 6,9 a 1,5 %, y los Ajustar de Lo Barnechea de 9 a 11 % a 3,6 a 5,1 %, bajo el tope de 1,10. Las que tienen el cap de entrada bajo el de su celda no cambian: los Comprar de Conchalí, Quilicura y Maipú siguen negativos con g = 0 %, y los nuevos (c) a (f) quedan igual.
+5. **El respaldo de comuna casi no decide**: de los usados Comprar de la regla A al mayor cap, solo 4 dependen de un cap de mercado que es el respaldo de la comuna (Puente Alto 2, Conchalí 1, Quilicura 1), y ningún nuevo. Donde ganó el cap de entrada (264 usados con celda de respaldo) el respaldo no pesa.
+
+**El método.** La regla del mayor cap cambia la salida en 10.257 avisos (365 nuevos y 9.892 usados); el tope de 1,10 muerde en 9.591 con g = 3 %, 9.593 con g = 1 % y 9.588 con g = 0 %. La regla equivale a vender al menor entre el precio pagado y el valor por ingreso de hoy, por (1 + g)^10: si el cap de entrada es el mayor, el arriendo del año 11 ÷ el cap de entrada es el precio pagado reajustado por el crecimiento del arriendo. Reemplaza al tope de 1,10 del anexo 3; ese tope va al lado como segunda salida anterior, ahora **también con g = 3 % y 1 %** (1,10 × valor del radio × (1 + g)^10; el anexo 3 lo hizo solo con g = 0 %). Todo lo demás de la TIR queda intacto: `calcExitScenario` del motor, comisión de venta y saldo del crédito, precio de venta reemplazado. `23-anexo4-mayor-cap.ts` corrió la misma cadena de la corrida del 07-nov sobre los 14.725 avisos donde alguna de las dos salidas cambia (6,1 minutos; misma UF y tasa, el mismo «hoy» congelado y el mismo cap de celda; filas releídas aunque el aviso esté despublicado) y exigió que las tres TIR sin cambio de salida calcen con las guardadas. **6.318 se reprodujeron exactos**; 5.246 tienen la fila reevaluada y 3.161 ya no tienen fila. Para esos 8.407 la TIR se **estima** como en el anexo 3: con cada g hay dos salidas guardadas del mismo vector de flujos (cap de hoy y cap + 50 pb), y la TIR se interpola en el logaritmo del valor de salida. El golden 17b4e10d se corrió con su input y la UF del día en que se creó. Los avisos sin cap de mercado (169) quedan sin TIR, como en el anexo 2. Nada se escribió en la base. Diferencia con el anexo 3: la regla A con tope y g = 0 % da ahora 5.233 usados en vez de 5.234, por un aviso que en esta corrida pasó de exacto a estimado.
+
+**Validación de la estimación** contra los recalculados exactos (¿la TIR estimada decide lo mismo que la exacta con TIR ≥ 5 % y la vara?):
+
+| salida | escenario | n | |error| mediano (pt) | p90 | p99 | TIR ≥ 5 % y vara: con la exacta | con la estimada | decisiones distintas |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| mayor cap | g 3 % | 3.085 | 0,02 | 0,14 | 0,32 | 1.641 | 1.641 | 0 (0,00 %) |
+| mayor cap | g 1 % | 3.085 | 0,04 | 0,30 | 0,65 | 1.633 | 1.631 | 2 (0,06 %) |
+| mayor cap | g 0 % | 3.085 | 0,07 | 0,46 | 0,96 | 485 | 533 | 50 (1,62 %) |
+| ingreso con tope 1,10 | g 3 % | 4.781 | 0,03 | 0,34 | 4,62 | 996 | 997 | 1 (0,02 %) |
+| ingreso con tope 1,10 | g 1 % | 4.363 | 0,07 | 0,98 | 18,06 | 789 | 792 | 9 (0,21 %) |
+| ingreso con tope 1,10 | g 0 % | 3.879 | 0,11 | 1,60 | 23,24 | 534 | 536 | 4 (0,10 %) |
+
+**Lectura de la validación.** Al mayor cap con g = 3 % y 1 % la estimación decide igual que la exacta (0 y 2 discrepancias en 3.085). Con g = 0 % discrepa en 50 (1,6 %), casi todas en la misma dirección, porque vender al precio pagado agolpa las TIR cerca de los umbrales. Por eso la regla A al mayor cap lleva su **conteo corregido** con esa misma validación (tabla c'), y es la cifra que va en el resumen.
+
+### a · TIR a 10 años, las tres salidas
+
+Mediana · p25 · p75 (n con TIR). La salida al mayor cap no cambia la mediana de los nuevos (solo cambia el 6,7 % de ellos).
+
+| universo | escenario | ingreso (cap de mercado) | ingreso con tope 1,10 | mayor cap |
+| --- | --- | --- | --- | --- |
+| nuevos | g 3 % | 1,2 % · -5,9 % · 6,1 % (5.280) | -0,3 % · -7,2 % · 5,0 % (5.260) | 1,2 % · -5,9 % · 6,1 % (5.280) |
+| nuevos | g 1 % | -7,0 % · -16,4 % · -0,2 % (4.618) | -8,6 % · -19,9 % · -1,7 % (4.441) | -7,0 % · -16,4 % · -0,2 % (4.618) |
+| nuevos | g 0 % | -11,0 % · -21,9 % · -3,9 % (3.845) | -12,1 % · -23,6 % · -5,5 % (3.489) | -11,0 % · -21,9 % · -3,9 % (3.845) |
+| usados | g 3 % | 9,5 % · 4,6 % · 13,8 % (20.890) | 9,0 % · 4,3 % · 13,2 % (20.871) | 9,2 % · 4,6 % · 11,7 % (20.890) |
+| usados | g 1 % | 4,0 % · -1,9 % · 9,1 % (20.518) | 3,4 % · -2,4 % · 8,3 % (20.460) | 3,5 % · -1,9 % · 6,4 % (20.518) |
+| usados | g 0 % | 0,8 % · -6,0 % · 6,4 % (20.009) | 0,2 % · -6,6 % · 5,6 % (19.861) | 0,2 % · -6,0 % · 3,2 % (20.009) |
+
+### b · Dónde cambia la regla
+
+Avisos con cap de entrada mayor que el de su celda, por comuna. El cap de entrada es el arriendo bruto anual de hoy ÷ el precio.
+
+| comuna | nuevos con cap | cambia (n · %) | cap de entrada nuevos (mediana) | usados con cap | cambia (n · %) | cap de entrada usados (mediana) | cap de la celda (mediana) |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Gran Santiago | 5.452 | 365 · 6,7 % | 3,57 % | 21.034 | 9.892 · 47,0 % | 4,72 % | 4,92 % |
+| Santiago | 1.206 | 0 · 0,0 % | 3,28 % | 5.833 | 2.736 · 46,9 % | 4,92 % | 5,02 % |
+| Ñuñoa | 880 | 212 · 24,1 % | 3,74 % | 1.965 | 1.068 · 54,4 % | 4,15 % | 4,05 % |
+| La Florida | 582 | 47 · 8,1 % | 3,75 % | 948 | 452 · 47,7 % | 4,57 % | 4,56 % |
+| Macul | 521 | 14 · 2,7 % | 3,52 % | 618 | 288 · 46,6 % | 4,62 % | 4,65 % |
+| Providencia | 480 | 15 · 3,1 % | 3,38 % | 1.170 | 548 · 46,8 % | 4,36 % | 4,35 % |
+| Independencia | 342 | 1 · 0,3 % | 3,12 % | 932 | 424 · 45,5 % | 5,16 % | 5,16 % |
+| Las Condes | 217 | 13 · 6,0 % | 3,60 % | 2.518 | 908 · 36,1 % | 4,69 % | 5,03 % |
+| La Cisterna | 170 | 14 · 8,2 % | 3,65 % | 555 | 302 · 54,4 % | 4,59 % | 4,42 % |
+| Vitacura | 159 | 5 · 3,1 % | 3,60 % | 1.095 | 511 · 46,7 % | 4,67 % | 4,82 % |
+| Recoleta | 116 | 1 · 0,9 % | 3,63 % | 305 | 148 · 48,5 % | 5,12 % | 5,25 % |
+| Maipú | 116 | 0 · 0,0 % | 3,91 % | 229 | 123 · 53,7 % | 6,35 % | 6,28 % |
+| Pudahuel | 0 | 0 · — | — | 0 | 0 · — | — | — |
+| Puente Alto | 90 | 0 · 0,0 % | 4,96 % | 73 | 38 · 52,1 % | 6,13 % | 5,85 % |
+| Estación Central | 84 | 3 · 3,6 % | 3,76 % | 1.602 | 830 · 51,8 % | 5,04 % | 4,92 % |
+| Lo Barnechea | 74 | 11 · 14,9 % | 4,29 % | 643 | 306 · 47,6 % | 4,80 % | 4,79 % |
+| Quilicura | 65 | 1 · 1,5 % | 3,26 % | 40 | 14 · 35,0 % | 5,99 % | 6,77 % |
+| Peñalolén | 63 | 16 · 25,4 % | 3,94 % | 48 | 39 · 81,3 % | 5,32 % | 4,32 % |
+| Cerrillos | 61 | 4 · 6,6 % | 3,62 % | 53 | 22 · 41,5 % | 4,16 % | 4,87 % |
+| Huechuraba | 58 | 7 · 12,1 % | 4,18 % | 172 | 97 · 56,4 % | 4,69 % | 4,64 % |
+| Conchalí | 55 | 0 · 0,0 % | 3,58 % | 55 | 20 · 36,4 % | 5,52 % | 6,86 % |
+| San Miguel | 53 | 1 · 1,9 % | 3,57 % | 1.233 | 596 · 48,3 % | 4,55 % | 4,62 % |
+| Quinta Normal | 22 | 0 · 0,0 % | 3,67 % | 447 | 210 · 47,0 % | 5,22 % | 5,28 % |
+| El Bosque | 0 | 0 · — | — | 0 | 0 · — | — | — |
+| San Joaquín | 17 | 0 · 0,0 % | 3,54 % | 224 | 98 · 43,8 % | 4,65 % | 4,71 % |
+| Renca | 14 | 0 · 0,0 % | 4,96 % | 22 | 7 · 31,8 % | 5,68 % | 6,25 % |
+| La Reina | 7 | 0 · 0,0 % | 2,96 % | 147 | 65 · 44,2 % | 4,44 % | 4,62 % |
+| San Bernardo | 0 | 0 · — | — | 107 | 42 · 39,3 % | 5,51 % | 5,89 % |
+| Padre Hurtado | 0 | 0 · — | — | 0 | 0 · — | — | — |
+| Lampa | 0 | 0 · — | — | 0 | 0 · — | — | — |
+| La Granja | 0 | 0 · — | — | 0 | 0 · — | — | — |
+
+### c · Regla A: Comprar si la TIR con g = 0 % es ≥ 5 % y el flujo no es peor que −5 % del arriendo
+
+Celda: Comprar (− Comprar de hoy que se caen / + Ajustar de hoy que entran); [est.] = Comprar con TIR estimada. Variantes con TIR
+mínima de 4 y 6 % y con flujo ≥ −$200.000.
+
+**Nuevos**
+
+| regla | ingreso (cap de mercado) | ingreso con tope 1,10 | mayor cap |
+| --- | --- | --- | --- |
+| TIR ≥ 4 %, vara | 45 (−37 / +3) | 28 (−53 / +2) [2 est.] | 32 (−47 / +0) [8 est.] |
+| TIR ≥ 5 %, vara | 37 (−45 / +3) | 25 (−56 / +2) [1 est.] | 11 (−68 / +0) [3 est.] |
+| TIR ≥ 6 %, vara | 31 (−51 / +3) | 23 (−58 / +2) [1 est.] | 7 (−72 / +0) [1 est.] |
+| TIR ≥ 4 %, −$200.000 | 124 (−37 / +81) | 71 (−53 / +45) [2 est.] | 32 (−47 / +0) [8 est.] |
+| TIR ≥ 5 %, −$200.000 | 81 (−45 / +47) | 51 (−56 / +28) [1 est.] | 11 (−68 / +0) [3 est.] |
+| TIR ≥ 6 %, −$200.000 | 54 (−51 / +26) | 36 (−58 / +15) [1 est.] | 7 (−72 / +0) [1 est.] |
+
+**Usados**
+
+| regla | ingreso (cap de mercado) | ingreso con tope 1,10 | mayor cap |
+| --- | --- | --- | --- |
+| TIR ≥ 4 %, vara | 6.354 (−549 / +336) | 5.887 (−844 / +189) [2.350 est.] | 3.938 (−2.619 / +17) [3.193 est.] |
+| TIR ≥ 5 %, vara | 5.774 (−1.018 / +231) | 5.233 (−1.417 / +110) [2.117 est.] | 2.835 (−3.707 / +2) [2.352 est.] |
+| TIR ≥ 6 %, vara | 5.156 (−1.561 / +166) | 4.544 (−2.045 / +49) [1.868 est.] | 2.006 (−4.534 / +0) [1.693 est.] |
+| TIR ≥ 4 %, −$200.000 | 6.997 (−550 / +940) | 6.315 (−845 / +619) [2.420 est.] | 3.938 (−2.619 / +17) [3.193 est.] |
+| TIR ≥ 5 %, −$200.000 | 6.115 (−1.018 / +554) | 5.450 (−1.417 / +327) [2.153 est.] | 2.835 (−3.707 / +2) [2.352 est.] |
+| TIR ≥ 6 %, −$200.000 | 5.334 (−1.561 / +338) | 4.650 (−2.045 / +155) [1.888 est.] | 2.006 (−4.534 / +0) [1.693 est.] |
+
+**c' · Corrección por la validación** (regla A al mayor cap, g = 0 %): precisión p = de los estimados Comprar, cuántos lo son con la
+TIR exacta; tasa q = de los estimados no Comprar, cuántos lo son con la exacta. Comprar corregido = exactos Comprar + p ×
+estimados Comprar + q × estimados no Comprar.
+
+| regla | universo | Comprar (tabla c) | de ellos con TIR estimada | precisión p | tasa q | Comprar corregido |
+| --- | --- | --- | --- | --- | --- | --- |
+| TIR ≥ 4 %, vara | nuevos | 32 | 8 | 94,4 % | 0,4 % | 32 |
+| TIR ≥ 4 %, vara | usados | 3.938 | 3.193 | 94,4 % | 0,4 % | 3.768 |
+| TIR ≥ 5 %, vara | nuevos | 11 | 3 | 90,8 % | 0,1 % | 11 |
+| TIR ≥ 5 %, vara | usados | 2.835 | 2.352 | 90,8 % | 0,1 % | 2.622 |
+| TIR ≥ 6 %, vara | nuevos | 7 | 1 | 85,7 % | 0,0 % | 7 |
+| TIR ≥ 6 %, vara | usados | 2.006 | 1.693 | 85,7 % | 0,0 % | 1.763 |
+| TIR ≥ 4 %, −$200.000 | nuevos | 32 | 8 | 94,4 % | 0,1 % | 32 |
+| TIR ≥ 4 %, −$200.000 | usados | 3.938 | 3.193 | 94,4 % | 0,1 % | 3.765 |
+| TIR ≥ 5 %, −$200.000 | nuevos | 11 | 3 | 90,8 % | 0,0 % | 11 |
+| TIR ≥ 5 %, −$200.000 | usados | 2.835 | 2.352 | 90,8 % | 0,0 % | 2.621 |
+| TIR ≥ 6 %, −$200.000 | nuevos | 7 | 1 | 85,7 % | 0,0 % | 7 |
+| TIR ≥ 6 %, −$200.000 | usados | 2.006 | 1.693 | 85,7 % | 0,0 % | 1.763 |
+
+**Por comuna, TIR ≥ 5 % y vara, las tres salidas — nuevos**
+
+| comuna | avisos | Comprar de hoy | ingreso (cap de mercado) | ingreso con tope 1,10 | mayor cap |
+| --- | --- | --- | --- | --- | --- |
+| Gran Santiago | 5.564 | 79 | 37 (−45 / +3) | 25 (−56 / +2) [1 est.] | 11 (−68 / +0) [3 est.] |
+| Santiago | 1.206 | 0 | 0 (−0 / +0) | 0 (−0 / +0) | 0 (−0 / +0) |
+| Ñuñoa | 880 | 5 | 5 (−0 / +0) | 5 (−0 / +0) | 2 (−3 / +0) |
+| La Florida | 582 | 11 | 11 (−0 / +0) | 4 (−7 / +0) | 3 (−8 / +0) [2 est.] |
+| Macul | 521 | 3 | 3 (−0 / +0) | 3 (−0 / +0) | 0 (−3 / +0) |
+| Providencia | 480 | 0 | 0 (−0 / +0) | 0 (−0 / +0) | 0 (−0 / +0) |
+| Independencia | 342 | 0 | 0 (−0 / +0) | 0 (−0 / +0) | 0 (−0 / +0) |
+| Las Condes | 217 | 2 | 5 (−0 / +3) | 2 (−2 / +2) | 0 (−2 / +0) |
+| La Cisterna | 170 | 4 | 4 (−0 / +0) | 4 (−0 / +0) | 1 (−3 / +0) |
+| Vitacura | 159 | 2 | 2 (−0 / +0) | 1 (−1 / +0) | 1 (−1 / +0) |
+| Recoleta | 116 | 1 | 1 (−0 / +0) | 0 (−1 / +0) | 0 (−1 / +0) |
+| Maipú | 116 | 2 | 0 (−2 / +0) | 0 (−2 / +0) | 0 (−2 / +0) |
+| Pudahuel | 93 | 0 | 0 (−0 / +0) | 0 (−0 / +0) | 0 (−0 / +0) |
+| Puente Alto | 90 | 29 | 0 (−29 / +0) | 0 (−29 / +0) | 0 (−29 / +0) |
+| Estación Central | 84 | 3 | 1 (−2 / +0) | 1 (−2 / +0) | 1 (−2 / +0) |
+| Lo Barnechea | 74 | 0 | 0 (−0 / +0) | 0 (−0 / +0) | 0 (−0 / +0) |
+| Quilicura | 65 | 4 | 1 (−3 / +0) | 1 (−3 / +0) [1 est.] | 1 (−3 / +0) [1 est.] |
+| Peñalolén | 63 | 1 | 1 (−0 / +0) | 1 (−0 / +0) | 1 (−0 / +0) |
+| Cerrillos | 61 | 3 | 2 (−1 / +0) | 2 (−1 / +0) | 0 (−3 / +0) |
+| Huechuraba | 58 | 1 | 1 (−0 / +0) | 1 (−0 / +0) | 1 (−0 / +0) |
+| Conchalí | 55 | 1 | 0 (−1 / +0) | 0 (−1 / +0) | 0 (−1 / +0) |
+| San Miguel | 53 | 0 | 0 (−0 / +0) | 0 (−0 / +0) | 0 (−0 / +0) |
+| Quinta Normal | 22 | 0 | 0 (−0 / +0) | 0 (−0 / +0) | 0 (−0 / +0) |
+| El Bosque | 19 | 2 | 0 (−2 / +0) | 0 (−2 / +0) | 0 (−2 / +0) |
+| San Joaquín | 17 | 0 | 0 (−0 / +0) | 0 (−0 / +0) | 0 (−0 / +0) |
+| Renca | 14 | 5 | 0 (−5 / +0) | 0 (−5 / +0) | 0 (−5 / +0) |
+| La Reina | 7 | 0 | 0 (−0 / +0) | 0 (−0 / +0) | 0 (−0 / +0) |
+
+**Por comuna, TIR ≥ 5 % y vara, las tres salidas — usados**
+
+| comuna | avisos | Comprar de hoy | ingreso (cap de mercado) | ingreso con tope 1,10 | mayor cap |
+| --- | --- | --- | --- | --- | --- |
+| Gran Santiago | 21.091 | 6.540 | 5.774 (−1.018 / +231) | 5.233 (−1.417 / +110) [2.117 est.] | 2.835 (−3.707 / +2) [2.352 est.] |
+| Santiago | 5.833 | 2.499 | 1.932 (−567 / +0) | 1.760 (−739 / +0) [596 est.] | 898 (−1.601 / +0) [708 est.] |
+| Ñuñoa | 1.965 | 175 | 191 (−0 / +16) | 182 (−6 / +13) [93 est.] | 81 (−94 / +0) [65 est.] |
+| La Florida | 948 | 271 | 269 (−15 / +13) | 244 (−33 / +6) [96 est.] | 131 (−140 / +0) [117 est.] |
+| Macul | 618 | 150 | 142 (−14 / +6) | 126 (−24 / +0) [64 est.] | 57 (−93 / +0) [48 est.] |
+| Providencia | 1.170 | 183 | 180 (−6 / +3) | 168 (−18 / +3) [75 est.] | 73 (−110 / +0) [59 est.] |
+| Independencia | 932 | 411 | 346 (−65 / +0) | 320 (−91 / +0) [115 est.] | 226 (−185 / +0) [184 est.] |
+| Las Condes | 2.518 | 517 | 508 (−55 / +36) | 457 (−74 / +14) [207 est.] | 228 (−289 / +0) [202 est.] |
+| La Cisterna | 555 | 149 | 164 (−3 / +18) | 139 (−17 / +7) [60 est.] | 82 (−67 / +0) [72 est.] |
+| Vitacura | 1.095 | 201 | 238 (−0 / +36) | 216 (−8 / +23) [111 est.] | 94 (−107 / +0) [86 est.] |
+| Recoleta | 305 | 129 | 115 (−18 / +4) | 99 (−30 / +0) [50 est.] | 76 (−53 / +0) [55 est.] |
+| Maipú | 229 | 137 | 122 (−15 / +0) | 115 (−22 / +0) [85 est.] | 119 (−18 / +0) [110 est.] |
+| Pudahuel | 34 | 16 | 0 (−16 / +0) | 0 (−16 / +0) | 0 (−16 / +0) |
+| Puente Alto | 73 | 47 | 37 (−10 / +0) | 35 (−12 / +0) [18 est.] | 33 (−14 / +0) [28 est.] |
+| Estación Central | 1.602 | 702 | 621 (−91 / +10) | 583 (−119 / +0) [210 est.] | 335 (−367 / +0) [280 est.] |
+| Lo Barnechea | 643 | 123 | 176 (−0 / +50) | 155 (−0 / +32) [97 est.] | 86 (−39 / +2) [77 est.] |
+| Quilicura | 40 | 28 | 15 (−13 / +0) | 15 (−13 / +0) [10 est.] | 15 (−13 / +0) [14 est.] |
+| Peñalolén | 48 | 22 | 24 (−0 / +1) | 21 (−1 / +0) [18 est.] | 22 (−0 / +0) [22 est.] |
+| Cerrillos | 53 | 13 | 15 (−0 / +2) | 12 (−1 / +0) [8 est.] | 11 (−2 / +0) [10 est.] |
+| Huechuraba | 172 | 13 | 33 (−0 / +19) | 20 (−0 / +7) [13 est.] | 3 (−10 / +0) [3 est.] |
+| Conchalí | 55 | 29 | 21 (−8 / +0) | 21 (−8 / +0) [6 est.] | 21 (−8 / +0) [13 est.] |
+| San Miguel | 1.233 | 328 | 318 (−24 / +11) | 266 (−64 / +2) [84 est.] | 83 (−245 / +0) [59 est.] |
+| Quinta Normal | 447 | 221 | 160 (−61 / +0) | 142 (−79 / +0) [41 est.] | 70 (−151 / +0) [59 est.] |
+| El Bosque | 10 | 5 | 0 (−5 / +0) | 0 (−5 / +0) | 0 (−5 / +0) |
+| San Joaquín | 224 | 73 | 60 (−14 / +1) | 59 (−15 / +1) [19 est.] | 25 (−48 / +0) [24 est.] |
+| Renca | 22 | 12 | 7 (−5 / +0) | 6 (−6 / +0) [3 est.] | 7 (−5 / +0) [7 est.] |
+| La Reina | 147 | 29 | 36 (−0 / +5) | 29 (−2 / +2) [21 est.] | 16 (−13 / +0) [15 est.] |
+| San Bernardo | 107 | 51 | 44 (−7 / +0) | 43 (−8 / +0) [17 est.] | 43 (−8 / +0) [35 est.] |
+| Padre Hurtado | 9 | 5 | 0 (−5 / +0) | 0 (−5 / +0) | 0 (−5 / +0) |
+| Lampa | 3 | 0 | 0 (−0 / +0) | 0 (−0 / +0) | 0 (−0 / +0) |
+| La Granja | 1 | 1 | 0 (−1 / +0) | 0 (−1 / +0) | 0 (−1 / +0) |
+
+**Por comuna, salida al mayor cap, las seis variantes — nuevos**
+
+| comuna | avisos | Comprar de hoy | TIR ≥ 4 %, vara | TIR ≥ 5 %, vara | TIR ≥ 6 %, vara | TIR ≥ 4 %, −$200.000 | TIR ≥ 5 %, −$200.000 | TIR ≥ 6 %, −$200.000 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Gran Santiago | 5.564 | 79 | 32 (−47 / +0) [8 est.] | 11 (−68 / +0) [3 est.] | 7 (−72 / +0) [1 est.] | 32 (−47 / +0) [8 est.] | 11 (−68 / +0) [3 est.] | 7 (−72 / +0) [1 est.] |
+| Santiago | 1.206 | 0 | 0 (−0 / +0) | 0 (−0 / +0) | 0 (−0 / +0) | 0 (−0 / +0) | 0 (−0 / +0) | 0 (−0 / +0) |
+| Ñuñoa | 880 | 5 | 3 (−2 / +0) | 2 (−3 / +0) | 2 (−3 / +0) | 3 (−2 / +0) | 2 (−3 / +0) | 2 (−3 / +0) |
+| La Florida | 582 | 11 | 7 (−4 / +0) [6 est.] | 3 (−8 / +0) [2 est.] | 0 (−11 / +0) | 7 (−4 / +0) [6 est.] | 3 (−8 / +0) [2 est.] | 0 (−11 / +0) |
+| Macul | 521 | 3 | 1 (−2 / +0) | 0 (−3 / +0) | 0 (−3 / +0) | 1 (−2 / +0) | 0 (−3 / +0) | 0 (−3 / +0) |
+| Providencia | 480 | 0 | 0 (−0 / +0) | 0 (−0 / +0) | 0 (−0 / +0) | 0 (−0 / +0) | 0 (−0 / +0) | 0 (−0 / +0) |
+| Independencia | 342 | 0 | 0 (−0 / +0) | 0 (−0 / +0) | 0 (−0 / +0) | 0 (−0 / +0) | 0 (−0 / +0) | 0 (−0 / +0) |
+| Las Condes | 217 | 2 | 2 (−0 / +0) | 0 (−2 / +0) | 0 (−2 / +0) | 2 (−0 / +0) | 0 (−2 / +0) | 0 (−2 / +0) |
+| La Cisterna | 170 | 4 | 3 (−1 / +0) | 1 (−3 / +0) | 0 (−4 / +0) | 3 (−1 / +0) | 1 (−3 / +0) | 0 (−4 / +0) |
+| Vitacura | 159 | 2 | 2 (−0 / +0) | 1 (−1 / +0) | 1 (−1 / +0) | 2 (−0 / +0) | 1 (−1 / +0) | 1 (−1 / +0) |
+| Recoleta | 116 | 1 | 1 (−0 / +0) | 0 (−1 / +0) | 0 (−1 / +0) | 1 (−0 / +0) | 0 (−1 / +0) | 0 (−1 / +0) |
+| Maipú | 116 | 2 | 0 (−2 / +0) | 0 (−2 / +0) | 0 (−2 / +0) | 0 (−2 / +0) | 0 (−2 / +0) | 0 (−2 / +0) |
+| Pudahuel | 93 | 0 | 0 (−0 / +0) | 0 (−0 / +0) | 0 (−0 / +0) | 0 (−0 / +0) | 0 (−0 / +0) | 0 (−0 / +0) |
+| Puente Alto | 90 | 29 | 6 (−23 / +0) | 0 (−29 / +0) | 0 (−29 / +0) | 6 (−23 / +0) | 0 (−29 / +0) | 0 (−29 / +0) |
+| Estación Central | 84 | 3 | 2 (−1 / +0) | 1 (−2 / +0) | 1 (−2 / +0) | 2 (−1 / +0) | 1 (−2 / +0) | 1 (−2 / +0) |
+| Lo Barnechea | 74 | 0 | 0 (−0 / +0) | 0 (−0 / +0) | 0 (−0 / +0) | 0 (−0 / +0) | 0 (−0 / +0) | 0 (−0 / +0) |
+| Quilicura | 65 | 4 | 2 (−2 / +0) [1 est.] | 1 (−3 / +0) [1 est.] | 1 (−3 / +0) [1 est.] | 2 (−2 / +0) [1 est.] | 1 (−3 / +0) [1 est.] | 1 (−3 / +0) [1 est.] |
+| Peñalolén | 63 | 1 | 1 (−0 / +0) | 1 (−0 / +0) | 1 (−0 / +0) | 1 (−0 / +0) | 1 (−0 / +0) | 1 (−0 / +0) |
+| Cerrillos | 61 | 3 | 1 (−2 / +0) [1 est.] | 0 (−3 / +0) | 0 (−3 / +0) | 1 (−2 / +0) [1 est.] | 0 (−3 / +0) | 0 (−3 / +0) |
+| Huechuraba | 58 | 1 | 1 (−0 / +0) | 1 (−0 / +0) | 1 (−0 / +0) | 1 (−0 / +0) | 1 (−0 / +0) | 1 (−0 / +0) |
+| Conchalí | 55 | 1 | 0 (−1 / +0) | 0 (−1 / +0) | 0 (−1 / +0) | 0 (−1 / +0) | 0 (−1 / +0) | 0 (−1 / +0) |
+| San Miguel | 53 | 0 | 0 (−0 / +0) | 0 (−0 / +0) | 0 (−0 / +0) | 0 (−0 / +0) | 0 (−0 / +0) | 0 (−0 / +0) |
+| Quinta Normal | 22 | 0 | 0 (−0 / +0) | 0 (−0 / +0) | 0 (−0 / +0) | 0 (−0 / +0) | 0 (−0 / +0) | 0 (−0 / +0) |
+| El Bosque | 19 | 2 | 0 (−2 / +0) | 0 (−2 / +0) | 0 (−2 / +0) | 0 (−2 / +0) | 0 (−2 / +0) | 0 (−2 / +0) |
+| San Joaquín | 17 | 0 | 0 (−0 / +0) | 0 (−0 / +0) | 0 (−0 / +0) | 0 (−0 / +0) | 0 (−0 / +0) | 0 (−0 / +0) |
+| Renca | 14 | 5 | 0 (−5 / +0) | 0 (−5 / +0) | 0 (−5 / +0) | 0 (−5 / +0) | 0 (−5 / +0) | 0 (−5 / +0) |
+| La Reina | 7 | 0 | 0 (−0 / +0) | 0 (−0 / +0) | 0 (−0 / +0) | 0 (−0 / +0) | 0 (−0 / +0) | 0 (−0 / +0) |
+
+**Por comuna, salida al mayor cap, las seis variantes — usados**
+
+| comuna | avisos | Comprar de hoy | TIR ≥ 4 %, vara | TIR ≥ 5 %, vara | TIR ≥ 6 %, vara | TIR ≥ 4 %, −$200.000 | TIR ≥ 5 %, −$200.000 | TIR ≥ 6 %, −$200.000 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Gran Santiago | 21.091 | 6.540 | 3.938 (−2.619 / +17) [3.193 est.] | 2.835 (−3.707 / +2) [2.352 est.] | 2.006 (−4.534 / +0) [1.693 est.] | 3.938 (−2.619 / +17) [3.193 est.] | 2.835 (−3.707 / +2) [2.352 est.] | 2.006 (−4.534 / +0) [1.693 est.] |
+| Santiago | 5.833 | 2.499 | 1.345 (−1.154 / +0) [1.035 est.] | 898 (−1.601 / +0) [708 est.] | 581 (−1.918 / +0) [469 est.] | 1.345 (−1.154 / +0) [1.035 est.] | 898 (−1.601 / +0) [708 est.] | 581 (−1.918 / +0) [469 est.] |
+| Ñuñoa | 1.965 | 175 | 107 (−68 / +0) [86 est.] | 81 (−94 / +0) [65 est.] | 64 (−111 / +0) [52 est.] | 107 (−68 / +0) [86 est.] | 81 (−94 / +0) [65 est.] | 64 (−111 / +0) [52 est.] |
+| La Florida | 948 | 271 | 167 (−104 / +0) [146 est.] | 131 (−140 / +0) [117 est.] | 98 (−173 / +0) [91 est.] | 167 (−104 / +0) [146 est.] | 131 (−140 / +0) [117 est.] | 98 (−173 / +0) [91 est.] |
+| Macul | 618 | 150 | 79 (−71 / +0) [63 est.] | 57 (−93 / +0) [48 est.] | 46 (−104 / +0) [41 est.] | 79 (−71 / +0) [63 est.] | 57 (−93 / +0) [48 est.] | 46 (−104 / +0) [41 est.] |
+| Providencia | 1.170 | 183 | 96 (−87 / +0) [75 est.] | 73 (−110 / +0) [59 est.] | 50 (−133 / +0) [39 est.] | 96 (−87 / +0) [75 est.] | 73 (−110 / +0) [59 est.] | 50 (−133 / +0) [39 est.] |
+| Independencia | 932 | 411 | 303 (−108 / +0) [238 est.] | 226 (−185 / +0) [184 est.] | 168 (−243 / +0) [134 est.] | 303 (−108 / +0) [238 est.] | 226 (−185 / +0) [184 est.] | 168 (−243 / +0) [134 est.] |
+| Las Condes | 2.518 | 517 | 318 (−202 / +3) [284 est.] | 228 (−289 / +0) [202 est.] | 157 (−360 / +0) [140 est.] | 318 (−202 / +3) [284 est.] | 228 (−289 / +0) [202 est.] | 157 (−360 / +0) [140 est.] |
+| La Cisterna | 555 | 149 | 110 (−39 / +0) [91 est.] | 82 (−67 / +0) [72 est.] | 63 (−86 / +0) [58 est.] | 110 (−39 / +0) [91 est.] | 82 (−67 / +0) [72 est.] | 63 (−86 / +0) [58 est.] |
+| Vitacura | 1.095 | 201 | 132 (−69 / +0) [122 est.] | 94 (−107 / +0) [86 est.] | 60 (−141 / +0) [56 est.] | 132 (−69 / +0) [122 est.] | 94 (−107 / +0) [86 est.] | 60 (−141 / +0) [56 est.] |
+| Recoleta | 305 | 129 | 93 (−36 / +0) [66 est.] | 76 (−53 / +0) [55 est.] | 58 (−71 / +0) [46 est.] | 93 (−36 / +0) [66 est.] | 76 (−53 / +0) [55 est.] | 58 (−71 / +0) [46 est.] |
+| Maipú | 229 | 137 | 124 (−13 / +0) [112 est.] | 119 (−18 / +0) [110 est.] | 110 (−27 / +0) [101 est.] | 124 (−13 / +0) [112 est.] | 119 (−18 / +0) [110 est.] | 110 (−27 / +0) [101 est.] |
+| Pudahuel | 34 | 16 | 0 (−16 / +0) | 0 (−16 / +0) | 0 (−16 / +0) | 0 (−16 / +0) | 0 (−16 / +0) | 0 (−16 / +0) |
+| Puente Alto | 73 | 47 | 40 (−7 / +0) [34 est.] | 33 (−14 / +0) [28 est.] | 26 (−21 / +0) [24 est.] | 40 (−7 / +0) [34 est.] | 33 (−14 / +0) [28 est.] | 26 (−21 / +0) [24 est.] |
+| Estación Central | 1.602 | 702 | 453 (−250 / +1) [372 est.] | 335 (−367 / +0) [280 est.] | 226 (−476 / +0) [188 est.] | 453 (−250 / +1) [372 est.] | 335 (−367 / +0) [280 est.] | 226 (−476 / +0) [188 est.] |
+| Lo Barnechea | 643 | 123 | 116 (−18 / +11) [106 est.] | 86 (−39 / +2) [77 est.] | 68 (−55 / +0) [60 est.] | 116 (−18 / +11) [106 est.] | 86 (−39 / +2) [77 est.] | 68 (−55 / +0) [60 est.] |
+| Quilicura | 40 | 28 | 15 (−13 / +0) [14 est.] | 15 (−13 / +0) [14 est.] | 14 (−14 / +0) [14 est.] | 15 (−13 / +0) [14 est.] | 15 (−13 / +0) [14 est.] | 14 (−14 / +0) [14 est.] |
+| Peñalolén | 48 | 22 | 22 (−0 / +0) [22 est.] | 22 (−0 / +0) [22 est.] | 18 (−4 / +0) [18 est.] | 22 (−0 / +0) [22 est.] | 22 (−0 / +0) [22 est.] | 18 (−4 / +0) [18 est.] |
+| Cerrillos | 53 | 13 | 15 (−0 / +2) [11 est.] | 11 (−2 / +0) [10 est.] | 10 (−3 / +0) [9 est.] | 15 (−0 / +2) [11 est.] | 11 (−2 / +0) [10 est.] | 10 (−3 / +0) [9 est.] |
+| Huechuraba | 172 | 13 | 9 (−4 / +0) [7 est.] | 3 (−10 / +0) [3 est.] | 2 (−11 / +0) [2 est.] | 9 (−4 / +0) [7 est.] | 3 (−10 / +0) [3 est.] | 2 (−11 / +0) [2 est.] |
+| Conchalí | 55 | 29 | 23 (−6 / +0) [13 est.] | 21 (−8 / +0) [13 est.] | 21 (−8 / +0) [13 est.] | 23 (−6 / +0) [13 est.] | 21 (−8 / +0) [13 est.] | 21 (−8 / +0) [13 est.] |
+| San Miguel | 1.233 | 328 | 136 (−192 / +0) [99 est.] | 83 (−245 / +0) [59 est.] | 56 (−272 / +0) [41 est.] | 136 (−192 / +0) [99 est.] | 83 (−245 / +0) [59 est.] | 56 (−272 / +0) [41 est.] |
+| Quinta Normal | 447 | 221 | 126 (−95 / +0) [103 est.] | 70 (−151 / +0) [59 est.] | 41 (−180 / +0) [34 est.] | 126 (−95 / +0) [103 est.] | 70 (−151 / +0) [59 est.] | 41 (−180 / +0) [34 est.] |
+| El Bosque | 10 | 5 | 0 (−5 / +0) | 0 (−5 / +0) | 0 (−5 / +0) | 0 (−5 / +0) | 0 (−5 / +0) | 0 (−5 / +0) |
+| San Joaquín | 224 | 73 | 36 (−37 / +0) [32 est.] | 25 (−48 / +0) [24 est.] | 16 (−57 / +0) [16 est.] | 36 (−37 / +0) [32 est.] | 25 (−48 / +0) [24 est.] | 16 (−57 / +0) [16 est.] |
+| Renca | 22 | 12 | 8 (−4 / +0) [7 est.] | 7 (−5 / +0) [7 est.] | 6 (−6 / +0) [6 est.] | 8 (−4 / +0) [7 est.] | 7 (−5 / +0) [7 est.] | 6 (−6 / +0) [6 est.] |
+| La Reina | 147 | 29 | 20 (−9 / +0) [19 est.] | 16 (−13 / +0) [15 est.] | 10 (−19 / +0) [9 est.] | 20 (−9 / +0) [19 est.] | 16 (−13 / +0) [15 est.] | 10 (−19 / +0) [9 est.] |
+| San Bernardo | 107 | 51 | 45 (−6 / +0) [36 est.] | 43 (−8 / +0) [35 est.] | 37 (−14 / +0) [32 est.] | 45 (−6 / +0) [36 est.] | 43 (−8 / +0) [35 est.] | 37 (−14 / +0) [32 est.] |
+| Padre Hurtado | 9 | 5 | 0 (−5 / +0) | 0 (−5 / +0) | 0 (−5 / +0) | 0 (−5 / +0) | 0 (−5 / +0) | 0 (−5 / +0) |
+| Lampa | 3 | 0 | 0 (−0 / +0) | 0 (−0 / +0) | 0 (−0 / +0) | 0 (−0 / +0) | 0 (−0 / +0) | 0 (−0 / +0) |
+| La Granja | 1 | 1 | 0 (−1 / +0) | 0 (−1 / +0) | 0 (−1 / +0) | 0 (−1 / +0) | 0 (−1 / +0) | 0 (−1 / +0) |
+
+### d · Con g = 3 %: TIR ≥ 5 % dentro de la vara / con flujo entre −5 % del arriendo y −$200.000
+
+**Nuevos**
+
+| comuna | avisos | ingreso (cap de mercado) | ingreso con tope 1,10 | mayor cap |
+| --- | --- | --- | --- | --- |
+| Gran Santiago | 5.564 | 82 / 930 | 79 / 795 | 82 / 930 |
+| Santiago | 1.206 | 0 / 41 | 0 / 23 | 0 / 41 |
+| Ñuñoa | 880 | 5 / 334 | 5 / 310 | 5 / 334 |
+| La Florida | 582 | 11 / 239 | 11 / 187 | 11 / 239 |
+| Macul | 521 | 3 / 59 | 3 / 50 | 3 / 59 |
+| Providencia | 480 | 0 / 4 | 0 / 4 | 0 / 4 |
+| Independencia | 342 | 0 / 9 | 0 / 8 | 0 / 9 |
+| Las Condes | 217 | 5 / 7 | 5 / 5 | 5 / 7 |
+| La Cisterna | 170 | 4 / 71 | 4 / 61 | 4 / 71 |
+| Vitacura | 159 | 2 / 0 | 2 / 0 | 2 / 0 |
+| Recoleta | 116 | 1 / 2 | 0 / 1 | 1 / 2 |
+| Maipú | 116 | 2 / 12 | 0 / 0 | 2 / 12 |
+| Pudahuel | 93 | 0 / 0 | 0 / 0 | 0 / 0 |
+| Puente Alto | 90 | 29 / 56 | 29 / 56 | 29 / 56 |
+| Estación Central | 84 | 3 / 23 | 3 / 19 | 3 / 23 |
+| Lo Barnechea | 74 | 0 / 9 | 0 / 9 | 0 / 9 |
+| Quilicura | 65 | 4 / 0 | 4 / 0 | 4 / 0 |
+| Peñalolén | 63 | 1 / 2 | 1 / 2 | 1 / 2 |
+| Cerrillos | 61 | 3 / 32 | 3 / 31 | 3 / 32 |
+| Huechuraba | 58 | 1 / 16 | 1 / 16 | 1 / 16 |
+| Conchalí | 55 | 1 / 0 | 1 / 0 | 1 / 0 |
+| San Miguel | 53 | 0 / 5 | 0 / 4 | 0 / 5 |
+| Quinta Normal | 22 | 0 / 2 | 0 / 2 | 0 / 2 |
+| El Bosque | 19 | 0 / 0 | 0 / 0 | 0 / 0 |
+| San Joaquín | 17 | 0 / 1 | 0 / 1 | 0 / 1 |
+| Renca | 14 | 7 / 5 | 7 / 5 | 7 / 5 |
+| La Reina | 7 | 0 / 1 | 0 / 1 | 0 / 1 |
+
+**Usados**
+
+| comuna | avisos | ingreso (cap de mercado) | ingreso con tope 1,10 | mayor cap |
+| --- | --- | --- | --- | --- |
+| Gran Santiago | 21.091 | 7.597 / 5.522 | 7.589 / 5.301 | 7.597 / 5.522 |
+| Santiago | 5.833 | 2.764 / 1.576 | 2.764 / 1.490 | 2.764 / 1.576 |
+| Ñuñoa | 1.965 | 191 / 786 | 191 / 774 | 191 / 786 |
+| La Florida | 948 | 311 / 350 | 311 / 330 | 311 / 350 |
+| Macul | 618 | 173 / 285 | 173 / 279 | 173 / 285 |
+| Providencia | 1.170 | 187 / 252 | 187 / 252 | 187 / 252 |
+| Independencia | 932 | 536 / 156 | 535 / 144 | 536 / 156 |
+| Las Condes | 2.518 | 604 / 377 | 604 / 368 | 604 / 377 |
+| La Cisterna | 555 | 182 / 253 | 181 / 239 | 182 / 253 |
+| Vitacura | 1.095 | 239 / 69 | 239 / 69 | 239 / 69 |
+| Recoleta | 305 | 159 / 75 | 159 / 66 | 159 / 75 |
+| Maipú | 229 | 156 / 12 | 156 / 12 | 156 / 12 |
+| Pudahuel | 34 | 0 / 0 | 0 / 0 | 0 / 0 |
+| Puente Alto | 73 | 56 / 4 | 56 / 4 | 56 / 4 |
+| Estación Central | 1.602 | 865 / 451 | 865 / 428 | 865 / 451 |
+| Lo Barnechea | 643 | 182 / 52 | 182 / 51 | 182 / 52 |
+| Quilicura | 40 | 32 / 0 | 29 / 0 | 32 / 0 |
+| Peñalolén | 48 | 24 / 9 | 23 / 6 | 24 / 9 |
+| Cerrillos | 53 | 19 / 15 | 18 / 15 | 19 / 15 |
+| Huechuraba | 172 | 33 / 64 | 33 / 63 | 33 / 64 |
+| Conchalí | 55 | 29 / 0 | 29 / 0 | 29 / 0 |
+| San Miguel | 1.233 | 375 / 549 | 375 / 532 | 375 / 549 |
+| Quinta Normal | 447 | 279 / 79 | 279 / 74 | 279 / 79 |
+| El Bosque | 10 | 0 / 0 | 0 / 0 | 0 / 0 |
+| San Joaquín | 224 | 84 / 79 | 84 / 77 | 84 / 79 |
+| Renca | 22 | 17 / 1 | 17 / 0 | 17 / 1 |
+| La Reina | 147 | 36 / 22 | 36 / 22 | 36 / 22 |
+| San Bernardo | 107 | 64 / 6 | 63 / 6 | 64 / 6 |
+| Padre Hurtado | 9 | 0 / 0 | 0 / 0 | 0 / 0 |
+| Lampa | 3 | 0 / 0 | 0 / 0 | 0 / 0 |
+| La Granja | 1 | 0 / 0 | 0 / 0 | 0 / 0 |
+
+### e · Los usados Comprar de hoy con TIR ≥ 5 %
+
+| escenario | ingreso (cap de mercado) | ingreso con tope 1,10 | mayor cap |
+| --- | --- | --- | --- |
+| g 3 % | 6.513 (99,6 %) | 6.512 (99,6 %) [2.534 est.] | 6.513 (99,6 %) [5.081 est.] |
+| g 1 % | 6.473 (99,0 %) | 6.415 (98,1 %) [2.492 est.] | 6.461 (98,8 %) [5.069 est.] |
+| g 0 % | 5.522 (84,4 %) | 5.123 (78,3 %) [2.062 est.] | 2.833 (43,3 %) [2.350 est.] |
+
+### f · Las ocho fichas del anexo 2 al mayor cap
+
+«Cambia» = el cap de entrada supera al de la celda (en (a) los dos son 5,02 % y la diferencia está en el tercer decimal: la TIR no
+se mueve). El golden (h) es exacto; las demás que cambian llevan TIR estimada porque su fila se reevaluó después del 07-nov.
+
+| ficha | aviso | cap de entrada | cap de la celda | cambia | anexo 2, g 3 % | anexo 2, g 1 % | anexo 2, g 0 % | mayor cap, g 3 % | mayor cap, g 1 % | mayor cap, g 0 % |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| (a) | 51f4958b · Santiago | 5,02 % | 5,02 % | sí | 10,9 % | 5,5 % | 2,2 % | 10,9 % (est.) | 5,5 % (est.) | 2,2 % (est.) |
+| (b) | 30535bd9 · Vitacura | 5,74 % | 4,87 % | sí | 14,5 % | 9,7 % | 7,0 % | 11,5 % (est.) | 6,1 % (est.) | 2,7 % (est.) |
+| (c) | 31273928 · Puente Alto | 5,25 % | 5,85 % | no | 10,8 % | 4,5 % | 0,4 % | 10,8 % | 4,5 % | 0,4 % |
+| (d) | 00e696fb · Santiago | 4,24 % | 4,92 % | no | 6,6 % | -0,5 % | -5,5 % | 6,6 % | -0,5 % | -5,5 % |
+| (e) | 92529506 · Las Condes | 4,33 % | 4,49 % | no | 11,1 % | 3,5 % | -1,4 % | 11,1 % | 3,5 % | -1,4 % |
+| (f) | 2f395699 · Santiago | 3,32 % | 4,92 % | no | -6,3 % | -33,6 % | — | -6,3 % | -33,6 % | — |
+| (g) | 56b54457 · Ñuñoa | 4,99 % | 4,05 % | sí | 14,3 % | 9,6 % | 6,9 % | 10,3 % (est.) | 4,9 % (est.) | 1,5 % (est.) |
+| (h) | 17b4e10d · Ñuñoa | 5,50 % | 4,05 % | sí | 20,2 % | 15,8 % | 13,4 % | 14,7 % | 9,5 % | 6,3 % |
+
+### g · Las dos listas del anexo 3 al mayor cap
+
+**Los 20 usados Ajustar de hoy con la TIR más alta a g = 0 %** (casi todos de Lo Barnechea):
+
+| aviso | comuna | precio | flujo (% del arriendo) | cap de entrada | cap de la celda | g 0 %: ingreso | g 0 %: tope 1,10 | g 0 %: mayor cap | mayor cap, g 3 % | mayor cap, g 1 % |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| edd62bc3 | Lo Barnechea | UF 19.903 | $254.383 (5,9 %) | 6,25 % | 4,66 % | 11,4 % | 6,5 % (est.) | 5,1 % (est.) | 13,3 % (est.) | 8,2 % (est.) |
+| dd3234f1 | Lo Barnechea | UF 19.903 | $253.468 (5,9 %) | 6,25 % | 4,66 % | 11,4 % | 6,4 % (est.) | 5,1 % (est.) | 13,3 % (est.) | 8,2 % (est.) |
+| 9ab1ad1b | Lo Barnechea | UF 15.302 | $162.989 (5,0 %) | 6,14 % | 4,66 % | 10,9 % | 6,3 % (est.) | 4,9 % (est.) | 13,1 % (est.) | 7,9 % (est.) |
+| 6ef9a5a8 | Lo Barnechea | UF 7.601 | $85.401 (5,4 %) | 6,01 % | 4,66 % | 10,4 % | 5,7 % (est.) | 4,7 % (est.) | 13,0 % (est.) | 7,8 % (est.) |
+| ceef6675 | Lo Barnechea | UF 19.993 | $148.040 (3,5 %) | 6,10 % | 4,66 % | 10,2 % | 4,7 % (est.) | 4,3 % (est.) | 12,6 % (est.) | 7,4 % (est.) |
+| 1706a9ab | Lo Barnechea | UF 18.002 | $140.513 (3,7 %) | 6,10 % | 4,66 % | 10,2 % | 5,2 % (est.) | 4,3 % (est.) | 12,6 % (est.) | 7,4 % (est.) |
+| de5a61ff | Lo Barnechea | UF 29.204 | $242.966 (3,9 %) | 6,14 % | 4,79 % | 10,1 % | 4,2 % (est.) | 4,5 % (est.) | 12,9 % (est.) | 7,7 % (est.) |
+| 2a7acd3b | Lo Barnechea | UF 6.951 | $70.138 (4,9 %) | 5,96 % | 4,66 % | 10,0 % | 5,5 % (est.) | 4,5 % (est.) | 12,8 % (est.) | 7,6 % (est.) |
+| 9f513b17 | Ñuñoa | UF 11.492 | $-1.673 (-0,1 %) | 5,75 % | 4,36 % | 9,9 % | 4,0 % (est.) | 3,6 % (est.) | 12,0 % (est.) | 6,7 % (est.) |
+| bc7559b6 | Lo Barnechea | UF 15.502 | $127.003 (3,9 %) | 6,06 % | 4,79 % | 9,9 % | 5,2 % (est.) | 4,5 % (est.) | 12,9 % (est.) | 7,6 % (est.) |
+| b3c14193 | Lo Barnechea | UF 13.902 | $72.900 (2,6 %) | 5,96 % | 4,66 % | 9,7 % | 5,7 % (est.) | 4,1 % (est.) | 12,5 % (est.) | 7,2 % (est.) |
+| ba8c032b | Lo Barnechea | UF 15.902 | $53.109 (1,6 %) | 5,91 % | 4,66 % | 9,5 % | 5,1 % (est.) | 4,0 % (est.) | 12,5 % (est.) | 7,2 % (est.) |
+| c1c75839 | Las Condes | UF 11.501 | $152.077 (6,2 %) | 6,17 % | 5,03 % | 9,5 % | 3,8 % | 4,5 % | 13,1 % | 7,7 % |
+| f477a9d8 | Lo Barnechea | UF 6.251 | $47.515 (3,8 %) | 5,85 % | 4,66 % | 9,4 % | 5,6 % | 3,8 % | 12,4 % | 7,1 % |
+| c19086f3 | Las Condes | UF 8.901 | $105.693 (5,7 %) | 6,07 % | 4,95 % | 9,4 % | 4,8 % (est.) | 4,6 % (est.) | 13,0 % (est.) | 7,7 % (est.) |
+| ad451cef | Lo Barnechea | UF 8.851 | $68.242 (3,8 %) | 5,94 % | 4,79 % | 9,2 % | 4,6 % | 3,9 % | 12,5 % | 7,1 % |
+| c35fa498 | Lo Barnechea | UF 8.001 | $35.581 (2,2 %) | 5,81 % | 4,66 % | 9,1 % | 1,7 % | 3,6 % | 12,2 % | 6,9 % |
+| 0401648b | Cerrillos | UF 1.990 | $43.368 (10,8 %) | 5,89 % | 4,87 % | 9,0 % | -12,7 % | 4,5 % | 12,8 % | 7,6 % |
+| 6be13080 | Lo Barnechea | UF 19.402 | $11.587 (0,3 %) | 5,86 % | 4,66 % | 9,0 % | 5,7 % (est.) | 3,7 % (est.) | 12,2 % (est.) | 6,9 % (est.) |
+| be153739 | Ñuñoa | UF 2.955 | $-17.190 (-3,3 %) | 5,15 % | 4,00 % | 9,0 % | 5,2 % (est.) | 3,0 % (est.) | 11,4 % (est.) | 6,1 % (est.) |
+
+**Los 20 usados Comprar de hoy con la TIR más baja a g = 0 %** (Conchalí, Quilicura, Maipú, San Bernardo):
+
+| aviso | comuna | precio | flujo (% del arriendo) | cap de entrada | cap de la celda | g 0 %: ingreso | g 0 %: tope 1,10 | g 0 %: mayor cap | mayor cap, g 3 % | mayor cap, g 1 % |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| f9d9ffa8 | Conchalí | UF 2.850 | $7.283 (1,3 %) | 5,52 % | 6,86 % (comuna) | -6,2 % | -6,2 % | -6,2 % | 5,7 % | -1,2 % |
+| dafe84ca | Conchalí | UF 2.592 | $9.519 (2,0 %) | 5,44 % | 6,86 % (comuna) | -6,0 % | -6,0 % | -6,0 % | 6,3 % | -0,8 % |
+| 6ddf59cd | Quilicura | UF 2.200 | $15.179 (3,7 %) | 5,42 % | 6,77 % (comuna) | -4,7 % | -14,3 % | -4,7 % | 7,1 % | 0,2 % |
+| 39d8c3d8 | Maipú | UF 3.634 | $-22.749 (-3,4 %) | 5,28 % | 6,28 % | -4,5 % | -4,5 % | -4,5 % | 6,8 % | 0,1 % |
+| 8cceca13 | Conchalí | UF 2.460 | $19.363 (4,1 %) | 5,53 % | 6,86 % (comuna) | -4,4 % | -4,4 % | -4,4 % | 7,2 % | 0,4 % |
+| 06e91623 | Conchalí | UF 2.700 | $27.400 (5,2 %) | 5,65 % | 6,86 % (comuna) | -3,8 % | -4,3 % | -3,8 % | 7,2 % | 0,7 % |
+| 0555032f | Maipú | UF 3.400 | $-3.618 (-0,6 %) | 5,40 % | 6,28 % | -2,7 % | -2,7 % | -2,7 % | 8,0 % | 1,6 % |
+| 1e7ed9f3 | Renca | UF 2.404 | $12.120 (2,7 %) | 5,42 % | 6,25 % (comuna) | -1,7 % | -1,7 % | -1,7 % | 8,6 % | 2,5 % |
+| 1627b3d0 | Quilicura | UF 1.680 | $20.871 (6,4 %) | 5,60 % | 6,55 % | -1,7 % | -1,7 % | -1,7 % | 8,6 % | 2,5 % |
+| 030452bb | Conchalí | UF 2.374 | $37.484 (8,0 %) | 5,77 % | 6,86 % (comuna) | -1,6 % | -1,6 % | -1,6 % | 8,9 % | 2,6 % |
+| 9aa5cc1a | Maipú | UF 4.301 | $-14.846 (-1,9 %) | 5,42 % | 6,07 % (comuna) | -1,6 % | -1,6 % | -1,6 % | 8,6 % | 2,4 % |
+| dd10a5cb | Quilicura | UF 2.350 | $38.789 (8,3 %) | 5,79 % | 6,77 % (comuna) | -1,0 % | -1,0 % | -1,0 % | 9,2 % | 3,1 % |
+| 6b90c356 | Maipú | UF 2.665 | $22.455 (4,4 %) | 5,59 % | 6,28 % | -0,4 % | -0,4 % | -0,4 % | 9,4 % | 3,5 % |
+| a5d8eb1f | Quilicura | UF 2.200 | $28.827 (6,8 %) | 5,64 % | 6,55 % | -0,2 % | -0,2 % | -0,2 % | 10,2 % | 4,0 % |
+| 365e6a93 | San Bernardo | UF 2.907 | $29.681 (5,2 %) | 5,70 % | 6,35 % | 0,1 % | 0,1 % | 0,1 % | 9,8 % | 3,9 % |
+| bc07cab7 | Maipú | UF 2.907 | $26.648 (4,7 %) | 5,66 % | 6,28 % | 0,2 % | 0,2 % | 0,2 % | 9,8 % | 4,0 % |
+| c993a1bf | San Bernardo | UF 2.786 | $32.334 (5,9 %) | 5,72 % | 6,35 % | 0,4 % | 0,4 % | 0,4 % | 10,0 % | 4,1 % |
+| bab68e04 | Recoleta | UF 2.374 | $1.941 (0,4 %) | 5,29 % | 5,48 % | 0,6 % | 0,6 % | 0,6 % | 9,4 % | 4,0 % |
+| 63971468 | Quilicura | UF 2.000 | $44.574 (11,0 %) | 5,89 % | 6,77 % (comuna) | 0,6 % | -2,2 % | 0,6 % | 10,4 % | 4,5 % |
+| 36ee736e | Quilicura | UF 1.575 | $37.665 (11,6 %) | 5,98 % | 6,77 % (comuna) | 0,7 % | 0,7 % | 0,7 % | 10,2 % | 4,4 % |
+
+### h · Cuántos Comprar de la regla A dependen del cap de respaldo de la comuna
+
+«Dependen» = el cap de salida es el de mercado (ganó al de entrada) y ese cap es el respaldo de la comuna, no el de su celda.
+«Sin efecto» = la celda es de respaldo pero ganó el cap de entrada.
+
+| regla | nuevos Comprar | dependen del respaldo de la comuna | respaldo sin efecto (ganó el de entrada) | usados Comprar | dependen del respaldo de la comuna | respaldo sin efecto |
+| --- | --- | --- | --- | --- | --- | --- |
+| TIR ≥ 4 %, vara | 32 | 0 | 3 | 3.938 | 8 | 304 |
+| TIR ≥ 5 %, vara | 11 | 0 | 3 | 2.835 | 4 | 264 |
+| TIR ≥ 6 %, vara | 7 | 0 | 3 | 2.006 | 2 | 228 |
+| TIR ≥ 4 %, −$200.000 | 32 | 0 | 3 | 3.938 | 8 | 304 |
+| TIR ≥ 5 %, −$200.000 | 11 | 0 | 3 | 2.835 | 4 | 264 |
+| TIR ≥ 6 %, −$200.000 | 7 | 0 | 3 | 2.006 | 2 | 228 |
+
+Los usados que dependen del respaldo con TIR ≥ 5 % y la vara, por comuna: Puente Alto 2 · Conchalí 1 · Quilicura 1.
+
+**Lectura.**
+- **La regla castiga al que se compró por encima de su celda, y casi solo con g = 0 %.** Con plusvalía real de 3 % o 1 %, vender al
+  precio pagado reajustado sigue dejando TIR sobre 5 % en casi todos los usados Comprar de hoy. Sin plusvalía, el retorno queda en el
+  flujo y en el arriendo que crece con g, y menos de la mitad llega a 5 %.
+- **En los nuevos casi no cambia la salida, pero sí cambia quiénes pasan.** Al 93 % de los nuevos la regla los deja igual, porque se
+  compran a un cap de entrada muy bajo y su salida ya es la del cap de mercado. Entre los 365 que se compran sobre su celda
+  (Ñuñoa 212, La Florida 47) están 36 de los 79 Comprar de hoy, y con g = 0 % la mayoría se cae: de 37 Comprar con el cap de
+  mercado quedan 11.
+- **Las listas del anexo 3 se separan.** Los Ajustar de Lo Barnechea comprados a 6 % en celdas de 4,7 % pierden la plusvalía
+  implícita del cap bajo: con g = 0 % quedan entre 3,6 y 5,1 %, bajo el tope. Los Comprar de Conchalí y Quilicura, con cap de
+  entrada bajo el de su celda, no cambian: siguen negativos con g = 0 % y pasan de 5 % solo con g = 3 %.
+- **Usados que se caen con g = 0 %**: Santiago 1.601, Estación Central 367, Las Condes 289, San Miguel 245 e Independencia 185,
+  todos de la tabla c por comuna (cifras sin corregir).
