@@ -3,6 +3,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { esOrigen } from "@/lib/invierte/invierte";
 import { destinoInvierte } from "@/lib/invierte-v2/destino";
 import { leerPersona, ultimaOrdenDe } from "@/lib/invierte-v2/servidor";
+import { leerPerfilInv } from "@/lib/invierte-v2/perfil-servidor";
 import { METADATA_FLUJO, sesionYAcceso } from "@/lib/invierte-v2/paginas";
 
 // /invierte (18-nov-2026, decisión de Fabrizio): la dirección única del flujo. Los correos y mensajes que no piden una acción
@@ -15,14 +16,21 @@ export const metadata = METADATA_FLUJO;
 export default async function InviertePage() {
   const { user, acceso } = await sesionYAcceso();
   let firmo = false;
+  let perfil = false;
+  let eligio = false;
   let contacto: { avisoId: string; origen: "explorar" | "informe" | "seleccion" } | null = null;
   if (user && acceso) {
     const admin = createServiceClient();
-    const [orden, persona] = await Promise.all([ultimaOrdenDe(admin, user.id), leerPersona(admin, user.id)]);
+    const [orden, persona, p, { count }] = await Promise.all([
+      ultimaOrdenDe(admin, user.id), leerPersona(admin, user.id), leerPerfilInv(admin, user.id),
+      admin.from("inv_deptos").select("aviso_id", { count: "exact", head: true }).eq("user_id", user.id).eq("estado", "elegido"),
+    ]);
     firmo = !!orden;
+    perfil = !!p;
+    eligio = (count ?? 0) > 0;
     if (persona && esOrigen(persona.origen)) contacto = { avisoId: persona.avisoOrigen, origen: persona.origen };
   }
-  const d = destinoInvierte({ sesion: !!user, acceso, firmo, contacto });
+  const d = destinoInvierte({ sesion: !!user, acceso, firmo, contacto, perfil, eligio });
   if (d.tipo === "no-existe") notFound();
   redirect(d.url);
 }

@@ -15,13 +15,17 @@ import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import "@/components/invierte/invierte.css";
 import "./invierte-v2.css";
 
-export function MarcoInvierte({ volver, children, pantalla, pc, layout }: {
+export function MarcoInvierte({ volver, children, pantalla, pc, layout, cabecera }: {
   volver: string | null;
   children: ReactNode;
   pantalla: string;
   /** El formato de PC: el header de Franco, con la sesión de la página. */
   pc?: { sesionEmail: string | null };
-  layout?: "firma" | "partimos";
+  /** firma y partimos: dos columnas en el PC; formulario: el formulario en una tarjeta centrada (perfil, etapa 2); contenido:
+   *  dos columnas de contenido (resultado y base, etapa 2). */
+  layout?: "firma" | "partimos" | "formulario" | "contenido";
+  /** El título de la cabecera del celular (por defecto «Invierte con Franco»). */
+  cabecera?: string;
 }) {
   return (
     <main className={`iv2-pagina${pc ? " iv2-con-pc" : ""}`} data-inv2={pantalla}>
@@ -40,7 +44,7 @@ export function MarcoInvierte({ volver, children, pantalla, pc, layout }: {
           ) : (
             <span className="inv-cab-hueco" aria-hidden="true" />
           )}
-          <span className="inv-cab-t">{FLUJO_COPY.cabecera}</span>
+          <span className="inv-cab-t">{cabecera ?? FLUJO_COPY.cabecera}</span>
           <span className="inv-cab-hueco" aria-hidden="true" />
         </div>
         {pc && volver && (

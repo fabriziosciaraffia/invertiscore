@@ -67,7 +67,7 @@ export const FLUJO_COPY = {
     pasos: [
       { titulo: "Cuéntanos qué buscas", texto: "Tu perfil de inversión, en dos minutos." },
       { titulo: "Ve tus opciones y compáralas", texto: "Los deptos que convienen y te alcanzan, lado a lado." },
-      { titulo: "Elige con cuáles sigues y visítalos", texto: "Tú eliges el horario. Franco te acompaña en cada visita." },
+      { titulo: "Elige con cuáles sigues", texto: "Oferta o visita primero, como prefieras." },
       { titulo: "Te acompañamos hasta la escritura", texto: "La oferta, la promesa y el crédito." },
     ],
     porQueTitulo: "Por qué te vamos a mostrar más opciones",

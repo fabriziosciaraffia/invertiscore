@@ -40,7 +40,7 @@ export async function esCuentaTest(admin: SupabaseClient, userId: string): Promi
   return !error && !!data;
 }
 
-async function anotar(admin: SupabaseClient, f: { userId: string | null; email: string | null; ordenId?: string | null; actor: "persona" | "admin" | "sistema"; actorEmail?: string | null; accion: string; detalle?: Record<string, unknown> | null; ctx?: ContextoPedido | null; esPrueba: boolean }): Promise<void> {
+export async function anotar(admin: SupabaseClient, f: { userId: string | null; email: string | null; ordenId?: string | null; actor: "persona" | "admin" | "sistema"; actorEmail?: string | null; accion: string; detalle?: Record<string, unknown> | null; ctx?: ContextoPedido | null; esPrueba: boolean }): Promise<void> {
   const { error } = await admin.from(T_BITACORA).insert({
     user_id: f.userId, email: f.email, orden_id: f.ordenId ?? null, actor: f.actor, actor_email: f.actorEmail ?? null, accion: f.accion,
     detalle: f.detalle ?? null, ip: f.ctx?.ip ?? null, user_agent: f.ctx?.ua ?? null, es_prueba: f.esPrueba,
@@ -410,13 +410,15 @@ export async function leerCrm(admin: SupabaseClient): Promise<{ filas: FilaCrm[]
 
 // ── REINICIAR PRUEBA ─────────────────────────────────────────────────────────
 export type ResultadoReinicio =
-  | { ok: true; ordenes: number; bitacora: number; pdfs: number }
+  | { ok: true; ordenes: number; bitacora: number; pdfs: number; etapa2: { deptos: number; documentos: number; tareas: number; perfil: boolean; precioMaxRestaurado: boolean } }
   | { ok: false; error: "no-es-prueba" | "orden-real" | "leer" | "borrar" };
 
 /**
  * Borra lo de una persona DE PRUEBA para repetir el recorrido: su bitácora de prueba, el PDF y la orden de prueba, y su fila de
  * inv_personas. No toca nada si la cuenta no está en test_accounts o si tiene alguna orden real (los triggers de la base son la
  * segunda barrera). Deja un registro de prueba del reinicio.
+ * Etapa 2 (18-nov-2026): también su perfil, sus deptos, sus documentos (fila y archivo) y sus tareas, siempre por su user_id; y si
+ * el tope reemplazó el precio máximo de su perfil de búsqueda, se lo devuelve al de antes. Las comunas quedan como están.
  */
 export async function reiniciarPrueba(admin: SupabaseClient, userId: string, adminEmail: string | null, deps: { esCuentaTest?: (id: string) => Promise<boolean> } = {}): Promise<ResultadoReinicio> {
   const esTest = await (deps.esCuentaTest ?? ((id: string) => esCuentaTest(admin, id)))(userId);
@@ -426,6 +428,9 @@ export async function reiniciarPrueba(admin: SupabaseClient, userId: string, adm
   const filas = (ordenes ?? []) as { id: string; es_prueba: boolean; pdf_path: string | null }[];
   if (filas.some((o) => o.es_prueba !== true)) return { ok: false, error: "orden-real" };
   const idsOrden = filas.map((o) => o.id);
+  // Etapa 2: perfil, deptos, documentos y tareas de ESTA persona (todas con user_id; ninguna apunta a la orden).
+  const e2 = await reiniciarEtapa2(admin, userId);
+  if (!e2) return { ok: false, error: "borrar" };
   // La bitácora primero (su FK a la orden es restrict): la de la persona y la de sus órdenes, solo la de prueba.
   const b1 = await admin.from(T_BITACORA).delete({ count: "exact" }).eq("user_id", userId).eq("es_prueba", true);
   const b2 = idsOrden.length ? await admin.from(T_BITACORA).delete({ count: "exact" }).in("orden_id", idsOrden).eq("es_prueba", true) : { error: null, count: 0 };
@@ -442,5 +447,33 @@ export async function reiniciarPrueba(admin: SupabaseClient, userId: string, adm
   const p = await admin.from(T_PERSONAS).delete().eq("user_id", userId);
   if (p.error) return { ok: false, error: "borrar" };
   await anotar(admin, { userId, email: null, actor: "admin", actorEmail: adminEmail, accion: "prueba_reiniciada", detalle: { ordenes: idsOrden.length, pdfs: rutas.length }, esPrueba: true });
-  return { ok: true, ordenes: idsOrden.length, bitacora: (b1.count ?? 0) + (b2.count ?? 0), pdfs: rutas.length };
+  return { ok: true, ordenes: idsOrden.length, bitacora: (b1.count ?? 0) + (b2.count ?? 0), pdfs: rutas.length, etapa2: e2 };
+}
+
+async function reiniciarEtapa2(admin: SupabaseClient, userId: string): Promise<{ deptos: number; documentos: number; tareas: number; perfil: boolean; precioMaxRestaurado: boolean } | null> {
+  const [{ data: perfil, error: e1 }, { data: docs, error: e2 }] = await Promise.all([
+    admin.from("inv_perfiles").select("tope_supuestos").eq("user_id", userId).maybeSingle(),
+    admin.from("inv_documentos").select("id, path").eq("user_id", userId),
+  ]);
+  if (e1 || e2) return null;
+  const archivos = ((docs ?? []) as { path: string | null }[]).map((d) => d.path).filter((r): r is string => !!r);
+  if (archivos.length) {
+    const r = await admin.storage.from(BUCKET_INVIERTE).remove(archivos);
+    if (r.error) return null;
+  }
+  const d = await admin.from("inv_documentos").delete({ count: "exact" }).eq("user_id", userId);
+  const t = await admin.from("inv_tareas").delete({ count: "exact" }).eq("user_id", userId);
+  const dp = await admin.from("inv_deptos").delete({ count: "exact" }).eq("user_id", userId);
+  if (d.error || t.error || dp.error) return null;
+  // El precio máximo de antes: solo si el tope lo reemplazó.
+  const sup = (perfil?.tope_supuestos ?? null) as { reemplazoPrecioMax?: boolean; precioMaxAnterior?: { valor: number | null } } | null;
+  let restaurado = false;
+  if (sup?.reemplazoPrecioMax && sup.precioMaxAnterior) {
+    const r = await admin.from("perfil_busqueda").update({ precio_max_uf: sup.precioMaxAnterior.valor, actualizado_at: new Date().toISOString() }).eq("user_id", userId);
+    if (r.error) return null;
+    restaurado = true;
+  }
+  const pf = await admin.from("inv_perfiles").delete().eq("user_id", userId);
+  if (pf.error) return null;
+  return { deptos: dp.count ?? 0, documentos: d.count ?? 0, tareas: t.count ?? 0, perfil: !!perfil, precioMaxRestaurado: restaurado };
 }
