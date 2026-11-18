@@ -283,6 +283,9 @@
 /* «Pones $Y» en rojo: un monto negativo (regla del rojo, 18-nov-2026), también en la celda que es la mejor de la fila. */
 .iv2-pones { color: var(--signal-red, #C8323C); }
 .iv2-nowrap { white-space: nowrap; }
+/* Lo que cambió en la publicación de un depto elegido (entrega 2): la línea con la fecha y, debajo, lo que cambió por ella. */
+.iv2-cambio { margin: 4px 0 0; font-size: 13px; font-weight: 600; color: var(--franco-text, #0F0F0F); }
+.iv2-cambio-sub { margin: 2px 0 0; font-size: 13px; color: var(--franco-text-muted, #6B6B72); }
 .iv2-tabla-movil .iv2-tabla td, .iv2-tabla-movil .iv2-tabla thead th:not(:first-child) { min-width: 104px; }
 .iv2-nota-tabla { margin-top: 10px; font-size: 12px; }
 

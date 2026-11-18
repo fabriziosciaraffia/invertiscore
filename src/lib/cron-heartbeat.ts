@@ -139,6 +139,8 @@ export const CRONS_VIGILADOS: CronVigilado[] = [
   { nombre: "prosa-comunas", label: "Prosa de las páginas de comuna (lunes)", intervaloHoras: 168, desde: "2026-10-26T05:30:00Z" },
   // El relleno de publicadores (12-nov-2026): cada 10 minutos, por Decodo, hasta 200 fichas por hora, con fusible.
   { nombre: "relleno-publicadores", label: "Relleno de publicadores por Decodo (cada 10 minutos)", intervaloHoras: 1, desde: "2026-11-13T00:05:00Z" },
+  // La vigilancia de los deptos elegidos de Invierte con Franco (entrega 2, 18-nov-2026): a las 9, 10 y 11 UTC; el correo, a las 11.
+  { nombre: "invierte-vigilar", label: "Invierte con Franco: los cambios de los deptos elegidos (mañanas)", intervaloHoras: 24, desde: "2026-11-20T09:15:00Z" },
   // Pases de datos (/api/data/*). Cadencias de vercel.json al 04-sep-2026.
   { nombre: "scrape-nuevos", label: "Obra nueva (diario)", intervaloHoras: 24,
     frescura: { que: "proyectos de obra nueva", maxHoras: 48, leer: async (sb) => fechaDe(await sb.from("scraped_properties").select("scraped_at").eq("type", "venta").eq("condicion", "nuevo").or("source_id.is.null,source_id.not.like.%#%").not("scraped_at", "is", null).order("scraped_at", { ascending: false }).limit(1).maybeSingle(), "scraped_at") } },

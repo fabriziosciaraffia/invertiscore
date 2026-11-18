@@ -96,6 +96,10 @@
     {
       "path": "/api/cron/relleno-publicadores",
       "schedule": "5-55/10 * * * *"
+    },
+    {
+      "path": "/api/cron/invierte-vigilar",
+      "schedule": "15 9,10,11 * * *"
     }
   ]
 }

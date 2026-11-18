@@ -6,7 +6,7 @@ import { cuentasDePruebaSinCorreo, destinoBloqueado, excepcionCopiaOrden, TIPO_C
 import { conBajaDeCorreos, eliminacionPedida, TIPOS_CON_BAJA, TIPOS_QUE_FRENA_LA_ELIMINACION } from "./correo-baja";
 import { createServiceClient as adminCorreo } from "./supabase/service";
 import { correoRecordatorioPack } from "./lo-que-sigue/recordatorio";
-import { correoAlertaCron, correoResumenCrons, correoAlertaPago, correoAlertaPagoFallido, correoBienvenida, correoBoleta, correoCheckoutAbandonado, correoEliminacionInterna, correoEliminacionUsuario, correoAvisoPedido, correoInformeListo, correoPagoConfirmado, correoPagoFallido, correoPlanAumento, correoPremioReferido, correoTarjetaRegistrada, correoInscripcionInvierte, correoAnuncioInvierte, correoCopiaOrden } from "./email/correos";
+import { correoAlertaCron, correoResumenCrons, correoAlertaPago, correoAlertaPagoFallido, correoBienvenida, correoBoleta, correoCheckoutAbandonado, correoEliminacionInterna, correoEliminacionUsuario, correoAvisoPedido, correoInformeListo, correoPagoConfirmado, correoPagoFallido, correoPlanAumento, correoPremioReferido, correoTarjetaRegistrada, correoInscripcionInvierte, correoAnuncioInvierte, correoCopiaOrden, correoCambiosInvierte } from "./email/correos";
 
 /** Quién recibe el correo, para atar el evento a su persona de PostHog. Sin id, se deriva del correo. */
 export interface CorreoOpts {
@@ -530,6 +530,20 @@ export async function sendCopiaOrdenInvierte(p: { to: string; userId: string | n
   } catch (error) {
     console.error("[invierte_orden_copia] no salió:", error);
     return { ok: false, motivo: `excepcion:${(error instanceof Error ? error.message : String(error)).slice(0, 160)}` };
+  }
+}
+
+/** Invierte con Franco, entrega 2 (18-nov-2026): los cambios de la publicación en los deptos elegidos. Uno por persona al día: la
+ *  llave de idempotencia es la persona y el día. La frena la eliminación pedida. */
+export async function sendCambiosInvierte(p: { to: string; userId: string; nombre: string | null; deptos: Parameters<typeof correoCambiosInvierte>[0]["deptos"]; dia: string }): Promise<boolean> {
+  const { subject, html } = correoCambiosInvierte({ nombre: p.nombre, deptos: p.deptos, sitio: SITE_URL });
+  try {
+    const res = await enviarCorreo("invierte_cambio", p.userId, { from: FROM_EMAIL, to: p.to, subject, html }, { idempotencyKey: `invierte-cambio-${p.userId}-${p.dia}` });
+    if (res.error) console.error("[invierte_cambio] no salió:", res.error.message);
+    return !res.error && !!res.data;
+  } catch (error) {
+    console.error("[invierte_cambio] no salió:", error);
+    return false;
   }
 }
 

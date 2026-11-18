@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation";
 import { botonOcupado } from "@/lib/carga-global";
 import { ChipVeredicto } from "@/components/analysis/shared/ChipVeredicto";
 import { CargandoDetalles } from "./CargandoDetalles";
+import { abrirDetalles, prepararEnSegundoPlano } from "@/lib/invierte-v2/detalles-cliente";
 import type { Veredicto } from "@/lib/types";
 import { lineaTope, type Objetivo, type Preocupacion, type Tope } from "@/lib/invierte-v2/perfil";
 import {
@@ -69,14 +70,9 @@ export function ResultadoOpciones(p: PropsResultado) {
   async function verDetalles(o: OpcionDepto) {
     if (abriendo) return;
     setAbriendo(o.avisoId);
-    try {
-      const res = await fetch("/api/lo-que-sigue/guia/analizar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ avisoId: o.avisoId, explorar: true, piePct: 20, plazoAnios: 30 }) });
-      const d = (await res.json().catch(() => ({}))) as { id?: string };
-      if (res.ok && d.id) { window.location.assign(`/analisis/${d.id}`); return; }
-      setError("No pudimos abrir los detalles. Intenta de nuevo.");
-    } catch {
-      setError("No pudimos abrir los detalles. Intenta de nuevo.");
-    }
+    const id = await abrirDetalles(o.avisoId);
+    if (id) { window.location.assign(`/analisis/${id}`); return; }
+    setError("No pudimos abrir los detalles. Intenta de nuevo.");
     setAbriendo(null);
   }
 
@@ -86,7 +82,8 @@ export function ResultadoOpciones(p: PropsResultado) {
     setError(null);
     try {
       const res = await fetch("/api/invierte-v2/eleccion", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ avisoIds: Array.from(marcados) }) });
-      if (res.ok) { router.push(URL_BASE); return; }
+      // Los detalles de los elegidos se preparan en segundo plano apenas elige (entrega 2): al abrirlos, abren al instante.
+      if (res.ok) { prepararEnSegundoPlano(Array.from(marcados)); router.push(URL_BASE); return; }
       setError("No pudimos guardar tu elección. Intenta de nuevo.");
     } catch {
       setError("No pudimos guardar tu elección. Intenta de nuevo.");

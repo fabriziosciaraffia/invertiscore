@@ -466,6 +466,9 @@ async function reiniciarEtapa2(admin: SupabaseClient, userId: string): Promise<{
   const t = await admin.from("inv_tareas").delete({ count: "exact" }).eq("user_id", userId);
   const dp = await admin.from("inv_deptos").delete({ count: "exact" }).eq("user_id", userId);
   if (d.error || t.error || dp.error) return null;
+  // Los cambios avisados de sus deptos (entrega 2). Sin la migración aplicada la tabla no existe: eso no impide reiniciar.
+  const cb = await admin.from("inv_cambios").delete().eq("user_id", userId);
+  if (cb.error && cb.error.code !== "42P01" && cb.error.code !== "PGRST205") return null;
   // El precio máximo de antes: solo si el tope lo reemplazó.
   const sup = (perfil?.tope_supuestos ?? null) as { reemplazoPrecioMax?: boolean; precioMaxAnterior?: { valor: number | null }; comunasAnterior?: { valor: string[] | null } } | null;
   const devolver: Record<string, unknown> = {};

@@ -14,6 +14,7 @@ import { REGALO_COPY } from "@/lib/regalo-alta";
 import { REFERIDO_COPY, TOPE_PREMIOS_REFERIDO, enlaceInvitacion, textoEnlaceInvitacion } from "@/lib/referido";
 import { AUMENTO_COPY } from "@/lib/planes";
 import { URL_INVIERTE } from "@/lib/invierte-v2/destino";
+import { BOTON_CAMBIOS, asuntoCambios, parrafoDepto, type DeptoConCambios } from "@/lib/invierte-v2/cambios";
 
 /** La tríada que el dashboard dibuja después de «te dice si conviene:»; en el correo, en palabras. */
 const TRIADA = "Comprar, Ajustar o Buscar otro";
@@ -599,6 +600,27 @@ export function correoCopiaOrden(p: { nombre: string | null; depto: string; fech
       // decide según el estado de la persona (destino.ts › destinoInvierte; decisión de Fabrizio, 18-nov-2026).
       boton: { texto: BOTON_COPIA_ORDEN, url: `${sitio}${URL_INVIERTE}` },
       despues: ["Firmar no te obliga a comprar ni tiene costo. Solo pagas si compras un depto que te presentó Franco."],
+    }),
+  };
+}
+
+// ── Invierte con Franco: los cambios de la publicación en los deptos elegidos (entrega 2, 18-nov-2026) ───────────────────
+// Uno por persona al día como mucho, con todos sus cambios relevantes (umbrales en cambios.ts). Textos aprobados por Fabrizio. El
+// botón va a /invierte, la dirección única del flujo. Lo frena la eliminación pedida (correo-baja.ts).
+export function correoCambiosInvierte(p: { nombre: string | null; deptos: DeptoConCambios[]; sitio?: string }): Correo {
+  const sitio = p.sitio ?? SITIO;
+  const asunto = asuntoCambios(p.deptos);
+  const primero = (p.nombre ?? "").trim().split(/\s+/)[0] ?? "";
+  const parrafos = p.deptos.map((d) => escaparHtml(parrafoDepto(d)));
+  parrafos[0] = `${primero ? `Hola, ${escaparHtml(primero)}.` : "Hola."} ${parrafos[0] ?? ""}`;
+  return {
+    subject: asunto,
+    html: plantillaClara({
+      titulo: asunto,
+      preencabezado: p.deptos.length === 1 ? "Cambió la publicación de un depto que elegiste." : "Cambió la publicación de deptos que elegiste.",
+      titular: p.deptos.length === 1 ? "Cambió un depto que elegiste" : `Cambiaron ${p.deptos.length} deptos que elegiste`,
+      parrafos,
+      boton: { texto: BOTON_CAMBIOS, url: `${sitio}${URL_INVIERTE}` },
     }),
   };
 }

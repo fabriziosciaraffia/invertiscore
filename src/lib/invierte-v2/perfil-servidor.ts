@@ -212,7 +212,7 @@ export async function calcularOpciones(admin: SupabaseClient, user: { id: string
     return {
       user_id: user.id, aviso_id: o.avisoId, estado: (prev?.estado as string | undefined) ?? "opcion", origen: o.esEntrada ? "entrada" : "franco",
       etiqueta: etiquetas[o.avisoId] ?? null, alcanza: o.alcanza, fuera_de_alcance_at: o.alcanza ? null : ahora,
-      datos: { precioUF: o.precioUF, veredicto: o.veredicto, score: o.score, flujoCLP: o.flujoCLP, comuna: o.comuna, m2: o.m2 }, es_prueba: perfil.esPrueba, updated_at: ahora,
+      datos: { precioUF: o.precioUF, veredicto: o.veredicto, score: o.score, flujoCLP: o.flujoCLP, comuna: o.comuna, m2: o.m2, dormitorios: o.dormitorios, banos: o.banos }, es_prueba: perfil.esPrueba, updated_at: ahora,
     };
   });
   // Los que ya estaban y hoy no aparecen: quedan como estaban. Fuera de alcance se marca solo por PRECIO (en `opciones` va con su

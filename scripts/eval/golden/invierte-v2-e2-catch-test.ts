@@ -13,6 +13,9 @@ import {
 import { destinoInvierte, URL_BASE, URL_OPCIONES, URL_PARTIMOS } from "../../../src/lib/invierte-v2/destino";
 import { reiniciarPrueba } from "../../../src/lib/invierte-v2/servidor";
 import { falso, USER } from "./invierte-v2-catch-test";
+import { chequearPorCarril, leidaFresca, RELECTURA_MS, TOPE_CARRIL_POR_HORA, type DepsCarril } from "../../../src/lib/invierte-v2/carril";
+import { detectarCambios, lineaCambio, textoVeredicto, asuntoCambios, parrafoDepto, UMBRAL_CORREO_PCT, UMBRAL_LINEA_PCT, type Vigente } from "../../../src/lib/invierte-v2/cambios";
+import { cuerpoDetalles } from "../../../src/lib/invierte-v2/detalles-cliente";
 
 const RAIZ = join(__dirname, "..", "..", "..");
 const leer = (p: string) => readFileSync(join(RAIZ, p), "utf8").replace(/\r\n/g, "\n");
@@ -206,9 +209,97 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       const mig = leer("supabase/migrations/20261119_invierte_v2_etapa2.sql");
       if (!/'anon_cap','invierte'\)\)/.test(mig) || !/'gestionar_corredor','avisar_alcance'\)/.test(mig)) F("6 · el archivo de la migración no es igual a lo aplicado (invierte / avisar_alcance)");
       // Los «Ver detalles» del flujo van por la ruta del mapa con pie 20 % y 30 años (la que decide el modo invierte).
+      // ⚠ ACTA (18-nov-2026, entrega 2) · ahora por detalles-cliente.ts, en modo Invierte (`invierte: true`): abre directo lo ya
+      // preparado y lee por el carril. Los dos botones llaman a `abrirDetalles`; el cuerpo es el de la ruta del mapa.
+      const dc = codigo("src/lib/invierte-v2/detalles-cliente.ts");
+      if (!/export const URL_DETALLES = "\/api\/lo-que-sigue\/guia\/analizar";/.test(dc) || JSON.stringify(JSON.parse(cuerpoDetalles("a", "abrir"))) !== JSON.stringify({ avisoId: "a", explorar: true, piePct: 20, plazoAnios: 30, invierte: true, origenInvierte: "abrir" })) F("6 · los detalles del flujo no van por la ruta del mapa con pie 20 %, 30 años y el modo Invierte");
       for (const f of ["src/components/invierte-v2/ResultadoOpciones.tsx", "src/components/invierte-v2/BotonDetalles.tsx"]) {
-        if (!/fetch\("\/api\/lo-que-sigue\/guia\/analizar", \{[\s\S]{0,160}explorar: true, piePct: 20, plazoAnios: 30/.test(codigo(f))) F(`6 · ${f} no abre los detalles por la ruta del mapa`);
+        if (!/const id = await abrirDetalles\((o\.)?avisoId\);/.test(codigo(f)) || /fetch\("\/api\/lo-que-sigue\/guia\/analizar"/.test(codigo(f))) F(`6 · ${f} no abre los detalles por detalles-cliente (modo Invierte)`);
       }
+    }
+
+    // ── 8 · ENTREGA 2: EL CARRIL, ABRIR DIRECTO, PREPARAR AL ELEGIR, LOS CAMBIOS Y SU CORREO ──
+    {
+      // El carril: 60 pedidos por hora, memoria de 24 horas, fusible; lee también lo que la memoria da por despublicado.
+      if (TOPE_CARRIL_POR_HORA !== 60 || RELECTURA_MS !== 24 * 3600 * 1000) F("8 · el carril no es de 60 pedidos por hora con relectura cada 24 horas");
+      const ahora = new Date("2026-11-20T12:00:00Z");
+      const hace = (h: number) => new Date(ahora.getTime() - h * 3600 * 1000);
+      if (!leidaFresca(hace(23), ahora) || leidaFresca(hace(25), ahora) || leidaFresca(null, ahora)) F("8 · la memoria del carril no es de 24 horas");
+      const dobles = (o: { estado?: "publicado" | "despublicado" | null; leidaAt?: Date | null; fusible?: boolean; lectura?: Awaited<ReturnType<DepsCarril["leer"]>> }) => {
+        const r = { leidas: 0, fusibles: [] as string[] };
+        const d: DepsCarril = {
+          memoria: async () => ({ estado: o.estado ?? null, leidaAt: o.leidaAt ?? null }),
+          fusible: async () => !!o.fusible,
+          saltarFusible: async (m) => { r.fusibles.push(m); },
+          leer: async () => { r.leidas++; return o.lectura ?? { leida: true, motivo: "publicado", codigo: 200, anio: null, gets: 2 }; },
+        };
+        return { d, r };
+      };
+      const a = dobles({ estado: "publicado", leidaAt: hace(2) });
+      if ((await chequearPorCarril(a.d, ahora)).sinLeer !== "fresca" || a.r.leidas) F("8 · el carril lee un depto leído hace menos de 24 horas");
+      const b = dobles({ estado: "despublicado", leidaAt: hace(30) });
+      const rb = await chequearPorCarril(b.d, ahora);
+      if (b.r.leidas !== 1 || rb.estado !== "publicado") F("8 · el carril no relee un despublicado (no sabría si volvió a publicarse)");
+      const c = dobles({ fusible: true });
+      if ((await chequearPorCarril(c.d, ahora)).sinLeer !== "fusible" || c.r.leidas) F("8 · el carril lee con el fusible puesto");
+      const bl = dobles({ lectura: { leida: true, motivo: "bloqueo", codigo: 403, anio: null, gets: 1 } });
+      await chequearPorCarril(bl.d, ahora);
+      if (bl.r.fusibles[0] !== "bloqueo") F("8 · un bloqueo no salta el fusible del carril");
+      const ra = dobles({ estado: "publicado", lectura: { leida: true, motivo: "publicado", codigo: 200, anio: null, gets: 2, rara: true } });
+      const rra = await chequearPorCarril(ra.d, ahora);
+      if (ra.r.fusibles[0] !== "rara" || rra.lectura?.leida !== true) F("8 · una respuesta rara no salta el fusible del carril");
+      // El carril cuenta y anota en SU bitácora, nunca en la de las personas.
+      const cs = codigo("src/lib/invierte-v2/carril-servidor.ts");
+      if (!/from\("lecturas_invierte"\)\.select\("id", \{ count: "exact", head: true \}\)/.test(cs) || !/from\("lecturas_invierte"\)\.insert\(/.test(cs) || /lecturas_ficha/.test(cs)) F("8 · el carril cuenta o anota en la bitácora de las personas");
+      if (!/return error \|\| count == null \? Number\.POSITIVE_INFINITY : count;/.test(cs) || !/leerFicha\(ficha, "clic", almacen, bajarFicha, new Date\(\), \{ tope: TOPE_CARRIL_POR_HORA \}\)/.test(cs)) F("8 · el carril no usa su tope (o sin conteo no se da por lleno)");
+      // La ruta, en modo Invierte: lo preparado se abre ANTES de leer nada o de prepararlo; lo demás lee por el carril.
+      const ruta = codigo("src/app/api/lo-que-sigue/guia/analizar/route.ts");
+      const iYa = ruta.indexOf("const ya = await detallesPreparados(admin, user.id, b.avisoId);"), iMeta = ruta.indexOf("const ae = gratisInvierte ? null : await emitirEventoMeta("), iChq = ruta.indexOf("async chequear() {");
+      if (!/const modoInvierte = gratisInvierte && b\.invierte === true;/.test(ruta) || iYa < 0 || iYa > iMeta || iYa > iChq || !/if \(ya\) return salir\(NextResponse\.json\(\{ id: ya, estado: "ya-creado"/.test(ruta)) F("8 · abrir lo ya preparado no es directo (lee o prepara antes)");
+      if (!/async chequear\(\) \{\s*if \(modoInvierte\) \{\s*const c = await chequearPublicacionInvierte\(admin, \{ avisoId: b\.avisoId!, userId: user\.id, origen: b\.origenInvierte === "elegir" \? "elegir" : "abrir" \}\);/.test(ruta)) F("8 · el modo Invierte lee la ficha por el tope de las personas");
+      // Preparar al elegir, y al entrar a la base lo que falte.
+      if (!/if \(res\.ok\) \{ prepararEnSegundoPlano\(Array\.from\(marcados\)\); router\.push\(URL_BASE\); return; \}/.test(codigo("src/components/invierte-v2/ResultadoOpciones.tsx"))) F("8 · los detalles no se preparan al elegir");
+      if (!/keepalive: true/.test(codigo("src/lib/invierte-v2/detalles-cliente.ts")) || !/cuerpoDetalles\(id, "elegir"\)/.test(codigo("src/lib/invierte-v2/detalles-cliente.ts"))) F("8 · la preparación no sigue si cambia la pantalla o no lee como «elegir»");
+      const base = codigo("src/app/invierte/base/page.tsx");
+      if (!/<PrepararDetalles avisoIds=\{sinPreparar\} \/>/.test(base) || !/\.not\("analysis_id", "is", null\)/.test(base)) F("8 · la base no prepara lo que quedó sin preparar");
+      // Los cambios: los umbrales aprobados.
+      const v: Vigente = { precioUF: 3000, publicado: true, veredicto: "COMPRAR", flujoCLP: 20000, alcanza: true, publicadorId: 7 };
+      const h = (o: Partial<Parameters<typeof detectarCambios>[1]>) => ({ precioUF: 3000, publicado: true, veredicto: "COMPRAR", flujoCLP: 20000, alcanza: true, publicadorId: 7, ...o });
+      if (UMBRAL_LINEA_PCT !== 0.5 || UMBRAL_CORREO_PCT !== 2) F("8 · los umbrales no son 0,5 % (línea) y 2 % (correo)");
+      if (detectarCambios(v, h({ precioUF: 2990 })).length) F("8 · un cambio de 0,33 % sale en la base");
+      const c1 = detectarCambios(v, h({ precioUF: 2970 }));
+      if (c1.length !== 1 || c1[0].tipo !== "precio_baja" || !c1[0].enBase || c1[0].relevante) F("8 · un cambio de 1 % no va en la base sin correo");
+      const c2 = detectarCambios(v, h({ precioUF: 2850, flujoCLP: 52000, veredicto: "COMPRAR" }));
+      if (!c2.find((c) => c.tipo === "precio_baja" && c.relevante) || !c2.find((c) => c.tipo === "al_mes" && c.relevante)) F("8 · bajar 5 % y dejar $32.000 más al mes no va al correo");
+      const c3 = detectarCambios(v, h({ precioUF: 3030, alcanza: false }));
+      if (!c3.find((c) => c.tipo === "precio_sube" && c.relevante)) F("8 · subir y dejar de alcanzar no va al correo");
+      if (detectarCambios(v, h({ veredicto: "BUSCAR OTRA", flujoCLP: -40000 })).length) F("8 · un veredicto o un al mes que cambian sin cambio de la publicación se le avisan");
+      const c4 = detectarCambios(v, h({ publicado: false }));
+      if (c4.length !== 1 || c4[0].tipo !== "despublicado" || !c4[0].relevante) F("8 · dejar de estar publicado no va al correo");
+      const c5 = detectarCambios({ ...v, publicado: false }, h({ publicado: true }));
+      if (!c5.find((c) => c.tipo === "republicado" && c.relevante)) F("8 · volver a publicarse no va al correo");
+      const c6 = detectarCambios(v, h({ publicadorId: 9 }));
+      if (c6.length !== 1 || c6[0].tipo !== "publicador" || c6[0].enBase || c6[0].relevante) F("8 · quién publica se le avisa a la persona (debe ser solo tarea)");
+      // Los textos aprobados.
+      if (lineaCambio({ tipo: "precio_baja", antes: { precioUF: 3000 }, despues: { precioUF: 2850 } }, "2026-11-20") !== "Bajó UF 150 el 20 de noviembre") F("8 · la línea del precio no es «Bajó UF 150 el 20 de noviembre»");
+      if (lineaCambio({ tipo: "despublicado", antes: {}, despues: {} }, "2026-11-20") !== "Dejó de estar publicado el 20 de noviembre" || lineaCambio({ tipo: "republicado", antes: {}, despues: {} }, "2026-11-20") !== "Volvió a publicarse el 20 de noviembre") F("8 · las líneas de publicación no son las aprobadas");
+      if (lineaCambio({ tipo: "al_mes", antes: {}, despues: { flujoCLP: -20000 } }, "2026-11-20") !== "Con el precio nuevo, pones $20.000 al mes") F("8 · la línea de al mes no es la aprobada");
+      if (/AJUSTA SUPUESTOS|BUSCAR OTRA/.test(textoVeredicto("COMPRAR", "AJUSTA SUPUESTOS") + textoVeredicto("AJUSTA SUPUESTOS", "BUSCAR OTRA")) || !/ya no conviene al precio publicado/.test(textoVeredicto("COMPRAR", "AJUSTA SUPUESTOS")) || !/ahora conviene al precio publicado/.test(textoVeredicto("BUSCAR OTRA", "COMPRAR"))) F("8 · el cambio de veredicto usa nombres internos o no dice qué significa");
+      const dep = { avisoId: "x", comuna: "Ñuñoa", descripcion: "2D2B · 58 m²", cambios: [{ tipo: "precio_baja" as const, antes: { precioUF: 3000, alcanza: true }, despues: { precioUF: 2850, alcanza: true }, fecha: "2026-11-20" }, { tipo: "al_mes" as const, antes: { flujoCLP: 20000 }, despues: { flujoCLP: 52000 }, fecha: "2026-11-20" }] };
+      if (asuntoCambios([dep]) !== "El depto de Ñuñoa bajó UF 150" || asuntoCambios([dep, dep]) !== "Cambiaron 2 deptos que elegiste") F("8 · el asunto del correo no es el aprobado");
+      if (parrafoDepto(dep) !== "El depto de Ñuñoa (2D2B · 58 m²) que elegiste bajó UF 150 el 20 de noviembre: ahora está en UF 2.850. Con ese precio, te sobran $52.000 al mes.") F(`8 · el cuerpo del correo no es el aprobado (${parrafoDepto(dep)})`);
+      // El correo: uno por persona al día, solo a la lista mientras el modo no sea «todos», con botón a /invierte.
+      const vig = codigo("src/lib/invierte-v2/vigilancia-servidor.ts");
+      if (!/if \(yaHoy\.has\(userId\)\) continue;/.test(vig) || !/idempotencyKey: `invierte-cambio-\$\{p\.userId\}-\$\{p\.dia\}`/.test(codigo("src/lib/email.ts"))) F("8 · puede salir más de un correo de cambios por persona al día");
+      if (!/if \(!orden\?\.email \|\| !puedeRecibirCopia\(modo, lista, orden\.email\)\) \{ fuera\+\+; continue; \}/.test(vig)) F("8 · el correo de cambios sale fuera de la lista");
+      if (!/boton: \{ texto: BOTON_CAMBIOS, url: `\$\{sitio\}\$\{URL_INVIERTE\}` \}/.test(codigo("src/lib/email/correos.ts"))) F("8 · el correo de cambios no lleva a /invierte");
+      if (!/if \(r\.sinLeer === "tope" \|\| r\.sinLeer === "fusible"\) break;/.test(vig) || !/if \(leidaFresca\(at, ahora\)\) continue;/.test(vig)) F("8 · la noche relee sin respetar el tope, el fusible o las 24 horas");
+      if (!/ahora\.getUTCHours\(\) === HORA_CORREOS_UTC \? await correosDeCambios/.test(codigo("src/app/api/cron/invierte-vigilar/route.ts"))) F("8 · el correo sale en cada corrida de la mañana");
+      // La migración: la tabla original y su disparador quedan intactos.
+      const m2 = leer("supabase/migrations/20261120_invierte_v2_entrega2.sql").replace(/--.*$/gm, "");
+      if (/(alter|drop|truncate)\s+table\s+(if exists\s+)?public\.scraped_properties_precios|delete\s+from\s+public\.scraped_properties_precios|update\s+public\.scraped_properties_precios|(drop|create( or replace)?)\s+trigger|registrar_precio_aviso/i.test(m2)) F("8 · la migración toca scraped_properties_precios o su disparador");
+      // En los DOS lugares: el relleno inicial y la función de cada noche.
+      if ((m2.match(/abs\((s\.)?puf \/ (s\.)?prev - 1\) >= 0\.001/g) ?? []).length !== 2 || (m2.match(/case when h\.moneda = 'UF' then h\.precio else h\.precio \/ u\.valor end/g) ?? []).length !== 2) F("8 · el historial no compara en UF con el umbral de 0,1 % (en el relleno y en la noche)");
     }
 
     // ── 7 · REINICIAR PRUEBA LIMPIA LA ETAPA 2 DE ESA PERSONA, Y SOLO DE ELLA ──

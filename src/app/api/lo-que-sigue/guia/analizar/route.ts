@@ -36,6 +36,7 @@ import { esTopeNegociar, precioNegociadoValido } from "@/lib/explorar/capa-negoc
 import { verificarNegociado } from "@/lib/avisos/negociar";
 import { devolverCobro } from "@/lib/access";
 import { EVENTO_DETALLE_ABIERTO, MODO_INVIERTE, verGratisInvierte } from "@/lib/invierte-v2/detalles";
+import { chequearPublicacionInvierte, detallesPreparados } from "@/lib/invierte-v2/carril-servidor";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // «Analizar este» (30-sep-2026): el informe de un aviso de la guía, sin wizard, con un crédito del
@@ -72,7 +73,7 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "sin-sesion" }, { status: 401 });
 
-  const b = (await request.json().catch(() => ({}))) as { origenId?: string | null; avisoId?: string; piePct?: number; plazoAnios?: number; tasaPct?: unknown; semanal?: string; explorar?: boolean; respaldo?: boolean; precioNegociadoUF?: unknown; topeNegociar?: unknown };
+  const b = (await request.json().catch(() => ({}))) as { origenId?: string | null; avisoId?: string; piePct?: number; plazoAnios?: number; tasaPct?: unknown; semanal?: string; explorar?: boolean; respaldo?: boolean; precioNegociadoUF?: unknown; topeNegociar?: unknown; invierte?: boolean; origenInvierte?: string };
   // LA TASA ELEGIDA (30-oct-2026): la del pop-up (null = la de hoy); una que no es de la lista no se acepta.
   if (b.tasaPct != null && tasaElegidaDe(b.tasaPct) == null) return NextResponse.json({ error: "tasa" }, { status: 400 });
   const sinOrigen = typeof b.semanal === "string" && b.origenId == null;
@@ -134,6 +135,14 @@ export async function POST(request: Request) {
     // INVIERTE CON FRANCO (etapa 2, 18-nov-2026): quien firmó la orden ve los detalles de un usado del mapa sin gastar un
     // crédito (charge_mode 'invierte'), y mientras el modo sea lista ese pedido no manda eventos a Meta.
     const gratisInvierte = desdeExplorar ? await verGratisInvierte(admin, user, b.avisoId) : false;
+    // EL CARRIL DE INVIERTE (entrega 2, 18-nov-2026, aprobado por Fabrizio): desde el flujo nuevo (`invierte: true`), lo ya
+    // preparado se abre directo —sin leer la ficha ni preparar de nuevo— y lo que no, lee la ficha por el carril propio
+    // (carril.ts: su tope, su bitácora, su memoria de 24 horas y su fusible), no por el tope de 30 por hora del mapa.
+    const modoInvierte = gratisInvierte && b.invierte === true;
+    if (modoInvierte) {
+      const ya = await detallesPreparados(admin, user.id, b.avisoId);
+      if (ya) return salir(NextResponse.json({ id: ya, estado: "ya-creado", veredicto: null, score: null }));
+    }
     const ae = gratisInvierte ? null : await emitirEventoMeta(admin, {
       evento: EVENTOS_META.analizarEste,
       eventId: idAnalizarEste(b.avisoId, desdeExplorar ? "explorar" : desdeRespaldo ? "respaldo" : desdeSemanal ? b.semanal! : origen.analysisId!),
@@ -159,6 +168,11 @@ export async function POST(request: Request) {
     let delInforme: { veredicto: string | null; score: number | null } | null = null;
     const r = await analizarAvisoDeGuia({
       async chequear() {
+        if (modoInvierte) {
+          const c = await chequearPublicacionInvierte(admin, { avisoId: b.avisoId!, userId: user.id, origen: b.origenInvierte === "elegir" ? "elegir" : "abrir" });
+          lecturaAnio = lecturaAnioDe(c.lectura);
+          return c.estado;
+        }
         const ficha = await fichaDelAviso(admin, b.avisoId!);
         if (!ficha) return "sin-chequeo";
         const c = await chequearPublicacion(ficha, "clic", almacenPublicacion(admin), bajarFicha, { forzar: true });
