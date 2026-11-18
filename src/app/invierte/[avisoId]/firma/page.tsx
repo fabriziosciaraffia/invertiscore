@@ -2,13 +2,14 @@ import { notFound, redirect } from "next/navigation";
 import { createServiceClient } from "@/lib/supabase/service";
 import { deptoDeLinea } from "@/lib/invierte-v2/orden";
 import { URL_PARTIMOS, urlFirma } from "@/lib/invierte-v2/destino";
+import { hrefEntrar } from "@/lib/entrar/entrada";
 import { leerPersona, ordenVigenteDe } from "@/lib/invierte-v2/servidor";
 import { METADATA_FLUJO, analysisDe, deptoParaPagina, origenDe, sesionYAcceso, volverAlOrigen } from "@/lib/invierte-v2/paginas";
 import { MarcoInvierte } from "@/components/invierte-v2/MarcoInvierte";
 import { FirmaForm } from "@/components/invierte-v2/FirmaForm";
 
 // 2.1 Firma, paso 2 de 2 (etapa 1 de Invierte con Franco, 18-nov-2026). Sin acceso: 404. Sin sesión (modo «todos»): la cuenta
-// se pide acá, con el registro de siempre, y se vuelve a esta misma pantalla. Ya firmó la versión vigente: Partimos.
+// se pide acá, en la entrada vigente (/entrar, el código por correo; nunca /register ni /login), y se vuelve a esta misma pantalla. Ya firmó la versión vigente: Partimos.
 export const dynamic = "force-dynamic";
 export const metadata = METADATA_FLUJO;
 
@@ -19,7 +20,7 @@ export default async function FirmaPage({ params, searchParams }: { params: { av
   if (!depto) notFound();
   const origen = origenDe(searchParams);
   const analysisId = analysisDe(searchParams);
-  if (!user) redirect(`/register?next=${encodeURIComponent(urlFirma(depto.avisoId, origen, analysisId))}`);
+  if (!user) redirect(hrefEntrar(urlFirma(depto.avisoId, origen, analysisId)));
   const admin = createServiceClient();
   const [orden, persona] = await Promise.all([ordenVigenteDe(admin, user.id), leerPersona(admin, user.id)]);
   if (orden) redirect(URL_PARTIMOS);

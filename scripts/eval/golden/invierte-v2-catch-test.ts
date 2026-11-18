@@ -514,7 +514,8 @@ export async function runInvierteV2(): Promise<{ hard: number }> {
       if (!/useEffect\(\(\) => \{\s*if \(sinSesion\) return;/.test(hoja)) F("12 · sin sesión, la hoja pregunta el estado");
       const contacto = codigo("src/components/invierte-v2/ContactoForm.tsx");
       if (!/if \(sinSesion\) \{[\s\S]{0,200}window\.localStorage\.setItem\(CLAVE_PENDIENTE_V2,[\s\S]{0,120}router\.push\(urlFirma\(depto\.avisoId, origen, analysisId\)\);/.test(contacto)) F("12 · sin sesión, el contacto no queda en el navegador antes de ir a la firma");
-      if (!/if \(!user\) redirect\(`\/register\?next=\$\{encodeURIComponent\(urlFirma\(depto\.avisoId, origen, analysisId\)\)\}`\);/.test(firmaPag)) F("12 · sin sesión, la firma no pide la cuenta (con vuelta a la firma)");
+      // ⚠ ACTA (18-nov-2026, pedido de Fabrizio) · la cuenta se pide en la entrada vigente, /entrar, no en el /register viejo.
+      if (!/if \(!user\) redirect\(hrefEntrar\(urlFirma\(depto\.avisoId, origen, analysisId\)\)\);/.test(firmaPag)) F("12 · sin sesión, la firma no pide la cuenta en /entrar (con vuelta a la firma)");
     }
 
     // ── 13 · LA CUARTA ENTREGA (18-nov-2026): la lámina manda en jerarquía, disposición y textos; una sola fuente ──
@@ -654,8 +655,8 @@ export async function runInvierteV2(): Promise<{ hard: number }> {
       // /invierte decide según el estado de la persona.
       const avi = { avisoId: AVISO, origen: "explorar" as const };
       const casos: [Parameters<typeof destinoInvierte>[0], string][] = [
-        [{ sesion: false, acceso: false, firmo: false, contacto: null }, "entrar:/login?next=%2Finvierte"],
-        [{ sesion: false, acceso: true, firmo: true, contacto: avi }, "entrar:/login?next=%2Finvierte"],
+        [{ sesion: false, acceso: false, firmo: false, contacto: null }, "entrar:/entrar?next=%2Finvierte"],
+        [{ sesion: false, acceso: true, firmo: true, contacto: avi }, "entrar:/entrar?next=%2Finvierte"],
         [{ sesion: true, acceso: false, firmo: true, contacto: avi }, "no-existe:"],
         [{ sesion: true, acceso: true, firmo: true, contacto: avi }, `ir:${URL_PARTIMOS}`],
         [{ sesion: true, acceso: true, firmo: false, contacto: avi }, `ir:/invierte/${AVISO}/firma?desde=explorar`],

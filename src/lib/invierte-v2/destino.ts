@@ -6,6 +6,7 @@
 //   · Sin acceso, siempre Pronto: el camino de hoy, sin un cambio.
 // ─────────────────────────────────────────────────────────────────────────────
 import type { OrigenInvierte } from "@/lib/invierte/invierte";
+import { hrefEntrar } from "@/lib/entrar/entrada";
 
 export type DestinoInvierte = "pronto" | "v2";
 
@@ -43,7 +44,9 @@ export const URL_VER_ORDEN = "/api/invierte-v2/orden";
 export const URL_INVIERTE = "/invierte";
 export const URL_OPCIONES = "/invierte/opciones";
 export const URL_BASE = "/invierte/base";
-export const URL_ENTRAR_INVIERTE = `/login?next=${encodeURIComponent(URL_INVIERTE)}`;
+// Sin sesión: la entrada vigente, /entrar (el código por correo), con la vuelta a /invierte. Nunca /login (la contraseña de las
+// cuentas viejas) ni /register (el alta vieja con contraseña). Pedido de Fabrizio, 18-nov-2026.
+export const URL_ENTRAR_INVIERTE = hrefEntrar(URL_INVIERTE);
 
 export type RutaInvierte = { tipo: "entrar"; url: string } | { tipo: "no-existe" } | { tipo: "ir"; url: string };
 

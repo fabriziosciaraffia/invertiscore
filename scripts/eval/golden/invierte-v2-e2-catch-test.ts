@@ -157,6 +157,11 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
     {
       const c = (x: Partial<Parameters<typeof destinoInvierte>[0]>) => { const d = destinoInvierte({ sesion: true, acceso: true, firmo: true, contacto: null, ...x }); return "url" in d ? d.url : d.tipo; };
       if (c({}) !== URL_PARTIMOS || c({ perfil: true }) !== URL_OPCIONES || c({ perfil: true, eligio: true }) !== URL_BASE) F("5 · /invierte no manda firmó→Partimos, perfil→resultado, eligió→base");
+      // Sin sesión, a la entrada vigente con la vuelta a /invierte; ningún archivo del flujo enlaza a /login ni a /register.
+      if (c({ sesion: false }) !== "/entrar?next=%2Finvierte" || c({ sesion: false, acceso: false }) !== "/entrar?next=%2Finvierte") F("5 · /invierte sin sesión no manda a /entrar con la vuelta");
+      for (const f of ["src/lib/invierte-v2/destino.ts", "src/app/invierte/[avisoId]/firma/page.tsx", "src/app/invierte/page.tsx", "src/components/invierte-v2/PerfilForm.tsx", "src/components/invierte-v2/ResultadoOpciones.tsx", "src/app/invierte/base/page.tsx"]) {
+        if (/["'`]\/(login|register)\b/.test(codigo(f))) F(`5 · ${f} enlaza a /login o /register`);
+      }
       if (c({ sesion: false }) === URL_BASE || c({ acceso: false, perfil: true, eligio: true }) !== "no-existe") F("5 · /invierte salta la sesión o el acceso");
       for (const r of ["src/app/api/invierte-v2/perfil/route.ts", "src/app/api/invierte-v2/eleccion/route.ts", "src/app/api/invierte-v2/avisar/route.ts"]) {
         if (!/const user = await personaConAcceso\(\);\s*if \(!user\) return NO_EXISTE\(\);/.test(codigo(r))) F(`5 · ${r} responde sin acceso`);
