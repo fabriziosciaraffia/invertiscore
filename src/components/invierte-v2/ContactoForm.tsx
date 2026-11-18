@@ -38,12 +38,14 @@ export function LineaDeptoFlujo({ depto, conChip = true }: { depto: DeptoFlujo; 
   );
 }
 
-export function ContactoForm({ depto, origen, analysisId, inicial, sinSesion }: {
+export function ContactoForm({ depto, origen, analysisId, inicial, sinSesion, alCerrar }: {
   depto: DeptoFlujo;
   origen: OrigenInvierte;
   analysisId: string | null;
   inicial: { urgencia: UrgenciaInvierte | null; pie: PieInvierte | null; whatsapp: string } | null;
   sinSesion: boolean;
+  /** En la hoja: la ✕ de la fila de arriba, que solo se ve en el PC (en el celular cierra la flecha de la cabecera). */
+  alCerrar?: () => void;
 }) {
   const router = useRouter();
   const [urgencia, setUrgencia] = useState<UrgenciaInvierte | null>(inicial?.urgencia ?? null);
@@ -83,10 +85,21 @@ export function ContactoForm({ depto, origen, analysisId, inicial, sinSesion }: 
 
   return (
     <form onSubmit={enviar} noValidate style={{ display: "contents" }} data-inv2="contacto-form">
-      <IndicadorPasos paso={1} />
-      <div className="inv-encabezado">
-        <h1 className="inv-titulo" id="iv2-t">{C.titulo}</h1>
-        <LineaDeptoFlujo depto={depto} />
+      {/* La fila de arriba (lámina 1.2-contacto-pc): el indicador y el título, y la ✕ a la derecha. En el PC la hoja no lleva la
+          cabecera con el degradado; en el celular la ✕ no se ve y cierra la flecha de la cabecera. */}
+      <div className="iv2-cab-form">
+        <div className="iv2-cab-form-id">
+          <IndicadorPasos paso={1} />
+          <div className="inv-encabezado">
+            <h1 className="inv-titulo" id="iv2-t">{C.titulo}</h1>
+            <LineaDeptoFlujo depto={depto} />
+          </div>
+        </div>
+        {alCerrar && (
+          <button type="button" className="iv2-cab-x" onClick={alCerrar} aria-label="Cerrar" data-inv2="cerrar-pc">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+          </button>
+        )}
       </div>
       <p className="inv-parrafo">{C.parrafo}</p>
       <fieldset className="inv-pregunta">

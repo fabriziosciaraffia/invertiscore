@@ -21,14 +21,15 @@
 .iv2-chip-linea { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0; font-size: 13px; color: var(--franco-text-secondary); }
 
 /* casilla */
-.iv2-casilla { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.45; cursor: pointer; color: var(--franco-text); }
+.iv2-casilla { display: flex; gap: 10px; align-items: center; min-height: 44px; font-size: 14px; line-height: 1.45; cursor: pointer; color: var(--franco-text); }
 .iv2-casilla input { width: 20px; height: 20px; margin: 1px 0 0; flex: none; accent-color: var(--franco-text); }
 .iv2-casilla input:disabled + span { color: var(--franco-text-muted); }
 .iv2-casilla input:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; }
 .iv2-nota-boton { margin: 0; font-size: 13px; line-height: 1.45; text-align: center; color: var(--franco-text-secondary); }
 .iv2-acciones { margin-top: auto; display: flex; flex-direction: column; gap: 10px; }
 .iv2-principal:disabled { opacity: 0.45; cursor: not-allowed; }
-.iv2-enlace { display: block; text-align: center; padding: 12px; font-size: 13px; font-weight: 600; color: var(--franco-text); text-underline-offset: 3px; }
+.iv2-enlace { display: flex; align-items: center; justify-content: center; min-height: 44px; width: 100%; text-align: center; padding: 0 12px; border: 0; background: transparent; cursor: pointer;
+  font: 600 13px var(--font-ui, var(--font-body)), "Inter", system-ui, sans-serif; color: var(--franco-text); text-decoration: underline; text-underline-offset: 3px; }
 
 /* firma */
 .iv2-info { margin: 0; border-radius: 12px; padding: 12px 14px; font-size: 13px; line-height: 1.5; background: var(--franco-elevated, #EEF2F8); color: var(--franco-text); }
@@ -133,11 +134,41 @@
 /* ── 1.2 CONTACTO COMO HOJA (18-nov-2026): las clases de la hoja de Pronto + esto. En el celular sube desde abajo con el mapa
       asomando arriba; en el PC, ventana centrada con ✕ (el mismo botón cambia de ícono). ── */
 .iv2-solo-pc { display: none; }
-.iv2-hoja { max-height: calc(100dvh - 88px); }
+/* Una sola fuente en el flujo: el chip del veredicto (compartido, en --font-body) toma la de la pantalla. */
+.iv2-pagina .chip-v, .iv2-hoja .chip-v, .iv2-doc .chip-v { font-family: inherit; }
+/* La hoja de contacto, también en el celular: sin barra propia; si el contenido no cabe, el scroll va en el cuerpo y «Continuar»
+   queda pegado abajo, siempre a la vista (regla de revisión visual, 18-nov-2026). */
+.iv2-hoja { max-height: calc(100dvh - 88px); overflow: hidden; }
+.iv2-hoja .inv-cuerpo { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: 0;
+  /* Con el teclado del celular abierto, el campo enfocado se acomoda ARRIBA de «Continuar» (pegado abajo), no detrás. */
+  scroll-padding-bottom: 130px; }
+.iv2-hoja .iv2-acciones { position: sticky; bottom: 0; z-index: 1; margin-top: 0; gap: 8px; padding: 10px 0 calc(16px + env(safe-area-inset-bottom, 0px)); background: var(--franco-card); }
+.iv2-hoja .iv2-casilla { min-height: 44px; align-items: center; }
+/* La fila de arriba del contacto: indicador y título, con la ✕ a la derecha (solo en el PC). */
+.iv2-cab-form { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.iv2-cab-form-id { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+.iv2-cab-x { display: none; flex: none; width: 36px; height: 36px; align-items: center; justify-content: center; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--franco-border-strong, var(--franco-border)); background: transparent; color: var(--franco-text-secondary); }
+.iv2-cab-x:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; }
+/* En el PC (quinta entrega, 18-nov-2026; lámina 1.2-contacto-pc): ventana de 480 px SIN la cabecera con el degradado, los tamaños
+   de la lámina, y cabe entera en un notebook (1366 × 768 y 1280 × 720 con la barra del navegador, ~610-650 px de alto útil).
+   Si aun así no cabe, el scroll va DENTRO del contenido y «Continuar» queda siempre a la vista (pegado abajo). */
 @media (min-width: 768px) {
-  .iv2-hoja { max-height: calc(100dvh - 48px); }
-  .iv2-hoja .iv2-solo-pc { display: block; }
-  .iv2-hoja .iv2-solo-movil { display: none; }
+  .iv2-velo { padding: 12px; }
+  .iv2-hoja { width: 480px; max-height: calc(100dvh - 24px); border-radius: 20px; box-shadow: 0 20px 60px rgba(20, 20, 20, 0.3); }
+  .iv2-hoja .inv-cab { display: none; }
+  .iv2-hoja .inv-cuerpo { padding: 22px 28px 0; gap: 10px; }
+  .iv2-hoja .iv2-cab-x { display: flex; }
+  .iv2-hoja .iv2-cab-form-id { gap: 10px; }
+  .iv2-hoja .inv-encabezado { gap: 4px; }
+  .iv2-hoja .inv-titulo { font-size: 22px; font-weight: 700; }
+  .iv2-hoja .inv-parrafo { font-size: 14px; }
+  .iv2-hoja .inv-pregunta legend, .iv2-hoja .inv-legend { margin-bottom: 4px; }
+  .iv2-hoja .inv-opcion { min-height: 44px; }
+  .iv2-hoja .inv-campo { height: 44px; font-size: 14px; }
+  .iv2-hoja .iv2-casilla { font-size: 13px; min-height: 0; }
+  .iv2-hoja .iv2-acciones { padding: 8px 0 18px; }
+  .iv2-hoja .iv2-nota-boton { font-size: 12px; }
 }
 
 /* ── FIRMA Y PARTIMOS EN EL PC (18-nov-2026, láminas 2.1-firma-pc y 2.2-partimos-pc): el HeaderFranco real, ancho de escritorio
@@ -149,7 +180,7 @@
   .iv2-con-pc { background: var(--franco-card); }
   .iv2-con-pc .iv2-marco { max-width: 1080px; min-height: auto; margin: 0 auto; border: 0; border-radius: 0; overflow: visible; background: transparent; padding: 0 0 48px; }
   .iv2-con-pc .inv-cab { display: none; }
-  .iv2-con-pc .iv2-pc-barra { display: flex; flex-direction: column; gap: 10px; padding: 28px 0 8px; }
+  .iv2-con-pc .iv2-pc-barra { display: flex; flex-direction: column; gap: 10px; padding: 16px 0 0; }
   .iv2-pc-volver { align-self: flex-start; font-size: 14px; font-weight: 600; color: var(--franco-text); text-decoration: none; }
   .iv2-pc-volver:hover { text-decoration: underline; text-underline-offset: 3px; }
   .iv2-con-pc .iv2-chip-pc { display: inline-flex; }
@@ -157,10 +188,13 @@
 
   /* La firma: datos, casilla y botón a la izquierda; la orden a la derecha, siempre a la vista, con alto fijo (así el botón se
      habilita solo al llegar al final del texto, aunque la pantalla sea grande). El orden del DOM es el del celular. */
-  .iv2-firma { display: grid; grid-template-columns: 420px minmax(0, 1fr); column-gap: 56px; row-gap: 16px; align-items: start; }
+  .iv2-firma { display: grid; grid-template-columns: 420px minmax(0, 1fr); column-gap: 56px; row-gap: 12px; align-items: start; }
   .iv2-firma > * { grid-column: 1; }
   .iv2-firma .iv2-bloque-orden { grid-column: 2; grid-row: 1 / span 8; position: sticky; top: 24px; }
-  .iv2-firma .iv2-orden { height: 480px; }
+  /* Alto fijo (el botón se habilita al llegar al final), pero sin pasarse de la pantalla: en un notebook (1280 × 720 con la
+     barra del navegador) la orden, su pie y «Firmar y partir» quedan en la primera pantalla. */
+  .iv2-firma .iv2-orden { height: min(480px, calc(100dvh - 190px)); }
+  .iv2-firma .inv-campo { height: 44px; }
   .iv2-firma .iv2-acciones { margin-top: 4px; }
 
   /* Partimos: el chip, el título, la línea y los botones a la izquierda; las dos tarjetas a la derecha. */

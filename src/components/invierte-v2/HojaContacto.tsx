@@ -73,9 +73,14 @@ export function HojaContacto({ depto, origen, analysisId = null, sinSesion = fal
         </div>
         <div className="inv-cuerpo">
           {listo ? (
-            <ContactoForm key={inicial ? "con" : "sin"} depto={depto} origen={origen} analysisId={analysisId} inicial={inicial} sinSesion={sinSesion} />
+            <ContactoForm key={inicial ? "con" : "sin"} depto={depto} origen={origen} analysisId={analysisId} inicial={inicial} sinSesion={sinSesion} alCerrar={alCerrar} />
           ) : (
-            <p className="inv-parrafo" aria-busy="true" data-inv2="cargando">{FLUJO_COPY.contacto.titulo}…</p>
+            <div className="iv2-cab-form">
+              <p className="inv-parrafo" aria-busy="true" data-inv2="cargando">{FLUJO_COPY.contacto.titulo}…</p>
+              <button type="button" className="iv2-cab-x" onClick={alCerrar} aria-label="Cerrar">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+              </button>
+            </div>
           )}
         </div>
       </section>

@@ -39,6 +39,9 @@ export function FirmaForm({ depto, deptoCorto, origen, analysisId, sinContacto }
   const [error, setError] = useState<string | null>(null);
   const [preguntas, setPreguntas] = useState(false);
   const caja = useRef<HTMLDivElement>(null);
+  const boton = useRef<HTMLButtonElement>(null);
+  // Un error empuja el botón hacia abajo: en una pantalla baja (notebook) quedaría cortado. Se trae a la vista con el error.
+  useEffect(() => { if (error) boton.current?.scrollIntoView({ block: "nearest", behavior: "smooth" }); }, [error]);
 
   // Lo contestado sin cuenta: se manda una vez.
   const retomado = useRef(false);
@@ -132,7 +135,7 @@ export function FirmaForm({ depto, deptoCorto, origen, analysisId, sinContacto }
       </label>
       {error && <p className="inv-error" role="alert">{error}</p>}
       <div className="iv2-acciones">
-        <button type="submit" className="inv-principal iv2-principal" disabled={!leyo || enviando || sinContacto} {...botonOcupado(enviando)} data-inv2="firmar">{enviando ? F.firmando : F.firmar}</button>
+        <button ref={boton} type="submit" className="inv-principal iv2-principal" disabled={!leyo || enviando || sinContacto} {...botonOcupado(enviando)} data-inv2="firmar">{enviando ? F.firmando : F.firmar}</button>
         <button type="button" className="iv2-enlace" onClick={() => setPreguntas(true)} aria-haspopup="dialog" data-inv2="preguntas">{F.preguntas}</button>
       </div>
     </form>
