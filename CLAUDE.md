@@ -22,6 +22,7 @@ Next.js 14 + App Router + TypeScript + Tailwind + shadcn/ui + Supabase + Claude 
 - Auth: `/login` · `/register` · `/recuperar` · `/restablecer`
 - App: `/dashboard` · `/analisis/nuevo` · `/analisis/nuevo-v2` (wizard nuevo) · `/analisis/nuevo/revisar` · `/analisis/[id]` (resultados) · `/analisis/comparativa` · `/analisis/renta-corta` + `/analisis/renta-corta/[id]` (STR/Airbnb) · `/explorar` (mapa de los que convienen, 23-oct-2026) · `/comparar` · `/checkout` · `/payments/return` · `/cuenta` · `/perfil` · `/admin`
 - Share público: `/share/comparativa/[token]`
+- **Invierte con Franco (comprador)**: `/invierte` es la **dirección única del flujo** (18-nov-2026, decisión de Fabrizio): decide según el estado de la persona (sin sesión pide entrar y vuelve; sin acceso, 404; con orden firmada, Partimos; en la etapa 2, el perfil o la base). **Todo correo o mensaje del flujo que no pida una acción puntual enlaza a `/invierte`, nunca a una pantalla específica** (`destino.ts` › `destinoInvierte`; lo vigila el tier INVIERTE-V2 §16). Pantallas: `/invierte/[avisoId]` (respaldo del contacto) · `/invierte/[avisoId]/firma` · `/invierte/partimos` · `/invierte/perfil`.
 
 ## Base de datos (Supabase)
 - `analisis`: id, user_id, nombre, comuna, ciudad, input_data (jsonb), results (jsonb), is_premium (bool), pending_payment (bool), tipo_analisis, created_at — **fuente de verdad: columnas top-level (`row.X`), no `input_data`** (hay datos duplicados).
