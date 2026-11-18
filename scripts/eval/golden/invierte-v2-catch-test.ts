@@ -35,7 +35,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { leerModo, tieneAcceso, correoDeLista } from "../../../src/lib/invierte-v2/acceso";
 import { destinoBoton, urlContacto } from "../../../src/lib/invierte-v2/destino";
 import { normalizarRut, formatearRut, dvRut } from "../../../src/lib/invierte-v2/rut";
-import { ordenVigente, plantillaVigente, textoPlano, partesDeTexto, fechaFirmaLarga, VERSION_ORDEN, RAZON_SOCIAL_FRANCO, RUT_FRANCO } from "../../../src/lib/invierte-v2/orden";
+import { ordenVigente, plantillaVigente, textoPlano, partesDeTexto, fechaFirmaLarga, registroDeFirma, VERSION_ORDEN, RAZON_SOCIAL_FRANCO, RUT_FRANCO } from "../../../src/lib/invierte-v2/orden";
+import { PREGUNTAS_INVIERTE } from "../../../src/lib/invierte-v2/preguntas";
 import { FLUJO_COPY, EVENTOS_INV2, validarContacto, validarFirma } from "../../../src/lib/invierte-v2/flujo";
 import { firmar, reiniciarPrueba, guardarContacto, completarOrden, reintentarCopias, type DepsFirma, type OrdenInv } from "../../../src/lib/invierte-v2/servidor";
 import { tocaReintentar, debeAvisar, pasoAislado, diarioYLuegoPaso, MAX_INTENTOS_COPIA } from "../../../src/lib/invierte-v2/copias";
@@ -46,7 +47,8 @@ import { TIPOS_CON_BAJA, TIPOS_QUE_FRENA_LA_ELIMINACION } from "../../../src/lib
 import { TIPOS_CORREO } from "../../../src/lib/medicion-correo";
 import { correoCopiaOrden } from "../../../src/lib/email/correos";
 import { FranjaInvierte } from "../../../src/components/invierte/FranjaInvierte";
-import { VentanaDocumento, TextoDocumento } from "../../../src/components/invierte-v2/VentanaDocumento";
+import { VentanaDocumento, TextoDocumento, RegistroDocumento, ListaPreguntas } from "../../../src/components/invierte-v2/VentanaDocumento";
+import { IndicadorPasos } from "../../../src/components/invierte-v2/IndicadorPasos";
 import type { DeptoInvierte } from "../../../src/lib/invierte/invierte";
 
 (globalThis as { React?: unknown }).React = React;
@@ -471,7 +473,9 @@ export async function runInvierteV2(): Promise<{ hard: number }> {
       const marco = codigo("src/components/invierte-v2/MarcoInvierte.tsx");
       if (!/\{pc && \(\s*<div className="iv2-solo-pc" data-inv2="header-pc">\s*<HeaderFranco /.test(marco)) F("12 · el PC no lleva el HeaderFranco real (o se ve en el celular)");
       const firmaPag = codigo("src/app/invierte/[avisoId]/firma/page.tsx");
-      if (!/layout="firma" pc=\{\{ sesionEmail: user\.email \?\? null, rotulo: FLUJO_COPY\.rotuloFirma \}\}/.test(firmaPag) || !/volver=\{volverAlOrigen\(depto\.avisoId, origen, analysisId\)\}/.test(firmaPag)) F("12 · la firma no va en dos columnas con el header (o «Volver» no vuelve a la superficie)");
+      // ⚠ ACTA (18-nov-2026, quinta entrega): el rótulo «INVIERTE CON FRANCO · 2 DE 2» se fue —lo reemplaza el indicador de pasos,
+      // vigilado en §14—; el predicado exigía `rotulo: FLUJO_COPY.rotuloFirma` y ahora exige el formato de PC sin rótulo.
+      if (!/layout="firma" pc=\{\{ sesionEmail: user\.email \?\? null \}\}/.test(firmaPag) || !/volver=\{volverAlOrigen\(depto\.avisoId, origen, analysisId\)\}/.test(firmaPag)) F("12 · la firma no va en dos columnas con el header (o «Volver» no vuelve a la superficie)");
       // ⚠ ACTA (18-nov-2026, cuarta entrega): la lámina 2.2-partimos-pc no lleva rótulo arriba de Partimos; el predicado exigía
       // `rotulo: FLUJO_COPY.rotuloPartimos` y ahora exige el formato de PC SIN rótulo (el header real sigue: lo vigila el marco).
       if (!/layout="partimos" pc=\{\{ sesionEmail: user\.email \?\? null \}\}/.test(codigo("src/app/invierte/partimos/page.tsx"))) F("12 · Partimos no va en dos columnas con el header (o lleva un rótulo que la lámina no tiene)");
@@ -548,6 +552,53 @@ export async function runInvierteV2(): Promise<{ hard: number }> {
       if (!/\.iv2-doc \{[^}]*border-radius: 22px 22px 0 0;/.test(css) || !/@media \(min-width: 768px\) \{\s*\.iv2-doc \{ width: 720px;/.test(css)) F("13 · la ventana no es hoja desde abajo en el celular y ventana centrada en el PC");
       // La firma: el chip del veredicto junto al depto, solo en el PC.
       if (!/<LineaDeptoFlujo depto=\{depto\} conChip="solo-pc" \/>/.test(codigo("src/components/invierte-v2/FirmaForm.tsx")) || !/\.iv2-chip-pc \{ display: none; \}/.test(css) || !/\.iv2-con-pc \.iv2-chip-pc \{ display: inline-flex; \}/.test(css)) F("13 · la firma del PC no lleva el chip del veredicto junto al depto");
+    }
+
+    // ── 14 · LA QUINTA ENTREGA (18-nov-2026): el indicador de pasos, la orden como documento y las preguntas sin salir ──
+    {
+      // A · El mismo indicador arriba del contenido en los dos pasos; se van el «1 de 2» de la cabecera y el rótulo.
+      if (FLUJO_COPY.pasos.contacto !== "Paso 1 de 2 · Tus datos" || FLUJO_COPY.pasos.firma !== "Paso 2 de 2 · Tu firma") F("14 · el texto del indicador no es el de la lámina");
+      const ind = (n: 1 | 2) => renderToStaticMarkup(createElement(IndicadorPasos, { paso: n }));
+      if ((ind(1).match(/data-hecho="1"/g) ?? []).length !== 1 || (ind(2).match(/data-hecho="1"/g) ?? []).length !== 2 || !ind(1).includes("Paso 1 de 2 · Tus datos") || !ind(2).includes("Paso 2 de 2 · Tu firma")) F("14 · el indicador no marca el tramo del paso o no dice el paso");
+      if (!/data-inv2="contacto-form">\s*<IndicadorPasos paso=\{1\} \/>/.test(codigo("src/components/invierte-v2/ContactoForm.tsx"))) F("14 · el contacto no abre con el indicador de pasos");
+      if (!/data-inv2="firma-form" aria-busy=\{sinContacto \|\| undefined\}>\s*<IndicadorPasos paso=\{2\} \/>/.test(codigo("src/components/invierte-v2/FirmaForm.tsx"))) F("14 · la firma no abre con el indicador de pasos");
+      for (const a of ["src/components/invierte-v2/HojaContacto.tsx", "src/components/invierte-v2/MarcoInvierte.tsx", "src/app/invierte/[avisoId]/page.tsx", "src/app/invierte/[avisoId]/firma/page.tsx"]) {
+        if (/className="iv2-paso"|rotulo|iv2-eyebrow/.test(codigo(a))) F(`14 · ${a} todavía muestra el paso en la cabecera o el rótulo`);
+      }
+
+      // B · La ventana de la orden dice lo mismo que el PDF: el texto guardado (sin el título repetido) y el registro de la firma.
+      const plano = (h: string) => h.replace(/<[^>]+>/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#x27;|&#39;/g, "'").replace(/\s+/g, " ");
+      const ord = { id: "o-9", nombre: "Camila Rojas Pérez", rut: "11111111-1", email: "c@x.cl", texto: textoPlano(ordenVigente({ nombre: "Camila Rojas Pérez", rut: "11.111.111-1", depto: "Ñuñoa · 2D2B · 58 m²" })), textoVersion: 1, textoSha256: "b".repeat(64), firmadoAt: "2026-11-18T11:04:05.000Z", ip: "9.9.9.9", userAgent: "NavegadorDePrueba/1" };
+      const partes = partesDeTexto(ord.texto);
+      const reg = registroDeFirma(ord);
+      const ventana = plano(renderToStaticMarkup(createElement(VentanaDocumento, { nombre: "orden", estado: "Orden firmada", titulo: FLUJO_COPY.documento.tituloOrden, meta: createElement("span", null, FLUJO_COPY.documento.mismoDocumento(1)), descargar: { href: "/x.pdf" }, alCerrar: () => undefined },
+        createElement(TextoDocumento, { parrafos: partes.parrafos }), createElement(RegistroDocumento, { registro: reg }))));
+      const pdf = plano(htmlOrden(ord));
+      const lineas = [...partes.parrafos.map((x) => (x.n ? `${x.n}. ${x.titulo}. ${x.texto}` : x.texto)), reg.titulo, reg.firmadoPor, reg.cuando, reg.huella];
+      for (const l of lineas) {
+        const t = l.replace(/\s+/g, " ");
+        if (!ventana.includes(t)) F(`14 · la ventana no dice «${t.slice(0, 60)}…»`);
+        if (!pdf.includes(t)) F(`14 · el PDF no dice «${t.slice(0, 60)}…» (la ventana y el PDF no dicen lo mismo)`);
+      }
+      if (reg.firmadoPor !== "Firmado electrónicamente por Camila Rojas Pérez, RUT 11.111.111-1" || reg.cuando !== "18 de noviembre de 2026, 08:04:05 (hora de Chile)" || reg.huella !== `Huella del documento: ${"b".repeat(64)}`) F("14 · el registro de la firma no dice quién, su RUT, la hora de Chile y la huella");
+      if (ventana.includes(partes.titulo)) F("14 · la ventana repite el título adentro");
+      if (ventana.includes("9.9.9.9") || ventana.includes("NavegadorDePrueba")) F("14 · la ventana muestra la IP o el navegador");
+      if (!ventana.includes("Versión 1 · es el mismo documento que descargas en PDF")) F("14 · falta «Versión 1 · es el mismo documento que descargas en PDF»");
+      if (!/const reg = registroDeFirma\(o\);/.test(codigo("src/lib/invierte-v2/orden-pdf.ts"))) F("14 · el PDF no arma el registro con registroDeFirma");
+      const ver = codigo("src/components/invierte-v2/VerOrden.tsx");
+      if (!/<TextoDocumento parrafos=\{parrafos\} \/>\s*<RegistroDocumento registro=\{registro\} \/>/.test(ver) || !/D\.mismoDocumento\(version\)/.test(ver)) F("14 · «Ver mi orden» no muestra el registro al final o la línea de la versión");
+      if (!/registro=\{registroDeFirma\(orden\)\}/.test(codigo("src/app/invierte/partimos/page.tsx"))) F("14 · Partimos no le pasa el registro de la orden guardada");
+
+      // C · Las preguntas se abren sobre la firma, en la misma ventana, desde un solo archivo, con «Volver a la firma».
+      if (PREGUNTAS_INVIERTE.length !== 7 || PREGUNTAS_INVIERTE[0].pregunta !== "¿Cuánto cobra Franco?" || PREGUNTAS_INVIERTE[6].respuesta !== "Cuando quieras. La orden dura doce meses y sigue cubriendo, hasta doce meses después, los deptos que ya te presentamos.") F("14 · las preguntas no son las siete de la lámina");
+      const firmaForm = codigo("src/components/invierte-v2/FirmaForm.tsx");
+      if (/href="\/faq"/.test(firmaForm) || !/<button type="button" className="iv2-enlace" onClick=\{\(\) => setPreguntas\(true\)\}/.test(firmaForm)) F("14 · «Preguntas frecuentes» todavía saca de la firma");
+      if (!/<\/form>\s*(\{\}\s*)?\{preguntas && \(\s*<VentanaDocumento nombre="preguntas" titulo=\{TITULO_PREGUNTAS_INVIERTE\} variante="lista" accion=\{F\.volverFirma\}/.test(firmaForm) || /\{!preguntas && /.test(firmaForm)) F("14 · las preguntas no se abren sobre la firma (con el formulario montado) o sin «Volver a la firma»");
+      const faq = renderToStaticMarkup(createElement(VentanaDocumento, { nombre: "preguntas", titulo: "Preguntas frecuentes", variante: "lista", accion: FLUJO_COPY.firma.volverFirma, alCerrar: () => undefined }, createElement(ListaPreguntas, { preguntas: PREGUNTAS_INVIERTE })));
+      if ((faq.match(/<dt>/g) ?? []).length !== 7 || !/class="iv2-doc-cerrar iv2-doc-cerrar-siempre"[^>]*>Volver a la firma</.test(faq)) F("14 · la ventana de preguntas no lista las siete o no tiene «Volver a la firma»");
+      if (!/\.iv2-doc-cerrar-siempre \{ display: flex; \}/.test(leer("src/components/invierte-v2/invierte-v2.css"))) F("14 · «Volver a la firma» no se ve en el celular");
+      const fuera = ["src/lib/faq-data.ts", "src/lib/invierte-v2/flujo.ts", "src/components/invierte-v2/FirmaForm.tsx", "src/components/invierte-v2/VentanaDocumento.tsx"].filter((a) => leer(a).includes("¿Franco me va a decir que no?"));
+      if (fuera.length) F(`14 · las preguntas de Invierte con Franco viven también en ${fuera.join(", ")}`);
     }
 
     // ── 10 · EL LENGUAJE frente a la persona ──
