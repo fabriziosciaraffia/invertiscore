@@ -26,11 +26,13 @@ export interface DeptoFlujo {
   score: number | null;
 }
 
-export function LineaDeptoFlujo({ depto, conChip = true }: { depto: DeptoFlujo; conChip?: boolean }) {
+/** `conChip`: siempre, «solo-pc» (la firma: la lámina del PC lo lleva y la del celular no) o nunca. */
+export function LineaDeptoFlujo({ depto, conChip = true }: { depto: DeptoFlujo; conChip?: boolean | "solo-pc" }) {
+  const chip = conChip && depto.veredicto ? <ChipVeredicto v={depto.veredicto as Veredicto} puntaje={depto.veredicto === "COMPRAR" ? depto.score : null} /> : null;
   return (
     <p className="iv2-chip-linea" data-inv2="depto">
       <span>{depto.linea}{depto.precioUF != null ? ` · UF ${Math.round(depto.precioUF).toLocaleString("es-CL")}` : ""}</span>
-      {conChip && depto.veredicto && <ChipVeredicto v={depto.veredicto as Veredicto} puntaje={depto.veredicto === "COMPRAR" ? depto.score : null} />}
+      {chip && (conChip === "solo-pc" ? <span className="iv2-chip-pc" data-inv2="chip-pc">{chip}</span> : chip)}
     </p>
   );
 }

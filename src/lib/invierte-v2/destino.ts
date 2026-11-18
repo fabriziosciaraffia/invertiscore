@@ -31,6 +31,9 @@ export function urlFirma(avisoId: string, origen: OrigenInvierte, analysisId?: s
 
 export const URL_PARTIMOS = "/invierte/partimos";
 export const URL_PERFIL = "/invierte/perfil";
+/** GET: el PDF guardado (para el correo y el admin); POST: anota que la persona abrió la ventana de la orden. */
 export const URL_VER_ORDEN = "/api/invierte-v2/orden";
+/** «Descargar PDF» de la ventana de la orden: el mismo PDF, como descarga. */
+export const URL_DESCARGAR_ORDEN = "/api/invierte-v2/orden?descargar=1";
 
 export const esAvisoId = (x: unknown): x is string => typeof x === "string" && AVISO_ID.test(x);

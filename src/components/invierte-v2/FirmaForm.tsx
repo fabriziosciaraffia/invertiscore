@@ -97,7 +97,7 @@ export function FirmaForm({ depto, deptoCorto, origen, analysisId, sinContacto }
         <h1 className="inv-titulo" id="iv2-t">{F.titulo}</h1>
         <p className="inv-parrafo">{F.parrafo}</p>
         <p className="iv2-info"><b>{F.cajaFuerte}</b> {F.cajaResto}</p>
-        <LineaDeptoFlujo depto={depto} conChip={false} />
+        <LineaDeptoFlujo depto={depto} conChip="solo-pc" />
       </div>
       <div className="inv-pregunta">
         <label htmlFor="iv2-nombre" className="inv-legend">{F.nombre}</label>

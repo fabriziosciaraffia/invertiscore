@@ -80,3 +80,30 @@ export function plantillaVigente(): string {
 export function deptoDeLinea(linea: string): string {
   return linea.replace(/ · (Usado|Nuevo)$/, "").trim();
 }
+
+// ── EL TEXTO GUARDADO, EN PARTES (18-nov-2026) ───────────────────────────────
+// Lo que se firmó vive en `inv_ordenes.texto` como texto plano (`textoPlano`). El PDF y la ventana «Ver mi orden» lo dibujan
+// desde ahí —nunca desde la plantilla vigente—: el primer párrafo es el título; los que empiezan con «N. Título.», cláusulas.
+export interface ParrafoOrden {
+  n: string | null;
+  titulo: string | null;
+  texto: string;
+}
+
+export function partesDeTexto(texto: string): { titulo: string; parrafos: ParrafoOrden[] } {
+  const [titulo = "", ...cuerpo] = texto.split(/\n\n+/);
+  return {
+    titulo,
+    parrafos: cuerpo.map((p) => {
+      const m = /^(\d+)\. ([^.]+)\. ([\s\S]*)$/.exec(p);
+      return m ? { n: m[1], titulo: m[2], texto: m[3] } : { n: null, titulo: null, texto: p };
+    }),
+  };
+}
+
+/** «18 de noviembre de 2026, 08:04», en hora de Chile (la ventana de la orden). */
+export function fechaFirmaLarga(iso: string): string {
+  const partes = new Intl.DateTimeFormat("es-CL", { timeZone: "America/Santiago", day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date(iso));
+  const v = (t: string) => partes.find((p) => p.type === t)?.value ?? "";
+  return `${v("day")} de ${v("month")} de ${v("year")}, ${v("hour")}:${v("minute")}`;
+}

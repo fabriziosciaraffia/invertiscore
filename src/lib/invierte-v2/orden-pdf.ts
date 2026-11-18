@@ -8,6 +8,7 @@ import { launchBrowser } from "@/lib/pdf/render-pdf";
 import { DOC_CHROME_FONT_FACES } from "@/lib/pdf/doc-chrome-fonts";
 import { DOC_WORDMARK_LIGHT_DATA_URI } from "@/lib/pdf/doc-wordmark";
 import { formatearRut } from "./rut";
+import { partesDeTexto } from "./orden";
 
 export interface OrdenParaPdf {
   id: string;
@@ -33,12 +34,8 @@ export function horaChile(iso: string): string {
 
 /** El HTML del PDF. Puro (lo prueba el tier): el primer párrafo del texto es el título y el último, la nota de la firma. */
 export function htmlOrden(o: OrdenParaPdf): string {
-  const partes = o.texto.split(/\n\n+/);
-  const [titulo, ...cuerpo] = partes;
-  const parrafos = cuerpo.map((p) => {
-    const m = /^(\d+)\. ([^.]+)\. ([\s\S]*)$/.exec(p);
-    return m ? `<p><b>${esc(m[1])}. ${esc(m[2])}.</b> ${esc(m[3])}</p>` : `<p>${esc(p)}</p>`;
-  }).join("\n");
+  const { titulo, parrafos: cuerpo } = partesDeTexto(o.texto);
+  const parrafos = cuerpo.map((p) => (p.n ? `<p><b>${esc(p.n)}. ${esc(p.titulo ?? "")}.</b> ${esc(p.texto)}</p>` : `<p>${esc(p.texto)}</p>`)).join("\n");
   const filas: [string, string][] = [
     ["Firmó", esc(o.nombre)],
     ["RUT", esc(formatearRut(o.rut))],

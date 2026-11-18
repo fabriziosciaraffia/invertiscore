@@ -2,8 +2,8 @@
 // EL MARCO DE LAS PÁGINAS DEL FLUJO NUEVO (etapa 1 de Invierte con Franco, 18-nov-2026).
 //   · En el CELULAR: la cabecera con el degradado («Invierte con Franco», volver y el paso) y el cuerpo en los tokens de la página.
 //   · En el PC (con `pc`, la firma y Partimos; láminas 2.1-firma-pc y 2.2-partimos-pc): el HeaderFranco real, ancho de escritorio,
-//     «← Volver» y el rótulo «INVIERTE CON FRANCO · 2 DE 2», y el cuerpo en dos columnas (`layout`). El degradado solo vive en la
-//     cabecera del celular.
+//     «← Volver» y el rótulo «INVIERTE CON FRANCO · 2 DE 2» (solo la firma), y el cuerpo en dos columnas (`layout`). El degradado
+//     solo vive en la cabecera del celular. Una sola fuente, la sans de la app, también en el rótulo (18-nov-2026).
 // Sin "use client": lo usan páginas de servidor; volver es un enlace.
 // ─────────────────────────────────────────────────────────────────────────────
 import type { ReactNode } from "react";
@@ -20,7 +20,7 @@ export function MarcoInvierte({ volver, paso, children, pantalla, pc, layout }: 
   children: ReactNode;
   pantalla: string;
   /** El formato de PC: el header de Franco (con la sesión de la página) y el rótulo de arriba. */
-  pc?: { sesionEmail: string | null; rotulo: string };
+  pc?: { sesionEmail: string | null; rotulo?: string };
   layout?: "firma" | "partimos";
 }) {
   return (
@@ -43,10 +43,10 @@ export function MarcoInvierte({ volver, paso, children, pantalla, pc, layout }: 
           <span className="inv-cab-t">{FLUJO_COPY.cabecera}</span>
           {paso ? <span className="iv2-paso">{paso}</span> : <span className="inv-cab-hueco" aria-hidden="true" />}
         </div>
-        {pc && (
+        {pc && (volver || pc.rotulo) && (
           <div className="iv2-pc-barra">
             {volver && <Link href={volver} className="iv2-pc-volver" data-inv2="volver-pc">← {FLUJO_COPY.volver}</Link>}
-            <span className="iv2-eyebrow">{pc.rotulo}</span>
+            {pc.rotulo && <span className="iv2-eyebrow">{pc.rotulo}</span>}
           </div>
         )}
         <div className={`inv-cuerpo iv2-cuerpo${layout ? ` iv2-${layout}` : ""}`}>{children}</div>

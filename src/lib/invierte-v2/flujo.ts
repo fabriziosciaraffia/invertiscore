@@ -16,9 +16,8 @@ export const FLUJO_COPY = {
   cabecera: "Invierte con Franco",
   paso1: "1 de 2",
   paso2: "2 de 2",
-  /** El rótulo de arriba en el PC (láminas 2.1-firma-pc y 2.2-partimos-pc). */
+  /** El rótulo de arriba de la firma en el PC (lámina 2.1-firma-pc). Partimos no lleva rótulo (lámina 2.2-partimos-pc, 18-nov-2026). */
   rotuloFirma: "Invierte con Franco · 2 de 2",
-  rotuloPartimos: "Invierte con Franco · orden firmada",
   rotuloContacto: "Invierte con Franco · 1 de 2",
   volver: "Volver",
   contacto: {
@@ -34,7 +33,7 @@ export const FLUJO_COPY = {
     titulo: "Para partir, necesitamos tu permiso",
     parrafo: "Con tu firma, Franco empieza a gestionar este depto y a buscar los que mejor calzan contigo.",
     cajaFuerte: "Firmar no te obliga a comprar ni tiene costo.",
-    cajaResto: "La orden nos autoriza a empezar las gestiones por ti. Solo pagas si compras un depto que te presentó Franco.",
+    cajaResto: "Solo pagas si compras un depto que te presentó Franco.",
     nombre: "Nombre completo",
     rut: "RUT",
     rutPlaceholder: "12.345.678-5",
@@ -53,24 +52,33 @@ export const FLUJO_COPY = {
     faltaCasilla: "Marca «Leí la orden y la acepto».",
     error: "No pudimos guardar tu firma. Intenta de nuevo.",
   },
+  /** Partimos, cuarta entrega (18-nov-2026, láminas 2.2-partimos y 2.2-partimos-pc): los textos tal como están en la lámina. */
   partimos: {
+    estado: "Orden firmada",
     titulo: (nombre: string | null) => (nombre ? `Partimos, ${nombre}` : "Partimos"),
-    parrafo: (comuna: string | null) => `Franco trabaja por tu inversión, no por un aviso. Partimos por ${comuna ? `el depto de ${comuna}` : "este depto"} y trabajamos varias opciones al mismo tiempo, para que elijas la mejor comparando y no la primera que viste.`,
-    pasos: [
-      { titulo: "Cuéntanos qué buscas", texto: "Tu perfil de inversión, en dos minutos. Con eso podemos ofrecerte las mejores opciones." },
-      { titulo: "Ve tus opciones y compáralas", texto: "Los deptos que convienen y están a tu alcance, lado a lado." },
-      { titulo: "Elige con cuáles sigues y visítalos", texto: "Tú eliges el horario. Alguien de Franco te acompaña en cada visita." },
-      { titulo: "Te acompañamos hasta la escritura", texto: "La oferta, la promesa y el crédito, con los números de Franco en la mano." },
-    ],
+    linea: "Ahora cuéntanos qué buscas, para mostrarte las mejores opciones.",
     perfil: "Hacer mi perfil de inversión",
-    /** Solo cuando la copia de verdad salió (lámina 2.2-partimos-pc); si no, `copiaPendiente`. */
-    guardada: "Tu orden firmada queda guardada en tu cuenta y te llegó una copia por correo.",
+    verOrden: "Ver mi orden firmada",
+    /** Solo cuando la copia de verdad salió; si no, `copiaPendiente`. */
+    guardada: "Te mandamos una copia a tu correo.",
+    /** Si la copia por correo todavía no salió (18-nov-2026): honesto. */
+    copiaPendiente: "Todavía no pudimos mandarte la copia por correo; tu orden ya está guardada.",
     loQueSigue: "Lo que sigue",
-    /** Si la copia por correo todavía no salió (18-nov-2026): honesto, con la orden a mano. */
-    copiaPendiente: "Todavía no pudimos mandarte la copia por correo; tu orden ya está guardada y la puedes ver aquí.",
-    verOrden: "Ver mi orden",
+    pasos: [
+      { titulo: "Cuéntanos qué buscas", texto: "Tu perfil de inversión, en dos minutos." },
+      { titulo: "Ve tus opciones y compáralas", texto: "Los deptos que convienen y te alcanzan, lado a lado." },
+      { titulo: "Elige con cuáles sigues y visítalos", texto: "Tú eliges el horario. Franco te acompaña en cada visita." },
+      { titulo: "Te acompañamos hasta la escritura", texto: "La oferta, la promesa y el crédito." },
+    ],
     porQueTitulo: "Por qué te vamos a mostrar más opciones",
-    porQueTexto: "El trabajo de Franco no se limita a un depto: buscamos que hagas una buena inversión. Por eso, cuando completes tu perfil te mostraremos otras opciones que convienen y están a tu alcance, para que puedas elegir mejor.",
+    porQueTexto: "Franco no trabaja un solo depto: busca que hagas una buena inversión. Con tu perfil te mostramos otras que convienen y te alcanzan, para que compares.",
+  },
+  /** La ventana de un documento firmado (láminas 2.2-ver-mi-orden y 2.2-ver-mi-orden-pc). */
+  documento: {
+    tituloOrden: "Tu orden de visita y acompañamiento",
+    firmada: "Firmada",
+    descargar: "Descargar PDF",
+    cerrar: "Cerrar",
   },
   perfil: {
     titulo: "Tu perfil de inversión viene pronto",
