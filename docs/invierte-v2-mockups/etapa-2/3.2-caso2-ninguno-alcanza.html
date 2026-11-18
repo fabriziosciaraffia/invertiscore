@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Si hoy no le alcanza ninguno</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2B558F}a:hover{color:#1E3F6B}
+.o{border:1px solid #E2E2E6;border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:8px}
+.v{background:#2B558F;color:#FFFFFF;font-size:12px;font-weight:600;padding:3px 9px;border-radius:99px;white-space:nowrap}
+</style>
+</helmet>
+<div style="width: 390px; height: 1000px; box-sizing: border-box; background: #FFFFFF; color: #141414; font-family: 'Inter', system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden">
+<div style="background: linear-gradient(135deg, #2B558F 0%, #6E4560 55%, #C8323C 100%); padding: 54px 20px 14px; display: flex; justify-content: center"><span style="font-size: 15px; font-weight: 600; color: #FFFFFF">Tu perfil de inversión</span></div>
+<div style="padding: 20px; display: flex; flex-direction: column; gap: 14px; flex: 1">
+<div style="background: #F3EDF1; border-radius: 10px; padding: 8px 12px; font-size: 11px; line-height: 1.4; color: #6E4560"><b>CASO 2 · NOTA DE DISEÑO.</b> Con su pie y su renta, hoy no le alcanza ninguno de los que convienen. Aquí, la variante «le falta pie».</div>
+<div style="border: 1.5px solid #141414; border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 12px; font-weight: 700; color: #5A5A5F">TU RESULTADO</span>
+<span style="font-size: 20px; font-weight: 700; line-height: 1.2">Estás cerca: te faltan UF [Y] de pie</span>
+<span style="font-size: 14px; line-height: 1.45">Con tu pie de UF 250 puedes comprar hasta UF [X]. El depto más barato que conviene hoy está en UF [Z].</span>
+<span style="font-size: 12px; line-height: 1.45; color: #5A5A5F">Tu renta sí alcanza para el dividendo. Estimación con pie 20 %, 30 años y la tasa del mes. Sujeto a evaluación del banco.</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 10px">
+<span style="font-size: 16px; font-weight: 700">Una forma de entrar antes</span>
+<span style="font-size: 13px; line-height: 1.45; color: #3A3A3F">En deptos nuevos el pie se paga en cuotas mientras se construye. Hay [N] que convienen y que podrías pagar así.</span>
+<div class="o" style="flex-direction: row; justify-content: space-between; align-items: center; gap: 10px"><div style="display: flex; flex-direction: column; gap: 3px"><span style="font-size: 14px; font-weight: 600">La Cisterna · 1D1B · 34 m²</span><span style="font-size: 12px; color: #5A5A5F">UF 1.980 · Nuevo · pie en [n] cuotas</span></div><span class="v">✓ Comprar · 76</span></div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 10px">
+<a href="TuInversion.dc.html" style="display: flex; justify-content: center; align-items: center; min-height: 50px; border-radius: 99px; background: #C8323C; color: #FFFFFF; font-size: 15px; font-weight: 600; text-decoration: none">Ver los nuevos con pie en cuotas</a>
+<a href="#" style="display: flex; justify-content: center; align-items: center; min-height: 48px; border-radius: 99px; background: #F4F4F6; color: #141414; font-size: 14px; font-weight: 600; text-decoration: none">Avísenme cuando algo me alcance</a>
+<a href="Perfil.dc.html" style="text-align: center; font-size: 13px; font-weight: 600; padding: 10px">Cambió mi pie o mi renta: actualizar</a>
+</div>
+<div style="margin-top: auto; padding: 12px 14px; background: #FFF6E5; border-radius: 12px; font-size: 12px; line-height: 1.45; color: #4A3A10">Nota de diseño: tres variantes, mismo formato. <b>Le falta pie</b> (esta): cuánto, y los nuevos con pie en cuotas. <b>Su renta no da para el dividendo:</b> «con tu renta el banco te presta hasta UF [X]; cambia con un codeudor o con menos cuotas». <b>Las dos:</b> se dice primero la que más pesa. Si elige los nuevos, sigue en el embudo con esos. Si pide aviso, pasa a nutrición y vuelve cuando aparece algo a su alcance o actualiza su perfil. Confirmado el 17-nov: los nuevos con pie en cuotas se ofrecen aquí mismo.</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

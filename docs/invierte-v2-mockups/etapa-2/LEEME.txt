@@ -1,0 +1,43 @@
+Invierte con Franco, comprador. Mockups de la etapa 2 (del perfil a la preaprobacion)
+Primera entrega, 18-nov-2026.
+
+Son las laminas del canvas de diseno. Cada archivo es HTML con estilos en linea: el contenido de la pantalla esta dentro de la etiqueta x-dc.
+
+COMO LEERLAS
+La lamina manda en jerarquia y disposicion (que va primero, que es chip, que es tarjeta, que lleva fondo, cual boton es principal y cual secundario) y en los textos, tal como estan escritos. Del repo se toman solo los colores y los componentes equivalentes.
+Las tarjetas que explican un porque van con fondo azul claro y sin borde. Las que agrupan contenido o acciones van con borde.
+Chips de estado, solo con la triada: Te toca a ti en ciruela claro; Franco esta en eso en gris; Listo o Aprobada en azul claro. El chip del veredicto es siempre el completo: Comprar con su puntaje.
+
+Celular (390 px)
+2.2-partimos.html                          Cambio de texto del paso 3 (ya en produccion, hay que actualizarlo)
+3.1-perfil-paso1.html                      Confirma lo que ya se sabe
+3.1-perfil-paso2-sin-preaprobacion.html    Pie, renta, cuotas; se puede no decir la renta
+3.1-perfil-paso2-con-preaprobacion.html    Basta el monto; pregunta si tiene el pie; deja subir el documento
+3.1-espera.html                            Mientras se calculan las opciones
+3.2-resultado-lista.html                   Resultado y eleccion, vista Lista
+3.2-resultado-comparar.html                La misma pantalla, vista Comparar
+3.2-caso1-el-suyo-no-alcanza.html          El depto que eligio no le alcanza, otros si
+3.2-caso2-ninguno-alcanza.html             Hoy no le alcanza ninguno
+3.3-base.html                              Su base
+3.3-menu.html                              Menu de la base (hoja)
+3.3-documentos.html                        Sus documentos
+3.3-perfil-editado.html                    Despues de cambiar su perfil
+3.3-sumar-otro-depto.html                  Si ya firmo y aprieta el boton en otro depto del mapa
+3.4-preaprobacion.html                     Subir la preaprobacion
+3.4-preaprobacion-estados.html             En revision, aprobada, por corregir (la persona ve un solo estado)
+
+PC (1280 px)
+2.2-partimos-pc.html
+3.1-perfil-pc.html        Los dos pasos del perfil y la preaprobacion usan esta tarjeta centrada
+3.2-resultado-pc.html     Sin cambio Lista/Comparar: la tabla muestra todas las opciones
+3.3-base-pc.html
+Las pantallas sin lamina de PC siguen el patron de la mas parecida: tarjeta centrada para formularios, dos columnas para las de contenido, ventana centrada para lo que en celular es hoja.
+
+Que NO tomar de estas laminas
+- Los textos grises o amarillos que dicen "Nota de diseno" o "Caso" explican la lamina: no van en el producto.
+- Los corchetes [X], [Y], [N] son valores que calcula el sistema.
+- En 3.3-base, la barra de cuatro tramos y el paso de cada depto no se construyen en esta etapa: el flujo de cada depto se esta redisenando.
+- En 3.2-caso2, el bloque de deptos nuevos con pie en cuotas no se construye en esta etapa.
+- En 3.3-menu, Mis avisos no se construye en esta etapa.
+- El encabezado de las laminas de PC es un dibujo aproximado: usa el HeaderFranco real.
+- Nombres, RUT, montos y deptos son de ejemplo.

@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Cambia su perfil</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2B558F}a:hover{color:#1E3F6B}
+.o{border:1px solid #E2E2E6;border-radius:12px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.g{font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #FFFFFF; color: #141414; font-family: 'Inter', system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden">
+<div style="background: linear-gradient(135deg, #2B558F 0%, #6E4560 55%, #C8323C 100%); padding: 54px 20px 14px; display: flex; justify-content: center"><span style="font-size: 15px; font-weight: 600; color: #FFFFFF">Tu perfil de inversión</span></div>
+<div style="padding: 20px; display: flex; flex-direction: column; gap: 14px; flex: 1">
+<h1 style="margin: 0; font-size: 22px; font-weight: 700">Perfil actualizado</h1>
+<div style="border: 1.5px solid #141414; border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 13px; color: #3A3A3F">Subiste tu pie de UF 700 a UF 900.</span>
+<span style="font-size: 20px; font-weight: 700; line-height: 1.2">Ahora te alcanzan 2 deptos más</span>
+<span style="font-size: 13px; color: #5A5A5F">Estimamos que puedes comprar hasta UF [X]. Sujeto a evaluación del banco.</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 10px">
+<span style="font-size: 16px; font-weight: 700">Tus opciones cambiaron</span>
+<div class="o"><div style="display: flex; flex-direction: column; gap: 3px"><span style="font-size: 14px; font-weight: 600">Ñuñoa · 3D2B · 68 m²</span><span style="font-size: 12px; color: #5A5A5F">UF 3.790 · ✓ Comprar · 82</span></div><span class="g" style="background: #E3EEDC; color: #2C4A1C">Entra</span></div>
+<div class="o"><div style="display: flex; flex-direction: column; gap: 3px"><span style="font-size: 14px; font-weight: 600">Providencia · 1D1B · 40 m²</span><span style="font-size: 12px; color: #5A5A5F">UF 3.640 · ✓ Comprar · 79</span></div><span class="g" style="background: #E3EEDC; color: #2C4A1C">Entra</span></div>
+<span style="font-size: 13px; line-height: 1.45; color: #3A3A3F">Las cuatro que ya tenías siguen ahí. Nada sale por haber subido tu pie.</span>
+</div>
+<div style="margin-top: auto; padding-bottom: 12px; display: flex; flex-direction: column; gap: 10px">
+<a href="TuInversion.dc.html" style="display: flex; justify-content: center; align-items: center; min-height: 50px; border-radius: 99px; background: #C8323C; color: #FFFFFF; font-size: 15px; font-weight: 600; text-decoration: none">Ver mis opciones</a>
+<span style="font-size: 12px; line-height: 1.45; color: #5A5A5F">Nota de diseño: al cambiar pie, renta, comunas o plazo se recalcula todo. Franco sugiere las que entran; las que ya no le alcanzan no se borran: quedan marcadas «fuera de tu alcance hoy». Adentro se recalcula la prioridad y le cae un aviso a quien la lleva.</span>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

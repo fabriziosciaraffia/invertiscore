@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>El menú de la base</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2B558F}a:hover{color:#1E3F6B}
+.k{border:1px solid #E2E2E6;border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:6px}
+.kb{border:1.5px solid #141414;border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:6px}
+.g{font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap;align-self:flex-start}
+.ok{background:#E3EEDC;color:#2C4A1C}.wt{background:#FFF6E5;color:#6A4A00}.no{background:#EDEDF0;color:#3A3A3F}.rd{background:#FBE6E7;color:#8A1F27}
+.s{font-size:12px;line-height:1.45;color:#5A5A5F}
+.m{font-size:13px;line-height:1.45;color:#3A3A3F}
+.cta{display:flex;justify-content:center;align-items:center;min-height:50px;border-radius:99px;background:#C8323C;color:#FFFFFF;font-size:15px;font-weight:600;text-decoration:none}
+.sec{display:flex;justify-content:center;align-items:center;min-height:46px;border-radius:99px;background:#F4F4F6;color:#141414;font-size:14px;font-weight:600;text-decoration:none}
+.f{height:46px;box-sizing:border-box;border:1px solid #C9C9CE;border-radius:12px;padding:0 14px;font:14px Inter,sans-serif;width:100%}
+.l{font-size:13px;font-weight:600}
+.r{display:flex;gap:12px;align-items:center;min-height:46px;padding:0 14px;border:1px solid #E2E2E6;border-radius:12px;font-size:14px;cursor:pointer}
+.r input{width:20px;height:20px;margin:0;flex:none;accent-color:#141414}
+.nd{font-size:12px;line-height:1.45;color:#5A5A5F;border-top:1px solid #EFEFF2;padding-top:10px}
+
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: rgba(20,20,20,0.45); color: #141414; font-family: 'Inter', system-ui, sans-serif; display: flex; flex-direction: column; justify-content: flex-end; overflow: hidden">
+<div style="background: #FFFFFF; border-radius: 20px 20px 0 0; padding: 12px 20px 24px; display: flex; flex-direction: column">
+<div style="align-self: center; width: 40px; height: 4px; border-radius: 2px; background: #C9C9CE; margin-bottom: 8px"></div>
+<div style="display: flex; justify-content: space-between; align-items: center"><span style="font-size: 17px; font-weight: 700">Camila Rojas</span><a href="TuInversion.dc.html" style="font-size: 13px; font-weight: 600; padding: 12px 0">Cerrar</a></div>
+<a href="PerfilEditado.dc.html" style="display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 0; border-bottom: 1px solid #EFEFF2; text-decoration: none; color: #141414"><div style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 15px; font-weight: 600">Mi perfil de inversión</span><span class="s">Hasta UF [X] · Ñuñoa y Macul</span></div><span style="font-size: 18px; color: #5A5A5F">›</span></a>
+<a href="Documentos.dc.html" style="display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 0; border-bottom: 1px solid #EFEFF2; text-decoration: none; color: #141414"><div style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 15px; font-weight: 600">Mis documentos</span><span class="s">Tu orden firmada y lo de cada depto</span></div><span style="font-size: 18px; color: #5A5A5F">›</span></a>
+<a href="Baja.dc.html" style="display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 0; border-bottom: 1px solid #EFEFF2; text-decoration: none; color: #141414"><div style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 15px; font-weight: 600">Mis avisos</span><span class="s">WhatsApp y correo</span></div><span style="font-size: 18px; color: #5A5A5F">›</span></a>
+<a href="Faq.dc.html" style="display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 0; border-bottom: 1px solid #EFEFF2; text-decoration: none; color: #141414"><div style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 15px; font-weight: 600">Preguntas frecuentes</span><span class="s">Qué firmé, cuánto cobra Franco</span></div><span style="font-size: 18px; color: #5A5A5F">›</span></a>
+<a href="#" style="display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 0; border-bottom: 1px solid #EFEFF2; text-decoration: none; color: #141414"><div style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 15px; font-weight: 600">Escribirle a Franco</span><span class="s">Tu contacto durante todo el proceso</span></div><span style="font-size: 18px; color: #5A5A5F">›</span></a>
+<span class="nd" style="margin-top: 12px">Nota de diseño: lo que no es un paso del flujo vive aquí y se abre como hoja sobre la base. «Todo el camino» se sacó: cada depto ya muestra sus cuatro pasos.</span>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

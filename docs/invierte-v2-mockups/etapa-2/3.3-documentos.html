@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Tus documentos</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2B558F}a:hover{color:#1E3F6B}
+.r{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid #EFEFF2}
+.t{font-size:14px;font-weight:600}.d{font-size:12px;color:#5A5A5F;line-height:1.4}
+.a{font-size:13px;font-weight:600;padding:12px 0;white-space:nowrap}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #FFFFFF; color: #141414; font-family: 'Inter', system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden">
+<div style="background: linear-gradient(135deg, #2B558F 0%, #6E4560 55%, #C8323C 100%); padding: 54px 20px 14px; display: flex; justify-content: space-between; align-items: center">
+<a href="TuInversion.dc.html" aria-label="Volver" style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 99px; background: rgba(255,255,255,0.14)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg></a>
+<span style="font-size: 15px; font-weight: 600; color: #FFFFFF">Tus documentos</span>
+<span style="width: 44px; height: 44px"></span>
+</div>
+<div style="padding: 12px 20px 20px; display: flex; flex-direction: column; flex: 1">
+<div class="r"><div style="display: flex; flex-direction: column; gap: 2px"><span class="t">Orden de visita y acompañamiento</span><span class="d">Firmada el 15 de noviembre. Cubre todos tus deptos.</span></div><a href="#" class="a">Ver</a></div>
+<div class="r"><div style="display: flex; flex-direction: column; gap: 2px"><span class="t">Preaprobación de crédito</span><span class="d">La necesitas para ofertar o visitar. Foto o PDF de tu banco.</span></div><a href="#" class="a" style="color: #C8323C">Subir</a></div>
+<div class="r"><div style="display: flex; flex-direction: column; gap: 2px"><span class="t">Los detalles de tus deptos</span><span class="d">Los que elegiste, cada uno con todos sus detalles.</span></div><a href="#" class="a">Ver</a></div>
+<div class="r"><div style="display: flex; flex-direction: column; gap: 2px"><span class="t" style="color: #6A6A70">Oferta de compra</span><span class="d">Aparece cuando hagas una.</span></div><span class="d">Más adelante</span></div>
+<div class="r" style="border-bottom: 0"><div style="display: flex; flex-direction: column; gap: 2px"><span class="t" style="color: #6A6A70">Promesa y escritura</span><span class="d">Se firman en notaría; aquí queda la copia.</span></div><span class="d">Más adelante</span></div>
+<span style="margin-top: auto; font-size: 12px; line-height: 1.45; color: #5A5A5F">Nota de diseño: reemplaza a «Documentos · lo que ve el comprador» de octubre (en archivo). Lo privado se firma en Franco; lo de notaría se sube como copia. Cada «Ver» abre el documento en la misma ventana de «Ver mi orden». La preaprobación muestra su estado: por subir, en revisión, aprobada o por corregir.</span>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

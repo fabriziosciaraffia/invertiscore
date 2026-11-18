@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Perfil, paso 1</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2B558F}a:hover{color:#1E3F6B}
+.k{border:1px solid #E2E2E6;border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:6px}
+.kb{border:1.5px solid #141414;border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:6px}
+.g{font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap;align-self:flex-start}
+.ok{background:#E3EEDC;color:#2C4A1C}.wt{background:#FFF6E5;color:#6A4A00}.no{background:#EDEDF0;color:#3A3A3F}.rd{background:#FBE6E7;color:#8A1F27}
+.s{font-size:12px;line-height:1.45;color:#5A5A5F}
+.m{font-size:13px;line-height:1.45;color:#3A3A3F}
+.cta{display:flex;justify-content:center;align-items:center;min-height:50px;border-radius:99px;background:#C8323C;color:#FFFFFF;font-size:15px;font-weight:600;text-decoration:none}
+.sec{display:flex;justify-content:center;align-items:center;min-height:46px;border-radius:99px;background:#F4F4F6;color:#141414;font-size:14px;font-weight:600;text-decoration:none}
+.f{height:46px;box-sizing:border-box;border:1px solid #C9C9CE;border-radius:12px;padding:0 14px;font:14px Inter,sans-serif;width:100%}
+.l{font-size:13px;font-weight:600}
+.r{display:flex;gap:12px;align-items:center;min-height:46px;padding:0 14px;border:1px solid #E2E2E6;border-radius:12px;font-size:14px;cursor:pointer}
+.r input{width:20px;height:20px;margin:0;flex:none;accent-color:#141414}
+.nd{font-size:12px;line-height:1.45;color:#5A5A5F;border-top:1px solid #EFEFF2;padding-top:10px}
+.tt{background:#F3EDF1;color:#6E4560}.fr{background:#EDEDF0;color:#3A3A3F}.li{background:#E4ECF7;color:#1E3F6B}
+.p{min-height:44px;border:0;border-radius:99px;padding:0 14px;font:600 13px Inter,sans-serif}
+.on{background:#141414;color:#FFFFFF}.of{background:#F4F4F6;color:#141414}
+.v{background:#2B558F;color:#FFFFFF;font-size:12px;font-weight:600;padding:3px 9px;border-radius:99px;white-space:nowrap}
+.bx{background:#EEF2F8;border-radius:12px;padding:12px 14px;font-size:14px;line-height:1.45;color:#26262A}
+
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #FFFFFF; color: #141414; font-family: 'Inter', system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden">
+<div style="background: linear-gradient(135deg, #2B558F 0%, #6E4560 55%, #C8323C 100%); padding: 54px 20px 14px; display: flex; justify-content: center"><span style="font-size: 15px; font-weight: 600; color: #FFFFFF">Tu perfil de inversión</span></div>
+<div style="padding: 20px; display: flex; flex-direction: column; gap: 14px; flex: 1">
+<div style="display: flex; flex-direction: column; gap: 6px"><div style="display: flex; gap: 6px"><span style="flex: 1; height: 4px; border-radius: 99px; background: #6E4560"></span><span style="flex: 1; height: 4px; border-radius: 99px; background: #E2E2E6"></span></div><span style="font-size: 12px; font-weight: 600; color: #6E4560">Paso 1 de 2 · Qué buscas</span></div><div style="display: flex; flex-direction: column; gap: 6px"><h1 style="margin: 0; font-size: 22px; font-weight: 700; line-height: 1.2">Esto es lo que sabemos de lo que buscas</h1><span class="m">Confirma o corrige. Con esto elegimos tus opciones.</span></div><div style="display: flex; flex-direction: column; gap: 6px"><span class="l">Comunas</span><div style="display: flex; gap: 6px; flex-wrap: wrap"><button type="button" class="p on">Ñuñoa</button><button type="button" class="p on">Macul</button><button type="button" class="p of">San Miguel</button><button type="button" class="p of">Otra</button></div></div><span class="s" style="margin-top: -8px">Ñuñoa, por el depto que elegiste. Macul, de tu perfil.</span><div style="display: flex; flex-direction: column; gap: 6px"><span class="l">¿Qué buscas con tu inversión?</span><div style="display: flex; gap: 6px; flex-wrap: wrap"><button type="button" class="p on">Arriendo mes a mes</button><button type="button" class="p of">Plusvalía</button><button type="button" class="p of">Las dos</button></div></div><div style="display: flex; flex-direction: column; gap: 6px"><span class="l">¿Qué es lo que más te preocupa?</span><div style="display: flex; gap: 6px; flex-wrap: wrap"><button type="button" class="p of">Que no se arriende</button><button type="button" class="p on">Poner plata cada mes</button><button type="button" class="p of">Elegir mal</button><button type="button" class="p of">El trámite</button></div></div>
+<div style="margin-top: auto; padding-bottom: 8px; display: flex; flex-direction: column; gap: 10px">
+<a class="cta" href="PerfilFinan.dc.html">Continuar</a><span class="nd">Nota de diseño: este paso confirma, no pregunta de cero. Las comunas vienen marcadas: primero la del depto con que entró y después las de su perfil guardado; desmarca lo que ya no le interesa. Solo se pregunta lo que falta. Al confirmar se actualiza su perfil, que es el mismo de la selección semanal.</span>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

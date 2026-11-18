@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Tu resultado: elige con cuáles sigues</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2B558F}a:hover{color:#1E3F6B}
+.k{border:1px solid #E2E2E6;border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:6px}
+.kb{border:1.5px solid #141414;border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:6px}
+.g{font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap;align-self:flex-start}
+.ok{background:#E3EEDC;color:#2C4A1C}.wt{background:#FFF6E5;color:#6A4A00}.no{background:#EDEDF0;color:#3A3A3F}.rd{background:#FBE6E7;color:#8A1F27}
+.s{font-size:12px;line-height:1.45;color:#5A5A5F}
+.m{font-size:13px;line-height:1.45;color:#3A3A3F}
+.cta{display:flex;justify-content:center;align-items:center;min-height:50px;border-radius:99px;background:#C8323C;color:#FFFFFF;font-size:15px;font-weight:600;text-decoration:none}
+.sec{display:flex;justify-content:center;align-items:center;min-height:46px;border-radius:99px;background:#F4F4F6;color:#141414;font-size:14px;font-weight:600;text-decoration:none}
+.f{height:46px;box-sizing:border-box;border:1px solid #C9C9CE;border-radius:12px;padding:0 14px;font:14px Inter,sans-serif;width:100%}
+.l{font-size:13px;font-weight:600}
+.r{display:flex;gap:12px;align-items:center;min-height:46px;padding:0 14px;border:1px solid #E2E2E6;border-radius:12px;font-size:14px;cursor:pointer}
+.r input{width:20px;height:20px;margin:0;flex:none;accent-color:#141414}
+.nd{font-size:12px;line-height:1.45;color:#5A5A5F;border-top:1px solid #EFEFF2;padding-top:10px}
+
+</style>
+</helmet>
+<div style="width: 390px; height: 1340px; box-sizing: border-box; background: #FFFFFF; color: #141414; font-family: 'Inter', system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden">
+<div style="background: linear-gradient(135deg, #2B558F 0%, #6E4560 55%, #C8323C 100%); padding: 54px 20px 14px; display: flex; justify-content: center"><span style="font-size: 15px; font-weight: 600; color: #FFFFFF">Tu resultado</span></div>
+<div style="padding: 20px; display: flex; flex-direction: column; gap: 14px; flex: 1">
+<div class="kb" style="gap: 6px"><span style="font-size: 18px; font-weight: 700; line-height: 1.25">El depto de Ñuñoa te alcanza, y otros 3 que convienen también.</span><span class="m">Con tu pie y tu renta, estimamos que puedes comprar hasta UF [X]. Sujeto a evaluación del banco.</span></div>
+<div style="display: flex; flex-direction: column; gap: 4px"><h1 style="margin: 0; font-size: 20px; font-weight: 700; line-height: 1.2">¿Con cuáles quieres seguir?</h1><span class="m">Marca uno o varios. Con esos partimos.</span></div>
+<div style="display: flex; background: #F4F4F6; border-radius: 99px; padding: 4px; gap: 4px"><a href="PerfilOpciones.dc.html" style="flex: 1; display: flex; justify-content: center; align-items: center; min-height: 40px; border-radius: 99px; font-size: 13px; font-weight: 600; text-decoration: none; background: #141414; color: #FFFFFF">Lista</a><a href="Comparativo.dc.html" style="flex: 1; display: flex; justify-content: center; align-items: center; min-height: 40px; border-radius: 99px; font-size: 13px; font-weight: 600; text-decoration: none; color: #141414">Comparar</a></div>
+<label style="border: 1.5px solid #141414; border-radius: 14px; padding: 14px; display: flex; gap: 12px; align-items: flex-start; cursor: pointer"><input type="checkbox" checked style="width: 22px; height: 22px; margin: 2px 0 0; flex: none; accent-color: #141414"><div style="display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0"><div style="display: flex; justify-content: space-between; align-items: center; gap: 8px"><span style="font-size: 14px; font-weight: 600">Ñuñoa · 2D2B · 58 m²</span><span style="background: #2B558F; color: #FFFFFF; font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 99px; white-space: nowrap">✓ Comprar · 78</span></div><span class="s">UF 3.250</span><span style="font-size: 12px; font-weight: 600; color: #3A3A3F">El que elegiste</span><a href="#" style="font-size: 13px; font-weight: 600; padding: 6px 0; align-self: flex-start">Ver detalles</a></div></label>
+<label style="border: 1.5px solid #141414; border-radius: 14px; padding: 14px; display: flex; gap: 12px; align-items: flex-start; cursor: pointer"><input type="checkbox" checked style="width: 22px; height: 22px; margin: 2px 0 0; flex: none; accent-color: #141414"><div style="display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0"><div style="display: flex; justify-content: space-between; align-items: center; gap: 8px"><span style="font-size: 14px; font-weight: 600">Macul · 2D2B · 60 m²</span><span style="background: #2B558F; color: #FFFFFF; font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 99px; white-space: nowrap">✓ Comprar · 77</span></div><span class="s">UF 2.980</span><span style="font-size: 12px; font-weight: 600; color: #3A3A3F">El que menos te pide al mes</span><a href="#" style="font-size: 13px; font-weight: 600; padding: 6px 0; align-self: flex-start">Ver detalles</a></div></label>
+<label style="border: 1px solid #E2E2E6; border-radius: 14px; padding: 14px; display: flex; gap: 12px; align-items: flex-start; cursor: pointer"><input type="checkbox" style="width: 22px; height: 22px; margin: 2px 0 0; flex: none; accent-color: #141414"><div style="display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0"><div style="display: flex; justify-content: space-between; align-items: center; gap: 8px"><span style="font-size: 14px; font-weight: 600">Ñuñoa · 2D2B · 55 m²</span><span style="background: #2B558F; color: #FFFFFF; font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 99px; white-space: nowrap">✓ Comprar · 81</span></div><span class="s">UF 3.090</span><span style="font-size: 12px; font-weight: 600; color: #3A3A3F">Mejor precio frente a sus parecidos</span><a href="#" style="font-size: 13px; font-weight: 600; padding: 6px 0; align-self: flex-start">Ver detalles</a></div></label>
+<label style="border: 1px solid #E2E2E6; border-radius: 14px; padding: 14px; display: flex; gap: 12px; align-items: flex-start; cursor: pointer"><input type="checkbox" style="width: 22px; height: 22px; margin: 2px 0 0; flex: none; accent-color: #141414"><div style="display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0"><div style="display: flex; justify-content: space-between; align-items: center; gap: 8px"><span style="font-size: 14px; font-weight: 600">San Miguel · 2D1B · 52 m²</span><span style="background: #2B558F; color: #FFFFFF; font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 99px; white-space: nowrap">✓ Comprar · 76</span></div><span class="s">UF 2.640</span><span style="font-size: 12px; font-weight: 600; color: #3A3A3F">El pie más bajo</span><a href="#" style="font-size: 13px; font-weight: 600; padding: 6px 0; align-self: flex-start">Ver detalles</a></div></label>
+<div style="margin-top: auto; padding-bottom: 8px; display: flex; flex-direction: column; gap: 10px">
+<a class="cta" href="TuInversion.dc.html">Seguir con estos 2</a>
+<div style="padding: 12px 14px; background: #FFF6E5; border-radius: 12px; font-size: 12px; line-height: 1.45; color: #4A3A10">Nota de diseño: una sola pantalla para decidir. Arriba el resultado del perfil; debajo, sus opciones con casilla. El que eligió viene marcado; las que sumó Franco dicen por qué están. «Comparar» es la misma pantalla en otra vista, con las mismas casillas. «Ver detalles» abre todos los detalles del depto, sin gastar créditos. La línea de hasta cuánto puede comprar es secundaria; con preaprobación dice «según tu preaprobación». Si el suyo no le alcanza o no le alcanza ninguno, ve los casos 1 y 2 de abajo.</div>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1340}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>
