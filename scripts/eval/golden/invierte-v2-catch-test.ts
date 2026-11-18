@@ -33,7 +33,7 @@ import React, { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { leerModo, tieneAcceso, correoDeLista } from "../../../src/lib/invierte-v2/acceso";
-import { destinoBoton, urlContacto } from "../../../src/lib/invierte-v2/destino";
+import { destinoBoton, urlContacto, destinoInvierte, URL_INVIERTE, URL_PARTIMOS } from "../../../src/lib/invierte-v2/destino";
 import { normalizarRut, formatearRut, dvRut } from "../../../src/lib/invierte-v2/rut";
 import { ordenVigente, plantillaVigente, textoPlano, partesDeTexto, fechaFirmaLarga, registroDeFirma, VERSION_ORDEN, RAZON_SOCIAL_FRANCO, RUT_FRANCO } from "../../../src/lib/invierte-v2/orden";
 import { PREGUNTAS_INVIERTE } from "../../../src/lib/invierte-v2/preguntas";
@@ -45,7 +45,7 @@ import { htmlOrden } from "../../../src/lib/invierte-v2/orden-pdf";
 import { excepcionCopiaOrden } from "../../../src/lib/correo-destino";
 import { TIPOS_CON_BAJA, TIPOS_QUE_FRENA_LA_ELIMINACION } from "../../../src/lib/correo-baja";
 import { TIPOS_CORREO } from "../../../src/lib/medicion-correo";
-import { correoCopiaOrden } from "../../../src/lib/email/correos";
+import { correoCopiaOrden, BOTON_COPIA_ORDEN } from "../../../src/lib/email/correos";
 import { FranjaInvierte } from "../../../src/components/invierte/FranjaInvierte";
 import { VentanaDocumento, TextoDocumento, RegistroDocumento, ListaPreguntas } from "../../../src/components/invierte-v2/VentanaDocumento";
 import { IndicadorPasos } from "../../../src/components/invierte-v2/IndicadorPasos";
@@ -542,19 +542,22 @@ export async function runInvierteV2(): Promise<{ hard: number }> {
       // «Ver mi orden»: un botón secundario que abre la ventana; al abrirla se anota la vista.
       const ver = codigo("src/components/invierte-v2/VerOrden.tsx");
       if (!/<button type="button" className="iv2-secundario" onClick=\{abrir\}/.test(ver) || !/\{abierta && \(\s*<VentanaDocumento/.test(ver)) F("13 · «Ver mi orden» no es un botón que abre la ventana");
-      if (!/fetch\(URL_VER_ORDEN, \{ method: "POST"/.test(ver) || !/descargar=\{\{ href: URL_DESCARGAR_ORDEN \}\}/.test(ver)) F("13 · la ventana no anota la vista o no descarga el PDF");
+// ⚠ ACTA (18-nov-2026, ajustes de la etapa 1): «Descargar PDF» pasó a «Abrir PDF» —el PDF se abre en una pestaña nueva, en el
+      // visor; en iPhone la descarga ofrecía guardarlo, que no sirve— y la ruta ya no tiene modo descarga. Los predicados que
+      // exigían `?descargar=1` y la URL firmada con `download` ahora exigen la pestaña nueva y la URL firmada sin descarga.
+      if (!/fetch\(URL_VER_ORDEN, \{ method: "POST"/.test(ver) || !/pdf=\{\{ href: URL_VER_ORDEN \}\}/.test(ver)) F("13 · la ventana no anota la vista o no abre el PDF");
       const ruta = codigo("src/app/api/invierte-v2/orden/route.ts");
-      if (!/urlFirmadaPdf\(admin, orden, new URL\(request\.url\)\.searchParams\.get\("descargar"\) === "1"\)/.test(ruta)) F("13 · «Descargar PDF» no pide el PDF como descarga");
+      if (!/const url = await urlFirmadaPdf\(admin, orden\);/.test(ruta) || !/if \(!user\) return NO_EXISTE\(\);[\s\S]{0,200}if \(!orden\) return NO_EXISTE\(\);[\s\S]{0,800}const url = await urlFirmadaPdf\(admin, orden\);/.test(ruta)) F("13 · «Abrir PDF» no pasa por el servidor que verifica que la orden sea de quien la pide");
       if (!/export async function POST\(request: Request\) \{\s*const user = await personaConSesion\(\);\s*if \(!user\) return NO_EXISTE\(\);[\s\S]{0,160}if \(!orden\) return NO_EXISTE\(\);\s*await anotarVista\(/.test(ruta)) F("13 · la vista de la ventana no pide sesión y orden, o no se anota");
-      if (!/createSignedUrl\(o\.pdfPath, 60, \{ download: descargar \?/.test(codigo("src/lib/invierte-v2/servidor.ts"))) F("13 · la URL firmada no distingue ver de descargar");
+      if (!/createSignedUrl\(o\.pdfPath, 60, \{ download: false \}\)/.test(codigo("src/lib/invierte-v2/servidor.ts"))) F("13 · la URL firmada del PDF lo baja en vez de mostrarlo en el visor");
 
       // La ventana, dibujada: el texto que le pasan (el guardado, aunque difiera de la plantilla), el chip, quién y cuándo, ✕ y PDF.
       const guardado = textoPlano(ordenVigente({ nombre: "Camila Rojas", rut: "16.482.317-5", depto: "Ñuñoa · 2D2B · 58 m²" })).replace("Doce meses desde la firma.", "TEXTO GUARDADO DISTINTO.");
       const t = partesDeTexto(guardado);
       if (t.titulo !== "Orden de visita y acompañamiento" || t.parrafos.filter((x) => x.n).length !== 6 || t.parrafos[0].n !== null || !/Ley 19\.799/.test(t.parrafos[t.parrafos.length - 1].texto)) F("13 · el texto guardado no se parte en título, encabezado, seis cláusulas y pie");
-      const html = renderToStaticMarkup(createElement(VentanaDocumento, { nombre: "orden", estado: "Orden firmada", titulo: FLUJO_COPY.documento.tituloOrden, meta: createElement("span", null, "Firmada el 18 de noviembre de 2026, 08:04"), descargar: { href: "/x.pdf" }, alCerrar: () => undefined },
+      const html = renderToStaticMarkup(createElement(VentanaDocumento, { nombre: "orden", estado: "Orden firmada", titulo: FLUJO_COPY.documento.tituloOrden, meta: createElement("span", null, "Firmada el 18 de noviembre de 2026, 08:04"), pdf: { href: "/x.pdf" }, alCerrar: () => undefined },
         createElement(TextoDocumento, t)));
-      if (!html.includes("TEXTO GUARDADO DISTINTO.") || !html.includes("<b>2. Comisión en deptos usados.</b>") || !html.includes("✓ Orden firmada") || !html.includes('aria-label="Cerrar"') || !html.includes(">Descargar PDF</a>") || !html.includes("18 de noviembre de 2026, 08:04") || !html.includes('role="dialog"')) F("13 · la ventana no dibuja el chip, quién y cuándo, el texto guardado, ✕ o «Descargar PDF»");
+      if (!html.includes("TEXTO GUARDADO DISTINTO.") || !html.includes("<b>2. Comisión en deptos usados.</b>") || !html.includes("✓ Orden firmada") || !html.includes('aria-label="Cerrar"') || !/<a href="\/x\.pdf" target="_blank" rel="noopener noreferrer"[^>]*>Abrir PDF<\/a>/.test(html) || !html.includes("18 de noviembre de 2026, 08:04") || !html.includes('role="dialog"')) F("13 · la ventana no dibuja el chip, quién y cuándo, el texto guardado, ✕ o «Abrir PDF» (en una pestaña nueva)");
       if (fechaFirmaLarga("2026-11-18T11:04:00.000Z") !== "18 de noviembre de 2026, 08:04") F(`13 · la fecha de la ventana no es la de Chile: «${fechaFirmaLarga("2026-11-18T11:04:00.000Z")}»`);
 
       // La disposición: chip azul claro, tarjeta con borde, tarjeta con fondo, hoja desde abajo en el celular y ventana en el PC.
@@ -587,7 +590,7 @@ export async function runInvierteV2(): Promise<{ hard: number }> {
       const ord = { id: "o-9", nombre: "Camila Rojas Pérez", rut: "11111111-1", email: "c@x.cl", texto: textoPlano(ordenVigente({ nombre: "Camila Rojas Pérez", rut: "11.111.111-1", depto: "Ñuñoa · 2D2B · 58 m²" })), textoVersion: 1, textoSha256: "b".repeat(64), firmadoAt: "2026-11-18T11:04:05.000Z", ip: "9.9.9.9", userAgent: "NavegadorDePrueba/1" };
       const partes = partesDeTexto(ord.texto);
       const reg = registroDeFirma(ord);
-      const ventana = plano(renderToStaticMarkup(createElement(VentanaDocumento, { nombre: "orden", estado: "Orden firmada", titulo: FLUJO_COPY.documento.tituloOrden, meta: createElement("span", null, FLUJO_COPY.documento.mismoDocumento(1)), descargar: { href: "/x.pdf" }, alCerrar: () => undefined },
+      const ventana = plano(renderToStaticMarkup(createElement(VentanaDocumento, { nombre: "orden", estado: "Orden firmada", titulo: FLUJO_COPY.documento.tituloOrden, meta: createElement("span", null, FLUJO_COPY.documento.mismoDocumento(1)), pdf: { href: "/x.pdf" }, alCerrar: () => undefined },
         createElement(TextoDocumento, { parrafos: partes.parrafos }), createElement(RegistroDocumento, { registro: reg }))));
       const pdf = plano(htmlOrden(ord));
       const lineas = [...partes.parrafos.map((x) => (x.n ? `${x.n}. ${x.titulo}. ${x.texto}` : x.texto)), reg.titulo, reg.firmadoPor, reg.cuando, reg.huella];
@@ -638,6 +641,35 @@ export async function runInvierteV2(): Promise<{ hard: number }> {
       const sonda = leer("scripts/eval/golden/invierte-v2-alto-sonda.ts");
       for (const m of ["w: 390, h: 844", "w: 360, h: 740", "w: 1366, h: 650", "w: 1280, h: 610", "w: 1920, h: 960"]) if (!sonda.includes(m)) F(`15 · la sonda de alto no mide ${m}`);
       if (!/\["contacto", "orden", "preguntas"\]/.test(sonda) || !/\["contacto", "orden", "preguntas"\]/.test(leer("src/app/dev/invierte-v2/page.tsx"))) F("15 · la sonda de alto no mide las tres ventanas");
+    }
+
+    // ── 16 · LOS AJUSTES DE LA ETAPA 1 (18-nov-2026): el PDF se abre y /invierte es la dirección única del flujo ──
+    {
+      if (FLUJO_COPY.documento.abrirPdf !== "Abrir PDF") F("16 · el botón del PDF no dice «Abrir PDF»");
+      const ventana = codigo("src/components/invierte-v2/VentanaDocumento.tsx");
+      if (!/\{pdf && <a href=\{pdf\.href\} target="_blank" rel="noopener noreferrer"/.test(ventana) || /download/.test(ventana)) F("16 · «Abrir PDF» no abre en una pestaña nueva (o lo baja)");
+      // /invierte decide según el estado de la persona.
+      const avi = { avisoId: AVISO, origen: "explorar" as const };
+      const casos: [Parameters<typeof destinoInvierte>[0], string][] = [
+        [{ sesion: false, acceso: false, firmo: false, contacto: null }, "entrar:/login?next=%2Finvierte"],
+        [{ sesion: false, acceso: true, firmo: true, contacto: avi }, "entrar:/login?next=%2Finvierte"],
+        [{ sesion: true, acceso: false, firmo: true, contacto: avi }, "no-existe:"],
+        [{ sesion: true, acceso: true, firmo: true, contacto: avi }, `ir:${URL_PARTIMOS}`],
+        [{ sesion: true, acceso: true, firmo: false, contacto: avi }, `ir:/invierte/${AVISO}/firma?desde=explorar`],
+        [{ sesion: true, acceso: true, firmo: false, contacto: null }, "ir:/explorar"],
+      ];
+      for (const [e, esperado] of casos) {
+        const d = destinoInvierte(e);
+        const got = `${d.tipo}:${"url" in d ? d.url : ""}`;
+        if (got !== esperado) F(`16 · /invierte con ${JSON.stringify(e)} da «${got}», no «${esperado}»`);
+      }
+      const pag = codigo("src/app/invierte/page.tsx");
+      if (!/const d = destinoInvierte\(\{ sesion: !!user, acceso, firmo, contacto \}\);\s*if \(d\.tipo === "no-existe"\) notFound\(\);\s*redirect\(d\.url\);/.test(pag) || !/force-dynamic/.test(pag) || !/if \(user && acceso\) \{/.test(pag)) F("16 · /invierte no decide con destinoInvierte (o lee datos sin sesión y acceso)");
+      // El correo con la copia: «Seguir con mi inversión» a /invierte, nunca a una pantalla específica.
+      const copia = correoCopiaOrden({ nombre: "Camila", depto: "Ñuñoa · 2D2B · 58 m²", fecha: "18-11-2026", sitio: "https://x.cl" }).html;
+      if (BOTON_COPIA_ORDEN !== "Seguir con mi inversión" || !copia.includes(">Seguir con mi inversión<") || !copia.includes(`href="https://x.cl${URL_INVIERTE}"`) || /Ver mi orden/.test(copia)) F("16 · el botón del correo no es «Seguir con mi inversión» a /invierte");
+      const hrefs = Array.from(copia.matchAll(/href="https:\/\/x\.cl(\/[^"]*)"/g)).map((m) => m[1]).filter((h) => /^\/invierte/.test(h));
+      if (hrefs.some((h) => h !== URL_INVIERTE)) F(`16 · el correo enlaza a una pantalla específica del flujo: ${hrefs.join(", ")}`);
     }
 
     // ── 10 · EL LENGUAJE frente a la persona ──
