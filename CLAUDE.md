@@ -105,6 +105,7 @@ La identidad visual completa (paleta, tipografía, patrones, templates) vive en 
 
 ## Git — crítico
 - **NUNCA hagas push sin OK explícito del usuario.** Aunque el cambio esté validado y tsc limpio, esperá la confirmación.
+- **A master no sube nada sin avisarle antes a Fabrizio, ni siquiera un cambio de CLAUDE.md** (decisión de Fabrizio, 18-nov-2026). Antes de cada push a master se le dice exactamente qué commits van, con su contenido, y se espera su OK para ESOS commits. Un OK de merge cubre solo lo que se le mostró: ni una línea de CLAUDE.md, ni un acta, ni un arreglo de último minuto se suman sin volver a avisar. Motivo: el 18-nov-2026 un cambio de CLAUDE.md subió a master en el mismo movimiento que otro trabajo; lo había pedido él, pero dejó la regla para que nada llegue a master sin que lo sepa antes.
 - **Staging selectivo**: nunca `git add .`. Agregá por path explícito.
 - Commits en **bloques temáticos coherentes** (un tema por commit; cada commit buildable).
 - Ramas siempre desde `origin/master`: `git checkout -b <rama> origin/master`.
