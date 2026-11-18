@@ -65,12 +65,12 @@ const HUELLAS_PLANTILLA: Record<number, string> = {
 };
 
 const AVISO = "9bfe6906-2222-4000-8000-000000000002";
-const USER = { id: "0381a589-0000-4000-8000-00000000abcd", email: "persona@ejemplo.cl" };
+export const USER = { id: "0381a589-0000-4000-8000-00000000abcd", email: "persona@ejemplo.cl" };
 const DE_LA_LISTA = "lista@ejemplo.cl";
 
 // ── Un Supabase de mentira: tablas en memoria, lo que se ejecutó (en orden) y el bucket ──
 interface Paso { tabla: string; op: string; filtros: Array<[string, string, unknown]>; fila: unknown }
-function falso(datos: Record<string, Record<string, unknown>[]>) {
+export function falso(datos: Record<string, Record<string, unknown>[]>) {
   const pasos: Paso[] = [];
   const bucket = { subidos: [] as string[], borrados: [] as string[] };
   let n = 0;
@@ -211,7 +211,9 @@ export async function runInvierteV2(): Promise<{ hard: number }> {
 
     // ── 3 · EL CACHÉ ──
     {
-      const LLAMADORES = new Set(["src/app/explorar/page.tsx", "src/app/dashboard/page.tsx", "src/lib/invierte-v2/informe.ts", "src/lib/invierte-v2/paginas.ts", "src/lib/invierte-v2/rutas.ts", "src/lib/invierte-v2/acceso-servidor.ts"]);
+      // ⚠ ACTA (18-nov-2026, etapa 2): suma detalles.ts (verGratisInvierte, desde la ruta de los detalles; fuera de todo
+      // unstable_cache, como los demás).
+      const LLAMADORES = new Set(["src/app/explorar/page.tsx", "src/app/dashboard/page.tsx", "src/lib/invierte-v2/informe.ts", "src/lib/invierte-v2/paginas.ts", "src/lib/invierte-v2/rutas.ts", "src/lib/invierte-v2/acceso-servidor.ts", "src/lib/invierte-v2/detalles.ts"]);
       for (const f of archivos("src")) {
         const c = codigo(f);
         if (!/accesoInvierteV2\(/.test(c)) continue;
@@ -533,7 +535,7 @@ export async function runInvierteV2(): Promise<{ hard: number }> {
       const esperado: [string, string][] = [
         [P.estado, "Orden firmada"], [P.linea, "Ahora cuéntanos qué buscas, para mostrarte las mejores opciones."], [P.perfil, "Hacer mi perfil de inversión"], [P.verOrden, "Ver mi orden firmada"],
         [P.copiaPendiente, "Todavía no pudimos mandarte la copia por correo; tu orden ya está guardada."], [P.loQueSigue, "Lo que sigue"],
-        [P.pasos.map((x) => `${x.titulo}|${x.texto}`).join("/"), "Cuéntanos qué buscas|Tu perfil de inversión, en dos minutos./Ve tus opciones y compáralas|Los deptos que convienen y te alcanzan, lado a lado./Elige con cuáles sigues y visítalos|Tú eliges el horario. Franco te acompaña en cada visita./Te acompañamos hasta la escritura|La oferta, la promesa y el crédito."],
+        [P.pasos.map((x) => `${x.titulo}|${x.texto}`).join("/"), "Cuéntanos qué buscas|Tu perfil de inversión, en dos minutos./Ve tus opciones y compáralas|Los deptos que convienen y te alcanzan, lado a lado./Elige con cuáles sigues|Oferta o visita primero, como prefieras./Te acompañamos hasta la escritura|La oferta, la promesa y el crédito."] /* ⚠ ACTA (18-nov-2026, etapa 2, lámina 2.2): el paso 3 pasó a «Elige con cuáles sigues / Oferta o visita primero, como prefieras». */,
         [P.porQueTitulo, "Por qué te vamos a mostrar más opciones"], [P.porQueTexto, "Franco no trabaja un solo depto: busca que hagas una buena inversión. Con tu perfil te mostramos otras que convienen y te alcanzan, para que compares."],
         [FLUJO_COPY.firma.cajaFuerte + " " + FLUJO_COPY.firma.cajaResto, "Firmar no te obliga a comprar ni tiene costo. Solo pagas si compras un depto que te presentó Franco."],
       ];
@@ -665,7 +667,9 @@ export async function runInvierteV2(): Promise<{ hard: number }> {
         if (got !== esperado) F(`16 · /invierte con ${JSON.stringify(e)} da «${got}», no «${esperado}»`);
       }
       const pag = codigo("src/app/invierte/page.tsx");
-      if (!/const d = destinoInvierte\(\{ sesion: !!user, acceso, firmo, contacto \}\);\s*if \(d\.tipo === "no-existe"\) notFound\(\);\s*redirect\(d\.url\);/.test(pag) || !/force-dynamic/.test(pag) || !/if \(user && acceso\) \{/.test(pag)) F("16 · /invierte no decide con destinoInvierte (o lee datos sin sesión y acceso)");
+      // ⚠ ACTA (18-nov-2026, etapa 2): /invierte también mira el perfil y la elección (firmó sin perfil → Partimos; con perfil
+      // sin elegir → el resultado; ya eligió → la base). Los casos nuevos los prueba el tier INVIERTE-V2-E2.
+      if (!/const d = destinoInvierte\(\{ sesion: !!user, acceso, firmo, contacto, perfil, eligio \}\);\s*if \(d\.tipo === "no-existe"\) notFound\(\);\s*redirect\(d\.url\);/.test(pag) || !/force-dynamic/.test(pag) || !/if \(user && acceso\) \{/.test(pag)) F("16 · /invierte no decide con destinoInvierte (o lee datos sin sesión y acceso)");
       // El correo con la copia: «Seguir con mi inversión» a /invierte, nunca a una pantalla específica.
       const copia = correoCopiaOrden({ nombre: "Camila", depto: "Ñuñoa · 2D2B · 58 m²", fecha: "18-11-2026", sitio: "https://x.cl" }).html;
       if (BOTON_COPIA_ORDEN !== "Seguir con mi inversión" || !copia.includes(">Seguir con mi inversión<") || !copia.includes(`href="https://x.cl${URL_INVIERTE}"`) || /Ver mi orden/.test(copia)) F("16 · el botón del correo no es «Seguir con mi inversión» a /invierte");
