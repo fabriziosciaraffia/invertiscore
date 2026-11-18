@@ -3,7 +3,7 @@
 // «Ver mi orden firmada» en Partimos (18-nov-2026, láminas 2.2-ver-mi-orden y 2.2-ver-mi-orden-pc): un botón secundario que
 // abre la orden en la ventana de documentos, sobre la misma página. Se ve como el documento: el texto GUARDADO en la orden (lo
 // que se firmó, sin el título repetido) y al final el registro de la firma, el mismo del PDF; bajo la fecha, «Versión N · es el
-// mismo documento que descargas en PDF». «Abrir PDF» abre el PDF guardado en una pestaña nueva, en el visor. Al abrirla se
+// mismo documento del PDF». «Abrir PDF» abre el PDF guardado en una pestaña nueva, en el visor. Al abrirla se
 // anota la vista.
 import { useState } from "react";
 import type { ParrafoOrden, RegistroFirma } from "@/lib/invierte-v2/orden";

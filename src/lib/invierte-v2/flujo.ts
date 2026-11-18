@@ -78,7 +78,7 @@ export const FLUJO_COPY = {
     tituloOrden: "Tu orden de visita y acompañamiento",
     firmada: "Firmada",
     /** Bajo la fecha (quinta entrega): lo que se ve y lo que se descarga dicen lo mismo. */
-    mismoDocumento: (v: number) => `Versión ${v} · es el mismo documento que descargas en PDF`,
+    mismoDocumento: (v: number) => `Versión ${v} · es el mismo documento del PDF`,
     /** Abre el PDF guardado en una pestaña nueva, en el visor del navegador o del teléfono (18-nov-2026: en iPhone la descarga
      *  ofrecía guardarlo, que no sirve). */
     abrirPdf: "Abrir PDF",

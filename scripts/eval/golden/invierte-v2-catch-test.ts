@@ -602,7 +602,8 @@ export async function runInvierteV2(): Promise<{ hard: number }> {
       if (reg.firmadoPor !== "Firmado electrónicamente por Camila Rojas Pérez, RUT 11.111.111-1" || reg.cuando !== "18 de noviembre de 2026, 08:04:05 (hora de Chile)" || reg.huella !== `Huella del documento: ${"b".repeat(64)}`) F("14 · el registro de la firma no dice quién, su RUT, la hora de Chile y la huella");
       if (ventana.includes(partes.titulo)) F("14 · la ventana repite el título adentro");
       if (ventana.includes("9.9.9.9") || ventana.includes("NavegadorDePrueba")) F("14 · la ventana muestra la IP o el navegador");
-      if (!ventana.includes("Versión 1 · es el mismo documento que descargas en PDF")) F("14 · falta «Versión 1 · es el mismo documento que descargas en PDF»");
+      // ⚠ ACTA (18-nov-2026, Fabrizio): la línea pasó a «Versión 1 · es el mismo documento del PDF» (el botón ahora abre, no baja).
+      if (FLUJO_COPY.documento.mismoDocumento(1) !== "Versión 1 · es el mismo documento del PDF" || !ventana.includes("Versión 1 · es el mismo documento del PDF") || /descargas/.test(ventana)) F("14 · falta «Versión 1 · es el mismo documento del PDF»");
       if (!/const reg = registroDeFirma\(o\);/.test(codigo("src/lib/invierte-v2/orden-pdf.ts"))) F("14 · el PDF no arma el registro con registroDeFirma");
       const ver = codigo("src/components/invierte-v2/VerOrden.tsx");
       if (!/<TextoDocumento parrafos=\{parrafos\} \/>\s*<RegistroDocumento registro=\{registro\} \/>/.test(ver) || !/D\.mismoDocumento\(version\)/.test(ver)) F("14 · «Ver mi orden» no muestra el registro al final o la línea de la versión");
