@@ -8,7 +8,7 @@ import { DEPS_FIRMA, NO_EXISTE, contextoDe, personaConSesion } from "@/lib/invie
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/invierte-v2/orden (etapa 1 de Invierte con Franco, 18-nov-2026): el PDF de la orden. Redirige a una URL firmada de
-// 60 s al PDF guardado; con `?descargar=1` («Descargar PDF» de la ventana de la orden), como descarga.
+// 60 s al PDF guardado, que el navegador muestra en su visor («Abrir PDF» de la ventana de la orden, en una pestaña nueva).
 // POST: la persona abrió la ventana «Ver mi orden» en Partimos (el texto ya viene en la página): se anota la vista. La orden firmada se ve SIEMPRE (aunque la cuenta salga de la lista): pide sesión y una orden de la
 // persona, no el interruptor; sin sesión o sin orden, 404. Si el PDF o la copia quedaron pendientes, los completa antes.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -26,7 +26,7 @@ export async function GET(request: Request) {
     if (!c.pdf || !c.copia) captureApiError(new Error(`inv2: orden incompleta al verla (pdf ${c.pdf}, copia ${c.copia}${c.motivoCopia ? `: ${c.motivoCopia}` : ""})`), { ruta: "/api/invierte-v2/orden", operacion: "completar", userId: user.id, extra: { ordenId: orden.id, motivoCopia: c.motivoCopia } });
     orden = (await ultimaOrdenDe(admin, user.id)) ?? orden;
   }
-  const url = await urlFirmadaPdf(admin, orden, new URL(request.url).searchParams.get("descargar") === "1");
+  const url = await urlFirmadaPdf(admin, orden);
   if (!url) return NextResponse.json({ error: "pdf" }, { status: 503, headers: { "Cache-Control": "no-store" } });
   await anotarVista(admin, orden, { actor: "persona", email: user.email ?? null }, contextoDe(request));
   await capturarServidor({ event: EVENTOS_INV2.ordenVista, distinctId: user.id, correo: user.email ?? null, properties: { orden_id: orden.id, version: orden.textoVersion } }).catch(() => false);

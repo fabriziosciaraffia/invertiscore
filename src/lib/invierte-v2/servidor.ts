@@ -349,9 +349,9 @@ async function descargarPdf(admin: SupabaseClient, o: OrdenInv): Promise<Uint8Ar
 }
 
 /** Una URL firmada de 60 s al PDF guardado. */
-export async function urlFirmadaPdf(admin: SupabaseClient, o: OrdenInv, descargar = false): Promise<string | null> {
+export async function urlFirmadaPdf(admin: SupabaseClient, o: OrdenInv): Promise<string | null> {
   if (!o.pdfPath) return null;
-  const { data, error } = await admin.storage.from(BUCKET_INVIERTE).createSignedUrl(o.pdfPath, 60, { download: descargar ? `orden-franco-v${o.textoVersion}.pdf` : false });
+  const { data, error } = await admin.storage.from(BUCKET_INVIERTE).createSignedUrl(o.pdfPath, 60, { download: false });
   return error || !data?.signedUrl ? null : data.signedUrl;
 }
 

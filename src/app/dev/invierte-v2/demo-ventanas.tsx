@@ -31,7 +31,7 @@ export function DemoVentanas({ estado }: { estado: EstadoDemoVentanas }) {
       {abierta && estado === "orden" && (
         <VentanaDocumento nombre="orden" estado={FLUJO_COPY.partimos.estado} titulo={D.tituloOrden}
           meta={<><span><b>{D.firmada}</b> el 18 de noviembre de 2026, 08:04</span><span>{D.mismoDocumento(1)}</span></>}
-          descargar={{ href: "#descargar" }} alCerrar={cerrar}>
+          pdf={{ href: "#pdf" }} alCerrar={cerrar}>
           <TextoDocumento parrafos={partesDeTexto(TEXTO).parrafos} />
           <RegistroDocumento registro={REGISTRO} />
         </VentanaDocumento>

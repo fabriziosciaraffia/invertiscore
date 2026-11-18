@@ -6,7 +6,7 @@
 // firmada y las preguntas frecuentes de la firma; en las etapas siguientes, la oferta, la contraoferta y la preaprobación.
 //   · En el CELULAR, hoja que sube desde abajo con la página oscurecida asomando arriba; en el PC, ventana centrada.
 //   · Arriba el chip de estado (si hay), el título, `meta` y el ✕; al medio el contenido con su propio scroll —`documento`,
-//     en un recuadro gris; `lista`, sobre blanco—; abajo «Descargar PDF» (si hay) y el botón oscuro: «Cerrar» solo en el PC o,
+//     en un recuadro gris; `lista`, sobre blanco—; abajo «Abrir PDF» (si hay; en una pestaña nueva) y el botón oscuro: «Cerrar» solo en el PC o,
 //     con `accion`, ese texto también en el celular («Volver a la firma»). Escape, el ✕, el botón y un clic en el velo cierran;
 //     la página de abajo queda montada y como estaba.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -17,14 +17,15 @@ import { FLUJO_COPY } from "@/lib/invierte-v2/flujo";
 
 const D = FLUJO_COPY.documento;
 
-export function VentanaDocumento({ estado = null, titulo, meta = null, children, descargar = null, accion = null, variante = "documento", alCerrar, nombre }: {
+export function VentanaDocumento({ estado = null, titulo, meta = null, children, pdf = null, accion = null, variante = "documento", alCerrar, nombre }: {
   /** El chip de estado («Orden firmada»). */
   estado?: string | null;
   titulo: string;
   /** Quién y cuándo, en líneas cortas. */
   meta?: ReactNode;
   children?: ReactNode;
-  descargar?: { href: string; etiqueta?: string } | null;
+  /** El PDF del documento: se abre en una pestaña nueva (la página de atrás queda como estaba). */
+  pdf?: { href: string; etiqueta?: string } | null;
   /** El botón oscuro con este texto, también en el celular. Sin él, «Cerrar» solo en el PC. */
   accion?: string | null;
   variante?: "documento" | "lista";
@@ -58,7 +59,7 @@ export function VentanaDocumento({ estado = null, titulo, meta = null, children,
         {meta && <div className="iv2-doc-meta iv2-solo-movil-doc">{meta}</div>}
         <div className="iv2-doc-texto" tabIndex={0} role="document" aria-label={titulo}>{children}</div>
         <div className="iv2-doc-pie">
-          {descargar && <a href={descargar.href} className="iv2-secundario" data-inv2="ventana-descargar">{descargar.etiqueta ?? D.descargar}</a>}
+          {pdf && <a href={pdf.href} target="_blank" rel="noopener noreferrer" className="iv2-secundario" data-inv2="ventana-pdf">{pdf.etiqueta ?? D.abrirPdf}</a>}
           <button type="button" className={`iv2-doc-cerrar${accion ? " iv2-doc-cerrar-siempre" : ""}`} onClick={alCerrar} data-inv2="ventana-cerrar">{accion ?? D.cerrar}</button>
         </div>
       </section>
