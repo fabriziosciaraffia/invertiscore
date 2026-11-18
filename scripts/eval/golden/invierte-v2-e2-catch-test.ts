@@ -79,6 +79,7 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       const srv = codigo("src/lib/invierte-v2/perfil-servidor.ts");
       if (!/const reemplaza = tope\.fuente !== "solo_pie";/.test(srv) || !/if \(reemplaza && tope\.topeUF > 0\) pbFila\.precio_max_uf = /.test(srv)) F("2 · el tope reemplaza el precio máximo también sin renta (o nunca)");
       if (!/precioMaxAnterior: anterior/.test(srv) || !/previo\?\.topeSupuestos\?\.precioMaxAnterior/.test(srv)) F("2 · el precio máximo anterior no se guarda (o se pisa en cada cambio)");
+      if (!/const comunasAnterior = previo\s*\? \(\(previo\.topeSupuestos\?\.comunasAnterior[^;]*: \{ valor: \(pb\?\.comunas/.test(srv) || !/\.\.\.\(comunasAnterior \? \{ comunasAnterior \} : \{\}\)/.test(srv)) F("2 · las comunas de antes no se guardan la primera vez (o se pisan en cada cambio)");
       if (!/admin\.from\("perfil_busqueda"\)\.upsert\(pbFila, \{ onConflict: "user_id" \}\)/.test(srv) || !/comunas: pedido\.comunas, actualizado_at/.test(srv)) F("2 · las comunas no van al perfil de la selección semanal (no es un solo perfil)");
       // Nada se escribe antes de confirmar: el formulario solo llama a la ruta en «Ver mis opciones».
       const form = codigo("src/components/invierte-v2/PerfilForm.tsx");
@@ -122,6 +123,9 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (textoMetro({ estacion: "Ñuñoa", metros: 437 }) !== "Estación Ñuñoa, a 450 m aprox." || /min/.test(textoMetro({ estacion: "X", metros: 1200 }))) F("3 · el metro no es «Estación X, a N m aprox.» (o inventa minutos)");
       if (textoPones({ flujoCLP: -62000 }) !== "$62.000" || !/^\$0 · te sobran \$72\.058$/.test(textoPones({ flujoCLP: 72058 }))) F("3 · «Pones al mes» no dice lo que pone o lo que sobra");
       if (RESULTADO_COPY.filas.pones !== "Pones al mes (con pie 20 %)" || RESULTADO_COPY.filas.metro !== "Metro" || /según tu pie/i.test(RESULTADO_COPY.notaTablaPie + RESULTADO_COPY.notaTabla)) F("3 · la tabla no dice «con pie 20 %», la fila no se llama Metro, o la nota dice «según tu pie»");
+      if (RESULTADO_COPY.compararAvisoPc(MAX_OPCIONES) !== "" || !/Desliza la tabla/.test(RESULTADO_COPY.compararAvisoPc(7))) F("3 · con más de cinco deptos el PC no dice que la tabla se desliza");
+      // Abrir los detalles tarda ≈ 10 s: una capa dice que está cargando, en el resultado y en la base.
+      if (!/\{abriendo && <CargandoDetalles \/>\}/.test(codigo("src/components/invierte-v2/ResultadoOpciones.tsx")) || !/\{estado === "abriendo" && <CargandoDetalles \/>\}/.test(codigo("src/components/invierte-v2/BotonDetalles.tsx"))) F("3 · abrir los detalles no muestra que está cargando");
       // La lectura de Franco usa las mismas etiquetas (no nombra a otro como «el que menos te pide al mes»).
       const lec = lecturaDeFranco(ops, "arriendo", ["poner_plata"], Object.fromEntries(et));
       if (!lec.destacado || !/^el de Ñuñoa de 60 m² es el que mejor calza$/.test(lec.destacado) && !/^el de Ñuñoa/.test(lec.destacado) || !/^Buscas arriendo mes a mes y te preocupa poner plata cada mes\. Con eso,$/.test(lec.intro)) F(`3 · la lectura no parte por lo que respondió (${JSON.stringify(lec)})`);
@@ -140,7 +144,11 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (!/elegir\(createServiceClient\(\), \{ id: user\.id, email: user\.email \?\? null \}, ids, MAX_ACTIVOS,/.test(codigo("src/app/api/invierte-v2/eleccion/route.ts"))) F("4 · la ruta no pasa el máximo");
       if (!/if \(n\.size < MAX_ACTIVOS\) n\.add\(id\)/.test(codigo("src/components/invierte-v2/ResultadoOpciones.tsx"))) F("4 · la pantalla deja marcar más de seis");
       // Lo que deja de alcanzar se marca, no se borra; lo presentado queda en la bitácora con la orden.
-      if (/from\(T_DEPTOS\)\.delete/.test(srv) || !/alcanza: false, fuera_de_alcance_at: ahora/.test(srv)) F("4 · lo que deja de alcanzar se borra en vez de marcarse");
+      if (/from\(T_DEPTOS\)\.delete/.test(srv) || !/alcanza: o\.alcanza, fuera_de_alcance_at: o\.alcanza \? null : ahora/.test(srv)) F("4 · lo que deja de alcanzar se borra en vez de marcarse");
+      // ⚠ ACTA (18-nov-2026, pregunta de Fabrizio por el sexto depto) · lo elegido que salió del top de Franco sigue en la tabla
+      // (al final, marcado) y no se marca fuera de alcance por no aparecer: solo por precio.
+      if (!/const faltan = \(previos \?\? \[\]\)\.filter\(\(p\) => p\.estado === "elegido" && !deFranco\.some/.test(srv) || !/const opciones = \[\.\.\.deFranco, \.\.\.extras\];/.test(srv)) F("4 · lo que ya eligió y salió del top desaparece de la tabla");
+      if (/!opciones\.some\(\(o\) => o\.avisoId === p\.aviso_id\) && p\.alcanza/.test(srv)) F("4 · salir del top de Franco se marca como fuera de alcance");
       if (!/accion: "depto_presentado"/.test(srv) || !/ordenId: orden\.id, actor: "sistema", accion: "depto_presentado"/.test(srv)) F("4 · lo que Franco le presentó no queda con la orden en la bitácora");
       if (!/tipo: "avisar_alcance"/.test(srv)) F("4 · «Avísenme» no crea la tarea avisar_alcance");
     }
@@ -190,11 +198,11 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
         inv_personas: [{ user_id: USER.id }, { user_id: OTRA }],
         inv_ordenes: [{ id: "o-a", user_id: USER.id, es_prueba: true, pdf_path: null }, { id: "o-b", user_id: OTRA, es_prueba: true, pdf_path: null }],
         inv_bitacora: [],
-        inv_perfiles: [{ user_id: USER.id, tope_supuestos: { reemplazoPrecioMax: true, precioMaxAnterior: { valor: 4200 } } }, { user_id: OTRA, tope_supuestos: { reemplazoPrecioMax: true, precioMaxAnterior: { valor: 9000 } } }],
+        inv_perfiles: [{ user_id: USER.id, tope_supuestos: { reemplazoPrecioMax: true, precioMaxAnterior: { valor: 4200 }, comunasAnterior: { valor: ["Macul"] } } }, { user_id: OTRA, tope_supuestos: { reemplazoPrecioMax: true, precioMaxAnterior: { valor: 9000 }, comunasAnterior: { valor: ["Ñuñoa"] } } }],
         inv_deptos: [{ user_id: USER.id, aviso_id: "x1" }, { user_id: USER.id, aviso_id: "x2" }, { user_id: OTRA, aviso_id: "x1" }],
         inv_documentos: [{ id: "d1", user_id: USER.id, path: "preaprobaciones/a/d1.pdf" }, { id: "d2", user_id: OTRA, path: "preaprobaciones/b/d2.pdf" }],
         inv_tareas: [{ user_id: USER.id, tipo: "avisar_alcance" }, { user_id: OTRA, tipo: "avisar_alcance" }],
-        perfil_busqueda: [{ user_id: USER.id, precio_max_uf: 3000 }, { user_id: OTRA, precio_max_uf: 2500 }],
+        perfil_busqueda: [{ user_id: USER.id, precio_max_uf: 3000, comunas: ["La Cisterna"] }, { user_id: OTRA, precio_max_uf: 2500, comunas: ["San Miguel"] }],
       });
       const r = await reiniciarPrueba(db.sb, USER.id, "admin@x");
       const de = (t: string, u: string) => (db.datos[t] ?? []).filter((f) => f.user_id === u).length;
@@ -206,9 +214,12 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (db.bucket.borrados.join("|") !== "preaprobaciones/a/d1.pdf") F("7 · «Reiniciar prueba» no borra el archivo de la persona, o borra el de otra");
       const pb = (u: string) => db.datos.perfil_busqueda.find((f) => f.user_id === u)?.precio_max_uf;
       if (pb(USER.id) !== 4200 || pb(OTRA) !== 2500) F("7 · «Reiniciar prueba» no devuelve el precio máximo de antes (o toca el de otra)");
-      const sinReemplazo = falso({ test_accounts: [{ user_id: USER.id }], inv_ordenes: [], inv_bitacora: [], inv_personas: [], inv_perfiles: [{ user_id: USER.id, tope_supuestos: { reemplazoPrecioMax: false, precioMaxAnterior: { valor: 4200 } } }], perfil_busqueda: [{ user_id: USER.id, precio_max_uf: 3000 }] });
+      const cm = (u: string) => JSON.stringify(db.datos.perfil_busqueda.find((f) => f.user_id === u)?.comunas);
+      if (cm(USER.id) !== '["Macul"]' || cm(OTRA) !== '["San Miguel"]') F("7 · «Reiniciar prueba» no devuelve las comunas de antes (o toca las de otra)");
+      const sinReemplazo = falso({ test_accounts: [{ user_id: USER.id }], inv_ordenes: [], inv_bitacora: [], inv_personas: [], inv_perfiles: [{ user_id: USER.id, tope_supuestos: { reemplazoPrecioMax: false, precioMaxAnterior: { valor: 4200 } } }], perfil_busqueda: [{ user_id: USER.id, precio_max_uf: 3000, comunas: ["La Cisterna"] }] });
       await reiniciarPrueba(sinReemplazo.sb, USER.id, "admin@x");
       if (sinReemplazo.datos.perfil_busqueda[0].precio_max_uf !== 3000) F("7 · «Reiniciar prueba» cambia el precio máximo que el tope nunca reemplazó");
+      if (JSON.stringify(sinReemplazo.datos.perfil_busqueda[0].comunas) !== '["La Cisterna"]') F("7 · «Reiniciar prueba» inventa comunas de antes cuando el perfil no las guardó");
       const real = falso({ test_accounts: [{ user_id: USER.id }], inv_ordenes: [{ id: "o-r", user_id: USER.id, es_prueba: false, pdf_path: null }], inv_perfiles: [{ user_id: USER.id }], inv_deptos: [{ user_id: USER.id }] });
       await reiniciarPrueba(real.sb, USER.id, "admin@x");
       if (real.datos.inv_perfiles.length !== 1 || real.datos.inv_deptos.length !== 1) F("7 · «Reiniciar prueba» borra la etapa 2 de una cuenta con orden real");
