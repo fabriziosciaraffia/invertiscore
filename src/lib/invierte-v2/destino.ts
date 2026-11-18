@@ -31,9 +31,25 @@ export function urlFirma(avisoId: string, origen: OrigenInvierte, analysisId?: s
 
 export const URL_PARTIMOS = "/invierte/partimos";
 export const URL_PERFIL = "/invierte/perfil";
-/** GET: el PDF guardado (para el correo y el admin); POST: anota que la persona abrió la ventana de la orden. */
+/** GET: el PDF guardado, para verlo en el visor del navegador («Abrir PDF», en una pestaña nueva; el servidor verifica que la
+ *  orden sea de quien la pide); POST: anota que la persona abrió la ventana de la orden. */
 export const URL_VER_ORDEN = "/api/invierte-v2/orden";
-/** «Descargar PDF» de la ventana de la orden: el mismo PDF, como descarga. */
-export const URL_DESCARGAR_ORDEN = "/api/invierte-v2/orden?descargar=1";
+
+// ── /invierte, LA DIRECCIÓN ÚNICA DEL FLUJO (18-nov-2026, decisión de Fabrizio) ─────────────────────────────────────────
+// Todo correo o mensaje del flujo que no pida una acción puntual enlaza a /invierte, nunca a una pantalla específica: la ruta
+// decide según el estado de la persona. Sin sesión, pide entrar y vuelve; sin acceso, 404 como las demás rutas nuevas; con
+// orden firmada, Partimos (en la etapa 2: el perfil o la base); con el contacto a medias, la firma de su depto; si no, el mapa.
+export const URL_INVIERTE = "/invierte";
+export const URL_ENTRAR_INVIERTE = `/login?next=${encodeURIComponent(URL_INVIERTE)}`;
+
+export type RutaInvierte = { tipo: "entrar"; url: string } | { tipo: "no-existe" } | { tipo: "ir"; url: string };
+
+export function destinoInvierte(p: { sesion: boolean; acceso: boolean; firmo: boolean; contacto: { avisoId: string; origen: OrigenInvierte } | null }): RutaInvierte {
+  if (!p.sesion) return { tipo: "entrar", url: URL_ENTRAR_INVIERTE };
+  if (!p.acceso) return { tipo: "no-existe" };
+  if (p.firmo) return { tipo: "ir", url: URL_PARTIMOS };
+  if (p.contacto) return { tipo: "ir", url: urlFirma(p.contacto.avisoId, p.contacto.origen) };
+  return { tipo: "ir", url: "/explorar" };
+}
 
 export const esAvisoId = (x: unknown): x is string => typeof x === "string" && AVISO_ID.test(x);

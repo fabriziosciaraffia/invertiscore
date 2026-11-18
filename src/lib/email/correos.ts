@@ -13,6 +13,7 @@ import { COMO_ENTRAR, textoVence } from "@/lib/guia/semanal";
 import { REGALO_COPY } from "@/lib/regalo-alta";
 import { REFERIDO_COPY, TOPE_PREMIOS_REFERIDO, enlaceInvitacion, textoEnlaceInvitacion } from "@/lib/referido";
 import { AUMENTO_COPY } from "@/lib/planes";
+import { URL_INVIERTE } from "@/lib/invierte-v2/destino";
 
 /** La tríada que el dashboard dibuja después de «te dice si conviene:»; en el correo, en palabras. */
 const TRIADA = "Comprar, Ajustar o Buscar otro";
@@ -580,6 +581,8 @@ export function correoAnuncioInvierte(p: { nombre: string | null; urlSeleccion: 
 // Sale siempre al firmar, a quien firma, con el PDF adjunto. Es respaldo, no recordatorio. Transaccional: no la frenan la baja
 // ni la eliminación pedida. Mientras el modo es «lista», solo la reciben las cuentas de la lista (correo-destino.ts).
 export const ASUNTO_COPIA_ORDEN = "Tu orden de visita firmada";
+/** El botón de la copia (18-nov-2026): la orden ya va adjunta, así que no dice «Ver mi orden»; sigue el recorrido. */
+export const BOTON_COPIA_ORDEN = "Seguir con mi inversión";
 export function correoCopiaOrden(p: { nombre: string | null; depto: string; fecha: string; sitio?: string }): Correo {
   const sitio = p.sitio ?? SITIO;
   return {
@@ -592,7 +595,9 @@ export function correoCopiaOrden(p: { nombre: string | null; depto: string; fech
         `${saludoDe(p.nombre)} te dejamos adjunta la copia de tu orden de visita y acompañamiento, firmada el ${escaparHtml(p.fecha)}.`,
         `Partimos por el depto de ${escaparHtml(p.depto)}. La orden también queda guardada en tu cuenta.`,
       ],
-      boton: { texto: "Ver mi orden en Franco", url: `${sitio}/invierte/partimos` },
+      // La orden ya va adjunta: el botón no la repite, sigue el recorrido. Va a /invierte, la dirección única del flujo, que
+      // decide según el estado de la persona (destino.ts › destinoInvierte; decisión de Fabrizio, 18-nov-2026).
+      boton: { texto: BOTON_COPIA_ORDEN, url: `${sitio}${URL_INVIERTE}` },
       despues: ["Firmar no te obliga a comprar ni tiene costo. Solo pagas si compras un depto que te presentó Franco."],
     }),
   };
