@@ -23,7 +23,7 @@ export async function GET(request: Request) {
   if (request.headers.get("authorization") !== `Bearer ${secreto}`) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const admin = createServiceClient();
-  await latirCron(admin, NOMBRE);
+  await latirCron(admin, "invierte-vigilar");
   try {
     const ahora = new Date();
     const v = await vigilarElegidos(admin, { ahora });

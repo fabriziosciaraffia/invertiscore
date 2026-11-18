@@ -250,6 +250,9 @@ export async function runPublicadoresTier(): Promise<{ hard: number }> {
       "src/lib/services/scraper/property-row.ts",
       "src/app/api/cron/relleno-publicadores/route.ts",
       "src/app/admin/invierte/page.tsx",
+      // ⚠ ACTA (18-nov-2026, Invierte con Franco entrega 2) · la vigilancia de la mañana lee el id del publicador de los deptos
+      // elegidos para crear la tarea interna «cambió quién publica» (no se le avisa a la persona; nada viaja al navegador).
+      "src/lib/invierte-v2/vigilancia-servidor.ts",
     ]);
     // Los módulos con datos del publicador (los de servidor) y las tablas, solo donde se permiten.
     const SERVIDOR = /@\/lib\/publicadores\/(publicadores-servidor|relleno-servidor)|from\("(publicadores|avisos_publicador|lecturas_relleno)"\)|rpc\("(recontar_publicadores|relleno_publicadores_candidatos)"/;

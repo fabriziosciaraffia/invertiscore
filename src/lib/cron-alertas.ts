@@ -66,6 +66,7 @@ export const CRONS_VARIAS_AL_DIA: ReadonlySet<string> = new Set([
   "semanal-renta-corta", // cada hora, de lunes a miércoles (la renta corta atrasada, 02-nov-2026)
   "correo-del-dia", // cada 10 minutos (la cola de /deptos, 16-oct-2026)
   "relleno-publicadores", // cada 10 minutos (el relleno de publicadores por Decodo, 12-nov-2026)
+  "invierte-vigilar", // 09, 10 y 11 UTC (los cambios de los deptos elegidos de Invierte con Franco, 18-nov-2026)
 ]);
 
 /**
