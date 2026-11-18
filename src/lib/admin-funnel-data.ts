@@ -60,6 +60,9 @@ export interface FunnelSupabase {
    *  arreglo del total haría que "anónimos" y "con cuenta" mostraran lo mismo. */
   gratisPorTipoAnon: Array<{ etiqueta: string; valor: number }>;
   gratisPorTipoWelcome: Array<{ etiqueta: string; valor: number }>;
+  /** Los detalles que abre quien firmó la orden de Invierte con Franco (charge_mode 'invierte', 18-nov-2026): su propia
+   *  categoría, fuera de «gratis» y de «pagados». Personas distintas y detalles abiertos. */
+  detallesInvierte: { personas: number; detalles: number };
 }
 
 /**
@@ -291,6 +294,12 @@ export async function funnelSupabase(
     if (p.status === "paid") pagosPorUser.set(p.user_id, (pagosPorUser.get(p.user_id) ?? 0) + 1);
   }
   const pagaron = pagosPorUser.size;
+  // Los detalles de Invierte con Franco: fuera de gratis y de pagados (su propia categoría).
+  const invierteRows = await paginar<{ id: string; user_id: string | null }>((d, h) =>
+    conPeriodo(sb.from("analisis").select("id, user_id").eq("charge_mode", "invierte"), rango).range(d, h),
+  );
+  const invierteReales = invierteRows.filter((r) => !(r.user_id && testSet.has(r.user_id)));
+  const detallesInvierte = { personas: new Set(invierteReales.map((r) => r.user_id).filter(Boolean)).size, detalles: invierteReales.length };
   let recompraron = 0;
   pagosPorUser.forEach((n) => {
     if (n >= 2) recompraron++;
@@ -308,5 +317,6 @@ export async function funnelSupabase(
     recompraron,
     gratisPorTipoAnon: contar(unidadesAnon),
     gratisPorTipoWelcome: contar(unidadesWelcome),
+    detallesInvierte,
   };
 }

@@ -264,6 +264,12 @@ export default async function AdminPage({
           : "sin datos de PostHog para el denominador",
     },
     {
+      // Invierte con Franco (18-nov-2026): los detalles que abre quien firmó, sin gastar créditos. Ni gratis ni pagados.
+      titulo: "Detalles de Invierte con Franco",
+      valor: fmtNumber(funnel7.detallesInvierte.detalles),
+      detalle: `${fmtNumber(funnel7.detallesInvierte.personas)} personas firmadas · no cuentan como gratis ni pagados`,
+    },
+    {
       titulo: "Anónimo → cuenta",
       valor: claimPct != null ? `${claimPct}%` : "—",
       detalle:

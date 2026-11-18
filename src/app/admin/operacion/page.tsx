@@ -360,8 +360,14 @@ export default async function AdminOperacionPage({
       .from("analisis")
       .select("id, comuna, score, created_at")
       .eq("is_premium", true)
+      // Los detalles de Invierte con Franco (charge_mode 'invierte') no son Pro: categoría propia, abajo. Con .or por el NULL.
+      .or("charge_mode.is.null,charge_mode.neq.invierte")
       .order("created_at", { ascending: false })
       .limit(5)
+  );
+
+  const { count: detallesInvierte } = await sinTest(
+    sb.from("analisis").select("*", { count: "exact", head: true }).eq("charge_mode", "invierte")
   );
 
   // ─── DOCUMENTOS TRIBUTARIOS ───
@@ -793,6 +799,12 @@ export default async function AdminOperacionPage({
             <div className="font-mono text-2xl font-bold text-[var(--franco-text)]">{fmtNumber(sharedCount ?? 0)}</div>
             <div className="font-body text-xs text-[var(--franco-text-muted)]">
               análisis con dueño (URL pública accesible)
+            </div>
+          </div>
+          <div className="mb-3" data-admin="detalles-invierte">
+            <div className="text-2xl font-bold text-[var(--franco-text)]">{fmtNumber(detallesInvierte ?? 0)}</div>
+            <div className="font-body text-xs text-[var(--franco-text-muted)]">
+              detalles de Invierte con Franco (quien firmó la orden; sin créditos, ni pagados ni Pro)
             </div>
           </div>
           <div className="border-t border-[var(--franco-border)] pt-3">

@@ -35,6 +35,7 @@ import { eventoExplorarAnaliza } from "@/lib/explorar/servidor";
 import { esTopeNegociar, precioNegociadoValido } from "@/lib/explorar/capa-negociar";
 import { verificarNegociado } from "@/lib/avisos/negociar";
 import { devolverCobro } from "@/lib/access";
+import { EVENTO_DETALLE_ABIERTO, MODO_INVIERTE, verGratisInvierte } from "@/lib/invierte-v2/detalles";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // «Analizar este» (30-sep-2026): el informe de un aviso de la guía, sin wizard, con un crédito del
@@ -130,7 +131,10 @@ export async function POST(request: Request) {
     }
     const desdeSemanal = typeof b.semanal === "string" || desdeRespaldo;
     const desde: "semanal" | "guia" | "explorar" = desdeExplorar ? "explorar" : desdeSemanal ? "semanal" : "guia";
-    const ae = await emitirEventoMeta(admin, {
+    // INVIERTE CON FRANCO (etapa 2, 18-nov-2026): quien firmó la orden ve los detalles de un usado del mapa sin gastar un
+    // crédito (charge_mode 'invierte'), y mientras el modo sea lista ese pedido no manda eventos a Meta.
+    const gratisInvierte = desdeExplorar ? await verGratisInvierte(admin, user, b.avisoId) : false;
+    const ae = gratisInvierte ? null : await emitirEventoMeta(admin, {
       evento: EVENTOS_META.analizarEste,
       eventId: idAnalizarEste(b.avisoId, desdeExplorar ? "explorar" : desdeRespaldo ? "respaldo" : desdeSemanal ? b.semanal! : origen.analysisId!),
       userId: user.id,
@@ -139,8 +143,8 @@ export async function POST(request: Request) {
       contexto: contextoDeRequest(request),
       origen: "analizar-este",
     });
-    espejoAE = ae.espejo;
-    waitUntil(ae.envio);
+    espejoAE = ae?.espejo ?? null;
+    if (ae) waitUntil(ae.envio);
     // La red: la ficha se chequea de nuevo ANTES de cualquier cobro (publicacion.ts). La misma lectura trae el año.
     let lecturaAnio: LecturaAnio = { leida: false, anio: null };
     let plausibleFallo: Response | null = null;
@@ -235,6 +239,7 @@ export async function POST(request: Request) {
             return (ganada?.length ?? 0) === 1;
           },
           async cobrar() {
+            if (gratisInvierte) return { ok: true, mode: MODO_INVIERTE, devolucion: { tipo: "nada" } };
             const c = await ensureCreditCharged({ user });
             return c.ok ? { ok: true, mode: c.mode, devolucion: c.devolucion } : { ok: false, status: c.response.status, error: "sin-creditos" };
           },
@@ -257,7 +262,8 @@ export async function POST(request: Request) {
             if (error || !data) throw new Error(`insert: ${error?.message ?? "sin fila"}`);
             const id = data.id as string;
             delInforme = { veredicto: readVeredicto(result) ?? null, score: result.score ?? null };
-            waitUntil(capturarAnalisisCreado({ userId: user.id, analysisId: id, modalidad: "ltr", via: desde, precioNegociado }));
+            waitUntil(capturarAnalisisCreado({ userId: user.id, analysisId: id, modalidad: "ltr", via: desde, precioNegociado, cobro: mode }));
+            if (mode === MODO_INVIERTE) waitUntil(capturarServidor({ event: EVENTO_DETALLE_ABIERTO, distinctId: user.id, correo: user.email ?? null, properties: { analysis_id: id, aviso_id: aviso.avisoId } }).catch(() => false));
             // EL PREMIO DEL REFERIDO (05-nov-2026): el primer análisis del invitado le da uno a quien invitó.
             waitUntil(referidoTrasAnalisis(user.id));
             if (desdeExplorar) {
