@@ -8,7 +8,7 @@ import { launchBrowser } from "@/lib/pdf/render-pdf";
 import { DOC_CHROME_FONT_FACES } from "@/lib/pdf/doc-chrome-fonts";
 import { DOC_WORDMARK_LIGHT_DATA_URI } from "@/lib/pdf/doc-wordmark";
 import { formatearRut } from "./rut";
-import { partesDeTexto } from "./orden";
+import { partesDeTexto, registroDeFirma } from "./orden";
 
 export interface OrdenParaPdf {
   id: string;
@@ -36,15 +36,15 @@ export function horaChile(iso: string): string {
 export function htmlOrden(o: OrdenParaPdf): string {
   const { titulo, parrafos: cuerpo } = partesDeTexto(o.texto);
   const parrafos = cuerpo.map((p) => (p.n ? `<p><b>${esc(p.n)}. ${esc(p.titulo ?? "")}.</b> ${esc(p.texto)}</p>` : `<p>${esc(p.texto)}</p>`)).join("\n");
+  // El registro de la firma: el MISMO que muestra la ventana «Ver mi orden» (registroDeFirma); abajo, los datos técnicos que la
+  // pantalla no muestra (correo, IP, navegador, versión y n.º de la orden).
+  const reg = registroDeFirma(o);
   const filas: [string, string][] = [
-    ["Firmó", esc(o.nombre)],
     ["RUT", esc(formatearRut(o.rut))],
     ["Correo", esc(o.email)],
-    ["Fecha y hora", esc(horaChile(o.firmadoAt))],
     ["Dirección IP", esc(o.ip ?? "no disponible")],
     ["Navegador", esc(o.userAgent ?? "no disponible")],
     ["Versión del texto", String(o.textoVersion)],
-    ["Huella del texto (SHA-256)", `<span class="mono">${esc(o.textoSha256)}</span>`],
     ["N.º de la orden", `<span class="mono">${esc(o.id)}</span>`],
   ];
   return `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>${esc(titulo ?? "Orden")}</title>
@@ -60,12 +60,16 @@ table { border-collapse: collapse; width: 100%; font-size: 9.5pt; }
 td { padding: 4px 0; vertical-align: top; border-bottom: 1px solid #EEEEF1; }
 td:first-child { color: #6B6B72; width: 34%; padding-right: 10px; }
 .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 8.5pt; word-break: break-all; }
+.huella { word-break: break-all; color: #6B6B72; }
 .pie { margin-top: 18px; font-size: 8.5pt; color: #6B6B72; }
 </style></head><body data-orden-pdf="${esc(o.id)}">
 <img class="marca" src="${DOC_WORDMARK_LIGHT_DATA_URI}" alt="refranco.ai">
 <h1>${esc(titulo ?? "")}</h1>
 ${parrafos}
-<div class="registro"><h2>Registro de la firma electrónica simple</h2>
+<div class="registro" data-registro><h2>${esc(reg.titulo)}</h2>
+<p>${esc(reg.firmadoPor)}</p>
+<p>${esc(reg.cuando)}</p>
+<p class="huella">${esc(reg.huella)}</p>
 <table>${filas.map(([k, v]) => `<tr><td>${esc(k)}</td><td>${v}</td></tr>`).join("")}</table></div>
 <p class="pie">La huella SHA-256 identifica el texto exacto que se firmó. Esta copia se generó a partir del registro guardado en Franco.</p>
 </body></html>`;

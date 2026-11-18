@@ -8,7 +8,15 @@
   font-family: var(--font-ui, var(--font-body)), "Inter", system-ui, sans-serif; display: flex; flex-direction: column; }
 @media (min-width: 768px) { .iv2-marco { min-height: auto; margin: 32px auto; border-radius: 22px; overflow: hidden; border: 1px solid var(--franco-border); } }
 .iv2-marco .inv-cab { padding-top: calc(12px + env(safe-area-inset-top, 0px)); }
-.iv2-paso { font-size: 12px; font-weight: 600; width: 44px; text-align: right; color: #FFFFFF; }
+/* El indicador de pasos (quinta entrega, 18-nov-2026; IndicadorPasos.tsx): barra corta de dos tramos y «Paso N de 2 · …», en
+   ciruela, arriba del contenido del contacto y de la firma. */
+.iv2-ind { display: flex; flex-direction: column; gap: 6px; }
+.iv2-ind-barra { display: flex; gap: 6px; }
+.iv2-ind-barra span { flex: 1; height: 4px; border-radius: 999px; background: var(--franco-border); }
+.iv2-ind-barra span[data-hecho] { background: #D8AECA; }
+[data-theme="light"] .iv2-ind-barra span[data-hecho] { background: #6E4560; }
+.iv2-ind-t { font-size: 12px; font-weight: 600; color: #D8AECA; }
+[data-theme="light"] .iv2-ind-t { color: #6E4560; }
 .iv2-cuerpo { flex: 1; }
 .iv2-chip-linea { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0; font-size: 13px; color: var(--franco-text-secondary); }
 
@@ -94,7 +102,21 @@
 .iv2-doc-texto p { margin: 0; }
 .iv2-doc-texto-t { font-size: 15px; font-weight: 700; }
 .iv2-doc-pie { display: flex; flex-direction: column; gap: 10px; }
-.iv2-doc-cerrar { display: none; }
+.iv2-doc-cerrar { display: none; justify-content: center; align-items: center; min-height: 48px; padding: 0 28px; border: 0; border-radius: 999px; cursor: pointer;
+  background: var(--franco-text); color: var(--franco-card); font: 600 15px var(--font-ui, var(--font-body)), "Inter", system-ui, sans-serif; }
+.iv2-doc-cerrar-siempre { display: flex; }
+/* El registro de la firma, al final del texto (el mismo del PDF). */
+.iv2-doc-registro { margin-top: 6px; padding-top: 14px; border-top: 1px solid var(--franco-border-strong, var(--franco-border)); display: flex; flex-direction: column; gap: 3px; font-size: 13px; }
+.iv2-doc-registro-t { font-weight: 700; }
+.iv2-doc-huella { color: var(--franco-text-secondary); word-break: break-all; }
+/* La variante `lista` (las preguntas): sobre blanco, sin recuadro. */
+.iv2-doc-lista .iv2-doc-t { font-size: 20px; }
+.iv2-doc-lista .iv2-doc-texto { border: 0; background: transparent; padding: 0 10px 0 0; gap: 0; border-radius: 0; }
+.iv2-faq { margin: 0; display: flex; flex-direction: column; }
+.iv2-faq-q { display: flex; flex-direction: column; gap: 4px; padding: 13px 0; border-bottom: 1px solid var(--franco-border); }
+.iv2-faq-q:last-child { border-bottom: 0; }
+.iv2-faq dt { font-size: 15px; font-weight: 700; }
+.iv2-faq dd { margin: 0; font-size: 13px; line-height: 1.5; color: var(--franco-text-secondary); }
 @media (min-width: 768px) {
   .iv2-doc { width: 720px; max-width: 100%; height: min(690px, calc(100dvh - 48px)); gap: 14px; padding: 24px 28px; border-radius: 20px; box-shadow: 0 20px 60px rgba(20, 20, 20, 0.3); }
   .iv2-doc-t { font-size: 22px; }
@@ -104,15 +126,14 @@
   .iv2-doc-texto { padding: 24px 28px; gap: 12px; font-size: 14px; line-height: 1.6; }
   .iv2-doc-pie { flex-direction: row; justify-content: flex-end; }
   .iv2-doc-pie .iv2-secundario { width: auto; padding: 0 24px; }
-  .iv2-doc-cerrar { display: flex; justify-content: center; align-items: center; min-height: 48px; padding: 0 28px; border: 0; border-radius: 999px; cursor: pointer;
-    background: var(--franco-text); color: var(--franco-card); font: 600 15px var(--font-ui, var(--font-body)), "Inter", system-ui, sans-serif; }
+  .iv2-doc-cerrar { display: flex; }
+  .iv2-doc-lista .iv2-doc-t { font-size: 22px; }
 }
 
 /* ── 1.2 CONTACTO COMO HOJA (18-nov-2026): las clases de la hoja de Pronto + esto. En el celular sube desde abajo con el mapa
       asomando arriba; en el PC, ventana centrada con ✕ (el mismo botón cambia de ícono). ── */
 .iv2-solo-pc { display: none; }
 .iv2-hoja { max-height: calc(100dvh - 88px); }
-.iv2-hoja .iv2-paso { color: #FFFFFF; }
 @media (min-width: 768px) {
   .iv2-hoja { max-height: calc(100dvh - 48px); }
   .iv2-hoja .iv2-solo-pc { display: block; }
@@ -131,9 +152,6 @@
   .iv2-con-pc .iv2-pc-barra { display: flex; flex-direction: column; gap: 10px; padding: 28px 0 8px; }
   .iv2-pc-volver { align-self: flex-start; font-size: 14px; font-weight: 600; color: var(--franco-text); text-decoration: none; }
   .iv2-pc-volver:hover { text-decoration: underline; text-underline-offset: 3px; }
-  /* El rótulo de la firma: la sans de la app, en ciruela, como la lámina (18-nov-2026: sin monoespaciada en el flujo). */
-  .iv2-eyebrow { font-size: 12px; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; color: #D8AECA; }
-  [data-theme="light"] .iv2-eyebrow { color: #6E4560; }
   .iv2-con-pc .iv2-chip-pc { display: inline-flex; }
   .iv2-con-pc .inv-cuerpo { padding: 8px 0 0; }
 

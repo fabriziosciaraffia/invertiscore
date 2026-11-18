@@ -3,8 +3,7 @@ import { notFound } from "next/navigation";
 import { createServiceClient } from "@/lib/supabase/service";
 import { FLUJO_COPY, primerNombre } from "@/lib/invierte-v2/flujo";
 import { URL_PERFIL } from "@/lib/invierte-v2/destino";
-import { fechaFirmaLarga, partesDeTexto } from "@/lib/invierte-v2/orden";
-import { formatearRut } from "@/lib/invierte-v2/rut";
+import { fechaFirmaLarga, partesDeTexto, registroDeFirma } from "@/lib/invierte-v2/orden";
 import { ultimaOrdenDe } from "@/lib/invierte-v2/servidor";
 import { METADATA_FLUJO, sesionYAcceso } from "@/lib/invierte-v2/paginas";
 import { MarcoInvierte } from "@/components/invierte-v2/MarcoInvierte";
@@ -37,7 +36,7 @@ export default async function PartimosPage() {
       <div className="iv2-acciones">
         <Link href={URL_PERFIL} className="inv-principal" data-inv2="perfil">{P.perfil}</Link>
         <VerOrden etiqueta={P.verOrden} estado={P.estado} firmada={fechaFirmaLarga(orden.firmadoAt)}
-          quien={`${orden.nombre} · RUT ${formatearRut(orden.rut)} · Versión ${orden.textoVersion}`} titulo={texto.titulo} parrafos={texto.parrafos} />
+          version={orden.textoVersion} parrafos={texto.parrafos} registro={registroDeFirma(orden)} />
         {orden.copiaEnviadaAt ? (
           <p className="iv2-guardada" data-inv2="copia-enviada">{P.guardada}</p>
         ) : (

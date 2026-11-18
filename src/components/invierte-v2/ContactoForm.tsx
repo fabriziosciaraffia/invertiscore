@@ -13,6 +13,7 @@ import { botonOcupado } from "@/lib/carga-global";
 import type { Veredicto } from "@/lib/types";
 import { INVIERTE_COPY, PIES, URGENCIAS, pieDelDepto, textoError, type OrigenInvierte, type PieInvierte, type UrgenciaInvierte } from "@/lib/invierte/invierte";
 import { CLAVE_PENDIENTE_V2, FLUJO_COPY, validarContacto } from "@/lib/invierte-v2/flujo";
+import { IndicadorPasos } from "./IndicadorPasos";
 import { URL_PARTIMOS, urlFirma } from "@/lib/invierte-v2/destino";
 
 const H = INVIERTE_COPY.hoja;
@@ -82,6 +83,7 @@ export function ContactoForm({ depto, origen, analysisId, inicial, sinSesion }: 
 
   return (
     <form onSubmit={enviar} noValidate style={{ display: "contents" }} data-inv2="contacto-form">
+      <IndicadorPasos paso={1} />
       <div className="inv-encabezado">
         <h1 className="inv-titulo" id="iv2-t">{C.titulo}</h1>
         <LineaDeptoFlujo depto={depto} />

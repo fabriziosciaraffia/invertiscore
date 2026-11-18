@@ -1,7 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { createServiceClient } from "@/lib/supabase/service";
 import { esPie, esUrgencia } from "@/lib/invierte/invierte";
-import { FLUJO_COPY } from "@/lib/invierte-v2/flujo";
 import { URL_PARTIMOS } from "@/lib/invierte-v2/destino";
 import { leerPersona, ordenVigenteDe } from "@/lib/invierte-v2/servidor";
 import { METADATA_FLUJO, analysisDe, deptoParaPagina, origenDe, sesionYAcceso, volverAlOrigen } from "@/lib/invierte-v2/paginas";
@@ -27,7 +26,7 @@ export default async function ContactoPage({ params, searchParams }: { params: {
   }
   const origen = origenDe(searchParams);
   return (
-    <MarcoInvierte volver={volverAlOrigen(depto.avisoId, origen, analysisDe(searchParams))} paso={FLUJO_COPY.paso1} pantalla="contacto" pc={{ sesionEmail: user?.email ?? null, rotulo: FLUJO_COPY.rotuloContacto }}>
+    <MarcoInvierte volver={volverAlOrigen(depto.avisoId, origen, analysisDe(searchParams))} pantalla="contacto" pc={{ sesionEmail: user?.email ?? null }}>
       <ContactoForm depto={depto} origen={origen} analysisId={analysisDe(searchParams)} inicial={inicial} sinSesion={!user} />
     </MarcoInvierte>
   );

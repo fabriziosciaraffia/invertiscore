@@ -1,25 +1,25 @@
 "use client";
 
 // «Ver mi orden firmada» en Partimos (18-nov-2026, láminas 2.2-ver-mi-orden y 2.2-ver-mi-orden-pc): un botón secundario que
-// abre la orden en la ventana de documentos, sobre la misma página. El texto es el GUARDADO en la orden (lo que se firmó), no
-// la plantilla vigente; «Descargar PDF» baja el PDF guardado. Al abrirla se anota la vista (bitácora + inv2_orden_vista).
+// abre la orden en la ventana de documentos, sobre la misma página. Se ve como el documento: el texto GUARDADO en la orden (lo
+// que se firmó, sin el título repetido) y al final el registro de la firma, el mismo del PDF; bajo la fecha, «Versión N · es el
+// mismo documento que descargas en PDF». «Descargar PDF» baja el PDF guardado. Al abrirla se anota la vista.
 import { useState } from "react";
-import type { ParrafoOrden } from "@/lib/invierte-v2/orden";
+import type { ParrafoOrden, RegistroFirma } from "@/lib/invierte-v2/orden";
 import { FLUJO_COPY } from "@/lib/invierte-v2/flujo";
 import { URL_DESCARGAR_ORDEN, URL_VER_ORDEN } from "@/lib/invierte-v2/destino";
-import { TextoDocumento, VentanaDocumento } from "./VentanaDocumento";
+import { RegistroDocumento, TextoDocumento, VentanaDocumento } from "./VentanaDocumento";
 
 const D = FLUJO_COPY.documento;
 
-export function VerOrden({ etiqueta, estado, firmada, quien, titulo, parrafos }: {
+export function VerOrden({ etiqueta, estado, firmada, version, parrafos, registro }: {
   etiqueta: string;
   estado: string;
   /** «18 de noviembre de 2026, 08:04». */
   firmada: string;
-  /** «Camila Rojas Pérez · RUT 16.482.317-5 · Versión 1». */
-  quien: string;
-  titulo: string;
+  version: number;
   parrafos: ParrafoOrden[];
+  registro: RegistroFirma;
 }) {
   const [abierta, setAbierta] = useState(false);
   function abrir() {
@@ -34,11 +34,12 @@ export function VerOrden({ etiqueta, estado, firmada, quien, titulo, parrafos }:
           nombre="orden"
           estado={estado}
           titulo={D.tituloOrden}
-          meta={<><span><b>{D.firmada}</b> el {firmada}</span><span>{quien}</span></>}
+          meta={<><span><b>{D.firmada}</b> el {firmada}</span><span>{D.mismoDocumento(version)}</span></>}
           descargar={{ href: URL_DESCARGAR_ORDEN }}
           alCerrar={() => setAbierta(false)}
         >
-          <TextoDocumento titulo={titulo} parrafos={parrafos} />
+          <TextoDocumento parrafos={parrafos} />
+          <RegistroDocumento registro={registro} />
         </VentanaDocumento>
       )}
     </>

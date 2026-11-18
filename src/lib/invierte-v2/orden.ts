@@ -10,6 +10,8 @@
 // Puro e isomorfo: lo dibujan la firma (navegador), el PDF y el correo, y lo prueba el tier.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { formatearRut } from "./rut";
+
 export const VERSION_ORDEN = 1;
 
 /** POR CONFIRMAR (Fabrizio, antes del push): quien recibe el encargo. Hoy, el emisor de las boletas. */
@@ -101,9 +103,28 @@ export function partesDeTexto(texto: string): { titulo: string; parrafos: Parraf
   };
 }
 
-/** «18 de noviembre de 2026, 08:04», en hora de Chile (la ventana de la orden). */
-export function fechaFirmaLarga(iso: string): string {
-  const partes = new Intl.DateTimeFormat("es-CL", { timeZone: "America/Santiago", day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date(iso));
+/** «18 de noviembre de 2026, 08:04» (con `segundos`, «…08:04:05»), en hora de Chile. */
+export function fechaFirmaLarga(iso: string, segundos = false): string {
+  const partes = new Intl.DateTimeFormat("es-CL", { timeZone: "America/Santiago", day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit", second: segundos ? "2-digit" : undefined, hourCycle: "h23" }).formatToParts(new Date(iso));
   const v = (t: string) => partes.find((p) => p.type === t)?.value ?? "";
-  return `${v("day")} de ${v("month")} de ${v("year")}, ${v("hour")}:${v("minute")}`;
+  return `${v("day")} de ${v("month")} de ${v("year")}, ${v("hour")}:${v("minute")}${segundos ? `:${v("second")}` : ""}`;
+}
+
+// ── EL REGISTRO DE LA FIRMA (quinta entrega, 18-nov-2026) ────────────────────
+// Lo dicen IGUAL la ventana «Ver mi orden» y el PDF: los dos lo arman con esta función (el tier INVIERTE-V2 §14 lo vigila).
+// La IP y el navegador van solo en el PDF, nunca en pantalla.
+export interface RegistroFirma {
+  titulo: string;
+  firmadoPor: string;
+  cuando: string;
+  huella: string;
+}
+
+export function registroDeFirma(o: { nombre: string; rut: string; firmadoAt: string; textoSha256: string }): RegistroFirma {
+  return {
+    titulo: "Registro de la firma",
+    firmadoPor: `Firmado electrónicamente por ${o.nombre}, RUT ${formatearRut(o.rut)}`,
+    cuando: `${fechaFirmaLarga(o.firmadoAt, true)} (hora de Chile)`,
+    huella: `Huella del documento: ${o.textoSha256}`,
+  };
 }

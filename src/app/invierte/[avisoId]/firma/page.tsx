@@ -1,6 +1,5 @@
 import { notFound, redirect } from "next/navigation";
 import { createServiceClient } from "@/lib/supabase/service";
-import { FLUJO_COPY } from "@/lib/invierte-v2/flujo";
 import { deptoDeLinea } from "@/lib/invierte-v2/orden";
 import { URL_PARTIMOS, urlFirma } from "@/lib/invierte-v2/destino";
 import { leerPersona, ordenVigenteDe } from "@/lib/invierte-v2/servidor";
@@ -25,7 +24,7 @@ export default async function FirmaPage({ params, searchParams }: { params: { av
   const [orden, persona] = await Promise.all([ordenVigenteDe(admin, user.id), leerPersona(admin, user.id)]);
   if (orden) redirect(URL_PARTIMOS);
   return (
-    <MarcoInvierte volver={volverAlOrigen(depto.avisoId, origen, analysisId)} paso={FLUJO_COPY.paso2} pantalla="firma" layout="firma" pc={{ sesionEmail: user.email ?? null, rotulo: FLUJO_COPY.rotuloFirma }}>
+    <MarcoInvierte volver={volverAlOrigen(depto.avisoId, origen, analysisId)} pantalla="firma" layout="firma" pc={{ sesionEmail: user.email ?? null }}>
       <FirmaForm depto={depto} deptoCorto={deptoDeLinea(depto.linea)} origen={origen} analysisId={analysisId} sinContacto={!persona} />
     </MarcoInvierte>
   );

@@ -15,7 +15,10 @@ import { CLAVE_PENDIENTE_V2, FLUJO_COPY, VIDA_PENDIENTE_V2_MS, textoErrorFirma, 
 import { ordenVigente, VERSION_ORDEN } from "@/lib/invierte-v2/orden";
 import { formatearRut, normalizarRut } from "@/lib/invierte-v2/rut";
 import { URL_PARTIMOS, urlContacto } from "@/lib/invierte-v2/destino";
+import { PREGUNTAS_INVIERTE, TITULO_PREGUNTAS_INVIERTE } from "@/lib/invierte-v2/preguntas";
 import { LineaDeptoFlujo, type DeptoFlujo } from "./ContactoForm";
+import { IndicadorPasos } from "./IndicadorPasos";
+import { ListaPreguntas, VentanaDocumento } from "./VentanaDocumento";
 
 const F = FLUJO_COPY.firma;
 
@@ -34,6 +37,7 @@ export function FirmaForm({ depto, deptoCorto, origen, analysisId, sinContacto }
   const [leyo, setLeyo] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [preguntas, setPreguntas] = useState(false);
   const caja = useRef<HTMLDivElement>(null);
 
   // Lo contestado sin cuenta: se manda una vez.
@@ -92,7 +96,9 @@ export function FirmaForm({ depto, deptoCorto, origen, analysisId, sinContacto }
   }
 
   return (
+    <>
     <form onSubmit={firmar} noValidate style={{ display: "contents" }} data-inv2="firma-form" aria-busy={sinContacto || undefined}>
+      <IndicadorPasos paso={2} />
       <div className="inv-encabezado">
         <h1 className="inv-titulo" id="iv2-t">{F.titulo}</h1>
         <p className="inv-parrafo">{F.parrafo}</p>
@@ -127,8 +133,15 @@ export function FirmaForm({ depto, deptoCorto, origen, analysisId, sinContacto }
       {error && <p className="inv-error" role="alert">{error}</p>}
       <div className="iv2-acciones">
         <button type="submit" className="inv-principal iv2-principal" disabled={!leyo || enviando || sinContacto} {...botonOcupado(enviando)} data-inv2="firmar">{enviando ? F.firmando : F.firmar}</button>
-        <a href="/faq" className="iv2-enlace">{F.preguntas}</a>
+        <button type="button" className="iv2-enlace" onClick={() => setPreguntas(true)} aria-haspopup="dialog" data-inv2="preguntas">{F.preguntas}</button>
       </div>
     </form>
+    {/* Las preguntas se abren SOBRE la firma: el formulario queda montado y conserva lo escrito y hasta dónde se leyó la orden. */}
+    {preguntas && (
+      <VentanaDocumento nombre="preguntas" titulo={TITULO_PREGUNTAS_INVIERTE} variante="lista" accion={F.volverFirma} alCerrar={() => setPreguntas(false)}>
+        <ListaPreguntas preguntas={PREGUNTAS_INVIERTE} />
+      </VentanaDocumento>
+    )}
+    </>
   );
 }

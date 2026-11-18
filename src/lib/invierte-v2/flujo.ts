@@ -14,11 +14,9 @@ import { VERSION_ORDEN } from "./orden";
 
 export const FLUJO_COPY = {
   cabecera: "Invierte con Franco",
-  paso1: "1 de 2",
-  paso2: "2 de 2",
-  /** El rótulo de arriba de la firma en el PC (lámina 2.1-firma-pc). Partimos no lleva rótulo (lámina 2.2-partimos-pc, 18-nov-2026). */
-  rotuloFirma: "Invierte con Franco · 2 de 2",
-  rotuloContacto: "Invierte con Franco · 1 de 2",
+  /** El indicador de pasos (quinta entrega, 18-nov-2026; láminas 1.2 y 2.1): el mismo arriba del contenido en los dos pasos, en
+   *  celular y en PC. Reemplaza al «1 de 2» de la cabecera y al rótulo «INVIERTE CON FRANCO · 2 DE 2». */
+  pasos: { total: 2, contacto: "Paso 1 de 2 · Tus datos", firma: "Paso 2 de 2 · Tu firma" },
   volver: "Volver",
   contacto: {
     titulo: "Invierte en este depto con Franco",
@@ -46,6 +44,8 @@ export const FLUJO_COPY = {
     firmar: "Firmar y partir",
     firmando: "Firmando…",
     preguntas: "Preguntas frecuentes",
+    /** El botón de la ventana de preguntas (lámina 2.1-preguntas-frecuentes). */
+    volverFirma: "Volver a la firma",
     faltaNombre: "Escribe tu nombre completo.",
     faltaRut: "Revisa tu RUT: no es válido.",
     faltaFinal: "Desliza la orden hasta el final antes de firmar.",
@@ -77,6 +77,8 @@ export const FLUJO_COPY = {
   documento: {
     tituloOrden: "Tu orden de visita y acompañamiento",
     firmada: "Firmada",
+    /** Bajo la fecha (quinta entrega): lo que se ve y lo que se descarga dicen lo mismo. */
+    mismoDocumento: (v: number) => `Versión ${v} · es el mismo documento que descargas en PDF`,
     descargar: "Descargar PDF",
     cerrar: "Cerrar",
   },
