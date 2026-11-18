@@ -360,6 +360,19 @@ export async function runInvierteV2(): Promise<{ hard: number }> {
       if (prueba.datos.inv_ordenes.length || prueba.datos.inv_personas.length) F("8 · «Reiniciar prueba» deja la orden o la persona");
       if (!prueba.datos.inv_bitacora.some((b) => b.id === 2)) F("8 · «Reiniciar prueba» borra bitácora real");
       if (prueba.pasos.filter((p) => p.op === "delete" && (p.tabla === "inv_bitacora" || p.tabla === "inv_ordenes")).some((p) => !p.filtros.some(([k, , val]) => k === "es_prueba" && val === true))) F("8 · «Reiniciar prueba» borra sin filtrar es_prueba");
+      // Dos personas de prueba (18-nov-2026, pedido de Fabrizio): reiniciar a una no toca nada de la otra —ni su contacto, ni su
+      // orden, ni su bitácora, ni su PDF—.
+      const OTRA = "0381a589-0000-4000-8000-00000000beef";
+      const dos = falso({
+        inv_personas: [persona(), { ...persona(), user_id: OTRA, email: "otra@ejemplo.cl" }],
+        inv_ordenes: [{ id: "o-a", user_id: USER.id, es_prueba: true, pdf_path: "ordenes/o-a.pdf" }, { id: "o-b", user_id: OTRA, es_prueba: true, pdf_path: "ordenes/o-b.pdf" }],
+        inv_bitacora: [{ id: 11, user_id: USER.id, es_prueba: true, orden_id: "o-a" }, { id: 12, user_id: OTRA, es_prueba: true, orden_id: "o-b" }, { id: 13, user_id: OTRA, es_prueba: true, orden_id: null }],
+        test_accounts: [{ user_id: USER.id }, { user_id: OTRA }],
+      });
+      const r4 = await reiniciarPrueba(dos.sb, USER.id, "admin@x");
+      const deLaOtra = (filas: Record<string, unknown>[]) => filas.filter((f) => f.user_id === OTRA).length;
+      if (!r4.ok || deLaOtra(dos.datos.inv_personas) !== 1 || deLaOtra(dos.datos.inv_ordenes) !== 1 || deLaOtra(dos.datos.inv_bitacora) !== 2 || dos.bucket.borrados.includes("ordenes/o-b.pdf")) F("8 · «Reiniciar prueba» de una persona borra datos de otra");
+      if (dos.datos.inv_personas.some((f) => f.user_id === USER.id) || dos.datos.inv_ordenes.some((f) => f.user_id === USER.id)) F("8 · «Reiniciar prueba» no borra a la persona de su fila");
     }
 
     // ── 9 · LOS MENSAJES Y LA MEDICIÓN ──
@@ -483,7 +496,7 @@ export async function runInvierteV2(): Promise<{ hard: number }> {
       for (const [o, a] of [["explorar", null], ["seleccion", null], ["informe", "6db7a9ac-f030-4ccf-b5a8-5232ae997fb1"], ["informe", null]] as const) if (/^\/invierte\//.test(volverAlOrigen(AVISO, o, a))) F(`12 · «Volver» desde ${o} lleva a la página de respaldo del contacto`);
       if (volverAlOrigen(AVISO, "explorar", null) !== `/explorar?a=${AVISO}`) F("12 · «Volver» al mapa no abre el mismo depto");
       const css = leer("src/components/invierte-v2/invierte-v2.css");
-      if (!/\.iv2-firma \{ display: grid; grid-template-columns: 420px minmax\(0, 1fr\);/.test(css) || !/\.iv2-firma \.iv2-bloque-orden \{ grid-column: 2;[^}]*position: sticky;/.test(css) || !/\.iv2-firma \.iv2-orden \{ height: 480px; \}/.test(css)) F("12 · la orden del PC no va a la derecha, fija y con alto fijo");
+      if (!/\.iv2-firma \{ display: grid; grid-template-columns: 420px minmax\(0, 1fr\);/.test(css) || !/\.iv2-firma \.iv2-bloque-orden \{ grid-column: 2;[^}]*position: sticky;/.test(css) || !/\.iv2-firma \.iv2-orden \{ height: min\(480px, calc\(100dvh - 190px\)\); \}/.test(css)) /* ⚠ ACTA (18-nov-2026): el alto sigue fijo —el botón se habilita al final del texto— pero sin pasarse de la pantalla de un notebook (1280 × 720 con barra); antes exigía 480px pelado. */ F("12 · la orden del PC no va a la derecha, fija y con alto fijo");
       if (!/\.iv2-partimos \{ display: grid; grid-template-columns: 460px minmax\(0, 1fr\);/.test(css)) F("12 · Partimos del PC no va en dos columnas");
       const form = codigo("src/components/invierte-v2/FirmaForm.tsx");
       if (!/className="inv-pregunta iv2-bloque-orden"/.test(form) || !/<span className="iv2-solo-movil">\{F\.desliza\}<\/span><span className="iv2-solo-pc">\{F\.deslizaPc\}<\/span>/.test(form)) F("12 · la firma no dice «Lee hasta el final…» en el PC y «Desliza…» en el celular");
@@ -560,7 +573,10 @@ export async function runInvierteV2(): Promise<{ hard: number }> {
       if (FLUJO_COPY.pasos.contacto !== "Paso 1 de 2 · Tus datos" || FLUJO_COPY.pasos.firma !== "Paso 2 de 2 · Tu firma") F("14 · el texto del indicador no es el de la lámina");
       const ind = (n: 1 | 2) => renderToStaticMarkup(createElement(IndicadorPasos, { paso: n }));
       if ((ind(1).match(/data-hecho="1"/g) ?? []).length !== 1 || (ind(2).match(/data-hecho="1"/g) ?? []).length !== 2 || !ind(1).includes("Paso 1 de 2 · Tus datos") || !ind(2).includes("Paso 2 de 2 · Tu firma")) F("14 · el indicador no marca el tramo del paso o no dice el paso");
-      if (!/data-inv2="contacto-form">\s*<IndicadorPasos paso=\{1\} \/>/.test(codigo("src/components/invierte-v2/ContactoForm.tsx"))) F("14 · el contacto no abre con el indicador de pasos");
+      // ⚠ ACTA (18-nov-2026, la ventana de contacto en PC): el indicador va dentro de la fila de arriba —indicador y título a la
+      // izquierda, la ✕ a la derecha (lámina 1.2-contacto-pc)—; el predicado exigía que fuera el primer hijo del formulario y ahora
+      // exige que abra la fila, que la fila sea lo primero del formulario y que el título venga después del indicador.
+      if (!/data-inv2="contacto-form">\s*(\{\}\s*)?<div className="iv2-cab-form">\s*<div className="iv2-cab-form-id">\s*<IndicadorPasos paso=\{1\} \/>\s*<div className="inv-encabezado">\s*<h1 /.test(codigo("src/components/invierte-v2/ContactoForm.tsx"))) F("14 · el contacto no abre con el indicador de pasos");
       if (!/data-inv2="firma-form" aria-busy=\{sinContacto \|\| undefined\}>\s*<IndicadorPasos paso=\{2\} \/>/.test(codigo("src/components/invierte-v2/FirmaForm.tsx"))) F("14 · la firma no abre con el indicador de pasos");
       for (const a of ["src/components/invierte-v2/HojaContacto.tsx", "src/components/invierte-v2/MarcoInvierte.tsx", "src/app/invierte/[avisoId]/page.tsx", "src/app/invierte/[avisoId]/firma/page.tsx"]) {
         if (/className="iv2-paso"|rotulo|iv2-eyebrow/.test(codigo(a))) F(`14 · ${a} todavía muestra el paso en la cabecera o el rótulo`);
@@ -599,6 +615,29 @@ export async function runInvierteV2(): Promise<{ hard: number }> {
       if (!/\.iv2-doc-cerrar-siempre \{ display: flex; \}/.test(leer("src/components/invierte-v2/invierte-v2.css"))) F("14 · «Volver a la firma» no se ve en el celular");
       const fuera = ["src/lib/faq-data.ts", "src/lib/invierte-v2/flujo.ts", "src/components/invierte-v2/FirmaForm.tsx", "src/components/invierte-v2/VentanaDocumento.tsx"].filter((a) => leer(a).includes("¿Franco me va a decir que no?"));
       if (fuera.length) F(`14 · las preguntas de Invierte con Franco viven también en ${fuera.join(", ")}`);
+    }
+
+    // ── 15 · LAS VENTANAS CABEN (18-nov-2026): la hoja de contacto en un notebook, y nada con barra propia ──
+    // El alto lo mide la sonda viva scripts/eval/golden/invierte-v2-alto-sonda.ts contra /dev/invierte-v2, en las cinco medidas de
+    // la regla de revisión visual (390 × 844, 360 × 740, 1366 × 768 y 1280 × 720 con la barra del navegador, 1920 × 1080). Acá se
+    // fija lo que sostiene esa medida, para que no se pierda sin que nadie corra la sonda.
+    {
+      const css = leer("src/components/invierte-v2/invierte-v2.css");
+      if (!/@media \(min-width: 768px\) \{[^}]*\}\s*\.iv2-hoja \{ width: 480px; max-height: calc\(100dvh - 24px\);[^}]*\}\s*\.iv2-hoja \.inv-cab \{ display: none; \}/.test(css)) F("15 · el contacto del PC no es la ventana de 480 px sin la cabecera con degradado");
+      if (!/\.iv2-hoja \{ max-height: calc\(100dvh - 88px\); overflow: hidden; \}/.test(css) || !/\.iv2-hoja \.inv-cuerpo \{ flex: 1; min-height: 0; overflow-y: auto;/.test(css)) F("15 · la hoja de contacto puede tener barra propia (el scroll no va en el cuerpo)");
+      if (!/\.iv2-hoja \.iv2-acciones \{ position: sticky; bottom: 0;/.test(css)) F("15 · «Continuar» no queda pegado abajo, a la vista");
+      if (!/\.iv2-hoja \.iv2-casilla \{ min-height: 44px;/.test(css) || !/^\.iv2-casilla \{[^}]*min-height: 44px;/m.test(css) || !/\.iv2-enlace \{[^}]*min-height: 44px;/.test(css)) F("15 · la casilla o «Preguntas frecuentes» miden menos de 44 px en el celular");
+      // Con el teclado del celular abierto, el campo enfocado no queda detrás de «Continuar» (pegado abajo): medido a 360 × 420.
+      if (!/\.iv2-hoja \.inv-cuerpo \{[^}]*scroll-padding-bottom: 1[23]0px;/.test(css)) F("15 · con el teclado abierto, el campo queda detrás de «Continuar»");
+      // Un error empuja «Firmar y partir»: se trae a la vista (en un notebook quedaba cortado; medido en Chromium a 1280 × 610).
+      if (!/useEffect\(\(\) => \{ if \(error\) boton\.current\?\.scrollIntoView\(\{ block: "nearest"/.test(codigo("src/components/invierte-v2/FirmaForm.tsx"))) F("15 · un error en la firma deja el botón fuera de la vista");
+      if (!/\.iv2-pagina \.chip-v, \.iv2-hoja \.chip-v, \.iv2-doc \.chip-v \{ font-family: inherit; \}/.test(css)) F("15 · el chip del veredicto sale en otra fuente dentro del flujo");
+      if (!/\.iv2-doc \{[^}]*height: calc\(100dvh - 70px\);/.test(css) || !/\.iv2-doc \{ width: 720px; max-width: 100%; height: min\(690px, calc\(100dvh - 48px\)\);/.test(css) || !/\.iv2-doc-texto \{ flex: 1; min-height: 0; overflow-y: auto;/.test(css)) F("15 · la ventana de documentos no cabe en la pantalla o su texto no hace scroll adentro");
+      const contacto = codigo("src/components/invierte-v2/ContactoForm.tsx");
+      if (!/\{alCerrar && \(\s*<button type="button" className="iv2-cab-x" onClick=\{alCerrar\}/.test(contacto) || !/alCerrar=\{alCerrar\} \/>/.test(codigo("src/components/invierte-v2/HojaContacto.tsx"))) F("15 · el contacto del PC no tiene la ✕ en la fila de arriba");
+      const sonda = leer("scripts/eval/golden/invierte-v2-alto-sonda.ts");
+      for (const m of ["w: 390, h: 844", "w: 360, h: 740", "w: 1366, h: 650", "w: 1280, h: 610", "w: 1920, h: 960"]) if (!sonda.includes(m)) F(`15 · la sonda de alto no mide ${m}`);
+      if (!/\["contacto", "orden", "preguntas"\]/.test(sonda) || !/\["contacto", "orden", "preguntas"\]/.test(leer("src/app/dev/invierte-v2/page.tsx"))) F("15 · la sonda de alto no mide las tres ventanas");
     }
 
     // ── 10 · EL LENGUAJE frente a la persona ──
