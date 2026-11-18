@@ -2131,5 +2131,6 @@ export interface Analisis {
   // pipeline). Escrita al crear por /api/analisis y /api/analisis/short-term;
   // NULL = histórico pre-migración (o fila locked pre-pago). Gatea el CTA
   // post-análisis welcome ('welcome' + dueño).
-  charge_mode?: "welcome" | "paid" | "subscription" | "admin" | null;
+  // 'invierte' (18-nov-2026): los detalles que abre quien firmó la orden de Invierte con Franco, sin gastar créditos.
+  charge_mode?: "welcome" | "paid" | "subscription" | "admin" | "anon_cap" | "invierte" | null;
 }
