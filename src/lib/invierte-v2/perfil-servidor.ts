@@ -106,7 +106,12 @@ export async function confirmarPerfil(admin: SupabaseClient, user: { id: string;
   const reemplaza = tope.fuente !== "solo_pie";
   // El precio máximo anterior: el que había la PRIMERA vez que el tope lo reemplazó (para poder volver a él).
   const anterior = (previo?.topeSupuestos?.precioMaxAnterior as { valor: number | null } | undefined) ?? (pb ? { valor: pb.precio_max_uf == null ? null : Number(pb.precio_max_uf) } : { valor: null });
-  const supuestos = { ...tope.supuestos, limita: tope.limita, porPieUF: tope.porPieUF, creditoUF: tope.creditoUF, precioMaxAnterior: anterior, reemplazoPrecioMax: reemplaza, ...(previo?.topeSupuestos?.aprobadaUF ? { aprobadaUF: previo.topeSupuestos.aprobadaUF } : {}) };
+  // Las comunas de antes (pedido de Fabrizio, 18-nov-2026): las del perfil de búsqueda la PRIMERA vez que el perfil las pisa, para
+  // que Reiniciar prueba las devuelva. Un perfil confirmado antes de este cambio no las tiene: no se inventan con las ya pisadas.
+  const comunasAnterior = previo
+    ? ((previo.topeSupuestos?.comunasAnterior as { valor: string[] | null } | undefined) ?? null)
+    : { valor: (pb?.comunas as string[] | null | undefined) ?? null };
+  const supuestos = { ...tope.supuestos, limita: tope.limita, porPieUF: tope.porPieUF, creditoUF: tope.creditoUF, precioMaxAnterior: anterior, reemplazoPrecioMax: reemplaza, ...(comunasAnterior ? { comunasAnterior } : {}), ...(previo?.topeSupuestos?.aprobadaUF ? { aprobadaUF: previo.topeSupuestos.aprobadaUF } : {}) };
   const fila = {
     user_id: user.id, objetivo: pedido.objetivo, preocupaciones: pedido.preocupaciones, comunas: pedido.comunas, preaprobado: pedido.preaprobado,
     monto_preaprobado_uf: pedido.montoPreaprobadoUF, pie_tiene: pedido.pieTiene, pie_uf: pedido.pieUF, renta_liquida_clp: pedido.rentaCLP,
@@ -186,13 +191,20 @@ export async function calcularOpciones(admin: SupabaseClient, user: { id: string
   const [filas, ent] = await Promise.all([tope > 0 ? candidatos(admin, perfil.comunas, tope) : Promise.resolve([] as FilaCandidato[]), avisoEntrada ? filaEntrada(admin, avisoEntrada) : Promise.resolve(null)]);
   const entrada = ent ? aOpcion(ent.fila, tope, true, ent.veredicto) : null;
   const lista = filas.map((f) => aOpcion(f, tope, false, "COMPRAR"));
-  const opciones = elegirOpciones(entrada, lista, perfil.objetivo, perfil.preocupaciones);
-  const etiquetas = Object.fromEntries(etiquetar(opciones));
-  const caso = casoDe(opciones);
+  const deFranco = elegirOpciones(entrada, lista, perfil.objetivo, perfil.preocupaciones);
+  const etiquetas = Object.fromEntries(etiquetar(deFranco));
+  const caso = casoDe(deFranco);
   const masBaratoUF = caso === "caso2" ? await masBarato(admin, perfil.comunas, Math.max(tope, 500)) : null;
 
-  // Persistir: lo nuevo entra como opción; lo que ya estaba se actualiza (y lo que deja de alcanzar se marca, no se borra).
+  // Los que ya eligió y hoy no están entre las de Franco (salieron del top o se sumaron aparte) siguen en la tabla, al final y
+  // marcados: si no, desaparecían y «Seguir con estos» los soltaba sin avisar. Con 6 activos y el de entrada son 7 columnas
+  // como mucho; la tabla del PC se desliza adentro, con la primera columna fija.
   const { data: previos } = await admin.from(T_DEPTOS).select("aviso_id, estado, alcanza").eq("user_id", user.id);
+  const faltan = (previos ?? []).filter((p) => p.estado === "elegido" && !deFranco.some((o) => o.avisoId === p.aviso_id)).map((p) => p.aviso_id as string);
+  const extras = (await Promise.all(faltan.map((id) => filaEntrada(admin, id)))).filter((e): e is NonNullable<typeof e> => !!e).map((e) => aOpcion(e.fila, tope, false, e.veredicto));
+  const opciones = [...deFranco, ...extras];
+
+  // Persistir: lo nuevo entra como opción; lo que ya estaba se actualiza (y lo que deja de alcanzar se marca, no se borra).
   const yaEstaban = new Map((previos ?? []).map((p) => [p.aviso_id as string, p]));
   const ahora = new Date().toISOString();
   const filasUpsert = opciones.map((o) => {
@@ -203,10 +215,9 @@ export async function calcularOpciones(admin: SupabaseClient, user: { id: string
       datos: { precioUF: o.precioUF, veredicto: o.veredicto, score: o.score, flujoCLP: o.flujoCLP, comuna: o.comuna, m2: o.m2 }, es_prueba: perfil.esPrueba, updated_at: ahora,
     };
   });
-  // Los que ya estaban y hoy no aparecen (dejaron de alcanzarle): quedan, marcados fuera de alcance.
-  const fuera = (previos ?? []).filter((p) => !opciones.some((o) => o.avisoId === p.aviso_id) && p.alcanza);
+  // Los que ya estaban y hoy no aparecen: quedan como estaban. Fuera de alcance se marca solo por PRECIO (en `opciones` va con su
+  // `alcanza` real); salir del top de Franco no es dejar de alcanzarle.
   if (filasUpsert.length) await admin.from(T_DEPTOS).upsert(filasUpsert, { onConflict: "user_id,aviso_id" });
-  for (const p of fuera) await admin.from(T_DEPTOS).update({ alcanza: false, fuera_de_alcance_at: ahora, updated_at: ahora }).eq("user_id", user.id).eq("aviso_id", p.aviso_id as string);
   const nuevos = opciones.filter((o) => !yaEstaban.has(o.avisoId));
   if (nuevos.length) await anotar(admin, { userId: user.id, email: user.email, ordenId: orden.id, actor: "sistema", accion: "depto_presentado", detalle: { avisos: nuevos.map((o) => ({ aviso_id: o.avisoId, etiqueta: etiquetas[o.avisoId] ?? null, precio_uf: o.precioUF })) }, esPrueba: perfil.esPrueba });
   const elegidos = (previos ?? []).filter((p) => p.estado === "elegido").map((p) => p.aviso_id as string);

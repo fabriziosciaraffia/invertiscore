@@ -201,6 +201,8 @@ export const RESULTADO_COPY = {
   notaTabla: "En azul, la mejor de cada fila. Todas dan ✓ Comprar.",
   notaTablaPie: "Pones al mes con pie 20 %, 30 años y la tasa del mes.",
   compararAviso: (n: number) => (n > 3 ? "Se comparan tres a la vez. Desliza para ver el resto." : ""),
+  /** En el PC caben cinco; con más (lo que ya eligió y salió del top), la tabla se desliza adentro y lo dice. */
+  compararAvisoPc: (n: number) => (n > MAX_OPCIONES ? `Son ${n} deptos. Desliza la tabla para ver todos.` : ""),
   filas: { veredicto: "Veredicto", precio: "Precio", pie: "Pie (20 %)", alcanza: "¿Te alcanza?", pones: "Pones al mes (con pie 20 %)", arriendo: "Arriendo estimado", parecidos: "Precio contra parecidos", metro: "Metro", sigo: "Sigo con este", detalle: "Detalles" },
   loQueMasImporta: "Lo que más te importa",
   si: "Sí",

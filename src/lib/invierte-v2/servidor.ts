@@ -410,7 +410,7 @@ export async function leerCrm(admin: SupabaseClient): Promise<{ filas: FilaCrm[]
 
 // ── REINICIAR PRUEBA ─────────────────────────────────────────────────────────
 export type ResultadoReinicio =
-  | { ok: true; ordenes: number; bitacora: number; pdfs: number; etapa2: { deptos: number; documentos: number; tareas: number; perfil: boolean; precioMaxRestaurado: boolean } }
+  | { ok: true; ordenes: number; bitacora: number; pdfs: number; etapa2: { deptos: number; documentos: number; tareas: number; perfil: boolean; precioMaxRestaurado: boolean; comunasRestauradas: boolean } }
   | { ok: false; error: "no-es-prueba" | "orden-real" | "leer" | "borrar" };
 
 /**
@@ -418,7 +418,8 @@ export type ResultadoReinicio =
  * inv_personas. No toca nada si la cuenta no está en test_accounts o si tiene alguna orden real (los triggers de la base son la
  * segunda barrera). Deja un registro de prueba del reinicio.
  * Etapa 2 (18-nov-2026): también su perfil, sus deptos, sus documentos (fila y archivo) y sus tareas, siempre por su user_id; y si
- * el tope reemplazó el precio máximo de su perfil de búsqueda, se lo devuelve al de antes. Las comunas quedan como están.
+ * el tope reemplazó el precio máximo de su perfil de búsqueda, se lo devuelve al de antes; las comunas, también (las guardadas al
+ * confirmar el perfil).
  */
 export async function reiniciarPrueba(admin: SupabaseClient, userId: string, adminEmail: string | null, deps: { esCuentaTest?: (id: string) => Promise<boolean> } = {}): Promise<ResultadoReinicio> {
   const esTest = await (deps.esCuentaTest ?? ((id: string) => esCuentaTest(admin, id)))(userId);
@@ -450,7 +451,7 @@ export async function reiniciarPrueba(admin: SupabaseClient, userId: string, adm
   return { ok: true, ordenes: idsOrden.length, bitacora: (b1.count ?? 0) + (b2.count ?? 0), pdfs: rutas.length, etapa2: e2 };
 }
 
-async function reiniciarEtapa2(admin: SupabaseClient, userId: string): Promise<{ deptos: number; documentos: number; tareas: number; perfil: boolean; precioMaxRestaurado: boolean } | null> {
+async function reiniciarEtapa2(admin: SupabaseClient, userId: string): Promise<{ deptos: number; documentos: number; tareas: number; perfil: boolean; precioMaxRestaurado: boolean; comunasRestauradas: boolean } | null> {
   const [{ data: perfil, error: e1 }, { data: docs, error: e2 }] = await Promise.all([
     admin.from("inv_perfiles").select("tope_supuestos").eq("user_id", userId).maybeSingle(),
     admin.from("inv_documentos").select("id, path").eq("user_id", userId),
@@ -466,14 +467,16 @@ async function reiniciarEtapa2(admin: SupabaseClient, userId: string): Promise<{
   const dp = await admin.from("inv_deptos").delete({ count: "exact" }).eq("user_id", userId);
   if (d.error || t.error || dp.error) return null;
   // El precio máximo de antes: solo si el tope lo reemplazó.
-  const sup = (perfil?.tope_supuestos ?? null) as { reemplazoPrecioMax?: boolean; precioMaxAnterior?: { valor: number | null } } | null;
-  let restaurado = false;
-  if (sup?.reemplazoPrecioMax && sup.precioMaxAnterior) {
-    const r = await admin.from("perfil_busqueda").update({ precio_max_uf: sup.precioMaxAnterior.valor, actualizado_at: new Date().toISOString() }).eq("user_id", userId);
+  const sup = (perfil?.tope_supuestos ?? null) as { reemplazoPrecioMax?: boolean; precioMaxAnterior?: { valor: number | null }; comunasAnterior?: { valor: string[] | null } } | null;
+  const devolver: Record<string, unknown> = {};
+  if (sup?.reemplazoPrecioMax && sup.precioMaxAnterior) devolver.precio_max_uf = sup.precioMaxAnterior.valor;
+  if (sup?.comunasAnterior) devolver.comunas = sup.comunasAnterior.valor;
+  const restaurado = "precio_max_uf" in devolver;
+  if (Object.keys(devolver).length) {
+    const r = await admin.from("perfil_busqueda").update({ ...devolver, actualizado_at: new Date().toISOString() }).eq("user_id", userId);
     if (r.error) return null;
-    restaurado = true;
   }
   const pf = await admin.from("inv_perfiles").delete().eq("user_id", userId);
   if (pf.error) return null;
-  return { deptos: dp.count ?? 0, documentos: d.count ?? 0, tareas: t.count ?? 0, perfil: !!perfil, precioMaxRestaurado: restaurado };
+  return { deptos: dp.count ?? 0, documentos: d.count ?? 0, tareas: t.count ?? 0, perfil: !!perfil, precioMaxRestaurado: restaurado, comunasRestauradas: "comunas" in devolver };
 }

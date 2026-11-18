@@ -314,3 +314,16 @@
 /* Toques de 44 px en celular: la casilla de la tabla y «Ver detalles». */
 .iv2-check-celda { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; margin: -11px; cursor: pointer; }
 @media (max-width: 767px) { .iv2-enlace-azul[data-inv2="ver-detalles"] { min-height: 44px; display: inline-flex; align-items: center; } }
+
+/* Abriendo los detalles de un depto (≈ 10 s): una capa encima, con la caja al centro y una barra que avanza. */
+.iv2-cargando-capa { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(15, 15, 15, 0.45); }
+.iv2-cargando-caja { width: 100%; max-width: 360px; padding: 22px 22px 20px; border-radius: 20px; background: var(--franco-card); border: 1px solid var(--franco-border); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18); }
+.iv2-cargando-titulo { margin: 0; font-size: 17px; font-weight: 700; color: var(--franco-text); }
+.iv2-cargando-texto { margin: 6px 0 16px; font-size: 14px; color: var(--franco-text-muted); }
+.iv2-cargando-barra { position: relative; height: 4px; overflow: hidden; border-radius: 999px; background: var(--franco-border); }
+.iv2-cargando-barra span { position: absolute; top: 0; left: -40%; width: 40%; height: 100%; border-radius: 999px; background: #2B558F; animation: iv2-cargando 1.3s ease-in-out infinite; }
+@keyframes iv2-cargando { 0% { left: -40%; } 100% { left: 100%; } }
+@media (prefers-reduced-motion: reduce) { .iv2-cargando-barra span { animation: none; left: 0; width: 100%; opacity: 0.5; } }
+
+/* En una pantalla ancha (1920) el resultado usa más ancho: caben las siete columnas (el de entrada + 6 activos) sin deslizar. */
+@media (min-width: 1600px) { .iv2-con-pc .iv2-marco:has(.iv2-cuerpo.iv2-contenido) { max-width: 1480px; } [data-inv2="desliza-pc"] { display: none; } }

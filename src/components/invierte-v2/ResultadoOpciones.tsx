@@ -13,6 +13,7 @@ import { Fragment, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { botonOcupado } from "@/lib/carga-global";
 import { ChipVeredicto } from "@/components/analysis/shared/ChipVeredicto";
+import { CargandoDetalles } from "./CargandoDetalles";
 import type { Veredicto } from "@/lib/types";
 import { lineaTope, type Objetivo, type Preocupacion, type Tope } from "@/lib/invierte-v2/perfil";
 import {
@@ -246,6 +247,7 @@ export function ResultadoOpciones(p: PropsResultado) {
 
   return (
     <div className="iv2-resultado iv2-resultado-eleccion" data-inv2="eleccion">
+      {abriendo && <CargandoDetalles />}
       <div className="iv2-res-izq">
         <div className="inv-encabezado">
           <h1 className="iv2-titulo-res" id="iv2-t">{titulo}</h1>
@@ -290,7 +292,10 @@ export function ResultadoOpciones(p: PropsResultado) {
         </div>
         <div className="iv2-solo-pc-res">{lecturaBloque}</div>
       </div>
-      <div className="iv2-res-der iv2-solo-pc-res">{tabla("iv2-tabla-pc")}</div>
+      <div className="iv2-res-der iv2-solo-pc-res">
+        {R.compararAvisoPc(listaOpciones.length) && <p className="iv2-linea-chica" data-inv2="desliza-pc">{R.compararAvisoPc(listaOpciones.length)}</p>}
+        {tabla("iv2-tabla-pc")}
+      </div>
       {listaOpciones.length === 0 && <Fragment />}
       <span className="iv2-sr" aria-live="polite">{comunasEnFrase(p.comunas)}</span>
     </div>
