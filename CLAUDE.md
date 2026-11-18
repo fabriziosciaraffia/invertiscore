@@ -74,7 +74,7 @@ Emisión de **boleta electrónica afecta (TipoDTE 39)** cuando Flow confirma un 
 - Admin: sección "Documentos tributarios" en `/admin` + endpoint de reintento `POST /api/admin/documentos/retry`.
 
 ## Branding e identidad
-La identidad visual completa (paleta, tipografía, patrones, templates) vive en la skill **`franco-design-system`** — consultarla SIEMPRE para cualquier trabajo visual. **Donde la skill y este bloque no coinciden, manda este bloque** (contrato de diseño del 18-nov-2026: la skill todavía pide Serif en títulos y Mono en etiquetas y datos, y eso quedó derogado). La voz de marca y el copy van en **`brand-voice-franco`**; UX/microcopy en **`ux-cx-franco`**; doctrina de output IA en **`analysis-voice-franco`**. No dupliques la paleta completa ni los pesos tipográficos acá; leé la skill antes de cualquier cambio de UI.
+La identidad visual completa (paleta, tipografía, patrones, templates) vive en la skill **`franco-design-system`** — consultarla SIEMPRE para cualquier trabajo visual. **Donde la skill y este bloque no coinciden, manda este bloque** (contrato de diseño del 18-nov-2026). La skill vive fuera del repo (`~/.claude/skills/franco-design-system/SKILL.md`) y se alineó el mismo día: su bloque «Contrato vigente», arriba de todo, manda sobre los patrones que todavía nombran Serif o Mono. La voz de marca y el copy van en **`brand-voice-franco`**; UX/microcopy en **`ux-cx-franco`**; doctrina de output IA en **`analysis-voice-franco`**. No dupliques la paleta completa ni los pesos tipográficos acá; leé la skill antes de cualquier cambio de UI.
 - **Nombre**: Franco. **Dominio**: refranco.ai.
 - **Wordmark**: "re" Source Serif 4 Regular (ghost, opacity 28%) + "franco" Source Serif 4 Bold + ".ai" en IBM Plex Sans SemiBold, Signal Red.
 - **Tagline (único vigente)**: REAL ESTATE EN SU ESTADO MÁS FRANCO
@@ -254,6 +254,25 @@ Motivo: master avanza en paralelo. Una rama que no rebasa obliga a ritual manual
   Acá no había gate que se pusiera rojo: el daño habría sido **escribir 40 `description` falsas**, y una `description` falsa es peor que una línea de más porque es lo que el recall usa para decidir relevancia. La regla es la misma que para un catch-test — **antes de ACTUAR sobre lo que cuenta un instrumento, verificá una muestra a mano**; si la muestra no aguanta, el número no es un número.
   **Y el mismo regex tenía un segundo error, de sintaxis y no de semántica**: `\[([^\]]+)\]` para leer etiquetas de markdown **se corta en el primer `]`**, así que las dos etiquetas que llevían `drawerSequence = ["zona"]` adentro quedaron fuera del censo. Eran 79, no 77. Un contador que no sabe contar el caso con corchetes tampoco sabe que se los perdió.
 - **Los tests con shim de storage no modelan el debounce de 500ms.** Cualquier operación que borre y reescriba necesita verificación en navegador midiendo el instante intermedio.
+
+## Revisión visual fija (regla permanente, decisión de Fabrizio, 18-nov-2026)
+**Antes de pedirle a Fabrizio que revise cualquier pantalla nueva o cambiada, la revisa el agente en el navegador y le manda las capturas con el resultado de cada punto. Si algo falla, se corrige antes de avisar.** Motivo: la ventana de contacto de Invierte con Franco llegó al preview con barra de scroll y la letra chica cortada en un notebook común; la vio él, no el gate.
+- **Medidas**: celular **390 × 844** y **360 × 740**; notebook **1366 × 768** y **1280 × 720** con la barra del navegador (≈650 y ≈610 px de alto útil); escritorio **1920 × 1080**.
+- **Qué se revisa en cada una**:
+  - **Ventanas y hojas caben enteras, sin barra de scroll propia.** Si el contenido es largo, el scroll va adentro y el botón principal queda siempre a la vista. Nada cortado abajo.
+  - La página **sin scroll horizontal** en ninguna medida.
+  - El botón principal se ve sin bajar en la primera pantalla, o queda claro que hay que bajar.
+  - Los textos no se cortan ni se montan: títulos largos, nombres largos, montos grandes, comunas largas. **Con datos reales, no solo los de ejemplo.**
+  - **Un solo tipo de letra**, el de la app (Inter). Sin monoespaciada ni la fuente del wordmark.
+  - Si hay lámina: jerarquía, chips, tarjetas, fondos, botones y textos coinciden con la lámina.
+  - Botones y casillas de **al menos 44 px de alto en celular**.
+  - **Estados**: vacío, cargando, error, botón deshabilitado y botón mientras envía (que no se pueda apretar dos veces).
+  - **Cerrar y volver**: con la ✕, con Escape y tocando afuera, y la página de atrás queda como estaba.
+  - Con el **teclado del celular** abierto, el campo que se escribe y el botón siguen a la vista.
+  - Los enlaces no sacan a la persona del flujo sin avisar.
+  - La **consola del navegador sin errores**.
+- **El alto de ventanas y hojas queda además como prueba automática**: una sonda viva en las cinco medidas (como `popups-alto-webkit-sonda.ts` e `invierte-v2-alto-sonda.ts`, contra una página `/dev/…` con datos de muestra) y, en el tier del QUICK, lo que sostiene esa medida (las reglas de CSS que la hacen caber), verificado en rojo por mutación.
+- **Lo que el navegador del agente no puede reproducir se dice, no se da por revisado**: el teclado real del celular no se emula; se revisa con la ventana visible reducida al alto que deja el teclado (≈ la mitad de la pantalla) y se avisa que falta el teléfono real.
 
 ## Entorno y seguridad
 - Variables de entorno: editalas **solo** en VS Code (`.env.local`) o en el dashboard de Vercel. **Nunca en terminal.**
