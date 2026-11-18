@@ -35,7 +35,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { leerModo, tieneAcceso, correoDeLista } from "../../../src/lib/invierte-v2/acceso";
 import { destinoBoton, urlContacto } from "../../../src/lib/invierte-v2/destino";
 import { normalizarRut, formatearRut, dvRut } from "../../../src/lib/invierte-v2/rut";
-import { ordenVigente, plantillaVigente, textoPlano, VERSION_ORDEN, RAZON_SOCIAL_FRANCO, RUT_FRANCO } from "../../../src/lib/invierte-v2/orden";
+import { ordenVigente, plantillaVigente, textoPlano, partesDeTexto, fechaFirmaLarga, VERSION_ORDEN, RAZON_SOCIAL_FRANCO, RUT_FRANCO } from "../../../src/lib/invierte-v2/orden";
 import { FLUJO_COPY, EVENTOS_INV2, validarContacto, validarFirma } from "../../../src/lib/invierte-v2/flujo";
 import { firmar, reiniciarPrueba, guardarContacto, completarOrden, reintentarCopias, type DepsFirma, type OrdenInv } from "../../../src/lib/invierte-v2/servidor";
 import { tocaReintentar, debeAvisar, pasoAislado, diarioYLuegoPaso, MAX_INTENTOS_COPIA } from "../../../src/lib/invierte-v2/copias";
@@ -46,6 +46,7 @@ import { TIPOS_CON_BAJA, TIPOS_QUE_FRENA_LA_ELIMINACION } from "../../../src/lib
 import { TIPOS_CORREO } from "../../../src/lib/medicion-correo";
 import { correoCopiaOrden } from "../../../src/lib/email/correos";
 import { FranjaInvierte } from "../../../src/components/invierte/FranjaInvierte";
+import { VentanaDocumento, TextoDocumento } from "../../../src/components/invierte-v2/VentanaDocumento";
 import type { DeptoInvierte } from "../../../src/lib/invierte/invierte";
 
 (globalThis as { React?: unknown }).React = React;
@@ -471,7 +472,9 @@ export async function runInvierteV2(): Promise<{ hard: number }> {
       if (!/\{pc && \(\s*<div className="iv2-solo-pc" data-inv2="header-pc">\s*<HeaderFranco /.test(marco)) F("12 · el PC no lleva el HeaderFranco real (o se ve en el celular)");
       const firmaPag = codigo("src/app/invierte/[avisoId]/firma/page.tsx");
       if (!/layout="firma" pc=\{\{ sesionEmail: user\.email \?\? null, rotulo: FLUJO_COPY\.rotuloFirma \}\}/.test(firmaPag) || !/volver=\{volverAlOrigen\(depto\.avisoId, origen, analysisId\)\}/.test(firmaPag)) F("12 · la firma no va en dos columnas con el header (o «Volver» no vuelve a la superficie)");
-      if (!/layout="partimos" pc=\{\{ sesionEmail: user\.email \?\? null, rotulo: FLUJO_COPY\.rotuloPartimos \}\}/.test(codigo("src/app/invierte/partimos/page.tsx"))) F("12 · Partimos no va en dos columnas con el header");
+      // ⚠ ACTA (18-nov-2026, cuarta entrega): la lámina 2.2-partimos-pc no lleva rótulo arriba de Partimos; el predicado exigía
+      // `rotulo: FLUJO_COPY.rotuloPartimos` y ahora exige el formato de PC SIN rótulo (el header real sigue: lo vigila el marco).
+      if (!/layout="partimos" pc=\{\{ sesionEmail: user\.email \?\? null \}\}/.test(codigo("src/app/invierte/partimos/page.tsx"))) F("12 · Partimos no va en dos columnas con el header (o lleva un rótulo que la lámina no tiene)");
       const { volverAlOrigen } = await import("../../../src/lib/invierte-v2/paginas");
       for (const [o, a] of [["explorar", null], ["seleccion", null], ["informe", "6db7a9ac-f030-4ccf-b5a8-5232ae997fb1"], ["informe", null]] as const) if (/^\/invierte\//.test(volverAlOrigen(AVISO, o, a))) F(`12 · «Volver» desde ${o} lleva a la página de respaldo del contacto`);
       if (volverAlOrigen(AVISO, "explorar", null) !== `/explorar?a=${AVISO}`) F("12 · «Volver» al mapa no abre el mismo depto");
@@ -481,7 +484,9 @@ export async function runInvierteV2(): Promise<{ hard: number }> {
       const form = codigo("src/components/invierte-v2/FirmaForm.tsx");
       if (!/className="inv-pregunta iv2-bloque-orden"/.test(form) || !/<span className="iv2-solo-movil">\{F\.desliza\}<\/span><span className="iv2-solo-pc">\{F\.deslizaPc\}<\/span>/.test(form)) F("12 · la firma no dice «Lee hasta el final…» en el PC y «Desliza…» en el celular");
       if (FLUJO_COPY.firma.deslizaPc !== "Lee hasta el final para poder firmar. El botón se activa cuando llegas al último párrafo.") F("12 · el texto de la firma del PC no es el de la lámina");
-      if (!/te llegó una copia por correo/.test(FLUJO_COPY.partimos.guardada)) F("12 · Partimos no dice que la copia llegó (cuando llegó)");
+      // ⚠ ACTA (18-nov-2026, cuarta entrega): el texto de la copia enviada cambió por el de la lámina («Te mandamos una copia a tu
+      // correo.»). La regla es la misma —solo se dice cuando salió, lo vigila §11— y la cifra exacta va en §13.
+      if (FLUJO_COPY.partimos.guardada !== "Te mandamos una copia a tu correo.") F("12 · Partimos no dice que la copia llegó (cuando llegó)");
       // El estado de la hoja: 404 sin acceso.
       const ruta = codigo("src/app/api/invierte-v2/contacto/route.ts");
       if (!/export async function GET\(\) \{\s*const user = await personaConAcceso\(\);\s*if \(!user\) return NO_EXISTE\(\);/.test(ruta)) F("12 · el estado de la hoja responde sin acceso");
@@ -491,6 +496,58 @@ export async function runInvierteV2(): Promise<{ hard: number }> {
       const contacto = codigo("src/components/invierte-v2/ContactoForm.tsx");
       if (!/if \(sinSesion\) \{[\s\S]{0,200}window\.localStorage\.setItem\(CLAVE_PENDIENTE_V2,[\s\S]{0,120}router\.push\(urlFirma\(depto\.avisoId, origen, analysisId\)\);/.test(contacto)) F("12 · sin sesión, el contacto no queda en el navegador antes de ir a la firma");
       if (!/if \(!user\) redirect\(`\/register\?next=\$\{encodeURIComponent\(urlFirma\(depto\.avisoId, origen, analysisId\)\)\}`\);/.test(firmaPag)) F("12 · sin sesión, la firma no pide la cuenta (con vuelta a la firma)");
+    }
+
+    // ── 13 · LA CUARTA ENTREGA (18-nov-2026): la lámina manda en jerarquía, disposición y textos; una sola fuente ──
+    {
+      // Sin monoespaciada ni la fuente del wordmark en ninguna pantalla del flujo nuevo.
+      const archivos = ["src/components/invierte-v2/invierte-v2.css", ...readdirSync(join(RAIZ, "src/components/invierte-v2")).filter((f) => f.endsWith(".tsx")).map((f) => `src/components/invierte-v2/${f}`),
+        "src/app/invierte/[avisoId]/page.tsx", "src/app/invierte/[avisoId]/firma/page.tsx", "src/app/invierte/partimos/page.tsx", "src/app/invierte/perfil/page.tsx"];
+      for (const a of archivos) if (/mono|JetBrains|font-heading|Source Serif|serif\b(?!-)/i.test(codigo(a).replace(/sans-serif/g, ""))) F(`13 · ${a} usa la monoespaciada o la fuente del wordmark`);
+
+      // Partimos: las piezas en el orden de la lámina.
+      const part = codigo("src/app/invierte/partimos/page.tsx");
+      const marcas = ['data-inv2="estado"', 'id="iv2-t"', "{P.linea}", 'data-inv2="perfil"', "<VerOrden ", "{orden.copiaEnviadaAt ?", 'data-inv2="lo-que-sigue"', 'data-inv2="por-que"'];
+      const pos = marcas.map((m) => part.indexOf(m));
+      if (pos.some((x) => x < 0) || pos.some((x, i) => i > 0 && x <= pos[i - 1])) F("13 · Partimos no tiene las piezas de la lámina en su orden (chip, título, línea, perfil, ver la orden, copia, lo que sigue, por qué)");
+      if (/target="_blank"|URL_VER_ORDEN/.test(part)) F("13 · «Ver mi orden» sigue siendo un enlace a otra pestaña");
+      if (!/partesDeTexto\(orden\.texto\)/.test(part) || /ordenVigente|plantillaVigente/.test(part)) F("13 · la ventana no muestra el texto GUARDADO en la orden");
+      const P = FLUJO_COPY.partimos;
+      const esperado: [string, string][] = [
+        [P.estado, "Orden firmada"], [P.linea, "Ahora cuéntanos qué buscas, para mostrarte las mejores opciones."], [P.perfil, "Hacer mi perfil de inversión"], [P.verOrden, "Ver mi orden firmada"],
+        [P.copiaPendiente, "Todavía no pudimos mandarte la copia por correo; tu orden ya está guardada."], [P.loQueSigue, "Lo que sigue"],
+        [P.pasos.map((x) => `${x.titulo}|${x.texto}`).join("/"), "Cuéntanos qué buscas|Tu perfil de inversión, en dos minutos./Ve tus opciones y compáralas|Los deptos que convienen y te alcanzan, lado a lado./Elige con cuáles sigues y visítalos|Tú eliges el horario. Franco te acompaña en cada visita./Te acompañamos hasta la escritura|La oferta, la promesa y el crédito."],
+        [P.porQueTitulo, "Por qué te vamos a mostrar más opciones"], [P.porQueTexto, "Franco no trabaja un solo depto: busca que hagas una buena inversión. Con tu perfil te mostramos otras que convienen y te alcanzan, para que compares."],
+        [FLUJO_COPY.firma.cajaFuerte + " " + FLUJO_COPY.firma.cajaResto, "Firmar no te obliga a comprar ni tiene costo. Solo pagas si compras un depto que te presentó Franco."],
+      ];
+      for (const [v, e] of esperado) if (v !== e) F(`13 · el texto no es el de la lámina: «${v}»`);
+
+      // «Ver mi orden»: un botón secundario que abre la ventana; al abrirla se anota la vista.
+      const ver = codigo("src/components/invierte-v2/VerOrden.tsx");
+      if (!/<button type="button" className="iv2-secundario" onClick=\{abrir\}/.test(ver) || !/\{abierta && \(\s*<VentanaDocumento/.test(ver)) F("13 · «Ver mi orden» no es un botón que abre la ventana");
+      if (!/fetch\(URL_VER_ORDEN, \{ method: "POST"/.test(ver) || !/descargar=\{\{ href: URL_DESCARGAR_ORDEN \}\}/.test(ver)) F("13 · la ventana no anota la vista o no descarga el PDF");
+      const ruta = codigo("src/app/api/invierte-v2/orden/route.ts");
+      if (!/urlFirmadaPdf\(admin, orden, new URL\(request\.url\)\.searchParams\.get\("descargar"\) === "1"\)/.test(ruta)) F("13 · «Descargar PDF» no pide el PDF como descarga");
+      if (!/export async function POST\(request: Request\) \{\s*const user = await personaConSesion\(\);\s*if \(!user\) return NO_EXISTE\(\);[\s\S]{0,160}if \(!orden\) return NO_EXISTE\(\);\s*await anotarVista\(/.test(ruta)) F("13 · la vista de la ventana no pide sesión y orden, o no se anota");
+      if (!/createSignedUrl\(o\.pdfPath, 60, \{ download: descargar \?/.test(codigo("src/lib/invierte-v2/servidor.ts"))) F("13 · la URL firmada no distingue ver de descargar");
+
+      // La ventana, dibujada: el texto que le pasan (el guardado, aunque difiera de la plantilla), el chip, quién y cuándo, ✕ y PDF.
+      const guardado = textoPlano(ordenVigente({ nombre: "Camila Rojas", rut: "16.482.317-5", depto: "Ñuñoa · 2D2B · 58 m²" })).replace("Doce meses desde la firma.", "TEXTO GUARDADO DISTINTO.");
+      const t = partesDeTexto(guardado);
+      if (t.titulo !== "Orden de visita y acompañamiento" || t.parrafos.filter((x) => x.n).length !== 6 || t.parrafos[0].n !== null || !/Ley 19\.799/.test(t.parrafos[t.parrafos.length - 1].texto)) F("13 · el texto guardado no se parte en título, encabezado, seis cláusulas y pie");
+      const html = renderToStaticMarkup(createElement(VentanaDocumento, { nombre: "orden", estado: "Orden firmada", titulo: FLUJO_COPY.documento.tituloOrden, meta: createElement("span", null, "Firmada el 18 de noviembre de 2026, 08:04"), descargar: { href: "/x.pdf" }, alCerrar: () => undefined },
+        createElement(TextoDocumento, t)));
+      if (!html.includes("TEXTO GUARDADO DISTINTO.") || !html.includes("<b>2. Comisión en deptos usados.</b>") || !html.includes("✓ Orden firmada") || !html.includes('aria-label="Cerrar"') || !html.includes(">Descargar PDF</a>") || !html.includes("18 de noviembre de 2026, 08:04") || !html.includes('role="dialog"')) F("13 · la ventana no dibuja el chip, quién y cuándo, el texto guardado, ✕ o «Descargar PDF»");
+      if (fechaFirmaLarga("2026-11-18T11:04:00.000Z") !== "18 de noviembre de 2026, 08:04") F(`13 · la fecha de la ventana no es la de Chile: «${fechaFirmaLarga("2026-11-18T11:04:00.000Z")}»`);
+
+      // La disposición: chip azul claro, tarjeta con borde, tarjeta con fondo, hoja desde abajo en el celular y ventana en el PC.
+      const css = leer("src/components/invierte-v2/invierte-v2.css");
+      if (!/\[data-theme="light"\] \.iv2-estado \{ background: #E4ECF7; color: #1E3F6B; \}/.test(css)) F("13 · el chip «Orden firmada» no es azul claro");
+      if (!/\.iv2-tarjeta \{ border: 1px solid/.test(css) || !/\[data-theme="light"\] \.iv2-porque \{ background: #EEF2F8; \}/.test(css)) F("13 · «Lo que sigue» no es tarjeta o «Por qué…» no tiene fondo");
+      if (!/\.iv2-partimos \.iv2-partimos-der \{ grid-column: 2;/.test(css)) F("13 · en el PC las tarjetas no van a la derecha");
+      if (!/\.iv2-doc \{[^}]*border-radius: 22px 22px 0 0;/.test(css) || !/@media \(min-width: 768px\) \{\s*\.iv2-doc \{ width: 720px;/.test(css)) F("13 · la ventana no es hoja desde abajo en el celular y ventana centrada en el PC");
+      // La firma: el chip del veredicto junto al depto, solo en el PC.
+      if (!/<LineaDeptoFlujo depto=\{depto\} conChip="solo-pc" \/>/.test(codigo("src/components/invierte-v2/FirmaForm.tsx")) || !/\.iv2-chip-pc \{ display: none; \}/.test(css) || !/\.iv2-con-pc \.iv2-chip-pc \{ display: inline-flex; \}/.test(css)) F("13 · la firma del PC no lleva el chip del veredicto junto al depto");
     }
 
     // ── 10 · EL LENGUAJE frente a la persona ──
