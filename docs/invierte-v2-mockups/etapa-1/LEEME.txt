@@ -1,5 +1,5 @@
 Invierte con Franco, comprador. Mockups de la etapa 1 (hasta la firma)
-Cuarta entrega, 18-nov-2026: Partimos rehecho, ventana de Ver mi orden, recuadro de la firma mas corto.
+Quinta entrega, 18-nov-2026: indicador de pasos en contacto y firma, la orden se ve como documento con su registro de firma, y las preguntas frecuentes se abren en ventana.
 
 Son las laminas del canvas de diseno. Cada archivo es HTML con estilos en linea: el contenido de la pantalla esta dentro de la etiqueta x-dc.
 
@@ -11,6 +11,7 @@ Celular (390 px)
 1.1-entrada-boton.html     El boton en la tarjeta del mapa
 1.2-contacto.html          Hoja sobre el mapa
 2.1-firma.html             Pagina de la firma
+2.1-preguntas-frecuentes.html  Hoja con las preguntas, se abre desde la firma (en PC: la misma ventana centrada de Ver mi orden)
 2.2-partimos.html          Pagina tras firmar
 2.2-ver-mi-orden.html      Hoja con la orden firmada, se abre desde Partimos
 
