@@ -143,8 +143,10 @@ export async function POST(request: Request) {
       contexto: contextoDeRequest(request),
       origen: "analizar-este",
     });
-    espejoAE = ae?.espejo ?? null;
-    if (ae) waitUntil(ae.envio);
+    if (ae) {
+      espejoAE = ae.espejo;
+      waitUntil(ae.envio);
+    }
     // La red: la ficha se chequea de nuevo ANTES de cualquier cobro (publicacion.ts). La misma lectura trae el año.
     let lecturaAnio: LecturaAnio = { leida: false, anio: null };
     let plausibleFallo: Response | null = null;
@@ -262,7 +264,7 @@ export async function POST(request: Request) {
             if (error || !data) throw new Error(`insert: ${error?.message ?? "sin fila"}`);
             const id = data.id as string;
             delInforme = { veredicto: readVeredicto(result) ?? null, score: result.score ?? null };
-            waitUntil(capturarAnalisisCreado({ userId: user.id, analysisId: id, modalidad: "ltr", via: desde, precioNegociado, cobro: mode }));
+            waitUntil(capturarAnalisisCreado({ userId: user.id, analysisId: id, modalidad: "ltr", via: desde, cobro: mode, precioNegociado }));
             if (mode === MODO_INVIERTE) waitUntil(capturarServidor({ event: EVENTO_DETALLE_ABIERTO, distinctId: user.id, correo: user.email ?? null, properties: { analysis_id: id, aviso_id: aviso.avisoId } }).catch(() => false));
             // EL PREMIO DEL REFERIDO (05-nov-2026): el primer análisis del invitado le da uno a quien invitó.
             waitUntil(referidoTrasAnalisis(user.id));

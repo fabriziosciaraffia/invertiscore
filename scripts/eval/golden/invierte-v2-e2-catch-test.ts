@@ -168,7 +168,7 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (!/const gratisInvierte = desdeExplorar \? await verGratisInvierte\(admin, user, b\.avisoId\) : false;/.test(ruta)) F("6 · los detalles gratis no se deciden en la ruta del mapa");
       if (!/if \(gratisInvierte\) return \{ ok: true, mode: MODO_INVIERTE, devolucion: \{ tipo: "nada" \} \};\s*const c = await ensureCreditCharged/.test(ruta)) F("6 · quien firmó gasta un crédito al ver los detalles");
       if (!/const ae = gratisInvierte \? null : await emitirEventoMeta\(/.test(ruta)) F("6 · los detalles del flujo mandan un evento a Meta");
-      if (!/if \(mode === MODO_INVIERTE\) waitUntil\(capturarServidor\(\{ event: EVENTO_DETALLE_ABIERTO/.test(ruta) || !/cobro: mode \}\)\)/.test(ruta)) F("6 · los detalles abiertos no quedan medidos por persona (evento inv2_ y el cobro en analisis_creado)");
+      if (!/if \(mode === MODO_INVIERTE\) waitUntil\(capturarServidor\(\{ event: EVENTO_DETALLE_ABIERTO/.test(ruta) || !/via: desde, cobro: mode, precioNegociado \}\)\)/.test(ruta)) F("6 · los detalles abiertos no quedan medidos por persona (evento inv2_ y el cobro en analisis_creado)");
       if (!codigo("src/lib/invierte-v2/detalles.ts").includes('"inv2_detalle_abierto"')) F("6 · el evento no lleva el prefijo inv2_");
       if (!/\.or\("charge_mode\.is\.null,charge_mode\.neq\.invierte"\)/.test(codigo("src/app/admin/operacion/page.tsx")) || !/\.eq\("charge_mode", "invierte"\)/.test(codigo("src/app/admin/operacion/page.tsx"))) F("6 · el panel de operación cuenta los detalles como Pro o no los muestra aparte");
       const embudo = codigo("src/lib/admin-funnel-data.ts");

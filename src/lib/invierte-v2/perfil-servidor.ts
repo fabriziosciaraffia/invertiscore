@@ -67,7 +67,7 @@ interface DeptoBase { avisoId: string; comuna: string; precioUF: number | null }
 async function deptoEntrada(admin: SupabaseClient, avisoId: string | null): Promise<DeptoBase | null> {
   if (!avisoId) return null;
   const [{ data: sp }, { data: ae }] = await Promise.all([
-    admin.from("scraped_properties").select("id, comuna").eq("id", avisoId).maybeSingle(),
+    admin.from("scraped_properties").select("id, comuna").eq("id", avisoId).order("id").limit(1).maybeSingle(),
     admin.from("avisos_evaluados").select("precio_uf").eq("aviso_id", avisoId).maybeSingle(),
   ]);
   return sp ? { avisoId, comuna: sp.comuna as string, precioUF: ae?.precio_uf == null ? null : Number(ae.precio_uf) } : null;
@@ -148,7 +148,7 @@ async function candidatos(admin: SupabaseClient, comunas: string[], ufMax: numbe
 /** El depto de entrada con los mismos campos (aunque no dé Comprar o no le alcance). */
 async function filaEntrada(admin: SupabaseClient, avisoId: string): Promise<{ fila: FilaCandidato; veredicto: string | null } | null> {
   const [{ data: sp }, { data: ae }] = await Promise.all([
-    admin.from("scraped_properties").select("id, comuna, lat, lng, superficie_m2, dormitorios, banos, condicion").eq("id", avisoId).maybeSingle(),
+    admin.from("scraped_properties").select("id, comuna, lat, lng, superficie_m2, dormitorios, banos, condicion").eq("id", avisoId).order("id").limit(1).maybeSingle(),
     admin.from("avisos_evaluados").select("precio_uf, arriendo, venta, score_20, flujo_20, veredicto_20").eq("aviso_id", avisoId).maybeSingle(),
   ]);
   if (!sp || !ae?.precio_uf) return null;
