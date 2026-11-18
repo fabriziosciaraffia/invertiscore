@@ -280,6 +280,9 @@
 .iv2-tabla-sub { display: block; font-size: 11px; font-weight: 500; color: var(--franco-text-secondary); }
 .iv2-tabla td.iv2-mejor { color: #8DB0E3; font-weight: 700; }
 [data-theme="light"] .iv2-tabla td.iv2-mejor { color: #2B558F; }
+/* «Pones $Y» en rojo: un monto negativo (regla del rojo, 18-nov-2026), también en la celda que es la mejor de la fila. */
+.iv2-pones { color: var(--signal-red, #C8323C); }
+.iv2-nowrap { white-space: nowrap; }
 .iv2-tabla-movil .iv2-tabla td, .iv2-tabla-movil .iv2-tabla thead th:not(:first-child) { min-width: 104px; }
 .iv2-nota-tabla { margin-top: 10px; font-size: 12px; }
 

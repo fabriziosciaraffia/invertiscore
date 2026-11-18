@@ -7,7 +7,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { hastaCuanto, creditoPorRenta, validarPerfil, comunasPrecargadas, piePrecargado, lineaTope, REGLA_TOPE, PERFIL_COPY } from "../../../src/lib/invierte-v2/perfil";
 import {
-  elegirOpciones, etiquetar, casoDe, porQueNoAlcanza, vsParecidos, textoMetro, textoPones, lecturaDeFranco, MAX_ACTIVOS, MAX_OPCIONES, MIN_PARECIDOS,
+  elegirOpciones, etiquetar, casoDe, porQueNoAlcanza, vsParecidos, textoMetro, textoAlMes, textoEtiqueta, estaCerca, UMBRAL_CERCA_PCT, lecturaDeFranco, MAX_ACTIVOS, MAX_OPCIONES, MIN_PARECIDOS,
   RESULTADO_COPY, fmtUF, type OpcionDepto,
 } from "../../../src/lib/invierte-v2/opciones";
 import { destinoInvierte, URL_BASE, URL_OPCIONES, URL_PARTIMOS } from "../../../src/lib/invierte-v2/destino";
@@ -121,8 +121,21 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       // Textos de la tabla.
       if (MIN_PARECIDOS !== 30 || vsParecidos(3000, 50, { precioM2UF: 70, n: 29 }) !== null || vsParecidos(3000, 50, { precioM2UF: 75, n: 40 }) !== -20) F("3 · precio contra parecidos se muestra con menos de 30 parecidos (o mal calculado)");
       if (textoMetro({ estacion: "Ñuñoa", metros: 437 }) !== "Estación Ñuñoa, a 450 m aprox." || /min/.test(textoMetro({ estacion: "X", metros: 1200 }))) F("3 · el metro no es «Estación X, a N m aprox.» (o inventa minutos)");
-      if (textoPones({ flujoCLP: -62000 }) !== "$62.000" || !/^\$0 · te sobran \$72\.058$/.test(textoPones({ flujoCLP: 72058 }))) F("3 · «Pones al mes» no dice lo que pone o lo que sobra");
-      if (RESULTADO_COPY.filas.pones !== "Pones al mes (con pie 20 %)" || RESULTADO_COPY.filas.metro !== "Metro" || /según tu pie/i.test(RESULTADO_COPY.notaTablaPie + RESULTADO_COPY.notaTabla)) F("3 · la tabla no dice «con pie 20 %», la fila no se llama Metro, o la nota dice «según tu pie»");
+      // ⚠ ACTA (18-nov-2026, decisión de Fabrizio) · la fila se llama «Al mes (con pie 20 %)»: «Te sobran $X» o «Pones $Y» en
+      // rojo (monto negativo), en la tabla y en la base; la etiqueta del mejor flujo dice «más te deja» si deja plata.
+      const sobra = textoAlMes({ flujoCLP: 72058 }), pone = textoAlMes({ flujoCLP: -62000 });
+      if (sobra.t !== "Te sobran $72.058" || sobra.pones || pone.t !== "Pones $62.000" || !pone.pones) F("3 · «Al mes» no dice «Te sobran $X» / «Pones $Y» (en rojo)");
+      if (textoEtiqueta("menos_al_mes", { flujoCLP: 72058 }) !== "El que más te deja al mes" || textoEtiqueta("menos_al_mes", { flujoCLP: -62000 }) !== "El que menos te pide al mes" || textoEtiqueta("mejor_precio", { flujoCLP: 72058 }) !== "Mejor precio frente a sus parecidos") F("3 · la etiqueta del mejor flujo no cambia según deje plata o no");
+      const res = codigo("src/components/invierte-v2/ResultadoOpciones.tsx");
+      if (!/const m = textoAlMes\(o\); return \{ t: m\.pones \? <span className="iv2-pones"/.test(res) || !/textoEtiqueta\(p\.etiquetas\[o\.avisoId\]/.test(res) || /ETIQUETAS\[/.test(res)) F("3 · la tabla o la lista no usan «Al mes» en rojo o la etiqueta según el flujo");
+      if (!/\.iv2-pones \{ color: var\(--signal-red/.test(leer("src/components/invierte-v2/invierte-v2.css"))) F("3 · «Pones» no va en rojo");
+      const base = codigo("src/app/invierte/base/page.tsx");
+      if (!/const alMes = textoAlMes\(\{ flujoCLP: d\.flujoCLP \?\? null \}\);/.test(base) || !/\{RESULTADO_COPY\.filas\.pones\}: <span className=\{alMes\.pones \? "iv2-nowrap iv2-pones" : "iv2-nowrap"\}>\{alMes\.t\}/.test(base)) F("3 · la base no dice «Al mes» de cada depto");
+      // «Estás cerca» solo si lo que falta es poco (el más barato, a lo más un 10 % sobre lo que puede comprar), igual con pie y renta.
+      if (UMBRAL_CERCA_PCT !== 10 || !estaCerca(1000, 1100) || estaCerca(1000, 1101) || estaCerca(1000, null) || estaCerca(0, 900)) F("3 · el umbral de «Estás cerca» no es el 10 %");
+      if (RESULTADO_COPY.caso2.tituloCredito(false) !== "Hoy tu renta limita el crédito" || RESULTADO_COPY.caso2.tituloCredito(true) !== "Estás cerca: tu renta limita el crédito" || RESULTADO_COPY.caso2.tituloPie("97", false) !== "Hoy te faltan UF 97 de pie" || RESULTADO_COPY.caso2.tituloPie("97", true) !== "Estás cerca: te faltan UF 97 de pie") F("3 · los títulos del caso 2 no son «Hoy…» / «Estás cerca: …»");
+      if (!/const cerca = estaCerca\(p\.tope\.topeUF, z\);/.test(res) || !/R\.caso2\.tituloCredito\(cerca\)/.test(res) || !/R\.caso2\.tituloPie\(fmtUF\(pq\?\.faltaPieUF \?\? 0\), cerca\)/.test(res)) F("3 · el caso 2 no decide «Estás cerca» con el umbral");
+      if (RESULTADO_COPY.filas.pones !== "Al mes (con pie 20 %)" || RESULTADO_COPY.filas.metro !== "Metro" || /según tu pie/i.test(RESULTADO_COPY.notaTablaPie + RESULTADO_COPY.notaTabla)) F("3 · la tabla no dice «con pie 20 %», la fila no se llama Metro, o la nota dice «según tu pie»");
       if (RESULTADO_COPY.compararAvisoPc(MAX_OPCIONES) !== "" || !/Desliza la tabla/.test(RESULTADO_COPY.compararAvisoPc(7))) F("3 · con más de cinco deptos el PC no dice que la tabla se desliza");
       // Abrir los detalles tarda ≈ 10 s: una capa dice que está cargando, en el resultado y en la base.
       if (!/\{abriendo && <CargandoDetalles \/>\}/.test(codigo("src/components/invierte-v2/ResultadoOpciones.tsx")) || !/\{estado === "abriendo" && <CargandoDetalles \/>\}/.test(codigo("src/components/invierte-v2/BotonDetalles.tsx"))) F("3 · abrir los detalles no muestra que está cargando");
@@ -131,6 +144,9 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (!lec.destacado || !/^el de Ñuñoa de 60 m² es el que mejor calza$/.test(lec.destacado) && !/^el de Ñuñoa/.test(lec.destacado) || !/^Buscas arriendo mes a mes y te preocupa poner plata cada mes\. Con eso,$/.test(lec.intro)) F(`3 · la lectura no parte por lo que respondió (${JSON.stringify(lec)})`);
       const lecSinA = lecturaDeFranco(ops, "arriendo", ["poner_plata"], { E: "el_que_elegiste", B: "menos_al_mes" });
       if (!/^el de Ñuñoa/.test(lecSinA.destacado ?? "") || !/menos te pide al mes/.test(lecSinA.resto)) F("3 · la lectura no sigue a la etiqueta «menos al mes»");
+      const conSobra = ops.map((o) => (o.avisoId === "B" ? { ...o, flujoCLP: 40000 } : o));
+      const lecSobra = lecturaDeFranco(conSobra, "arriendo", ["poner_plata"], { E: "el_que_elegiste", B: "menos_al_mes" });
+      if (!/más te deja al mes/.test(lecSobra.resto) || /menos te pide/.test(lecSobra.resto)) F("3 · la lectura dice «menos te pide» de uno que deja plata");
       if (/[ÁÉÍÓÚA-Z]/.test((lec.destacado ?? "").charAt(0))) F("3 · la lectura arranca con mayúscula después de «Con eso,»");
       const sinIA = codigo("src/lib/invierte-v2/opciones.ts") + codigo("src/components/invierte-v2/ResultadoOpciones.tsx");
       if (/anthropic|claude|messages\.create/i.test(sinIA)) F("3 · la lectura de Franco usa IA");

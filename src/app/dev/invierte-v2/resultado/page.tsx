@@ -1,5 +1,5 @@
 // /dev/invierte-v2/resultado (18-nov-2026): el resultado y la elección con datos de muestra, para medir la tabla del PC con el
-// máximo de columnas (el de entrada + 6 activos = 7) y nombres y montos largos, sin cuentas ni escrituras. ?n=5|6|7 columnas.
+// máximo de columnas (el de entrada + 6 activos = 7) y nombres y montos largos, sin cuentas ni escrituras. ?n=5|6|7 columnas; ?caso=2&z=UF el caso 2 con el más barato en z.
 // Gate en el servidor: dev y previews de Vercel sí; producción, 404.
 import { notFound } from "next/navigation";
 import { MarcoInvierte } from "@/components/invierte-v2/MarcoInvierte";
@@ -24,16 +24,16 @@ const MUESTRA: OpcionDepto[] = [
 ];
 const ETIQUETAS: Record<string, Etiqueta> = { e: "el_que_elegiste", a: "menos_al_mes", b: "mejor_puntaje", c: "pie_mas_bajo", d: "mejor_precio" };
 
-export default function ResultadoDemo({ searchParams }: { searchParams: { n?: string } }) {
+export default function ResultadoDemo({ searchParams }: { searchParams: { n?: string; caso?: string; z?: string } }) {
   if (process.env.NODE_ENV === "production" && process.env.VERCEL_ENV !== "preview") notFound();
   const n = Math.min(7, Math.max(2, Number(searchParams.n) || 7));
   const opciones = MUESTRA.slice(0, n);
   return (
     <MarcoInvierte volver={null} pantalla="opciones" layout="contenido" cabecera={RESULTADO_COPY.rotulo} pc={{ sesionEmail: "muestra@ejemplo.cl" }}>
       <ResultadoOpciones
-        caso="alcanza" opciones={opciones} etiquetas={ETIQUETAS} elegidos={opciones.filter((o) => o.avisoId !== "e").map((o) => o.avisoId).slice(0, 6)}
+        caso={searchParams.caso === "2" ? "caso2" : "alcanza"} opciones={searchParams.caso === "2" ? [{ ...opciones[0], alcanza: false }] : opciones} etiquetas={ETIQUETAS} elegidos={opciones.filter((o) => o.avisoId !== "e").map((o) => o.avisoId).slice(0, 6)}
         tope={{ topeUF: 3500, fuente: "renta", limita: "pie", creditoUF: 2900, porPieUF: 3500, menosPreciso: false }}
-        pieUF={700} masBaratoUF={null} objetivo="arriendo" preocupaciones={["poner_plata"]} comunas={["Pedro Aguirre Cerda", "Estación Central"]}
+        pieUF={700} masBaratoUF={searchParams.z ? Number(searchParams.z) : null} objetivo="arriendo" preocupaciones={["poner_plata"]} comunas={["Pedro Aguirre Cerda", "Estación Central"]}
       />
     </MarcoInvierte>
   );

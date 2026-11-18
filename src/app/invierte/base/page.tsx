@@ -4,7 +4,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { ChipVeredicto } from "@/components/analysis/shared/ChipVeredicto";
 import type { Veredicto } from "@/lib/types";
 import { URL_INVIERTE } from "@/lib/invierte-v2/destino";
-import { fmtUF } from "@/lib/invierte-v2/opciones";
+import { RESULTADO_COPY, fmtUF, textoAlMes } from "@/lib/invierte-v2/opciones";
 import { primerNombre } from "@/lib/invierte-v2/flujo";
 import { ultimaOrdenDe } from "@/lib/invierte-v2/servidor";
 import { METADATA_FLUJO, sesionYAcceso } from "@/lib/invierte-v2/paginas";
@@ -17,7 +17,7 @@ import { BotonDetalles } from "@/components/invierte-v2/BotonDetalles";
 export const dynamic = "force-dynamic";
 export const metadata = METADATA_FLUJO;
 
-interface DatosDepto { precioUF?: number; veredicto?: string | null; score?: number | null; comuna?: string; m2?: number | null }
+interface DatosDepto { precioUF?: number; veredicto?: string | null; score?: number | null; comuna?: string; m2?: number | null; flujoCLP?: number | null }
 
 export default async function BasePage() {
   const { user, acceso } = await sesionYAcceso();
@@ -41,11 +41,13 @@ export default async function BasePage() {
         <ul className="iv2-mini-lista">
           {(data ?? []).map((f) => {
             const d = (f.datos ?? {}) as DatosDepto;
+            const alMes = textoAlMes({ flujoCLP: d.flujoCLP ?? null });
             return (
               <li key={f.aviso_id as string}>
                 <div>
                   <p className="iv2-paso-t">{[d.comuna, d.m2 ? `${Math.round(d.m2)} m²` : null].filter(Boolean).join(" · ")}</p>
                   <p className="iv2-paso-s">{d.precioUF ? `UF ${fmtUF(d.precioUF)}` : ""}{f.alcanza ? "" : " · fuera de tu alcance hoy"}</p>
+                  {d.flujoCLP != null && <p className="iv2-paso-s" data-inv2="base-al-mes">{RESULTADO_COPY.filas.pones}: <span className={alMes.pones ? "iv2-nowrap iv2-pones" : "iv2-nowrap"}>{alMes.t}</span></p>}
                   <span className="iv2-estado-ciruela">Te toca a ti</span>
                 </div>
                 <div className="iv2-mini-der">

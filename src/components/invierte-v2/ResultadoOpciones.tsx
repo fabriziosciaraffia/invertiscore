@@ -17,8 +17,8 @@ import { CargandoDetalles } from "./CargandoDetalles";
 import type { Veredicto } from "@/lib/types";
 import { lineaTope, type Objetivo, type Preocupacion, type Tope } from "@/lib/invierte-v2/perfil";
 import {
-  ETIQUETAS, MAX_ACTIVOS, RESULTADO_COPY as R, comunasEnFrase, fmtCLP, fmtUF, lecturaDeFranco, pieDe, porQueNoAlcanza,
-  textoMetro, textoPones, textoVsParecidos, type Caso, type Etiqueta, type OpcionDepto,
+  MAX_ACTIVOS, RESULTADO_COPY as R, comunasEnFrase, estaCerca, fmtCLP, fmtUF, lecturaDeFranco, pieDe, porQueNoAlcanza,
+  textoAlMes, textoEtiqueta, textoMetro, textoVsParecidos, type Caso, type Etiqueta, type OpcionDepto,
 } from "@/lib/invierte-v2/opciones";
 
 export const URL_BASE = "/invierte/base";
@@ -107,7 +107,8 @@ export function ResultadoOpciones(p: PropsResultado) {
     const z = p.masBaratoUF;
     const pq = z ? porQueNoAlcanza(z, tope, p.pieUF) : null;
     const pesaPie = pq?.motivo === "pie" || (pq?.motivo === "pie_y_credito" && tope.limita === "pie");
-    const titulo = pq && !pesaPie ? R.caso2.tituloCredito : R.caso2.tituloPie(fmtUF(pq?.faltaPieUF ?? 0));
+    const cerca = estaCerca(p.tope.topeUF, z);
+    const titulo = pq && !pesaPie ? R.caso2.tituloCredito(cerca) : R.caso2.tituloPie(fmtUF(pq?.faltaPieUF ?? 0), cerca);
     const cuerpo = pq && !pesaPie && pq.creditoUF != null
       ? R.caso2.cuerpoCredito(fmtUF(pq.creditoUF), fmtUF(p.tope.topeUF), z ? fmtUF(z) : "—")
       : R.caso2.cuerpoPie(fmtUF(p.pieUF ?? 0), fmtUF(p.tope.topeUF), z ? fmtUF(z) : "—");
@@ -193,7 +194,7 @@ export function ResultadoOpciones(p: PropsResultado) {
     { clave: "precio", rotulo: R.filas.precio, celda: (o) => ({ t: `UF ${fmtUF(o.precioUF)}`, c: cls(o.precioUF, mejorPrecio) }) },
     { clave: "pie", rotulo: R.filas.pie, celda: (o) => ({ t: `UF ${fmtUF(pieDe(o.precioUF))}` }) },
     { clave: "alcanza", rotulo: R.filas.alcanza, celda: (o) => ({ t: o.alcanza ? R.si : R.no }) },
-    { clave: "pones", rotulo: R.filas.pones, importa: porPlata, celda: (o) => ({ t: textoPones(o), c: cls(o.flujoCLP, mejorPones) }) },
+    { clave: "pones", rotulo: R.filas.pones, importa: porPlata, celda: (o) => { const m = textoAlMes(o); return { t: m.pones ? <span className="iv2-pones" data-inv2="pones">{m.t}</span> : m.t, c: cls(o.flujoCLP, mejorPones) }; } },
     { clave: "arriendo", rotulo: R.filas.arriendo, celda: (o) => ({ t: o.arriendoCLP ? fmtCLP(o.arriendoCLP) : "—", c: cls(o.arriendoCLP, mejorArriendo) }) },
     { clave: "parecidos", rotulo: R.filas.parecidos, importa: p.objetivo === "plusvalia", celda: (o) => ({ t: textoVsParecidos(o.vsParecidosPct), c: cls(o.vsParecidosPct, mejorPar) }) },
     { clave: "metro", rotulo: R.filas.metro, celda: (o) => ({ t: textoMetro(o.metro), c: cls(o.metro?.metros ?? null, mejorMetro) }) },
@@ -271,7 +272,7 @@ export function ResultadoOpciones(p: PropsResultado) {
                     <span className="iv2-opcion-cuerpo">
                       <span className="iv2-opcion-fila"><span className="iv2-opcion-t">{nombreDepto(o)}</span><Chip o={o} /></span>
                       <span className="iv2-linea-chica">UF {fmtUF(o.precioUF)}</span>
-                      <span className="iv2-opcion-et" data-inv2="etiqueta">{o.alcanza ? ETIQUETAS[p.etiquetas[o.avisoId] ?? "tambien_conviene"] : "Fuera de tu alcance hoy"}</span>
+                      <span className="iv2-opcion-et" data-inv2="etiqueta">{o.alcanza ? textoEtiqueta(p.etiquetas[o.avisoId] ?? "tambien_conviene", o) : "Fuera de tu alcance hoy"}</span>
                     </span>
                   </label>
                   <button type="button" className="iv2-enlace-azul iv2-opcion-ver" onClick={() => verDetalles(o)} disabled={!!abriendo} data-inv2="ver-detalles">{abriendo === o.avisoId ? "Abriendo…" : R.verDetalles}</button>

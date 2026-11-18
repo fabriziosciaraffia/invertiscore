@@ -3,7 +3,7 @@
 // y el tier. Todo por reglas, sin texto generado por IA:
 //   · elegirOpciones: el depto con que entró, primero, más otros que convienen y le alcanzan en sus comunas, ordenados según
 //     lo que busca. Como mucho MAX_OPCIONES en la pantalla.
-//   · etiquetar: por qué está cada uno («El que elegiste», «El que menos te pide al mes», «Mejor precio frente a sus
+//   · etiquetar: por qué está cada uno («El que elegiste», «El que más te deja al mes» o «El que menos te pide al mes», «Mejor precio frente a sus
 //     parecidos», «El pie más bajo»).
 //   · lecturaDeFranco: las frases de «La lectura de Franco», a partir de lo que respondió en el perfil.
 //   · resultado: el suyo le alcanza / el suyo no pero otros sí (caso 1) / no le alcanza ninguno (caso 2), con el porqué
@@ -50,10 +50,19 @@ export const ETIQUETAS: Record<Etiqueta, string> = {
 
 /** Lo que pone al mes (positivo) o 0 si el arriendo cubre todo. */
 export const ponesAlMes = (o: Pick<OpcionDepto, "flujoCLP">): number | null => (o.flujoCLP == null ? null : Math.max(0, -o.flujoCLP));
-/** La celda de «Pones al mes»: lo que pone, o «$0 · te sobran $X» cuando el arriendo cubre todo (la fila no queda en $0 para todos). */
-export function textoPones(o: Pick<OpcionDepto, "flujoCLP">): string {
-  if (o.flujoCLP == null) return "—";
-  return o.flujoCLP < 0 ? fmtCLP(-o.flujoCLP) : `$0 · te sobran ${fmtCLP(o.flujoCLP)}`;
+/** ¿El depto deja plata cada mes, pagado todo? (el 89 % de los usados que convienen, medido el 18-nov-2026). */
+export const dejaPlata = (o: Pick<OpcionDepto, "flujoCLP">) => o.flujoCLP != null && o.flujoCLP > 0;
+/** La celda de «Al mes (con pie 20 %)» (decisión de Fabrizio, 18-nov-2026): «Te sobran $X» o «Pones $Y». `pones` = va en
+ *  rojo (monto negativo). */
+export function textoAlMes(o: Pick<OpcionDepto, "flujoCLP">): { t: string; pones: boolean } {
+  if (o.flujoCLP == null) return { t: "—", pones: false };
+  return dejaPlata(o) ? { t: `Te sobran ${fmtCLP(o.flujoCLP)}`, pones: false } : { t: `Pones ${fmtCLP(-o.flujoCLP)}`, pones: o.flujoCLP < 0 };
+}
+export const ETIQUETA_MAS_DEJA = "El que más te deja al mes";
+/** El texto de una etiqueta: la del mejor flujo dice «El que más te deja al mes» si deja plata y «El que menos te pide al mes»
+ *  si no (decisión de Fabrizio, 18-nov-2026). */
+export function textoEtiqueta(et: Etiqueta, o: Pick<OpcionDepto, "flujoCLP">): string {
+  return et === "menos_al_mes" && dejaPlata(o) ? ETIQUETA_MAS_DEJA : ETIQUETAS[et];
 }
 export const pieDe = (precioUF: number) => Math.round(precioUF * REGLA_TOPE.piePct / 100);
 
@@ -140,7 +149,7 @@ export function lecturaDeFranco(opciones: readonly OpcionDepto[], objetivo: Obje
   const masCerca = [...vivas].filter((o) => o.metro).sort((a, b) => a.metro!.metros - b.metro!.metros)[0] ?? null;
   const calza = (porPlata ? menosMes : objetivo === "plusvalia" ? mejorPrecio : null) ?? mejorScore;
   const razones: string[] = [];
-  if (calza === menosMes) razones.push("el que menos te pide al mes");
+  if (calza === menosMes) razones.push(dejaPlata(calza) ? "el que más te deja al mes" : "el que menos te pide al mes");
   if (calza === mejorPrecio) razones.push("el mejor precio contra sus parecidos");
   if (calza === masCerca) razones.push("el más cerca del metro");
   if (!razones.length) razones.push("el de mejor puntaje");
@@ -178,6 +187,13 @@ export function porQueNoAlcanza(precioUF: number, t: Tope, pieUF: number | null)
   return { motivo: faltaPie ? "pie" : "credito", faltaPieUF: faltaPie, creditoUF: t.creditoUF };
 }
 
+/** «Estás cerca» solo cuando lo que falta es poco (propuesto el 18-nov-2026): el más barato que conviene cuesta como mucho un
+ *  10 % más de lo que puede comprar. Vale igual para la variante de pie y la de renta: las dos se dicen como «puedes comprar
+ *  hasta X; el más barato está en Z». */
+export const UMBRAL_CERCA_PCT = 10;
+export const estaCerca = (topeUF: number, masBaratoUF: number | null) =>
+  masBaratoUF != null && topeUF > 0 && masBaratoUF <= topeUF * (1 + UMBRAL_CERCA_PCT / 100);
+
 export function casoDe(opciones: readonly OpcionDepto[]): Caso {
   const entrada = opciones.find((o) => o.esEntrada);
   const otrosQueAlcanzan = opciones.filter((o) => !o.esEntrada && o.alcanza).length;
@@ -185,7 +201,7 @@ export function casoDe(opciones: readonly OpcionDepto[]): Caso {
   return otrosQueAlcanzan ? "caso1" : "caso2";
 }
 
-/** Los textos del resultado. La variante de RENTA está PROPUESTA (18-nov-2026) y espera el OK de Fabrizio; vive solo acá. */
+/** Los textos del resultado. La variante de RENTA la aprobó Fabrizio el 18-nov-2026, con «Hoy tu renta limita el crédito». */
 export const RESULTADO_COPY = {
   rotulo: "Tu resultado",
   alcanza: (comuna: string, n: number) => (n ? `El depto de ${comuna} te alcanza, y otros ${n} que convienen también.` : `El depto de ${comuna} te alcanza.`),
@@ -199,11 +215,11 @@ export const RESULTADO_COPY = {
   maximo: `Puedes seguir con hasta ${MAX_ACTIVOS} a la vez.`,
   lecturaRotulo: "La lectura de Franco",
   notaTabla: "En azul, la mejor de cada fila. Todas dan ✓ Comprar.",
-  notaTablaPie: "Pones al mes con pie 20 %, 30 años y la tasa del mes.",
+  notaTablaPie: "Al mes: con pie 20 %, 30 años y la tasa del mes.",
   compararAviso: (n: number) => (n > 3 ? "Se comparan tres a la vez. Desliza para ver el resto." : ""),
   /** En el PC caben cinco; con más (lo que ya eligió y salió del top), la tabla se desliza adentro y lo dice. */
   compararAvisoPc: (n: number) => (n > MAX_OPCIONES ? `Son ${n} deptos. Desliza la tabla para ver todos.` : ""),
-  filas: { veredicto: "Veredicto", precio: "Precio", pie: "Pie (20 %)", alcanza: "¿Te alcanza?", pones: "Pones al mes (con pie 20 %)", arriendo: "Arriendo estimado", parecidos: "Precio contra parecidos", metro: "Metro", sigo: "Sigo con este", detalle: "Detalles" },
+  filas: { veredicto: "Veredicto", precio: "Precio", pie: "Pie (20 %)", alcanza: "¿Te alcanza?", pones: "Al mes (con pie 20 %)", arriendo: "Arriendo estimado", parecidos: "Precio contra parecidos", metro: "Metro", sigo: "Sigo con este", detalle: "Detalles" },
   loQueMasImporta: "Lo que más te importa",
   si: "Sí",
   no: "No",
@@ -220,8 +236,8 @@ export const RESULTADO_COPY = {
     avisar: (comuna: string) => `Avísenme cuando me alcance el de ${comuna}`,
   },
   caso2: {
-    tituloPie: (y: string) => `Estás cerca: te faltan UF ${y} de pie`,
-    tituloCredito: "Estás cerca: tu renta limita el crédito",
+    tituloPie: (y: string, cerca: boolean) => (cerca ? `Estás cerca: te faltan UF ${y} de pie` : `Hoy te faltan UF ${y} de pie`),
+    tituloCredito: (cerca: boolean) => (cerca ? "Estás cerca: tu renta limita el crédito" : "Hoy tu renta limita el crédito"),
     cuerpoPie: (pie: string, x: string, z: string) => `Con tu pie de UF ${pie} puedes comprar hasta UF ${x}. El depto más barato que conviene hoy está en UF ${z}.`,
     cuerpoCredito: (credito: string, x: string, z: string) => `Con tu renta, el crédito llega hasta UF ${credito}, así que puedes comprar hasta UF ${x}. El depto más barato que conviene hoy está en UF ${z}.`,
     notaPieRentaOk: "Tu renta sí alcanza para el dividendo. Estimación con pie 20 %, 30 años y la tasa del mes. Sujeto a evaluación del banco.",
