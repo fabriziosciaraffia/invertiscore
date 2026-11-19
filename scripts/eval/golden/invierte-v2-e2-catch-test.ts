@@ -16,6 +16,7 @@ import { falso, USER } from "./invierte-v2-catch-test";
 import { chequearPorCarril, leidaFresca, RELECTURA_MS, TOPE_CARRIL_POR_HORA, type DepsCarril } from "../../../src/lib/invierte-v2/carril";
 import { detectarCambios, lineaCambio, textoVeredicto, asuntoCambios, parrafoDepto, UMBRAL_CORREO_PCT, UMBRAL_LINEA_PCT, type Vigente } from "../../../src/lib/invierte-v2/cambios";
 import { cuerpoDetalles } from "../../../src/lib/invierte-v2/detalles-cliente";
+import { etiquetaVeredicto } from "../../../src/lib/veredicto-etiqueta";
 
 const RAIZ = join(__dirname, "..", "..", "..");
 const leer = (p: string) => readFileSync(join(RAIZ, p), "utf8").replace(/\r\n/g, "\n");
@@ -285,6 +286,17 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (lineaCambio({ tipo: "despublicado", antes: {}, despues: {} }, "2026-11-20") !== "Dejó de estar publicado el 20 de noviembre" || lineaCambio({ tipo: "republicado", antes: {}, despues: {} }, "2026-11-20") !== "Volvió a publicarse el 20 de noviembre") F("8 · las líneas de publicación no son las aprobadas");
       if (lineaCambio({ tipo: "al_mes", antes: {}, despues: { flujoCLP: -20000 } }, "2026-11-20") !== "Con el precio nuevo, pones $20.000 al mes") F("8 · la línea de al mes no es la aprobada");
       if (/AJUSTA SUPUESTOS|BUSCAR OTRA/.test(textoVeredicto("COMPRAR", "AJUSTA SUPUESTOS") + textoVeredicto("AJUSTA SUPUESTOS", "BUSCAR OTRA")) || !/ya no conviene al precio publicado/.test(textoVeredicto("COMPRAR", "AJUSTA SUPUESTOS")) || !/ahora conviene al precio publicado/.test(textoVeredicto("BUSCAR OTRA", "COMPRAR"))) F("8 · el cambio de veredicto usa nombres internos o no dice qué significa");
+      // ⚠ ACTA (19-nov-2026, Fabrizio): el nombre de cada veredicto sale de la MISMA fuente que el mapa y el informe
+      // (`etiquetaVeredicto`, forma «frase»), nunca escrito a mano. Se compara contra la fuente, no contra un literal.
+      for (const [a, b] of [["AJUSTA SUPUESTOS", "COMPRAR"], ["BUSCAR OTRA", "COMPRAR"], ["COMPRAR", "AJUSTA SUPUESTOS"], ["BUSCAR OTRA", "AJUSTA SUPUESTOS"], ["COMPRAR", "BUSCAR OTRA"], ["AJUSTA SUPUESTOS", "BUSCAR OTRA"]] as const) {
+        if (!textoVeredicto(a, b).includes(`es ${etiquetaVeredicto(b, "frase")}`)) F(`8 · el cambio ${a} → ${b} no nombra el veredicto con la fuente del mapa y el informe`);
+      }
+      for (const f of ["src/lib/invierte-v2/opciones.ts", "src/lib/invierte-v2/cambios.ts", "src/lib/invierte-v2/vigilancia-servidor.ts", "src/lib/email/correos.ts"]) {
+        const c = codigo(f);
+        const zona = f.endsWith("correos.ts") ? (c.match(/export function correoCambiosInvierte[\s\S]*?\n\}/)?.[0] ?? "") : c;
+        if (f.endsWith("correos.ts") && !zona) F("8 · no encuentro correoCambiosInvierte");
+        if (/["'`][^"'`\n]*\b(Comprar|Ajustar|Buscar otr[ao])\b/.test(zona)) F(`8 · ${f} escribe a mano el nombre de un veredicto (va con etiquetaVeredicto)`);
+      }
       const dep = { avisoId: "x", comuna: "Ñuñoa", descripcion: "2D2B · 58 m²", cambios: [{ tipo: "precio_baja" as const, antes: { precioUF: 3000, alcanza: true }, despues: { precioUF: 2850, alcanza: true }, fecha: "2026-11-20" }, { tipo: "al_mes" as const, antes: { flujoCLP: 20000 }, despues: { flujoCLP: 52000 }, fecha: "2026-11-20" }] };
       if (asuntoCambios([dep]) !== "El depto de Ñuñoa bajó UF 150" || asuntoCambios([dep, dep]) !== "Cambiaron 2 deptos que elegiste") F("8 · el asunto del correo no es el aprobado");
       if (parrafoDepto(dep) !== "El depto de Ñuñoa (2D2B · 58 m²) que elegiste bajó UF 150 el 20 de noviembre: ahora está en UF 2.850. Con ese precio, te sobran $52.000 al mes.") F(`8 · el cuerpo del correo no es el aprobado (${parrafoDepto(dep)})`);

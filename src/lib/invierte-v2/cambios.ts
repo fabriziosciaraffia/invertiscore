@@ -111,7 +111,8 @@ const num = (o: Record<string, unknown>, k: string) => (typeof o[k] === "number"
 /**
  * El cambio del veredicto con los nombres públicos y lo que significa (decisión de Fabrizio, 18-nov-2026: sin nombres
  * internos). Comprar = conviene al precio publicado; Ajustar = conviene si negocias el precio; Buscar otro = no conviene.
- * PROPUESTOS: esperan el OK de Fabrizio.
+ * Aprobados por Fabrizio el 19-nov-2026, con el nombre de cada veredicto tomado de la misma fuente que el mapa y el informe
+ * (`etiquetaVeredicto`, forma «frase»), nunca escrito a mano.
  */
 export function textoVeredicto(antes: string, despues: string): string {
   const d = etiquetaVeredicto(despues, "frase");

@@ -11,6 +11,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import type { Objetivo, Preocupacion, Tope } from "./perfil";
 import { REGLA_TOPE } from "./perfil";
+import { etiquetaVeredicto, signoVeredicto } from "@/lib/veredicto-etiqueta";
 
 /** Máximo de deptos activos (elegidos) por persona (decisión de Fabrizio, 18-nov-2026). */
 export const MAX_ACTIVOS = 6;
@@ -214,7 +215,7 @@ export const RESULTADO_COPY = {
   seguir: (n: number) => (n === 1 ? "Seguir con este" : `Seguir con estos ${n}`),
   maximo: `Puedes seguir con hasta ${MAX_ACTIVOS} a la vez.`,
   lecturaRotulo: "La lectura de Franco",
-  notaTabla: "En azul, la mejor de cada fila. Todas dan ✓ Comprar.",
+  notaTabla: `En azul, la mejor de cada fila. Todas dan ${signoVeredicto("COMPRAR")} ${etiquetaVeredicto("COMPRAR", "frase")}.`,
   notaTablaPie: "Al mes: con pie 20 %, 30 años y la tasa del mes.",
   compararAviso: (n: number) => (n > 3 ? "Se comparan tres a la vez. Desliza para ver el resto." : ""),
   /** En el PC caben cinco; con más (lo que ya eligió y salió del top), la tabla se desliza adentro y lo dice. */
