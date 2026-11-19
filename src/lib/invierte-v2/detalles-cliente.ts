@@ -10,14 +10,29 @@ export const URL_DETALLES = "/api/lo-que-sigue/guia/analizar";
 export const cuerpoDetalles = (avisoId: string, origen: "elegir" | "abrir") =>
   JSON.stringify({ avisoId, explorar: true, piePct: 20, plazoAnios: 30, invierte: true, origenInvierte: origen });
 
-/** Abre los detalles: devuelve el id del informe o null si no se pudo. */
-export async function abrirDetalles(avisoId: string): Promise<string | null> {
-  try {
-    const res = await fetch(URL_DETALLES, { method: "POST", headers: { "Content-Type": "application/json" }, body: cuerpoDetalles(avisoId, "abrir") });
-    const d = (await res.json().catch(() => ({}))) as { id?: string };
-    return res.ok && d.id ? d.id : null;
-  } catch {
-    return null;
+/** Cuánto espera «Abrir» a que termine la preparación en segundo plano que ya está en curso (20-nov-2026). */
+export const ESPERA_EN_CURSO_MS = 90_000;
+export const PAUSA_EN_CURSO_MS = 2_000;
+
+/**
+ * Abre los detalles: devuelve el id del informe o null si no se pudo. Si la preparación en segundo plano de ese depto ya está en
+ * curso (la ruta responde 409 «en-curso», p. ej. justo después de sumarlo), espera y vuelve a preguntar hasta que esté listo:
+ * entonces la ruta lo devuelve al instante, sin leer la ficha ni prepararlo de nuevo. Encontrado en la prueba del 20-nov-2026.
+ */
+export async function abrirDetalles(avisoId: string, deps: { pedir?: typeof fetch; esperar?: (ms: number) => Promise<void> } = {}): Promise<string | null> {
+  const pedir = deps.pedir ?? fetch;
+  const esperar = deps.esperar ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
+  const hasta = Date.now() + ESPERA_EN_CURSO_MS;
+  for (let intento = 0; ; intento++) {
+    try {
+      const res = await pedir(URL_DETALLES, { method: "POST", headers: { "Content-Type": "application/json" }, body: cuerpoDetalles(avisoId, "abrir") });
+      const d = (await res.json().catch(() => ({}))) as { id?: string; error?: string };
+      if (res.ok && d.id) return d.id;
+      if (res.status !== 409 || d.error !== "en-curso" || Date.now() + PAUSA_EN_CURSO_MS > hasta || intento > ESPERA_EN_CURSO_MS / PAUSA_EN_CURSO_MS) return null;
+    } catch {
+      return null;
+    }
+    await esperar(PAUSA_EN_CURSO_MS);
   }
 }
 

@@ -50,7 +50,7 @@ export function SumarDepto({ avisoId, etiqueta, origen, activos, variante }: {
   return (
     <>
       <button type="button" className={variante === "principal" ? "inv-principal iv2-principal" : "iv2-enlace-azul iv2-seguir"} disabled={enviando}
-        aria-busy={enviando || undefined} onClick={() => (lleno ? setEligiendo(true) : void sumar(null))} data-inv2={origen === "mapa" ? "sumar" : "seguir-con-este"}>
+        aria-busy={enviando || undefined} onClick={() => (lleno ? setEligiendo(true) : void sumar(null))} data-inv2={origen === "mapa" ? "boton-sumar" : "seguir-con-este"}>
         {etiqueta}
       </button>
       {error && <p className="inv-error" role="alert" data-inv2="sumar-error">{BASE_COPY.error}</p>}
