@@ -17,3 +17,9 @@ export const CLAUDE_MODEL = "claude-sonnet-4-6";
  * debe cambiar si cambia el modelo de la prosa, ni al revés. Tarifa en costo-ia.ts.
  */
 export const CLAUDE_MODEL_DOCUMENTOS = "claude-opus-5-5";
+
+/**
+ * «Lo que ve Franco» (Invierte con Franco, entrega 4 de las láminas del 19-nov-2026): la lectura de las fotos y el texto de una
+ * publicación. Lo eligió Fabrizio en la prueba A/B del 19-nov-2026 (Opus 5.5, ~US$0,06 y ~15 s por depto). Tarifa en costo-ia.ts.
+ */
+export const CLAUDE_MODEL_LECTURA = "claude-opus-5-5";

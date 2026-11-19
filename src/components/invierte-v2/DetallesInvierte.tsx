@@ -3,8 +3,8 @@
 // que no cambia: arriba, la barra fija con «← Mi inversión» y el chip (azul claro «Uno de tus deptos», ciruela «Te lo
 // recomendamos»); abajo, fija, la acción que corresponde. En el celular, la cabecera del flujo («Los detalles del depto») en vez
 // del header del sitio, como el resto de las pantallas de Invierte; en el PC, el header real y la barra bajo él.
-// Entre la barra y el informe, las fotos con flechas y el depto en una línea con su chip (entrega 3); «Lo que ve Franco» en su
-// versión larga va ahí también cuando Fabrizio apruebe sus textos (entrega 4).
+// Entre la barra y el informe, las fotos con flechas y el depto en una línea con su chip (entrega 3), y «Lo que ve Franco» en su
+// versión larga, con «Lo que el puntaje no considera» primero si la hay (entrega 4; textos aprobados el 19-nov-2026).
 // ─────────────────────────────────────────────────────────────────────────────
 import Link from "next/link";
 import { URL_INVIERTE } from "@/lib/invierte-v2/destino";
@@ -12,6 +12,7 @@ import { DETALLES_COPY, type ModoDetalles } from "@/lib/invierte-v2/detalles-mod
 import { urlWhatsapp, type LineaDepto } from "@/lib/invierte-v2/base";
 import { IconoWhatsapp } from "./IconoWhatsapp";
 import { FotosDepto } from "./FotosDepto";
+import { LoQueVeFranco } from "./LoQueVeFranco";
 import { ChipVeredicto } from "@/components/analysis/shared/ChipVeredicto";
 import type { Veredicto } from "@/lib/types";
 import { SumarDepto } from "./SumarDepto";
@@ -43,7 +44,6 @@ export function BarraDetalles({ modo }: { modo: ModoDetalles }) {
 
 export function CabezaDeDetalles({ modo }: { modo: ModoDetalles }) {
   const c = modo.cabeza;
-  if (!c.fotos && !c.nombre) return null;
   return (
     <section className="iv2-det-cabeza" data-inv2="detalles-cabeza">
       <FotosDepto avisoId={c.avisoId} n={c.fotos} clase="iv2-det-fotos" />
@@ -53,6 +53,8 @@ export function CabezaDeDetalles({ modo }: { modo: ModoDetalles }) {
           {c.veredicto && <ChipVeredicto v={c.veredicto as Veredicto} puntaje={c.veredicto === "COMPRAR" ? c.score : null} />}
         </div>
       )}
+      {/* La versión larga, antes del informe; «Lo que el puntaje no considera» (grave o revisar) va primero (entrega 4). */}
+      <LoQueVeFranco avisoId={c.avisoId} variante="detalles" inicial={c.lectura} />
     </section>
   );
 }

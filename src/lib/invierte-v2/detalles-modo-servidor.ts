@@ -11,6 +11,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { vistaSumar, numeroFranco } from "./base-servidor";
 import { distanciaDelTuyo, indicadorContraElegido, lineaRecomendado, metrosEntre, nombreDeDatos, type CabezaDetalles, type ModoDetalles } from "./detalles-modo";
 import { fotosDe } from "./fotos-servidor";
+import { recomendable } from "./lectura-franco";
+import { leerLecturas } from "./lectura-franco-servidor";
 
 async function puntoYFlujo(admin: SupabaseClient, avisoId: string): Promise<{ lat: number; lng: number; comuna: string | null; precioUF: number | null; flujoCLP: number | null } | null> {
   const [sp, ev] = await Promise.all([
@@ -30,11 +32,13 @@ async function puntoYFlujo(admin: SupabaseClient, avisoId: string): Promise<{ la
 
 /** `whatsappAdmin`: el cliente de servicio construido en línea por quien llama (CONFIG-PUBLICA §6: `numeroFranco` lee `config`). */
 export async function modoDetalles(admin: SupabaseClient, userId: string, avisoId: string, whatsappAdmin: SupabaseClient): Promise<ModoDetalles | null> {
-  const [v, fotos] = await Promise.all([vistaSumar(admin, userId, avisoId), fotosDe(admin, [avisoId])]);
+  const [v, fotos, lecturas] = await Promise.all([vistaSumar(admin, userId, avisoId), fotosDe(admin, [avisoId]), leerLecturas(admin, [avisoId])]);
   const d = v.datos;
-  const cabeza: CabezaDetalles = { avisoId, nombre: d ? nombreDeDatos(d) : "", veredicto: d?.veredicto ?? null, score: d?.score ?? null, fotos: fotos[avisoId] ?? 0 };
+  const cabeza: CabezaDetalles = { avisoId, nombre: d ? nombreDeDatos(d) : "", veredicto: d?.veredicto ?? null, score: d?.score ?? null, fotos: fotos[avisoId] ?? 0, lectura: lecturas[avisoId] ?? null };
   if (v.estado === "ya") return { cabeza, relacion: "suyo", whatsapp: await numeroFranco(whatsappAdmin).catch(() => null) };
   if (v.estado !== "listo" || !v.alcanza || v.datos?.veredicto !== "COMPRAR" || !v.orden || !v.perfil) return null;
+  // Con alerta grave no se recomienda (entrega 4): sus detalles se ven como hoy, sin «Te lo recomendamos».
+  if (!recomendable(cabeza.lectura)) return null;
   const [alt, ele] = await Promise.all([puntoYFlujo(admin, avisoId), puntoYFlujo(admin, v.orden.avisoId)]);
   const enKm = v.perfil.donde === "convenga";
   const distancia = alt && ele ? distanciaDelTuyo(metrosEntre(alt, ele), alt.comuna, enKm) : null;

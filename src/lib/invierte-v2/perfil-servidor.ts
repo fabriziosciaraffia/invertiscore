@@ -15,6 +15,8 @@ import { hastaCuanto, comunasPrecargadas, piePrecargado, type PedidoPerfil, type
 import { casoDe, etiquetar, vsParecidos, type Caso, type Etiqueta, type OpcionDepto } from "./opciones";
 import { MAX_RECOMENDADOS, cuantasPedir, esNivel, nivelDelBloque, type NivelAlt } from "./alternativas";
 import { metrosEntre } from "./detalles-modo";
+import { recomendable, type LecturaFranco } from "./lectura-franco";
+import { leerLecturas } from "./lectura-franco-servidor";
 import { anotar, esCuentaTest, leerPersona, ultimaOrdenDe, type ContextoPedido } from "./servidor";
 import type { PerfilComparable } from "./base";
 
@@ -208,6 +210,8 @@ export interface ResultadoOpciones {
   /** Láminas del 19-nov-2026: de qué nivel salieron las alternativas (el subtítulo dice su verdad) y a qué distancia está cada una. */
   nivel: NivelAlt;
   distancias: Record<string, number | null>;
+  /** «Lo que ve Franco» de los que ya la tienen (entrega 4); los demás la piden aparte y se completan solos. */
+  lecturas: Record<string, LecturaFranco>;
 }
 
 interface FilaDepto { aviso_id: string; estado: string; origen: string; alcanza: boolean | null; datos: Record<string, unknown> | null; created_at: string | null }
@@ -245,12 +249,15 @@ export async function calcularOpciones(admin: SupabaseClient, user: { id: string
   // 1 · Las de Franco que ya estaban: las elegidas cuentan siempre; las opciones se revalidan con los datos de hoy.
   const deFrancoPrev = previos.filter((f) => f.origen === "franco" && (f.estado === "opcion" || f.estado === "elegido")).sort((a, b) => String(a.created_at ?? "").localeCompare(String(b.created_at ?? "")));
   const filasPrev = await Promise.all(deFrancoPrev.map(async (f) => ({ f, e: await filaEntrada(admin, f.aviso_id) })));
+  const lecturasPrev = await leerLecturas(admin, deFrancoPrev.map((f) => f.aviso_id));
   const elegidasFranco = filasPrev.filter((x) => x.f.estado === "elegido");
   const opcionesValidas: typeof filasPrev = [];
   const descartar: string[] = [];
   for (const x of filasPrev.filter((y) => y.f.estado === "opcion")) {
     // Una opción de antes de las láminas del 19-nov-2026 no trae el nivel de la función: no salió de esta búsqueda, se reemplaza.
-    const vale = x.e && x.e.veredicto === "COMPRAR" && Number(x.e.fila.precio_uf) <= tope + 0.5 && esNivel(x.f.datos?.nivel);
+    const vale = x.e && x.e.veredicto === "COMPRAR" && Number(x.e.fila.precio_uf) <= tope + 0.5 && esNivel(x.f.datos?.nivel)
+      // Con alerta grave (para remodelar, remate, derechos o acciones, sin fotos del interior) no se recomienda (entrega 4).
+      && recomendable(lecturasPrev[x.f.aviso_id]);
     if (vale && elegidasFranco.length + opcionesValidas.length < MAX_RECOMENDADOS) opcionesValidas.push(x);
     else descartar.push(x.f.aviso_id);
   }
@@ -260,9 +267,11 @@ export async function calcularOpciones(admin: SupabaseClient, user: { id: string
   const cuantas = cuantasPedir(elegidasFranco.length + opcionesValidas.length);
   const excluir = Array.from(new Set([...previos.filter((f) => f.estado === "elegido" || f.estado === "opcion").map((f) => f.aviso_id), ...(avisoEntrada ? [avisoEntrada] : [])])).filter(esUuid);
   const pedidas = cuantas > 0 && avisoEntrada && esUuid(avisoEntrada) && tope > 0
-    ? await pedirAlternativas(admin, { aviso: avisoEntrada, modo: perfil.donde, tope, excluir, cuantas })
+    ? await pedirAlternativas(admin, { aviso: avisoEntrada, modo: perfil.donde, tope, excluir, cuantas: cuantas + MAX_RECOMENDADOS })
     : { filas: [], nivel: "solo_elegido" as NivelAlt };
-  const nuevasE = (await Promise.all(pedidas.filas.map(async (r) => ({ r, e: await filaEntrada(admin, r.avisoId) })))).filter((x) => !!x.e);
+  // Se piden de más por si alguna ya tiene alerta grave: esas no se recomiendan, y se toman las siguientes hasta el cupo.
+  const lecturasNuevas = await leerLecturas(admin, pedidas.filas.map((r) => r.avisoId));
+  const nuevasE = (await Promise.all(pedidas.filas.filter((r) => recomendable(lecturasNuevas[r.avisoId])).slice(0, cuantas).map(async (r) => ({ r, e: await filaEntrada(admin, r.avisoId) })))).filter((x) => !!x.e);
 
   // 3 · Lo que se muestra: el de entrada, las de Franco que siguen (opción y elegidas) y las nuevas; nunca más de tres de Franco.
   const deFranco = [
@@ -298,7 +307,8 @@ export async function calcularOpciones(admin: SupabaseClient, user: { id: string
   const nuevos = opciones.filter((o) => !yaEstaban.has(o.avisoId) || yaEstaban.get(o.avisoId)?.estado === "descartado");
   if (nuevos.length) await anotar(admin, { userId: user.id, email: user.email, ordenId: orden.id, actor: "sistema", accion: "depto_presentado", detalle: { avisos: nuevos.map((o) => ({ aviso_id: o.avisoId, etiqueta: etiquetas[o.avisoId] ?? null, precio_uf: o.precioUF, nivel: o.esEntrada ? null : nivel })) }, esPrueba: perfil.esPrueba });
   const elegidos = previos.filter((p) => p.estado === "elegido" && opciones.some((o) => o.avisoId === p.aviso_id)).map((p) => p.aviso_id);
-  return { caso, opciones, etiquetas, elegidos, entrada, masBaratoUF, perfil, nivel, distancias };
+  const lecturas = await leerLecturas(admin, opciones.map((o) => o.avisoId));
+  return { caso, opciones, etiquetas, elegidos, entrada, masBaratoUF, perfil, nivel, distancias, lecturas };
 }
 
 // ── LA ELECCIÓN ──────────────────────────────────────────────────────────────

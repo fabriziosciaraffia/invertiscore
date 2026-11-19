@@ -9,6 +9,15 @@ import { ResultadoOpciones } from "@/components/invierte-v2/ResultadoOpciones";
 import { RESULTADO_COPY, type Etiqueta, type OpcionDepto } from "@/lib/invierte-v2/opciones";
 import { esNivel, MAX_RECOMENDADOS } from "@/lib/invierte-v2/alternativas";
 import { DONDES, type Donde } from "@/lib/invierte-v2/perfil";
+import type { LecturaFranco } from "@/lib/invierte-v2/lectura-franco";
+
+// ?lectura=1 (entrega 4): lecturas de EJEMPLO para medir el dibujo —el elegido con «revisar» arriba, una alternativa normal y una
+// grave, que no se recomienda y desaparece—. Los textos son de muestra, no de un depto real.
+const LECTURAS: Record<string, LecturaFranco> = {
+  e: { alerta: { nivel: "revisar", motivo: "Las fotos no muestran los baños: pídelas antes de ofertar." }, larga: [], corta: ["Las fotos no muestran los baños: pídelas antes de ofertar.", "Cocina y piso renovados: se arrienda tal como está.", "Metro a pie: demanda de arriendo estable."] },
+  a: { alerta: { nivel: "ninguna", motivo: null }, larga: [], corta: ["Cocina original: calcula una remodelación, y es argumento para negociar."] },
+  b: { alerta: { nivel: "grave", motivo: "Según la publicación, es para remodelar." }, larga: [], corta: ["Según la publicación, es para remodelar."] },
+};
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +37,7 @@ const MUESTRA: OpcionDepto[] = [
 ];
 const ETIQUETAS: Record<string, Etiqueta> = { e: "el_que_elegiste", a: "menos_al_mes", b: "mejor_puntaje", c: "pie_mas_bajo", d: "mejor_precio" };
 
-export default function ResultadoDemo({ searchParams }: { searchParams: { n?: string; caso?: string; z?: string; nivel?: string; donde?: string } }) {
+export default function ResultadoDemo({ searchParams }: { searchParams: { n?: string; caso?: string; z?: string; nivel?: string; donde?: string; lectura?: string } }) {
   if (process.env.NODE_ENV === "production" && process.env.VERCEL_ENV !== "preview") notFound();
   const n = Math.min(1 + MAX_RECOMENDADOS, Math.max(1, Number(searchParams.n) || 1 + MAX_RECOMENDADOS));
   const nivel = esNivel(searchParams.nivel) ? searchParams.nivel : "cerca";
@@ -41,7 +50,7 @@ export default function ResultadoDemo({ searchParams }: { searchParams: { n?: st
         caso={searchParams.caso === "2" ? "caso2" : "alcanza"} opciones={searchParams.caso === "2" ? [{ ...opciones[0], alcanza: false }] : opciones} etiquetas={ETIQUETAS} elegidos={opciones.filter((o) => o.avisoId !== "e").map((o) => o.avisoId).slice(0, 1)}
         tope={{ topeUF: 3500, fuente: "renta", limita: "pie", creditoUF: 2900, porPieUF: 3500, menosPreciso: false }}
         pieUF={700} masBaratoUF={searchParams.z ? Number(searchParams.z) : null} objetivo="arriendo" preocupaciones={["poner_plata"]} comunas={["Pedro Aguirre Cerda", "Estación Central"]}
-        nivel={n > 1 ? nivel : "solo_elegido"} donde={donde} distancias={distancias} fotos={{}}
+        nivel={n > 1 ? nivel : "solo_elegido"} donde={donde} distancias={distancias} fotos={{}} lecturas={searchParams.lectura === "1" ? LECTURAS : {}}
       />
     </MarcoInvierte>
   );

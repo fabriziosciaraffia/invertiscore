@@ -48,6 +48,11 @@ export const ALTERNATIVAS_COPY = {
     if (modo === "cerca") return `Cerca del tuyo no hay otros que convengan; ${n === 1 ? "este está" : "estos están"} en el resto de ${comuna ?? "la comuna"}`;
     return comuna ? `${otros}, en ${comuna}` : `${otros}, en la comuna`;
   },
+  /** Ninguna alternativa supera al suyo en nada (decisión de Fabrizio, 19-nov-2026): el subtítulo lo dice. */
+  tuyoMejor: (nivel: NivelAlt, comuna: string | null) =>
+    nivel === "perfil" ? "El tuyo es el mejor de los parecidos que más convienen. Estos te sirven de respaldo si no se da."
+    : nivel === "comuna" ? `El tuyo es el mejor de los parecidos que hay en ${comuna ?? "la comuna"}. Estos te sirven de respaldo si no se da.`
+    : "El tuyo es el mejor de los parecidos que hay cerca. Estos te sirven de respaldo si no se da.",
   marca: "Marca los que te interesen. Puedes seguir con varios.",
   soloElegido: "Hoy no hay otros parecidos que convengan. Te avisamos si aparece uno.",
   elQueElegiste: "El que elegiste",
@@ -83,20 +88,19 @@ export function indicadorAlternativa(
   ele: { precioUF: number; flujoCLP: number | null; score: number | null },
   grupo: readonly { avisoId: string; precioUF: number }[],
   perfil: { objetivo: Objetivo | null; preocupaciones: readonly Preocupacion[]; limitaPie: boolean },
-): string | null {
+): { texto: string; supera: boolean } | null {
   const pieAlt = pieDe(alt.precioUF);
   const elMasBajo = grupo.every((g) => g.avisoId === alt.avisoId || pieDe(g.precioUF) > pieAlt) && pieAlt < pieDe(ele.precioUF);
-  if (perfil.limitaPie && elMasBajo) return `El pie más bajo: UF ${fmtUF(pieAlt)}`;
+  if (perfil.limitaPie && elMasBajo) return { texto: `El pie más bajo: UF ${fmtUF(pieAlt)}`, supera: true };
   const ind = indicadorContraElegido(alt, ele, perfil);
   if (ind) {
-    if (ind.tipo === "mes" && /^te deja \$[\d.]+ al mes$/.test(ind.frase)) return `${cap(ind.frase)}, sin poner plata`;
-    return `${cap(ind.frase)} que el tuyo`;
+    if (ind.tipo === "mes" && /^te deja \$[\d.]+ al mes$/.test(ind.frase)) return { texto: `${cap(ind.frase)}, sin poner plata`, supera: true };
+    return { texto: `${cap(ind.frase)} que el tuyo`, supera: true };
   }
-  if (elMasBajo) return `El pie más bajo: UF ${fmtUF(pieAlt)}`;
-  if (alt.score != null && ele.score != null && alt.score > ele.score) return `Mejor puntaje que el tuyo: ${alt.score}`;
-  // Nada la favorece contra el suyo (que ya es muy bueno): se dice lo que deja o pide al mes, sin compararlo, que es lo primero
-  // que mira el resultado y es verdad.
-  if (alt.flujoCLP != null) return alt.flujoCLP >= 0 ? `Te deja ${fmtCLP(Math.round(alt.flujoCLP / 1000) * 1000)} al mes` : `Pide ${fmtCLP(Math.round(-alt.flujoCLP / 1000) * 1000)} al mes`;
+  if (elMasBajo) return { texto: `El pie más bajo: UF ${fmtUF(pieAlt)}`, supera: true };
+  if (alt.score != null && ele.score != null && alt.score > ele.score) return { texto: `Mejor puntaje que el tuyo: ${alt.score}`, supera: true };
+  // Nada la favorece contra el suyo (que ya es muy bueno): su dato más fuerte, sin compararlo (decisión de Fabrizio, 19-nov-2026).
+  if (alt.flujoCLP != null) return { texto: alt.flujoCLP >= 0 ? `Te deja ${fmtCLP(Math.round(alt.flujoCLP / 1000) * 1000)} al mes` : `Pide ${fmtCLP(Math.round(-alt.flujoCLP / 1000) * 1000)} al mes`, supera: false };
   return null;
 }
 

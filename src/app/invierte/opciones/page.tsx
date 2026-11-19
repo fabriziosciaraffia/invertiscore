@@ -31,7 +31,7 @@ export default async function OpcionesPage() {
     <MarcoInvierte volver={null} pantalla="opciones" layout="contenido" cabecera={RESULTADO_COPY.rotulo} pc={{ sesionEmail: user.email ?? null, invierte: true }}>
       <ResultadoOpciones caso={r.caso} opciones={r.opciones} etiquetas={r.etiquetas} elegidos={r.elegidos} tope={tope}
         pieUF={r.perfil.pieUF} masBaratoUF={r.masBaratoUF} objetivo={r.perfil.objetivo} preocupaciones={r.perfil.preocupaciones} comunas={r.perfil.comunas}
-        nivel={r.nivel} donde={r.perfil.donde} distancias={r.distancias} fotos={fotos} />
+        nivel={r.nivel} donde={r.perfil.donde} distancias={r.distancias} fotos={fotos} lecturas={r.lecturas} />
     </MarcoInvierte>
   );
 }

@@ -11,6 +11,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import type { Objetivo, Preocupacion } from "./perfil";
 import { fmtCLP, fmtUF } from "./opciones";
+import type { LecturaFranco } from "./lectura-franco";
 
 /** El parámetro que ponen «Ver detalles» y «Abrir» del flujo. Solo dice de dónde se abrió: el resto lo decide el servidor. */
 export const DESDE_INVIERTE = "invierte";
@@ -26,7 +27,7 @@ export const DETALLES_COPY = {
 } as const;
 
 /** Lo que va arriba del informe en modo Invierte (entrega 3): el depto en una línea, su veredicto y cuántas fotos tiene. */
-export interface CabezaDetalles { avisoId: string; nombre: string; veredicto: string | null; score: number | null; fotos: number }
+export interface CabezaDetalles { avisoId: string; nombre: string; veredicto: string | null; score: number | null; fotos: number; /** «Lo que ve Franco» si ya está (entrega 4). */ lectura: LecturaFranco | null }
 
 export type ModoDetalles = { cabeza: CabezaDetalles } & (
   | { relacion: "suyo"; whatsapp: string | null }
