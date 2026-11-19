@@ -17,6 +17,8 @@ import { chequearPorCarril, leidaFresca, RELECTURA_MS, TOPE_CARRIL_POR_HORA, typ
 import { detectarCambios, lineaCambio, textoVeredicto, asuntoCambios, parrafoDepto, UMBRAL_CORREO_PCT, UMBRAL_LINEA_PCT, type Vigente } from "../../../src/lib/invierte-v2/cambios";
 import { cuerpoDetalles } from "../../../src/lib/invierte-v2/detalles-cliente";
 import { etiquetaVeredicto } from "../../../src/lib/veredicto-etiqueta";
+import { ACTUALIZADO_COPY, BASE_COPY, DOCUMENTOS_COPY, MENU_COPY, SUMAR_COPY, fraseCambioPerfil, lineaDepto, numeroWhatsapp, urlWhatsapp, type PerfilComparable } from "../../../src/lib/invierte-v2/base";
+import { sumarDepto, vigenteSobre } from "../../../src/lib/invierte-v2/base-servidor";
 
 const RAIZ = join(__dirname, "..", "..", "..");
 const leer = (p: string) => readFileSync(join(RAIZ, p), "utf8").replace(/\r\n/g, "\n");
@@ -133,8 +135,9 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       const res = codigo("src/components/invierte-v2/ResultadoOpciones.tsx");
       if (!/const m = textoAlMes\(o\); return \{ t: m\.pones \? <span className="iv2-pones"/.test(res) || !/textoEtiqueta\(p\.etiquetas\[o\.avisoId\]/.test(res) || /ETIQUETAS\[/.test(res)) F("3 · la tabla o la lista no usan «Al mes» en rojo o la etiqueta según el flujo");
       if (!/\.iv2-pones \{ color: var\(--signal-red/.test(leer("src/components/invierte-v2/invierte-v2.css"))) F("3 · «Pones» no va en rojo");
-      const base = codigo("src/app/invierte/base/page.tsx");
-      if (!/const alMes = textoAlMes\(\{ flujoCLP: d\.flujoCLP \?\? null \}\);/.test(base) || !/\{RESULTADO_COPY\.filas\.pones\}: <span className=\{alMes\.pones \? "iv2-nowrap iv2-pones" : "iv2-nowrap"\}>\{alMes\.t\}/.test(base)) F("3 · la base no dice «Al mes» de cada depto");
+      const base = codigo("src/components/invierte-v2/VistaBase.tsx"); // ⚠ ACTA (19-nov-2026): lo que dibuja la base vive en VistaBase (la usan la página y /dev/invierte-v2/base)
+      // ⚠ ACTA (19-nov-2026, base completa): los datos del depto vienen en `d.datos` (base-servidor › leerBase).
+      if (!/const alMes = textoAlMes\(\{ flujoCLP: d\.datos\.flujoCLP \?\? null \}\);/.test(base) || !/\{RESULTADO_COPY\.filas\.pones\}: <span className=\{alMes\.pones \? "iv2-nowrap iv2-pones" : "iv2-nowrap"\}>\{alMes\.t\}/.test(base)) F("3 · la base no dice «Al mes» de cada depto");
       // «Estás cerca» solo si lo que falta es poco (el más barato, a lo más un 10 % sobre lo que puede comprar), igual con pie y renta.
       if (UMBRAL_CERCA_PCT !== 10 || !estaCerca(1000, 1100) || estaCerca(1000, 1101) || estaCerca(1000, null) || estaCerca(0, 900)) F("3 · el umbral de «Estás cerca» no es el 10 %");
       if (RESULTADO_COPY.caso2.tituloCredito(false) !== "Hoy tu renta limita el crédito" || RESULTADO_COPY.caso2.tituloCredito(true) !== "Estás cerca: tu renta limita el crédito" || RESULTADO_COPY.caso2.tituloPie("97", false) !== "Hoy te faltan UF 97 de pie" || RESULTADO_COPY.caso2.tituloPie("97", true) !== "Estás cerca: te faltan UF 97 de pie") F("3 · los títulos del caso 2 no son «Hoy…» / «Estás cerca: …»");
@@ -179,16 +182,16 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (c({}) !== URL_PARTIMOS || c({ perfil: true }) !== URL_OPCIONES || c({ perfil: true, eligio: true }) !== URL_BASE) F("5 · /invierte no manda firmó→Partimos, perfil→resultado, eligió→base");
       // Sin sesión, a la entrada vigente con la vuelta a /invierte; ningún archivo del flujo enlaza a /login ni a /register.
       if (c({ sesion: false }) !== "/entrar?next=%2Finvierte" || c({ sesion: false, acceso: false }) !== "/entrar?next=%2Finvierte") F("5 · /invierte sin sesión no manda a /entrar con la vuelta");
-      for (const f of ["src/lib/invierte-v2/destino.ts", "src/app/invierte/[avisoId]/firma/page.tsx", "src/app/invierte/page.tsx", "src/components/invierte-v2/PerfilForm.tsx", "src/components/invierte-v2/ResultadoOpciones.tsx", "src/app/invierte/base/page.tsx"]) {
+      for (const f of ["src/lib/invierte-v2/destino.ts", "src/app/invierte/[avisoId]/firma/page.tsx", "src/app/invierte/page.tsx", "src/components/invierte-v2/PerfilForm.tsx", "src/components/invierte-v2/ResultadoOpciones.tsx", "src/app/invierte/base/page.tsx", "src/components/invierte-v2/VistaBase.tsx", "src/app/invierte/documentos/page.tsx", "src/app/invierte/[avisoId]/sumar/page.tsx", "src/components/invierte-v2/MenuBase.tsx"]) {
         if (/["'`]\/(login|register)\b/.test(codigo(f))) F(`5 · ${f} enlaza a /login o /register`);
       }
       if (c({ sesion: false }) === URL_BASE || c({ acceso: false, perfil: true, eligio: true }) !== "no-existe") F("5 · /invierte salta la sesión o el acceso");
-      for (const r of ["src/app/api/invierte-v2/perfil/route.ts", "src/app/api/invierte-v2/eleccion/route.ts", "src/app/api/invierte-v2/avisar/route.ts"]) {
+      for (const r of ["src/app/api/invierte-v2/perfil/route.ts", "src/app/api/invierte-v2/eleccion/route.ts", "src/app/api/invierte-v2/avisar/route.ts", "src/app/api/invierte-v2/sumar/route.ts"]) {
         if (!/const user = await personaConAcceso\(\);\s*if \(!user\) return NO_EXISTE\(\);/.test(codigo(r))) F(`5 · ${r} responde sin acceso`);
       }
       // Con la espera (loading.tsx) la página ya respondió 200 cuando corre su notFound(): el 404 lo da el layout, que va arriba.
       if (!/if \(!user \|\| !acceso\) notFound\(\);/.test(codigo("src/app/invierte/opciones/layout.tsx"))) F("5 · /invierte/opciones responde 200 sin acceso (el layout no decide el acceso arriba de la espera)");
-      for (const p of ["src/app/invierte/perfil/page.tsx", "src/app/invierte/opciones/page.tsx", "src/app/invierte/base/page.tsx"]) {
+      for (const p of ["src/app/invierte/perfil/page.tsx", "src/app/invierte/opciones/page.tsx", "src/app/invierte/base/page.tsx", "src/app/invierte/documentos/page.tsx", "src/app/invierte/perfil/actualizado/page.tsx"]) {
         if (!/if \(!user \|\| !acceso\) notFound\(\);/.test(codigo(p)) || !/force-dynamic/.test(codigo(p))) F(`5 · ${p} no da 404 sin acceso`);
       }
     }
@@ -261,8 +264,10 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       // Preparar al elegir, y al entrar a la base lo que falte.
       if (!/if \(res\.ok\) \{ prepararEnSegundoPlano\(Array\.from\(marcados\)\); router\.push\(URL_BASE\); return; \}/.test(codigo("src/components/invierte-v2/ResultadoOpciones.tsx"))) F("8 · los detalles no se preparan al elegir");
       if (!/keepalive: true/.test(codigo("src/lib/invierte-v2/detalles-cliente.ts")) || !/cuerpoDetalles\(id, "elegir"\)/.test(codigo("src/lib/invierte-v2/detalles-cliente.ts"))) F("8 · la preparación no sigue si cambia la pantalla o no lee como «elegir»");
-      const base = codigo("src/app/invierte/base/page.tsx");
-      if (!/<PrepararDetalles avisoIds=\{sinPreparar\} \/>/.test(base) || !/\.not\("analysis_id", "is", null\)/.test(base)) F("8 · la base no prepara lo que quedó sin preparar");
+      const base = codigo("src/components/invierte-v2/VistaBase.tsx"); // ⚠ ACTA (19-nov-2026): lo que dibuja la base vive en VistaBase (la usan la página y /dev/invierte-v2/base)
+      // ⚠ ACTA (19-nov-2026, base completa): qué está preparado lo lee base-servidor › leerBase (guia_analisis con informe) y la
+      // página prepara los que no.
+      if (!/<PrepararDetalles avisoIds=\{sinPreparar\} \/>/.test(base) || !/const sinPreparar = base\.elegidos\.filter\(\(d\) => !d\.preparado\)/.test(base) || !/\.from\("guia_analisis"\)[^\n]*\.not\("analysis_id", "is", null\)/.test(codigo("src/lib/invierte-v2/base-servidor.ts"))) F("8 · la base no prepara lo que quedó sin preparar");
       // Los cambios: los umbrales aprobados.
       const v: Vigente = { precioUF: 3000, publicado: true, veredicto: "COMPRAR", flujoCLP: 20000, alcanza: true, publicadorId: 7 };
       const h = (o: Partial<Parameters<typeof detectarCambios>[1]>) => ({ precioUF: 3000, publicado: true, veredicto: "COMPRAR", flujoCLP: 20000, alcanza: true, publicadorId: 7, ...o });
@@ -312,6 +317,114 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (/(alter|drop|truncate)\s+table\s+(if exists\s+)?public\.scraped_properties_precios|delete\s+from\s+public\.scraped_properties_precios|update\s+public\.scraped_properties_precios|(drop|create( or replace)?)\s+trigger|registrar_precio_aviso/i.test(m2)) F("8 · la migración toca scraped_properties_precios o su disparador");
       // En los DOS lugares: el relleno inicial y la función de cada noche.
       if ((m2.match(/abs\((s\.)?puf \/ (s\.)?prev - 1\) >= 0\.001/g) ?? []).length !== 2 || (m2.match(/case when h\.moneda = 'UF' then h\.precio else h\.precio \/ u\.valor end/g) ?? []).length !== 2) F("8 · el historial no compara en UF con el umbral de 0,1 % (en el relleno y en la noche)");
+    }
+
+    // ── 9 · LA BASE COMPLETA (entrega 2, 19-nov-2026; láminas 3.3-base, -base-pc, -menu, -documentos, -perfil-editado y
+    //        -sumar-otro-depto). Las reglas puras con datos, sumar con un fixture, y el cableado de cada pantalla. ──
+    {
+      // Los textos de la lámina, tal como están escritos.
+      const esperado: [string, string][] = [
+        [BASE_COPY.titulo, "Tu inversión con Franco"], [BASE_COPY.tusDeptos, "Tus deptos"], [BASE_COPY.tusDeptosLinea(2), "Los dos con que elegiste seguir. Cada uno avanza por su cuenta."],
+        [BASE_COPY.otras(2), "Otras opciones que convienen · 2"], [BASE_COPY.seguirConEste, "Seguir con este"], [BASE_COPY.compararTodas, "Comparar todas"],
+        [BASE_COPY.buscarEnMapa, "Buscar otro en el mapa"], [BASE_COPY.acompana, "Franco te acompaña en todo el proceso"], [BASE_COPY.escribirle, "Escribirle"],
+        [BASE_COPY.francoEnEso, "Franco está en eso"], [MENU_COPY.perfil, "Mi perfil de inversión"], [MENU_COPY.documentos, "Mis documentos"],
+        [MENU_COPY.documentosLinea, "Tu orden firmada y lo de cada depto"], [MENU_COPY.preguntas, "Preguntas frecuentes"], [MENU_COPY.preguntasLinea, "Qué firmé, cuánto cobra Franco"],
+        [MENU_COPY.escribirle, "Escribirle a Franco"], [MENU_COPY.escribirleLinea, "Tu contacto durante todo el proceso"], [MENU_COPY.perfilLinea(4200, ["Ñuñoa", "Macul"]), "Hasta UF 4.200 · Ñuñoa y Macul"],
+        [DOCUMENTOS_COPY.orden, "Orden de visita y acompañamiento"], [DOCUMENTOS_COPY.ordenLinea("15 de noviembre"), "Firmada el 15 de noviembre. Cubre todos tus deptos."],
+        [DOCUMENTOS_COPY.preaprobacionLinea, "La necesitas para ofertar o visitar. Foto o PDF de tu banco."], [DOCUMENTOS_COPY.detallesLinea, "Los que elegiste, cada uno con todos sus detalles."],
+        [DOCUMENTOS_COPY.promesaLinea, "Se firman en notaría; aquí queda la copia."], [SUMAR_COPY.titulo, "Súmalo a tus opciones"], [SUMAR_COPY.sinFirmaT, "No tienes que firmar de nuevo"],
+        [SUMAR_COPY.sinFirma("15 de noviembre"), "Tu orden del 15 de noviembre cubre también este depto. Franco empieza a gestionarlo y puedes ver todos sus detalles desde tus deptos."],
+        [`${SUMAR_COPY.teAlcanza} ${SUMAR_COPY.conQue("renta")}`, "Te alcanza con tu pie y tu renta."], [`${SUMAR_COPY.entra} ${SUMAR_COPY.entraLinea(4)}`, "Entra a tu comparativo junto a las cuatro opciones que ya tienes."],
+        [SUMAR_COPY.boton, "Sumar a mis opciones"], [ACTUALIZADO_COPY.titulo, "Perfil actualizado"], [ACTUALIZADO_COPY.masDeptos(2), "Ahora te alcanzan 2 deptos más"],
+        [ACTUALIZADO_COPY.hasta(4200), "Estimamos que puedes comprar hasta UF 4.200. Sujeto a evaluación del banco."], [ACTUALIZADO_COPY.cambiaron, "Tus opciones cambiaron"],
+        [`${ACTUALIZADO_COPY.siguen(4)} ${ACTUALIZADO_COPY.nadaSale}`, "Las 4 que ya tenías siguen ahí. Nada sale por haber cambiado tu perfil."], [ACTUALIZADO_COPY.boton, "Ver mis opciones"],
+      ];
+      for (const [v, e] of esperado) if (v !== e) F(`9 · el texto no es el de la lámina: «${v}» (debía ser «${e}»)`);
+      if (lineaDepto({ comuna: "Macul", dormitorios: 2, banos: 2, m2: 60.4 }) !== "Macul · 2D2B · 60 m²") F("9 · la línea del depto no es «Macul · 2D2B · 60 m²»");
+      if (numeroWhatsapp("+56 9 1234 5678") !== "+56912345678" || numeroWhatsapp("912345678") !== "+56912345678" || numeroWhatsapp("+5622345678") !== null || numeroWhatsapp("") !== null) F("9 · el número de «Escribirle» no se valida como +569 y ocho dígitos");
+      if (/text=[^"]*(Camila|@)/.test(urlWhatsapp("+56912345678"))) F("9 · el mensaje de «Escribirle» lleva datos de la persona");
+      const pc = (o: Partial<PerfilComparable>): PerfilComparable => ({ pieUF: 700, rentaCLP: 2000000, otrasCuotasCLP: 0, comunas: ["Ñuñoa"], topeUF: 3000, montoPreaprobadoUF: null, ...o });
+      if (fraseCambioPerfil(pc({}), pc({ pieUF: 900 })) !== "Subiste tu pie de UF 700 a UF 900.") F("9 · el cambio del pie no dice «Subiste tu pie de UF 700 a UF 900.»");
+      if (fraseCambioPerfil(pc({}), pc({ rentaCLP: 1800000 })) !== "Bajaste tu renta de $2.000.000 a $1.800.000.") F("9 · el cambio de la renta no se dice");
+      if (fraseCambioPerfil(pc({}), pc({ comunas: ["Ñuñoa", "Macul"] })) !== "Sumaste Macul a tus comunas.") F("9 · sumar una comuna no se dice");
+      if (fraseCambioPerfil(pc({}), pc({})) !== null) F("9 · sin cambios, el perfil inventa una frase");
+
+      // La tarjeta dice lo vigente (lo que supo la vigilancia), no la foto del día que lo eligió; y no repite «Al mes».
+      const vs = vigenteSobre({ precioUF: 3000, veredicto: "AJUSTA SUPUESTOS", flujoCLP: -20000, score: 70, comuna: "Macul" }, { precioUF: 2850, veredicto: "COMPRAR", flujoCLP: 52000 });
+      if (vs.precioUF !== 2850 || vs.veredicto !== "COMPRAR" || vs.flujoCLP !== 52000 || vs.score !== 70) F("9 · la tarjeta de la base no muestra el precio, el veredicto o el al mes vigentes");
+      if (!/datos: vigenteSobre\(\(f\.datos \?\? \{\}\) as DatosDepto, f\.vigente/.test(codigo("src/lib/invierte-v2/base-servidor.ts"))) F("9 · la base no pone lo vigente sobre la foto del depto");
+      if (!/\{d\.datos\.flujoCLP != null && !d\.alMesEnCambio && <p/.test(codigo("src/components/invierte-v2/VistaBase.tsx"))) F("9 · la base repite «Al mes» cuando lo que cambió ya lo dice");
+      if (!lineaDepto({ comuna: "X", m2: 58 }).includes("58 m²")) F("9 · «58 m²» puede quedar partido en dos renglones");
+      const vb = codigo("src/components/invierte-v2/VistaBase.tsx");
+      if (!/<ConMontoNegativo texto=\{l\} \/>/.test(vb) || !vb.includes("texto.split(/(pones \\$[\\d.]+)/)") || !vb.includes('<span key={i} className="iv2-pones iv2-nowrap">')) F("9 · «pones $X» de la línea de lo que cambió no va en rojo");
+      // Sumar: solo lo que le alcanza, hasta seis; con seis, deja uno elegido por ella; cada sumado deja su tarea interna.
+      const ORDEN = { id: "o-1", user_id: USER.id, email: USER.email, nombre: "Camila Rojas", rut: "12345678-5", aviso_id: "a0", depto_linea: "x", texto_version: 1, texto_sha256: "h", texto: "t", es_prueba: true, firmado_at: "2026-11-15T15:00:00Z" };
+      const PERFIL = { user_id: USER.id, objetivo: "arriendo", comunas: ["Macul"], preaprobado: "no", tope_uf: 3000, tope_fuente: "renta", es_prueba: true, updated_at: "x" };
+      const aviso = (id: string, precio: number) => ({
+        sp: { id, comuna: "Macul", lat: null, lng: null, superficie_m2: 54, dormitorios: 2, banos: 1, condicion: "usado" },
+        ae: { aviso_id: id, precio_uf: precio, arriendo: null, venta: null, score_20: 80, flujo_20: 15000, veredicto_20: "COMPRAR" },
+      });
+      const mundo = (activos: number) => {
+        const avisos = [aviso("nuevo", 2760), aviso("caro", 3600), ...Array.from({ length: activos }, (_, i) => aviso(`e${i}`, 2500))];
+        return falso({
+          inv_ordenes: [ORDEN], inv_perfiles: [PERFIL], inv_bitacora: [], inv_tareas: [],
+          inv_deptos: Array.from({ length: activos }, (_, i) => ({ user_id: USER.id, aviso_id: `e${i}`, estado: "elegido", origen: "franco", alcanza: true, datos: { comuna: "Macul" } })),
+          scraped_properties: avisos.map((a) => a.sp), avisos_evaluados: avisos.map((a) => a.ae),
+        });
+      };
+      const u = { id: USER.id, email: USER.email };
+      const w1 = mundo(2);
+      const r1 = await sumarDepto(w1.sb, u, "nuevo", null, "mapa", null);
+      const fila = w1.datos.inv_deptos.find((f) => f.aviso_id === "nuevo");
+      if (!r1.ok || fila?.estado !== "elegido" || fila?.origen !== "mapa") F("9 · sumar desde el mapa no deja el depto elegido con origen «mapa»");
+      if (!w1.datos.inv_tareas.some((t) => t.tipo === "gestionar_corredor" && t.aviso_id === "nuevo")) F("9 · sumar no deja la tarea «gestionar al corredor»");
+      if (!w1.datos.inv_bitacora.some((b) => b.accion === "depto_sumado")) F("9 · sumar no queda en la bitácora");
+      const r2 = await sumarDepto(mundo(2).sb, u, "caro", null, "mapa", null);
+      if (r2.ok || r2.error !== "fuera") F("9 · se puede sumar un depto que no le alcanza");
+      const w6 = mundo(MAX_ACTIVOS);
+      const r3 = await sumarDepto(w6.sb, u, "nuevo", null, "base", null);
+      if (r3.ok || r3.error !== "maximo" || w6.datos.inv_deptos.some((f) => f.aviso_id === "nuevo")) F("9 · con seis activos se suma un séptimo sin dejar uno");
+      const r4 = await sumarDepto(w6.sb, u, "nuevo", "e3", "base", null);
+      const estados = w6.datos.inv_deptos.filter((f) => f.estado === "elegido").map((f) => f.aviso_id).sort().join(",");
+      if (!r4.ok || estados !== "e0,e1,e2,e4,e5,nuevo") F(`9 · con seis activos, dejar uno no suelta ESE y suma el nuevo (${estados})`);
+      const r5 = await sumarDepto(mundo(MAX_ACTIVOS).sb, u, "nuevo", "otro", "base", null);
+      if (r5.ok || r5.error !== "deja") F("9 · se puede dejar un depto que no está entre los suyos");
+      const sinOrden = falso({ inv_ordenes: [], inv_perfiles: [PERFIL] });
+      const r6 = await sumarDepto(sinOrden.sb, u, "nuevo", null, "mapa", null);
+      if (r6.ok || r6.error !== "sin-orden") F("9 · se puede sumar sin orden firmada");
+
+      // El cableado de cada pantalla.
+      const base = codigo("src/components/invierte-v2/VistaBase.tsx"); // ⚠ ACTA (19-nov-2026): lo que dibuja la base vive en VistaBase (la usan la página y /dev/invierte-v2/base)
+      if (!/<SumarDepto avisoId=\{o\.avisoId\} etiqueta=\{B\.seguirConEste\} origen="base" activos=\{activos\} variante="enlace" \/>/.test(base)) F("9 · las otras opciones no tienen «Seguir con este»");
+      if (!/href=\{URL_OPCIONES\}[^>]*data-inv2="comparar-todas"/.test(base) || !/href="\/explorar"[^>]*data-inv2="buscar-mapa"/.test(base)) F("9 · la base no tiene «Comparar todas» o «Buscar otro en el mapa»");
+      if (!/<MenuBase nombre=/.test(base) || !/<EnlacesBase whatsapp=\{base\.whatsapp\} \/>/.test(base)) F("9 · la base no tiene el menú en el celular o los enlaces en el PC");
+      if (!/\{base\.whatsapp && <a href=\{urlWhatsapp\(base\.whatsapp\)\} target="_blank"/.test(base)) F("9 · «Escribirle» aparece sin número configurado (o saca de la página)");
+      if (/iv2-ind-barra|Te toca a ti|BASE_COPY\.teTocaATi|B\.teTocaATi/.test(base)) F("9 · la base muestra la barra de cuatro tramos o «Te toca a ti» (no se construyen en esta etapa)");
+      const lb = codigo("src/lib/invierte-v2/base-servidor.ts");
+      if (!/f\.estado === "opcion" && f\.alcanza === true && \(f\.datos as DatosDepto \| null\)\?\.veredicto === "COMPRAR"/.test(lb)) F("9 · las otras opciones no son solo las que convienen y le alcanzan");
+      const css = leer("src/components/invierte-v2/invierte-v2.css");
+      if (!/\.iv2-base \{ display: grid; grid-template-columns: minmax\(0, 1fr\) 360px;/.test(css) || !/\.iv2-deptos \{ display: grid; grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/.test(css)) F("9 · la base del PC no va en dos columnas con los deptos de a dos");
+      const menu = codigo("src/components/invierte-v2/MenuBase.tsx");
+      if (/Mis avisos/.test(menu)) F("9 · el menú trae «Mis avisos» (no se construye en esta etapa)");
+      if (!/e\.key === "Escape"/.test(menu) || !/if \(e\.target === e\.currentTarget\) cerrar\(\);/.test(menu) || !/onClick=\{cerrar\}[^>]*data-inv2="menu-cerrar"/.test(menu)) F("9 · el menú no cierra con Escape, tocando afuera o con «Cerrar»");
+      if (!/\.iv2-menu \{[^}]*max-height: calc\(100dvh - 88px\); overflow-y: auto;/.test(css)) F("9 · la hoja del menú puede pasarse del alto de la pantalla");
+      const docs = codigo("src/app/invierte/documentos/page.tsx");
+      if (!/<VerOrden clase="iv2-enlace-azul iv2-doc-accion" etiqueta=\{D\.ver\}/.test(docs)) F("9 · la orden de «Tus documentos» no se abre en la ventana");
+      const hoja = codigo("src/components/invierte-v2/HojaContacto.tsx");
+      if (!/router\.push\(`\$\{urlSumar\(depto\.avisoId\)\}/.test(hoja)) F("9 · el mapa no lleva a «Súmalo a tus opciones» a quien ya firmó");
+      const sumar = codigo("src/app/invierte/[avisoId]/sumar/page.tsx");
+      if (!/if \(!acceso\) notFound\(\);/.test(sumar) || !/force-dynamic/.test(sumar)) F("9 · la pantalla de sumar no da 404 sin acceso");
+      if (!/\{v\.alcanza\s*\? <SumarDepto [^>]*origen="mapa"/.test(sumar)) F("9 · la pantalla de sumar ofrece sumar un depto que no le alcanza");
+      const ed = codigo("src/components/invierte-v2/PerfilForm.tsx");
+      if (!/router\.push\(d\?\.editado \? URL_PERFIL_ACTUALIZADO : URL_OPCIONES\);/.test(ed)) F("9 · cambiar el perfil no lleva a «Perfil actualizado»");
+      const ps = codigo("src/lib/invierte-v2/perfil-servidor.ts");
+      if (!/const ultimoCambio = previo \? await cambioDelPerfil\(/.test(ps) || !/editado: !!ultimoCambio && ultimoCambio\.deptos\.some\(\(d\) => d\.estado === "elegido"\)/.test(ps)) F("9 · el perfil no guarda la foto de antes o «Perfil actualizado» se muestra a quien nunca eligió");
+      if (!/await tareasGestionar\(admin, user\.id, ids,/.test(ps)) F("9 · elegir deptos no deja la tarea «gestionar al corredor»");
+      // La ficha del admin: las tareas con «Marcar hecha», y quién publica no sale de ella.
+      const ficha = codigo("src/app/admin/invierte-v2/[userId]/page.tsx");
+      if (!/<TareaHecha id=\{t\.id as string\} \/>/.test(ficha) || !/requireAdminPage\(\)/.test(ficha)) F("9 · la ficha del admin no marca tareas hechas (o no pide admin)");
+      if (/publicadores|avisos_publicador/.test(ficha)) F("9 · la ficha del admin lee quién publica");
+      if (!/\.eq\("id", b\.id\)\.eq\("estado", "pendiente"\)/.test(codigo("src/app/api/admin/invierte-v2/route.ts"))) F("9 · «Marcar hecha» puede reescribir una tarea ya hecha");
     }
 
     // ── 7 · REINICIAR PRUEBA LIMPIA LA ETAPA 2 DE ESA PERSONA, Y SOLO DE ELLA ──

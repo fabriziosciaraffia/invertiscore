@@ -78,6 +78,7 @@ export function falso(datos: Record<string, Record<string, unknown>[]>) {
     let op = "select";
     let fila: unknown = null;
     let uno = false;
+    let conflicto = ["user_id"];
     const filtros: Array<[string, string, unknown]> = [];
     const pasa = (r: Record<string, unknown>) => filtros.every(([k, t, v]) => (t === "eq" ? r[k] === v : t === "in" ? (v as unknown[]).includes(r[k]) : t === "is" ? (r[k] ?? null) === v : t === "gte" ? String(r[k]) >= String(v) : true));
     const correr = () => {
@@ -89,7 +90,8 @@ export function falso(datos: Record<string, Record<string, unknown>[]>) {
         filas.push(r);
         return { data: uno ? r : [r], error: null };
       }
-      if (op === "upsert") { const r = fila as Record<string, unknown>; const i = filas.findIndex((x) => x.user_id === r.user_id); if (i >= 0) filas[i] = { ...filas[i], ...r }; else filas.push(r); return { data: null, error: null }; }
+      // El upsert respeta `onConflict` (entrega 2: inv_deptos es único por persona y depto); por defecto, por persona.
+      if (op === "upsert") { const r = fila as Record<string, unknown>; const i = filas.findIndex((x) => conflicto.every((k) => x[k] === r[k])); if (i >= 0) filas[i] = { ...filas[i], ...r }; else filas.push(r); return { data: null, error: null }; }
       if (op === "update") { for (const r of filas.filter(pasa)) Object.assign(r, fila); return { data: null, error: null }; }
       if (op === "delete") { const rs = filas.filter(pasa); datos[tabla] = filas.filter((r) => !rs.includes(r)); return { data: null, error: null, count: rs.length }; }
       return { data: null, error: null };
@@ -97,7 +99,7 @@ export function falso(datos: Record<string, Record<string, unknown>[]>) {
     const b: Record<string, unknown> = {
       select: () => b, order: () => b, limit: () => b, range: () => b,
       insert: (f: unknown) => { op = "insert"; fila = f; return b; },
-      upsert: (f: unknown) => { op = "upsert"; fila = f; return b; },
+      upsert: (f: unknown, o?: { onConflict?: string }) => { op = "upsert"; fila = f; if (o?.onConflict) conflicto = o.onConflict.split(","); return b; },
       update: (f: unknown) => { op = "update"; fila = f; return b; },
       delete: () => { op = "delete"; return b; },
       eq: (k: string, v: unknown) => { filtros.push([k, "eq", v]); return b; },
@@ -205,7 +207,12 @@ export async function runInvierteV2(): Promise<{ hard: number }> {
       // La hoja: el patrón de Pronto (sus clases) sin tocar a Pronto; cerrar no navega; quien ya firmó va a Partimos.
       const hoja = codigo("src/components/invierte-v2/HojaContacto.tsx");
       if (!/className="inv-velo iv2-velo"/.test(hoja) || !/className="inv-hoja iv2-hoja"/.test(hoja) || !/onClick=\{alCerrar\} aria-label="Cerrar"/.test(hoja) || /router\.(push|replace|back)\([^)]*\)[^;]*;\s*\}\s*\}\s*>/.test(hoja)) F("2 · la hoja de contacto no usa el patrón de la hoja de Pronto o cerrar navega");
-      if (!/if \(d\?\.firmo\) \{ router\.push\(URL_PARTIMOS\); return; \}/.test(hoja)) F("2 · la hoja no manda a Partimos a quien ya firmó");
+      // ⚠ ACTA (19-nov-2026, entrega 2, lámina 3.3-sumar-otro-depto): quien ya firmó ya no va a Partimos desde el mapa sino a
+      // «Súmalo a tus opciones» (su orden cubre todos sus deptos; sin perfil, esa página lo manda a Partimos). El predicado
+      // exigía `router.push(URL_PARTIMOS)`; ahora exige la página de sumar de ESE depto, con su origen.
+      if (!/if \(d\?\.firmo\) \{ router\.push\(`\$\{urlSumar\(depto\.avisoId\)\}\?desde=\$\{origen\}`\); return; \}/.test(hoja)) F("2 · la hoja no manda a «Súmalo a tus opciones» a quien ya firmó");
+      if (!/if \(orden\) redirect\(`\$\{urlSumar\(depto\.avisoId\)\}/.test(codigo("src/app/invierte/[avisoId]/page.tsx"))) F("2 · la página del contacto no manda a «Súmalo a tus opciones» a quien ya firmó");
+      if (!/if \(v\.estado === "sin-perfil"\) redirect\(URL_PARTIMOS\);/.test(codigo("src/app/invierte/[avisoId]/sumar/page.tsx"))) F("2 · quien firmó sin perfil no va a Partimos desde la página de sumar");
       if (!/max-height: calc\(100dvh - 88px\)/.test(leer("src/components/invierte-v2/invierte-v2.css"))) F("2 · en el celular la hoja no deja asomar el mapa");
     }
 
@@ -544,7 +551,9 @@ export async function runInvierteV2(): Promise<{ hard: number }> {
 
       // «Ver mi orden»: un botón secundario que abre la ventana; al abrirla se anota la vista.
       const ver = codigo("src/components/invierte-v2/VerOrden.tsx");
-      if (!/<button type="button" className="iv2-secundario" onClick=\{abrir\}/.test(ver) || !/\{abierta && \(\s*<VentanaDocumento/.test(ver)) F("13 · «Ver mi orden» no es un botón que abre la ventana");
+      // ⚠ ACTA (19-nov-2026, entrega 2): «Tus documentos» usa el mismo VerOrden con aspecto de enlace («Ver»); el botón toma la
+      // clase de `clase`, que por defecto es la secundaria de Partimos. Se exige el default y que Partimos no lo cambie.
+      if (!/clase = "iv2-secundario"/.test(ver) || !/<button type="button" className=\{clase\} onClick=\{abrir\}/.test(ver) || !/\{abierta && \(\s*<VentanaDocumento/.test(ver) || /<VerOrden[^>]*clase=/.test(codigo("src/app/invierte/partimos/page.tsx"))) F("13 · «Ver mi orden» no es un botón que abre la ventana");
 // ⚠ ACTA (18-nov-2026, ajustes de la etapa 1): «Descargar PDF» pasó a «Abrir PDF» —el PDF se abre en una pestaña nueva, en el
       // visor; en iPhone la descarga ofrecía guardarlo, que no sirve— y la ruta ya no tiene modo descarga. Los predicados que
       // exigían `?descargar=1` y la URL firmada con `download` ahora exigen la pestaña nueva y la URL firmada sin descarga.
@@ -651,7 +660,8 @@ export async function runInvierteV2(): Promise<{ hard: number }> {
     {
       if (FLUJO_COPY.documento.abrirPdf !== "Abrir PDF") F("16 · el botón del PDF no dice «Abrir PDF»");
       const ventana = codigo("src/components/invierte-v2/VentanaDocumento.tsx");
-      if (!/\{pdf && <a href=\{pdf\.href\} target="_blank" rel="noopener noreferrer"/.test(ventana) || /download/.test(ventana)) F("16 · «Abrir PDF» no abre en una pestaña nueva (o lo baja)");
+      // ⚠ ACTA (19-nov-2026, entrega 2): la ventana acepta un `pie` propio (la acción de «¿Cuál dejas?»); sin él, el PDF y «Cerrar» de siempre.
+      if (!/\{!pie && pdf && <a href=\{pdf\.href\} target="_blank" rel="noopener noreferrer"/.test(ventana) || /download/.test(ventana)) F("16 · «Abrir PDF» no abre en una pestaña nueva (o lo baja)");
       // /invierte decide según el estado de la persona.
       const avi = { avisoId: AVISO, origen: "explorar" as const };
       const casos: [Parameters<typeof destinoInvierte>[0], string][] = [
