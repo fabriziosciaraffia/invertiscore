@@ -305,6 +305,21 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       const dep = { avisoId: "x", comuna: "Ñuñoa", descripcion: "2D2B · 58 m²", cambios: [{ tipo: "precio_baja" as const, antes: { precioUF: 3000, alcanza: true }, despues: { precioUF: 2850, alcanza: true }, fecha: "2026-11-20" }, { tipo: "al_mes" as const, antes: { flujoCLP: 20000 }, despues: { flujoCLP: 52000 }, fecha: "2026-11-20" }] };
       if (asuntoCambios([dep]) !== "El depto de Ñuñoa bajó UF 150" || asuntoCambios([dep, dep]) !== "Cambiaron 2 deptos que elegiste") F("8 · el asunto del correo no es el aprobado");
       if (parrafoDepto(dep) !== "El depto de Ñuñoa (2D2B · 58 m²) que elegiste bajó UF 150 el 20 de noviembre: ahora está en UF 2.850. Con ese precio, te sobran $52.000 al mes.") F(`8 · el cuerpo del correo no es el aprobado (${parrafoDepto(dep)})`);
+      // ⚠ ACTA (19-nov-2026, Fabrizio): precio y veredicto a la vez van en UNA frase («…y conviene al precio publicado (Comprar).»),
+      // antes de lo que deja al mes; las otras combinaciones con la misma forma y el nombre de la fuente.
+      const conV = (va: string, vb: string, fl: number) => parrafoDepto({ avisoId: "x", comuna: "Ñuñoa", descripcion: "2D2B · 58 m²", cambios: [
+        { tipo: "precio_baja" as const, antes: { precioUF: 3000, alcanza: true }, despues: { precioUF: 2850, alcanza: true }, fecha: "2026-11-20" },
+        { tipo: "veredicto" as const, antes: { veredicto: va }, despues: { veredicto: vb }, fecha: "2026-11-20" },
+        { tipo: "al_mes" as const, antes: { flujoCLP: 0 }, despues: { flujoCLP: fl }, fecha: "2026-11-20" }] });
+      const pv = `El depto de Ñuñoa (2D2B · 58 m²) que elegiste bajó UF 150 el 20 de noviembre: ahora está en UF 2.850`;
+      const casosV: [string, string, number, string][] = [
+        ["AJUSTA SUPUESTOS", "COMPRAR", 52000, `${pv} y conviene al precio publicado (${etiquetaVeredicto("COMPRAR", "frase")}). Con ese precio, te sobran $52.000 al mes.`],
+        ["COMPRAR", "AJUSTA SUPUESTOS", -20000, `${pv} y ya no conviene al precio publicado: conviene si negocias el precio (${etiquetaVeredicto("AJUSTA SUPUESTOS", "frase")}). Con ese precio, pones $20.000 al mes.`],
+        ["BUSCAR OTRA", "AJUSTA SUPUESTOS", -20000, `${pv} y conviene si negocias el precio (${etiquetaVeredicto("AJUSTA SUPUESTOS", "frase")}). Con ese precio, pones $20.000 al mes.`],
+        ["COMPRAR", "BUSCAR OTRA", -90000, `${pv} y ya no conviene (${etiquetaVeredicto("BUSCAR OTRA", "frase")}). Con ese precio, pones $90.000 al mes.`],
+        ["AJUSTA SUPUESTOS", "BUSCAR OTRA", -90000, `${pv} y ya no conviene ni negociando (${etiquetaVeredicto("BUSCAR OTRA", "frase")}). Con ese precio, pones $90.000 al mes.`],
+      ];
+      for (const [va, vb, fl, esp] of casosV) if (conV(va, vb, fl) !== esp) F(`8 · el correo con precio y veredicto a la vez no es el aprobado (${va} → ${vb}): «${conV(va, vb, fl)}»`);
       // El correo: uno por persona al día, solo a la lista mientras el modo no sea «todos», con botón a /invierte.
       const vig = codigo("src/lib/invierte-v2/vigilancia-servidor.ts");
       if (!/if \(yaHoy\.has\(userId\)\) continue;/.test(vig) || !/idempotencyKey: `invierte-cambio-\$\{p\.userId\}-\$\{p\.dia\}`/.test(codigo("src/lib/email.ts"))) F("8 · puede salir más de un correo de cambios por persona al día");
@@ -405,6 +420,8 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       const css = leer("src/components/invierte-v2/invierte-v2.css");
       if (!/\.iv2-base \{ display: grid; grid-template-columns: minmax\(0, 1fr\) 360px;/.test(css) || !/\.iv2-deptos \{ display: grid; grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/.test(css)) F("9 · la base del PC no va en dos columnas con los deptos de a dos");
       const menu = codigo("src/components/invierte-v2/MenuBase.tsx");
+      // ⚠ ACTA (19-nov-2026, Fabrizio): las preguntas frecuentes van también en la columna derecha del PC (la lámina las omitió).
+      if (!/export function EnlacesBase[\s\S]*data-inv2="pc-preguntas"[\s\S]*<ListaPreguntas preguntas=\{PREGUNTAS_INVIERTE\} \/>/.test(menu)) F("9 · las preguntas frecuentes no están en la columna derecha del PC");
       if (/Mis avisos/.test(menu)) F("9 · el menú trae «Mis avisos» (no se construye en esta etapa)");
       if (!/e\.key === "Escape"/.test(menu) || !/if \(e\.target === e\.currentTarget\) cerrar\(\);/.test(menu) || !/onClick=\{cerrar\}[^>]*data-inv2="menu-cerrar"/.test(menu)) F("9 · el menú no cierra con Escape, tocando afuera o con «Cerrar»");
       if (!/\.iv2-menu \{[^}]*max-height: calc\(100dvh - 88px\); overflow-y: auto;/.test(css)) F("9 · la hoja del menú puede pasarse del alto de la pantalla");

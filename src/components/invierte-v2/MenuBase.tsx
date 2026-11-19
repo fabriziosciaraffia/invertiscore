@@ -82,14 +82,21 @@ export function MenuBase({ nombre, perfilLinea, whatsapp }: { nombre: string | n
   );
 }
 
-/** Los enlaces del menú en la columna derecha de la base, en el PC (lámina 3.3-base-pc): perfil, documentos y escribirle, tal
- *  como la lámina (sin las preguntas). */
+/** Los enlaces del menú en la columna derecha de la base, en el PC (lámina 3.3-base-pc): perfil, documentos, preguntas
+ *  frecuentes y escribirle (las preguntas las sumó Fabrizio el 19-nov-2026: la lámina las omitió). */
 export function EnlacesBase({ whatsapp }: { whatsapp: string | null }) {
+  const [preguntas, setPreguntas] = useState(false);
   return (
     <nav className="iv2-enlaces-base" aria-label="Más de tu inversión" data-inv2="enlaces-base">
       <Link href={URL_PERFIL} className="iv2-enlace-fila" data-inv2="pc-perfil">{M.perfil}</Link>
       <Link href={URL_DOCUMENTOS} className="iv2-enlace-fila" data-inv2="pc-documentos">{M.documentos}</Link>
+      <button type="button" className="iv2-enlace-fila" onClick={() => setPreguntas(true)} aria-haspopup="dialog" data-inv2="pc-preguntas">{M.preguntas}</button>
       {whatsapp && <a href={urlWhatsapp(whatsapp)} target="_blank" rel="noopener noreferrer" className="iv2-enlace-fila" data-inv2="pc-escribirle">{M.escribirle}</a>}
+      {preguntas && (
+        <VentanaDocumento nombre="preguntas" titulo={TITULO_PREGUNTAS_INVIERTE} variante="lista" alCerrar={() => setPreguntas(false)}>
+          <ListaPreguntas preguntas={PREGUNTAS_INVIERTE} />
+        </VentanaDocumento>
+      )}
     </nav>
   );
 }

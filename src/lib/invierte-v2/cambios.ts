@@ -125,6 +125,18 @@ export function textoVeredicto(antes: string, despues: string): string {
     : `Con el precio nuevo, ya no conviene ni negociando: ahora es ${d}.`;
 }
 
+/**
+ * El veredicto pegado a la frase del precio, en el correo (decisión de Fabrizio, 19-nov-2026): cuando cambian a la vez el precio
+ * y el veredicto, «…ahora está en UF 2.850 y conviene al precio publicado (Comprar).» en vez de dos frases que repiten el precio.
+ * Las otras cuatro combinaciones, con la misma forma. El nombre, de `etiquetaVeredicto`.
+ */
+export function veredictoEnPrecio(antes: string, despues: string): string {
+  const d = etiquetaVeredicto(despues, "frase");
+  if (despues === "COMPRAR") return `y conviene al precio publicado (${d})`;
+  if (despues === "AJUSTA SUPUESTOS") return antes === "COMPRAR" ? `y ya no conviene al precio publicado: conviene si negocias el precio (${d})` : `y conviene si negocias el precio (${d})`;
+  return antes === "COMPRAR" ? `y ya no conviene (${d})` : `y ya no conviene ni negociando (${d})`;
+}
+
 /** La línea del depto en la base («Bajó UF 150 el 20 de noviembre»). Null para lo que no va en la base. */
 export function lineaCambio(c: { tipo: TipoCambio; antes: Record<string, unknown>; despues: Record<string, unknown> }, fecha: string): string | null {
   const f = fechaCorta(fecha);
@@ -175,10 +187,12 @@ export function parrafoDepto(d: DeptoConCambios): string {
   const vuelta = d.cambios.find((c) => c.tipo === "republicado");
   if (fuera) partes.push(`${quien} dejó de estar publicado el ${fechaCorta(fuera.fecha)}. Lo dejamos marcado en tu base y Franco revisa si se vendió.`);
   else if (vuelta) partes.push(`${quien} volvió a publicarse el ${fechaCorta(vuelta.fecha)}.`);
+  const v = d.cambios.find((c) => c.tipo === "veredicto");
   if (p) {
     const b = num(p.despues, "precioUF");
     const linea = (lineaCambio(p, p.fecha) ?? "").replace(/^B/, "b").replace(/^S/, "s");
-    partes.push(`${fuera || vuelta ? "Además," : quien} ${linea}${b != null ? `: ahora está en UF ${uf(b)}` : ""}.`);
+    const conVeredicto = v && b != null ? ` ${veredictoEnPrecio(String(v.antes.veredicto ?? ""), String(v.despues.veredicto ?? ""))}` : "";
+    partes.push(`${fuera || vuelta ? "Además," : quien} ${linea}${b != null ? `: ahora está en UF ${uf(b)}${conVeredicto}` : ""}.`);
     const alcanzaAntes = p.antes.alcanza, alcanzaHoy = p.despues.alcanza;
     if (alcanzaAntes === true && alcanzaHoy === false) partes.push("Con ese precio, hoy no te alcanza.");
     if (alcanzaAntes === false && alcanzaHoy === true) partes.push("Con ese precio, ahora te alcanza.");
@@ -188,8 +202,8 @@ export function parrafoDepto(d: DeptoConCambios): string {
     const b = num(m.despues, "flujoCLP");
     if (b != null) partes.push(b > 0 ? `Con ese precio, te sobran ${clp(b)} al mes.` : `Con ese precio, pones ${clp(b)} al mes.`);
   }
-  const v = d.cambios.find((c) => c.tipo === "veredicto");
-  if (v) partes.push(textoVeredicto(String(v.antes.veredicto ?? ""), String(v.despues.veredicto ?? "")));
+  // Sin cambio de precio (volvió a publicarse), el veredicto va en su propia frase, como en la base.
+  if (v && !(p && num(p.despues, "precioUF") != null)) partes.push(textoVeredicto(String(v.antes.veredicto ?? ""), String(v.despues.veredicto ?? "")));
   return partes.join(" ");
 }
 
