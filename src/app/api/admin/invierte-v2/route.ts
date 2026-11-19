@@ -5,6 +5,17 @@ import { olvidarAcceso } from "@/lib/invierte-v2/acceso-servidor";
 import { anotarVista, completarOrden, leerOrdenPorId, reiniciarPrueba, urlFirmadaPdf } from "@/lib/invierte-v2/servidor";
 import { DEPS_FIRMA } from "@/lib/invierte-v2/rutas";
 import { CLAVE_WHATSAPP_FRANCO, numeroWhatsapp } from "@/lib/invierte-v2/base";
+import { aprobar, documentoPorId, pedirCorregir, urlDocumento, type DepsRevision } from "@/lib/invierte-v2/preaprobacion-servidor";
+import { validarAprobacion, validarMotivo } from "@/lib/invierte-v2/preaprobacion";
+import { sendPreaprobacionInvierte } from "@/lib/email";
+import { estadoInterruptor } from "@/lib/invierte-v2/acceso-servidor";
+import { puedeRecibirCopia } from "@/lib/invierte-v2/copias-servidor";
+
+/** El correo de la revisión: solo a quien el interruptor deja (mientras el modo no sea «todos», la lista). */
+const DEPS_REVISION: DepsRevision = {
+  correo: (p) => sendPreaprobacionInvierte(p),
+  puedeRecibir: async (email) => { const { modo, lista } = await estadoInterruptor(); return puedeRecibirCopia(modo, lista, email); },
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // /api/admin/invierte-v2 (etapa 1 de Invierte con Franco, 18-nov-2026). Solo administradores de ADMIN_EMAIL.
@@ -14,6 +25,9 @@ import { CLAVE_WHATSAPP_FRANCO, numeroWhatsapp } from "@/lib/invierte-v2/base";
 //   POST { accion: "reenviar", ordenId }            → «Reenviar copia»: completa la orden (PDF y copia) y dice el motivo si no sale.
 //   POST { accion: "tarea", id }                   → «Marcar hecha» una tarea interna (entrega 2, la ficha de la persona).
 //   POST { accion: "whatsapp", numero }            → el número de «Escribirle» de la base (vacío lo quita; entrega 2).
+//   POST { accion: "aprobar", id, banco, montoUF, vigenteHasta } → aprueba la preaprobación (entrega 3) y le avisa por correo.
+//   POST { accion: "corregir", id, motivo }        → pide subirla de nuevo, con el motivo que ve la persona, y le avisa.
+//   GET  ?documento=<id>                            → «Ver» la preaprobación (URL firmada de 60 s), anotado en la bitácora.
 //   GET  ?orden=<id>                                → «Ver»: la orden firmada (URL firmada de 60 s), anotada en la bitácora.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -56,6 +70,21 @@ export async function POST(request: Request) {
     const c = await completarOrden(sb, orden, DEPS_FIRMA, "admin");
     return NextResponse.json({ ok: c.copia, copia: c.copia, motivo: c.motivoCopia }, { status: c.copia ? 200 : 502 });
   }
+  if (accion === "aprobar" || accion === "corregir") {
+    if (typeof b?.id !== "string" || !UUID.test(b.id)) return NextResponse.json({ error: "datos" }, { status: 400 });
+    let r;
+    if (accion === "aprobar") {
+      const v = validarAprobacion(b);
+      if (!v.ok) return NextResponse.json({ error: v.error }, { status: 400 });
+      r = await aprobar(sb, adminUser.email ?? null, b.id, v.a, DEPS_REVISION);
+    } else {
+      const motivo = validarMotivo(b?.motivo);
+      if (!motivo) return NextResponse.json({ error: "motivo" }, { status: 400 });
+      r = await pedirCorregir(sb, adminUser.email ?? null, b.id, motivo, DEPS_REVISION);
+    }
+    if (!r.ok) return NextResponse.json({ error: r.error }, { status: r.error === "no-existe" ? 404 : r.error === "estado" ? 409 : 500 });
+    return NextResponse.json({ ok: true, correo: r.correo });
+  }
   if (accion === "tarea") {
     if (typeof b?.id !== "string" || !UUID.test(b.id)) return NextResponse.json({ error: "datos" }, { status: 400 });
     const { error } = await sb.from("inv_tareas").update({ estado: "hecha", hecha_por: adminUser.email ?? null, hecha_at: new Date().toISOString() }).eq("id", b.id).eq("estado", "pendiente");
@@ -78,6 +107,15 @@ export async function POST(request: Request) {
 export async function GET(request: Request) {
   const gate = await requireAdmin();
   if (!gate.ok) return gate.response;
+  const docId = new URL(request.url).searchParams.get("documento");
+  if (docId) {
+    if (!UUID.test(docId)) return NextResponse.json({ error: "datos" }, { status: 400 });
+    const doc = await documentoPorId(gate.sb, docId);
+    const url = doc ? await urlDocumento(gate.sb, doc) : null;
+    if (!doc || !url) return NextResponse.json({ error: "no-existe" }, { status: 404 });
+    await gate.sb.from("inv_bitacora").insert({ user_id: doc.userId, actor: "admin", actor_email: gate.adminUser.email ?? null, accion: "preaprobacion_vista", detalle: { documento: doc.id }, es_prueba: doc.esPrueba });
+    return NextResponse.redirect(url, { status: 303, headers: { "Cache-Control": "no-store" } });
+  }
   const id = new URL(request.url).searchParams.get("orden");
   if (!id || !UUID.test(id)) return NextResponse.json({ error: "datos" }, { status: 400 });
   const orden = await leerOrdenPorId(gate.sb, id);

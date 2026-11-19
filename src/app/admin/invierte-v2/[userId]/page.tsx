@@ -10,7 +10,9 @@ import { lineaDepto } from "@/lib/invierte-v2/base";
 import type { DatosDepto } from "@/lib/invierte-v2/base-servidor";
 import { lineaCambio, type TipoCambio } from "@/lib/invierte-v2/cambios";
 import { ETIQUETAS, fmtUF, textoAlMes, type Etiqueta } from "@/lib/invierte-v2/opciones";
-import { TareaHecha } from "../controles";
+import { RevisarPreaprobacion, TareaHecha } from "../controles";
+import { leerPreaprobacion } from "@/lib/invierte-v2/preaprobacion-servidor";
+import { lineaAprobada } from "@/lib/invierte-v2/preaprobacion";
 
 export const dynamic = "force-dynamic";
 
@@ -40,6 +42,7 @@ export default async function FichaInvierteV2Page({ params }: { params: { userId
   const { sb } = await requireAdminPage();
   const userId = params.userId;
   if (!/^[0-9a-f-]{36}$/i.test(userId)) notFound();
+  const pre = await leerPreaprobacion(sb, userId);
   const [persona, orden, perfil, { data: deptos }, { data: tareas }, { data: cambios }, { data: bitacora }, { data: detalles }] = await Promise.all([
     leerPersona(sb, userId), ultimaOrdenDe(sb, userId), leerPerfilInv(sb, userId),
     sb.from("inv_deptos").select("aviso_id, estado, origen, etiqueta, alcanza, datos, elegido_at, vigente, publicacion_leida_at, updated_at").eq("user_id", userId).order("estado").order("updated_at", { ascending: false }),
@@ -88,6 +91,24 @@ export default async function FichaInvierteV2Page({ params }: { params: { userId
             </ul>
           </details>
         )}
+      </section>
+
+      <section className={caja} data-admin="inv2-ficha-preaprobacion">
+        <h2 className="m-0 mb-3 font-heading text-lg font-bold">Preaprobación · {ESTADO_PRE[pre.estado]}</h2>
+        {pre.doc && pre.doc.tipo === "preaprobacion" ? (
+          <div className="font-body text-[13px]">
+            <p className="m-0">
+              Subida el {fmtDateShort(pre.doc.createdAt)} · {pre.doc.mime ?? "—"}{pre.doc.bytes ? ` · ${Math.round(pre.doc.bytes / 1024)} KB` : ""}
+              {pre.doc.path && <> · <a href={`/api/admin/invierte-v2?documento=${pre.doc.id}`} target="_blank" rel="noopener" className="underline underline-offset-2" data-admin="inv2-ver-preaprobacion">Ver</a></>}
+            </p>
+            {pre.estado === "aprobada" && <p className="m-0 mt-1">{lineaAprobada({ banco: pre.doc.banco, montoUF: pre.doc.montoAprobadoUF, vigenteHasta: pre.doc.vigenteHasta })} Aprobó {pre.doc.revisadoPor ?? "—"}.</p>}
+            {pre.estado === "por_corregir" && <p className="m-0 mt-1">Motivo: {pre.doc.motivo}</p>}
+            <LecturaIA ia={pre.doc.ia} modelo={pre.doc.iaModelo} costo={pre.doc.iaCostoUsd} />
+            {pre.estado === "en_revision" && (
+              <RevisarPreaprobacion id={pre.doc.id} banco={(pre.doc.ia?.banco as string | null) ?? null} montoUF={(pre.doc.ia?.montoUF as number | null) ?? null} vigenteHasta={(pre.doc.ia?.vigenteHasta as string | null) ?? null} />
+            )}
+          </div>
+        ) : <p className="m-0 font-body text-[13px] text-[var(--franco-text-muted)]">{pre.estado === "sin_credito" ? "Compra sin crédito." : pre.estado === "explicando" ? "Dijo que todavía no la tiene: explícale cómo pedirla." : "Todavía no la sube."}</p>}
       </section>
 
       <div className="mb-6 grid gap-6 md:grid-cols-2">
@@ -171,6 +192,25 @@ export default async function FichaInvierteV2Page({ params }: { params: { userId
           ))}
         </ul>
       </section>
+    </div>
+  );
+}
+
+const ESTADO_PRE: Record<string, string> = { subir: "sin subir", en_revision: "en revisión", aprobada: "aprobada", por_corregir: "por corregir", sin_credito: "sin crédito", explicando: "todavía no la tiene" };
+
+/** Lo que propuso la IA (o por qué no leyó): la persona de Franco lo confirma antes de aprobar. */
+function LecturaIA({ ia, modelo, costo }: { ia: Record<string, unknown> | null; modelo: string | null; costo: number | null }) {
+  if (!ia) return <p className="m-0 mt-2 text-[12px] text-[var(--franco-text-muted)]">Sin lectura de la IA.</p>;
+  if (ia.sinLectura) return <p className="m-0 mt-2 text-[12px] text-[var(--franco-text-muted)]">La IA no la leyó ({ia.sinLectura === "formato" ? "formato HEIC" : ia.sinLectura === "rechazo" ? "se negó" : "falló"}): revísala a mano.</p>;
+  const c = (ia.certeza ?? {}) as Record<string, string>;
+  const nc = ia.nombreCoincide;
+  return (
+    <div className="mt-2 rounded-xl border border-[var(--franco-border)] p-3 text-[12px]" data-admin="inv2-lectura-ia">
+      <p className="m-0 font-semibold">Lo que leyó la IA{ia.esPreaprobacion === false ? " · ⚠ no parece una preaprobación" : ""}</p>
+      <p className="m-0">Banco: {String(ia.banco ?? "—")} ({c.banco ?? "—"}) · Monto: {ia.monto != null ? `${String(ia.monto)} ${String(ia.moneda ?? "")}` : "—"}{ia.montoUF != null && ia.moneda === "CLP" ? ` ≈ UF ${String(ia.montoUF)}` : ""} ({c.monto ?? "—"}) · Vigente hasta: {String(ia.vigenteHasta ?? "—")} ({c.vigencia ?? "—"})</p>
+      <p className="m-0">Titular: {String(ia.nombreTitular ?? "—")}{ia.rutTitular ? ` · ${String(ia.rutTitular)}` : ""} · {nc === true ? "coincide con la orden" : nc === false ? "⚠ NO coincide con la orden" : "sin nombre para comparar"}</p>
+      {typeof ia.observaciones === "string" && <p className="m-0">Observación: {ia.observaciones}</p>}
+      <p className="m-0 text-[var(--franco-text-muted)]">{modelo ?? ""}{costo != null ? ` · US$${costo.toFixed(4)}` : ""}</p>
     </div>
   );
 }

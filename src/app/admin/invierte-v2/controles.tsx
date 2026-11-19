@@ -165,3 +165,41 @@ export function NumeroWhatsapp({ inicial }: { inicial: string | null }) {
     </form>
   );
 }
+
+/**
+ * La revisión de la preaprobación (entrega 3): la IA propone banco, monto en UF y vigencia; la persona de Franco los confirma o
+ * corrige y aprueba con un toque, o escribe el motivo (lo ve la persona) y pide subirla de nuevo. Cada acción manda el correo.
+ */
+export function RevisarPreaprobacion({ id, banco, montoUF, vigenteHasta }: { id: string; banco: string | null; montoUF: number | null; vigenteHasta: string | null }) {
+  const router = useRouter();
+  const [b, setB] = useState(banco ?? "");
+  const [m, setM] = useState(montoUF != null ? String(Math.round(montoUF)) : "");
+  const [v, setV] = useState(vigenteHasta ?? "");
+  const [motivo, setMotivo] = useState("");
+  const [ocupado, setOcupado] = useState(false);
+  const [estado, setEstado] = useState<string | null>(null);
+  const ERR: Record<string, string> = { banco: "Falta el banco", monto: "El monto en UF no es válido", vigencia: "La vigencia no es una fecha", motivo: "Escribe el motivo (10 a 300 caracteres)", estado: "Ya se revisó", guardar: "No se guardó" };
+  async function enviar(accion: "aprobar" | "corregir") {
+    setOcupado(true); setEstado(null);
+    const r = await llamar(accion === "aprobar" ? { accion, id, banco: b, montoUF: Number(m.replace(/\D/g, "")), vigenteHasta: v } : { accion, id, motivo });
+    setOcupado(false);
+    if (!r.ok) { setEstado(ERR[r.error ?? ""] ?? "No se guardó"); return; }
+    router.refresh();
+  }
+  const campo = "rounded-md border border-[var(--franco-border)] bg-[var(--franco-card)] px-2 py-1 font-body text-[13px] text-[var(--franco-text)]";
+  return (
+    <div className="mt-3 flex flex-col gap-3 font-body text-[13px]" data-admin="inv2-revisar">
+      <div className="flex flex-wrap items-center gap-2">
+        <input value={b} onChange={(e) => setB(e.target.value)} placeholder="Banco" aria-label="Banco" className={campo} />
+        <input value={m} onChange={(e) => setM(e.target.value)} placeholder="Monto UF" aria-label="Monto aprobado en UF" inputMode="numeric" className={`${campo} w-28`} />
+        <input type="date" value={v} onChange={(e) => setV(e.target.value)} aria-label="Vigente hasta" className={campo} />
+        <button type="button" className={CLASE_BTN} disabled={ocupado} onClick={() => void enviar("aprobar")} data-admin="inv2-aprobar">Aprobar</button>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <input value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Motivo para la persona (por ejemplo: Venció el 3 de noviembre. Pídele a tu banco una vigente.)" aria-label="Motivo" className={`${campo} min-w-[320px] flex-1`} />
+        <button type="button" className={CLASE_BTN} disabled={ocupado} onClick={() => void enviar("corregir")} data-admin="inv2-corregir">Pedir corregir</button>
+      </div>
+      {estado && <span className="text-[12px] text-[var(--signal-red)]" role="alert">{estado}</span>}
+    </div>
+  );
+}
