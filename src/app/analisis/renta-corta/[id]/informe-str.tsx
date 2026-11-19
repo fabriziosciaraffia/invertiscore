@@ -24,6 +24,7 @@ import { quienMiraElInforme } from "@/lib/lo-que-sigue/oferta-informe";
 import { emitirVistaInforme } from "@/lib/meta/vista-informe";
 import { leerOfertaPack } from "@/lib/lo-que-sigue/oferta-informe-servidor";
 import { publicacionDelInforme } from "@/lib/guia/publicacion-portada";
+import { sinEnlaceAlPortal } from "@/lib/invierte-v2/portal-servidor";
 import { invierteDelInforme } from "@/lib/invierte/invierte-servidor";
 import { conFlujoV2 } from "@/lib/invierte-v2/informe";
 import { informeBloqueado, rutaPagoBloqueado } from "@/lib/informe-bloqueado";
@@ -310,11 +311,14 @@ export async function InformeStr({ id, demo = false }: { id: string; demo?: bool
   const invierte = isOwner && !esDemo(data.id) && !modoDemo && veredictoVista
     ? await conFlujoV2(await invierteDelInforme(createServiceClient(), { inputData: data.input_data, analysisId: data.id, veredicto: veredictoVista, score: (data.score as number | null) ?? null, userId: user?.id ?? null }), user ?? null)
     : null;
-  const publicacion = invierte && publicacionAviso ? { ...publicacionAviso, enFranja: true } : publicacionAviso;
+  // Quien mira firmó la orden de Invierte con Franco (19-nov-2026): ningún enlace al portal (portal-servidor.ts).
+  const sinPortal = await sinEnlaceAlPortal(createServiceClient(), user?.id);
+  const publicacion = sinPortal ? null : invierte && publicacionAviso ? { ...publicacionAviso, enFranja: true } : publicacionAviso;
 
   const sharedProps = {
     analysisId: data.id,
     publicacion,
+    sinPortal,
     invierte,
     results,
     inputData: data.input_data,

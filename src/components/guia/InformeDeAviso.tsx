@@ -35,7 +35,7 @@ import "./guia.css";
 /** `demo`: en /dev/lo-que-sigue el toque confirma sin registrar ni mandar el correo. */
 /** `modalidad` (15-oct-2026): también en el informe de renta corta hecho desde un aviso del semanal; mismo botón, misma
  *  ruta y mismo correo. */
-export function InformeDeAviso({ analysisId, veredicto, supuesta, esDueno, demo = false, modalidad = "ltr", invierte = null, publicacion = null }: { analysisId: string; veredicto: string; supuesta: SupuestaPor | null; esDueno: boolean; demo?: boolean; modalidad?: "ltr" | "str"; invierte?: InvierteInforme | null; publicacion?: PublicacionPortada }) {
+export function InformeDeAviso({ analysisId, veredicto, supuesta, esDueno, demo = false, modalidad = "ltr", invierte = null, publicacion = null, sinPortal = false }: { analysisId: string; veredicto: string; supuesta: SupuestaPor | null; esDueno: boolean; demo?: boolean; modalidad?: "ltr" | "str"; invierte?: InvierteInforme | null; publicacion?: PublicacionPortada; /** Firmó la orden de Invierte (19-nov-2026): «Mandármelo por correo» manda el enlace al portal, así que no va. */ sinPortal?: boolean }) {
   const posthog = usePostHog();
   const [estado, setEstado] = useState<EstadoQuieroVerlo>({ tipo: "quieto" });
 
@@ -59,7 +59,7 @@ export function InformeDeAviso({ analysisId, veredicto, supuesta, esDueno, demo 
       {esDueno && invierte && (
         <FranjaInvierte depto={invierte.depto} inscrito={invierte.inscrito} publicacion={publicacion ? { url: publicacion.url, despublicado: publicacion.despublicado } : null} demo={demo} flujoV2={invierte.flujoV2 ?? null} />
       )}
-      {esDueno && !invierte && (
+      {esDueno && !invierte && !sinPortal && (
         <div className="qv-banda" data-qv={estado.tipo} aria-live="polite">
           {estado.tipo === "listo" ? (
             <ConfirmacionEnviado tipo="listo" correo={estado.correo} />

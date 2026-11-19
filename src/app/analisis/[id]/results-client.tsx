@@ -87,10 +87,13 @@ export function PremiumResults({
   medianaResolvedAt,
   alternativaComunas = null,
   publicacion,
+  sinPortal = false,
   invierte = null,
 }: {
   /** El enlace a la publicación para la portada (27-oct-2026, publicacion-portada.ts): lo lee `informe-ltr.tsx`. */
   publicacion: PublicacionPortada;
+  /** Quien mira firmó la orden de Invierte con Franco (19-nov-2026, portal-servidor.ts): sin «Mandármelo por correo». */
+  sinPortal?: boolean;
   /** «Pronto: Invierte con Franco» (11-nov-2026): la franja de la portada, si va (invierte-servidor.ts). */
   invierte?: InvierteInforme | null;
   results?: FullAnalysisResult | null;
@@ -653,7 +656,7 @@ export function PremiumResults({
             onInformeVisible={onInformeVisible}
             despuesDeLaCard={bannerLqs ? <BannerRegistro ctx={ctxLqs} next={nextLqs} perfil={perfilLqs} pasoInicial={recienDentro ? "dentro" : "oferta"} /> : undefined}
             trasPortada={inputData?.origenAviso && analysisId ? (
-              <InformeDeAviso analysisId={analysisId} veredicto={resolvedVeredicto} supuesta={supuestaDelInforme(inputData)} esDueno={isLoggedIn && !isSharedView && !isSharedLink} invierte={invierte} publicacion={publicacion} />
+              <InformeDeAviso analysisId={analysisId} veredicto={resolvedVeredicto} supuesta={supuestaDelInforme(inputData)} esDueno={isLoggedIn && !isSharedView && !isSharedLink} invierte={invierte} publicacion={publicacion} sinPortal={sinPortal} />
             ) : marcaReanalisis ? (
               <InformeDeReanalisis reanalisis={marcaReanalisis} modalidad="ltr" />
             ) : undefined}

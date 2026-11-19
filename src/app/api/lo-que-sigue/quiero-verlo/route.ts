@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { captureApiError } from "@/lib/observabilidad";
 import { createSupabaseServer } from "@/lib/api-helpers/analisis-pipeline";
 import { createAnonPipelineClient } from "@/lib/api-helpers/anon-cap";
+import { sinEnlaceAlPortal } from "@/lib/invierte-v2/portal-servidor";
 import { sendAvisoPedidoEmail } from "@/lib/email";
 import { asuntoAvisoPedido } from "@/lib/email/correos";
 import { chequearPublicacion } from "@/lib/guia/publicacion";
@@ -37,6 +38,9 @@ export async function POST(request: Request) {
   if (!analysisId || !UUID.test(analysisId)) return NextResponse.json({ error: "datos" }, { status: 400 });
 
   const admin = createAnonPipelineClient();
+  // El correo de «Quiero verlo» lleva el enlace al portal: a quien firmó la orden de Invierte con Franco no se le manda (19-nov-2026,
+  // portal-servidor.ts). El botón tampoco se le muestra; esto es la red.
+  if (await sinEnlaceAlPortal(admin, user.id)) return NextResponse.json({ error: "firmo" }, { status: 403 });
   let espejoQV: EventoEspejo | null = null;
   const salir = (res: Response) => conEspejo(res, [espejoQV], request);
   try {

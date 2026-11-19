@@ -81,6 +81,8 @@ interface STRResultsProps {
   analysisId: string;
   /** El enlace a la publicación para la portada (27-oct-2026, publicacion-portada.ts): lo lee `informe-str.tsx`. */
   publicacion: PublicacionPortada;
+  /** Quien mira firmó la orden de Invierte con Franco (19-nov-2026, portal-servidor.ts): sin «Mandármelo por correo». */
+  sinPortal?: boolean;
   /** «Pronto: Invierte con Franco» (11-nov-2026): la franja de la portada, si va. */
   invierte?: InvierteInforme | null;
   results: ShortTermResult & { francoScore?: FrancoScoreSTR };
@@ -137,6 +139,7 @@ interface STRResultsProps {
 export function STRResultsClient({
   analysisId,
   publicacion,
+  sinPortal = false,
   invierte = null,
   results,
   inputData,
@@ -404,7 +407,7 @@ export function STRResultsClient({
         {/* De qué aviso salió (15-oct-2026): «Analizar este» del semanal; como en renta larga, «Quiero verlo». */}
         {origenAviso && analysisId && (
           <SeccionInforme id="origen-aviso" tono="paper">
-            <InformeDeAviso analysisId={analysisId} veredicto={veredicto} supuesta={supuestaDelInforme(inputData)} esDueno={!!userId && !isSharedView} modalidad="str" invierte={invierte} publicacion={publicacion} />
+            <InformeDeAviso analysisId={analysisId} veredicto={veredicto} supuesta={supuestaDelInforme(inputData)} esDueno={!!userId && !isSharedView} modalidad="str" invierte={invierte} publicacion={publicacion} sinPortal={sinPortal} />
           </SeccionInforme>
         )}
         {/* El re-análisis al precio recomendado (21-oct-2026, lib/reanalisis.ts): lo dice arriba, con el original. */}

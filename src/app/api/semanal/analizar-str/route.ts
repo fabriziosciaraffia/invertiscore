@@ -15,6 +15,7 @@ import {
   buildShortTermAnalysisRow, createSupabaseServer, ensureCreditCharged, guardPlausibilidad, markPremiumAndClaimPrepaid, prefetchMercadoStr,
 } from "@/lib/api-helpers/analisis-pipeline";
 import { createAnonPipelineClient } from "@/lib/api-helpers/anon-cap";
+import { sinEnlaceAlPortal } from "@/lib/invierte-v2/portal-servidor";
 import { guardarPerfil, perfilDesdeStr } from "@/lib/lo-que-sigue/perfil";
 import { leerConfigGuia } from "@/lib/guia/guia-servidor";
 import { antiguedadDelAviso, camposDeEdad, fichaDelAviso, leerAvisoGuia, lecturaAnioDe, type LecturaAnio } from "@/lib/guia/analizar-servidor";
@@ -126,7 +127,8 @@ export async function POST(request: Request) {
         if (!ficha) return "sin-chequeo";
         const c = await chequearPublicacion(ficha, "clic", almacenPublicacion(admin), bajarFicha, { forzar: true });
         lecturaAnio = lecturaAnioDe(c.lectura);
-        publicacion = ficha.url;
+        // Quien firmó la orden de Invierte con Franco no ve el enlace al portal (19-nov-2026, portal-servidor.ts).
+        publicacion = (await sinEnlaceAlPortal(admin, user.id)) ? null : ficha.url;
         return c.estado;
       },
       async alDespublicar() {

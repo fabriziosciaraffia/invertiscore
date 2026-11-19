@@ -20,6 +20,7 @@ import { clasePinDeItem } from "@/lib/casa/mapa-casa";
 import type { ClasePin } from "@/lib/explorar/colores-pin";
 import type { ResumenInforme } from "@/lib/informe-propio";
 import { resumenesDeInformes } from "@/lib/informe-propio-servidor";
+import { sinEnlaceAlPortal } from "@/lib/invierte-v2/portal-servidor";
 import {
   condicionesDeAvisos, conCondicion, finanzasDeSeleccion, informesEnRentaCorta, noDanEnRentaCorta, seleccionDeEstaSemana, seleccionPorToken, seleccionViva, type ItemSemanal, type SeleccionPorToken,
 } from "@/lib/guia/semanal-servidor";
@@ -147,7 +148,8 @@ export async function cargarSeleccionPagina(admin: SupabaseClient, user: { id: s
   const [resumenes, publicaciones] = await Promise.all([
     resumenesDeInformes(admin, userId, [...idsDeInformes(filas, informesLargos), ...idsDeInformes(filasCortas, informesCortos)]),
     // «TE MOSTRAMOS LA PUBLICACIÓN IGUAL», también en la tarjeta (05-nov-2026): el enlace de los que no dieron.
-    publicacionesDeAvisos(admin, noDan),
+    // Quien firmó la orden de Invierte con Franco no ve el enlace al portal (19-nov-2026, portal-servidor.ts).
+    sinEnlaceAlPortal(admin, userId).then((sin) => (sin ? ({} as Record<string, string>) : publicacionesDeAvisos(admin, noDan))),
   ]);
   const ingresosCortos: Record<string, number> = {};
   for (const f of filasCortas) for (const it of [f.item, ...(f.reemplazo ? [f.reemplazo] : [])]) if (it.ingresoMensual != null && it.ingresoMensual > 0) ingresosCortos[it.avisoId] = it.ingresoMensual;
