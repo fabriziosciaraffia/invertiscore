@@ -160,7 +160,9 @@ export async function runInviertePronto(): Promise<{ hard: number }> {
       const abreLaHoja = /setInvierte\(\{ pin: p, retomar: false \}\)/.test(alInv);
       // ⚠ ACTA (18-nov-2026, el contacto pasa a ser hoja): el desvío ya no navega, abre la hoja de contacto (`setContactoV2`). Sigue
       // exigiendo que lo único que se desvía esté guardado por destinoBoton y que, si no, se abra la hoja de Pronto.
-      const desvioGuardado = !/router\.push|setContactoV2|return;/.test(alInv) || /if \(destinoBoton\(\{ acceso: invierteV2, condicion: p\.condicion \}\) === "v2"\) \{ setContactoV2\(p\); return; \}/.test(alInv);
+      // ⚠ ACTA (20-nov-2026, Fabrizio): quien ya firmó la orden va directo a «Súmalo a tus opciones de inversión» (router.push a la
+      // pantalla de sumar), y si no, a la hoja de contacto; los dos dentro del mismo destinoBoton. Pronto sigue igual.
+      const desvioGuardado = !/router\.push|setContactoV2|return;/.test(alInv) || /if \(destinoBoton\(\{ acceso: invierteV2, condicion: p\.condicion \}\) === "v2"\) \{\s*if \(invierteFirmo\) \{ router\.push\(`\$\{urlSumar\(p\.avisoId\)\}\?desde=explorar`\); return; \}\s*setContactoV2\(p\); return;\s*\}/.test(alInv);
       if (!/inscritos=\{(invierteV2 \? undefined : )?inscritos\}/.test(elTarjeta) || !abreLaHoja || !desvioGuardado) F("1 · Explorar no le pasa a la tarjeta los inscritos y la hoja de «Invierte con Franco»");
       // La selección del dashboard usa la misma regla, con el `tramo` «negociar» como negociable.
       const sel = codigo("src/app/semanal/semanal-lista.tsx");

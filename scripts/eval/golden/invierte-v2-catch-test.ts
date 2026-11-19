@@ -183,7 +183,8 @@ export async function runInvierteV2(): Promise<{ hard: number }> {
       if (urlContacto(AVISO, "explorar") !== `/invierte/${AVISO}?desde=explorar`) F("2 · la URL del contacto cambió");
 
       const cliente = codigo("src/app/explorar/explorar-cliente.tsx");
-      if (!/if \(destinoBoton\(\{ acceso: invierteV2, condicion: p\.condicion \}\) === "v2"\) \{ setContactoV2\(p\); return; \}\s*if \(sinCuenta\) void import\("\.\/hoja-registro"\);\s*setInvierte\(\{ pin: p, retomar: false \}\);/.test(cliente)) F("2 · el mapa no decide con destinoBoton antes de abrir la hoja de Pronto");
+      // ⚠ ACTA (20-nov-2026, Fabrizio): dentro del desvío al flujo nuevo, quien ya firmó va directo a la pantalla de sumar.
+      if (!/if \(destinoBoton\(\{ acceso: invierteV2, condicion: p\.condicion \}\) === "v2"\) \{\s*if \(invierteFirmo\) \{ router\.push\(`\$\{urlSumar\(p\.avisoId\)\}\?desde=explorar`\); return; \}\s*setContactoV2\(p\); return;\s*\}\s*if \(sinCuenta\) void import\("\.\/hoja-registro"\);\s*setInvierte\(\{ pin: p, retomar: false \}\);/.test(cliente)) F("2 · el mapa no decide con destinoBoton antes de abrir la hoja de Pronto");
       // La hoja de contacto: solo se monta con el estado que pone la rama v2 (nadie más lo pone), sobre el mapa, sin navegar.
       if ((cliente.match(/setContactoV2\(/g) ?? []).length !== 2 || !/\{contactoV2 && \(\s*<HojaContacto depto=\{deptoInvierteDePin\(contactoV2\)\} origen="explorar" sinSesion=\{sinCuenta\} alCerrar=\{\(\) => setContactoV2\(null\)\} \/>/.test(cliente)) F("2 · el mapa abre la hoja de contacto sin la rama v2 (o no la abre encima)");
       if (!/invierteV2 = false/.test(cliente)) F("2 · el mapa no arranca en Pronto sin el booleano");

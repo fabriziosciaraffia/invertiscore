@@ -15,12 +15,12 @@ import { reiniciarPrueba } from "../../../src/lib/invierte-v2/servidor";
 import { falso, USER } from "./invierte-v2-catch-test";
 import { chequearPorCarril, leidaFresca, RELECTURA_MS, TOPE_CARRIL_POR_HORA, type DepsCarril } from "../../../src/lib/invierte-v2/carril";
 import { detectarCambios, lineaCambio, textoVeredicto, asuntoCambios, parrafoDepto, UMBRAL_CORREO_PCT, UMBRAL_LINEA_PCT, type Vigente } from "../../../src/lib/invierte-v2/cambios";
-import { cuerpoDetalles } from "../../../src/lib/invierte-v2/detalles-cliente";
+import { abrirDetalles, cuerpoDetalles } from "../../../src/lib/invierte-v2/detalles-cliente";
 import { etiquetaVeredicto } from "../../../src/lib/veredicto-etiqueta";
 import { ACTUALIZADO_COPY, BASE_COPY, DOCUMENTOS_COPY, MENU_COPY, SUMAR_COPY, fraseCambioPerfil, lineaDepto, numeroWhatsapp, urlWhatsapp, type PerfilComparable } from "../../../src/lib/invierte-v2/base";
 import { sumarDepto, vigenteSobre } from "../../../src/lib/invierte-v2/base-servidor";
-import { CORREO_PREAPROB, ESTADOS_COPY, MAX_BYTES_PREAPROBACION, PREAPROB_COPY, TE_TOCA_ROTULO, estadoVisible, lineaAprobada, nombreCoincide, puedeOfertar, teTocaHoy, validarAprobacion, validarArchivo, validarMotivo } from "../../../src/lib/invierte-v2/preaprobacion";
-import { MOTIVO_REEMPLAZADA, aprobar, borrarArchivosPreaprobacion, confirmarSubida, pedirCorregir, pedirSubida } from "../../../src/lib/invierte-v2/preaprobacion-servidor";
+import { CORREO_PREAPROB, ESTADOS_COPY, MAX_BYTES_PREAPROBACION, PREAPROB_COPY, TE_TOCA_ROTULO, estadoVisible, lineaAprobada, nombreCoincide, puedeOfertar, teTocaHoy, validarAprobacion, validarArchivo, validarMotivo, vigente, hoyChile } from "../../../src/lib/invierte-v2/preaprobacion";
+import { MOTIVO_REEMPLAZADA, aprobar, borrarArchivosPreaprobacion, confirmarSubida, leerPreaprobacion, pedirCorregir, pedirSubida } from "../../../src/lib/invierte-v2/preaprobacion-servidor";
 import { ESQUEMA_LECTURA, INSTRUCCION_LECTURA, leerPreaprobacionIA } from "../../../src/lib/invierte-v2/preaprobacion-ia";
 import { CLAUDE_MODEL_DOCUMENTOS } from "../../../src/lib/ai-config";
 import { TARIFAS } from "../../../src/lib/costo-ia";
@@ -352,10 +352,10 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
         [MENU_COPY.escribirle, "Escribirle a Franco"], [MENU_COPY.escribirleLinea, "Tu contacto durante todo el proceso"], [MENU_COPY.perfilLinea(4200, ["Ñuñoa", "Macul"]), "Hasta UF 4.200 · Ñuñoa y Macul"],
         [DOCUMENTOS_COPY.orden, "Orden de visita y acompañamiento"], [DOCUMENTOS_COPY.ordenLinea("15 de noviembre"), "Firmada el 15 de noviembre. Cubre todos tus deptos."],
         [DOCUMENTOS_COPY.preaprobacionLinea, "La necesitas para ofertar o visitar. Foto o PDF de tu banco."], [DOCUMENTOS_COPY.detallesLinea, "Los que elegiste, cada uno con todos sus detalles."],
-        [DOCUMENTOS_COPY.promesaLinea, "Se firman en notaría; aquí queda la copia."], [SUMAR_COPY.titulo, "Súmalo a tus opciones"], [SUMAR_COPY.sinFirmaT, "No tienes que firmar de nuevo"],
+        [DOCUMENTOS_COPY.promesaLinea, "Se firman en notaría; aquí queda la copia."], [SUMAR_COPY.titulo, "Súmalo a tus opciones de inversión"], [SUMAR_COPY.botonMapa, "Sumar a mis opciones de inversión"], [SUMAR_COPY.noAlcanzaTitulo, "Este depto hoy no te alcanza"], [SUMAR_COPY.irAMiInversion, "Ir a mi inversión"], [SUMAR_COPY.sinFirmaT, "No tienes que firmar de nuevo"],
         [SUMAR_COPY.sinFirma("15 de noviembre"), "Tu orden del 15 de noviembre cubre también este depto. Franco empieza a gestionarlo y puedes ver todos sus detalles desde tus deptos."],
         [`${SUMAR_COPY.teAlcanza} ${SUMAR_COPY.conQue("renta")}`, "Te alcanza con tu pie y tu renta."], [`${SUMAR_COPY.entra} ${SUMAR_COPY.entraLinea(4)}`, "Entra a tu comparativo junto a las cuatro opciones que ya tienes."],
-        [SUMAR_COPY.boton, "Sumar a mis opciones"], [ACTUALIZADO_COPY.titulo, "Perfil actualizado"], [ACTUALIZADO_COPY.masDeptos(2), "Ahora te alcanzan 2 deptos más"],
+        [SUMAR_COPY.boton, "Sumar a mis opciones de inversión"], [ACTUALIZADO_COPY.titulo, "Perfil actualizado"], [ACTUALIZADO_COPY.masDeptos(2), "Ahora te alcanzan 2 deptos más"],
         [ACTUALIZADO_COPY.hasta(4200), "Estimamos que puedes comprar hasta UF 4.200. Sujeto a evaluación del banco."], [ACTUALIZADO_COPY.cambiaron, "Tus opciones cambiaron"],
         [`${ACTUALIZADO_COPY.siguen(4)} ${ACTUALIZADO_COPY.nadaSale}`, "Las 4 que ya tenías siguen ahí. Nada sale por haber cambiado tu perfil."], [ACTUALIZADO_COPY.boton, "Ver mis opciones"],
       ];
@@ -436,7 +436,17 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (!/router\.push\(`\$\{urlSumar\(depto\.avisoId\)\}/.test(hoja)) F("9 · el mapa no lleva a «Súmalo a tus opciones» a quien ya firmó");
       const sumar = codigo("src/app/invierte/[avisoId]/sumar/page.tsx");
       if (!/if \(!acceso\) notFound\(\);/.test(sumar) || !/force-dynamic/.test(sumar)) F("9 · la pantalla de sumar no da 404 sin acceso");
-      if (!/\{v\.alcanza\s*\? <SumarDepto [^>]*origen="mapa"/.test(sumar)) F("9 · la pantalla de sumar ofrece sumar un depto que no le alcanza");
+      // ⚠ ACTA (20-nov-2026, Fabrizio): cuando no alcanza, otra pantalla: «Este depto hoy no te alcanza», sin el recuadro de la
+      // firma ni «Franco empieza a gestionarlo», con el precio y hasta cuánto puede comprar, y tres salidas (volver al mapa, ir a mi
+      // inversión y revisar mi perfil, que dice para qué sirve). Antes exigía `{v.alcanza ? <SumarDepto`.
+      const rama = sumar.match(/if \(v\.estado === "listo" && !v\.alcanza\) \{[\s\S]*?\n  \}\n/)?.[0] ?? "";
+      if (!rama || /SumarDepto|sinFirma|S\.entra\b/.test(rama) || !/\{S\.noAlcanzaTitulo\}/.test(rama) || !/S\.noAlcanzaLinea\(/.test(rama) || !/data-inv2="volver-mapa"/.test(rama) || !/href=\{URL_BASE\}[^>]*data-inv2="ir-mi-inversion"/.test(rama) || !/data-inv2="revisar-perfil"[\s\S]*\{S\.revisarPerfilPara\}/.test(rama)) F("9 · la pantalla de sumar cuando no alcanza no es la pedida (título, sin firma, precio y tope, tres salidas)");
+      if (sumar.indexOf('if (v.estado === "listo" && !v.alcanza)') > sumar.indexOf("<SumarDepto")) F("9 · la pantalla de sumar ofrece sumar antes de mirar si alcanza");
+      if (!/volver=\{volverPerfil\(searchParams\.volver, g != null\)\}/.test(codigo("src/app/invierte/perfil/page.tsx"))) F("9 · el perfil no tiene «Volver»");
+      // 5 · «Mis documentos» sin «Los detalles de tus deptos»; 7 · «Escribirle» con el ícono de WhatsApp; 8 · el botón del mapa.
+      if (/doc-ver-detalles|D\.detalles\b/.test(codigo("src/app/invierte/documentos/page.tsx"))) F("9 · «Mis documentos» todavía tiene «Los detalles de tus deptos»");
+      if (!/<IconoWhatsapp \/>\{M\.escribirle\}/.test(codigo("src/components/invierte-v2/MenuBase.tsx")) || !/data-inv2="pc-escribirle"><IconoWhatsapp \/>/.test(codigo("src/components/invierte-v2/MenuBase.tsx")) || !/data-inv2="escribirle"><IconoWhatsapp \/>/.test(codigo("src/components/invierte-v2/VistaBase.tsx"))) F("9 · «Escribirle» no lleva el ícono de WhatsApp");
+      if (!/etiquetaInvertir=\{\(p\) => \(invierteFirmo && destinoBoton\(\{ acceso: invierteV2, condicion: p\.condicion \}\) === "v2" \? SUMAR_COPY\.botonMapa : undefined\)\}/.test(codigo("src/app/explorar/explorar-cliente.tsx")) || !/const invierteFirmo = invierteV2 \? !!\(await ultimaOrdenDe\(admin, user\.id\)\) : false;/.test(codigo("src/app/explorar/page.tsx"))) F("9 · el botón del mapa no dice «Sumar a mis opciones de inversión» a quien ya firmó");
       const ed = codigo("src/components/invierte-v2/PerfilForm.tsx");
       if (!/router\.push\(d\?\.editado \? URL_PERFIL_ACTUALIZADO : URL_OPCIONES\);/.test(ed)) F("9 · cambiar el perfil no lleva a «Perfil actualizado»");
       const ps = codigo("src/lib/invierte-v2/perfil-servidor.ts");
@@ -545,6 +555,36 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (enviados.length || co.ok && co.correo) F("10 · el correo de la preaprobación sale a una cuenta fuera de la lista");
       const n = await borrarArchivosPreaprobacion(w2.sb, USER.id);
       if (n !== 1 || !w2.bucket.borrados.includes("preaprobaciones/x/d1.pdf")) F("10 · pedir la eliminación no borra los archivos de la preaprobación");
+
+      // ⚠ ACTA (20-nov-2026, Fabrizio) · con una aprobada VIGENTE, una subida posterior rechazada (o en revisión) no le quita
+      // «Aprobada»: la nueva se muestra aparte, con su motivo. Vencida, manda la última. (El fixture va de la más nueva a la más vieja,
+      // como la consulta.)
+      const docsP = (vence: string, estadoNueva: string) => falso({
+        inv_documentos: [
+          { id: "d-nueva", user_id: USER.id, tipo: "preaprobacion", estado: estadoNueva, motivo: "Es un documento de muestra.", created_at: "2026-11-20" },
+          { id: "d-aprob", user_id: USER.id, tipo: "preaprobacion", estado: "aprobada", banco: "Estado", monto_aprobado_uf: 2600, vigente_hasta: vence, created_at: "2026-11-10" },
+        ],
+        inv_tareas: [],
+      });
+      const pv1 = await leerPreaprobacion(docsP("2099-12-31", "por_corregir").sb, USER.id);
+      if (pv1.estado !== "aprobada" || pv1.doc?.id !== "d-aprob" || pv1.otra?.id !== "d-nueva") F("10 · con una aprobada vigente, una subida rechazada le quita «Aprobada»");
+      const pv2 = await leerPreaprobacion(docsP("2099-12-31", "en_revision").sb, USER.id);
+      if (pv2.estado !== "aprobada" || pv2.otra?.id !== "d-nueva") F("10 · con una aprobada vigente, una subida en revisión le quita «Aprobada»");
+      const pv3 = await leerPreaprobacion(docsP("2020-01-01", "por_corregir").sb, USER.id);
+      if (pv3.estado !== "por_corregir" || pv3.otra) F("10 · con la aprobada vencida, sigue mandando «Aprobada»");
+      if (!vigente("2026-11-20", "2026-11-20") || vigente("2026-11-19", "2026-11-20") || !vigente(null, "2026-11-20") || !/^\d{4}-\d{2}-\d{2}$/.test(hoyChile())) F("10 · la vigencia no se mide hasta el día que dice, en la hora de Chile");
+      if (!/\{pre\.otra && \(/.test(codigo("src/app/invierte/preaprobacion/page.tsx"))) F("10 · la subida posterior no se muestra aparte con su motivo");
+
+      // ⚠ ACTA (20-nov-2026, la prueba de Fabrizio) · «Abrir» mientras la preparación en segundo plano está en curso: la ruta responde
+      // 409 «en-curso» y antes eso era «no se pudo». Ahora espera y vuelve a preguntar; con otro error, no insiste.
+      const respuestas = (lista: { status: number; body: Record<string, unknown> }[]) => { let i = 0; return (async () => { const r = lista[Math.min(i++, lista.length - 1)]; return { ok: r.status < 300, status: r.status, json: async () => r.body }; }) as unknown as typeof fetch; };
+      const esperas: number[] = [];
+      const a1 = await abrirDetalles("x", { pedir: respuestas([{ status: 409, body: { error: "en-curso" } }, { status: 409, body: { error: "en-curso" } }, { status: 200, body: { id: "inf-1" } }]), esperar: async (ms) => { esperas.push(ms); } });
+      if (a1 !== "inf-1" || esperas.length !== 2) F("10 · «Abrir» no espera a que termine la preparación en curso");
+      const a2 = await abrirDetalles("x", { pedir: respuestas([{ status: 409, body: { error: "sin-creditos" } }]), esperar: async () => { esperas.push(-1); } });
+      if (a2 !== null || esperas.includes(-1)) F("10 · «Abrir» insiste ante un error que no es «en curso»");
+      const a3 = await abrirDetalles("x", { pedir: respuestas([{ status: 409, body: { error: "en-curso" } }]), esperar: async () => undefined });
+      if (a3 !== null) F("10 · «Abrir» espera para siempre una preparación que no termina");
 
       // El cableado.
       const ruta = codigo("src/app/api/invierte-v2/preaprobacion/route.ts");
