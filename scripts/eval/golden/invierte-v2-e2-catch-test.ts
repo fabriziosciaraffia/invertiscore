@@ -19,6 +19,11 @@ import { cuerpoDetalles } from "../../../src/lib/invierte-v2/detalles-cliente";
 import { etiquetaVeredicto } from "../../../src/lib/veredicto-etiqueta";
 import { ACTUALIZADO_COPY, BASE_COPY, DOCUMENTOS_COPY, MENU_COPY, SUMAR_COPY, fraseCambioPerfil, lineaDepto, numeroWhatsapp, urlWhatsapp, type PerfilComparable } from "../../../src/lib/invierte-v2/base";
 import { sumarDepto, vigenteSobre } from "../../../src/lib/invierte-v2/base-servidor";
+import { CORREO_PREAPROB, ESTADOS_COPY, MAX_BYTES_PREAPROBACION, PREAPROB_COPY, TE_TOCA_ROTULO, estadoVisible, lineaAprobada, nombreCoincide, puedeOfertar, teTocaHoy, validarAprobacion, validarArchivo, validarMotivo } from "../../../src/lib/invierte-v2/preaprobacion";
+import { MOTIVO_REEMPLAZADA, aprobar, borrarArchivosPreaprobacion, confirmarSubida, pedirCorregir, pedirSubida } from "../../../src/lib/invierte-v2/preaprobacion-servidor";
+import { ESQUEMA_LECTURA, INSTRUCCION_LECTURA, leerPreaprobacionIA } from "../../../src/lib/invierte-v2/preaprobacion-ia";
+import { CLAUDE_MODEL_DOCUMENTOS } from "../../../src/lib/ai-config";
+import { TARIFAS } from "../../../src/lib/costo-ia";
 
 const RAIZ = join(__dirname, "..", "..", "..");
 const leer = (p: string) => readFileSync(join(RAIZ, p), "utf8").replace(/\r\n/g, "\n");
@@ -442,6 +447,119 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (!/<TareaHecha id=\{t\.id as string\} \/>/.test(ficha) || !/requireAdminPage\(\)/.test(ficha)) F("9 · la ficha del admin no marca tareas hechas (o no pide admin)");
       if (/publicadores|avisos_publicador/.test(ficha)) F("9 · la ficha del admin lee quién publica");
       if (!/\.eq\("id", b\.id\)\.eq\("estado", "pendiente"\)/.test(codigo("src/app/api/admin/invierte-v2/route.ts"))) F("9 · «Marcar hecha» puede reescribir una tarea ya hecha");
+    }
+
+    // ── 10 · LA PREAPROBACIÓN (entrega 3, 19-nov-2026; láminas 3.4-preaprobacion, 3.4-preaprobacion-estados y el bloque de
+    //        3.1-perfil-paso2-con-preaprobacion). Reglas puras, servidor con fixture (IA y correo falsos, sin red) y cableado. ──
+    {
+      const textos: [string, string][] = [
+        [PREAPROB_COPY.titulo, "Para ofertar o visitar, sube tu preaprobación"],
+        [PREAPROB_COPY.linea, "Es el documento de tu banco que dice hasta cuánto te prestaría. Se sube una vez y vale para todos tus deptos."],
+        [PREAPROB_COPY.porQueT, "Por qué te la pedimos"], [PREAPROB_COPY.porQue, "Los vendedores la exigen para recibir una oferta o agendar una visita. Con ella llegas con respaldo."],
+        [PREAPROB_COPY.cajaT, "Foto o PDF de tu preaprobación"], [PREAPROB_COPY.cajaS, "O el certificado de tu banco."],
+        [PREAPROB_COPY.subir, "Subir mi preaprobación"], [PREAPROB_COPY.todaviaNo, "Todavía no la tengo"], [PREAPROB_COPY.sinCredito, "Compro sin crédito"],
+        [PREAPROB_COPY.perfilS, "Foto o PDF. Puedes subirla ahora o después."], [PREAPROB_COPY.volver, "Volver a mis deptos"],
+        [ESTADOS_COPY.en_revision.chip, "En revisión"], [ESTADOS_COPY.en_revision.titulo, "Recibimos tu preaprobación"], [ESTADOS_COPY.en_revision.texto, "La revisamos hoy. Mientras, puedes seguir viendo tus deptos."],
+        [ESTADOS_COPY.en_revision.ver, "Ver lo que subí"], [ESTADOS_COPY.aprobada.chip, "✓ Aprobada"], [ESTADOS_COPY.aprobada.titulo, "Ya puedes ofertar o pedir visita"],
+        [ESTADOS_COPY.aprobada.ver, "Ver mi preaprobación"], [ESTADOS_COPY.por_corregir.chip, "Te toca a ti"], [ESTADOS_COPY.por_corregir.titulo, "Necesitamos que la subas de nuevo"],
+        [ESTADOS_COPY.por_corregir.boton, "Subir otra"],
+        [lineaAprobada({ banco: "Estado", montoUF: 2600, vigenteHasta: "2027-02-15" }), "Banco Estado · crédito hasta UF 2.600 · vigente hasta el 15 de febrero."],
+        [TE_TOCA_ROTULO, "Lo que te toca hoy"], [teTocaHoy("subir")?.titulo ?? "", "Sube tu preaprobación para ofertar o visitar"],
+      ];
+      for (const [v, e] of textos) if (v !== e) F(`10 · el texto no es el de la lámina: «${v}» (debía ser «${e}»)`);
+      // Las reglas.
+      if (!validarArchivo({ mime: "application/pdf", bytes: 1000 }).ok || validarArchivo({ mime: "image/gif", bytes: 1000 }).ok || validarArchivo({ mime: "image/jpeg", bytes: 16 * 1024 * 1024 }).ok || validarArchivo({ mime: "image/heic", bytes: 0 }).ok) F("10 · el archivo no se valida por tipo (PDF/foto) y tamaño (hasta 15 MB)");
+      // Quien entró por la renta (sin la pregunta del pie) y le aprueban la preaprobación: cuenta el pie que declaró.
+      if (hastaCuanto({ preaprobado: "no", pieUF: 700, rentaCLP: 2500000, otrasCuotasCLP: 0, tasaPct: 4.1, uf: 41357, aprobadaUF: 2600 }).topeUF !== 3300) F("10 · con un monto aprobado, el pie declarado por el camino de la renta cuenta como cero");
+      if (MAX_BYTES_PREAPROBACION !== 15 * 1024 * 1024) F("10 · el tope del archivo no es el del bucket (15 MB)");
+      if (teTocaHoy("en_revision") || teTocaHoy("aprobada") || teTocaHoy("sin_credito") || teTocaHoy("explicando") || !teTocaHoy("por_corregir")) F("10 · «Lo que te toca hoy» aparece cuando no le toca a la persona (o falta cuando hay que corregir)");
+      if (!puedeOfertar("aprobada") || !puedeOfertar("sin_credito") || puedeOfertar("en_revision") || puedeOfertar("subir") || puedeOfertar("por_corregir")) F("10 · se puede ofertar sin una preaprobación aprobada (o sin «compro sin crédito»)");
+      if (estadoVisible(null, false) !== "subir" || estadoVisible(null, true) !== "explicando" || estadoVisible({ estado: "subiendo" }, false) !== "subir" || estadoVisible({ estado: "en_revision" }, true) !== "en_revision") F("10 · el estado visible no sale del documento y de la tarea de explicar");
+      if (nombreCoincide("CAMILA ANDREA ROJAS PEREZ", "Camila Rojas Pérez") !== true || nombreCoincide("Rojas Pérez, Camila", "Camila Rojas Pérez") !== true || nombreCoincide("Pedro Rojas", "Camila Rojas Pérez") !== false || nombreCoincide("Camila", "Camila Rojas Pérez") !== false || nombreCoincide(null, "Camila Rojas") !== null) F("10 · el nombre del documento no se compara bien con el de la orden");
+      if (!validarAprobacion({ banco: "Estado", montoUF: "2600", vigenteHasta: "2027-02-15" }).ok || validarAprobacion({ banco: "", montoUF: 2600, vigenteHasta: "2027-02-15" }).ok || validarAprobacion({ banco: "Estado", montoUF: 50, vigenteHasta: "2027-02-15" }).ok || validarAprobacion({ banco: "Estado", montoUF: 2600, vigenteHasta: "15-02-2027" }).ok) F("10 · la aprobación acepta datos incompletos o inválidos");
+      if (validarMotivo("corto") || !validarMotivo("Venció el 3 de noviembre. Pídele a tu banco una vigente.")) F("10 · el motivo de corregir no se valida (10 a 300 caracteres)");
+      if (CORREO_PREAPROB.aprobada.parrafo({ banco: "Estado", montoUF: 2600, vigenteHasta: "2027-02-15" }) !== "Revisamos tu preaprobación: Banco Estado · crédito hasta UF 2.600 · vigente hasta el 15 de febrero. Ya puedes ofertar o pedir visita en tus deptos.") F("10 · el correo de aprobada no es el propuesto");
+      if (CORREO_PREAPROB.por_corregir.parrafo("Venció el 3 de noviembre") !== "Revisamos tu preaprobación y necesitamos que la subas de nuevo. Venció el 3 de noviembre.") F("10 · el correo de por corregir no es el propuesto");
+
+      // La lectura con IA, con un cliente falso: transcribe; HEIC no se manda; una negativa no rompe nada; el costo con la tarifa.
+      const respuesta = (o: { stop_reason?: string; texto?: string }) => ({ beta: { messages: { create: async () => ({ model: CLAUDE_MODEL_DOCUMENTOS, stop_reason: o.stop_reason ?? "end_turn", usage: { input_tokens: 3000, output_tokens: 200 }, content: o.texto ? [{ type: "text", text: o.texto }] : [] }) } } });
+      const JSONLECT = JSON.stringify({ es_preaprobacion: true, banco: "Banco Estado", monto: 103000000, moneda: "CLP", vigente_hasta: "2027-02-15", nombre_titular: "Camila Rojas Pérez", rut_titular: "12.345.678-5", observaciones: null, certeza: { banco: "alta", monto: "alta", vigencia: "media", nombre: "alta" } });
+      const l1 = await leerPreaprobacionIA(respuesta({ texto: JSONLECT }) as never, { bytes: new Uint8Array([37, 80]), mime: "application/pdf" });
+      if (!l1.ok || l1.lectura.monto !== 103000000 || l1.lectura.moneda !== "CLP" || l1.lectura.vigenteHasta !== "2027-02-15" || l1.costoUsd !== 0.016) F(`10 · la lectura con IA no transcribe o no calcula su costo (${JSON.stringify(l1)})`);
+      const l2 = await leerPreaprobacionIA(respuesta({ stop_reason: "refusal" }) as never, { bytes: new Uint8Array([1]), mime: "image/png" });
+      const l3 = await leerPreaprobacionIA(respuesta({ texto: JSONLECT }) as never, { bytes: new Uint8Array([1]), mime: "image/heic" });
+      if (l2.ok || l2.motivo !== "rechazo" || l3.ok || l3.motivo !== "formato") F("10 · una negativa o un HEIC no terminan en revisión a mano");
+      // La API rechaza (400) un `enum` junto a `type: [..., "null"]`: así falló la primera lectura real (19-nov-2026). Lo nulo con
+      // lista de valores va con anyOf.
+      const malos = Object.entries(ESQUEMA_LECTURA.properties as Record<string, Record<string, unknown>>).filter(([, v]) => Array.isArray(v.type) && "enum" in v).map(([k]) => k);
+      if (malos.length) F(`10 · el esquema de la lectura tiene enum con tipo nulo (la API lo rechaza): ${malos.join(", ")}`);
+      if (!TARIFAS[CLAUDE_MODEL_DOCUMENTOS]) F("10 · el modelo de los documentos no tiene tarifa (el costo saldría sin medir)");
+      // Voseo: imperativos y presentes agudos (Transcribí, calculá, tenés). `\b` no corta después de una vocal con tilde en JS, así
+      // que se buscan palabras que terminan en á/é/í (con o sin s) seguidas de un separador, salvo las que son castellano neutro.
+      const agudas = (INSTRUCCION_LECTURA.match(/[A-Za-zñ]+[íáé]s?(?=[\s.,:;)])/g) ?? []).filter((w) => !["está", "están", "más", "también", "aquí"].includes(w.toLowerCase()));
+      if (agudas.length) F(`10 · la instrucción de la IA tiene voseo: ${agudas.join(", ")}`);
+
+      // El servidor, con un fixture: subir, confirmar (huella, IA, tarea), aprobar (tope y correo) y corregir.
+      const ORDEN_P = { id: "o-p", user_id: USER.id, email: USER.email, nombre: "Camila Rojas Pérez", rut: "12345678-5", aviso_id: "a0", depto_linea: "x", texto_version: 1, texto_sha256: "h", texto: "t", es_prueba: true, firmado_at: "2026-11-15T15:00:00Z" };
+      const PERFIL_P = { user_id: USER.id, objetivo: "arriendo", comunas: ["Macul"], preaprobado: "no", pie_uf: 700, renta_liquida_clp: 2500000, otras_cuotas_clp: 0, tope_uf: 3500, tope_fuente: "renta", tope_supuestos: { reemplazoPrecioMax: true }, es_prueba: true, updated_at: "x" };
+      const w = falso({ inv_ordenes: [ORDEN_P], inv_perfiles: [PERFIL_P], inv_documentos: [], inv_tareas: [{ user_id: USER.id, tipo: "explicar_preaprobacion", estado: "pendiente" }], inv_bitacora: [], config: [{ key: "uf_value", value: "41357" }, { key: "tasa_hipotecaria", value: "4.1" }], perfil_busqueda: [{ user_id: USER.id, precio_max_uf: 3500 }] });
+      const u = { id: USER.id, email: USER.email };
+      if ((await pedirSubida(w.sb, u, { mime: "image/gif", bytes: 10 })).ok) F("10 · se pide subida para un archivo que no es PDF ni foto");
+      const ps = await pedirSubida(w.sb, u, { mime: "application/pdf", bytes: 120000 });
+      if (!ps.ok || !/^preaprobaciones\/0381a589-0000-4000-8000-00000000abcd\/[0-9a-f-]+\.pdf$/.test(ps.path) || w.datos.inv_documentos[0]?.estado !== "subiendo") F(`10 · la subida no va a preaprobaciones/<persona>/<id>.pdf o no queda «subiendo» (${JSON.stringify(ps)})`);
+      if (ps.ok) {
+        const llamadas: unknown[] = [];
+        const r = await confirmarSubida(w.sb, u, ps.id, { leerIA: async (a) => { llamadas.push(a.mime); return { ok: true, lectura: { esPreaprobacion: true, banco: "Banco Estado", monto: 103000000, moneda: "CLP", vigenteHasta: "2027-02-15", nombreTitular: "CAMILA ROJAS PEREZ", rutTitular: null, observaciones: null, certeza: { banco: "alta", monto: "alta", vigencia: "alta", nombre: "alta" } }, modelo: CLAUDE_MODEL_DOCUMENTOS, costoUsd: 0.016 }; } }, null);
+        const d = w.datos.inv_documentos[0];
+        const ia = (d?.ia ?? {}) as Record<string, unknown>;
+        if (!r.ok || d.estado !== "en_revision" || typeof d.sha256 !== "string" || (d.sha256 as string).length !== 64 || llamadas.length !== 1) F("10 · confirmar no deja el documento en revisión con su huella, o no lo lee la IA");
+        if (ia.montoUF !== Math.round(103000000 / 41357) || ia.nombreCoincide !== true) F(`10 · el monto no pasa a UF con la UF del día o el nombre no se compara con la orden (${JSON.stringify(ia)})`);
+        if (!w.datos.inv_tareas.some((t) => t.tipo === "revisar_preaprobacion" && t.estado === "pendiente") || w.datos.inv_tareas.some((t) => t.tipo === "explicar_preaprobacion" && t.estado === "pendiente")) F("10 · confirmar no deja la tarea de revisar o no cierra la de explicar");
+        if (!w.datos.inv_bitacora.some((b) => b.accion === "preaprobacion_subida")) F("10 · la subida no queda en la bitácora");
+        // Una segunda subida reemplaza a la que seguía en revisión (el admin revisa la última).
+        const ps2 = await pedirSubida(w.sb, u, { mime: "image/png", bytes: 5000 });
+        if (ps2.ok) {
+          await confirmarSubida(w.sb, u, ps2.id, { leerIA: null }, null);
+          const vieja = w.datos.inv_documentos.find((x) => x.id === ps.id);
+          if (vieja?.estado !== "por_corregir" || vieja?.motivo !== MOTIVO_REEMPLAZADA || w.datos.inv_documentos.find((x) => x.id === ps2.id)?.estado !== "en_revision") F("10 · una subida nueva no reemplaza a la que seguía en revisión");
+          // Para seguir con la revisión de la primera, se devuelve a «en revisión».
+          if (vieja) { vieja.estado = "en_revision"; vieja.motivo = null; }
+          const nueva = w.datos.inv_documentos.find((x) => x.id === ps2.id); if (nueva) nueva.estado = "por_corregir";
+        }
+        const correos: { tipo: string; to: string }[] = [];
+        const deps = { correo: async (p: { tipo: string; to: string }) => { correos.push(p); return true; }, puedeRecibir: async () => true } as never;
+        const ap = await aprobar(w.sb, "admin@x", ps.id, { banco: "Estado", montoUF: 2600, vigenteHasta: "2027-02-15" }, deps);
+        const pf = w.datos.inv_perfiles[0];
+        if (!ap.ok || w.datos.inv_documentos[0].estado !== "aprobada" || w.datos.inv_documentos[0].monto_aprobado_uf !== 2600) F("10 · aprobar no deja la preaprobación aprobada con su monto");
+        if (pf.tope_fuente !== "aprobada" || (pf.tope_supuestos as Record<string, unknown>).aprobadaUF !== 2600 || w.datos.perfil_busqueda[0].precio_max_uf !== Math.round(Number(pf.tope_uf))) F(`10 · el monto aprobado no reemplaza la estimación de hasta cuánto puede comprar (${pf.tope_fuente}, ${pf.tope_uf})`);
+        if (correos.length !== 1 || correos[0].tipo !== "aprobada" || w.datos.inv_tareas.some((t) => t.tipo === "revisar_preaprobacion" && t.estado === "pendiente")) F("10 · aprobar no manda el correo o no cierra la tarea");
+        const otra = await aprobar(w.sb, "admin@x", ps.id, { banco: "Estado", montoUF: 2600, vigenteHasta: "2027-02-15" }, deps);
+        if (otra.ok || otra.error !== "estado") F("10 · se puede aprobar dos veces la misma preaprobación");
+      }
+      // Corregir, y el correo que no sale fuera de la lista.
+      const w2 = falso({ inv_ordenes: [ORDEN_P], inv_documentos: [{ id: "00000000-0000-4000-8000-0000000000d1", user_id: USER.id, tipo: "preaprobacion", estado: "en_revision", path: "preaprobaciones/x/d1.pdf", es_prueba: true, created_at: "x" }], inv_tareas: [{ user_id: USER.id, tipo: "revisar_preaprobacion", estado: "pendiente" }], inv_bitacora: [] });
+      const enviados: string[] = [];
+      const fuera = { correo: async (p: { tipo: string }) => { enviados.push(p.tipo); return true; }, puedeRecibir: async () => false } as never;
+      const co = await pedirCorregir(w2.sb, "admin@x", "00000000-0000-4000-8000-0000000000d1", "Venció el 3 de noviembre. Pídele a tu banco una vigente.", fuera);
+      if (!co.ok || w2.datos.inv_documentos[0].estado !== "por_corregir" || w2.datos.inv_documentos[0].motivo !== "Venció el 3 de noviembre. Pídele a tu banco una vigente.") F("10 · pedir corregir no guarda el estado y el motivo");
+      if (enviados.length || co.ok && co.correo) F("10 · el correo de la preaprobación sale a una cuenta fuera de la lista");
+      const n = await borrarArchivosPreaprobacion(w2.sb, USER.id);
+      if (n !== 1 || !w2.bucket.borrados.includes("preaprobaciones/x/d1.pdf")) F("10 · pedir la eliminación no borra los archivos de la preaprobación");
+
+      // El cableado.
+      const ruta = codigo("src/app/api/invierte-v2/preaprobacion/route.ts");
+      if (!/const user = await personaConAcceso\(\);\s*if \(!user\) return NO_EXISTE\(\);/.test(ruta) || !/export const maxDuration = 60;/.test(ruta)) F("10 · la ruta de la preaprobación responde sin acceso o puede cortarse antes de leer");
+      if (!/process\.env\.ANTHROPIC_API_KEY \? new Anthropic\(\) : null/.test(ruta)) F("10 · sin la llave de Anthropic la subida se rompe (debe quedar para revisión a mano)");
+      const adm = codigo("src/app/api/admin/invierte-v2/route.ts");
+      if (!/puedeRecibir: async \(email\) => \{ const \{ modo, lista \} = await estadoInterruptor\(\); return puedeRecibirCopia\(modo, lista, email\); \}/.test(adm) || !/const v = validarAprobacion\(b\);/.test(adm) || !/const motivo = validarMotivo\(b\?\.motivo\);/.test(adm)) F("10 · el admin aprueba o corrige sin validar, o el correo no mira la lista");
+      const vb = codigo("src/components/invierte-v2/VistaBase.tsx");
+      if (!/const toca = teTocaHoy\(base\.preaprobacion\);/.test(vb) || !/<Link href=\{URL_PREAPROBACION\} className="inv-principal" data-inv2="te-toca-boton">/.test(vb)) F("10 · «Lo que te toca hoy» no está en la base o no lleva a la preaprobación");
+      if (vb.indexOf('data-inv2="te-toca-hoy"') < 0 || vb.indexOf('data-inv2="te-toca-hoy"') > vb.indexOf('data-inv2="tus-deptos"')) F("10 · «Lo que te toca hoy» no va arriba de «Tus deptos» (lámina 3.3-base)");
+      if (!/await borrarArchivosPreaprobacion\(admin, user\.id\);/.test(codigo("src/app/api/account/request-deletion/route.ts"))) F("10 · pedir la eliminación de la cuenta no borra los archivos de la preaprobación");
+      if (!/\{inicial\.puedeSubirPreaprobacion && <SubirPreaprobacion variante="perfil" \/>\}/.test(codigo("src/components/invierte-v2/PerfilForm.tsx"))) F("10 · el paso 2 del perfil con preaprobación no deja subirla");
+      const sub = codigo("src/components/invierte-v2/Preaprobacion.tsx");
+      if (!/uploadToSignedUrl\(path, token, file/.test(sub) || !/disabled=\{enviando\} aria-busy=\{enviando \|\| undefined\} data-inv2="subir"/.test(sub)) F("10 · el archivo no va directo al bucket con la URL firmada, o «Subir» se puede apretar dos veces");
+      if (!/<RevisarPreaprobacion id=\{pre\.doc\.id\}/.test(codigo("src/app/admin/invierte-v2/[userId]/page.tsx"))) F("10 · la ficha del admin no deja revisar la preaprobación");
     }
 
     // ── 7 · REINICIAR PRUEBA LIMPIA LA ETAPA 2 DE ESA PERSONA, Y SOLO DE ELLA ──

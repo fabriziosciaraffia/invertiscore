@@ -80,7 +80,7 @@ export function falso(datos: Record<string, Record<string, unknown>[]>) {
     let uno = false;
     let conflicto = ["user_id"];
     const filtros: Array<[string, string, unknown]> = [];
-    const pasa = (r: Record<string, unknown>) => filtros.every(([k, t, v]) => (t === "eq" ? r[k] === v : t === "in" ? (v as unknown[]).includes(r[k]) : t === "is" ? (r[k] ?? null) === v : t === "gte" ? String(r[k]) >= String(v) : true));
+    const pasa = (r: Record<string, unknown>) => filtros.every(([k, t, v]) => (t === "eq" ? r[k] === v : t === "in" ? (v as unknown[]).includes(r[k]) : t === "is" ? (r[k] ?? null) === v : t === "gte" ? String(r[k]) >= String(v) : t === "neq" ? r[k] !== v : true));
     const correr = () => {
       pasos.push({ tabla, op, filtros: [...filtros], fila });
       const filas = (datos[tabla] ??= []);
@@ -106,6 +106,7 @@ export function falso(datos: Record<string, Record<string, unknown>[]>) {
       in: (k: string, v: unknown) => { filtros.push([k, "in", v]); return b; },
       is: (k: string, v: unknown) => { filtros.push([k, "is", v]); return b; },
       gte: (k: string, v: unknown) => { filtros.push([k, "gte", v]); return b; },
+      neq: (k: string, v: unknown) => { filtros.push([k, "neq", v]); return b; },
       maybeSingle: () => { uno = true; return Promise.resolve(correr()); },
       single: () => { uno = true; return Promise.resolve(correr()); },
       then: (res: (x: unknown) => unknown, rej: (e: unknown) => unknown) => Promise.resolve(correr()).then(res, rej),
@@ -120,6 +121,7 @@ export function falso(datos: Record<string, Record<string, unknown>[]>) {
         remove: async (rutas: string[]) => { bucket.borrados.push(...rutas); return { error: null }; },
         download: async () => ({ data: new Blob([new Uint8Array([37, 80, 68, 70])]), error: null }),
         createSignedUrl: async (ruta: string) => ({ data: { signedUrl: `https://firmada/${ruta}` }, error: null }),
+        createSignedUploadUrl: async (ruta: string) => ({ data: { signedUrl: `https://subida/${ruta}`, token: "tok", path: ruta }, error: null }),
       }),
     },
   };
