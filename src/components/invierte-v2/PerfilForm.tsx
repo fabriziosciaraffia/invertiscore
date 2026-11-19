@@ -10,8 +10,8 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { botonOcupado } from "@/lib/carga-global";
 import {
-  OBJETIVOS, PERFIL_COPY, PIES_TIENE, PREAPROBADOS, PREOCUPACIONES, REGLA_TOPE, validarPerfil,
-  type Objetivo, type PieTiene, type Preaprobado, type Preocupacion,
+  DONDES, OBJETIVOS, PERFIL_COPY, PIES_TIENE, PREAPROBADOS, PREOCUPACIONES, REGLA_TOPE, validarPerfil,
+  type Donde, type Objetivo, type PieTiene, type Preaprobado, type Preocupacion,
 } from "@/lib/invierte-v2/perfil";
 import { fmtUF } from "@/lib/invierte-v2/opciones";
 import { IndicadorPasosPerfil } from "./IndicadorPasos";
@@ -24,6 +24,8 @@ export const URL_OPCIONES = "/invierte/opciones";
 
 export interface InicialPerfil {
   comunas: string[];
+  /** «¿Dónde buscamos?» guardado (por defecto «cerca»). */
+  donde: Donde;
   deEntrada: string | null;
   dePerfil: string[];
   pieSugeridoUF: number | null;
@@ -58,10 +60,7 @@ function Chips<T extends string>({ opciones, etiquetas, activo, alTocar, nombre 
 export function PerfilForm({ inicial }: { inicial: InicialPerfil }) {
   const router = useRouter();
   const [paso, setPaso] = useState<1 | 2>(1);
-  const [todas, setTodas] = useState<string[]>(inicial.comunas);
-  const [marcadas, setMarcadas] = useState<Set<string>>(new Set(inicial.comunas));
-  const [otraAbierta, setOtraAbierta] = useState(false);
-  const [otra, setOtra] = useState("");
+  const [donde, setDonde] = useState<Donde>(inicial.donde);
   const [objetivo, setObjetivo] = useState<Objetivo | null>(inicial.objetivo);
   const [preocupaciones, setPreocupaciones] = useState<Set<Preocupacion>>(new Set(inicial.preocupaciones));
   const [preaprobado, setPreaprobado] = useState<Preaprobado | null>(inicial.preaprobado);
@@ -75,22 +74,16 @@ export function PerfilForm({ inicial }: { inicial: InicialPerfil }) {
   const [enviando, setEnviando] = useState(false);
 
   const toggle = <T,>(s: Set<T>, v: T) => { const n = new Set(s); if (n.has(v)) n.delete(v); else n.add(v); return n; };
-  const agregarOtra = () => {
-    const c = otra.trim().replace(/\s+/g, " ");
-    if (c.length < 2) return;
-    const nombre = c.charAt(0).toUpperCase() + c.slice(1);
-    if (!todas.some((t) => t.toLowerCase() === nombre.toLowerCase())) setTodas([...todas, nombre]);
-    setMarcadas(new Set([...Array.from(marcadas), nombre]));
-    setOtra("");
-    setOtraAbierta(false);
-  };
+  // Las comunas ya no se preguntan (láminas del 19-nov-2026): van derivadas —la del depto con que entró, o las que ya tenía— para
+  // el perfil de la selección semanal. Dónde se busca lo dice «¿Dónde buscamos?».
+  const comunas = inicial.deEntrada ? [inicial.deEntrada] : inicial.comunas;
 
   const montoNum = aNum(monto);
   const conCredito = preaprobado === "tengo" && montoNum ? { tope: montoNum / (1 - REGLA_TOPE.piePct / 100), pie: montoNum / (1 - REGLA_TOPE.piePct / 100) * REGLA_TOPE.piePct / 100 } : null;
 
   function continuar(e: FormEvent) {
     e.preventDefault();
-    if (!marcadas.size) return setError(PERFIL_COPY.errores.comunas);
+    if (!comunas.length) return setError(PERFIL_COPY.errores.comunas);
     if (!objetivo) return setError(PERFIL_COPY.errores.objetivo);
     setError(null);
     setPaso(2);
@@ -101,7 +94,7 @@ export function PerfilForm({ inicial }: { inicial: InicialPerfil }) {
     e.preventDefault();
     if (enviando) return;
     const cuerpo = {
-      comunas: todas.filter((c) => marcadas.has(c)), objetivo, preocupaciones: Array.from(preocupaciones), preaprobado,
+      comunas, donde, objetivo, preocupaciones: Array.from(preocupaciones), preaprobado,
       montoPreaprobadoUF: montoNum, pieTiene, pieUF: aNum(pie), rentaCLP: noDice ? null : aNum(renta), otrasCuotasCLP: noDice ? null : aNum(cuotas) ?? 0, noDiceRenta: noDice,
     };
     const v = validarPerfil(cuerpo);
@@ -129,24 +122,9 @@ export function PerfilForm({ inicial }: { inicial: InicialPerfil }) {
           <p className="iv2-linea-chica">{inicial.primeraVez ? P1.lineaPrimera : P1.linea}</p>
         </div>
         <div className="inv-pregunta">
-          <span className="inv-legend">{P1.comunas}</span>
-          <div className="iv2-chips" role="group" aria-label={P1.comunas}>
-            {todas.map((c) => (
-              <button key={c} type="button" className="iv2-chip-op" aria-pressed={marcadas.has(c)} onClick={() => setMarcadas(toggle(marcadas, c))} data-inv2="comuna">{c}</button>
-            ))}
-            <button type="button" className="iv2-chip-op" aria-pressed={otraAbierta} onClick={() => setOtraAbierta(!otraAbierta)} data-inv2="comuna-otra">{P1.otra}</button>
-          </div>
-          {otraAbierta && (
-            <div className="iv2-otra">
-              <input className="inv-campo" value={otra} onChange={(e) => setOtra(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); agregarOtra(); } }} placeholder={P1.otraPlaceholder} aria-label={P1.otraPlaceholder} autoFocus data-inv2="comuna-otra-campo" />
-              <button type="button" className="iv2-secundario iv2-otra-ok" onClick={agregarOtra}>Agregar</button>
-            </div>
-          )}
-          {(inicial.deEntrada || inicial.dePerfil.length > 0) && (
-            <p className="iv2-linea-chica" data-inv2="comunas-origen">
-              {[inicial.deEntrada ? P1.porDepto(inicial.deEntrada) : null, inicial.dePerfil.length ? P1.dePerfil(inicial.dePerfil) : null].filter(Boolean).join(" ")}
-            </p>
-          )}
+          <span className="inv-legend">{P1.donde}</span>
+          <Chips opciones={DONDES} etiquetas={P1.dondes} activo={(o) => donde === o} alTocar={(o) => { setDonde(o); setError(null); }} nombre="donde" />
+          <p className="iv2-linea-chica" data-inv2="donde-linea">{P1.dondeLinea(donde, inicial.deEntrada)}</p>
         </div>
         <div className="inv-pregunta">
           <span className="inv-legend">{P1.objetivo}</span>

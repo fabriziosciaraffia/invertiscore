@@ -4,6 +4,7 @@ import { RESULTADO_COPY } from "@/lib/invierte-v2/opciones";
 import type { Tope } from "@/lib/invierte-v2/perfil";
 import { URL_INVIERTE } from "@/lib/invierte-v2/destino";
 import { calcularOpciones } from "@/lib/invierte-v2/perfil-servidor";
+import { fotosDe } from "@/lib/invierte-v2/fotos-servidor";
 import { METADATA_FLUJO, sesionYAcceso } from "@/lib/invierte-v2/paginas";
 import { MarcoInvierte } from "@/components/invierte-v2/MarcoInvierte";
 import { ResultadoOpciones } from "@/components/invierte-v2/ResultadoOpciones";
@@ -19,6 +20,8 @@ export default async function OpcionesPage() {
   if (!user || !acceso) notFound();
   const r = await calcularOpciones(createServiceClient(), { id: user.id, email: user.email ?? null });
   if (!r) redirect(URL_INVIERTE);
+  // Las fotos (entrega 3): solo cuántas tiene cada depto; las sirve la ruta propia, solo a quien firmó.
+  const fotos = await fotosDe(createServiceClient(), r.opciones.map((o) => o.avisoId));
   const s = (r.perfil.topeSupuestos ?? {}) as Record<string, unknown>;
   const tope: Pick<Tope, "topeUF" | "fuente" | "limita" | "creditoUF" | "porPieUF" | "menosPreciso"> = {
     topeUF: r.perfil.topeUF ?? 0, fuente: r.perfil.topeFuente ?? "solo_pie", limita: (s.limita as Tope["limita"]) ?? null,
@@ -27,7 +30,8 @@ export default async function OpcionesPage() {
   return (
     <MarcoInvierte volver={null} pantalla="opciones" layout="contenido" cabecera={RESULTADO_COPY.rotulo} pc={{ sesionEmail: user.email ?? null, invierte: true }}>
       <ResultadoOpciones caso={r.caso} opciones={r.opciones} etiquetas={r.etiquetas} elegidos={r.elegidos} tope={tope}
-        pieUF={r.perfil.pieUF} masBaratoUF={r.masBaratoUF} objetivo={r.perfil.objetivo} preocupaciones={r.perfil.preocupaciones} comunas={r.perfil.comunas} />
+        pieUF={r.perfil.pieUF} masBaratoUF={r.masBaratoUF} objetivo={r.perfil.objetivo} preocupaciones={r.perfil.preocupaciones} comunas={r.perfil.comunas}
+        nivel={r.nivel} donde={r.perfil.donde} distancias={r.distancias} fotos={fotos} />
     </MarcoInvierte>
   );
 }

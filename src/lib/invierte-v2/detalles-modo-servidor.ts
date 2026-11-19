@@ -9,7 +9,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { vistaSumar, numeroFranco } from "./base-servidor";
-import { distanciaDelTuyo, indicadorContraElegido, lineaRecomendado, metrosEntre, type ModoDetalles } from "./detalles-modo";
+import { distanciaDelTuyo, indicadorContraElegido, lineaRecomendado, metrosEntre, nombreDeDatos, type CabezaDetalles, type ModoDetalles } from "./detalles-modo";
+import { fotosDe } from "./fotos-servidor";
 
 async function puntoYFlujo(admin: SupabaseClient, avisoId: string): Promise<{ lat: number; lng: number; comuna: string | null; precioUF: number | null; flujoCLP: number | null } | null> {
   const [sp, ev] = await Promise.all([
@@ -29,8 +30,10 @@ async function puntoYFlujo(admin: SupabaseClient, avisoId: string): Promise<{ la
 
 /** `whatsappAdmin`: el cliente de servicio construido en línea por quien llama (CONFIG-PUBLICA §6: `numeroFranco` lee `config`). */
 export async function modoDetalles(admin: SupabaseClient, userId: string, avisoId: string, whatsappAdmin: SupabaseClient): Promise<ModoDetalles | null> {
-  const v = await vistaSumar(admin, userId, avisoId);
-  if (v.estado === "ya") return { relacion: "suyo", whatsapp: await numeroFranco(whatsappAdmin).catch(() => null) };
+  const [v, fotos] = await Promise.all([vistaSumar(admin, userId, avisoId), fotosDe(admin, [avisoId])]);
+  const d = v.datos;
+  const cabeza: CabezaDetalles = { avisoId, nombre: d ? nombreDeDatos(d) : "", veredicto: d?.veredicto ?? null, score: d?.score ?? null, fotos: fotos[avisoId] ?? 0 };
+  if (v.estado === "ya") return { cabeza, relacion: "suyo", whatsapp: await numeroFranco(whatsappAdmin).catch(() => null) };
   if (v.estado !== "listo" || !v.alcanza || v.datos?.veredicto !== "COMPRAR" || !v.orden || !v.perfil) return null;
   const [alt, ele] = await Promise.all([puntoYFlujo(admin, avisoId), puntoYFlujo(admin, v.orden.avisoId)]);
   const enKm = v.perfil.donde === "convenga";
@@ -38,5 +41,5 @@ export async function modoDetalles(admin: SupabaseClient, userId: string, avisoI
   const ind = alt && ele ? indicadorContraElegido(alt, ele, v.perfil) : null;
   if (!distancia && !ind) return null;
   const linea = distancia ? lineaRecomendado(distancia, ind?.frase ?? null) : lineaRecomendado(ind!.frase, null);
-  return { relacion: "recomendado", avisoId, linea, activos: (v.activos ?? []).map((a) => ({ avisoId: a.avisoId, datos: a.datos as unknown as Record<string, unknown> })) };
+  return { cabeza, relacion: "recomendado", avisoId, linea, activos: (v.activos ?? []).map((a) => ({ avisoId: a.avisoId, datos: a.datos as unknown as Record<string, unknown> })) };
 }

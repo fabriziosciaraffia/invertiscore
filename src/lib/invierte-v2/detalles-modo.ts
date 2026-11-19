@@ -25,9 +25,17 @@ export const DETALLES_COPY = {
   recomienda: (por: string) => `Franco te lo recomienda: ${por}.`,
 } as const;
 
-export type ModoDetalles =
+/** Lo que va arriba del informe en modo Invierte (entrega 3): el depto en una línea, su veredicto y cuántas fotos tiene. */
+export interface CabezaDetalles { avisoId: string; nombre: string; veredicto: string | null; score: number | null; fotos: number }
+
+export type ModoDetalles = { cabeza: CabezaDetalles } & (
   | { relacion: "suyo"; whatsapp: string | null }
-  | { relacion: "recomendado"; avisoId: string; linea: string; activos: { avisoId: string; datos: Record<string, unknown> }[] };
+  | { relacion: "recomendado"; avisoId: string; linea: string; activos: { avisoId: string; datos: Record<string, unknown> }[] });
+
+/** «Ñuñoa · 2D2B · 58 m²», como la lámina. */
+export function nombreDeDatos(d: { comuna?: string | null; dormitorios?: number | null; banos?: number | null; m2?: number | null }): string {
+  return [d.comuna ?? null, d.dormitorios != null ? `${d.dormitorios}D${d.banos ?? 1}B` : null, d.m2 ? `${Math.round(d.m2)} m²` : null].filter(Boolean).join(" · ");
+}
 
 /** ¿El modo Invierte? Solo con `?desde=invierte`, dueño del informe y orden firmada (el resto lo decide el servidor). */
 export function abiertoDesdeInvierte(p: { desde: unknown; esDueno: boolean; firmo: boolean }): boolean {

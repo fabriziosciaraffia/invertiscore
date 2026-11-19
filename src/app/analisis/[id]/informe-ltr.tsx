@@ -30,7 +30,7 @@ import { sinEnlaceAlPortal } from "@/lib/invierte-v2/portal-servidor";
 import { abiertoDesdeInvierte } from "@/lib/invierte-v2/detalles-modo";
 import { modoDetalles } from "@/lib/invierte-v2/detalles-modo-servidor";
 import { avisoDelInforme } from "@/lib/guia/publicacion-portada";
-import { AccionDetalles, BarraDetalles, CabeceraDetalles } from "@/components/invierte-v2/DetallesInvierte";
+import { AccionDetalles, BarraDetalles, CabeceraDetalles, CabezaDeDetalles } from "@/components/invierte-v2/DetallesInvierte";
 import { informeBloqueado, rutaPagoBloqueado } from "@/lib/informe-bloqueado";
 import { InformeBloqueado } from "@/components/analysis/InformeBloqueado";
 import { etiquetaAnalisis } from "@/lib/format-direccion";
@@ -388,6 +388,7 @@ export async function InformeLtr({ id, demo = false, desde = null }: { id: strin
       {modoInvierte && <BarraDetalles modo={modoInvierte} />}
 
       <div className={`container mx-auto max-w-6xl px-4 py-8${modoInvierte ? " iv2-con-det-accion" : ""}`}>
+        {modoInvierte && <CabezaDeDetalles modo={modoInvierte} />}
         {isSubordinated && (
           <SubordinatedBanner href={subordinatedHref!} modalidad="LTR" />
         )}

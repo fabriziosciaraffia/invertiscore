@@ -12,7 +12,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { findNearestStation } from "@/lib/metro-stations";
 import { VENTANA_SEMANAL_DIAS } from "@/lib/guia/semanal";
 import { hastaCuanto, comunasPrecargadas, piePrecargado, type PedidoPerfil, type Tope, type Objetivo, type Preocupacion, type Donde } from "./perfil";
-import { casoDe, elegirOpciones, etiquetar, vsParecidos, type Caso, type Etiqueta, type OpcionDepto } from "./opciones";
+import { casoDe, etiquetar, vsParecidos, type Caso, type Etiqueta, type OpcionDepto } from "./opciones";
+import { MAX_RECOMENDADOS, cuantasPedir, esNivel, nivelDelBloque, type NivelAlt } from "./alternativas";
+import { metrosEntre } from "./detalles-modo";
 import { anotar, esCuentaTest, leerPersona, ultimaOrdenDe, type ContextoPedido } from "./servidor";
 import type { PerfilComparable } from "./base";
 
@@ -120,13 +122,16 @@ export async function confirmarPerfil(admin: SupabaseClient, user: { id: string;
   const ultimoCambio = previo ? await cambioDelPerfil(admin, user.id, previo, pedido, tope.topeUF) : null;
   const supuestos = { ...tope.supuestos, limita: tope.limita, porPieUF: tope.porPieUF, creditoUF: tope.creditoUF, precioMaxAnterior: anterior, reemplazoPrecioMax: reemplaza, ...(comunasAnterior ? { comunasAnterior } : {}), ...(previo?.topeSupuestos?.aprobadaUF ? { aprobadaUF: previo.topeSupuestos.aprobadaUF } : {}), ...(ultimoCambio ? { ultimoCambio } : {}) };
   const fila = {
-    user_id: user.id, objetivo: pedido.objetivo, preocupaciones: pedido.preocupaciones, comunas: pedido.comunas, preaprobado: pedido.preaprobado,
+    user_id: user.id, objetivo: pedido.objetivo, preocupaciones: pedido.preocupaciones, comunas: pedido.comunas, donde: pedido.donde, preaprobado: pedido.preaprobado,
     monto_preaprobado_uf: pedido.montoPreaprobadoUF, pie_tiene: pedido.pieTiene, pie_uf: pedido.pieUF, renta_liquida_clp: pedido.rentaCLP,
     otras_cuotas_clp: pedido.otrasCuotasCLP, no_dice_renta: pedido.noDiceRenta, tope_uf: tope.topeUF, tope_fuente: tope.fuente, tope_supuestos: supuestos,
     es_prueba: esPrueba, updated_at: new Date().toISOString(),
   };
   const { error } = await admin.from(T_PERFILES).upsert(fila, { onConflict: "user_id" });
   if (error) return { ok: false, error: "guardar" };
+  // Un perfil nuevo es una búsqueda nueva (láminas del 19-nov-2026): las opciones de Franco que no eligió se descartan y el
+  // resultado pide otras; las que ya eligió se quedan y siguen contando para el cupo de tres (alternativas.ts).
+  if (previo) await admin.from(T_DEPTOS).update({ estado: "descartado", updated_at: new Date().toISOString() }).eq("user_id", user.id).eq("origen", "franco").eq("estado", "opcion");
   // UN SOLO PERFIL: las comunas y (salvo sin renta) el tope van también al de la selección semanal.
   const pbFila: Record<string, unknown> = { user_id: user.id, comunas: pedido.comunas, actualizado_at: new Date().toISOString() };
   if (reemplaza && tope.topeUF > 0) pbFila.precio_max_uf = Math.round(tope.topeUF);
@@ -200,53 +205,107 @@ export interface ResultadoOpciones {
   entrada: OpcionDepto | null;
   masBaratoUF: number | null;
   perfil: PerfilInv;
+  /** Láminas del 19-nov-2026: de qué nivel salieron las alternativas (el subtítulo dice su verdad) y a qué distancia está cada una. */
+  nivel: NivelAlt;
+  distancias: Record<string, number | null>;
 }
 
+interface FilaDepto { aviso_id: string; estado: string; origen: string; alcanza: boolean | null; datos: Record<string, unknown> | null; created_at: string | null }
+
+/** Las alternativas nuevas de la función `invierte_alternativas` (aplicada por Claude el 19-nov-2026), con el nivel que usó. */
+async function pedirAlternativas(admin: SupabaseClient, p: { aviso: string; modo: Donde; tope: number; excluir: string[]; cuantas: number }): Promise<{ filas: { avisoId: string; distanciaM: number | null }[]; nivel: NivelAlt }> {
+  const { data, error } = await admin.rpc("invierte_alternativas", { p_aviso: p.aviso, p_modo: p.modo, p_tope: p.tope, p_comunas: null, p_excluir: p.excluir, p_max: p.cuantas });
+  if (error) throw new Error(`alternativas: ${error.message}`);
+  const rows = (data ?? []) as { aviso_id: string | null; distancia_m: number | null; nivel: string }[];
+  const nivel = esNivel(rows[0]?.nivel) ? (rows[0].nivel as NivelAlt) : "solo_elegido";
+  return { filas: rows.filter((r) => r.aviso_id).slice(0, p.cuantas).map((r) => ({ avisoId: r.aviso_id as string, distanciaM: r.distancia_m == null ? null : Number(r.distancia_m) })), nivel };
+}
+
+const esUuid = (x: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(x);
+
+/**
+ * EL RESULTADO (láminas del 19-nov-2026): el depto con que entró primero y, como mucho, MAX_RECOMENDADOS alternativas de Franco
+ * en todo el flujo (alternativas.ts). Las que ya estaban como opción y siguen valiendo se quedan; las que ya eligió cuentan para
+ * el cupo; solo se piden a la función las que faltan, excluyendo su base. Una opción que dejó de valer (ya no conviene, no le
+ * alcanza o no está) se descarta y libera su cupo.
+ */
 export async function calcularOpciones(admin: SupabaseClient, user: { id: string; email: string | null }): Promise<ResultadoOpciones | null> {
   const [perfil, persona, orden] = await Promise.all([leerPerfilInv(admin, user.id), leerPersona(admin, user.id), ultimaOrdenDe(admin, user.id)]);
   if (!perfil || !orden) return null;
   const tope = perfil.topeUF ?? 0;
   const avisoEntrada = persona?.avisoOrigen ?? orden.avisoId;
-  const [filas, ent] = await Promise.all([tope > 0 ? candidatos(admin, perfil.comunas, tope) : Promise.resolve([] as FilaCandidato[]), avisoEntrada ? filaEntrada(admin, avisoEntrada) : Promise.resolve(null)]);
+  const [ent, { data: previosData }] = await Promise.all([
+    avisoEntrada ? filaEntrada(admin, avisoEntrada) : Promise.resolve(null),
+    admin.from(T_DEPTOS).select("aviso_id, estado, origen, alcanza, datos, created_at").eq("user_id", user.id),
+  ]);
+  const previos = (previosData ?? []) as FilaDepto[];
   const entrada = ent ? aOpcion(ent.fila, tope, true, ent.veredicto) : null;
-  const lista = filas.map((f) => aOpcion(f, tope, false, "COMPRAR"));
-  const deFranco = elegirOpciones(entrada, lista, perfil.objetivo, perfil.preocupaciones);
-  const etiquetas = Object.fromEntries(etiquetar(deFranco));
-  const caso = casoDe(deFranco);
-  const masBaratoUF = caso === "caso2" ? await masBarato(admin, perfil.comunas, Math.max(tope, 500)) : null;
-
-  // Los que ya eligió y hoy no están entre las de Franco (salieron del top o se sumaron aparte) siguen en la tabla, al final y
-  // marcados: si no, desaparecían y «Seguir con estos» los soltaba sin avisar. Con 6 activos y el de entrada son 7 columnas
-  // como mucho; la tabla del PC se desliza adentro, con la primera columna fija.
-  const { data: previos } = await admin.from(T_DEPTOS).select("aviso_id, estado, alcanza").eq("user_id", user.id);
-  const faltan = (previos ?? []).filter((p) => p.estado === "elegido" && !deFranco.some((o) => o.avisoId === p.aviso_id)).map((p) => p.aviso_id as string);
-  const extras = (await Promise.all(faltan.map((id) => filaEntrada(admin, id)))).filter((e): e is NonNullable<typeof e> => !!e).map((e) => aOpcion(e.fila, tope, false, e.veredicto));
-  const opciones = [...deFranco, ...extras];
-
-  // Persistir: lo nuevo entra como opción; lo que ya estaba se actualiza (y lo que deja de alcanzar se marca, no se borra).
-  const yaEstaban = new Map((previos ?? []).map((p) => [p.aviso_id as string, p]));
   const ahora = new Date().toISOString();
-  const filasUpsert = opciones.map((o) => {
+
+  // 1 · Las de Franco que ya estaban: las elegidas cuentan siempre; las opciones se revalidan con los datos de hoy.
+  const deFrancoPrev = previos.filter((f) => f.origen === "franco" && (f.estado === "opcion" || f.estado === "elegido")).sort((a, b) => String(a.created_at ?? "").localeCompare(String(b.created_at ?? "")));
+  const filasPrev = await Promise.all(deFrancoPrev.map(async (f) => ({ f, e: await filaEntrada(admin, f.aviso_id) })));
+  const elegidasFranco = filasPrev.filter((x) => x.f.estado === "elegido");
+  const opcionesValidas: typeof filasPrev = [];
+  const descartar: string[] = [];
+  for (const x of filasPrev.filter((y) => y.f.estado === "opcion")) {
+    // Una opción de antes de las láminas del 19-nov-2026 no trae el nivel de la función: no salió de esta búsqueda, se reemplaza.
+    const vale = x.e && x.e.veredicto === "COMPRAR" && Number(x.e.fila.precio_uf) <= tope + 0.5 && esNivel(x.f.datos?.nivel);
+    if (vale && elegidasFranco.length + opcionesValidas.length < MAX_RECOMENDADOS) opcionesValidas.push(x);
+    else descartar.push(x.f.aviso_id);
+  }
+  if (descartar.length) await admin.from(T_DEPTOS).update({ estado: "descartado", updated_at: ahora }).eq("user_id", user.id).in("aviso_id", descartar);
+
+  // 2 · Las que faltan, de la función, sin su base (elegidos y opciones) ni el depto con que entró.
+  const cuantas = cuantasPedir(elegidasFranco.length + opcionesValidas.length);
+  const excluir = Array.from(new Set([...previos.filter((f) => f.estado === "elegido" || f.estado === "opcion").map((f) => f.aviso_id), ...(avisoEntrada ? [avisoEntrada] : [])])).filter(esUuid);
+  const pedidas = cuantas > 0 && avisoEntrada && esUuid(avisoEntrada) && tope > 0
+    ? await pedirAlternativas(admin, { aviso: avisoEntrada, modo: perfil.donde, tope, excluir, cuantas })
+    : { filas: [], nivel: "solo_elegido" as NivelAlt };
+  const nuevasE = (await Promise.all(pedidas.filas.map(async (r) => ({ r, e: await filaEntrada(admin, r.avisoId) })))).filter((x) => !!x.e);
+
+  // 3 · Lo que se muestra: el de entrada, las de Franco que siguen (opción y elegidas) y las nuevas; nunca más de tres de Franco.
+  const deFranco = [
+    ...[...elegidasFranco, ...opcionesValidas].map((x) => ({ o: x.e ? aOpcion(x.e.fila, tope, false, x.e.veredicto) : null, nivel: (x.f.datos?.nivel as NivelAlt | undefined) ?? null, dist: (x.f.datos?.distanciaM as number | null | undefined) ?? null })),
+    ...nuevasE.map((x) => ({ o: aOpcion(x.e!.fila, tope, false, x.e!.veredicto), nivel: pedidas.nivel, dist: x.r.distanciaM })),
+  ].filter((x): x is { o: OpcionDepto; nivel: NivelAlt | null; dist: number | null } => !!x.o).slice(0, MAX_RECOMENDADOS);
+  const opciones = [...(entrada ? [entrada] : []), ...deFranco.map((x) => x.o)];
+  const nivel = nivelDelBloque(deFranco.map((x) => x.nivel));
+  // La distancia al suyo, con las coordenadas de los dos (la misma que mide la función; también para las elegidas de antes).
+  const punto = (f: FilaCandidato | undefined) => (f && f.lat != null && f.lng != null ? { lat: Number(f.lat), lng: Number(f.lng) } : null);
+  const pEntrada = punto(ent?.fila);
+  const filaDe = new Map([...filasPrev, ...nuevasE.map((x) => ({ f: null, e: x.e }))].filter((x) => x.e).map((x) => [x.e!.fila.id, x.e!.fila]));
+  const distancias = Object.fromEntries(deFranco.map((x) => { const pa = punto(filaDe.get(x.o.avisoId)); return [x.o.avisoId, pEntrada && pa ? Math.round(metrosEntre(pEntrada, pa)) : x.dist]; }));
+  const etiquetas = Object.fromEntries(etiquetar(opciones));
+  const caso = casoDe(opciones);
+  const masBaratoUF = caso === "caso2" ? await masBarato(admin, entrada?.comuna ? [entrada.comuna] : perfil.comunas, Math.max(tope, 500)) : null;
+
+  // 4 · Persistir: lo nuevo entra como opción de Franco (con su nivel y su distancia); el de entrada y lo que ya estaba se actualiza.
+  const yaEstaban = new Map(previos.map((p) => [p.aviso_id, p]));
+  const datosDe = (o: OpcionDepto, extra: Record<string, unknown>) => ({ precioUF: o.precioUF, veredicto: o.veredicto, score: o.score, flujoCLP: o.flujoCLP, comuna: o.comuna, m2: o.m2, dormitorios: o.dormitorios, banos: o.banos, ...extra });
+  const filasUpsert = [
+    ...(entrada ? [{ o: entrada, extra: {} as Record<string, unknown>, origen: "entrada" }] : []),
+    ...deFranco.map((x) => ({ o: x.o, extra: { nivel: x.nivel, distanciaM: x.dist } as Record<string, unknown>, origen: "franco" })),
+  ].map(({ o, extra, origen }) => {
     const prev = yaEstaban.get(o.avisoId);
     return {
-      user_id: user.id, aviso_id: o.avisoId, estado: (prev?.estado as string | undefined) ?? "opcion", origen: o.esEntrada ? "entrada" : "franco",
+      user_id: user.id, aviso_id: o.avisoId, estado: prev && prev.estado !== "descartado" ? prev.estado : "opcion", origen: prev?.origen ?? origen,
       etiqueta: etiquetas[o.avisoId] ?? null, alcanza: o.alcanza, fuera_de_alcance_at: o.alcanza ? null : ahora,
-      datos: { precioUF: o.precioUF, veredicto: o.veredicto, score: o.score, flujoCLP: o.flujoCLP, comuna: o.comuna, m2: o.m2, dormitorios: o.dormitorios, banos: o.banos }, es_prueba: perfil.esPrueba, updated_at: ahora,
+      datos: datosDe(o, extra), es_prueba: perfil.esPrueba, updated_at: ahora,
     };
   });
-  // Los que ya estaban y hoy no aparecen: quedan como estaban. Fuera de alcance se marca solo por PRECIO (en `opciones` va con su
-  // `alcanza` real); salir del top de Franco no es dejar de alcanzarle.
   if (filasUpsert.length) await admin.from(T_DEPTOS).upsert(filasUpsert, { onConflict: "user_id,aviso_id" });
-  const nuevos = opciones.filter((o) => !yaEstaban.has(o.avisoId));
-  if (nuevos.length) await anotar(admin, { userId: user.id, email: user.email, ordenId: orden.id, actor: "sistema", accion: "depto_presentado", detalle: { avisos: nuevos.map((o) => ({ aviso_id: o.avisoId, etiqueta: etiquetas[o.avisoId] ?? null, precio_uf: o.precioUF })) }, esPrueba: perfil.esPrueba });
-  const elegidos = (previos ?? []).filter((p) => p.estado === "elegido").map((p) => p.aviso_id as string);
-  return { caso, opciones, etiquetas, elegidos, entrada, masBaratoUF, perfil };
+  const nuevos = opciones.filter((o) => !yaEstaban.has(o.avisoId) || yaEstaban.get(o.avisoId)?.estado === "descartado");
+  if (nuevos.length) await anotar(admin, { userId: user.id, email: user.email, ordenId: orden.id, actor: "sistema", accion: "depto_presentado", detalle: { avisos: nuevos.map((o) => ({ aviso_id: o.avisoId, etiqueta: etiquetas[o.avisoId] ?? null, precio_uf: o.precioUF, nivel: o.esEntrada ? null : nivel })) }, esPrueba: perfil.esPrueba });
+  const elegidos = previos.filter((p) => p.estado === "elegido" && opciones.some((o) => o.avisoId === p.aviso_id)).map((p) => p.aviso_id);
+  return { caso, opciones, etiquetas, elegidos, entrada, masBaratoUF, perfil, nivel, distancias };
 }
 
 // ── LA ELECCIÓN ──────────────────────────────────────────────────────────────
 export type ResultadoEleccion = { ok: true; elegidos: string[] } | { ok: false; error: "vacio" | "maximo" | "fuera" | "guardar" };
 
-/** «Seguir con estos N»: los marcados pasan a elegidos (como mucho MAX_ACTIVOS); solo opciones que le alcanzan. */
+/** «Seguir con estos N»: los marcados pasan a elegidos (como mucho MAX_ACTIVOS); solo opciones que le alcanzan. Lo que el
+ *  resultado no mostró (lo sumado desde el mapa) no se toca: solo se sueltan las del resultado que no marcó. */
 export async function elegir(admin: SupabaseClient, user: { id: string; email: string | null }, avisoIds: string[], max: number, ctx: ContextoPedido | null): Promise<ResultadoEleccion> {
   const ids = Array.from(new Set(avisoIds.filter((x) => typeof x === "string")));
   if (!ids.length) return { ok: false, error: "vacio" };
@@ -255,7 +314,7 @@ export async function elegir(admin: SupabaseClient, user: { id: string; email: s
   if ((filas ?? []).length !== ids.length || (filas ?? []).some((f) => !f.alcanza)) return { ok: false, error: "fuera" };
   const ahora = new Date().toISOString();
   const a = await admin.from(T_DEPTOS).update({ estado: "elegido", elegido_at: ahora, updated_at: ahora }).eq("user_id", user.id).in("aviso_id", ids);
-  const b = await admin.from(T_DEPTOS).update({ estado: "opcion", elegido_at: null, updated_at: ahora }).eq("user_id", user.id).eq("estado", "elegido").not("aviso_id", "in", `(${ids.map((x) => `"${x}"`).join(",")})`);
+  const b = await admin.from(T_DEPTOS).update({ estado: "opcion", elegido_at: null, updated_at: ahora }).eq("user_id", user.id).eq("estado", "elegido").in("origen", ["entrada", "franco"]).not("aviso_id", "in", `(${ids.map((x) => `"${x}"`).join(",")})`);
   if (a.error || b.error) return { ok: false, error: "guardar" };
   await tareasGestionar(admin, user.id, ids, (filas ?? []).some((f) => f.es_prueba));
   await anotar(admin, { userId: user.id, email: user.email, ordenId: orden?.id ?? null, actor: "persona", accion: "deptos_elegidos", detalle: { avisos: ids }, ctx, esPrueba: (filas ?? []).some((f) => f.es_prueba) });

@@ -38,7 +38,7 @@ export default async function PerfilPage({ searchParams }: { searchParams: Recor
       franja={primeraVez ? <FranjaOrden orden={orden} /> : undefined}>
       <PerfilForm inicial={{
         primeraVez: primeraVez ? { nombre: primerNombre(orden.nombre, orden.nombres) } : undefined,
-        comunas: c.comunas, deEntrada: c.deEntrada, dePerfil: c.dePerfil, pieSugeridoUF: c.pieSugeridoUF,
+        comunas: c.comunas, donde: g?.donde ?? "cerca", deEntrada: c.deEntrada, dePerfil: c.dePerfil, pieSugeridoUF: c.pieSugeridoUF,
         objetivo: g?.objetivo ?? null, preocupaciones: g?.preocupaciones ?? [], preaprobado: g?.preaprobado ?? null,
         montoPreaprobadoUF: g?.montoPreaprobadoUF ?? null, pieTiene: g?.pieTiene ?? null, rentaCLP: g?.rentaCLP ?? null,
         otrasCuotasCLP: g?.otrasCuotasCLP ?? null, noDiceRenta: g?.noDiceRenta ?? false,

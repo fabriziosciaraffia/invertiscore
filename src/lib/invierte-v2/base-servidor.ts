@@ -10,6 +10,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { MAX_ACTIVOS } from "./opciones";
+import { cuantasPedir } from "./alternativas";
 import { CLAVE_WHATSAPP_FRANCO, numeroWhatsapp } from "./base";
 import { lineaCambio, type TipoCambio, type Vigente } from "./cambios";
 import { aOpcion, calcularOpciones, filaEntrada, leerPerfilInv, tareasGestionar, type CambioPerfil, type PerfilInv } from "./perfil-servidor";
@@ -63,7 +64,7 @@ export interface Base {
 
 export async function leerBase(admin: SupabaseClient, userId: string): Promise<Base | null> {
   const [{ data }, orden, perfil, whatsapp, pre] = await Promise.all([
-    admin.from(T_DEPTOS).select("aviso_id, estado, alcanza, datos, vigente, elegido_at").eq("user_id", userId).in("estado", ["elegido", "opcion"]),
+    admin.from(T_DEPTOS).select("aviso_id, estado, origen, alcanza, datos, vigente, elegido_at").eq("user_id", userId).in("estado", ["elegido", "opcion"]),
     ultimaOrdenDe(admin, userId), leerPerfilInv(admin, userId), numeroFranco(admin), leerPreaprobacion(admin, userId),
   ]);
   if (!orden) return null;
@@ -88,10 +89,14 @@ export async function leerBase(admin: SupabaseClient, userId: string): Promise<B
       preparado: listos.has(id), alMesEnCambio: conCambioAlMes.has(`${id}|${ultimaFecha.get(id) ?? ""}`),
     };
   });
+  // «Otras opciones que convienen»: las recomendaciones de Franco que no eligió, nunca más del cupo de tres en todo el flujo
+  // contando las que ya eligió (alternativas.ts; decisión de Fabrizio, 19-nov-2026).
+  const elegidasFranco = filas.filter((f) => f.estado === "elegido" && f.origen === "franco").length;
   const otras = filas
-    .filter((f) => f.estado === "opcion" && f.alcanza === true && (f.datos as DatosDepto | null)?.veredicto === "COMPRAR")
+    .filter((f) => f.estado === "opcion" && f.origen === "franco" && f.alcanza === true && (f.datos as DatosDepto | null)?.veredicto === "COMPRAR")
     .map((f) => ({ avisoId: f.aviso_id as string, datos: (f.datos ?? {}) as DatosDepto }))
-    .sort((a, b) => (b.datos.score ?? 0) - (a.datos.score ?? 0));
+    .sort((a, b) => (b.datos.score ?? 0) - (a.datos.score ?? 0))
+    .slice(0, cuantasPedir(elegidasFranco));
   return { orden, perfil, elegidos, otras, whatsapp, preaprobacion: pre.estado };
 }
 

@@ -33,6 +33,13 @@ export const PERFIL_COPY = {
     tituloPrimera: (nombre: string | null) => (nombre ? `Partimos, ${nombre}. ¿Qué buscas?` : "Partimos. ¿Qué buscas?"),
     lineaPrimera: "Dos minutos. Con esto te mostramos las mejores opciones.",
     comunas: "Comunas",
+    /** «¿Dónde buscamos?» reemplaza a «Comunas» (lámina 3.1-perfil-paso1 del 19-nov-2026); viene marcado «Cerca de este». */
+    donde: "¿Dónde buscamos?",
+    dondes: { cerca: "Cerca de este", comuna: "En toda la comuna", convenga: "Donde más convenga" } as Record<Donde, string>,
+    dondeLinea: (d: Donde, comuna: string | null) =>
+      d === "cerca" ? (comuna ? `Cerca del depto que elegiste en ${comuna}, y parecidos en tamaño.` : "Cerca del depto que elegiste, y parecidos en tamaño.")
+      : d === "comuna" ? (comuna ? `En toda ${comuna}, y parecidos en tamaño.` : "En toda la comuna del depto que elegiste, y parecidos en tamaño.")
+      : "En todas las comunas, donde más convenga, y parecidos en tamaño.",
     otra: "Otra",
     otraPlaceholder: "Escribe una comuna",
     porDepto: (c: string) => `${c}, por el depto que elegiste.`,
@@ -182,6 +189,9 @@ export function piePrecargado(respuestaContacto: string | null, precioEntradaUF:
 // ── LA VALIDACIÓN (la ruta vuelve a exigir todo) ─────────────────────────────
 export interface PedidoPerfil {
   comunas: string[];
+  /** «¿Dónde buscamos?» (láminas del 19-nov-2026): reemplaza a la pregunta de comunas. Las comunas siguen, derivadas (la del
+   *  depto con que entró), para el perfil de la selección semanal. */
+  donde: Donde;
   objetivo: Objetivo;
   preocupaciones: Preocupacion[];
   preaprobado: Preaprobado;
@@ -204,6 +214,7 @@ export function validarPerfil(b: Record<string, unknown> | null | undefined): { 
   const x = b ?? {};
   const comunas = Array.isArray(x.comunas) ? Array.from(new Set(x.comunas.filter((c): c is string => typeof c === "string" && c.trim().length > 1 && c.length <= 60).map((c) => c.trim()))).slice(0, 12) : [];
   if (!comunas.length) return { ok: false, error: "comunas" };
+  const donde: Donde = (DONDES as readonly unknown[]).includes(x.donde) ? (x.donde as Donde) : "cerca";
   if (!(OBJETIVOS as readonly unknown[]).includes(x.objetivo)) return { ok: false, error: "objetivo" };
   const preocupaciones = Array.isArray(x.preocupaciones) ? x.preocupaciones.filter((p): p is Preocupacion => (PREOCUPACIONES as readonly unknown[]).includes(p)) : [];
   if (!(PREAPROBADOS as readonly unknown[]).includes(x.preaprobado)) return { ok: false, error: "preaprobado" };
@@ -215,12 +226,12 @@ export function validarPerfil(b: Record<string, unknown> | null | undefined): { 
     if (!(PIES_TIENE as readonly unknown[]).includes(x.pieTiene)) return { ok: false, error: "pieTiene" };
     const pieTiene = x.pieTiene as PieTiene;
     if (pieTiene === "parte" && (pieUF == null || pieUF <= 0)) return { ok: false, error: "pie" };
-    return { ok: true, pedido: { comunas, objetivo: x.objetivo as Objetivo, preocupaciones, preaprobado, montoPreaprobadoUF: monto, pieTiene, pieUF: pieTiene === "parte" ? pieUF : null, rentaCLP: null, otrasCuotasCLP: null, noDiceRenta: false } };
+    return { ok: true, pedido: { comunas, donde, objetivo: x.objetivo as Objetivo, preocupaciones, preaprobado, montoPreaprobadoUF: monto, pieTiene, pieUF: pieTiene === "parte" ? pieUF : null, rentaCLP: null, otrasCuotasCLP: null, noDiceRenta: false } };
   }
   if (pieUF == null || pieUF < 0 || pieUF > 100000) return { ok: false, error: "pie" };
   const noDiceRenta = x.noDiceRenta === true;
   const renta = num(x.rentaCLP);
   if (!noDiceRenta && (!renta || renta <= 0)) return { ok: false, error: "renta" };
   const cuotas = num(x.otrasCuotasCLP);
-  return { ok: true, pedido: { comunas, objetivo: x.objetivo as Objetivo, preocupaciones, preaprobado, montoPreaprobadoUF: null, pieTiene: null, pieUF, rentaCLP: noDiceRenta ? null : Math.round(renta!), otrasCuotasCLP: noDiceRenta ? null : Math.max(0, Math.round(cuotas ?? 0)), noDiceRenta } };
+  return { ok: true, pedido: { comunas, donde, objetivo: x.objetivo as Objetivo, preocupaciones, preaprobado, montoPreaprobadoUF: null, pieTiene: null, pieUF, rentaCLP: noDiceRenta ? null : Math.round(renta!), otrasCuotasCLP: noDiceRenta ? null : Math.max(0, Math.round(cuotas ?? 0)), noDiceRenta } };
 }
