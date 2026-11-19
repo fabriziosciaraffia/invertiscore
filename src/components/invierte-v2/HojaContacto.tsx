@@ -6,14 +6,15 @@
 // de la hoja de Pronto (sus mismas clases: invierte.css), sin tocar la de Pronto: en el celular sube desde abajo con el mapa
 // asomando arriba; en el PC es una ventana centrada sobre el fondo oscurecido, con ✕. Cerrar deja a la persona donde estaba:
 // no navega ni recarga. «Continuar» va a la página de la firma.
-//   · Al abrirse pregunta el estado (GET /api/invierte-v2/contacto): quien ya firmó la versión vigente va a Partimos; quien
+//   · Al abrirse pregunta el estado (GET /api/invierte-v2/contacto): quien ya firmó la versión vigente va a «Súmalo a tus opciones»
+//     (entrega 2, lámina 3.3-sumar-otro-depto); quien
 //     ya había contestado ve sus respuestas. Sin sesión (modo «todos») no hay estado: se contesta igual y la firma pide la cuenta.
 //   · El botón «atrás» del navegador no se atiende en esta etapa (pendiente, junto con la hoja de Pronto).
 // ─────────────────────────────────────────────────────────────────────────────
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FLUJO_COPY } from "@/lib/invierte-v2/flujo";
-import { URL_PARTIMOS } from "@/lib/invierte-v2/destino";
+import { urlSumar } from "@/lib/invierte-v2/base";
 import type { OrigenInvierte, PieInvierte, UrgenciaInvierte } from "@/lib/invierte/invierte";
 import { ChipVeredictoTokens } from "@/components/analysis/shared/ChipVeredicto";
 import { ContactoForm, type DeptoFlujo } from "./ContactoForm";
@@ -51,13 +52,13 @@ export function HojaContacto({ depto, origen, analysisId = null, sinSesion = fal
       .then((r) => (r.ok ? r.json() : null))
       .then((d: { firmo?: boolean; inicial?: Inicial } | null) => {
         if (!vivo) return;
-        if (d?.firmo) { router.push(URL_PARTIMOS); return; }
+        if (d?.firmo) { router.push(`${urlSumar(depto.avisoId)}?desde=${origen}`); return; }
         setInicial(d?.inicial ?? null);
         setListo(true);
       })
       .catch(() => { if (vivo) setListo(true); });
     return () => { vivo = false; };
-  }, [sinSesion, router]);
+  }, [sinSesion, router, depto.avisoId, origen]);
 
   return (
     <div className="inv-velo iv2-velo" data-inv2="hoja-contacto" onClick={(e) => { if (e.target === e.currentTarget) alCerrar(); }}>

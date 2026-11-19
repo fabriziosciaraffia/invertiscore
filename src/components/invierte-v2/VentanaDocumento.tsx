@@ -17,7 +17,7 @@ import { FLUJO_COPY } from "@/lib/invierte-v2/flujo";
 
 const D = FLUJO_COPY.documento;
 
-export function VentanaDocumento({ estado = null, titulo, meta = null, children, pdf = null, accion = null, variante = "documento", alCerrar, nombre }: {
+export function VentanaDocumento({ estado = null, titulo, meta = null, children, pdf = null, accion = null, variante = "documento", alCerrar, nombre, pie = null }: {
   /** El chip de estado («Orden firmada»). */
   estado?: string | null;
   titulo: string;
@@ -32,6 +32,8 @@ export function VentanaDocumento({ estado = null, titulo, meta = null, children,
   alCerrar: () => void;
   /** Para medir y para las pruebas: `data-inv2="ventana-<nombre>"`. */
   nombre: string;
+  /** El pie propio (la acción principal de la ventana, siempre a la vista), en lugar de «Abrir PDF» y «Cerrar». */
+  pie?: ReactNode;
 }) {
   const caja = useRef<HTMLElement>(null);
   const cerrarRef = useRef(alCerrar);
@@ -59,8 +61,9 @@ export function VentanaDocumento({ estado = null, titulo, meta = null, children,
         {meta && <div className="iv2-doc-meta iv2-solo-movil-doc">{meta}</div>}
         <div className="iv2-doc-texto" tabIndex={0} role="document" aria-label={titulo}>{children}</div>
         <div className="iv2-doc-pie">
-          {pdf && <a href={pdf.href} target="_blank" rel="noopener noreferrer" className="iv2-secundario" data-inv2="ventana-pdf">{pdf.etiqueta ?? D.abrirPdf}</a>}
-          <button type="button" className={`iv2-doc-cerrar${accion ? " iv2-doc-cerrar-siempre" : ""}`} onClick={alCerrar} data-inv2="ventana-cerrar">{accion ?? D.cerrar}</button>
+          {pie}
+          {!pie && pdf && <a href={pdf.href} target="_blank" rel="noopener noreferrer" className="iv2-secundario" data-inv2="ventana-pdf">{pdf.etiqueta ?? D.abrirPdf}</a>}
+          {!pie && <button type="button" className={`iv2-doc-cerrar${accion ? " iv2-doc-cerrar-siempre" : ""}`} onClick={alCerrar} data-inv2="ventana-cerrar">{accion ?? D.cerrar}</button>}
         </div>
       </section>
     </div>

@@ -15,6 +15,7 @@ import {
 } from "@/lib/invierte-v2/perfil";
 import { fmtUF } from "@/lib/invierte-v2/opciones";
 import { IndicadorPasosPerfil } from "./IndicadorPasos";
+import { URL_PERFIL_ACTUALIZADO } from "@/lib/invierte-v2/base";
 
 const P1 = PERFIL_COPY.p1;
 const P2 = PERFIL_COPY.p2;
@@ -105,7 +106,9 @@ export function PerfilForm({ inicial }: { inicial: InicialPerfil }) {
     try {
       const res = await fetch("/api/invierte-v2/perfil", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(v.pedido) });
       if (!res.ok) { setError(PERFIL_COPY.errores.red); setEnviando(false); return; }
-      router.push(URL_OPCIONES);
+      // Quien ya había elegido deptos y cambia su perfil ve «Perfil actualizado» (lámina 3.3-perfil-editado); la primera vez, el resultado.
+      const d = (await res.json().catch(() => null)) as { editado?: boolean } | null;
+      router.push(d?.editado ? URL_PERFIL_ACTUALIZADO : URL_OPCIONES);
     } catch {
       setError(PERFIL_COPY.errores.red);
       setEnviando(false);

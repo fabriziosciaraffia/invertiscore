@@ -14,6 +14,7 @@ import { VENTANA_SEMANAL_DIAS } from "@/lib/guia/semanal";
 import { hastaCuanto, comunasPrecargadas, piePrecargado, type PedidoPerfil, type Tope, type Objetivo, type Preocupacion } from "./perfil";
 import { casoDe, elegirOpciones, etiquetar, vsParecidos, type Caso, type Etiqueta, type OpcionDepto } from "./opciones";
 import { anotar, esCuentaTest, leerPersona, ultimaOrdenDe, type ContextoPedido } from "./servidor";
+import type { PerfilComparable } from "./base";
 
 const T_PERFILES = "inv_perfiles";
 const T_DEPTOS = "inv_deptos";
@@ -94,7 +95,7 @@ export async function contextoPerfil(admin: SupabaseClient, userId: string): Pro
   return { ...pre, pieSugeridoUF: guardado?.pieUF ?? piePrecargado(persona?.pie ?? null, entrada?.precioUF ?? null), guardado, tasaPct: m.tasaPct, uf: m.uf };
 }
 
-export type ResultadoPerfil = { ok: true; tope: Tope } | { ok: false; error: "sin-orden" | "guardar" };
+export type ResultadoPerfil = { ok: true; tope: Tope; editado: boolean } | { ok: false; error: "sin-orden" | "guardar" };
 
 export async function confirmarPerfil(admin: SupabaseClient, user: { id: string; email: string | null }, pedido: PedidoPerfil, ctx: ContextoPedido | null): Promise<ResultadoPerfil> {
   const orden = await ultimaOrdenDe(admin, user.id);
@@ -111,7 +112,10 @@ export async function confirmarPerfil(admin: SupabaseClient, user: { id: string;
   const comunasAnterior = previo
     ? ((previo.topeSupuestos?.comunasAnterior as { valor: string[] | null } | undefined) ?? null)
     : { valor: (pb?.comunas as string[] | null | undefined) ?? null };
-  const supuestos = { ...tope.supuestos, limita: tope.limita, porPieUF: tope.porPieUF, creditoUF: tope.creditoUF, precioMaxAnterior: anterior, reemplazoPrecioMax: reemplaza, ...(comunasAnterior ? { comunasAnterior } : {}), ...(previo?.topeSupuestos?.aprobadaUF ? { aprobadaUF: previo.topeSupuestos.aprobadaUF } : {}) };
+  // El cambio del perfil (entrega 2, lámina 3.3-perfil-editado): lo de antes y lo de ahora, y cómo estaban sus deptos ANTES del
+  // recálculo, para que «Perfil actualizado» diga qué entra y qué queda fuera aunque la página se recargue.
+  const ultimoCambio = previo ? await cambioDelPerfil(admin, user.id, previo, pedido, tope.topeUF) : null;
+  const supuestos = { ...tope.supuestos, limita: tope.limita, porPieUF: tope.porPieUF, creditoUF: tope.creditoUF, precioMaxAnterior: anterior, reemplazoPrecioMax: reemplaza, ...(comunasAnterior ? { comunasAnterior } : {}), ...(previo?.topeSupuestos?.aprobadaUF ? { aprobadaUF: previo.topeSupuestos.aprobadaUF } : {}), ...(ultimoCambio ? { ultimoCambio } : {}) };
   const fila = {
     user_id: user.id, objetivo: pedido.objetivo, preocupaciones: pedido.preocupaciones, comunas: pedido.comunas, preaprobado: pedido.preaprobado,
     monto_preaprobado_uf: pedido.montoPreaprobadoUF, pie_tiene: pedido.pieTiene, pie_uf: pedido.pieUF, renta_liquida_clp: pedido.rentaCLP,
@@ -126,15 +130,27 @@ export async function confirmarPerfil(admin: SupabaseClient, user: { id: string;
   const r = await admin.from("perfil_busqueda").upsert(pbFila, { onConflict: "user_id" });
   if (r.error) console.error("[inv2] perfil_busqueda:", r.error.message);
   await anotar(admin, { userId: user.id, email: user.email, ordenId: orden.id, actor: "persona", accion: previo ? "perfil_actualizado" : "perfil_confirmado", detalle: { tope_uf: tope.topeUF, fuente: tope.fuente, comunas: pedido.comunas }, ctx, esPrueba });
-  return { ok: true, tope };
+  return { ok: true, tope, editado: !!ultimoCambio && ultimoCambio.deptos.some((d) => d.estado === "elegido") };
+}
+
+export interface CambioPerfil { antes: PerfilComparable; despues: PerfilComparable; at: string; deptos: { avisoId: string; alcanza: boolean; estado: string }[] }
+
+async function cambioDelPerfil(admin: SupabaseClient, userId: string, previo: PerfilInv, pedido: PedidoPerfil, topeUF: number): Promise<CambioPerfil> {
+  const { data } = await admin.from(T_DEPTOS).select("aviso_id, alcanza, estado").eq("user_id", userId);
+  return {
+    antes: { pieUF: previo.pieUF, rentaCLP: previo.rentaCLP, otrasCuotasCLP: previo.otrasCuotasCLP, comunas: previo.comunas, topeUF: previo.topeUF, montoPreaprobadoUF: previo.montoPreaprobadoUF },
+    despues: { pieUF: pedido.pieUF, rentaCLP: pedido.rentaCLP, otrasCuotasCLP: pedido.otrasCuotasCLP, comunas: pedido.comunas, topeUF, montoPreaprobadoUF: pedido.montoPreaprobadoUF },
+    at: new Date().toISOString(),
+    deptos: (data ?? []).map((d) => ({ avisoId: d.aviso_id as string, alcanza: d.alcanza === true, estado: d.estado as string })),
+  };
 }
 
 // ── LAS OPCIONES ─────────────────────────────────────────────────────────────
-interface FilaCandidato { id: string; comuna: string; lat: number | null; lng: number | null; superficie_m2: number | null; dormitorios: number | null; banos: number | null; condicion: string | null; precio_uf: number; arriendo: { monto?: number } | null; venta: { precioM2UF?: number; n?: number } | null; score_cron: number | null; flujo: number | null }
+export interface FilaCandidato { id: string; comuna: string; lat: number | null; lng: number | null; superficie_m2: number | null; dormitorios: number | null; banos: number | null; condicion: string | null; precio_uf: number; arriendo: { monto?: number } | null; venta: { precioM2UF?: number; n?: number } | null; score_cron: number | null; flujo: number | null }
 
 const desde = () => new Date(Date.now() - VENTANA_SEMANAL_DIAS * 864e5).toISOString().replace("Z", "");
 
-function aOpcion(f: FilaCandidato, topeUF: number, esEntrada: boolean, veredicto: string | null): OpcionDepto {
+export function aOpcion(f: FilaCandidato, topeUF: number, esEntrada: boolean, veredicto: string | null): OpcionDepto {
   const est = f.lat != null && f.lng != null ? findNearestStation(Number(f.lat), Number(f.lng), "active") : null;
   const precio = Number(f.precio_uf);
   return {
@@ -151,7 +167,7 @@ async function candidatos(admin: SupabaseClient, comunas: string[], ufMax: numbe
 }
 
 /** El depto de entrada con los mismos campos (aunque no dé Comprar o no le alcance). */
-async function filaEntrada(admin: SupabaseClient, avisoId: string): Promise<{ fila: FilaCandidato; veredicto: string | null } | null> {
+export async function filaEntrada(admin: SupabaseClient, avisoId: string): Promise<{ fila: FilaCandidato; veredicto: string | null } | null> {
   const [{ data: sp }, { data: ae }] = await Promise.all([
     admin.from("scraped_properties").select("id, comuna, lat, lng, superficie_m2, dormitorios, banos, condicion").eq("id", avisoId).order("id").limit(1).maybeSingle(),
     admin.from("avisos_evaluados").select("precio_uf, arriendo, venta, score_20, flujo_20, veredicto_20").eq("aviso_id", avisoId).maybeSingle(),
@@ -238,8 +254,18 @@ export async function elegir(admin: SupabaseClient, user: { id: string; email: s
   const a = await admin.from(T_DEPTOS).update({ estado: "elegido", elegido_at: ahora, updated_at: ahora }).eq("user_id", user.id).in("aviso_id", ids);
   const b = await admin.from(T_DEPTOS).update({ estado: "opcion", elegido_at: null, updated_at: ahora }).eq("user_id", user.id).eq("estado", "elegido").not("aviso_id", "in", `(${ids.map((x) => `"${x}"`).join(",")})`);
   if (a.error || b.error) return { ok: false, error: "guardar" };
+  await tareasGestionar(admin, user.id, ids, (filas ?? []).some((f) => f.es_prueba));
   await anotar(admin, { userId: user.id, email: user.email, ordenId: orden?.id ?? null, actor: "persona", accion: "deptos_elegidos", detalle: { avisos: ids }, ctx, esPrueba: (filas ?? []).some((f) => f.es_prueba) });
   return { ok: true, elegidos: ids };
+}
+
+/** Cada depto elegido deja una tarea «gestionar al corredor» (entrega 2, lámina 3.3-sumar-otro-depto: «adentro cae una tarea
+ *  para gestionar al corredor»). Una pendiente por persona y depto (índice único): elegirlo de nuevo no la duplica. */
+export async function tareasGestionar(admin: SupabaseClient, userId: string, avisoIds: string[], esPrueba: boolean): Promise<void> {
+  for (const aviso_id of avisoIds) {
+    const { error } = await admin.from("inv_tareas").insert({ user_id: userId, tipo: "gestionar_corredor", aviso_id, es_prueba: esPrueba });
+    if (error && error.code !== "23505") console.error("[inv2] tarea gestionar:", error.message);
+  }
 }
 
 /** «Avísenme cuando algo me alcance»: se anota en el perfil y crea una tarea (el envío del aviso es de otra etapa). */

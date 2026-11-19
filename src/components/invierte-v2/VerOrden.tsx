@@ -13,8 +13,10 @@ import { RegistroDocumento, TextoDocumento, VentanaDocumento } from "./VentanaDo
 
 const D = FLUJO_COPY.documento;
 
-export function VerOrden({ etiqueta, estado, firmada, version, parrafos, registro }: {
+export function VerOrden({ etiqueta, estado, firmada, version, parrafos, registro, clase = "iv2-secundario" }: {
   etiqueta: string;
+  /** El aspecto del botón: secundario en Partimos; enlace en «Tus documentos». */
+  clase?: string;
   estado: string;
   /** «18 de noviembre de 2026, 08:04». */
   firmada: string;
@@ -29,7 +31,7 @@ export function VerOrden({ etiqueta, estado, firmada, version, parrafos, registr
   }
   return (
     <>
-      <button type="button" className="iv2-secundario" onClick={abrir} aria-haspopup="dialog" data-inv2="ver-orden">{etiqueta}</button>
+      <button type="button" className={clase} onClick={abrir} aria-haspopup="dialog" data-inv2="ver-orden">{etiqueta}</button>
       {abierta && (
         <VentanaDocumento
           nombre="orden"

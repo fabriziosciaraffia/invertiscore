@@ -333,3 +333,103 @@
 
 /* En una pantalla ancha (1920) el resultado usa más ancho: caben las siete columnas (el de entrada + 6 activos) sin deslizar. */
 @media (min-width: 1600px) { .iv2-con-pc .iv2-marco:has(.iv2-cuerpo.iv2-contenido) { max-width: 1480px; } [data-inv2="desliza-pc"] { display: none; } }
+
+/* ── LA BASE COMPLETA (entrega 2, 19-nov-2026; láminas 3.3-base y 3.3-base-pc) ──────────────────────────────────────────────
+   Celular: el título con el ☰, sus deptos en tarjetas con borde, «Franco te acompaña» en una barra gris y, debajo, las otras
+   opciones con «Seguir con este». PC: a la izquierda lo suyo (los deptos de a dos); a la derecha las otras opciones y los
+   enlaces que en el celular van en el menú. */
+.iv2-base { display: flex; flex-direction: column; gap: 18px; }
+.iv2-base-izq, .iv2-base-der { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.iv2-base-cab { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.iv2-base-sec { display: flex; flex-direction: column; gap: 8px; }
+.iv2-base-sec-cab { display: flex; flex-direction: column; gap: 4px; }
+.iv2-base-h2 { margin: 0; font-size: 17px; font-weight: 700; }
+.iv2-base-h3 { margin: 0; font-size: 15px; font-weight: 700; }
+.iv2-deptos, .iv2-otras { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.iv2-depto { box-sizing: border-box; border: 1px solid var(--franco-border); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 6px; background: var(--franco-card); min-width: 0; }
+.iv2-depto-fila { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.iv2-depto-id { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.iv2-depto-t { margin: 0; font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+.iv2-depto-s { margin: 0; font-size: 12px; line-height: 1.45; color: var(--franco-text-secondary); }
+.iv2-depto .chip-v { flex: none; }
+.iv2-otra { box-sizing: border-box; border: 1px solid var(--franco-border); border-radius: 14px; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; gap: 10px; background: var(--franco-card); }
+.iv2-seguir { flex: none; white-space: nowrap; font-size: 13px; font-weight: 600; min-height: 44px; }
+.iv2-estado-gris { display: inline-flex; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; white-space: nowrap; background: rgba(255, 255, 255, 0.08); color: var(--franco-text-secondary); }
+[data-theme="light"] .iv2-estado-gris { background: #EDEDF0; color: #3A3A3F; }
+.iv2-base-enlaces { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.iv2-base-enlaces .iv2-enlace-azul { font-size: 13px; font-weight: 600; min-height: 44px; }
+.iv2-acompana { display: flex; justify-content: space-between; align-items: center; gap: 10px; border-radius: 10px; padding: 4px 12px; font-size: 13px; line-height: 1.45; background: var(--franco-bg); color: var(--franco-text-secondary); }
+[data-theme="light"] .iv2-acompana { background: #F4F4F6; color: #3A3A3F; }
+.iv2-acompana .iv2-enlace-azul { flex: none; font-size: 13px; font-weight: 600; min-height: 44px; }
+.iv2-solo-pc-base { display: none; }
+.iv2-enlaces-base { border-top: 1px solid var(--franco-border); padding-top: 12px; display: flex; flex-direction: column; gap: 2px; }
+.iv2-enlace-fila { display: flex; align-items: center; min-height: 40px; padding: 0; border: 0; background: transparent; cursor: pointer; text-align: left;
+  font: 600 14px var(--font-ui, var(--font-body)), "Inter", system-ui, sans-serif; color: #8DB0E3; text-decoration: none; }
+[data-theme="light"] .iv2-enlace-fila { color: #2B558F; }
+.iv2-enlace-fila:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+/* El ☰ y la hoja del menú (lámina 3.3-menu): sube desde abajo con la base oscurecida arriba. */
+.iv2-menu-boton { flex: none; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border: 0; border-radius: 999px; cursor: pointer;
+  background: var(--franco-bg); color: var(--franco-text); }
+[data-theme="light"] .iv2-menu-boton { background: #F4F4F6; color: #141414; }
+.iv2-menu-boton:focus-visible, .iv2-menu-item:focus-visible, .iv2-menu-cerrar:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; }
+.iv2-menu { box-sizing: border-box; width: 100%; max-width: 480px; max-height: calc(100dvh - 88px); overflow-y: auto; outline: none; display: flex; flex-direction: column;
+  padding: 12px 20px calc(24px + env(safe-area-inset-bottom, 0px)); border-radius: 20px 20px 0 0; background: var(--franco-card); color: var(--franco-text);
+  font-family: var(--font-ui, var(--font-body)), "Inter", system-ui, sans-serif; }
+.iv2-menu-asa { align-self: center; width: 40px; height: 4px; border-radius: 2px; background: var(--franco-border-strong, #C9C9CE); margin-bottom: 8px; }
+.iv2-menu-cab { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.iv2-menu-t { margin: 0; font-size: 17px; font-weight: 700; overflow-wrap: anywhere; }
+.iv2-menu-cerrar { flex: none; min-height: 44px; padding: 0 4px; border: 0; background: transparent; cursor: pointer; font: 600 13px var(--font-ui, var(--font-body)), "Inter", system-ui, sans-serif; color: #8DB0E3; }
+[data-theme="light"] .iv2-menu-cerrar { color: #2B558F; }
+.iv2-menu-item { box-sizing: border-box; width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 56px; padding: 12px 0; border: 0;
+  border-bottom: 1px solid var(--franco-border); background: transparent; cursor: pointer; text-align: left; text-decoration: none; color: var(--franco-text); font: inherit; }
+.iv2-menu-item:last-child { border-bottom: 0; }
+.iv2-menu-txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.iv2-menu-it { font-size: 15px; font-weight: 600; }
+.iv2-menu-s { font-size: 12px; line-height: 1.45; color: var(--franco-text-secondary); }
+.iv2-menu-flecha { font-size: 18px; color: var(--franco-text-secondary); }
+@media (min-width: 768px) { .iv2-menu-velo { align-items: center; padding: 24px; } .iv2-menu { border-radius: 20px; max-height: calc(100dvh - 48px); } }
+
+/* Elegir cuál deja, con seis activos. */
+.iv2-dejar { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.iv2-dejar-op { min-height: 48px; border-bottom: 1px solid var(--franco-border); }
+.iv2-doc-pie .inv-principal { width: 100%; }
+
+@media (min-width: 1024px) {
+  .iv2-solo-movil-base { display: none; }
+  .iv2-solo-pc-base { display: block; }
+  .iv2-base { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 40px; align-items: start; padding-top: 28px; }
+  .iv2-base-izq { gap: 18px; }
+  .iv2-base .iv2-titulo-res { font-size: 30px; }
+  .iv2-base-h2 { font-size: 18px; }
+  .iv2-deptos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  .iv2-base-der { gap: 12px; }
+}
+
+/* Tus documentos (lámina 3.3-documentos): filas separadas por una línea, con su acción a la derecha. */
+.iv2-doc-filas { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.iv2-doc-fila { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--franco-border); }
+.iv2-doc-fila:last-child { border-bottom: 0; }
+.iv2-doc-fila-t { font-size: 15px; font-weight: 600; }
+.iv2-apagado { color: var(--franco-text-muted); }
+.iv2-doc-accion { flex: none; min-height: 44px; font-size: 14px; font-weight: 600; }
+.iv2-solo-pc-titulo { display: none; }
+@media (min-width: 1024px) { .iv2-solo-pc-titulo { display: block; } }
+
+/* Súmalo a tus opciones (lámina 3.3-sumar-otro-depto): la tarjeta gris que explica y dos líneas cortas. */
+.iv2-sumar-cab { gap: 6px; }
+.iv2-gris { border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 6px; background: var(--franco-bg); }
+[data-theme="light"] .iv2-gris { background: #F4F4F6; }
+.iv2-gris-t { margin: 0; font-size: 14px; font-weight: 600; }
+.iv2-gris-s { margin: 0; font-size: 13px; line-height: 1.45; color: var(--franco-text-secondary); }
+.iv2-sumar-lineas { display: flex; flex-direction: column; gap: 8px; font-size: 13px; line-height: 1.45; color: var(--franco-text-secondary); }
+.iv2-sumar-lineas p { margin: 0; }
+.iv2-sumar-lineas b { color: var(--franco-text); }
+
+/* Perfil actualizado (lámina 3.3-perfil-editado): la tarjeta con borde de tinta que dice lo que cambió. */
+.iv2-tarjeta-fuerte { border: 1.5px solid var(--franco-text); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+.iv2-fuerte-t { margin: 0; font-size: 20px; font-weight: 700; line-height: 1.2; }
+
+/* «¿Cuál dejas?»: la ventana mide lo que su lista (como mucho seis), no la pantalla entera. */
+.iv2-doc:has(.iv2-dejar) { height: auto; max-height: calc(100dvh - 70px); }
+@media (min-width: 768px) { .iv2-doc:has(.iv2-dejar) { width: 480px; height: auto; max-height: calc(100dvh - 48px); } }
