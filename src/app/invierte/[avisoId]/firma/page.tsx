@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { createServiceClient } from "@/lib/supabase/service";
 import { deptoDeLinea } from "@/lib/invierte-v2/orden";
-import { URL_PARTIMOS, urlFirma } from "@/lib/invierte-v2/destino";
+import { URL_INVIERTE, urlFirma } from "@/lib/invierte-v2/destino";
 import { hrefEntrar } from "@/lib/entrar/entrada";
 import { leerPersona, ordenVigenteDe } from "@/lib/invierte-v2/servidor";
 import { METADATA_FLUJO, analysisDe, deptoParaPagina, origenDe, sesionYAcceso, volverAlOrigen } from "@/lib/invierte-v2/paginas";
@@ -23,7 +23,8 @@ export default async function FirmaPage({ params, searchParams }: { params: { av
   if (!user) redirect(hrefEntrar(urlFirma(depto.avisoId, origen, analysisId)));
   const admin = createServiceClient();
   const [orden, persona] = await Promise.all([ordenVigenteDe(admin, user.id), leerPersona(admin, user.id)]);
-  if (orden) redirect(URL_PARTIMOS);
+  // Ya firmó: /invierte decide (el perfil la primera vez pasa por Partimos solo si vuelve sin hacerlo; láminas del 19-nov-2026).
+  if (orden) redirect(URL_INVIERTE);
   return (
     <MarcoInvierte volver={volverAlOrigen(depto.avisoId, origen, analysisId)} pantalla="firma" layout="firma" pc={{ sesionEmail: user.email ?? null }}>
       <FirmaForm depto={depto} deptoCorto={deptoDeLinea(depto.linea)} origen={origen} analysisId={analysisId} sinContacto={!persona} />

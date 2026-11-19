@@ -26,11 +26,11 @@ export default async function PartimosPage() {
   const P = FLUJO_COPY.partimos;
   const texto = partesDeTexto(orden.texto);
   return (
-    <MarcoInvierte volver={null} pantalla="partimos" layout="partimos" pc={{ sesionEmail: user.email ?? null }}>
+    <MarcoInvierte volver={null} pantalla="partimos" layout="partimos" pc={{ sesionEmail: user.email ?? null, invierte: true }}>
       <div className="iv2-partimos-izq">
       <div className="inv-encabezado iv2-partimos-cab">
         <span className="iv2-estado" data-inv2="estado">✓ {P.estado}</span>
-        <h1 className="iv2-titulo-grande" id="iv2-t">{P.titulo(primerNombre(orden.nombre))}</h1>
+        <h1 className="iv2-titulo-grande" id="iv2-t">{P.titulo(primerNombre(orden.nombre, orden.nombres))}</h1>
         <p className="inv-parrafo iv2-linea">{P.linea}</p>
       </div>
       <div className="iv2-acciones">

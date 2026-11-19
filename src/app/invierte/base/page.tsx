@@ -19,9 +19,9 @@ export default async function BasePage() {
   if (!user || !acceso) notFound();
   const base = await leerBase(createServiceClient(), user.id);
   if (!base || !base.elegidos.length) redirect(URL_INVIERTE);
-  const nombre = primerNombre(base.orden.nombre);
+  const nombre = primerNombre(base.orden.nombre, base.orden.nombres);
   return (
-    <MarcoInvierte volver={null} pantalla="base" layout="contenido" cabecera={nombre ? BASE_COPY.hola(nombre) : BASE_COPY.titulo} pc={{ sesionEmail: user.email ?? null }}>
+    <MarcoInvierte volver={null} pantalla="base" layout="contenido" cabecera={nombre ? BASE_COPY.hola(nombre) : BASE_COPY.titulo} pc={{ sesionEmail: user.email ?? null, invierte: true }}>
       <VistaBase base={base} />
     </MarcoInvierte>
   );

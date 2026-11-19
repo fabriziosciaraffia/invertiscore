@@ -35,6 +35,8 @@ export interface InicialPerfil {
   rentaCLP: number | null;
   otrasCuotasCLP: number | null;
   noDiceRenta: boolean;
+  /** La primera vez (recién firmó, sin perfil guardado): el saludo de la lámina 3.1 del 19-nov-2026. `undefined` = está editando. */
+  primeraVez?: { nombre: string | null };
   /** Si todavía no hay una preaprobación vigente subida (entrega 3): con «Tengo», el bloque para subirla aquí. */
   puedeSubirPreaprobacion?: boolean;
 }
@@ -123,8 +125,8 @@ export function PerfilForm({ inicial }: { inicial: InicialPerfil }) {
       <form onSubmit={continuar} noValidate className="iv2-perfil" data-inv2="perfil-paso1">
         <IndicadorPasosPerfil paso={1} />
         <div className="inv-encabezado">
-          <h1 className="inv-titulo" id="iv2-t">{P1.titulo}</h1>
-          <p className="iv2-linea-chica">{P1.linea}</p>
+          <h1 className="inv-titulo" id="iv2-t">{inicial.primeraVez ? P1.tituloPrimera(inicial.primeraVez.nombre) : P1.titulo}</h1>
+          <p className="iv2-linea-chica">{inicial.primeraVez ? P1.lineaPrimera : P1.linea}</p>
         </div>
         <div className="inv-pregunta">
           <span className="inv-legend">{P1.comunas}</span>

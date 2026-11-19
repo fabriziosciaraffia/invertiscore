@@ -190,6 +190,10 @@ async function ExplorarConDatos({ consulta, user }: { consulta: string; user: Us
   const a = compartido?.avisoId ?? sp.get("a");
   // Ya firmó la orden de Invierte con Franco (20-nov-2026): el botón de los usados dice «Sumar a mis opciones de inversión».
   const invierteFirmo = invierteV2 ? !!(await ultimaOrdenDe(admin, user.id)) : false;
+  // Sus deptos (láminas del 19-nov-2026): en la tarjeta de uno de ellos el botón dice «Mi inversión» y lleva a /invierte.
+  const misDeptos = invierteFirmo
+    ? ((await admin.from("inv_deptos").select("aviso_id").eq("user_id", user.id).eq("estado", "elegido")).data ?? []).map((f) => f.aviso_id as string)
+    : [];
   return (
     <ExplorarCliente
       inicial={{ filtros, orden, n, cuenta, tasa, convienen: null, negociadosGlobal: null, nAjustar, sello: noche?.sello ?? null }}
@@ -199,6 +203,7 @@ async function ExplorarConDatos({ consulta, user }: { consulta: string; user: Us
       correo={user.email ?? null}
       invierteV2={invierteV2}
       invierteFirmo={invierteFirmo}
+      misDeptos={misDeptos}
     />
   );
 }

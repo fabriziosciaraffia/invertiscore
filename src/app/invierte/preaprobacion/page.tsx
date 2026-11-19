@@ -29,7 +29,7 @@ export default async function PreaprobacionPage({ searchParams }: { searchParams
   const subir = pre.estado === "subir" || searchParams.subir === "1";
   const d = pre.doc;
   return (
-    <MarcoInvierte volver={URL_BASE} pantalla="preaprobacion" layout="formulario" cabecera={P.cabecera} pc={{ sesionEmail: user.email ?? null }}>
+    <MarcoInvierte volver={URL_BASE} pantalla="preaprobacion" layout="formulario" cabecera={P.cabecera} pc={{ sesionEmail: user.email ?? null, invierte: true }} miInversion>
       {subir ? (
         <>
           <div className="inv-encabezado iv2-sumar-cab">

@@ -16,6 +16,9 @@ export const PREOCUPACIONES = ["no_arriende", "poner_plata", "elegir_mal", "tram
 export type Preocupacion = (typeof PREOCUPACIONES)[number];
 export const PREAPROBADOS = ["tengo", "tramite", "no"] as const;
 export type Preaprobado = (typeof PREAPROBADOS)[number];
+/** «¿Dónde buscamos?» (láminas del 19-nov-2026; columna inv_perfiles.donde, por defecto «cerca»). */
+export const DONDES = ["cerca", "comuna", "convenga"] as const;
+export type Donde = (typeof DONDES)[number];
 export const PIES_TIENE = ["si", "parte", "no"] as const;
 export type PieTiene = (typeof PIES_TIENE)[number];
 
@@ -26,6 +29,9 @@ export const PERFIL_COPY = {
   p1: {
     titulo: "Esto es lo que sabemos de lo que buscas",
     linea: "Confirma o corrige. Con esto elegimos tus opciones.",
+    /** La primera vez, al caer directo desde la firma (lámina 3.1-perfil-paso1 del 19-nov-2026). */
+    tituloPrimera: (nombre: string | null) => (nombre ? `Partimos, ${nombre}. ¿Qué buscas?` : "Partimos. ¿Qué buscas?"),
+    lineaPrimera: "Dos minutos. Con esto te mostramos las mejores opciones.",
     comunas: "Comunas",
     otra: "Otra",
     otraPlaceholder: "Escribe una comuna",

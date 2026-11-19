@@ -18,6 +18,9 @@ export const FLUJO_COPY = {
    *  celular y en PC. Reemplaza al «1 de 2» de la cabecera y al rótulo «INVIERTE CON FRANCO · 2 DE 2». */
   pasos: { total: 2, contacto: "Paso 1 de 2 · Tus datos", firma: "Paso 2 de 2 · Tu firma" },
   volver: "Volver",
+  /** Láminas del 19-nov-2026: «Ver» de la franja «Orden firmada» y la entrada «Mi inversión» (menú y volver del flujo). */
+  franjaVer: "Ver",
+  miInversion: "Mi inversión",
   contacto: {
     titulo: "Invierte en este depto con Franco",
     parrafo: "Franco trabaja por tu inversión: partimos por este depto y te mostramos más opciones a la vez, para que elijas la mejor.",
@@ -32,7 +35,9 @@ export const FLUJO_COPY = {
     parrafo: "Con tu firma, Franco empieza a gestionar este depto y a buscar los que mejor calzan contigo.",
     cajaFuerte: "Firmar no te obliga a comprar ni tiene costo.",
     cajaResto: "Solo pagas si compras un depto que te presentó Franco.",
-    nombre: "Nombre completo",
+    /** Nombres y apellidos por separado (decisión de Fabrizio, 20-nov-2026), con el autocompletado given-name / family-name. */
+    nombres: "Nombres",
+    apellidos: "Apellidos",
     rut: "RUT",
     rutPlaceholder: "12.345.678-5",
     tuOrden: "Tu orden de visita y acompañamiento",
@@ -46,7 +51,8 @@ export const FLUJO_COPY = {
     preguntas: "Preguntas frecuentes",
     /** El botón de la ventana de preguntas (lámina 2.1-preguntas-frecuentes). */
     volverFirma: "Volver a la firma",
-    faltaNombre: "Escribe tu nombre completo.",
+    faltaNombres: "Escribe tus nombres.",
+    faltaApellidos: "Escribe tus apellidos.",
     faltaRut: "Revisa tu RUT: no es válido.",
     faltaFinal: "Desliza la orden hasta el final antes de firmar.",
     faltaCasilla: "Marca «Leí la orden y la acepto».",
@@ -118,6 +124,10 @@ export function validarContacto(b: Record<string, unknown> | null | undefined): 
 // ── LA FIRMA (paso 2 de 2) ───────────────────────────────────────────────────
 export interface PedidoFirma {
   avisoId: string;
+  /** Sin espacios en los bordes ni dobles en medio (la regla de inv_ordenes, 20-nov-2026). */
+  nombres: string;
+  apellidos: string;
+  /** «Nombres Apellidos»: lo que lee la orden, el PDF y el registro de la firma. */
   nombre: string;
   /** Sin puntos («16482317-5»). */
   rut: string;
@@ -125,40 +135,50 @@ export interface PedidoFirma {
   acepto: true;
   leyoHastaElFinal: true;
 }
-export type ErrorFirma = "depto" | "nombre" | "rut" | "final" | "casilla" | "version";
+export type ErrorFirma = "depto" | "nombres" | "apellidos" | "rut" | "final" | "casilla" | "version";
 export type ValidacionFirma = { ok: true; pedido: PedidoFirma } | { ok: false; error: ErrorFirma };
 
-export function nombreValido(x: unknown): string | null {
+/**
+ * Nombres o apellidos (20-nov-2026): se juntan los espacios de más (también los dobles en medio) y se quitan los de los bordes,
+ * ANTES de guardar: la regla de inv_ordenes exige `nombre = nombres || ' ' || apellidos`, cada parte sin espacios en los bordes y
+ * de 1 a 80 caracteres. Con al menos una letra.
+ */
+export function parteNombre(x: unknown): string | null {
   if (typeof x !== "string") return null;
   const n = x.replace(/\s+/g, " ").trim();
-  return n.length >= 3 && n.length <= 120 && /[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]/.test(n) ? n : null;
+  return n.length >= 1 && n.length <= 80 && /[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]/.test(n) ? n : null;
 }
 
 export function validarFirma(b: Record<string, unknown> | null | undefined): ValidacionFirma {
   const x = b ?? {};
   if (!esAvisoId(x.avisoId)) return { ok: false, error: "depto" };
-  const nombre = nombreValido(x.nombre);
-  if (!nombre) return { ok: false, error: "nombre" };
+  const nombres = parteNombre(x.nombres);
+  if (!nombres) return { ok: false, error: "nombres" };
+  const apellidos = parteNombre(x.apellidos);
+  if (!apellidos) return { ok: false, error: "apellidos" };
+  const nombre = `${nombres} ${apellidos}`;
   const rut = normalizarRut(x.rut);
   if (!rut) return { ok: false, error: "rut" };
   if (x.leyoHastaElFinal !== true) return { ok: false, error: "final" };
   if (x.acepto !== true) return { ok: false, error: "casilla" };
   if (x.version !== VERSION_ORDEN) return { ok: false, error: "version" };
-  return { ok: true, pedido: { avisoId: x.avisoId, nombre, rut, version: VERSION_ORDEN, acepto: true, leyoHastaElFinal: true } };
+  return { ok: true, pedido: { avisoId: x.avisoId, nombres, apellidos, nombre, rut, version: VERSION_ORDEN, acepto: true, leyoHastaElFinal: true } };
 }
 
 export function textoErrorFirma(e: ErrorFirma | "red"): string {
   const F = FLUJO_COPY.firma;
-  if (e === "nombre") return F.faltaNombre;
+  if (e === "nombres") return F.faltaNombres;
+  if (e === "apellidos") return F.faltaApellidos;
   if (e === "rut") return F.faltaRut;
   if (e === "final") return F.faltaFinal;
   if (e === "casilla") return F.faltaCasilla;
   return F.error;
 }
 
-/** El primer nombre, para «Partimos, Camila». */
-export function primerNombre(nombre: string | null | undefined): string | null {
-  const p = (nombre ?? "").trim().split(/\s+/)[0];
+/** El primer nombre, para «Partimos, Camila»: la primera palabra de los nombres; en las órdenes de antes (sin `nombres`), la
+ *  primera del nombre completo. */
+export function primerNombre(nombre: string | null | undefined, nombres?: string | null): string | null {
+  const p = (nombres || nombre || "").trim().split(/\s+/)[0];
   return p ? p : null;
 }
 

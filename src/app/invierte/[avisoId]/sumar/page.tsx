@@ -40,7 +40,7 @@ export default async function SumarPage({ params, searchParams }: { params: { av
   // Hoy no le alcanza (20-nov-2026): no se le dice que Franco lo gestiona ni que no firma de nuevo; se dice por qué y tres salidas.
   if (v.estado === "listo" && !v.alcanza) {
     return (
-      <MarcoInvierte volver={volverMapa} pantalla="sumar" layout="formulario" cabecera={S.cabecera} pc={{ sesionEmail: user.email ?? null }}>
+      <MarcoInvierte volver={volverMapa} pantalla="sumar" layout="formulario" cabecera={S.cabecera} pc={{ sesionEmail: user.email ?? null, invierte: true }} miInversion>
         <div className="inv-encabezado iv2-sumar-cab">
           <h1 className="iv2-titulo-res" id="iv2-t">{S.noAlcanzaTitulo}</h1>
           <p className="iv2-chip-linea" data-inv2="sumar-depto">
@@ -61,7 +61,7 @@ export default async function SumarPage({ params, searchParams }: { params: { av
     );
   }
   return (
-    <MarcoInvierte volver={volverMapa} pantalla="sumar" layout="formulario" cabecera={S.cabecera} pc={{ sesionEmail: user.email ?? null }}>
+    <MarcoInvierte volver={volverMapa} pantalla="sumar" layout="formulario" cabecera={S.cabecera} pc={{ sesionEmail: user.email ?? null, invierte: true }} miInversion>
       <div className="inv-encabezado iv2-sumar-cab">
         <h1 className="iv2-titulo-res" id="iv2-t">{S.titulo}</h1>
         <p className="iv2-chip-linea" data-inv2="sumar-depto">

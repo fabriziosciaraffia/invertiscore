@@ -49,7 +49,7 @@ export default async function DocumentosPage() {
     : D.preaprobacionLinea;
   const texto = partesDeTexto(orden.texto);
   return (
-    <MarcoInvierte volver={URL_BASE} pantalla="documentos" layout="formulario" cabecera={D.cabecera} pc={{ sesionEmail: user.email ?? null }}>
+    <MarcoInvierte volver={URL_BASE} pantalla="documentos" layout="formulario" cabecera={D.cabecera} pc={{ sesionEmail: user.email ?? null, invierte: true }} miInversion>
       <h1 className="iv2-titulo-res iv2-solo-pc-titulo" id="iv2-t">{D.cabecera}</h1>
       <ul className="iv2-doc-filas">
         <Fila nombre="orden" titulo={D.orden} linea={D.ordenLinea(diaMesChile(orden.firmadoAt))}>

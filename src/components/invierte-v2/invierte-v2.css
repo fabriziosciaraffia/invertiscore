@@ -471,3 +471,61 @@
 [data-theme="light"] .iv2-otra-subida { background: #F4F4F6; }
 /* «Revisar mi perfil» dice para qué sirve (20-nov-2026). */
 .iv2-revisar-perfil { display: flex; flex-direction: column; gap: 2px; }
+
+/* ── LÁMINAS DEL 19-nov-2026 ────────────────────────────────────────────────────────────────────────────────────────────────
+   La franja «Orden firmada» (3.1-perfil-paso1): a todo el ancho bajo la cabecera, azul claro, «✓ Orden firmada» en azul oscuro y
+   «Ver» a la derecha; en chico, la línea de la copia por correo. «← Mi inversión»: arriba de las páginas de Invierte que no son
+   la base. */
+.iv2-franja-orden { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 44px; padding: 6px 20px;
+  background: rgba(141, 176, 227, 0.16); }
+[data-theme="light"] .iv2-franja-orden { background: #E4ECF7; }
+.iv2-franja-textos { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.iv2-franja-t { font-size: 13px; font-weight: 700; line-height: 1.35; color: #8DB0E3; }
+[data-theme="light"] .iv2-franja-t { color: #1E3F6B; }
+.iv2-franja-copia { font-size: 12px; line-height: 1.35; color: var(--franco-text-secondary); }
+[data-theme="light"] .iv2-franja-copia { color: #3A4A60; }
+.iv2-franja-ver { flex: none; display: inline-flex; align-items: center; min-height: 44px; padding: 0 2px; border: 0; background: transparent; cursor: pointer;
+  font: inherit; font-size: 13px; font-weight: 600; color: #8DB0E3; }
+[data-theme="light"] .iv2-franja-ver { color: #2B558F; }
+.iv2-franja-ver:hover { text-decoration: underline; text-underline-offset: 3px; }
+.iv2-mi-inversion { padding: 10px 20px 0; }
+.iv2-mi-inversion-a { display: inline-flex; align-items: center; min-height: 44px; font-size: 14px; font-weight: 600; color: var(--franco-text); text-decoration: none; }
+.iv2-mi-inversion-a:hover { text-decoration: underline; text-underline-offset: 3px; }
+@media (min-width: 1024px) {
+  .iv2-con-pc .iv2-franja-orden { margin-top: 16px; border-radius: 12px; }
+  .iv2-con-pc .iv2-mi-inversion { padding: 16px 0 0; }
+}
+
+/* Los detalles en modo Invierte (3.x-detalles-desde-invierte): en el celular, la cabecera del flujo en vez del header del sitio;
+   la barra fija arriba («← Mi inversión» y el chip) y la acción fija abajo. En el PC, el header real y la barra bajo él (el
+   header es sticky de 56 px). El informe de debajo no cambia; solo se le deja espacio para la acción. */
+/* Viven dentro del informe (que hereda otra fuente en el cuerpo): la de la app, Inter, explícita. */
+.iv2-det-cab, .iv2-det-barra, .iv2-det-accion { font-family: var(--font-ui, var(--font-body)), "Inter", system-ui, sans-serif; }
+.iv2-det-cab { padding-top: calc(12px + env(safe-area-inset-top, 0px)); }
+.iv2-det-barra { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  min-height: 48px; padding: 0 20px; background: var(--franco-card); border-bottom: 1px solid var(--franco-border); }
+[data-theme="light"] .iv2-det-barra { background: #FFFFFF; border-bottom-color: #EFEFF2; }
+.iv2-det-chip { flex: none; font-size: 11px; font-weight: 700; line-height: 1.4; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.iv2-det-chip-suyo { background: rgba(141, 176, 227, 0.16); color: #8DB0E3; }
+[data-theme="light"] .iv2-det-chip-suyo { background: #E4ECF7; color: #1E3F6B; }
+.iv2-det-chip-reco { background: rgba(216, 174, 202, 0.18); color: #D8AECA; }
+[data-theme="light"] .iv2-det-chip-reco { background: #F3EDF1; color: #6E4560; }
+.iv2-det-accion { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; background: var(--franco-card); border-top: 1px solid var(--franco-border);
+  padding: 12px 20px calc(16px + env(safe-area-inset-bottom, 0px)); }
+[data-theme="light"] .iv2-det-accion { background: #FFFFFF; border-top-color: #E2E2E6; }
+.iv2-det-accion-col { max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: 8px; }
+.iv2-det-accion-t { margin: 0; font-size: 12px; line-height: 1.45; color: var(--franco-text-secondary); }
+[data-theme="light"] .iv2-det-accion-t { color: #5A5A5F; }
+.iv2-det-escribir { gap: 8px; text-decoration: none; }
+.iv2-det-accion .inv-error { margin: 0; }
+.iv2-con-det-accion { padding-bottom: 150px; }
+.iv2-det-solo-pc { display: none; }
+@media (min-width: 1024px) {
+  .iv2-det-solo-pc { display: block; }
+  .iv2-det-solo-movil { display: none; }
+  .iv2-det-barra { top: 56px; padding: 0 max(16px, calc((100vw - 1200px) / 2 + 16px)); }
+  .iv2-det-accion-col { flex-direction: row; align-items: center; justify-content: space-between; gap: 24px; max-width: 1168px; }
+  .iv2-det-accion-col > .inv-principal, .iv2-det-accion-col > .iv2-secundario { width: auto; min-width: 240px; flex: none; }
+  .iv2-det-accion-t { font-size: 14px; }
+  .iv2-con-det-accion { padding-bottom: 110px; }
+}

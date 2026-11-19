@@ -21,7 +21,7 @@ export default async function PerfilActualizadoPage() {
   const r = await perfilActualizado(createServiceClient(), { id: user.id, email: user.email ?? null });
   if (!r) redirect(URL_BASE);
   return (
-    <MarcoInvierte volver={null} pantalla="perfil-actualizado" layout="formulario" cabecera={ACTUALIZADO_COPY.cabecera} pc={{ sesionEmail: user.email ?? null }}>
+    <MarcoInvierte volver={null} pantalla="perfil-actualizado" layout="formulario" cabecera={ACTUALIZADO_COPY.cabecera} pc={{ sesionEmail: user.email ?? null, invierte: true }} miInversion>
       <VistaActualizado r={r} />
     </MarcoInvierte>
   );

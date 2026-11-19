@@ -6,6 +6,8 @@ import { contextoPerfil } from "@/lib/invierte-v2/perfil-servidor";
 import { leerPreaprobacion } from "@/lib/invierte-v2/preaprobacion-servidor";
 import { ultimaOrdenDe } from "@/lib/invierte-v2/servidor";
 import { METADATA_FLUJO, sesionYAcceso } from "@/lib/invierte-v2/paginas";
+import { primerNombre } from "@/lib/invierte-v2/flujo";
+import { FranjaOrden } from "@/components/invierte-v2/FranjaOrden";
 import { MarcoInvierte } from "@/components/invierte-v2/MarcoInvierte";
 import { PerfilForm } from "@/components/invierte-v2/PerfilForm";
 
@@ -24,12 +26,18 @@ export default async function PerfilPage({ searchParams }: { searchParams: Recor
   const { user, acceso } = await sesionYAcceso();
   if (!user || !acceso) notFound();
   const admin = createServiceClient();
-  if (!(await ultimaOrdenDe(admin, user.id))) redirect(URL_INVIERTE);
+  const orden = await ultimaOrdenDe(admin, user.id);
+  if (!orden) redirect(URL_INVIERTE);
   const [c, pre] = await Promise.all([contextoPerfil(admin, user.id), leerPreaprobacion(admin, user.id)]);
   const g = c.guardado;
+  // La primera vez (sin perfil guardado: recién firmó, o vuelve desde Partimos) lleva la franja «Orden firmada» y el saludo; al
+  // editar, no (decisión de Fabrizio, 19-nov-2026).
+  const primeraVez = g == null;
   return (
-    <MarcoInvierte volver={volverPerfil(searchParams.volver, g != null)} pantalla="perfil" layout="formulario" cabecera={PERFIL_COPY.titulo} pc={{ sesionEmail: user.email ?? null }}>
+    <MarcoInvierte volver={volverPerfil(searchParams.volver, g != null)} pantalla="perfil" layout="formulario" cabecera={PERFIL_COPY.titulo} pc={{ sesionEmail: user.email ?? null, invierte: true }} miInversion={!primeraVez}
+      franja={primeraVez ? <FranjaOrden orden={orden} /> : undefined}>
       <PerfilForm inicial={{
+        primeraVez: primeraVez ? { nombre: primerNombre(orden.nombre, orden.nombres) } : undefined,
         comunas: c.comunas, deEntrada: c.deEntrada, dePerfil: c.dePerfil, pieSugeridoUF: c.pieSugeridoUF,
         objetivo: g?.objetivo ?? null, preocupaciones: g?.preocupaciones ?? [], preaprobado: g?.preaprobado ?? null,
         montoPreaprobadoUF: g?.montoPreaprobadoUF ?? null, pieTiene: g?.pieTiene ?? null, rentaCLP: g?.rentaCLP ?? null,

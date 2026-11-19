@@ -25,7 +25,7 @@ export default async function OpcionesPage() {
     creditoUF: (s.creditoUF as number | null) ?? null, porPieUF: (s.porPieUF as number) ?? 0, menosPreciso: r.perfil.topeFuente === "solo_pie",
   };
   return (
-    <MarcoInvierte volver={null} pantalla="opciones" layout="contenido" cabecera={RESULTADO_COPY.rotulo} pc={{ sesionEmail: user.email ?? null }}>
+    <MarcoInvierte volver={null} pantalla="opciones" layout="contenido" cabecera={RESULTADO_COPY.rotulo} pc={{ sesionEmail: user.email ?? null, invierte: true }}>
       <ResultadoOpciones caso={r.caso} opciones={r.opciones} etiquetas={r.etiquetas} elegidos={r.elegidos} tope={tope}
         pieUF={r.perfil.pieUF} masBaratoUF={r.masBaratoUF} objetivo={r.perfil.objetivo} preocupaciones={r.perfil.preocupaciones} comunas={r.perfil.comunas} />
     </MarcoInvierte>

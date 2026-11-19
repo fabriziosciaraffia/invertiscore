@@ -14,7 +14,7 @@ import type { Veredicto } from "@/lib/types";
 import { INVIERTE_COPY, PIES, URGENCIAS, pieDelDepto, textoError, type OrigenInvierte, type PieInvierte, type UrgenciaInvierte } from "@/lib/invierte/invierte";
 import { CLAVE_PENDIENTE_V2, FLUJO_COPY, validarContacto } from "@/lib/invierte-v2/flujo";
 import { IndicadorPasos } from "./IndicadorPasos";
-import { URL_PARTIMOS, urlFirma } from "@/lib/invierte-v2/destino";
+import { URL_INVIERTE, urlFirma } from "@/lib/invierte-v2/destino";
 
 const H = INVIERTE_COPY.hoja;
 const C = FLUJO_COPY.contacto;
@@ -76,7 +76,7 @@ export function ContactoForm({ depto, origen, analysisId, inicial, sinSesion, al
       const res = await fetch("/api/invierte-v2/contacto", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(v.pedido) });
       if (!res.ok) { setError(textoError("red")); setEnviando(false); return; }
       const d = (await res.json().catch(() => ({}))) as { firmo?: boolean };
-      router.push(d.firmo ? URL_PARTIMOS : urlFirma(depto.avisoId, origen, analysisId));
+      router.push(d.firmo ? URL_INVIERTE : urlFirma(depto.avisoId, origen, analysisId));
     } catch {
       setError(textoError("red"));
       setEnviando(false);

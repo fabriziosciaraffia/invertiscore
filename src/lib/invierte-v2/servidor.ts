@@ -69,6 +69,9 @@ export interface OrdenInv {
   userId: string | null;
   email: string;
   nombre: string;
+  /** Desde el 20-nov-2026; null en las órdenes de antes (su saludo sale de `nombre`). */
+  nombres: string | null;
+  apellidos: string | null;
   rut: string;
   avisoId: string;
   deptoLinea: string;
@@ -84,11 +87,12 @@ export interface OrdenInv {
   copiaEnviadaAt: string | null;
 }
 
-const COLS_ORDEN = "id, user_id, email, nombre, rut, aviso_id, depto_linea, texto_version, texto_sha256, texto, es_prueba, firmado_at, ip, user_agent, pdf_path, pdf_sha256, copia_enviada_at";
+const COLS_ORDEN = "id, user_id, email, nombre, nombres, apellidos, rut, aviso_id, depto_linea, texto_version, texto_sha256, texto, es_prueba, firmado_at, ip, user_agent, pdf_path, pdf_sha256, copia_enviada_at";
 
 function aOrden(f: Record<string, unknown>): OrdenInv {
   return {
-    id: f.id as string, userId: (f.user_id as string | null) ?? null, email: f.email as string, nombre: f.nombre as string, rut: f.rut as string,
+    id: f.id as string, userId: (f.user_id as string | null) ?? null, email: f.email as string, nombre: f.nombre as string,
+    nombres: (f.nombres as string | null) ?? null, apellidos: (f.apellidos as string | null) ?? null, rut: f.rut as string,
     avisoId: f.aviso_id as string, deptoLinea: f.depto_linea as string, textoVersion: Number(f.texto_version), textoSha256: f.texto_sha256 as string,
     texto: f.texto as string, esPrueba: f.es_prueba === true, firmadoAt: f.firmado_at as string, ip: (f.ip as string | null) ?? null,
     userAgent: (f.user_agent as string | null) ?? null, pdfPath: (f.pdf_path as string | null) ?? null, pdfSha256: (f.pdf_sha256 as string | null) ?? null,
@@ -193,6 +197,8 @@ export async function firmar(admin: SupabaseClient, user: UsuarioInv, pedido: Pe
     user_id: user.id,
     email: user.email,
     nombre: pedido.nombre,
+    nombres: pedido.nombres,
+    apellidos: pedido.apellidos,
     rut: pedido.rut,
     aviso_id: aviso.avisoId,
     depto_linea: aviso.linea,

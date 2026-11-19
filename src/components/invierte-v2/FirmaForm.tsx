@@ -14,7 +14,8 @@ import type { OrigenInvierte } from "@/lib/invierte/invierte";
 import { CLAVE_PENDIENTE_V2, FLUJO_COPY, VIDA_PENDIENTE_V2_MS, textoErrorFirma, validarContacto, validarFirma } from "@/lib/invierte-v2/flujo";
 import { ordenVigente, VERSION_ORDEN } from "@/lib/invierte-v2/orden";
 import { formatearRut, normalizarRut } from "@/lib/invierte-v2/rut";
-import { URL_PARTIMOS, urlContacto } from "@/lib/invierte-v2/destino";
+import { URL_PERFIL, urlContacto } from "@/lib/invierte-v2/destino";
+import { olvidarMenu } from "@/lib/invierte-v2/menu-cliente";
 import { PREGUNTAS_INVIERTE, TITULO_PREGUNTAS_INVIERTE } from "@/lib/invierte-v2/preguntas";
 import { LineaDeptoFlujo, type DeptoFlujo } from "./ContactoForm";
 import { IndicadorPasos } from "./IndicadorPasos";
@@ -31,7 +32,8 @@ export function FirmaForm({ depto, deptoCorto, origen, analysisId, sinContacto }
   sinContacto: boolean;
 }) {
   const router = useRouter();
-  const [nombre, setNombre] = useState("");
+  const [nombres, setNombres] = useState("");
+  const [apellidos, setApellidos] = useState("");
   const [rut, setRut] = useState("");
   const [acepto, setAcepto] = useState(false);
   const [leyo, setLeyo] = useState(false);
@@ -74,12 +76,14 @@ export function FirmaForm({ depto, deptoCorto, origen, analysisId, sinContacto }
   useEffect(() => { revisarFinal(); }, [revisarFinal]);
 
   const rutValido = normalizarRut(rut);
+  // La orden se llena en vivo con «Nombres Apellidos», con los espacios de más ya juntados (lo mismo que se guarda).
+  const nombre = [nombres, apellidos].map((x) => x.replace(/\s+/g, " ").trim()).filter(Boolean).join(" ");
   const orden = ordenVigente({ nombre, rut: rutValido ? formatearRut(rutValido) : rut, depto: deptoCorto });
 
   async function firmar(e: FormEvent) {
     e.preventDefault();
     if (enviando) return;
-    const v = validarFirma({ avisoId: depto.avisoId, nombre, rut, acepto, leyoHastaElFinal: leyo, version: VERSION_ORDEN });
+    const v = validarFirma({ avisoId: depto.avisoId, nombres, apellidos, rut, acepto, leyoHastaElFinal: leyo, version: VERSION_ORDEN });
     if (!v.ok) { setError(textoErrorFirma(v.error)); return; }
     setEnviando(true);
     setError(null);
@@ -87,11 +91,13 @@ export function FirmaForm({ depto, deptoCorto, origen, analysisId, sinContacto }
       const res = await fetch("/api/invierte-v2/firma", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(v.pedido) });
       if (!res.ok) {
         const d = (await res.json().catch(() => ({}))) as { error?: string };
-        setError(d.error === "rut" || d.error === "nombre" || d.error === "final" || d.error === "casilla" ? textoErrorFirma(d.error) : textoErrorFirma("red"));
+        setError(d.error === "rut" || d.error === "nombres" || d.error === "apellidos" || d.error === "final" || d.error === "casilla" ? textoErrorFirma(d.error) : textoErrorFirma("red"));
         setEnviando(false);
         return;
       }
-      router.push(URL_PARTIMOS);
+      // Al firmar se cae directo en el paso 1 del perfil (láminas del 19-nov-2026): Partimos queda para quien vuelve sin perfil.
+      olvidarMenu(); // desde ahora el menú lleva «Mi inversión»: la próxima página vuelve a preguntar
+      router.push(URL_PERFIL);
     } catch {
       setError(textoErrorFirma("red"));
       setEnviando(false);
@@ -109,8 +115,12 @@ export function FirmaForm({ depto, deptoCorto, origen, analysisId, sinContacto }
         <LineaDeptoFlujo depto={depto} conChip="solo-pc" />
       </div>
       <div className="inv-pregunta">
-        <label htmlFor="iv2-nombre" className="inv-legend">{F.nombre}</label>
-        <input id="iv2-nombre" type="text" autoComplete="name" className="inv-campo" value={nombre} onChange={(e) => { setNombre(e.target.value); setError(null); }} data-inv2="nombre" />
+        <label htmlFor="iv2-nombres" className="inv-legend">{F.nombres}</label>
+        <input id="iv2-nombres" type="text" autoComplete="given-name" className="inv-campo" value={nombres} onChange={(e) => { setNombres(e.target.value); setError(null); }} data-inv2="nombres" />
+      </div>
+      <div className="inv-pregunta">
+        <label htmlFor="iv2-apellidos" className="inv-legend">{F.apellidos}</label>
+        <input id="iv2-apellidos" type="text" autoComplete="family-name" className="inv-campo" value={apellidos} onChange={(e) => { setApellidos(e.target.value); setError(null); }} data-inv2="apellidos" />
       </div>
       <div className="inv-pregunta">
         <label htmlFor="iv2-rut" className="inv-legend">{F.rut}</label>
