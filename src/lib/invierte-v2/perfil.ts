@@ -134,7 +134,9 @@ export function hastaCuanto(e: EntradaTope): Tope {
     const fuente: FuenteTope = e.aprobadaUF ? "aprobada" : "preaprobacion";
     // El banco financia el 80 %: con el pie completo, monto / 0,8; con una parte, el menor entre monto + pie y pie / 20 %.
     if (e.pieTiene === "si") return { topeUF: r2(monto / (1 - fraccionPie)), fuente, limita: null, porPieUF: r2(monto / (1 - fraccionPie)), creditoUF: r2(monto), menosPreciso: false, supuestos };
-    const pieReal = e.pieTiene === "parte" ? pie : 0;
+    // Sin la pregunta «¿tienes ese pie?» (quien entró por la renta y después le aprobaron la preaprobación, entrega 3) cuenta el
+    // pie que declaró; con «Todavía no», cero.
+    const pieReal = e.pieTiene === "parte" || (e.pieTiene == null && e.pieUF != null) ? pie : 0;
     const porPieReal = pieReal / fraccionPie;
     const porCredito = monto + pieReal;
     return { topeUF: r2(Math.min(porPieReal, porCredito)), fuente, limita: porPieReal <= porCredito ? "pie" : "credito", porPieUF: r2(porPieReal), creditoUF: r2(monto), menosPreciso: false, supuestos };
