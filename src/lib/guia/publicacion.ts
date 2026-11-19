@@ -24,6 +24,7 @@
 //   · EL RELLENO DE PUBLICADORES (12-nov-2026, src/lib/publicadores/relleno.ts) entra por esta misma función con su propio
 //     tope (`opts.tope`) y su propia bajada, por Decodo: no gasta el cupo de las personas ni sale por su IP.
 import { parsearAnioFicha } from "./ficha-anio";
+import { parsearDetalleFicha, type DetalleFicha, type PuertaDetalle } from "./detalle-ficha";
 import { esFichaDeLaFuente, parsearPublicadorFicha, tipoDesdeUrl, type PublicadorFicha, type TipoPublicador } from "@/lib/publicadores/publicador";
 
 /**
@@ -109,6 +110,8 @@ export interface AlmacenPublicacion {
    * dice la URL. Se llama SIEMPRE que la ficha responde publicada, para que el aviso quede leído aunque no traiga el dato.
    */
   guardarPublicador(avisoId: string, publicador: PublicadorFicha | null, tipo: TipoPublicador | null): Promise<void>;
+  /** Las fotos, el texto del publicador y la dirección (19-nov-2026, detalle-ficha.ts), del mismo 200: en `publicacion_detalle`. */
+  guardarDetalle?(avisoId: string, detalle: DetalleFicha, puerta: PuertaDetalle): Promise<void>;
 }
 
 export interface AvisoFicha {
@@ -139,7 +142,7 @@ export async function leerFicha(
   bajar: (url: string) => Promise<RespuestaFicha>,
   ahora: Date = new Date(),
   // El tope por hora de ESTA puerta: el de las personas por defecto; el relleno pasa el suyo (lo cuenta su propia bitácora).
-  opts: { tope?: number } = {},
+  opts: { tope?: number; puerta?: PuertaDetalle } = {},
 ): Promise<ResultadoLectura> {
   if (!aviso.url) return { leida: false, razon: "sin-url", gets: 0 };
   const tope = opts.tope ?? TOPE_FICHAS_POR_HORA;
@@ -177,6 +180,9 @@ export async function leerFicha(
       publicador = parsearPublicadorFicha(r.html);
       rara = !esFichaDeLaFuente(r.html);
       await almacen.guardarPublicador(aviso.id, publicador, tipoDesdeUrl(url) ?? tipoDesdeUrl(aviso.url));
+      // Las fotos, el texto y la dirección (19-nov-2026): del mismo 200, sin un GET extra. Una ficha «rara» no se guarda.
+      const detalle = rara ? null : parsearDetalleFicha(r.html);
+      if (detalle && almacen.guardarDetalle) await almacen.guardarDetalle(aviso.id, detalle, opts.puerta ?? (tipo === "relleno" ? "relleno" : "guia"));
     }
     return { leida: true, motivo, codigo: c.codigo, anio, gets, publicador, rara };
   }

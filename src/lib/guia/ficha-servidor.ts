@@ -61,6 +61,14 @@ export function almacenPublicacion(admin: SupabaseClient): AlmacenPublicacion {
       // Quién publica (12-nov-2026), de la misma lectura: uso interno, en tablas sin políticas.
       await guardarPublicadorEn(admin, avisoId, publicador, tipo);
     },
+    async guardarDetalle(avisoId, detalle, puerta) {
+      // Las fotos, el texto y la dirección (19-nov-2026): una lectura nueva reemplaza la fila entera. Uso interno.
+      const { error } = await admin.from("publicacion_detalle").upsert(
+        { aviso_id: avisoId, fotos: detalle.fotos, descripcion: detalle.descripcion, direccion: detalle.direccion, puerta, leido_at: new Date().toISOString() },
+        { onConflict: "aviso_id" },
+      );
+      reportarFalloQuery(error, { ruta: RUTA, operacion: "guardar-detalle" });
+    },
   };
 }
 

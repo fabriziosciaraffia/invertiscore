@@ -76,7 +76,7 @@ export async function chequearPublicacionInvierte(admin: SupabaseClient, p: { av
       console.warn(`[invierte-carril] saltó el fusible (${motivo}): ${detalle}`);
     },
     leer() {
-      return leerFicha(ficha, "clic", almacen, bajarFicha, new Date(), { tope: TOPE_CARRIL_POR_HORA });
+      return leerFicha(ficha, "clic", almacen, bajarFicha, new Date(), { tope: TOPE_CARRIL_POR_HORA, puerta: "invierte" });
     },
   }, new Date(), { forzar: p.forzar });
   // La lectura vale para todas las personas que eligieron este depto (la relectura es por depto, no por persona).
