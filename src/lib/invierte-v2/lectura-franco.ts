@@ -9,13 +9,14 @@
 //     la corta. En «Ojo» puede ir «La publicación no explica su precio: pregúntalo», sin número, solo si no da una razón.
 //   · LA ALERTA («Lo que el puntaje no considera») sale solo de la evidencia de las fotos o del texto, nunca de un porcentaje:
 //     grave (para remodelar o sin terminar, remate, venta de derechos o acciones, o ninguna foto del interior: no se recomienda
-//     como alternativa) · revisar (datos que se contradicen —piso, baños, m² que no calzan con las fotos— o faltan fotos de partes
-//     clave como baños o cocina) · ninguna (el resto). En el elegido y en sus detalles, grave y revisar van primero.
+//     como alternativa) · revisar (datos que se contradicen —piso, baños, m² que no calzan con las fotos—, las fotos o el texto
+//     contradicen un dato con que se calculó el informe —dormitorios, baños, m², piso; p. ej. un «dormitorio» de 6,6 m²— (19-nov-2026),
+//     o faltan fotos de partes clave como baños o cocina) · ninguna (el resto). En el elegido y en sus detalles, grave y revisar van primero.
 //   · Si la lectura no está lista, la tarjeta se muestra sin ese bloque y se completa sola; nunca se bloquea la pantalla.
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Sube con cada cambio de la instrucción: una lectura de otra versión se vuelve a generar. */
-export const VERSION_LECTURA = 3;
+export const VERSION_LECTURA = 4;
 export const MAX_FOTOS_LECTURA = 8;
 /** Lecturas nuevas por hora, entre todas las personas (resguardo de costo: ~US$0,06 cada una). */
 export const TOPE_LECTURAS_POR_HORA = 60;
@@ -47,7 +48,7 @@ Entregas tres cosas:
 
 1. alerta: lo que el puntaje no considera. Se decide SOLO con lo que muestran las fotos o dice el texto de la publicación, nunca por el precio.
    - nivel «grave»: la publicación o las fotos muestran que es para remodelar o está sin terminar, que es un remate, que se venden derechos o acciones, o no hay ninguna foto del interior del departamento.
-   - nivel «revisar»: datos que se contradicen (el piso, los baños o la superficie que dice la publicación no calzan con lo que se ve en las fotos), o faltan fotos de partes clave, como los baños o la cocina.
+   - nivel «revisar»: datos que se contradicen (el piso, los baños o la superficie que dice la publicación no calzan con lo que se ve en las fotos); las fotos o el texto contradicen un dato con que se calculó el informe —los dormitorios, los baños, la superficie o el piso de «nuestros datos»— (por ejemplo, un dormitorio tan chico que no sirve como dormitorio, o un baño que no aparece), o faltan fotos de partes clave, como los baños o la cocina.
    - nivel «ninguna»: el resto; entonces motivo va null.
    - motivo: una frase corta que dice qué se ve o qué falta, sin cifras.
 

@@ -50,7 +50,7 @@ export const ALTERNATIVAS_COPY = {
   },
   /** Ninguna alternativa supera al suyo en nada (decisión de Fabrizio, 19-nov-2026): el subtítulo lo dice. */
   tuyoMejor: (nivel: NivelAlt, comuna: string | null) =>
-    nivel === "perfil" ? "El tuyo es el mejor de los parecidos que más convienen. Estos te sirven de respaldo si no se da."
+    nivel === "perfil" ? "El tuyo es el que más conviene entre los parecidos. Estos te sirven de respaldo si no se da."
     : nivel === "comuna" ? `El tuyo es el mejor de los parecidos que hay en ${comuna ?? "la comuna"}. Estos te sirven de respaldo si no se da.`
     : "El tuyo es el mejor de los parecidos que hay cerca. Estos te sirven de respaldo si no se da.",
   marca: "Marca los que te interesen. Puedes seguir con varios.",
