@@ -4,7 +4,7 @@ import { fmtDateShort, fmtNumber } from "@/lib/admin-format";
 import { INVIERTE_COPY, esPie, esUrgencia } from "@/lib/invierte/invierte";
 import { estadoInterruptor } from "@/lib/invierte-v2/acceso-servidor";
 import { leerCrm } from "@/lib/invierte-v2/servidor";
-import { RAZON_SOCIAL_POR_CONFIRMAR, VERSION_ORDEN } from "@/lib/invierte-v2/orden";
+import { VERSION_ORDEN } from "@/lib/invierte-v2/orden";
 import { AgregarCorreo, ModoSelect, NumeroWhatsapp, QuitarCorreo, ReenviarCopia, ReiniciarPrueba } from "./controles";
 import { numeroFranco } from "@/lib/invierte-v2/base-servidor";
 
@@ -34,7 +34,6 @@ export default async function AdminInvierteV2Page() {
         <h1 className="m-0 font-heading text-2xl font-bold">Invierte con Franco · comprador</h1>
         <p className="m-0 mt-1 font-body text-[13px] text-[var(--franco-text-secondary)]">
           {fmtNumber(filas.length)} {filas.length === 1 ? "persona" : "personas"} · {fmtNumber(firmaron)} {firmaron === 1 ? "firmó" : "firmaron"} la orden · orden vigente: versión {VERSION_ORDEN}
-          {RAZON_SOCIAL_POR_CONFIRMAR && " · razón social de la orden por confirmar"}
         </p>
         {sinCopia > 0 && (
           <p className="m-0 mt-2 inline-flex rounded-full border border-[var(--signal-red)] px-3 py-1 font-body text-[12px] font-semibold text-[var(--signal-red)]" data-admin="inv2-sin-copia">

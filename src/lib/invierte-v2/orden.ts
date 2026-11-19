@@ -14,10 +14,9 @@ import { formatearRut } from "./rut";
 
 export const VERSION_ORDEN = 1;
 
-/** POR CONFIRMAR (Fabrizio, antes del push): quien recibe el encargo. Hoy, el emisor de las boletas. */
+/** Quien recibe el encargo: el emisor de las boletas. Confirmado por Fabrizio el 19-nov-2026. */
 export const RAZON_SOCIAL_FRANCO = "Yape Digital SpA";
 export const RUT_FRANCO = "78.410.649-7";
-export const RAZON_SOCIAL_POR_CONFIRMAR = true;
 
 export interface Clausula {
   n: number;
