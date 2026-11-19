@@ -213,9 +213,15 @@ export function runRetiroIaTier(): { hard: number } {
   // hoy se generaba desde scripts/; el cron semanal la necesita en src/. Se permite UNA llamada al modelo, en ese
   // archivo, sin ninguno de los generadores del informe; cualquier otra llamada en src/ sigue siendo falla.
   const PROSA_COMUNAS = "src/lib/data/comuna-prosa-generador.ts";
+  // ⚠ ACTA (19-nov-2026, Invierte con Franco entrega 3, encargo de Fabrizio: «lectura con IA» de la preaprobación) · UNA
+  // excepción más, y solo una: leer el documento que sube la persona (banco, monto, vigencia, titular) no es el informe ni
+  // escribe prosa; propone datos que una persona de Franco aprueba. Se permite UNA llamada al modelo, en ese archivo, sin
+  // ninguno de los generadores del informe; cualquier otra llamada en src/ sigue siendo falla.
+  const LECTURA_PREAPROBACION = "src/lib/invierte-v2/preaprobacion-ia.ts";
   for (const { rel, src } of SRC) {
     const llamadas = Array.from(src.matchAll(LLAMADA));
     if (rel === PROSA_COMUNAS && llamadas.length === 1 && llamadas[0][0] === ".messages.create(") continue;
+    if (rel === LECTURA_PREAPROBACION && llamadas.length === 1 && llamadas[0][0] === ".messages.create(" && !/generar(LTR|STR|Ambas)|ai-generation/.test(src)) continue;
     for (const m of llamadas) {
       F(`3 · ${rel} llama a la generación (${m[0]}): los generadores se retiraron`);
     }

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/admin-auth";
+import { createAdminServiceClient, requireAdmin } from "@/lib/admin-auth";
 import { CLAVE_MODO, TABLA_ACCESO, correoDeLista, esModo } from "@/lib/invierte-v2/acceso";
 import { olvidarAcceso } from "@/lib/invierte-v2/acceso-servidor";
 import { anotarVista, completarOrden, leerOrdenPorId, reiniciarPrueba, urlFirmadaPdf } from "@/lib/invierte-v2/servidor";
@@ -76,11 +76,11 @@ export async function POST(request: Request) {
     if (accion === "aprobar") {
       const v = validarAprobacion(b);
       if (!v.ok) return NextResponse.json({ error: v.error }, { status: 400 });
-      r = await aprobar(sb, adminUser.email ?? null, b.id, v.a, DEPS_REVISION);
+      r = await aprobar(createAdminServiceClient(), adminUser.email ?? null, b.id, v.a, DEPS_REVISION);
     } else {
       const motivo = validarMotivo(b?.motivo);
       if (!motivo) return NextResponse.json({ error: "motivo" }, { status: 400 });
-      r = await pedirCorregir(sb, adminUser.email ?? null, b.id, motivo, DEPS_REVISION);
+      r = await pedirCorregir(createAdminServiceClient(), adminUser.email ?? null, b.id, motivo, DEPS_REVISION);
     }
     if (!r.ok) return NextResponse.json({ error: r.error }, { status: r.error === "no-existe" ? 404 : r.error === "estado" ? 409 : 500 });
     return NextResponse.json({ ok: true, correo: r.correo });
