@@ -133,7 +133,7 @@ const avisoUsado = () => ({
   avisos_evaluados: [{ aviso_id: AVISO, precio_uf: 3250, condicion: "usado", veredicto_20: "COMPRAR", score_20: 78, negociar_20: null }] as Record<string, unknown>[],
 });
 const persona = () => ({ user_id: USER.id, email: USER.email, aviso_origen: AVISO, origen: "explorar", urgencia: "este_mes", pie: "si", pie_uf: 650, whatsapp: "+56912345678", permiso_whatsapp_at: "2026-11-18T14:00:00Z", estado: "contacto", created_at: "x", updated_at: "x" });
-const PEDIDO_FIRMA = { avisoId: AVISO, nombre: "Camila Rojas Pérez", rut: "12345678-5", version: VERSION_ORDEN, acepto: true as const, leyoHastaElFinal: true as const };
+const PEDIDO_FIRMA = { avisoId: AVISO, nombres: "Camila", apellidos: "Rojas Pérez", nombre: "Camila Rojas Pérez", rut: "12345678-5", version: VERSION_ORDEN, acepto: true as const, leyoHastaElFinal: true as const };
 const depsOk = (o: { copia?: boolean; pdf?: boolean; motivo?: string } = {}) => {
   const llamadas = { pdf: 0, copia: 0, a: [] as string[] };
   const deps: DepsFirma = {
@@ -184,7 +184,8 @@ export async function runInvierteV2(): Promise<{ hard: number }> {
 
       const cliente = codigo("src/app/explorar/explorar-cliente.tsx");
       // ⚠ ACTA (20-nov-2026, Fabrizio): dentro del desvío al flujo nuevo, quien ya firmó va directo a la pantalla de sumar.
-      if (!/if \(destinoBoton\(\{ acceso: invierteV2, condicion: p\.condicion \}\) === "v2"\) \{\s*if \(invierteFirmo\) \{ router\.push\(`\$\{urlSumar\(p\.avisoId\)\}\?desde=explorar`\); return; \}\s*setContactoV2\(p\); return;\s*\}\s*if \(sinCuenta\) void import\("\.\/hoja-registro"\);\s*setInvierte\(\{ pin: p, retomar: false \}\);/.test(cliente)) F("2 · el mapa no decide con destinoBoton antes de abrir la hoja de Pronto");
+      // ⚠ ACTA (19-nov-2026, láminas del 19-nov): antes de eso, si el depto ya es uno de los suyos, «Mi inversión» lleva a /invierte.
+      if (!/if \(destinoBoton\(\{ acceso: invierteV2, condicion: p\.condicion \}\) === "v2"\) \{\s*(?:\/\/[^\n]*\n\s*)?if \(invierteFirmo && misDeptos\.includes\(p\.avisoId\)\) \{ router\.push\(URL_INVIERTE\); return; \}\s*if \(invierteFirmo\) \{ router\.push\(`\$\{urlSumar\(p\.avisoId\)\}\?desde=explorar`\); return; \}\s*setContactoV2\(p\); return;\s*\}\s*if \(sinCuenta\) void import\("\.\/hoja-registro"\);\s*setInvierte\(\{ pin: p, retomar: false \}\);/.test(cliente)) F("2 · el mapa no decide con destinoBoton antes de abrir la hoja de Pronto");
       // La hoja de contacto: solo se monta con el estado que pone la rama v2 (nadie más lo pone), sobre el mapa, sin navegar.
       if ((cliente.match(/setContactoV2\(/g) ?? []).length !== 2 || !/\{contactoV2 && \(\s*<HojaContacto depto=\{deptoInvierteDePin\(contactoV2\)\} origen="explorar" sinSesion=\{sinCuenta\} alCerrar=\{\(\) => setContactoV2\(null\)\} \/>/.test(cliente)) F("2 · el mapa abre la hoja de contacto sin la rama v2 (o no la abre encima)");
       if (!/invierteV2 = false/.test(cliente)) F("2 · el mapa no arranca en Pronto sin el booleano");
@@ -223,7 +224,9 @@ export async function runInvierteV2(): Promise<{ hard: number }> {
     {
       // ⚠ ACTA (18-nov-2026, etapa 2): suma detalles.ts (verGratisInvierte, desde la ruta de los detalles; fuera de todo
       // unstable_cache, como los demás).
-      const LLAMADORES = new Set(["src/app/explorar/page.tsx", "src/app/dashboard/page.tsx", "src/lib/invierte-v2/informe.ts", "src/lib/invierte-v2/paginas.ts", "src/lib/invierte-v2/rutas.ts", "src/lib/invierte-v2/acceso-servidor.ts", "src/lib/invierte-v2/detalles.ts"]);
+      // ⚠ ACTA (19-nov-2026, «Mi inversión» en el menú): suma menu-servidor.ts (la consulta del header y las páginas que lo saben;
+      // fuera de todo unstable_cache: lee la sesión de quien mira).
+      const LLAMADORES = new Set(["src/lib/invierte-v2/menu-servidor.ts", "src/app/explorar/page.tsx", "src/app/dashboard/page.tsx", "src/lib/invierte-v2/informe.ts", "src/lib/invierte-v2/paginas.ts", "src/lib/invierte-v2/rutas.ts", "src/lib/invierte-v2/acceso-servidor.ts", "src/lib/invierte-v2/detalles.ts"]);
       for (const f of archivos("src")) {
         const c = codigo(f);
         if (!/accesoInvierteV2\(/.test(c)) continue;
@@ -272,7 +275,14 @@ export async function runInvierteV2(): Promise<{ hard: number }> {
       if (v({ leyoHastaElFinal: false }).ok) F("6 · una firma sin llegar al final se acepta");
       if (v({ leyoHastaElFinal: "true" }).ok) F("6 · «leyó hasta el final» como texto se acepta");
       if (v({ rut: "12.345.678-9" }).ok) F("6 · una firma con RUT inválido se acepta");
-      if (v({ nombre: "  " }).ok || v({ nombre: "12" }).ok) F("6 · una firma sin nombre se acepta");
+      // ⚠ ACTA (20-nov-2026, decisión de Fabrizio): nombres y apellidos por separado; cada uno con al menos una letra, los espacios
+      // de más juntados (también los dobles en medio) y sin espacios en los bordes, y `nombre` = «nombres apellidos» (la regla de
+      // inv_ordenes). Antes era un solo «nombre completo».
+      if (v({ nombres: "  " }).ok || v({ nombres: "12" }).ok || v({ nombres: undefined }).ok) F("6 · una firma sin nombres se acepta");
+      if (v({ apellidos: "  " }).ok || v({ apellidos: "12" }).ok || v({ apellidos: undefined }).ok) F("6 · una firma sin apellidos se acepta");
+      { const r = v({ nombres: "  María   José ", apellidos: " Pérez  Soto  " });
+        if (!r.ok || r.pedido.nombres !== "María José" || r.pedido.apellidos !== "Pérez Soto" || r.pedido.nombre !== "María José Pérez Soto") F("6 · nombres y apellidos no se limpian (bordes y dobles en medio) o `nombre` no es «nombres apellidos»"); }
+      if (v({ nombres: "x".repeat(81) }).ok) F("6 · unos nombres de más de 80 caracteres se aceptan (la regla de la base los rechaza)");
       if (v({ version: VERSION_ORDEN + 1 }).ok) F("6 · una firma de otra versión se acepta");
       const okRut = v({ rut: "12.345.678-5" });
       if (!okRut.ok || okRut.pedido.rut !== "12345678-5") F("6 · el RUT no llega sin puntos al servidor");
@@ -450,7 +460,7 @@ export async function runInvierteV2(): Promise<{ hard: number }> {
       const orden = (x: Partial<OrdenInv>): Record<string, unknown> => ({ id: x.id, user_id: USER.id, email: x.email ?? DE_LA_LISTA, nombre: "Camila", rut: "12345678-5", aviso_id: AVISO, depto_linea: "Ñuñoa · 2D2B · 58 m² · Usado", texto_version: 1, texto_sha256: "a".repeat(64), texto: "t", es_prueba: true, firmado_at: x.firmadoAt ?? hace(120), ip: null, user_agent: null, pdf_path: `ordenes/${x.id}.pdf`, pdf_sha256: "b".repeat(64), copia_enviada_at: null });
       {
         const db = falso({ inv_ordenes: [orden({ id: "o-1" })], inv_bitacora: [] });
-        const c = await completarOrden(db.sb, { id: "o-1", userId: USER.id, email: DE_LA_LISTA, nombre: "Camila", rut: "12345678-5", avisoId: AVISO, deptoLinea: "Ñuñoa · 2D2B · 58 m² · Usado", textoVersion: 1, textoSha256: "a".repeat(64), texto: "t", esPrueba: true, firmadoAt: hace(1), ip: null, userAgent: null, pdfPath: "ordenes/o-1.pdf", pdfSha256: "b".repeat(64), copiaEnviadaAt: null }, depsOk({ copia: false, motivo: "sin-llave" }).deps, "firma");
+        const c = await completarOrden(db.sb, { id: "o-1", userId: USER.id, email: DE_LA_LISTA, nombre: "Camila", nombres: null, apellidos: null, rut: "12345678-5", avisoId: AVISO, deptoLinea: "Ñuñoa · 2D2B · 58 m² · Usado", textoVersion: 1, textoSha256: "a".repeat(64), texto: "t", esPrueba: true, firmadoAt: hace(1), ip: null, userAgent: null, pdfPath: "ordenes/o-1.pdf", pdfSha256: "b".repeat(64), copiaEnviadaAt: null }, depsOk({ copia: false, motivo: "sin-llave" }).deps, "firma");
         const b = db.datos.inv_bitacora.find((x) => x.accion === "copia_fallida") as { detalle?: Record<string, unknown> } | undefined;
         if (c.copia || c.motivoCopia !== "sin-llave" || b?.detalle?.motivo !== "sin-llave" || b?.detalle?.intento !== 1 || b?.detalle?.origen !== "firma") F("11 · el motivo de la copia no llega a la bitácora (con el intento y el origen)");
       }
@@ -503,7 +513,8 @@ export async function runInvierteV2(): Promise<{ hard: number }> {
       if (!/layout="firma" pc=\{\{ sesionEmail: user\.email \?\? null \}\}/.test(firmaPag) || !/volver=\{volverAlOrigen\(depto\.avisoId, origen, analysisId\)\}/.test(firmaPag)) F("12 · la firma no va en dos columnas con el header (o «Volver» no vuelve a la superficie)");
       // ⚠ ACTA (18-nov-2026, cuarta entrega): la lámina 2.2-partimos-pc no lleva rótulo arriba de Partimos; el predicado exigía
       // `rotulo: FLUJO_COPY.rotuloPartimos` y ahora exige el formato de PC SIN rótulo (el header real sigue: lo vigila el marco).
-      if (!/layout="partimos" pc=\{\{ sesionEmail: user\.email \?\? null \}\}/.test(codigo("src/app/invierte/partimos/page.tsx"))) F("12 · Partimos no va en dos columnas con el header (o lleva un rótulo que la lámina no tiene)");
+      // ⚠ ACTA (19-nov-2026): el header de Partimos sabe que firmó (`invierte: true`, «Mi inversión» sin consultar).
+      if (!/layout="partimos" pc=\{\{ sesionEmail: user\.email \?\? null, invierte: true \}\}/.test(codigo("src/app/invierte/partimos/page.tsx"))) F("12 · Partimos no va en dos columnas con el header (o lleva un rótulo que la lámina no tiene)");
       const { volverAlOrigen } = await import("../../../src/lib/invierte-v2/paginas");
       for (const [o, a] of [["explorar", null], ["seleccion", null], ["informe", "6db7a9ac-f030-4ccf-b5a8-5232ae997fb1"], ["informe", null]] as const) if (/^\/invierte\//.test(volverAlOrigen(AVISO, o, a))) F(`12 · «Volver» desde ${o} lleva a la página de respaldo del contacto`);
       if (volverAlOrigen(AVISO, "explorar", null) !== `/explorar?a=${AVISO}`) F("12 · «Volver» al mapa no abre el mismo depto");

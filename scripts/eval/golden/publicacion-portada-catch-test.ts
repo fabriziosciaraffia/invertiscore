@@ -142,7 +142,10 @@ export async function runPublicacionPortadaTier(): Promise<{ hard: number }> {
   // ⚠ ACTA (11-nov-2026, goal «Pronto: Invierte con Franco») · la página lee la publicación del aviso y, si la portada lleva la
   // franja de «Invierte con Franco», la marca `enFranja` (el enlace va debajo del botón de la franja y la portada no lo repite).
   // Se exigen las dos líneas: la lectura con el input del informe y la marca solo cuando hay franja.
-  const LEE = /const publicacionAviso = await publicacionDelInforme\(createServiceClient\(\), (inputDataRaw|data\.input_data)\);[\s\S]{0,700}?const publicacion = invierte && publicacionAviso \? \{ \.\.\.publicacionAviso, enFranja: true \} : publicacionAviso;/;
+  // ⚠ ACTA (19-nov-2026, láminas del 19-nov de Invierte con Franco): a quien firmó la orden no se le muestra el enlace al portal en ningún modo
+  // (`sinPortal ? null :`, portal-servidor.ts; lo vigila INVIERTE-V2-E2 §11g). A los demás, igual que antes. Entre las dos
+  // líneas va ahora el cálculo del modo Invierte y de la firma: la ventana pasa de 700 a 1.500 caracteres.
+  const LEE = /const publicacionAviso = await publicacionDelInforme\(createServiceClient\(\), (inputDataRaw|data\.input_data)\);[\s\S]{0,1500}?const publicacion = (?:sinPortal \? null : )?invierte && publicacionAviso \? \{ \.\.\.publicacionAviso, enFranja: true \} : publicacionAviso;/;
   if (!LEE.test(ltr)) F("2 · informe-ltr.tsx no lee la publicación con publicacionDelInforme y el input del informe");
   if (!LEE.test(str)) F("2 · informe-str.tsx no lee la publicación con publicacionDelInforme y el input del informe");
   if (atributosJsx(elementoJsx(ltr, "PremiumResults")).get("publicacion") !== "publicacion") F("2 · informe-ltr.tsx no le pasa a PremiumResults la publicación que leyó");

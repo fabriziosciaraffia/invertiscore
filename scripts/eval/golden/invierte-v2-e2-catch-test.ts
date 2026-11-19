@@ -1,9 +1,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// TIER INVIERTE-V2-E2 · Invierte con Franco, comprador · etapa 2, entrega 1 (18-nov-2026): el perfil, hasta cuánto puede comprar,
+// TIER INVIERTE-V2-E2 · Invierte con Franco, comprador · etapa 2, entrega 1 (18-nov-2026; §11, láminas del 19-nov-2026): el perfil, hasta cuánto puede comprar,
 // el resultado (los tres casos y el porqué), las etiquetas y la lectura por reglas, la elección, /invierte, y los detalles sin
 // gastar créditos (charge_mode 'invierte') con su categoría propia en los paneles. 0 tokens.
 // ─────────────────────────────────────────────────────────────────────────────
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { hastaCuanto, creditoPorRenta, validarPerfil, comunasPrecargadas, piePrecargado, lineaTope, REGLA_TOPE, PERFIL_COPY } from "../../../src/lib/invierte-v2/perfil";
 import {
@@ -15,7 +15,10 @@ import { reiniciarPrueba } from "../../../src/lib/invierte-v2/servidor";
 import { falso, USER } from "./invierte-v2-catch-test";
 import { chequearPorCarril, leidaFresca, RELECTURA_MS, TOPE_CARRIL_POR_HORA, type DepsCarril } from "../../../src/lib/invierte-v2/carril";
 import { detectarCambios, lineaCambio, textoVeredicto, asuntoCambios, parrafoDepto, UMBRAL_CORREO_PCT, UMBRAL_LINEA_PCT, type Vigente } from "../../../src/lib/invierte-v2/cambios";
-import { abrirDetalles, cuerpoDetalles } from "../../../src/lib/invierte-v2/detalles-cliente";
+import { abrirDetalles, cuerpoDetalles, urlDetallesInvierte } from "../../../src/lib/invierte-v2/detalles-cliente";
+import { DETALLES_COPY, abiertoDesdeInvierte, distanciaDelTuyo, indicadorContraElegido, lineaRecomendado, metrosEntre } from "../../../src/lib/invierte-v2/detalles-modo";
+import { CLAVE_MENU_INVIERTE, consultarMenu, guardarMenu, leerMenuGuardado, olvidarMenu } from "../../../src/lib/invierte-v2/menu-cliente";
+import { FLUJO_COPY, primerNombre } from "../../../src/lib/invierte-v2/flujo";
 import { etiquetaVeredicto } from "../../../src/lib/veredicto-etiqueta";
 import { ACTUALIZADO_COPY, BASE_COPY, DOCUMENTOS_COPY, MENU_COPY, SUMAR_COPY, fraseCambioPerfil, lineaDepto, numeroWhatsapp, urlWhatsapp, type PerfilComparable } from "../../../src/lib/invierte-v2/base";
 import { sumarDepto, vigenteSobre } from "../../../src/lib/invierte-v2/base-servidor";
@@ -446,7 +449,8 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       // 5 · «Mis documentos» sin «Los detalles de tus deptos»; 7 · «Escribirle» con el ícono de WhatsApp; 8 · el botón del mapa.
       if (/doc-ver-detalles|D\.detalles\b/.test(codigo("src/app/invierte/documentos/page.tsx"))) F("9 · «Mis documentos» todavía tiene «Los detalles de tus deptos»");
       if (!/<IconoWhatsapp \/>\{M\.escribirle\}/.test(codigo("src/components/invierte-v2/MenuBase.tsx")) || !/data-inv2="pc-escribirle"><IconoWhatsapp \/>/.test(codigo("src/components/invierte-v2/MenuBase.tsx")) || !/data-inv2="escribirle"><IconoWhatsapp \/>/.test(codigo("src/components/invierte-v2/VistaBase.tsx"))) F("9 · «Escribirle» no lleva el ícono de WhatsApp");
-      if (!/etiquetaInvertir=\{\(p\) => \(invierteFirmo && destinoBoton\(\{ acceso: invierteV2, condicion: p\.condicion \}\) === "v2" \? SUMAR_COPY\.botonMapa : undefined\)\}/.test(codigo("src/app/explorar/explorar-cliente.tsx")) || !/const invierteFirmo = invierteV2 \? !!\(await ultimaOrdenDe\(admin, user\.id\)\) : false;/.test(codigo("src/app/explorar/page.tsx"))) F("9 · el botón del mapa no dice «Sumar a mis opciones de inversión» a quien ya firmó");
+      // ⚠ ACTA (19-nov-2026, láminas del 19-nov): en la tarjeta de uno de SUS deptos el botón dice «Mi inversión».
+      if (!/etiquetaInvertir=\{\(p\) => \(invierteFirmo && destinoBoton\(\{ acceso: invierteV2, condicion: p\.condicion \}\) === "v2" \? \(misDeptos\.includes\(p\.avisoId\) \? FLUJO_COPY\.miInversion : SUMAR_COPY\.botonMapa\) : undefined\)\}/.test(codigo("src/app/explorar/explorar-cliente.tsx")) || !/const invierteFirmo = invierteV2 \? !!\(await ultimaOrdenDe\(admin, user\.id\)\) : false;/.test(codigo("src/app/explorar/page.tsx"))) F("9 · el botón del mapa no dice «Sumar a mis opciones de inversión» a quien ya firmó");
       const ed = codigo("src/components/invierte-v2/PerfilForm.tsx");
       if (!/router\.push\(d\?\.editado \? URL_PERFIL_ACTUALIZADO : URL_OPCIONES\);/.test(ed)) F("9 · cambiar el perfil no lleva a «Perfil actualizado»");
       const ps = codigo("src/lib/invierte-v2/perfil-servidor.ts");
@@ -600,6 +604,129 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       const sub = codigo("src/components/invierte-v2/Preaprobacion.tsx");
       if (!/uploadToSignedUrl\(path, token, file/.test(sub) || !/disabled=\{enviando\} aria-busy=\{enviando \|\| undefined\} data-inv2="subir"/.test(sub)) F("10 · el archivo no va directo al bucket con la URL firmada, o «Subir» se puede apretar dos veces");
       if (!/<RevisarPreaprobacion id=\{pre\.doc\.id\}/.test(codigo("src/app/admin/invierte-v2/[userId]/page.tsx"))) F("10 · la ficha del admin no deja revisar la preaprobación");
+    }
+
+    // ── 11 · LÁMINAS DEL 19-nov-2026, ENTREGA 1: firmar cae en el perfil, la franja la primera vez, Nombres y Apellidos, «Mi
+    //        inversión» en el menú y arriba de las páginas, los detalles que saben de dónde vienen, y ningún enlace al portal para
+    //        quien firmó ──
+    {
+      // 11a · Al firmar se cae directo en el paso 1 del perfil; Partimos queda solo para quien vuelve sin perfil (/invierte).
+      const firmaForm = codigo("src/components/invierte-v2/FirmaForm.tsx");
+      if (!/if \(!res\.ok\) \{[\s\S]*?\}\s*olvidarMenu\(\);\s*router\.push\(URL_PERFIL\);/.test(firmaForm) || /URL_PARTIMOS/.test(firmaForm)) F("11a · al firmar no se cae en el perfil (o todavía se pasa por Partimos)");
+      if (!/if \(orden\) redirect\(URL_INVIERTE\);/.test(codigo("src/app/invierte/[avisoId]/firma/page.tsx"))) F("11a · la firma con una orden ya firmada no deja decidir a /invierte");
+      if (!/router\.push\(d\.firmo \? URL_INVIERTE : urlFirma\(/.test(codigo("src/components/invierte-v2/ContactoForm.tsx"))) F("11a · el contacto de quien ya firmó no deja decidir a /invierte");
+      if (destinoInvierte({ sesion: true, acceso: true, firmo: true, contacto: null, perfil: false }).tipo !== "ir" || (destinoInvierte({ sesion: true, acceso: true, firmo: true, contacto: null, perfil: false }) as { url: string }).url !== URL_PARTIMOS) F("11a · quien vuelve sin perfil ya no va a Partimos");
+
+      // 11b · La franja «Orden firmada» y el saludo, SOLO la primera vez (decisión de Fabrizio, 19-nov-2026), con la copia en chico.
+      const perfilPag = codigo("src/app/invierte/perfil/page.tsx");
+      if (!/const primeraVez = g == null;/.test(perfilPag) || !/franja=\{primeraVez \? <FranjaOrden orden=\{orden\} \/> : undefined\}/.test(perfilPag) || !/primeraVez: primeraVez \? \{ nombre: primerNombre\(orden\.nombre, orden\.nombres\) \} : undefined,/.test(perfilPag)) F("11b · la franja y el saludo no van solo la primera vez");
+      const franja = codigo("src/components/invierte-v2/FranjaOrden.tsx");
+      if (!/✓ \{P\.estado\}/.test(franja) || !/orden\.copiaEnviadaAt \? P\.guardada : P\.copiaPendiente/.test(franja) || !/<VerOrden etiqueta=\{FLUJO_COPY\.franjaVer\}/.test(franja)) F("11b · la franja no dice «✓ Orden firmada», la copia y «Ver» (la orden en ventana)");
+      if (FLUJO_COPY.franjaVer !== "Ver" || FLUJO_COPY.partimos.guardada !== "Te mandamos una copia a tu correo.") F("11b · los textos de la franja no son los de la lámina");
+      if (PERFIL_COPY.p1.tituloPrimera("Camila") !== "Partimos, Camila. ¿Qué buscas?" || PERFIL_COPY.p1.tituloPrimera(null) !== "Partimos. ¿Qué buscas?" || PERFIL_COPY.p1.lineaPrimera !== "Dos minutos. Con esto te mostramos las mejores opciones.") F("11b · el saludo del perfil no es el de la lámina 3.1");
+      if (!/\{inicial\.primeraVez \? P1\.tituloPrimera\(inicial\.primeraVez\.nombre\) : P1\.titulo\}/.test(codigo("src/components/invierte-v2/PerfilForm.tsx"))) F("11b · el perfil no saluda la primera vez");
+      const marco = codigo("src/components/invierte-v2/MarcoInvierte.tsx");
+      if (marco.indexOf("{franja}") < 0 || marco.indexOf("{franja}") > marco.indexOf('<div className={`inv-cuerpo')) F("11b · la franja no va a todo el ancho, sobre el contenido");
+
+      // 11c · Nombres y Apellidos: el formulario pide los dos con su autocompletado; el saludo, la primera palabra de los nombres.
+      if (!/autoComplete="given-name"[^>]*value=\{nombres\}/.test(firmaForm) || !/autoComplete="family-name"[^>]*value=\{apellidos\}/.test(firmaForm) || /autoComplete="name"/.test(firmaForm)) F("11c · la firma no pide Nombres (given-name) y Apellidos (family-name)");
+      if (!/validarFirma\(\{ avisoId: depto\.avisoId, nombres, apellidos, rut,/.test(firmaForm)) F("11c · la firma no manda nombres y apellidos");
+      if (!/nombres: pedido\.nombres,\s*apellidos: pedido\.apellidos,/.test(codigo("src/lib/invierte-v2/servidor.ts"))) F("11c · la orden no guarda nombres y apellidos");
+      // Nota (verificación por mutación, 19-nov-2026): leer `nombre` en vez de `nombres` es una mutación EQUIVALENTE —la regla de
+      // la base obliga a que `nombre` empiece con los nombres—, así que ningún caso la distingue; lo que sí se fija es el resultado.
+      if (primerNombre("María José Pérez", "María José") !== "María" || primerNombre("Camila Rojas", null) !== "Camila") F("11c · el saludo no sale de los nombres (o de `nombre` en las órdenes de antes)");
+      for (const f of ["src/app/invierte/base/page.tsx", "src/app/invierte/partimos/page.tsx"]) if (!/primerNombre\([a-z.]*orden\.nombre, [a-z.]*orden\.nombres\)/.test(codigo(f))) F(`11c · ${f} no saluda con los nombres`);
+
+      // 11d · «Mi inversión» en el menú: solo con firma y acceso; la consulta liviana se guarda por correo en la sesión del navegador.
+      const ms = codigo("src/lib/invierte-v2/menu-servidor.ts");
+      if (!/if \(!\(await accesoInvierteV2\(user\)\.catch\(\(\) => false\)\)\) return false;/.test(ms) || !/return \(await ultimaOrdenDe\(createServiceClient\(\), user\.id\)[^;]*\) != null;/.test(ms)) F("11d · «Mi inversión» no exige firma y acceso");
+      {
+        const caja = new Map<string, string>();
+        const g = globalThis as unknown as { window?: unknown };
+        const antes = g.window;
+        g.window = { sessionStorage: { getItem: (k: string) => caja.get(k) ?? null, setItem: (k: string, v: string) => void caja.set(k, v), removeItem: (k: string) => void caja.delete(k) } };
+        try {
+          if (leerMenuGuardado("a@x.cl") !== null) F("11d · sin consulta, el menú inventa una respuesta");
+          guardarMenu("a@x.cl", true);
+          if (leerMenuGuardado("a@x.cl") !== true || leerMenuGuardado("b@x.cl") !== null) F("11d · la respuesta guardada no es por correo");
+          olvidarMenu();
+          if (leerMenuGuardado("a@x.cl") !== null) F("11d · al firmar o salir no se olvida la respuesta");
+        } finally { g.window = antes; }
+        const ok = await consultarMenu((async () => ({ ok: true, json: async () => ({ firmo: true }) })) as unknown as typeof fetch);
+        const no = await consultarMenu((async () => ({ ok: false, json: async () => ({}) })) as unknown as typeof fetch);
+        if (ok !== true || no !== null || CLAVE_MENU_INVIERTE !== "franco_inv2_menu") F("11d · la consulta del menú no lee su respuesta (o inventa una ante un error)");
+      }
+      const header = codigo("src/components/chrome/HeaderFranco.tsx");
+      const conSesion = header.slice(header.indexOf("  } else {\n    derecha = ("));
+      if (!/\{miInversion && <EnlaceCarga href="\/invierte" className="hf-lnk hf-solo-ancho" data-hf="mi-inversion">\{MI_INVERSION\}<\/EnlaceCarga>\}\s*<EnlaceCarga href="\/dashboard"/.test(conSesion)) F("11d · «Mi inversión» no es la primera entrada del menú del PC, o no va a /invierte");
+      if (!/<div className="hf-menu-mail">\{email\}<\/div>\s*(?:\{\}\s*)?\{miInversion && <EnlaceCarga href="\/invierte" role="menuitem"/.test(header)) F("11d · «Mi inversión» no va primera en el menú del celular");
+      if (!/const MI_INVERSION = "Mi inversión";/.test(header) || !/if \(!email\) \{ setFirmo\(false\); return; \}/.test(header) || !/return !!email && firmo;/.test(header)) F("11d · el menú muestra «Mi inversión» sin sesión o sin saber si firmó");
+      if (!/purgarBorradoresYPestana\(\);\s*olvidarMenu\(\);/.test(header)) F("11d · al cerrar sesión no se olvida «Mi inversión»");
+
+      // 11e · «← Mi inversión» arriba de las páginas de Invierte que no son la base (ni adonde /invierte lleva solo).
+      if (!/\{miInversion && \(\s*<div className="iv2-mi-inversion">\s*<Link href=\{URL_INVIERTE\} className="iv2-mi-inversion-a" data-inv2="mi-inversion">← \{FLUJO_COPY\.miInversion\}<\/Link>/.test(marco)) F("11e · el marco no lleva «← Mi inversión» a /invierte");
+      // El perfil la primera vez no lo lleva: la lámina 3.1 pone la franja justo bajo la cabecera, y /invierte lo mandaría a Partimos.
+      if (!/invierte: true \}\} miInversion=\{!primeraVez\}/.test(perfilPag)) F("11e · el perfil no lleva «← Mi inversión» al editar (o lo lleva la primera vez)");
+      for (const f of ["src/app/invierte/documentos/page.tsx", "src/app/invierte/preaprobacion/page.tsx", "src/app/invierte/perfil/actualizado/page.tsx", "src/app/invierte/[avisoId]/sumar/page.tsx"]) {
+        if (!/invierte: true \}\} miInversion/.test(codigo(f))) F(`11e · ${f} no lleva «← Mi inversión»`);
+      }
+      for (const f of ["src/app/invierte/base/page.tsx", "src/app/invierte/opciones/page.tsx", "src/app/invierte/partimos/page.tsx"]) {
+        if (/\bmiInversion\b/.test(codigo(f))) F(`11e · ${f} lleva «← Mi inversión» (es adonde /invierte lleva: daría vueltas)`);
+      }
+
+      // 11f · Los detalles abiertos desde Invierte: el modo solo con `?desde=invierte`, dueño y firma; qué es el depto, por su base.
+      if (!abiertoDesdeInvierte({ desde: "invierte", esDueno: true, firmo: true }) || abiertoDesdeInvierte({ desde: "invierte", esDueno: false, firmo: true }) || abiertoDesdeInvierte({ desde: "invierte", esDueno: true, firmo: false }) || abiertoDesdeInvierte({ desde: null, esDueno: true, firmo: true }) || abiertoDesdeInvierte({ desde: "explorar", esDueno: true, firmo: true })) F("11f · el modo Invierte no exige el parámetro, ser dueño y la firma");
+      if (urlDetallesInvierte("abc") !== "/analisis/abc?desde=invierte") F("11f · «Ver detalles» no dice que viene de Invierte");
+      for (const f of ["src/components/invierte-v2/BotonDetalles.tsx", "src/components/invierte-v2/ResultadoOpciones.tsx"]) if (!/window\.location\.assign\(urlDetallesInvierte\(id\)\)/.test(codigo(f))) F(`11f · ${f} no abre los detalles en modo Invierte`);
+      const ltr = codigo("src/app/analisis/[id]/informe-ltr.tsx");
+      if (!/const modoInvierte = user && avisoInforme && abiertoDesdeInvierte\(\{ desde, esDueno: isOwner, firmo: firmoInvierte \}\)/.test(ltr)) F("11f · el informe activa el modo sin pasar por abiertoDesdeInvierte");
+      if (!/invierte=\{modoInvierte \? null : invierte\}/.test(ltr) || !/\{modoInvierte && <BarraDetalles modo=\{modoInvierte\} \/>\}/.test(ltr) || !/\{modoInvierte && <AccionDetalles modo=\{modoInvierte\} \/>\}/.test(ltr)) F("11f · en modo Invierte no va la barra arriba y la acción abajo en vez de la franja");
+      if (!/const desde = typeof searchParams\?\.desde === "string" \? searchParams\.desde : null;\s*return <InformeLtr id=\{params\.id\} desde=\{desde\} \/>;/.test(codigo("src/app/analisis/[id]/page.tsx"))) F("11f · la página del informe no le pasa de dónde viene");
+      const mds = codigo("src/lib/invierte-v2/detalles-modo-servidor.ts");
+      if (!/if \(v\.estado === "ya"\) return \{ relacion: "suyo"/.test(mds) || !/if \(v\.estado !== "listo" \|\| !v\.alcanza \|\| v\.datos\?\.veredicto !== "COMPRAR" \|\| !v\.orden \|\| !v\.perfil\) return null;/.test(mds)) F("11f · «Te lo recomendamos» sin que dé Comprar y le alcance (o «Uno de tus deptos» sin estar en su base)");
+      const det = codigo("src/components/invierte-v2/DetallesInvierte.tsx");
+      if (!/modo\.relacion === "suyo"\s*\? <span className="iv2-det-chip iv2-det-chip-suyo"[^>]*>\{D\.chipSuyo\}<\/span>\s*: <span className="iv2-det-chip iv2-det-chip-reco"[^>]*>\{D\.chipRecomendado\}<\/span>/.test(det)) F("11f · el chip no dice qué es el depto para la persona");
+      if (!/<SumarDepto avisoId=\{modo\.avisoId\} etiqueta=\{D\.seguir\} origen="base" variante="principal"/.test(det) || !/\{D\.estadoSuyo\}/.test(det) || !/href=\{urlWhatsapp\(modo\.whatsapp\)\}/.test(det)) F("11f · la acción no es «Seguir con este» (recomendación) o su estado y «Escribirle a Franco» (suyo)");
+      if (DETALLES_COPY.chipSuyo !== "Uno de tus deptos" || DETALLES_COPY.chipRecomendado !== "Te lo recomendamos" || DETALLES_COPY.estadoSuyo !== "Ya sigues con este depto. Franco lo está gestionando." || DETALLES_COPY.escribirle !== "Escribirle a Franco" || DETALLES_COPY.seguir !== "Seguir con este") F("11f · los textos de los detalles no son los de la lámina");
+      if (lineaRecomendado("a 4 cuadras del tuyo", "te pide $40.000 menos al mes") !== "Franco te lo recomienda: a 4 cuadras del tuyo y te pide $40.000 menos al mes.") F("11f · la línea de la recomendación no es la de la lámina");
+      if (distanciaDelTuyo(420, "Ñuñoa") !== "a 4 cuadras del tuyo" || distanciaDelTuyo(90, null) !== "a 1 cuadra del tuyo" || distanciaDelTuyo(12300, "La Florida") !== "en La Florida, a 12 km del tuyo" || distanciaDelTuyo(800, "Ñuñoa", true) !== "en Ñuñoa, a 0,8 km del tuyo" || distanciaDelTuyo(1800, "Macul") !== "en Macul, a 1,8 km del tuyo") F("11f · la distancia no va en cuadras cerca y en comuna y km lejos (o en «Donde más convenga»)");
+      if (Math.abs(metrosEntre({ lat: -33.45, lng: -70.6 }, { lat: -33.46, lng: -70.6 }) - 1112) > 5) F("11f · la distancia entre dos puntos está mal medida");
+      const P0 = { objetivo: "arriendo" as const, preocupaciones: [] };
+      if (indicadorContraElegido({ precioUF: 3180, flujoCLP: -45000 }, { precioUF: 3250, flujoCLP: -85000 }, P0)?.frase !== "te pide $40.000 menos al mes") F("11f · el indicador no dice lo que pide menos al mes");
+      if (indicadorContraElegido({ precioUF: 3090, flujoCLP: -45000 }, { precioUF: 3250, flujoCLP: -85000 }, { objetivo: "plusvalia", preocupaciones: [] })?.frase !== "cuesta UF 160 menos") F("11f · buscando plusvalía, el indicador no prefiere el precio");
+      if (indicadorContraElegido({ precioUF: 3090, flujoCLP: -45000 }, { precioUF: 3250, flujoCLP: -85000 }, { objetivo: "plusvalia", preocupaciones: ["poner_plata"] })?.tipo !== "mes") F("11f · si le preocupa poner plata cada mes, el indicador no prefiere el mes");
+      if (indicadorContraElegido({ precioUF: 3300, flujoCLP: -90000 }, { precioUF: 3250, flujoCLP: -85000 }, P0) !== null) F("11f · el indicador dice algo que no favorece a la alternativa");
+      if (indicadorContraElegido({ precioUF: 3250, flujoCLP: 20000 }, { precioUF: 3250, flujoCLP: -30000 }, P0)?.frase !== "te deja $20.000 al mes" || indicadorContraElegido({ precioUF: 3250, flujoCLP: 60000 }, { precioUF: 3250, flujoCLP: 20000 }, P0)?.frase !== "te deja $40.000 más al mes") F("11f · el indicador no dice lo que deja al mes");
+
+      // 11g · Ningún enlace al portal para quien firmó, en todos los modos (decisión de Fabrizio, 19-nov-2026). Censo: todo archivo
+      // que lee `url` de scraped_properties pasa por sinEnlaceAlPortal, o está en la lista de los que solo leen la ficha (no la
+      // muestran a una persona), con su razón.
+      const SOLO_FICHA = new Map<string, string>([
+        ["src/lib/guia/analizar-servidor.ts", "lee la ficha para chequearla; no devuelve el enlace a la pantalla"],
+        ["src/lib/guia/semanal-servidor.ts", "lee la ficha para chequearla; el correo semanal enlaza a Franco"],
+        ["src/lib/publicadores/publicadores-servidor.ts", "el panel interno de /admin/invierte"],
+        ["src/lib/services/scraper/toctoc-unidades.ts", "el scraper de la noche"],
+        ["src/lib/services/scraper/unidades-presupuesto.ts", "el scraper de la noche"],
+        ["src/lib/services/market-suggestions.ts", "sugerencias del wizard: no trae avisos de Franco a una persona con orden"],
+        ["src/lib/guia/publicacion-portada.ts", "la portada: el informe la descarta con sinEnlaceAlPortal"],
+        ["src/lib/guia/seleccion-pagina-servidor.ts", "pasa por sinEnlaceAlPortal antes de publicacionesDeAvisos"],
+        ["src/app/api/lo-que-sigue/quiero-verlo/route.ts", "pasa por sinEnlaceAlPortal antes de mandar el correo"],
+      ]);
+      const recorrer = (dir: string): string[] => readdirSync(join(RAIZ, dir), { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? recorrer(`${dir}/${e.name}`) : /\.tsx?$/.test(e.name) ? [`${dir}/${e.name}`] : []));
+      for (const f of recorrer("src")) {
+        const c = codigo(f);
+        if (!/from\(["']scraped_properties["']\)\s*\.select\("[^"]*\burl\b/.test(c) && !/\.select\("id, comuna, lat, lng, superficie_m2, dormitorios, banos, condicion, direccion, fecha_entrega, url,/.test(c)) continue;
+        if (!SOLO_FICHA.has(f) && !/sinEnlaceAlPortal\(/.test(c)) F(`11g · ${f} lee el enlace de la publicación sin pasar por sinEnlaceAlPortal ni estar en la lista`);
+      }
+      if (!/const sinPortal = await sinEnlaceAlPortal\(createServiceClient\(\), user\?\.id\);\s*const publicacion = sinPortal \? null :/.test(ltr)) F("11g · el informe de renta larga muestra el enlace a quien firmó");
+      if (!/const sinPortal = await sinEnlaceAlPortal\(createServiceClient\(\), user\?\.id\);\s*const publicacion = sinPortal \? null :/.test(codigo("src/app/analisis/renta-corta/[id]/informe-str.tsx"))) F("11g · el informe de renta corta muestra el enlace a quien firmó");
+      if (!/\{esDueno && !invierte && !sinPortal && \(/.test(codigo("src/components/guia/InformeDeAviso.tsx"))) F("11g · «Mandármelo por correo» (el enlace por correo) se ofrece a quien firmó");
+      for (const f of ["src/app/analisis/[id]/results-client.tsx", "src/app/analisis/renta-corta/[id]/results-client.tsx"]) if (!/publicacion=\{publicacion\} sinPortal=\{sinPortal\} \/>/.test(codigo(f))) F(`11g · ${f} no le pasa sinPortal a InformeDeAviso`);
+      if (!/publicacion = \(await sinEnlaceAlPortal\(admin, user\.id\)\) \? null : ficha\.url;/.test(codigo("src/app/api/semanal/analizar-str/route.ts"))) F("11g · el pop-up «no da» de renta corta muestra el enlace a quien firmó");
+      if (!/sinEnlaceAlPortal\(admin, userId\)\.then\(\(sin\) => \(sin \? \(\{\} as Record<string, string>\) : publicacionesDeAvisos\(admin, noDan\)\)\)/.test(codigo("src/lib/guia/seleccion-pagina-servidor.ts"))) F("11g · la selección muestra el enlace a quien firmó");
+      const qv = codigo("src/app/api/lo-que-sigue/quiero-verlo/route.ts");
+      if (!/if \(await sinEnlaceAlPortal\(admin, user\.id\)\) return NextResponse\.json\(\{ error: "firmo" \}, \{ status: 403 \}\);/.test(qv) || qv.indexOf("sinEnlaceAlPortal(admin, user.id)") > qv.indexOf("interes_avisos")) F("11g · «Quiero verlo» le manda el enlace por correo a quien firmó");
+      if (!/return \(await ultimaOrdenDe\(admin, userId\)\.catch\(\(\) => true\)\) != null;/.test(codigo("src/lib/invierte-v2/portal-servidor.ts"))) F("11g · la regla del portal no es «tiene una orden» (o ante un error muestra el enlace)");
     }
 
     // ── 7 · REINICIAR PRUEBA LIMPIA LA ETAPA 2 DE ESA PERSONA, Y SOLO DE ELLA ──

@@ -490,7 +490,9 @@ export async function runSemanalAjustesTier(): Promise<{ hard: number }> {
     const clienteStr = sinComentarios(leer("src/app/analisis/renta-corta/[id]/results-client.tsx"));
     // ⚠ ACTA (11-nov-2026, goal «Pronto: Invierte con Franco») · el bloque recibe además la franja de «Invierte con Franco» y el
     // enlace a la publicación (`invierte`, `publicacion`): con la franja, «Mandármelo por correo» se reemplaza (INVIERTE-PRONTO §2).
-    if (!/\{origenAviso && analysisId && \(\s*<SeccionInforme id="origen-aviso" tono="paper">\s*<InformeDeAviso analysisId=\{analysisId\} veredicto=\{veredicto\} supuesta=\{supuestaDelInforme\(inputData\)\} esDueno=\{!!userId && !isSharedView\} modalidad="str" invierte=\{invierte\} publicacion=\{publicacion\} \/>/.test(clienteStr))
+    // ⚠ ACTA (19-nov-2026, láminas del 19-nov de Invierte con Franco): el bloque recibe `sinPortal` (quien firmó la orden no recibe «Mandármelo por
+    // correo», que manda el enlace al portal; INVIERTE-V2-E2 §11g).
+    if (!/\{origenAviso && analysisId && \(\s*<SeccionInforme id="origen-aviso" tono="paper">\s*<InformeDeAviso analysisId=\{analysisId\} veredicto=\{veredicto\} supuesta=\{supuestaDelInforme\(inputData\)\} esDueno=\{!!userId && !isSharedView\} modalidad="str" invierte=\{invierte\} publicacion=\{publicacion\}(?: sinPortal=\{sinPortal\})? \/>/.test(clienteStr))
       F("11 · el informe de renta corta no muestra «Quiero verlo»");
     const qvRuta = sinComentarios(leer("src/app/api/lo-que-sigue/quiero-verlo/route.ts"));
     if (!/const d = an \? datosDeInformeDeAviso\(an\) : null;\s*if \(!an \|\| an\.user_id !== user\.id \|\| !d\) return NextResponse\.json\(\{ error: "informe" \}, \{ status: 403 \}\);/.test(qvRuta)) F("11 · la ruta de «Quiero verlo» no lee el informe con datosDeInformeDeAviso");

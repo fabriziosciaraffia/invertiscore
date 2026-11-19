@@ -64,7 +64,9 @@ export function runDemoPublicoTier(): { hard: number } {
   if (!/<InformeStr id=\{DEMO_STR_ID\} demo \/>/.test(corta)) F("1 · /demo/renta-corta no dibuja InformeStr con DEMO_STR_ID");
   if (!/export const revalidate = 86400;/.test(corta)) F("1 · /demo/renta-corta no se regenera al día: quedaría congelado o volvería a correr por visita");
   // Las rutas del informe dibujan el MISMO componente: el demo no puede ir por otro camino.
-  if (!/return <InformeLtr id=\{params\.id\} \/>;/.test(sinComentarios(leer("src/app/analisis/[id]/page.tsx")))) F("1 · /analisis/[id] no dibuja InformeLtr: el demo y el informe irían por caminos distintos");
+  // ⚠ ACTA (19-nov-2026, láminas del 19-nov de Invierte con Franco): la ruta le pasa además de dónde se abrió (`desde`); sigue siendo el MISMO
+  // componente, que es lo que esta regla protege.
+  if (!/return <InformeLtr id=\{params\.id\}(?: desde=\{desde\})? \/>;/.test(sinComentarios(leer("src/app/analisis/[id]/page.tsx")))) F("1 · /analisis/[id] no dibuja InformeLtr: el demo y el informe irían por caminos distintos");
   if (!/return <InformeStr id=\{params\.id\} \/>;/.test(sinComentarios(leer("src/app/analisis/renta-corta/[id]/page.tsx")))) F("1 · /analisis/renta-corta/[id] no dibuja InformeStr");
   // El selector no compara: sin puntaje ni veredicto, sin «vs».
   const cab = sinComentarios(leer("src/app/demo/demo-cabecera.tsx"));

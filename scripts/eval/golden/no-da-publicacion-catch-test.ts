@@ -118,7 +118,8 @@ export async function runNoDaPublicacionTier(): Promise<{ hard: number }> {
   const ruta = codigo("src/app/api/semanal/analizar-str/route.ts");
   if (!/const r = await analizarStrDeSemanal\(\{\s*igual: b\.igual === true,/.test(ruta)) F("4 · la ruta no pasa «Ver igual» (`igual`) al orquestador");
   const chequear = ruta.slice(ruta.indexOf("async chequear()"), ruta.indexOf("async alDespublicar()"));
-  if (!/const c = await chequearPublicacion\(ficha,[^\n]*\n[\s\S]*?publicacion = ficha\.url;/.test(chequear)) F("4 · la ruta no guarda el enlace de la ficha que chequea");
+  /* ⚠ ACTA (19-nov-2026, láminas del 19-nov de Invierte con Franco): a quien firmó la orden el pop-up no le lleva el enlace (portal-servidor.ts). */
+  if (!/const c = await chequearPublicacion\(ficha,[^\n]*\n[\s\S]*?publicacion = (?:\(await sinEnlaceAlPortal\(admin, user\.id\)\) \? null : )?ficha\.url;/.test(chequear)) F("4 · la ruta no guarda el enlace de la ficha que chequea");
   const iSin = ruta.indexOf('if (saldo.tipo === "sin") return { ok: false, status: 402, error: "sin-creditos" };'), iGuarda = ruta.indexOf("saldoAlMedir = saldo;");
   if (iSin < 0 || iGuarda < 0 || iGuarda < iSin) F("4 · la ruta no guarda el saldo con que mide");
   if (!/estado: "no-da", alternativas: r\.alternativas, publicacion, porQue: porQueNoDa\(r\.zona, r\.fino\), saldo: saldoAlMedir/.test(ruta)) F("4 · el «no-da» de la ruta no trae el enlace, el porqué y el saldo");

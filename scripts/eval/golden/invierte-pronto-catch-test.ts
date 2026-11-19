@@ -162,7 +162,9 @@ export async function runInviertePronto(): Promise<{ hard: number }> {
       // exigiendo que lo único que se desvía esté guardado por destinoBoton y que, si no, se abra la hoja de Pronto.
       // ⚠ ACTA (20-nov-2026, Fabrizio): quien ya firmó la orden va directo a «Súmalo a tus opciones de inversión» (router.push a la
       // pantalla de sumar), y si no, a la hoja de contacto; los dos dentro del mismo destinoBoton. Pronto sigue igual.
-      const desvioGuardado = !/router\.push|setContactoV2|return;/.test(alInv) || /if \(destinoBoton\(\{ acceso: invierteV2, condicion: p\.condicion \}\) === "v2"\) \{\s*if \(invierteFirmo\) \{ router\.push\(`\$\{urlSumar\(p\.avisoId\)\}\?desde=explorar`\); return; \}\s*setContactoV2\(p\); return;\s*\}/.test(alInv);
+      // ⚠ ACTA (19-nov-2026, láminas del 19-nov de Invierte con Franco): si el depto ya es uno de los suyos, «Mi inversión» lleva a /invierte, dentro del
+      // mismo destinoBoton.
+      const desvioGuardado = !/router\.push|setContactoV2|return;/.test(alInv) || /if \(destinoBoton\(\{ acceso: invierteV2, condicion: p\.condicion \}\) === "v2"\) \{\s*(?:\/\/[^\n]*\n\s*)?(?:if \(invierteFirmo && misDeptos\.includes\(p\.avisoId\)\) \{ router\.push\(URL_INVIERTE\); return; \}\s*)?if \(invierteFirmo\) \{ router\.push\(`\$\{urlSumar\(p\.avisoId\)\}\?desde=explorar`\); return; \}\s*setContactoV2\(p\); return;\s*\}/.test(alInv);
       if (!/inscritos=\{(invierteV2 \? undefined : )?inscritos\}/.test(elTarjeta) || !abreLaHoja || !desvioGuardado) F("1 · Explorar no le pasa a la tarjeta los inscritos y la hoja de «Invierte con Franco»");
       // La selección del dashboard usa la misma regla, con el `tramo` «negociar» como negociable.
       const sel = codigo("src/app/semanal/semanal-lista.tsx");
@@ -237,8 +239,9 @@ export async function runInviertePronto(): Promise<{ hard: number }> {
       if (franja.indexOf('data-invierte="boton"') > franja.indexOf('data-publicacion="enlace"') || !/Ver la publicación ↗/.test(franja)) F("2 · «Ver la publicación ↗» no va debajo del botón de la franja");
       // «Ver la publicación» sale de la tarjeta oscura cuando la franja la lleva; la franja de antes ya no está con «Invierte».
       if (!/\{publicacion && !publicacion\.enFranja && \(publicacion\.despublicado \?/.test(codigo("src/components/analysis/portada/PortadaInforme.tsx"))) F("2 · la portada sigue mostrando «Ver la publicación» cuando la franja la lleva");
+      // ⚠ ACTA (19-nov-2026, láminas del 19-nov de Invierte con Franco): «Mandármelo por correo» tampoco va a quien firmó la orden (manda el enlace al portal).
       const ida = codigo("src/components/guia/InformeDeAviso.tsx");
-      if (!/\{esDueno && invierte && \(\s*<FranjaInvierte/.test(ida) || !/\{esDueno && !invierte && \(\s*<div className="qv-banda"/.test(ida)) F("2 · con «Invierte con Franco», la portada sigue con «Mandármelo por correo» (o lo pierde sin ella)");
+      if (!/\{esDueno && invierte && \(\s*<FranjaInvierte/.test(ida) || !/\{esDueno && !invierte && (?:!sinPortal && )?\(\s*<div className="qv-banda"/.test(ida)) F("2 · con «Invierte con Franco», la portada sigue con «Mandármelo por correo» (o lo pierde sin ella)");
       // El pie es el 20 % de ESTE depto.
       if (inv.pieDelDepto(3250) !== 650 || inv.pieDelDepto(5701) !== 1140 || inv.pieDelDepto(null) !== null) F("2 · el pie preguntado no es el 20 % del precio del depto");
     }
