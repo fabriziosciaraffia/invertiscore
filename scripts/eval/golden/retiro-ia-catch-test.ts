@@ -218,10 +218,16 @@ export function runRetiroIaTier(): { hard: number } {
   // escribe prosa; propone datos que una persona de Franco aprueba. Se permite UNA llamada al modelo, en ese archivo, sin
   // ninguno de los generadores del informe; cualquier otra llamada en src/ sigue siendo falla.
   const LECTURA_PREAPROBACION = "src/lib/invierte-v2/preaprobacion-ia.ts";
+  // ⚠ ACTA (19-nov-2026, Invierte con Franco entrega 4 de las láminas del 19-nov, textos aprobados por Fabrizio) · UNA excepción
+  // más, y solo una: «Lo que ve Franco» lee las fotos y el texto de una publicación para quien firmó la orden; no es el informe
+  // (no lo reemplaza ni lo juzga: no cita cifras ni el precio) y vive en su propio archivo. Se permite UNA llamada al modelo, ahí,
+  // sin ninguno de los generadores del informe; cualquier otra llamada en src/ sigue siendo falla.
+  const LECTURA_FRANCO = "src/lib/invierte-v2/lectura-franco-ia.ts";
   for (const { rel, src } of SRC) {
     const llamadas = Array.from(src.matchAll(LLAMADA));
     if (rel === PROSA_COMUNAS && llamadas.length === 1 && llamadas[0][0] === ".messages.create(") continue;
     if (rel === LECTURA_PREAPROBACION && llamadas.length === 1 && llamadas[0][0] === ".messages.create(" && !/generar(LTR|STR|Ambas)|ai-generation/.test(src)) continue;
+    if (rel === LECTURA_FRANCO && llamadas.length === 1 && llamadas[0][0] === ".messages.create(" && !/generar(LTR|STR|Ambas)|ai-generation/.test(src)) continue;
     for (const m of llamadas) {
       F(`3 · ${rel} llama a la generación (${m[0]}): los generadores se retiraron`);
     }

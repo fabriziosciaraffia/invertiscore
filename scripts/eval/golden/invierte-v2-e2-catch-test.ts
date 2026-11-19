@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// TIER INVIERTE-V2-E2 · Invierte con Franco, comprador · etapa 2, entrega 1 (18-nov-2026; §11 y §12, láminas del 19-nov-2026): el perfil, hasta cuánto puede comprar,
+// TIER INVIERTE-V2-E2 · Invierte con Franco, comprador · etapa 2, entrega 1 (18-nov-2026; §11 a §13, láminas del 19-nov-2026): el perfil, hasta cuánto puede comprar,
 // el resultado (los tres casos y el porqué), las etiquetas y la lectura por reglas, la elección, /invierte, y los detalles sin
 // gastar créditos (charge_mode 'invierte') con su categoría propia en los paneles. 0 tokens.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -10,6 +10,8 @@ import { ALTERNATIVAS_COPY as A12, MAX_RECOMENDADOS, cuantasPedir, cupoUsado, in
 import { MAX_FOTOS, parsearDetalleFicha } from "../../../src/lib/guia/detalle-ficha";
 import { leerFicha } from "../../../src/lib/guia/publicacion";
 import { MAX_FOTOS_VISTA, pedidoFoto, respuestaFotoValida } from "../../../src/lib/invierte-v2/fotos";
+import { ESQUEMA_LECTURA_FRANCO, INSTRUCCION_LECTURA_FRANCO, LECTURA_COPY, cortaSinRepetirAlerta, lineaPermitida, recomendable, sanearLectura } from "../../../src/lib/invierte-v2/lectura-franco";
+import { CLAUDE_MODEL_LECTURA } from "../../../src/lib/ai-config";
 import {
   elegirOpciones, etiquetar, casoDe, porQueNoAlcanza, vsParecidos, textoMetro, textoAlMes, textoEtiqueta, estaCerca, UMBRAL_CERCA_PCT, lecturaDeFranco, MAX_ACTIVOS, MAX_OPCIONES, MIN_PARECIDOS,
   RESULTADO_COPY, fmtUF, type OpcionDepto,
@@ -774,10 +776,11 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       const ele12 = { precioUF: 3250, flujoCLP: -85000, score: 78 };
       const grupo12 = [{ avisoId: "e", precioUF: 3250 }, { avisoId: "a", precioUF: 3180 }, { avisoId: "b", precioUF: 2940 }];
       const per = (o: Partial<{ objetivo: "arriendo" | "plusvalia" | "ambas"; preocupaciones: ("poner_plata" | "no_arriende")[]; limitaPie: boolean }>) => ({ objetivo: "arriendo" as const, preocupaciones: [], limitaPie: false, ...o });
-      if (indicadorAlternativa({ avisoId: "a", precioUF: 3180, flujoCLP: -45000, score: 77 }, ele12, grupo12, per({})) !== "Te pide $40.000 menos al mes que el tuyo") F("12d · el indicador no dice lo que pide menos al mes, como la lámina");
-      if (indicadorAlternativa({ avisoId: "b", precioUF: 2940, flujoCLP: -90000, score: 76 }, ele12, grupo12, per({ limitaPie: true })) !== "El pie más bajo: UF 588") F("12d · si el pie es lo que lo limita, el indicador no dice el pie más bajo, como la lámina");
-      if (indicadorAlternativa({ avisoId: "b", precioUF: 3090, flujoCLP: -45000, score: 81 }, ele12, [{ avisoId: "b", precioUF: 3090 }, { avisoId: "c", precioUF: 3000 }], per({ objetivo: "plusvalia" })) !== "Cuesta UF 160 menos que el tuyo") F("12d · buscando plusvalía, el indicador no dice el precio, como la lámina");
-      if (indicadorAlternativa({ avisoId: "x", precioUF: 3300, flujoCLP: 20000, score: 70 }, { precioUF: 3250, flujoCLP: 90000, score: 80 }, [], per({})) !== "Te deja $20.000 al mes") F("12d · sin nada a favor, no dice lo que deja al mes sin compararlo (o inventa una ventaja)");
+      // ⚠ ACTA (19-nov-2026): el indicador dice además si supera al suyo (para el subtítulo «El tuyo es el mejor…»); se compara su texto.
+      if (indicadorAlternativa({ avisoId: "a", precioUF: 3180, flujoCLP: -45000, score: 77 }, ele12, grupo12, per({}))?.texto !== "Te pide $40.000 menos al mes que el tuyo") F("12d · el indicador no dice lo que pide menos al mes, como la lámina");
+      if (indicadorAlternativa({ avisoId: "b", precioUF: 2940, flujoCLP: -90000, score: 76 }, ele12, grupo12, per({ limitaPie: true }))?.texto !== "El pie más bajo: UF 588") F("12d · si el pie es lo que lo limita, el indicador no dice el pie más bajo, como la lámina");
+      if (indicadorAlternativa({ avisoId: "b", precioUF: 3090, flujoCLP: -45000, score: 81 }, ele12, [{ avisoId: "b", precioUF: 3090 }, { avisoId: "c", precioUF: 3000 }], per({ objetivo: "plusvalia" }))?.texto !== "Cuesta UF 160 menos que el tuyo") F("12d · buscando plusvalía, el indicador no dice el precio, como la lámina");
+      if (indicadorAlternativa({ avisoId: "x", precioUF: 3300, flujoCLP: 20000, score: 70 }, { precioUF: 3250, flujoCLP: 90000, score: 80 }, [], per({}))?.texto !== "Te deja $20.000 al mes") F("12d · sin nada a favor, no dice lo que deja al mes sin compararlo (o inventa una ventaja)");
 
       // 12e · La pantalla: un solo botón rojo, sin pestañas Lista/Comparar, la tabla en ventana, sin alternativas la línea.
       const res12 = codigo("src/components/invierte-v2/ResultadoOpciones.tsx");
@@ -786,8 +789,11 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (/vista-lista|vista-comparar|role="tablist"/.test(res12)) F("12e · todavía están las pestañas Lista/Comparar");
       if (!/\{comparando && \(\s*<VentanaDocumento nombre="comparar" titulo=\{A\.compararTitulo\(listaOpciones\.length\)\}/.test(ele) || !/onClick=\{\(\) => setComparando\(true\)\} aria-haspopup="dialog" data-inv2="comparar">\{A\.comparar\(listaOpciones\.length\)\}/.test(ele)) F("12e · la tabla no se abre a pedido, en ventana, desde «Comparar los N lado a lado»");
       if (!/\) : entrada \? \(\s*<p className="iv2-linea-chica iv2-res-solo" data-inv2="solo-elegido">\{A\.soloElegido\}<\/p>/.test(ele)) F("12e · sin alternativas no va solo el elegido con su línea");
-      if (!/data-inv2="subtitulo">\{A\.subtitulo\(alternativas\.length, p\.nivel, p\.donde, entrada\?\.comuna \?\? null\)\}/.test(ele)) F("12e · el subtítulo no sale del nivel usado");
-      if (/Lo que ve Franco|LO QUE VE FRANCO|loQueVe/i.test(res12)) F("12e · «Lo que ve Franco» aparece antes de que Fabrizio apruebe sus textos");
+      // ⚠ ACTA (19-nov-2026, Fabrizio): cuando ninguna alternativa supera al suyo, el subtítulo es «El tuyo es el mejor…» (§13e).
+      if (!/data-inv2="subtitulo">\{ningunaSupera \? A\.tuyoMejor\(p\.nivel, entrada\?\.comuna \?\? null\) : A\.subtitulo\(alternativas\.length, p\.nivel, p\.donde, entrada\?\.comuna \?\? null\)\}/.test(ele)) F("12e · el subtítulo no sale del nivel usado");
+      // ⚠ ACTA (19-nov-2026): Fabrizio aprobó los textos de «Lo que ve Franco»; esta regla pasa a la §13 (que exige que esté y
+      // cómo). Lo que queda acá: el resultado no escribe la lectura a mano, la toma de LoQueVeFranco.
+      if (/Lo que ve Franco|LO QUE VE FRANCO/.test(res12)) F("12e · el resultado escribe «Lo que ve Franco» a mano en vez de usar LoQueVeFranco");
       const opPag = codigo("src/app/invierte/opciones/page.tsx");
       if (!/const fotos = await fotosDe\(createServiceClient\(\), r\.opciones\.map\(\(o\) => o\.avisoId\)\);/.test(opPag) || !/nivel=\{r\.nivel\} donde=\{r\.perfil\.donde\} distancias=\{r\.distancias\} fotos=\{fotos\}/.test(opPag)) F("12e · el resultado no recibe el nivel, la distancia y las fotos");
 
@@ -828,6 +834,58 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (!/src=\{urlFoto\(avisoId,/.test(fd) || !/if \(!n \|\| rota\) return null;/.test(fd) || !/onError=\{\(\) => setRota\(true\)\}/.test(fd)) F("12g · las fotos no van por la ruta propia, o una tarjeta sin fotos deja un hueco");
       if (!/select\("aviso_id, fotos"\)/.test(codigo("src/lib/invierte-v2/fotos-servidor.ts")) || !/Math\.min\(\(f\.fotos \?\? \[\]\)\.length, MAX_FOTOS_VISTA\)/.test(codigo("src/lib/invierte-v2/fotos-servidor.ts"))) F("12g · a la pantalla llega algo más que cuántas fotos hay");
       if (!/<FotosDepto avisoId=\{c\.avisoId\} n=\{c\.fotos\}/.test(codigo("src/components/invierte-v2/DetallesInvierte.tsx")) || !/\{modoInvierte && <CabezaDeDetalles modo=\{modoInvierte\} \/>\}/.test(codigo("src/app/analisis/[id]/informe-ltr.tsx"))) F("12g · los detalles desde Invierte no llevan las fotos arriba del informe");
+    // ── 13 · LÁMINAS DEL 19-nov-2026, ENTREGA 4: «Lo que ve Franco» (textos aprobados por Fabrizio el 19-nov-2026) y «Lo que el
+    //        puntaje no considera»; una alternativa grave no se recomienda; «El tuyo es el mejor…» ──
+    {
+      // 13a · La lectura no cita ni juzga el precio: la instrucción lo prohíbe y el saneado saca la línea que se salga.
+      const I13 = INSTRUCCION_LECTURA_FRANCO;
+      if (!/Nunca cites ni juzgues el precio/.test(I13) || !/Nunca cites una cifra del informe/.test(I13) || /precio_m2_vs_zona|−25 %|-25 %/.test(I13)) F("13a · la instrucción permite citar o juzgar el precio, o le pasa el porcentaje contra la zona");
+      if (!/nivel «grave»: la publicación o las fotos muestran que es para remodelar o está sin terminar, que es un remate, que se venden derechos o acciones, o no hay ninguna foto del interior/.test(I13) || !/nivel «revisar»: datos que se contradicen[\s\S]*?faltan fotos de partes clave, como los baños o la cocina/.test(I13) || !/Se decide SOLO con lo que muestran las fotos o dice el texto de la publicación, nunca por el precio/.test(I13)) F("13a · la alerta no es la de Fabrizio (grave, revisar y ninguna, solo con evidencia)");
+      if (!/La publicación no explica su precio: pregúntalo/.test(I13)) F("13a · «Ojo» no tiene la pregunta sin número del precio");
+      for (const malo of ["Cuesta cerca de la mitad que su zona.", "Está un 34 % bajo su zona.", "A 300 m del metro.", "Precio de UF 2.700, conveniente.", "Gastos comunes de $80.000.", "Más barato que sus parecidos.", "Tiene un buen precio para la comuna.", "Subió un 20 % desde marzo."]) if (lineaPermitida(malo)) F(`13a · el saneado deja pasar «${malo}»`);
+      for (const bueno of ["La publicación no explica su precio: pregúntalo.", "El tercer dormitorio mide 6,6 m², más de escritorio que de dormitorio.", "Según la publicación, el edificio es de 2012.", "Tiene metro cerca, a pie."]) if (!lineaPermitida(bueno)) F(`13a · el saneado saca «${bueno}», que está permitido`);
+      const s13 = sanearLectura({ alerta: { nivel: "grave", motivo: "Según la publicación, es para remodelar y no hay fotos del interior." }, larga: [{ etiqueta: "Ojo", texto: "Pide fotos del interior." }, { etiqueta: "Estado", texto: "Según la publicación, es para remodelar." }, { etiqueta: "Estado", texto: "Repetida." }, { etiqueta: "Precio", texto: "Inventada." }, { etiqueta: "Ubicación", texto: "Está 40 % bajo su zona." }], corta: [{ texto: "Es para remodelar." }, { texto: "Cuesta la mitad que su zona." }, { texto: "Pide fotos." }, { texto: "Cuarta." }] });
+      if (!s13 || s13.alerta.nivel !== "grave" || s13.larga.map((l) => l.etiqueta).join("|") !== "Estado|Ojo" || s13.corta.join("|") !== "Es para remodelar.|Pide fotos.|Cuarta.") F("13a · el saneado no ordena, no deduplica o deja pasar etiquetas inventadas o líneas con el precio");
+      if (sanearLectura({ alerta: { nivel: "ninguna", motivo: "algo" }, larga: [{ etiqueta: "Estado", texto: "Bien." }], corta: [] })?.alerta.motivo !== null) F("13a · con alerta «ninguna» queda un motivo");
+      if (sanearLectura({ alerta: { nivel: "revisar", motivo: "Cuesta 30 % menos que su zona." }, larga: [{ etiqueta: "Estado", texto: "Bien." }], corta: [] })?.alerta.motivo !== null) F("13a · una alerta que se sostiene en el precio se muestra");
+      if (JSON.stringify(ESQUEMA_LECTURA_FRANCO.properties.alerta.properties.motivo) !== '{"anyOf":[{"type":"string"},{"type":"null"}]}') F("13a · el motivo de la alerta no va con anyOf (la API rechaza `type: [x, \"null\"]` con enum)");
+      const ia13 = codigo("src/lib/invierte-v2/lectura-franco-ia.ts");
+      if (!/model: CLAUDE_MODEL_LECTURA,/.test(ia13) || !/system: INSTRUCCION_LECTURA_FRANCO,/.test(ia13) || !/const lectura = sanearLectura\(JSON\.parse\(txt\)\);/.test(ia13) || /precio_uf|precioUF|flujo|arriendo/.test(ia13.slice(ia13.indexOf("export interface EntradaLectura"), ia13.indexOf("export type ResultadoLecturaFranco")))) F("13a · la llamada no usa el modelo elegido, la instrucción o el saneado, o le pasa el precio al modelo");
+      if (CLAUDE_MODEL_LECTURA !== "claude-opus-5-5") F("13a · el modelo de la lectura no es el que eligió Fabrizio (Opus 5.5)");
+
+      // 13b · Una por depto, guardada; se pide aparte, solo quien firmó y de un depto de su base; con tope por hora y marca.
+      const srv13 = codigo("src/lib/invierte-v2/lectura-franco-servidor.ts");
+      if (!/if \(count == null \|\| count >= TOPE_LECTURAS_POR_HORA\) return \{ estado: "tope" \};/.test(srv13) || !/if \(f\?\.estado === "generando" && ahora\.getTime\(\) - new Date\(f\.updated_at\)\.getTime\(\) < GENERANDO_VENCE_MS\) return \{ estado: "generando" \};/.test(srv13)) F("13b · la lectura se genera sin tope por hora o dos pantallas la piden dos veces");
+      if (!/f\.version === VERSION_LECTURA && \(!det\?\.leido_at \|\| !f\.detalle_leido_at \|\| f\.detalle_leido_at >= \(det\.leido_at as string\)\)/.test(srv13)) F("13b · una lectura de otra versión o de una publicación releída se sigue mostrando");
+      if (!/const informada = ae\?\.antiguedad_origen === "ficha"/.test(srv13) || !/antiguedad: anio \? \{ anio \} : "no informada"/.test(srv13)) F("13b · la antigüedad supuesta llega al modelo como dato");
+      const rl13 = codigo("src/app/api/invierte-v2/lectura/route.ts");
+      if (rl13.indexOf("sinEnlaceAlPortal(admin, user.id)") < 0 || !/from\("inv_deptos"\)\.select\("aviso_id"\)\.eq\("user_id", user\.id\)\.eq\("aviso_id", avisoId\)\.in\("estado", \["opcion", "elegido"\]\)/.test(rl13) || !/if \(!suyo\) return NO_EXISTE\(\);/.test(rl13) || rl13.indexOf('from("inv_deptos")') > rl13.indexOf("lecturaDe(")) F("13b · la ruta genera lecturas sin orden firmada o de deptos que no están en la base de la persona");
+      const lq13 = codigo("src/components/invierte-v2/LoQueVeFranco.tsx");
+      if (!/let p = enCurso\.get\(avisoId\);\s*if \(!p\) \{ p = pedirLectura\(avisoId\); enCurso\.set\(avisoId, p\); \}/.test(lq13) || !/if \(!l\) return null;/.test(lq13)) F("13b · la tarjeta espera la lectura (o la pide dos veces) en vez de completarse sola");
+
+      // 13c · En pantalla: «Lo que el puntaje no considera» primero en el elegido y en los detalles; la corta, la larga y la línea.
+      if (LECTURA_COPY.rotulo !== "Lo que ve Franco" || LECTURA_COPY.alertaRotulo !== "Lo que el puntaje no considera") F("13c · los rótulos no son los aprobados");
+      if (!/if \(variante === "alerta"\) return <Alerta l=\{l\} \/>;/.test(lq13) || !/\{variante === "detalles" && <Alerta l=\{l\} \/>\}\s*\{lineas\.length > 0 && \(/.test(lq13)) F("13c · la alerta no va primero en los detalles (o no se puede poner sola en el elegido)");
+      const res13 = codigo("src/components/invierte-v2/ResultadoOpciones.tsx");
+      const ia = res13.indexOf('<LoQueVeFranco avisoId={entrada.avisoId} variante="alerta"'), id = res13.indexOf('data-inv2="tres-datos"'), ic = res13.indexOf('<LoQueVeFranco avisoId={entrada.avisoId} variante="elegido"');
+      if (ia < 0 || id < 0 || ic < 0 || !(ia < id && id < ic)) F("13c · en el elegido la alerta no va primero, o «Lo que ve Franco» no va después de los tres datos");
+      if (!/<LoQueVeFranco avisoId=\{o\.avisoId\} variante="linea" inicial=\{p\.lecturas\[o\.avisoId\] \?\? null\} alLlegar=\{siEsGrave\(o\.avisoId\)\} \/>/.test(res13)) F("13c · las alternativas no llevan su línea de Franco");
+      if (!/<LoQueVeFranco avisoId=\{c\.avisoId\} variante="detalles" inicial=\{c\.lectura\} \/>/.test(codigo("src/components/invierte-v2/DetallesInvierte.tsx"))) F("13c · los detalles no llevan la versión larga");
+      if (JSON.stringify(cortaSinRepetirAlerta({ alerta: { nivel: "revisar", motivo: "Faltan fotos del baño." }, larga: [], corta: ["Faltan fotos del baño.", "B", "C"] })) !== '["B","C"]' || JSON.stringify(cortaSinRepetirAlerta({ alerta: { nivel: "ninguna", motivo: null }, larga: [], corta: ["A", "B", "C"] })) !== '["A","B","C"]') F("13c · la corta del elegido repite la alerta que ya va arriba (o pierde líneas sin alerta)");
+
+      // 13d · Una alternativa con alerta grave no se recomienda: ni del servidor, ni cuando la lectura llega en la pantalla.
+      if (recomendable({ alerta: { nivel: "grave", motivo: "x" } }) || !recomendable({ alerta: { nivel: "revisar", motivo: "x" } }) || !recomendable(null)) F("13d · «grave» no deja fuera la recomendación (o «revisar» la deja fuera)");
+      const ps13 = codigo("src/lib/invierte-v2/perfil-servidor.ts");
+      if (!/&& recomendable\(lecturasPrev\[x\.f\.aviso_id\]\);/.test(ps13) || !/pedidas\.filas\.filter\(\(r\) => recomendable\(lecturasNuevas\[r\.avisoId\]\)\)\.slice\(0, cuantas\)/.test(ps13)) F("13d · el servidor recomienda una alternativa con alerta grave");
+      if (!/!graves\.has\(o\.avisoId\)\);/.test(res13) || !/if \(!recomendable\(l\)\) setGraves/.test(res13)) F("13d · una alternativa cuya lectura llega grave sigue en la pantalla");
+      if (!/if \(!recomendable\(cabeza\.lectura\)\) return null;/.test(codigo("src/lib/invierte-v2/detalles-modo-servidor.ts"))) F("13d · los detalles de un depto grave dicen «Te lo recomendamos»");
+
+      // 13e · Ninguna alternativa supera al suyo en nada: el subtítulo lo dice; cada una, su dato más fuerte sin comparar.
+      if (A12.tuyoMejor("cerca", "Ñuñoa") !== "El tuyo es el mejor de los parecidos que hay cerca. Estos te sirven de respaldo si no se da.") F("13e · el subtítulo de «el tuyo es el mejor» no es el de Fabrizio");
+      if (indicadorAlternativa({ avisoId: "x", precioUF: 3300, flujoCLP: 20000, score: 70 }, { precioUF: 3250, flujoCLP: 90000, score: 80 }, [], per({}))?.supera !== false || indicadorAlternativa({ avisoId: "a", precioUF: 3180, flujoCLP: -45000, score: 77 }, ele12, grupo12, per({}))?.supera !== true) F("13e · el indicador no distingue si supera al suyo");
+      if (!/const ningunaSupera = !!entrada && alternativas\.length > 0 && alternativas\.every\(\(o\) => !indicadorAlternativa\(o, entrada, grupo,[^)]*\}\)\?\.supera\);/.test(res13) || !/\{ningunaSupera \? A\.tuyoMejor\(p\.nivel, entrada\?\.comuna \?\? null\) : A\.subtitulo\(/.test(res13)) F("13e · cuando ninguna supera al suyo, el subtítulo no lo dice");
+    }
+
     }
 
     // ── 7 · REINICIAR PRUEBA LIMPIA LA ETAPA 2 DE ESA PERSONA, Y SOLO DE ELLA ──
