@@ -15,6 +15,7 @@ import { REFERIDO_COPY, TOPE_PREMIOS_REFERIDO, enlaceInvitacion, textoEnlaceInvi
 import { AUMENTO_COPY } from "@/lib/planes";
 import { URL_INVIERTE } from "@/lib/invierte-v2/destino";
 import { BOTON_CAMBIOS, asuntoCambios, parrafoDepto, type DeptoConCambios } from "@/lib/invierte-v2/cambios";
+import { CORREO_PREAPROB, URL_PREAPROBACION } from "@/lib/invierte-v2/preaprobacion";
 
 /** La tríada que el dashboard dibuja después de «te dice si conviene:»; en el correo, en palabras. */
 const TRIADA = "Comprar, Ajustar o Buscar otro";
@@ -621,6 +622,30 @@ export function correoCambiosInvierte(p: { nombre: string | null; deptos: DeptoC
       titular: p.deptos.length === 1 ? "Cambió un depto que elegiste" : `Cambiaron ${p.deptos.length} deptos que elegiste`,
       parrafos,
       boton: { texto: BOTON_CAMBIOS, url: `${sitio}${URL_INVIERTE}` },
+    }),
+  };
+}
+
+/**
+ * Invierte con Franco, la preaprobación revisada (entrega 3, 19-nov-2026): aprobada (botón a /invierte, la dirección única del
+ * flujo) o por corregir (pide una acción puntual: botón a la pantalla de subir otra). Textos en invierte-v2/preaprobacion.ts.
+ */
+export function correoPreaprobacionInvierte(p: { nombre: string | null; sitio?: string } & ({ tipo: "aprobada"; banco: string; montoUF: number; vigenteHasta: string } | { tipo: "por_corregir"; motivo: string })): Correo {
+  const sitio = p.sitio ?? SITIO;
+  const primero = (p.nombre ?? "").trim().split(/\s+/)[0] ?? "";
+  const hola = primero ? `Hola, ${escaparHtml(primero)}.` : "Hola.";
+  const C = p.tipo === "aprobada" ? CORREO_PREAPROB.aprobada : CORREO_PREAPROB.por_corregir;
+  const parrafo = p.tipo === "aprobada"
+    ? CORREO_PREAPROB.aprobada.parrafo({ banco: p.banco, montoUF: p.montoUF, vigenteHasta: p.vigenteHasta })
+    : CORREO_PREAPROB.por_corregir.parrafo(p.motivo);
+  return {
+    subject: C.asunto,
+    html: plantillaClara({
+      titulo: C.asunto,
+      preencabezado: C.asunto,
+      titular: C.asunto,
+      parrafos: [`${hola} ${escaparHtml(parrafo)}`],
+      boton: { texto: C.boton, url: `${sitio}${p.tipo === "aprobada" ? URL_INVIERTE : URL_PREAPROBACION}` },
     }),
   };
 }

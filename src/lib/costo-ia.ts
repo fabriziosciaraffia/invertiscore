@@ -43,6 +43,8 @@ export interface TarifaModelo {
 export const TARIFAS: Record<string, TarifaModelo> = {
   "claude-sonnet-4-6": { input: 3.0, output: 15.0, cacheWrite: 3.75, cacheRead: 0.3 },
   "claude-haiku-4-5": { input: 1.0, output: 5.0, cacheWrite: 1.25, cacheRead: 0.1 },
+  // La lectura de la preaprobación de Invierte con Franco (CLAUDE_MODEL_DOCUMENTOS, 19-nov-2026).
+  "claude-opus-5-5": { input: 4.0, output: 20.0, cacheWrite: 5.0, cacheRead: 0.2 },
 };
 
 /**

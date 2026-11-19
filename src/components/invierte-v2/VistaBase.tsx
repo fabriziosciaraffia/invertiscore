@@ -17,6 +17,7 @@ import { etiquetaVeredicto, signoVeredicto } from "@/lib/veredicto-etiqueta";
 import { BotonDetalles, PrepararDetalles } from "./BotonDetalles";
 import { EnlacesBase, MenuBase } from "./MenuBase";
 import { SumarDepto } from "./SumarDepto";
+import { TE_TOCA_ROTULO, URL_PREAPROBACION, teTocaHoy } from "@/lib/invierte-v2/preaprobacion";
 
 
 const B = BASE_COPY;
@@ -31,6 +32,8 @@ export function VistaBase({ base }: { base: Base }) {
   const sinPreparar = base.elegidos.filter((d) => !d.preparado).map((d) => d.avisoId);
   const activos = base.elegidos.map((d) => ({ avisoId: d.avisoId, datos: d.datos }));
   const perfilLinea = MENU_COPY.perfilLinea(base.perfil?.topeUF ?? null, base.perfil?.comunas ?? []);
+  // «Lo que te toca hoy» (entrega 3): solo cuando le toca a la persona; es la única acción principal (en rojo) de la base.
+  const toca = teTocaHoy(base.preaprobacion);
   return (
     <>
       <PrepararDetalles avisoIds={sinPreparar} />
@@ -40,6 +43,15 @@ export function VistaBase({ base }: { base: Base }) {
             <h1 className="iv2-titulo-res" id="iv2-t">{B.titulo}</h1>
             <span className="iv2-solo-movil-base"><MenuBase nombre={base.orden.nombre} perfilLinea={perfilLinea} whatsapp={base.whatsapp} /></span>
           </div>
+          {toca && (
+            <section className="iv2-toca" aria-labelledby="iv2-toca-t" data-inv2="te-toca-hoy">
+              <p className="iv2-toca-et">{TE_TOCA_ROTULO}</p>
+              <div className="iv2-toca-fila">
+                <h2 className="iv2-toca-t" id="iv2-toca-t">{toca.titulo}</h2>
+                <Link href={URL_PREAPROBACION} className="inv-principal" data-inv2="te-toca-boton">{toca.boton}</Link>
+              </div>
+            </section>
+          )}
           <section aria-labelledby="iv2-tus-t" data-inv2="tus-deptos" className="iv2-base-sec">
             <div className="iv2-base-sec-cab">
               <h2 className="iv2-base-h2" id="iv2-tus-t">{B.tusDeptos}</h2>

@@ -87,6 +87,7 @@ export const DOCUMENTOS_COPY = {
   promesa: "Promesa y escritura",
   promesaLinea: "Se firman en notaría; aquí queda la copia.",
   ver: "Ver",
+  subir: "Subir",
   masAdelante: "Más adelante",
 } as const;
 

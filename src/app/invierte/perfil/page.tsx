@@ -3,6 +3,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { PERFIL_COPY } from "@/lib/invierte-v2/perfil";
 import { URL_INVIERTE } from "@/lib/invierte-v2/destino";
 import { contextoPerfil } from "@/lib/invierte-v2/perfil-servidor";
+import { leerPreaprobacion } from "@/lib/invierte-v2/preaprobacion-servidor";
 import { ultimaOrdenDe } from "@/lib/invierte-v2/servidor";
 import { METADATA_FLUJO, sesionYAcceso } from "@/lib/invierte-v2/paginas";
 import { MarcoInvierte } from "@/components/invierte-v2/MarcoInvierte";
@@ -19,7 +20,7 @@ export default async function PerfilPage() {
   if (!user || !acceso) notFound();
   const admin = createServiceClient();
   if (!(await ultimaOrdenDe(admin, user.id))) redirect(URL_INVIERTE);
-  const c = await contextoPerfil(admin, user.id);
+  const [c, pre] = await Promise.all([contextoPerfil(admin, user.id), leerPreaprobacion(admin, user.id)]);
   const g = c.guardado;
   return (
     <MarcoInvierte volver={null} pantalla="perfil" layout="formulario" cabecera={PERFIL_COPY.titulo} pc={{ sesionEmail: user.email ?? null }}>
@@ -28,6 +29,7 @@ export default async function PerfilPage() {
         objetivo: g?.objetivo ?? null, preocupaciones: g?.preocupaciones ?? [], preaprobado: g?.preaprobado ?? null,
         montoPreaprobadoUF: g?.montoPreaprobadoUF ?? null, pieTiene: g?.pieTiene ?? null, rentaCLP: g?.rentaCLP ?? null,
         otrasCuotasCLP: g?.otrasCuotasCLP ?? null, noDiceRenta: g?.noDiceRenta ?? false,
+        puedeSubirPreaprobacion: pre.estado === "subir" || pre.estado === "por_corregir" || pre.estado === "explicando",
       }} />
     </MarcoInvierte>
   );

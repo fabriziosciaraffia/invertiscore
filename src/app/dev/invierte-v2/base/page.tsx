@@ -36,7 +36,7 @@ const OTRAS: Base["otras"] = [
 
 const conAlMes = (e: Omit<Base["elegidos"][number], "alMesEnCambio">): Base["elegidos"][number] => ({ ...e, alMesEnCambio: e.lineas.some((l) => /al mes$/.test(l)) });
 
-export default function BaseDemo({ searchParams }: { searchParams: { vista?: string } }) {
+export default function BaseDemo({ searchParams }: { searchParams: { vista?: string; pre?: string } }) {
   if (process.env.NODE_ENV === "production" && process.env.VERCEL_ENV !== "preview") notFound();
   if (searchParams.vista === "actualizado") {
     const r: PerfilActualizado = {
@@ -56,6 +56,7 @@ export default function BaseDemo({ searchParams }: { searchParams: { vista?: str
     orden: { id: "o", nombre: "María José Fernández Valdivieso", firmadoAt: "2026-11-15T15:00:00Z" } as OrdenInv,
     perfil: { topeUF: 3500, comunas: ["Pedro Aguirre Cerda", "Estación Central", "Independencia"] } as PerfilInv,
     elegidos: (seis ? ELEGIDOS : ELEGIDOS.slice(0, 4)).map(conAlMes), otras: OTRAS, whatsapp: "+56912345678",
+    preaprobacion: searchParams.pre === "corregir" ? "por_corregir" : searchParams.pre === "aprobada" ? "aprobada" : "subir",
   };
   return (
     <MarcoInvierte volver={null} pantalla="base" layout="contenido" cabecera={BASE_COPY.hola("María José")} pc={{ sesionEmail: "muestra@ejemplo.cl" }}>

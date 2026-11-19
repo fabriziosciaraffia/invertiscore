@@ -16,6 +16,7 @@ import {
 import { fmtUF } from "@/lib/invierte-v2/opciones";
 import { IndicadorPasosPerfil } from "./IndicadorPasos";
 import { URL_PERFIL_ACTUALIZADO } from "@/lib/invierte-v2/base";
+import { SubirPreaprobacion } from "./Preaprobacion";
 
 const P1 = PERFIL_COPY.p1;
 const P2 = PERFIL_COPY.p2;
@@ -34,6 +35,8 @@ export interface InicialPerfil {
   rentaCLP: number | null;
   otrasCuotasCLP: number | null;
   noDiceRenta: boolean;
+  /** Si todavía no hay una preaprobación vigente subida (entrega 3): con «Tengo», el bloque para subirla aquí. */
+  puedeSubirPreaprobacion?: boolean;
 }
 
 const soloDigitos = (s: string) => s.replace(/[^\d]/g, "");
@@ -186,6 +189,8 @@ export function PerfilForm({ inicial }: { inicial: InicialPerfil }) {
               <div className="iv2-campo-uf"><span aria-hidden="true">UF</span><input id="iv2-pie" className="inv-campo" inputMode="numeric" value={pie} onChange={(e) => setPie(conPuntos(e.target.value))} data-inv2="pie" /></div>
             </div>
           )}
+          {/* Lámina 3.1-perfil-paso2-con-preaprobacion: se puede subir aquí («ahora o después»); si la sube, se salta la 3.4. */}
+          {inicial.puedeSubirPreaprobacion && <SubirPreaprobacion variante="perfil" />}
           <p className="iv2-info iv2-porque-azul"><b>Por qué te la pedimos.</b> Los vendedores la exigen para recibir una oferta o agendar una visita. Con ella llegas con respaldo.</p>
         </>
       ) : preaprobado ? (

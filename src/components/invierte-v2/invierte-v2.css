@@ -433,3 +433,32 @@
 /* «¿Cuál dejas?»: la ventana mide lo que su lista (como mucho seis), no la pantalla entera. */
 .iv2-doc:has(.iv2-dejar) { height: auto; max-height: calc(100dvh - 70px); }
 @media (min-width: 768px) { .iv2-doc:has(.iv2-dejar) { width: 480px; height: auto; max-height: calc(100dvh - 48px); } }
+
+/* ── LA PREAPROBACIÓN (entrega 3, 19-nov-2026; láminas 3.4-preaprobacion y 3.4-preaprobacion-estados) ── */
+/* «Por qué te la pedimos»: explica un porqué, así que va con fondo azul claro y sin borde (LEEME de las láminas). */
+.iv2-por-que { border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 6px; background: rgba(141, 176, 227, 0.10); }
+[data-theme="light"] .iv2-por-que { background: #EEF2F8; }
+.iv2-caja-archivo { box-sizing: border-box; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 22px 16px; min-height: 88px; justify-content: center;
+  border: 1.5px dashed #A8B0BC; border-radius: 14px; text-align: center; cursor: pointer; }
+.iv2-caja-archivo:focus-within { outline: 2px solid var(--franco-text); outline-offset: 2px; }
+.iv2-caja-lista { border-style: solid; border-color: var(--franco-text); }
+.iv2-caja-t { font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+.iv2-subir-perfil { display: flex; flex-direction: column; gap: 8px; }
+/* La tarjeta del estado: agrupa, así que va con borde. */
+.iv2-tarjeta-estado { border: 1px solid var(--franco-border); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.iv2-estado-t { margin: 0; font-size: 16px; font-weight: 700; line-height: 1.25; }
+.iv2-chip-arriba { margin-top: 0; }
+.iv2-tarjeta-estado .iv2-secundario { margin-top: 4px; }
+.iv2-doc-img { display: block; max-width: 100%; height: auto; margin: 0 auto; border-radius: 8px; }
+/* «Lo que te toca hoy» en la base (lámina 3.3-base): borde de tinta, el rótulo chico, el texto y el botón rojo. */
+.iv2-toca { box-sizing: border-box; border: 1.5px solid var(--franco-text); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 10px; background: var(--franco-card); }
+.iv2-toca-et { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase; color: var(--franco-text-secondary); }
+.iv2-toca-t { margin: 0; font-size: 16px; font-weight: 700; line-height: 1.25; }
+.iv2-toca .inv-principal { min-height: 46px; font-size: 14px; }
+@media (min-width: 1024px) {
+  .iv2-toca-fila { display: flex; justify-content: space-between; align-items: center; gap: 20px; }
+  .iv2-toca-t { font-size: 18px; }
+  .iv2-toca .inv-principal { padding: 0 28px; white-space: nowrap; }
+}
+/* «Subir» de la preaprobación en «Tus documentos»: en rojo, como la lámina (es la acción principal de esa pantalla). */
+.iv2-accion-roja, [data-theme="light"] .iv2-accion-roja { color: var(--signal-red, #C8323C); }

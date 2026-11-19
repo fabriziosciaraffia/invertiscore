@@ -25,7 +25,7 @@ export const TIPOS_CON_BAJA: ReadonlySet<TipoCorreo> = new Set<TipoCorreo>(["che
  */
 export const MARCA_ELIMINACION = "eliminacion_solicitada_at";
 export const TIPOS_QUE_FRENA_LA_ELIMINACION: ReadonlySet<TipoCorreo> = new Set<TipoCorreo>([
-  "bienvenida", "informe_listo", "pago_fallido", "checkout_abandonado", "recordatorio_pack", "aviso_pedido", "pregunta_horizonte", "premio_referido", "plan_aumento", "tarjeta_registrada", "invierte_anuncio", "invierte_cambio",
+  "bienvenida", "informe_listo", "pago_fallido", "checkout_abandonado", "recordatorio_pack", "aviso_pedido", "pregunta_horizonte", "premio_referido", "plan_aumento", "tarjeta_registrada", "invierte_anuncio", "invierte_cambio", "invierte_preaprobacion",
 ]);
 
 /** ¿La cuenta pidió eliminarse? (la marca en su app_metadata). */

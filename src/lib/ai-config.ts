@@ -10,3 +10,10 @@
  * - claude-sonnet-4-20250514 → retirado 2026-06-15 → claude-sonnet-4-6
  */
 export const CLAUDE_MODEL = "claude-sonnet-4-6";
+
+/**
+ * La lectura de documentos de Invierte con Franco (la preaprobación, entrega 3, 19-nov-2026): transcribe banco, monto, vigencia
+ * y titular de un PDF o una foto. Va aparte de CLAUDE_MODEL porque es otra tarea (leer un documento, no escribir prosa) y no
+ * debe cambiar si cambia el modelo de la prosa, ni al revés. Tarifa en costo-ia.ts.
+ */
+export const CLAUDE_MODEL_DOCUMENTOS = "claude-opus-5-5";

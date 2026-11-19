@@ -14,6 +14,8 @@ import { CLAVE_WHATSAPP_FRANCO, numeroWhatsapp } from "./base";
 import { lineaCambio, type TipoCambio, type Vigente } from "./cambios";
 import { aOpcion, calcularOpciones, filaEntrada, leerPerfilInv, tareasGestionar, type CambioPerfil, type PerfilInv } from "./perfil-servidor";
 import { anotar, ultimaOrdenDe, type ContextoPedido, type OrdenInv } from "./servidor";
+import { leerPreaprobacion } from "./preaprobacion-servidor";
+import type { EstadoVisible } from "./preaprobacion";
 
 const T_DEPTOS = "inv_deptos";
 
@@ -55,12 +57,14 @@ export interface Base {
   /** Las otras opciones que convienen y le alcanzan, de mejor a peor puntaje. */
   otras: { avisoId: string; datos: DatosDepto }[];
   whatsapp: string | null;
+  /** La preaprobación (entrega 3): decide «Lo que te toca hoy». */
+  preaprobacion: EstadoVisible;
 }
 
 export async function leerBase(admin: SupabaseClient, userId: string): Promise<Base | null> {
-  const [{ data }, orden, perfil, whatsapp] = await Promise.all([
+  const [{ data }, orden, perfil, whatsapp, pre] = await Promise.all([
     admin.from(T_DEPTOS).select("aviso_id, estado, alcanza, datos, vigente, elegido_at").eq("user_id", userId).in("estado", ["elegido", "opcion"]),
-    ultimaOrdenDe(admin, userId), leerPerfilInv(admin, userId), numeroFranco(admin),
+    ultimaOrdenDe(admin, userId), leerPerfilInv(admin, userId), numeroFranco(admin), leerPreaprobacion(admin, userId),
   ]);
   if (!orden) return null;
   const filas = data ?? [];
@@ -88,7 +92,7 @@ export async function leerBase(admin: SupabaseClient, userId: string): Promise<B
     .filter((f) => f.estado === "opcion" && f.alcanza === true && (f.datos as DatosDepto | null)?.veredicto === "COMPRAR")
     .map((f) => ({ avisoId: f.aviso_id as string, datos: (f.datos ?? {}) as DatosDepto }))
     .sort((a, b) => (b.datos.score ?? 0) - (a.datos.score ?? 0));
-  return { orden, perfil, elegidos, otras, whatsapp };
+  return { orden, perfil, elegidos, otras, whatsapp, preaprobacion: pre.estado };
 }
 
 // ── SUMAR UN DEPTO ───────────────────────────────────────────────────────────

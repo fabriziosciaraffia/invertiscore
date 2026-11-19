@@ -6,7 +6,7 @@ import { cuentasDePruebaSinCorreo, destinoBloqueado, excepcionCopiaOrden, TIPO_C
 import { conBajaDeCorreos, eliminacionPedida, TIPOS_CON_BAJA, TIPOS_QUE_FRENA_LA_ELIMINACION } from "./correo-baja";
 import { createServiceClient as adminCorreo } from "./supabase/service";
 import { correoRecordatorioPack } from "./lo-que-sigue/recordatorio";
-import { correoAlertaCron, correoResumenCrons, correoAlertaPago, correoAlertaPagoFallido, correoBienvenida, correoBoleta, correoCheckoutAbandonado, correoEliminacionInterna, correoEliminacionUsuario, correoAvisoPedido, correoInformeListo, correoPagoConfirmado, correoPagoFallido, correoPlanAumento, correoPremioReferido, correoTarjetaRegistrada, correoInscripcionInvierte, correoAnuncioInvierte, correoCopiaOrden, correoCambiosInvierte } from "./email/correos";
+import { correoAlertaCron, correoResumenCrons, correoAlertaPago, correoAlertaPagoFallido, correoBienvenida, correoBoleta, correoCheckoutAbandonado, correoEliminacionInterna, correoEliminacionUsuario, correoAvisoPedido, correoInformeListo, correoPagoConfirmado, correoPagoFallido, correoPlanAumento, correoPremioReferido, correoTarjetaRegistrada, correoInscripcionInvierte, correoAnuncioInvierte, correoCopiaOrden, correoCambiosInvierte, correoPreaprobacionInvierte } from "./email/correos";
 
 /** Quién recibe el correo, para atar el evento a su persona de PostHog. Sin id, se deriva del correo. */
 export interface CorreoOpts {
@@ -543,6 +543,19 @@ export async function sendCambiosInvierte(p: { to: string; userId: string; nombr
     return !res.error && !!res.data;
   } catch (error) {
     console.error("[invierte_cambio] no salió:", error);
+    return false;
+  }
+}
+
+/** Invierte con Franco: la preaprobación revisada (aprobada o por corregir). Una por documento y resultado (idempotente). */
+export async function sendPreaprobacionInvierte(p: { to: string; userId: string; documentoId: string } & Parameters<typeof correoPreaprobacionInvierte>[0]): Promise<boolean> {
+  const { subject, html } = correoPreaprobacionInvierte({ ...p, sitio: SITE_URL });
+  try {
+    const res = await enviarCorreo("invierte_preaprobacion", p.userId, { from: FROM_EMAIL, to: p.to, subject, html }, { idempotencyKey: `invierte-preaprob-${p.documentoId}-${p.tipo}` });
+    if (res.error) console.error("[invierte_preaprobacion] no salió:", res.error.message);
+    return !res.error && !!res.data;
+  } catch (error) {
+    console.error("[invierte_preaprobacion] no salió:", error);
     return false;
   }
 }

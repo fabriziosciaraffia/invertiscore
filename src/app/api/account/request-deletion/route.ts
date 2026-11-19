@@ -10,6 +10,7 @@ import { nombreReal } from "@/lib/welcome";
 import { cerrarTodo } from "@/lib/subscriptions/flow-vivas";
 import { puertaFlow } from "@/lib/subscriptions/flow-puerta";
 import { MARCA_ELIMINACION } from "@/lib/correo-baja";
+import { borrarArchivosPreaprobacion } from "@/lib/invierte-v2/preaprobacion-servidor";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PEDIR LA ELIMINACIÓN DE LA CUENTA (05-nov-2026, auditoría de promesas parte 2, decisión de Fabrizio). El borrado lo hace
@@ -86,6 +87,14 @@ export async function POST() {
       userId: user.id,
       extra: { baja: eBaja?.message ?? null, marca: eMarca?.message ?? null },
     });
+  }
+
+  // (4) Invierte con Franco (entrega 3, 19-nov-2026): los archivos de la preaprobación son datos sensibles y no esperan al borrado
+  // a mano: salen del bucket ahora (las filas se van con la cuenta, en cascada). Un fallo no frena el pedido: queda en Sentry.
+  try {
+    await borrarArchivosPreaprobacion(admin, user.id);
+  } catch (e) {
+    captureApiWarning("Eliminación pedida: no se pudieron borrar los archivos de la preaprobación", { ruta: "POST /api/account/request-deletion", operacion: "borrar-preaprobacion", userId: user.id, extra: { error: e instanceof Error ? e.message : String(e) } });
   }
 
   const flowTexto = cierre.ok
