@@ -667,7 +667,9 @@ export async function runInvierteV2(): Promise<{ hard: number }> {
       if (!/\{alCerrar && \(\s*<button type="button" className="iv2-cab-x" onClick=\{alCerrar\}/.test(contacto) || !/alCerrar=\{alCerrar\} \/>/.test(codigo("src/components/invierte-v2/HojaContacto.tsx"))) F("15 · el contacto del PC no tiene la ✕ en la fila de arriba");
       const sonda = leer("scripts/eval/golden/invierte-v2-alto-sonda.ts");
       for (const m of ["w: 390, h: 844", "w: 360, h: 740", "w: 1366, h: 650", "w: 1280, h: 610", "w: 1920, h: 960"]) if (!sonda.includes(m)) F(`15 · la sonda de alto no mide ${m}`);
-      if (!/\["contacto", "orden", "preguntas"\]/.test(sonda) || !/\["contacto", "orden", "preguntas"\]/.test(leer("src/app/dev/invierte-v2/page.tsx"))) F("15 · la sonda de alto no mide las tres ventanas");
+      // ⚠ ACTA (19-nov-2026, láminas del 19-nov): la sonda suma la ventana de comparar (la tabla del resultado a pedido, desde
+      // /dev/invierte-v2/resultado); las tres de antes siguen saliendo de /dev/invierte-v2.
+      if (!/\["contacto", "orden", "preguntas", "comparar"\]/.test(sonda) || !/\["contacto", "orden", "preguntas"\]/.test(leer("src/app/dev/invierte-v2/page.tsx")) || !/dev\/invierte-v2\/resultado\?n=4/.test(sonda)) F("15 · la sonda de alto no mide las cuatro ventanas");
     }
 
     // ── 16 · LOS AJUSTES DE LA ETAPA 1 (18-nov-2026): el PDF se abre y /invierte es la dirección única del flujo ──

@@ -21,7 +21,8 @@ import { join } from "node:path";
 
 const arg = (k: string) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : undefined; };
 const BASE = (arg("--base") ?? "http://localhost:3000").replace(/\/$/, "");
-const ESTADOS = ["contacto", "orden", "preguntas"] as const;
+// «comparar» (láminas del 19-nov-2026): la tabla del resultado a pedido, que se abre en ventana desde /dev/invierte-v2/resultado.
+const ESTADOS = ["contacto", "orden", "preguntas", "comparar"] as const;
 const MEDIDAS = [
   { n: "390×844", w: 390, h: 844, movil: true },
   { n: "360×740", w: 360, h: 740, movil: true },
@@ -51,7 +52,11 @@ const MEDIR = `((movil) => {
   const todos = Array.from(panel.querySelectorAll('*'));
   const fuentes = new Set(todos.filter((el) => (el.textContent || '').trim() && el.children.length === 0).map((el) => getComputedStyle(el).fontFamily));
   const malas = Array.from(fuentes).filter((f) => !/Inter/.test(f) || /mono|serif(?!-)|Source Serif|JetBrains/i.test(f.replace(/sans-serif/g, '')));
-  const anchos = todos.filter((el) => { const q = el.getBoundingClientRect(); return q.width > 0 && (q.right > r.right + 0.5 || q.left < r.left - 0.5); }).map((el) => (el.textContent || el.className).toString().trim().slice(0, 40));
+  // ⚠ ACTA (19-nov-2026, «comparar»): lo que vive dentro de un contenedor que se desliza de lado DENTRO de la ventana (la tabla de
+  // comparar en el celular: tres columnas a la vista y «Desliza para ver el resto») no se sale: el scroll va adentro. Ese
+  // contenedor sí tiene que caber.
+  const deslizable = (el) => { for (let a = el.parentElement; a && a !== panel; a = a.parentElement) { const ox = getComputedStyle(a).overflowX; if ((ox === 'auto' || ox === 'scroll') && a.scrollWidth > a.clientWidth) return true; } return false; };
+  const anchos = todos.filter((el) => { const q = el.getBoundingClientRect(); return q.width > 0 && !deslizable(el) && (q.right > r.right + 0.5 || q.left < r.left - 0.5); }).map((el) => (el.textContent || el.className).toString().trim().slice(0, 40));
   const chicos = movil ? Array.from(panel.querySelectorAll('button, input:not([type=checkbox]), a, label.iv2-casilla')).filter((el) => { const q = el.getBoundingClientRect(); return q.height > 0 && q.height < 44 && !el.closest('.iv2-doc-texto'); }).map((el) => (el.textContent || el.getAttribute('aria-label') || el.tagName).trim().slice(0, 30) + ' (' + Math.round(el.getBoundingClientRect().height) + ')') : [];
   return {
     vh: innerHeight, vw: innerWidth,
@@ -85,9 +90,13 @@ async function main(): Promise<void> {
       page.on("console", (msg: any) => { if (msg.type() === "error" && !/Failed to load resource|net::ERR_FAILED|posthog|sentry/i.test(msg.text())) errores.push(msg.text().slice(0, 120)); });
       page.on("pageerror", (e: any) => errores.push(String(e?.message ?? e).slice(0, 120)));
       for (const e of ESTADOS) {
-        const url = `${BASE}/dev/invierte-v2?estado=${e}`;
+        const url = e === "comparar" ? `${BASE}/dev/invierte-v2/resultado?n=4` : `${BASE}/dev/invierte-v2?estado=${e}`;
         const res = await page.goto(url, { waitUntil: "load", timeout: 120_000 }).catch(() => null);
         if (!res || res.status() !== 200) throw new NoCorrio(`${url} respondió ${res?.status() ?? "sin respuesta"}`);
+        if (e === "comparar") {
+          const enlace = page.locator('[data-inv2="comparar"]:visible').first();
+          await enlace.click({ timeout: 30_000 }).catch(() => { throw new NoCorrio(`${url}: no está «Comparar los N lado a lado»`); });
+        }
         await page.waitForSelector(".iv2-hoja, .iv2-doc", { timeout: 30_000 }).catch(() => { throw new NoCorrio(`${url}: no se abrió la ventana`); });
         await page.waitForTimeout(400);
         await page.evaluate("document.fonts.ready");
@@ -117,7 +126,7 @@ async function main(): Promise<void> {
 main()
   .then(() => {
     if (fallas.length) { console.log(`\n✗ ${fallas.length} falla(s):\n  ${fallas.join("\n  ")}`); process.exit(1); }
-    console.log("\n✓ las tres ventanas caben en las cinco medidas, con el botón a la vista");
+    console.log("\n✓ las cuatro ventanas caben en las cinco medidas, con el botón a la vista");
   })
   .catch((e) => {
     if (fallas.length) console.log(`\n✗ ${fallas.length} falla(s) antes de cortarse:\n  ${fallas.join("\n  ")}`);

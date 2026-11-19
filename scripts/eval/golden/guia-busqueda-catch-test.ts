@@ -250,7 +250,9 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
     // INVIERTE-V2-E2 §8. Se reescribe con su excepción, no se afloja.
     const CARRIL = "src/lib/invierte-v2/carril-servidor.ts";
     if (/\bbajarFicha\b|\bleerFicha\(|\bchequearPublicacion\(/.test(s) && !ANALIZAR_ESTE.includes(f) && f !== "src/app/api/lo-que-sigue/quiero-verlo/route.ts" && f !== RELLENO && f !== CARRIL) F(`3 · ${f} entra a la ficha por fuera de la guía, de «Ver este depto», de «Quiero verlo», del relleno por Decodo y del carril de Invierte`);
-    if (f === CARRIL && (!/\{ tope: TOPE_CARRIL_POR_HORA \}/.test(s) || /lecturas_ficha/.test(s) || /\bchequearPublicacion\(/.test(s))) F("3 · el carril de Invierte entra a la ficha sin su propio tope, con la bitácora de las personas o por el chequeo de la guía");
+    // ⚠ ACTA (19-nov-2026, láminas del 19-nov, entregas 2 y 3): el carril además dice su puerta (`puerta: "invierte"`) para guardar las fotos, el texto y
+    // la dirección del mismo 200 (detalle-ficha.ts); el tope sigue siendo el suyo.
+    if (f === CARRIL && (!/\{ tope: TOPE_CARRIL_POR_HORA(?:, puerta: "invierte")? \}/.test(s) || /lecturas_ficha/.test(s) || /\bchequearPublicacion\(/.test(s))) F("3 · el carril de Invierte entra a la ficha sin su propio tope, con la bitácora de las personas o por el chequeo de la guía");
     if (f === RELLENO && (/\bbajarFicha\b|proxyDispatcher/.test(s) || !/bajarFichaRelleno, new Date\(\), \{ tope: RITMO_RELLENO_POR_HORA \}/.test(s))) F("3 · el relleno entra a la ficha por la bajada de las personas o sin su propio tope");
     // ⚠ ACTA (03-nov-2026, goal «el negociado se comparte con su verdad completa») · la verificación de un negociado compartido
     // (src/lib/explorar/negociado-hoy.ts) arma el informe con `antiguedadDelAviso` SIN LECTURA —`{ leida: false, anio: null }`:

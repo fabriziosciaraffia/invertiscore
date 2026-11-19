@@ -1,11 +1,15 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// TIER INVIERTE-V2-E2 · Invierte con Franco, comprador · etapa 2, entrega 1 (18-nov-2026; §11, láminas del 19-nov-2026): el perfil, hasta cuánto puede comprar,
+// TIER INVIERTE-V2-E2 · Invierte con Franco, comprador · etapa 2, entrega 1 (18-nov-2026; §11 y §12, láminas del 19-nov-2026): el perfil, hasta cuánto puede comprar,
 // el resultado (los tres casos y el porqué), las etiquetas y la lectura por reglas, la elección, /invierte, y los detalles sin
 // gastar créditos (charge_mode 'invierte') con su categoría propia en los paneles. 0 tokens.
 // ─────────────────────────────────────────────────────────────────────────────
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import { hastaCuanto, creditoPorRenta, validarPerfil, comunasPrecargadas, piePrecargado, lineaTope, REGLA_TOPE, PERFIL_COPY } from "../../../src/lib/invierte-v2/perfil";
+import { hastaCuanto, creditoPorRenta, validarPerfil, comunasPrecargadas, piePrecargado, lineaTope, REGLA_TOPE, PERFIL_COPY, DONDES } from "../../../src/lib/invierte-v2/perfil";
+import { ALTERNATIVAS_COPY as A12, MAX_RECOMENDADOS, cuantasPedir, cupoUsado, indicadorAlternativa, lineaPrecioDistancia, nivelDelBloque } from "../../../src/lib/invierte-v2/alternativas";
+import { MAX_FOTOS, parsearDetalleFicha } from "../../../src/lib/guia/detalle-ficha";
+import { leerFicha } from "../../../src/lib/guia/publicacion";
+import { MAX_FOTOS_VISTA, pedidoFoto, respuestaFotoValida } from "../../../src/lib/invierte-v2/fotos";
 import {
   elegirOpciones, etiquetar, casoDe, porQueNoAlcanza, vsParecidos, textoMetro, textoAlMes, textoEtiqueta, estaCerca, UMBRAL_CERCA_PCT, lecturaDeFranco, MAX_ACTIVOS, MAX_OPCIONES, MIN_PARECIDOS,
   RESULTADO_COPY, fmtUF, type OpcionDepto,
@@ -141,7 +145,9 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (sobra.t !== "Te sobran $72.058" || sobra.pones || pone.t !== "Pones $62.000" || !pone.pones) F("3 · «Al mes» no dice «Te sobran $X» / «Pones $Y» (en rojo)");
       if (textoEtiqueta("menos_al_mes", { flujoCLP: 72058 }) !== "El que más te deja al mes" || textoEtiqueta("menos_al_mes", { flujoCLP: -62000 }) !== "El que menos te pide al mes" || textoEtiqueta("mejor_precio", { flujoCLP: 72058 }) !== "Mejor precio frente a sus parecidos") F("3 · la etiqueta del mejor flujo no cambia según deje plata o no");
       const res = codigo("src/components/invierte-v2/ResultadoOpciones.tsx");
-      if (!/const m = textoAlMes\(o\); return \{ t: m\.pones \? <span className="iv2-pones"/.test(res) || !/textoEtiqueta\(p\.etiquetas\[o\.avisoId\]/.test(res) || /ETIQUETAS\[/.test(res)) F("3 · la tabla o la lista no usan «Al mes» en rojo o la etiqueta según el flujo");
+      // ⚠ ACTA (19-nov-2026, láminas del 19-nov, entregas 2 y 3): la lista se reemplazó por las tarjetas cortas: cada alternativa dice UN indicador contra el
+      // suyo (indicadorAlternativa), no la etiqueta. «Al mes» en rojo sigue en la tabla a pedido y en el elegido.
+      if (!/const m = textoAlMes\(o\); return \{ t: m\.pones \? <span className="iv2-pones"/.test(res) || !/const m = textoAlMes\(entrada\); return m\.pones \? <span className="iv2-pones">/.test(res) || !/indicadorAlternativa\(o, entrada, grupo,/.test(res) || /ETIQUETAS\[/.test(res)) F("3 · la tabla o el elegido no usan «Al mes» en rojo, o la alternativa no dice su indicador");
       if (!/\.iv2-pones \{ color: var\(--signal-red/.test(leer("src/components/invierte-v2/invierte-v2.css"))) F("3 · «Pones» no va en rojo");
       const base = codigo("src/components/invierte-v2/VistaBase.tsx"); // ⚠ ACTA (19-nov-2026): lo que dibuja la base vive en VistaBase (la usan la página y /dev/invierte-v2/base)
       // ⚠ ACTA (19-nov-2026, base completa): los datos del depto vienen en `d.datos` (base-servidor › leerBase).
@@ -178,7 +184,9 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (/from\(T_DEPTOS\)\.delete/.test(srv) || !/alcanza: o\.alcanza, fuera_de_alcance_at: o\.alcanza \? null : ahora/.test(srv)) F("4 · lo que deja de alcanzar se borra en vez de marcarse");
       // ⚠ ACTA (18-nov-2026, pregunta de Fabrizio por el sexto depto) · lo elegido que salió del top de Franco sigue en la tabla
       // (al final, marcado) y no se marca fuera de alcance por no aparecer: solo por precio.
-      if (!/const faltan = \(previos \?\? \[\]\)\.filter\(\(p\) => p\.estado === "elegido" && !deFranco\.some/.test(srv) || !/const opciones = \[\.\.\.deFranco, \.\.\.extras\];/.test(srv)) F("4 · lo que ya eligió y salió del top desaparece de la tabla");
+      // ⚠ ACTA (19-nov-2026, láminas del 19-nov, entregas 2 y 3): el resultado muestra el de entrada y las recomendaciones de Franco (como mucho tres, contando las
+      // que ya eligió); lo sumado desde el mapa no aparece y la elección no lo suelta (solo suelta las del resultado).
+      if (!/const elegidasFranco = filasPrev\.filter\(\(x\) => x\.f\.estado === "elegido"\);/.test(srv) || !/\.in\("origen", \["entrada", "franco"\]\)\.not\("aviso_id", "in"/.test(srv)) F("4 · las recomendaciones que ya eligió desaparecen del resultado, o la elección suelta lo sumado desde el mapa");
       if (/!opciones\.some\(\(o\) => o\.avisoId === p\.aviso_id\) && p\.alcanza/.test(srv)) F("4 · salir del top de Franco se marca como fuera de alcance");
       if (!/accion: "depto_presentado"/.test(srv) || !/ordenId: orden\.id, actor: "sistema", accion: "depto_presentado"/.test(srv)) F("4 · lo que Franco le presentó no queda con la orden en la bitácora");
       if (!/tipo: "avisar_alcance"/.test(srv)) F("4 · «Avísenme» no crea la tarea avisar_alcance");
@@ -263,7 +271,7 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       // El carril cuenta y anota en SU bitácora, nunca en la de las personas.
       const cs = codigo("src/lib/invierte-v2/carril-servidor.ts");
       if (!/from\("lecturas_invierte"\)\.select\("id", \{ count: "exact", head: true \}\)/.test(cs) || !/from\("lecturas_invierte"\)\.insert\(/.test(cs) || /lecturas_ficha/.test(cs)) F("8 · el carril cuenta o anota en la bitácora de las personas");
-      if (!/return error \|\| count == null \? Number\.POSITIVE_INFINITY : count;/.test(cs) || !/leerFicha\(ficha, "clic", almacen, bajarFicha, new Date\(\), \{ tope: TOPE_CARRIL_POR_HORA \}\)/.test(cs)) F("8 · el carril no usa su tope (o sin conteo no se da por lleno)");
+      if (!/return error \|\| count == null \? Number\.POSITIVE_INFINITY : count;/.test(cs) || !/leerFicha\(ficha, "clic", almacen, bajarFicha, new Date\(\), \{ tope: TOPE_CARRIL_POR_HORA(?:, puerta: "invierte")? \}\)/.test(cs)) F("8 · el carril no usa su tope (o sin conteo no se da por lleno)");
       // La ruta, en modo Invierte: lo preparado se abre ANTES de leer nada o de prepararlo; lo demás lee por el carril.
       const ruta = codigo("src/app/api/lo-que-sigue/guia/analizar/route.ts");
       const iYa = ruta.indexOf("const ya = await detallesPreparados(admin, user.id, b.avisoId);"), iMeta = ruta.indexOf("const ae = gratisInvierte ? null : await emitirEventoMeta("), iChq = ruta.indexOf("async chequear() {");
@@ -424,7 +432,8 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (!/\{base\.whatsapp && <a href=\{urlWhatsapp\(base\.whatsapp\)\} target="_blank"/.test(base)) F("9 · «Escribirle» aparece sin número configurado (o saca de la página)");
       if (/iv2-ind-barra|Te toca a ti|BASE_COPY\.teTocaATi|B\.teTocaATi/.test(base)) F("9 · la base muestra la barra de cuatro tramos o «Te toca a ti» (no se construyen en esta etapa)");
       const lb = codigo("src/lib/invierte-v2/base-servidor.ts");
-      if (!/f\.estado === "opcion" && f\.alcanza === true && \(f\.datos as DatosDepto \| null\)\?\.veredicto === "COMPRAR"/.test(lb)) F("9 · las otras opciones no son solo las que convienen y le alcanzan");
+      // ⚠ ACTA (19-nov-2026, láminas del 19-nov, entregas 2 y 3): «Otras opciones que convienen» son solo las recomendaciones de Franco, y nunca más del cupo.
+      if (!/f\.estado === "opcion" && f\.origen === "franco" && f\.alcanza === true && \(f\.datos as DatosDepto \| null\)\?\.veredicto === "COMPRAR"/.test(lb) || !/\.slice\(0, cuantasPedir\(elegidasFranco\)\);/.test(lb)) F("9 · las otras opciones no son solo las recomendaciones de Franco que convienen y le alcanzan, dentro del cupo de tres");
       const css = leer("src/components/invierte-v2/invierte-v2.css");
       if (!/\.iv2-base \{ display: grid; grid-template-columns: minmax\(0, 1fr\) 360px;/.test(css) || !/\.iv2-deptos \{ display: grid; grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/.test(css)) F("9 · la base del PC no va en dos columnas con los deptos de a dos");
       const menu = codigo("src/components/invierte-v2/MenuBase.tsx");
@@ -683,7 +692,7 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (!/invierte=\{modoInvierte \? null : invierte\}/.test(ltr) || !/\{modoInvierte && <BarraDetalles modo=\{modoInvierte\} \/>\}/.test(ltr) || !/\{modoInvierte && <AccionDetalles modo=\{modoInvierte\} \/>\}/.test(ltr)) F("11f · en modo Invierte no va la barra arriba y la acción abajo en vez de la franja");
       if (!/const desde = typeof searchParams\?\.desde === "string" \? searchParams\.desde : null;\s*return <InformeLtr id=\{params\.id\} desde=\{desde\} \/>;/.test(codigo("src/app/analisis/[id]/page.tsx"))) F("11f · la página del informe no le pasa de dónde viene");
       const mds = codigo("src/lib/invierte-v2/detalles-modo-servidor.ts");
-      if (!/if \(v\.estado === "ya"\) return \{ relacion: "suyo"/.test(mds) || !/if \(v\.estado !== "listo" \|\| !v\.alcanza \|\| v\.datos\?\.veredicto !== "COMPRAR" \|\| !v\.orden \|\| !v\.perfil\) return null;/.test(mds)) F("11f · «Te lo recomendamos» sin que dé Comprar y le alcance (o «Uno de tus deptos» sin estar en su base)");
+      if (!/if \(v\.estado === "ya"\) return \{ cabeza, relacion: "suyo"/.test(mds) || !/if \(v\.estado !== "listo" \|\| !v\.alcanza \|\| v\.datos\?\.veredicto !== "COMPRAR" \|\| !v\.orden \|\| !v\.perfil\) return null;/.test(mds)) F("11f · «Te lo recomendamos» sin que dé Comprar y le alcance (o «Uno de tus deptos» sin estar en su base)");
       const det = codigo("src/components/invierte-v2/DetallesInvierte.tsx");
       if (!/modo\.relacion === "suyo"\s*\? <span className="iv2-det-chip iv2-det-chip-suyo"[^>]*>\{D\.chipSuyo\}<\/span>\s*: <span className="iv2-det-chip iv2-det-chip-reco"[^>]*>\{D\.chipRecomendado\}<\/span>/.test(det)) F("11f · el chip no dice qué es el depto para la persona");
       if (!/<SumarDepto avisoId=\{modo\.avisoId\} etiqueta=\{D\.seguir\} origen="base" variante="principal"/.test(det) || !/\{D\.estadoSuyo\}/.test(det) || !/href=\{urlWhatsapp\(modo\.whatsapp\)\}/.test(det)) F("11f · la acción no es «Seguir con este» (recomendación) o su estado y «Escribirle a Franco» (suyo)");
@@ -727,6 +736,98 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       const qv = codigo("src/app/api/lo-que-sigue/quiero-verlo/route.ts");
       if (!/if \(await sinEnlaceAlPortal\(admin, user\.id\)\) return NextResponse\.json\(\{ error: "firmo" \}, \{ status: 403 \}\);/.test(qv) || qv.indexOf("sinEnlaceAlPortal(admin, user.id)") > qv.indexOf("interes_avisos")) F("11g · «Quiero verlo» le manda el enlace por correo a quien firmó");
       if (!/return \(await ultimaOrdenDe\(admin, userId\)\.catch\(\(\) => true\)\) != null;/.test(codigo("src/lib/invierte-v2/portal-servidor.ts"))) F("11g · la regla del portal no es «tiene una orden» (o ante un error muestra el enlace)");
+    }
+
+    // ── 12 · LÁMINAS DEL 19-nov-2026, ENTREGAS 2 Y 3: «¿Dónde buscamos?», las alternativas de la función con el tope de tres en
+    //        todo el flujo, el resultado nuevo (el elegido en grande, las alternativas en corto, la tabla a pedido) y las fotos ──
+    {
+      // 12a · El tope de tres: cuentan las de Franco como opción y las que ya eligió; sumar una no rellena el cupo.
+      if (MAX_RECOMENDADOS !== 3) F("12a · Franco recomienda más (o menos) de tres además del elegido");
+      if (cuantasPedir(0) !== 3 || cuantasPedir(2) !== 1 || cuantasPedir(3) !== 0 || cuantasPedir(5) !== 0) F("12a · el cupo no es «tres menos las que ya cuentan»");
+      if (cupoUsado([{ origen: "franco", estado: "opcion" }, { origen: "franco", estado: "elegido" }, { origen: "franco", estado: "descartado" }, { origen: "mapa", estado: "elegido" }, { origen: "entrada", estado: "elegido" }]) !== 2) F("12a · el cupo cuenta lo sumado desde el mapa, el de entrada o lo descartado (o no cuenta lo elegido)");
+      const ps = codigo("src/lib/invierte-v2/perfil-servidor.ts");
+      const calc = ps.slice(ps.indexOf("export async function calcularOpciones"), ps.indexOf("// ── LA ELECCIÓN"));
+      if (!/admin\.rpc\("invierte_alternativas", \{ p_aviso: p\.aviso, p_modo: p\.modo, p_tope: p\.tope, p_comunas: null, p_excluir: p\.excluir, p_max: p\.cuantas \}\)/.test(ps)) F("12a · las alternativas no salen de la función con «¿Dónde buscamos?», el tope, la exclusión y el cupo");
+      if (!/const cuantas = cuantasPedir\(elegidasFranco\.length \+ opcionesValidas\.length\);/.test(calc) || !/modo: perfil\.donde, tope, excluir, cuantas/.test(calc)) F("12a · se piden alternativas sin descontar las que ya cuentan (las elegidas y las opciones vigentes)");
+      if (!/if \(vale && elegidasFranco\.length \+ opcionesValidas\.length < MAX_RECOMENDADOS\) opcionesValidas\.push\(x\);\s*else descartar\.push\(x\.f\.aviso_id\);/.test(calc)) F("12a · una opción de más (o que dejó de valer) no se descarta");
+      if (!/x\.e\.veredicto === "COMPRAR" && Number\(x\.e\.fila\.precio_uf\) <= tope \+ 0\.5 && esNivel\(x\.f\.datos\?\.nivel\)/.test(calc)) F("12a · se queda una opción que ya no conviene, no le alcanza o no salió de la función");
+      if (!/\]\.filter\(\(x\): x is \{ o: OpcionDepto; nivel: NivelAlt \| null; dist: number \| null \} => !!x\.o\)\.slice\(0, MAX_RECOMENDADOS\);/.test(calc)) F("12a · el resultado puede mostrar más de tres de Franco");
+      if (!/\.filter\(\(f\) => f\.estado === "elegido" \|\| f\.estado === "opcion"\)\.map\(\(f\) => f\.aviso_id\), \.\.\.\(avisoEntrada \? \[avisoEntrada\] : \[\]\)/.test(calc)) F("12a · la función puede devolver deptos que ya están en su base");
+      if (!/if \(previo\) await admin\.from\(T_DEPTOS\)\.update\(\{ estado: "descartado", updated_at: [^}]*\}\)\.eq\("user_id", user\.id\)\.eq\("origen", "franco"\)\.eq\("estado", "opcion"\);/.test(ps)) F("12a · un perfil nuevo no descarta las opciones de Franco que no eligió");
+
+      // 12b · «¿Dónde buscamos?» reemplaza a «Comunas»: Cerca de este (marcado), En toda la comuna, Donde más convenga.
+      if (JSON.stringify(DONDES) !== '["cerca","comuna","convenga"]' || PERFIL_COPY.p1.donde !== "¿Dónde buscamos?" || PERFIL_COPY.p1.dondes.cerca !== "Cerca de este" || PERFIL_COPY.p1.dondes.comuna !== "En toda la comuna" || PERFIL_COPY.p1.dondes.convenga !== "Donde más convenga") F("12b · «¿Dónde buscamos?» no dice lo de la lámina");
+      if (PERFIL_COPY.p1.dondeLinea("cerca", "Ñuñoa") !== "Cerca del depto que elegiste en Ñuñoa, y parecidos en tamaño.") F("12b · la línea de «Cerca de este» no es la de la lámina");
+      const pf = codigo("src/components/invierte-v2/PerfilForm.tsx");
+      if (!/<Chips opciones=\{DONDES\} etiquetas=\{P1\.dondes\}/.test(pf) || /data-inv2="comuna"/.test(pf) || !/comunas, donde, objetivo,/.test(pf)) F("12b · el perfil todavía pregunta las comunas, o no manda «¿Dónde buscamos?»");
+      if (validarPerfil({ comunas: ["Ñuñoa"], donde: "convenga", objetivo: "arriendo", preocupaciones: [], preaprobado: "no", pieUF: 700, rentaCLP: 2000000 }).ok !== true || (validarPerfil({ comunas: ["Ñuñoa"], donde: "convenga", objetivo: "arriendo", preocupaciones: [], preaprobado: "no", pieUF: 700, rentaCLP: 2000000 }) as { pedido: { donde: string } }).pedido.donde !== "convenga") F("12b · «¿Dónde buscamos?» no llega al perfil guardado");
+      if (!/comunas: pedido\.comunas, donde: pedido\.donde,/.test(ps)) F("12b · el perfil no guarda «¿Dónde buscamos?»");
+
+      // 12c · Los textos del resultado dicen la verdad del nivel usado.
+      if (A12.titulo(3, "cerca", "Ñuñoa") !== "Tu depto te alcanza. Y hay 3 parecidos cerca que también convienen." || A12.titulo(0, "solo_elegido", "Ñuñoa") !== "Tu depto te alcanza." || A12.titulo(1, "comuna", "Ñuñoa") !== "Tu depto te alcanza. Y hay 1 parecido en Ñuñoa que también conviene.") F("12c · el título del resultado no es el de la lámina (o no dice el nivel)");
+      if (A12.subtitulo(3, "cerca", "cerca", "Ñuñoa") !== "Otros 3 parecidos, cerca del tuyo" || A12.subtitulo(2, "tres_km", "cerca", "Ñuñoa") !== "Otros 2 parecidos, un poco más lejos: a menos de 3 km del tuyo" || A12.subtitulo(2, "comuna", "cerca", "Ñuñoa") !== "Cerca del tuyo no hay otros que convengan; estos están en el resto de Ñuñoa" || A12.subtitulo(3, "perfil", "convenga", null) !== "Los que más convienen, parecidos al tuyo") F("12c · el subtítulo no dice la verdad del nivel usado");
+      if (A12.soloElegido !== "Hoy no hay otros parecidos que convengan. Te avisamos si aparece uno.") F("12c · sin alternativas, la línea no es la del LEEME");
+      if (nivelDelBloque(["cerca", "tres_km"]) !== "tres_km" || nivelDelBloque(["cerca", "comuna"]) !== "comuna" || nivelDelBloque([]) !== "solo_elegido" || nivelDelBloque([null]) !== "perfil" || nivelDelBloque(["perfil", "cerca"]) !== "perfil") F("12c · el nivel de un bloque mezclado no es el más lejano (o inventa uno)");
+      if (lineaPrecioDistancia(3180, 420, "Ñuñoa", "cerca") !== "UF 3.180 · a 4 cuadras del tuyo" || lineaPrecioDistancia(3180, 12300, "La Florida", "convenga") !== "UF 3.180 · en La Florida, a 12 km del tuyo" || lineaPrecioDistancia(3180, 800, "Ñuñoa", "convenga") !== "UF 3.180 · en Ñuñoa, a 0,8 km del tuyo") F("12c · la distancia no va en cuadras cerca y en comuna y km en «Donde más convenga»");
+
+      // 12d · El indicador único, por reglas y contra el suyo.
+      const ele12 = { precioUF: 3250, flujoCLP: -85000, score: 78 };
+      const grupo12 = [{ avisoId: "e", precioUF: 3250 }, { avisoId: "a", precioUF: 3180 }, { avisoId: "b", precioUF: 2940 }];
+      const per = (o: Partial<{ objetivo: "arriendo" | "plusvalia" | "ambas"; preocupaciones: ("poner_plata" | "no_arriende")[]; limitaPie: boolean }>) => ({ objetivo: "arriendo" as const, preocupaciones: [], limitaPie: false, ...o });
+      if (indicadorAlternativa({ avisoId: "a", precioUF: 3180, flujoCLP: -45000, score: 77 }, ele12, grupo12, per({})) !== "Te pide $40.000 menos al mes que el tuyo") F("12d · el indicador no dice lo que pide menos al mes, como la lámina");
+      if (indicadorAlternativa({ avisoId: "b", precioUF: 2940, flujoCLP: -90000, score: 76 }, ele12, grupo12, per({ limitaPie: true })) !== "El pie más bajo: UF 588") F("12d · si el pie es lo que lo limita, el indicador no dice el pie más bajo, como la lámina");
+      if (indicadorAlternativa({ avisoId: "b", precioUF: 3090, flujoCLP: -45000, score: 81 }, ele12, [{ avisoId: "b", precioUF: 3090 }, { avisoId: "c", precioUF: 3000 }], per({ objetivo: "plusvalia" })) !== "Cuesta UF 160 menos que el tuyo") F("12d · buscando plusvalía, el indicador no dice el precio, como la lámina");
+      if (indicadorAlternativa({ avisoId: "x", precioUF: 3300, flujoCLP: 20000, score: 70 }, { precioUF: 3250, flujoCLP: 90000, score: 80 }, [], per({})) !== "Te deja $20.000 al mes") F("12d · sin nada a favor, no dice lo que deja al mes sin compararlo (o inventa una ventaja)");
+
+      // 12e · La pantalla: un solo botón rojo, sin pestañas Lista/Comparar, la tabla en ventana, sin alternativas la línea.
+      const res12 = codigo("src/components/invierte-v2/ResultadoOpciones.tsx");
+      const ele = res12.slice(res12.indexOf("const alternativas = p.opciones.filter"));
+      if ((ele.match(/className="[^"]*\binv-principal\b/g) ?? []).length !== 1) F("12e · la elección no tiene un solo botón principal");
+      if (/vista-lista|vista-comparar|role="tablist"/.test(res12)) F("12e · todavía están las pestañas Lista/Comparar");
+      if (!/\{comparando && \(\s*<VentanaDocumento nombre="comparar" titulo=\{A\.compararTitulo\(listaOpciones\.length\)\}/.test(ele) || !/onClick=\{\(\) => setComparando\(true\)\} aria-haspopup="dialog" data-inv2="comparar">\{A\.comparar\(listaOpciones\.length\)\}/.test(ele)) F("12e · la tabla no se abre a pedido, en ventana, desde «Comparar los N lado a lado»");
+      if (!/\) : entrada \? \(\s*<p className="iv2-linea-chica iv2-res-solo" data-inv2="solo-elegido">\{A\.soloElegido\}<\/p>/.test(ele)) F("12e · sin alternativas no va solo el elegido con su línea");
+      if (!/data-inv2="subtitulo">\{A\.subtitulo\(alternativas\.length, p\.nivel, p\.donde, entrada\?\.comuna \?\? null\)\}/.test(ele)) F("12e · el subtítulo no sale del nivel usado");
+      if (/Lo que ve Franco|LO QUE VE FRANCO|loQueVe/i.test(res12)) F("12e · «Lo que ve Franco» aparece antes de que Fabrizio apruebe sus textos");
+      const opPag = codigo("src/app/invierte/opciones/page.tsx");
+      if (!/const fotos = await fotosDe\(createServiceClient\(\), r\.opciones\.map\(\(o\) => o\.avisoId\)\);/.test(opPag) || !/nivel=\{r\.nivel\} donde=\{r\.perfil\.donde\} distancias=\{r\.distancias\} fotos=\{fotos\}/.test(opPag)) F("12e · el resultado no recibe el nivel, la distancia y las fotos");
+
+      // 12f · Las fotos, el texto y la dirección: del mismo 200 de la ficha, sin un GET extra; nunca con la dirección de la fuente.
+      const img = (n: string) => `https://cdn.ejemplo.cl/fotos/${n}.jpg`;
+      const datos12 = { props: { pageProps: { initialState: { property: { property: { data: { description: "  Depto luminoso.\r\nCon bodega.  ", address: { street: "  Av. Siempre Viva   742 " }, multimedia: { images: [img("a"), img("a"), "http://inseguro.cl/x.jpg", "https://cdn.ejemplo.cl/video.mp4", img("b"), ...Array.from({ length: 45 }, (_, k) => img(`n${k}`))] } } } } } } } };
+      const html12 = `<html><script id="__NEXT_DATA__" type="application/json">${JSON.stringify(datos12)}</script></html>`;
+      const d12 = parsearDetalleFicha(html12);
+      if (!d12 || d12.fotos[0] !== img("a") || d12.fotos[1] !== img("b") || d12.fotos.length !== MAX_FOTOS || d12.fotos.some((u) => !u.startsWith("https://") || !/\.jpg$/.test(u))) F("12f · las fotos no salen limpias (https, imágenes, sin repetir, como mucho 40)");
+      if (d12?.descripcion !== "Depto luminoso.\nCon bodega." || d12?.direccion !== "Av. Siempre Viva 742") F("12f · el texto o la dirección no salen limpios");
+      if (parsearDetalleFicha("<html>sin datos</html>") !== null || parsearDetalleFicha(null) !== null) F("12f · una página sin datos inventa un detalle");
+      // leerFicha guarda el detalle del 200, con su puerta; una ficha «rara» no se guarda. Nota (mutación, 19-nov-2026): quitar el
+      // `rara ?` es EQUIVALENTE hoy —una página sin los datos de la ficha tampoco trae el bloque que lee parsearDetalleFicha—; el
+      // caso «rara» de abajo fija el resultado, no la línea.
+      const guardados: { aviso: string; puerta: string; fotos: number }[] = [];
+      const alm12 = {
+        async publicacion() { return null; }, async lecturasUltimaHora() { return 0; }, async anotar() {}, async cerrar() {}, async guardarPublicacion() {}, async despublicar() {}, async alertarBloqueo() {}, async guardarPublicador() {},
+        async guardarDetalle(aviso: string, d: { fotos: string[] }, puerta: string) { guardados.push({ aviso, puerta, fotos: d.fotos.length }); },
+      };
+      const htmlFicha = html12.replace("<html>", '<html><script>"initialState"</script>');
+      const bajar12 = async () => ({ status: 200, location: null, html: htmlFicha });
+      await leerFicha({ id: "av-1", url: "https://www.fuente.cl/venta/departamento/nunoa/o_1", edificio: "e" }, "relleno", alm12, bajar12);
+      await leerFicha({ id: "av-2", url: "https://www.fuente.cl/venta/departamento/nunoa/o_2", edificio: "e" }, "clic", alm12, bajar12, new Date(), { puerta: "invierte" });
+      await leerFicha({ id: "av-3", url: "https://www.fuente.cl/venta/departamento/nunoa/o_3", edificio: "e" }, "clic", alm12, async () => ({ status: 200, location: null, html: "<html>otra cosa</html>" }));
+      if (JSON.stringify(guardados.map((g) => [g.aviso, g.puerta])) !== '[["av-1","relleno"],["av-2","invierte"]]' || guardados[0]?.fotos !== MAX_FOTOS) F("12f · la lectura no guarda el detalle con su puerta (o guarda el de una ficha «rara»)");
+      if (!/leerFicha\(ficha, "clic", almacen, bajarFicha, new Date\(\), \{ tope: TOPE_CARRIL_POR_HORA, puerta: "invierte" \}\)/.test(codigo("src/lib/invierte-v2/carril-servidor.ts"))) F("12f · el carril no guarda el detalle como puerta de Invierte");
+      if (!/from\("publicacion_detalle"\)\.upsert\(/.test(codigo("src/lib/guia/ficha-servidor.ts"))) F("12f · el detalle no se guarda en publicacion_detalle");
+      const rel12 = leer("supabase/migrations/20261123_relleno_detalle_invierte.sql");
+      if (!/from public\.inv_deptos d[\s\S]*?where d\.estado in \('opcion', 'elegido'\)[\s\S]*?publicacion_detalle pd where pd\.aviso_id = s\.id and pd\.leido_at > now\(\) - interval '7 days'/.test(rel12) || !/-1 as prio/.test(rel12)) F("12f · el SQL del relleno no pone primero los deptos de Invierte sin fotos");
+
+      // 12g · Las fotos se ven solo con orden firmada, por la ruta propia; la página nunca lleva la dirección de la fuente.
+      if (pedidoFoto("4f543801-000f-4d45-87b8-b245b4b014fb", "0")?.i !== 0 || pedidoFoto("x", "0") !== null || pedidoFoto("4f543801-000f-4d45-87b8-b245b4b014fb", String(MAX_FOTOS_VISTA)) !== null || pedidoFoto("4f543801-000f-4d45-87b8-b245b4b014fb", "-1") !== null) F("12g · la ruta de fotos acepta un pedido raro");
+      if (!respuestaFotoValida("image/jpeg", 1000) || respuestaFotoValida("text/html", 10) || respuestaFotoValida("image/jpeg", 7 * 1024 * 1024)) F("12g · la ruta de fotos deja pasar algo que no es una imagen liviana");
+      const ruta12 = codigo("src/app/api/invierte-v2/foto/route.ts");
+      if (ruta12.indexOf("sinEnlaceAlPortal(admin, user.id)") < 0 || ruta12.indexOf("sinEnlaceAlPortal(admin, user.id)") > ruta12.indexOf('from("publicacion_detalle")') || !/if \(!user\) return NO_EXISTE\(\);/.test(ruta12)) F("12g · la ruta de fotos las entrega sin sesión o sin orden firmada");
+      if (/NextResponse\.redirect|json\(\{[^}]*url/.test(ruta12)) F("12g · la ruta de fotos le pasa al navegador la dirección de la fuente");
+      const fd = codigo("src/components/invierte-v2/FotosDepto.tsx");
+      if (!/src=\{urlFoto\(avisoId,/.test(fd) || !/if \(!n \|\| rota\) return null;/.test(fd) || !/onError=\{\(\) => setRota\(true\)\}/.test(fd)) F("12g · las fotos no van por la ruta propia, o una tarjeta sin fotos deja un hueco");
+      if (!/select\("aviso_id, fotos"\)/.test(codigo("src/lib/invierte-v2/fotos-servidor.ts")) || !/Math\.min\(\(f\.fotos \?\? \[\]\)\.length, MAX_FOTOS_VISTA\)/.test(codigo("src/lib/invierte-v2/fotos-servidor.ts"))) F("12g · a la pantalla llega algo más que cuántas fotos hay");
+      if (!/<FotosDepto avisoId=\{c\.avisoId\} n=\{c\.fotos\}/.test(codigo("src/components/invierte-v2/DetallesInvierte.tsx")) || !/\{modoInvierte && <CabezaDeDetalles modo=\{modoInvierte\} \/>\}/.test(codigo("src/app/analisis/[id]/informe-ltr.tsx"))) F("12g · los detalles desde Invierte no llevan las fotos arriba del informe");
     }
 
     // ── 7 · REINICIAR PRUEBA LIMPIA LA ETAPA 2 DE ESA PERSONA, Y SOLO DE ELLA ──
