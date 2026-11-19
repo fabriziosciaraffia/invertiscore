@@ -5,7 +5,7 @@
 // dice que está cargando.
 import { useEffect, useState } from "react";
 import { CargandoDetalles } from "./CargandoDetalles";
-import { abrirDetalles, prepararEnSegundoPlano } from "@/lib/invierte-v2/detalles-cliente";
+import { abrirDetalles, prepararEnSegundoPlano, urlDetallesInvierte } from "@/lib/invierte-v2/detalles-cliente";
 
 export function BotonDetalles({ avisoId, etiqueta, clase = "iv2-enlace-azul" }: { avisoId: string; etiqueta: string; clase?: string }) {
   const [estado, setEstado] = useState<"listo" | "abriendo" | "error">("listo");
@@ -13,7 +13,8 @@ export function BotonDetalles({ avisoId, etiqueta, clase = "iv2-enlace-azul" }: 
     if (estado === "abriendo") return;
     setEstado("abriendo");
     const id = await abrirDetalles(avisoId);
-    if (id) { window.location.assign(`/analisis/${id}`); return; }
+    // `?desde=invierte` (19-nov-2026): los detalles saben que se abrieron desde el flujo; qué es el depto lo decide el servidor.
+    if (id) { window.location.assign(urlDetallesInvierte(id)); return; }
     setEstado("error");
   }
   return (

@@ -14,7 +14,7 @@ import { useRouter } from "next/navigation";
 import { botonOcupado } from "@/lib/carga-global";
 import { ChipVeredicto } from "@/components/analysis/shared/ChipVeredicto";
 import { CargandoDetalles } from "./CargandoDetalles";
-import { abrirDetalles, prepararEnSegundoPlano } from "@/lib/invierte-v2/detalles-cliente";
+import { abrirDetalles, prepararEnSegundoPlano, urlDetallesInvierte } from "@/lib/invierte-v2/detalles-cliente";
 import type { Veredicto } from "@/lib/types";
 import { lineaTope, type Objetivo, type Preocupacion, type Tope } from "@/lib/invierte-v2/perfil";
 import {
@@ -71,7 +71,7 @@ export function ResultadoOpciones(p: PropsResultado) {
     if (abriendo) return;
     setAbriendo(o.avisoId);
     const id = await abrirDetalles(o.avisoId);
-    if (id) { window.location.assign(`/analisis/${id}`); return; }
+    if (id) { window.location.assign(urlDetallesInvierte(id)); return; }
     setError("No pudimos abrir los detalles. Intenta de nuevo.");
     setAbriendo(null);
   }

@@ -25,6 +25,12 @@ import { emitirVistaInforme } from "@/lib/meta/vista-informe";
 import { publicacionDelInforme } from "@/lib/guia/publicacion-portada";
 import { invierteDelInforme } from "@/lib/invierte/invierte-servidor";
 import { conFlujoV2 } from "@/lib/invierte-v2/informe";
+import { muestraMiInversion } from "@/lib/invierte-v2/menu-servidor";
+import { sinEnlaceAlPortal } from "@/lib/invierte-v2/portal-servidor";
+import { abiertoDesdeInvierte } from "@/lib/invierte-v2/detalles-modo";
+import { modoDetalles } from "@/lib/invierte-v2/detalles-modo-servidor";
+import { avisoDelInforme } from "@/lib/guia/publicacion-portada";
+import { AccionDetalles, BarraDetalles, CabeceraDetalles } from "@/components/invierte-v2/DetallesInvierte";
 import { informeBloqueado, rutaPagoBloqueado } from "@/lib/informe-bloqueado";
 import { InformeBloqueado } from "@/components/analysis/InformeBloqueado";
 import { etiquetaAnalisis } from "@/lib/format-direccion";
@@ -45,7 +51,7 @@ function formatFechaCorta(iso: string): string {
  * del informe, porque la ruta del demo pone la suya con el selector. El ACCESO del demo no depende
  * de esta bandera sino del id (`esDemo`), así que la fila se ve completa también por su URL.
  */
-export async function InformeLtr({ id, demo = false }: { id: string; demo?: boolean }) {
+export async function InformeLtr({ id, demo = false, desde = null }: { id: string; demo?: boolean; /** `?desde=` de la URL: «invierte» si se abrió desde el flujo de Invierte con Franco (19-nov-2026). */ desde?: string | null }) {
   // El PDF LTR ya no se genera desde acá (?print=true retirado): vive en la
   // vista dedicada /analisis/[id]/documento. Esta página es solo el informe web.
 
@@ -210,7 +216,16 @@ export async function InformeLtr({ id, demo = false }: { id: string; demo?: bool
   // franja, el enlace a la publicación sale de la portada y va debajo de su botón.
   // Invierte con Franco, comprador (18-nov-2026): con acceso y un usado, la franja lleva al flujo nuevo (invierte-v2/informe.ts).
   const invierte = isOwner && !isDemo ? await conFlujoV2(await invierteDelInforme(createServiceClient(), { inputData: inputDataRaw, analysisId: analisis.id, veredicto: veredictoInforme, score: scoreInforme ?? null, userId: user?.id ?? null }), user ?? null) : null;
-  const publicacion = invierte && publicacionAviso ? { ...publicacionAviso, enFranja: true } : publicacionAviso;
+  // INVIERTE CON FRANCO, LÁMINAS DEL 19-nov-2026. Quien firmó la orden nunca ve un enlace al portal, en ningún modo; y si los
+  // detalles se abrieron desde el flujo (`?desde=invierte`, dueño y con firma), el informe va envuelto: barra con «← Mi inversión»
+  // y el chip arriba, la acción abajo en vez de la franja «Invierte con Franco» (detalles-modo.ts). El informe no cambia.
+  const firmoInvierte = isOwner && !isDemo && user ? await muestraMiInversion(user) : false;
+  const avisoInforme = avisoDelInforme(inputDataRaw);
+  const modoInvierte = user && avisoInforme && abiertoDesdeInvierte({ desde, esDueno: isOwner, firmo: firmoInvierte })
+    ? await modoDetalles(createServiceClient(), user.id, avisoInforme, createServiceClient()).catch(() => null)
+    : null;
+  const sinPortal = await sinEnlaceAlPortal(createServiceClient(), user?.id);
+  const publicacion = sinPortal ? null : invierte && publicacionAviso ? { ...publicacionAviso, enFranja: true } : publicacionAviso;
   const alternativaComunas = veredictoInforme !== "COMPRAR" && inputDataRaw
     ? construirAlternativaComunas({ input: inputDataRaw, ufClp: ufFrozen, asOf: asOfFrozen })
     : null;
@@ -333,9 +348,12 @@ export async function InformeLtr({ id, demo = false }: { id: string; demo?: bool
           ejemplo, no algo que te mandaron); el invitado con el enlace, como compartido; el dueño sin
           cuenta, con «Guardarlo»; con sesión, con Compartir en la banda. Eliminar ya no va acá: va al
           pie del informe. En /demo la ruta pone su propio header con las pestañas. */}
+      {modoInvierte && <div className="iv2-det-solo-movil"><CabeceraDetalles /></div>}
       {demo ? null : (
+        <div className={modoInvierte ? "iv2-det-solo-pc" : undefined} style={modoInvierte ? undefined : { display: "contents" }}>
         <HeaderFranco
           sesion={user ? { email: user.email ?? "" } : null}
+          invierte={user ? firmoInvierte : undefined}
           informe={
             isDemo
               ? { modo: "ejemplo" }
@@ -365,9 +383,11 @@ export async function InformeLtr({ id, demo = false }: { id: string; demo?: bool
                   }
           }
         />
+        </div>
       )}
+      {modoInvierte && <BarraDetalles modo={modoInvierte} />}
 
-      <div className="container mx-auto max-w-6xl px-4 py-8">
+      <div className={`container mx-auto max-w-6xl px-4 py-8${modoInvierte ? " iv2-con-det-accion" : ""}`}>
         {isSubordinated && (
           <SubordinatedBanner href={subordinatedHref!} modalidad="LTR" />
         )}
@@ -408,8 +428,10 @@ export async function InformeLtr({ id, demo = false }: { id: string; demo?: bool
           medianaResolvedAt={medianaResolvedAt}
           alternativaComunas={alternativaComunas}
           publicacion={publicacion}
-          invierte={invierte}
+          invierte={modoInvierte ? null : invierte}
+          sinPortal={sinPortal}
         />
+        {modoInvierte && <AccionDetalles modo={modoInvierte} />}
 
         {/* Fallback for old analyses without full results */}
         {!results && (

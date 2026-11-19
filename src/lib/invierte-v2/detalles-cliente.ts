@@ -7,6 +7,10 @@
 // ─────────────────────────────────────────────────────────────────────────────
 export const URL_DETALLES = "/api/lo-que-sigue/guia/analizar";
 
+/** Adónde lleva «Ver detalles» / «Abrir» (19-nov-2026): el informe con `?desde=invierte`, para que sepa de dónde viene (el
+ *  servidor decide el resto: detalles-modo.ts). UN solo lugar: lo usan el botón de la base y el resultado. */
+export const urlDetallesInvierte = (analysisId: string) => `/analisis/${encodeURIComponent(analysisId)}?desde=invierte`;
+
 export const cuerpoDetalles = (avisoId: string, origen: "elegir" | "abrir") =>
   JSON.stringify({ avisoId, explorar: true, piePct: 20, plazoAnios: 30, invierte: true, origenInvierte: origen });
 

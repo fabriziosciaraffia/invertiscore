@@ -65,9 +65,13 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
 
 export default async function AnalisisDetallePage({
   params,
+  searchParams,
 }: {
   params: { id: string };
+  searchParams?: Record<string, string | string[] | undefined>;
 }) {
-  // El informe vive en `informe-ltr.tsx`: lo dibujan esta ruta y el demo público.
-  return <InformeLtr id={params.id} />;
+  // El informe vive en `informe-ltr.tsx`: lo dibujan esta ruta y el demo público. `?desde=invierte`: abierto desde el flujo de
+  // Invierte con Franco (19-nov-2026); el servidor decide si de verdad va en ese modo.
+  const desde = typeof searchParams?.desde === "string" ? searchParams.desde : null;
+  return <InformeLtr id={params.id} desde={desde} />;
 }

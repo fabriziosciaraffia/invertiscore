@@ -11,7 +11,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { findNearestStation } from "@/lib/metro-stations";
 import { VENTANA_SEMANAL_DIAS } from "@/lib/guia/semanal";
-import { hastaCuanto, comunasPrecargadas, piePrecargado, type PedidoPerfil, type Tope, type Objetivo, type Preocupacion } from "./perfil";
+import { hastaCuanto, comunasPrecargadas, piePrecargado, type PedidoPerfil, type Tope, type Objetivo, type Preocupacion, type Donde } from "./perfil";
 import { casoDe, elegirOpciones, etiquetar, vsParecidos, type Caso, type Etiqueta, type OpcionDepto } from "./opciones";
 import { anotar, esCuentaTest, leerPersona, ultimaOrdenDe, type ContextoPedido } from "./servidor";
 import type { PerfilComparable } from "./base";
@@ -26,6 +26,8 @@ export interface PerfilInv {
   objetivo: Objetivo;
   preocupaciones: Preocupacion[];
   comunas: string[];
+  /** «¿Dónde buscamos?» (19-nov-2026): la columna es no nula y por defecto «cerca». */
+  donde: Donde;
   preaprobado: "tengo" | "tramite" | "no";
   montoPreaprobadoUF: number | null;
   pieTiene: "si" | "parte" | "no" | null;
@@ -43,6 +45,7 @@ export interface PerfilInv {
 
 const aPerfil = (f: Record<string, unknown>): PerfilInv => ({
   userId: f.user_id as string, objetivo: f.objetivo as Objetivo, preocupaciones: (f.preocupaciones as Preocupacion[]) ?? [], comunas: (f.comunas as string[]) ?? [],
+  donde: f.donde === "comuna" || f.donde === "convenga" ? f.donde : "cerca",
   preaprobado: f.preaprobado as PerfilInv["preaprobado"], montoPreaprobadoUF: f.monto_preaprobado_uf == null ? null : Number(f.monto_preaprobado_uf),
   pieTiene: (f.pie_tiene as PerfilInv["pieTiene"]) ?? null, pieUF: f.pie_uf == null ? null : Number(f.pie_uf), rentaCLP: (f.renta_liquida_clp as number | null) ?? null,
   otrasCuotasCLP: (f.otras_cuotas_clp as number | null) ?? null, noDiceRenta: f.no_dice_renta === true, topeUF: f.tope_uf == null ? null : Number(f.tope_uf),
