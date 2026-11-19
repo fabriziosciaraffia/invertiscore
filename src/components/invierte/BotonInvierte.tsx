@@ -18,13 +18,15 @@ export function EtiquetaInscrito({ clase = "" }: { clase?: string }) {
   return <span className={`inv-etiqueta ${clase}`} data-invierte="inscrito">{INVIERTE_COPY.inscrito}</span>;
 }
 
-export function BotonInvierte({ avisoId, origen, veredicto, inscrito, alTocar, sinCuenta = false }: {
+export function BotonInvierte({ avisoId, origen, veredicto, inscrito, alTocar, sinCuenta = false, etiqueta }: {
   avisoId: string;
   origen: OrigenInvierte;
   veredicto: string;
   inscrito: boolean;
   alTocar: () => void;
   sinCuenta?: boolean;
+  /** Otro texto para el botón (Invierte con Franco, quien ya firmó la orden: «Sumar a mis opciones de inversión»). */
+  etiqueta?: string;
 }) {
   const posthog = usePostHog();
   useEffect(() => {
@@ -45,7 +47,7 @@ export function BotonInvierte({ avisoId, origen, veredicto, inscrito, alTocar, s
         alTocar();
       }}
     >
-      {INVIERTE_COPY.boton}
+      {etiqueta ?? INVIERTE_COPY.boton}
     </button>
   );
 }

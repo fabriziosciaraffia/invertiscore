@@ -17,6 +17,7 @@ import { etiquetaVeredicto, signoVeredicto } from "@/lib/veredicto-etiqueta";
 import { BotonDetalles, PrepararDetalles } from "./BotonDetalles";
 import { EnlacesBase, MenuBase } from "./MenuBase";
 import { SumarDepto } from "./SumarDepto";
+import { IconoWhatsapp } from "./IconoWhatsapp";
 import { TE_TOCA_ROTULO, URL_PREAPROBACION, teTocaHoy } from "@/lib/invierte-v2/preaprobacion";
 
 
@@ -83,7 +84,7 @@ export function VistaBase({ base }: { base: Base }) {
           </section>
           <div className="iv2-acompana iv2-solo-movil-base" data-inv2="acompana">
             <span>{B.acompana}</span>
-            {base.whatsapp && <a href={urlWhatsapp(base.whatsapp)} target="_blank" rel="noopener noreferrer" className="iv2-enlace-azul" data-inv2="escribirle">{B.escribirle}</a>}
+            {base.whatsapp && <a href={urlWhatsapp(base.whatsapp)} target="_blank" rel="noopener noreferrer" className="iv2-enlace-azul iv2-con-icono" data-inv2="escribirle"><IconoWhatsapp />{B.escribirle}</a>}
           </div>
         </div>
         <div className="iv2-base-der">

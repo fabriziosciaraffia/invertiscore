@@ -87,6 +87,7 @@ import type { CasoCompartido } from "./compartido-hoja";
 import { useInscritos } from "@/components/invierte/inscritos";
 import { INVIERTE_COPY, type DeptoInvierte } from "@/lib/invierte/invierte";
 import { destinoBoton } from "@/lib/invierte-v2/destino";
+import { SUMAR_COPY, urlSumar } from "@/lib/invierte-v2/base";
 import { lineaDepto } from "@/lib/guia/linea-depto";
 import "./explorar.css";
 import "@/components/invierte/invierte.css";
@@ -214,7 +215,7 @@ const agregarCapa = (cs: Record<string, CapaCalculada>, clave: string, comuna: s
 
 // El mapa quieto del primer pintado (el LCP) NO va acá: es una capa de la página (page.tsx), una sola imagen y antes del header
 // en el HTML. El cliente avisa cuándo el mapa real dibujó sus teselas (`data-mapa`) y la capa se desvanece (explorar.css).
-export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar = null, origen = "directo", correo = null, compartido = null, invierteV2 = false }: {
+export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar = null, origen = "directo", correo = null, compartido = null, invierteV2 = false, invierteFirmo = false }: {
   inicial: InicialPortal;
   abrir?: string | null;
   autoAnalizar?: string | null;
@@ -226,6 +227,9 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
   correo?: string | null;
   /** Invierte con Franco, comprador (18-nov-2026): el interruptor de esta persona, decidido en el servidor. Sin él, Pronto. */
   invierteV2?: boolean;
+  /** Ya firmó la orden de Invierte con Franco (20-nov-2026): el botón de un usado dice «Sumar a mis opciones de inversión» y lleva
+   *  directo a esa pantalla, sin la hoja de contacto. */
+  invierteFirmo?: boolean;
 }) {
   const router = useRouter();
   const posthog = usePostHog();
@@ -1120,9 +1124,14 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
               sinCuenta={sinCuenta}
               recien={recien}
               inscritos={invierteV2 ? undefined : inscritos}
+              etiquetaInvertir={(p) => (invierteFirmo && destinoBoton({ acceso: invierteV2, condicion: p.condicion }) === "v2" ? SUMAR_COPY.botonMapa : undefined)}
               alInvertir={(p) => {
-                // Con acceso y un usado, el flujo nuevo; si no, la hoja de Pronto de siempre (invierte-v2/destino.ts).
-                if (destinoBoton({ acceso: invierteV2, condicion: p.condicion }) === "v2") { setContactoV2(p); return; }
+                // Con acceso y un usado, el flujo nuevo; si no, la hoja de Pronto de siempre (invierte-v2/destino.ts). Quien ya firmó
+                // va directo a «Súmalo a tus opciones de inversión».
+                if (destinoBoton({ acceso: invierteV2, condicion: p.condicion }) === "v2") {
+                  if (invierteFirmo) { router.push(`${urlSumar(p.avisoId)}?desde=explorar`); return; }
+                  setContactoV2(p); return;
+                }
                 if (sinCuenta) void import("./hoja-registro");
                 setInvierte({ pin: p, retomar: false });
               }}

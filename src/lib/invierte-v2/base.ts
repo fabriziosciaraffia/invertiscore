@@ -94,7 +94,14 @@ export const DOCUMENTOS_COPY = {
 export const SUMAR_COPY = {
   cabecera: "Invierte con Franco",
   volver: "Volver al mapa",
-  titulo: "Súmalo a tus opciones",
+  titulo: "Súmalo a tus opciones de inversión",
+  /** El botón del mapa cuando ya firmó la orden (20-nov-2026). */
+  botonMapa: "Sumar a mis opciones de inversión",
+  // Cuando hoy no le alcanza (20-nov-2026): sin el recuadro de la firma, con el precio, hasta cuánto puede comprar y tres salidas.
+  noAlcanzaTitulo: "Este depto hoy no te alcanza",
+  noAlcanzaLinea: (precioUF: number, topeUF: number) => `Cuesta UF ${fmtUF(precioUF)} y hoy puedes comprar hasta UF ${fmtUF(topeUF)}.`,
+  irAMiInversion: "Ir a mi inversión",
+  revisarPerfilPara: "Si cambiaron tu pie o tu renta, actualízalos y vemos de nuevo hasta cuánto puedes comprar.",
   sinFirmaT: "No tienes que firmar de nuevo",
   sinFirma: (fecha: string) => `Tu orden del ${fecha} cubre también este depto. Franco empieza a gestionarlo y puedes ver todos sus detalles desde tus deptos.`,
   teAlcanza: "Te alcanza",
@@ -103,7 +110,7 @@ export const SUMAR_COPY = {
   noTeAlcanzaLinea: (precioUF: number, topeUF: number) => `cuesta UF ${fmtUF(precioUF)} y puedes comprar hasta UF ${fmtUF(topeUF)}.`,
   entra: "Entra a tu comparativo",
   entraLinea: (n: number) => (n === 0 ? "como tu primera opción." : `junto a ${n === 1 ? "la opción" : `las ${n === 2 ? "dos" : n === 3 ? "tres" : n === 4 ? "cuatro" : n === 5 ? "cinco" : n} opciones`} que ya tienes.`),
-  boton: "Sumar a mis opciones",
+  boton: "Sumar a mis opciones de inversión",
   revisarPerfil: "Revisar mi perfil",
   dejarUno: "¿Cuál dejas?",
   ya: "Ya está entre tus deptos.",

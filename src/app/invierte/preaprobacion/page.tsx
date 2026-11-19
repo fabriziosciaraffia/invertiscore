@@ -57,6 +57,12 @@ export default async function PreaprobacionPage({ searchParams }: { searchParams
               <p className="iv2-estado-t">{E.aprobada.titulo}</p>
               <p className="iv2-linea-chica" data-inv2="linea-aprobada">{lineaAprobada({ banco: d!.banco, montoUF: d!.montoAprobadoUF, vigenteHasta: d!.vigenteHasta })}</p>
               <VerPreaprobacion etiqueta={E.aprobada.ver} estado="Aprobada" titulo={P.cabecera} meta={lineaAprobada({ banco: d!.banco, montoUF: d!.montoAprobadoUF, vigenteHasta: d!.vigenteHasta })} mime={d!.mime} />
+              {pre.otra && (
+                <div className="iv2-otra-subida" data-inv2="otra-subida">
+                  <p className="iv2-gris-t">{pre.otra.estado === "por_corregir" ? E.otraRechazada : E.otraEnRevision}</p>
+                  {pre.otra.estado === "por_corregir" && pre.otra.motivo && <p className="iv2-gris-s" data-inv2="otra-motivo">{pre.otra.motivo}</p>}
+                </div>
+              )}
             </>}
             {pre.estado === "por_corregir" && <>
               <span className="iv2-estado-ciruela iv2-chip-arriba">{E.por_corregir.chip}</span>

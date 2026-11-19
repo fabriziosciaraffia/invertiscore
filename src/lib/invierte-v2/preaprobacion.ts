@@ -30,6 +30,11 @@ export function estadoVisible(doc: { estado: EstadoDocumento } | null, explicand
   return explicando ? "explicando" : "subir";
 }
 
+/** ¿Sigue vigente? Sin fecha, sí (la vigencia la pone la persona de Franco al aprobar). `hoy` en AAAA-MM-DD, hora de Chile. */
+export const vigente = (vigenteHasta: string | null, hoy: string) => !vigenteHasta || vigenteHasta >= hoy;
+/** Hoy en Chile, AAAA-MM-DD. */
+export const hoyChile = (ahora: Date = new Date()) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Santiago", year: "numeric", month: "2-digit", day: "2-digit" }).format(ahora);
+
 /** Sin preaprobación no se oferta ni se pide visita: solo una aprobada o «compro sin crédito» dejan avanzar. */
 export const puedeOfertar = (e: EstadoVisible) => e === "aprobada" || e === "sin_credito";
 
@@ -80,6 +85,9 @@ export const PREAPROB_COPY = {
 export const ESTADOS_COPY = {
   en_revision: { chip: "En revisión", titulo: "Recibimos tu preaprobación", texto: "La revisamos hoy. Mientras, puedes seguir viendo tus deptos.", ver: "Ver lo que subí" },
   aprobada: { chip: "✓ Aprobada", titulo: "Ya puedes ofertar o pedir visita", ver: "Ver mi preaprobación" },
+  // Con la aprobada vigente, la que subió después (20-nov-2026): aparte, con su motivo; la aprobada sigue mandando.
+  otraRechazada: "La que subiste después no la pudimos usar",
+  otraEnRevision: "Estamos revisando la que subiste después",
   por_corregir: { chip: "Te toca a ti", titulo: "Necesitamos que la subas de nuevo", boton: "Subir otra" },
   // Sin lámina: los proponemos con la misma forma (esperan el OK de Fabrizio).
   sin_credito: { chip: "✓ Listo", titulo: "Compras sin crédito", texto: "Ya puedes ofertar o pedir visita. Si después pides un crédito, súbela aquí." },

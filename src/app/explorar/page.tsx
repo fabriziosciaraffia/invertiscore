@@ -23,6 +23,7 @@ import { firmaCompartidoValida } from "@/lib/explorar/firma-compartido";
 import { ExplorarCliente, type CompartidoCliente } from "./explorar-cliente";
 import { EsqueletoExplorar } from "./esqueleto";
 import { accesoInvierteV2 } from "@/lib/invierte-v2/acceso-servidor";
+import { ultimaOrdenDe } from "@/lib/invierte-v2/servidor";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // /explorar COMO PORTAL (28-oct-2026, mockup docs/puerta-b-mockups/5b-explorar-portal.html; reemplaza el del 23-oct).
@@ -187,6 +188,8 @@ async function ExplorarConDatos({ consulta, user }: { consulta: string; user: Us
   const { n, nAjustar } = cifrasDeLaNoche(noche, filtros);
   void capturarServidor(eventoPortalVista({ userId: user.id, filtros, orden, n, robot: robotDeVisita(headers().get("user-agent"), headers()), llegada: llegadaDeExplorar(sp.get("desde")) })).catch(() => false);
   const a = compartido?.avisoId ?? sp.get("a");
+  // Ya firmó la orden de Invierte con Franco (20-nov-2026): el botón de los usados dice «Sumar a mis opciones de inversión».
+  const invierteFirmo = invierteV2 ? !!(await ultimaOrdenDe(admin, user.id)) : false;
   return (
     <ExplorarCliente
       inicial={{ filtros, orden, n, cuenta, tasa, convienen: null, negociadosGlobal: null, nAjustar, sello: noche?.sello ?? null }}
@@ -195,6 +198,7 @@ async function ExplorarConDatos({ consulta, user }: { consulta: string; user: Us
       autoAnalizar={sp.get("analizar") === "1" ? a : null}
       correo={user.email ?? null}
       invierteV2={invierteV2}
+      invierteFirmo={invierteFirmo}
     />
   );
 }

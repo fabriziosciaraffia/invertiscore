@@ -108,7 +108,7 @@ export function VeredictosNegociado({ p }: { p: PinNegociado }) {
   );
 }
 
-export function TarjetaPin({ pines, seleccionado, uf, analizados, resumenes = {}, guardados, generando, error, alCambiar, alCerrar, alGuardar, alAnalizar, alCompartir, alPrepararCompartir, alVerInforme, sinCuenta = false, recien = null, inscritos, alInvertir }: {
+export function TarjetaPin({ pines, seleccionado, uf, analizados, resumenes = {}, guardados, generando, error, alCambiar, alCerrar, alGuardar, alAnalizar, alCompartir, alPrepararCompartir, alVerInforme, sinCuenta = false, recien = null, inscritos, alInvertir, etiquetaInvertir }: {
   /** Los cercanos, el tocado primero. */
   pines: PinMapa[];
   seleccionado: string;
@@ -136,6 +136,8 @@ export function TarjetaPin({ pines, seleccionado, uf, analizados, resumenes = {}
   /** «Invierte con Franco» (11-nov-2026): los deptos en que ya está inscrita y qué hacer al tocar el botón. Sin `alInvertir`, no va. */
   inscritos?: ReadonlySet<string>;
   alInvertir?: (p: PinMapa) => void;
+  /** El texto del botón cuando ya firmó la orden de Invierte con Franco (20-nov-2026), solo en los usados. */
+  etiquetaInvertir?: (p: PinMapa) => string | undefined;
 }) {
   const fila = useRef<HTMLDivElement>(null);
   const tipos = useCalle(pines.map((p) => p.avisoId));
@@ -254,7 +256,7 @@ export function TarjetaPin({ pines, seleccionado, uf, analizados, resumenes = {}
               )}
               {error?.avisoId === p.avisoId && <p className="ex-error" role="alert">{error.texto}</p>}
               {alInvertir && puedeInvertir({ condicion: p.condicion, veredicto: p.veredicto, negociable: esNegociado(p) }) && (
-                <BotonInvierte avisoId={p.avisoId} origen="explorar" veredicto={esNegociado(p) ? "AJUSTA SUPUESTOS" : p.veredicto} inscrito={!!inscritos?.has(p.avisoId)} sinCuenta={sinCuenta} alTocar={() => alInvertir(p)} />
+                <BotonInvierte avisoId={p.avisoId} origen="explorar" veredicto={esNegociado(p) ? "AJUSTA SUPUESTOS" : p.veredicto} inscrito={!!inscritos?.has(p.avisoId)} sinCuenta={sinCuenta} alTocar={() => alInvertir(p)} etiqueta={etiquetaInvertir?.(p)} />
               )}
               </div>
             </article>

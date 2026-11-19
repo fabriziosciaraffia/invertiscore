@@ -462,3 +462,12 @@
 }
 /* «Subir» de la preaprobación en «Tus documentos»: en rojo, como la lámina (es la acción principal de esa pantalla). */
 .iv2-accion-roja, [data-theme="light"] .iv2-accion-roja { color: var(--signal-red, #C8323C); }
+
+/* «Escribirle» con el ícono de WhatsApp (20-nov-2026), en el color del texto. */
+.iv2-con-icono { display: inline-flex; align-items: center; gap: 6px; }
+.iv2-icono-wa { flex: none; }
+/* Con una aprobada vigente, la subida posterior va aparte, en gris, con su motivo (20-nov-2026). */
+.iv2-otra-subida { margin-top: 8px; border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; background: var(--franco-bg); align-self: stretch; }
+[data-theme="light"] .iv2-otra-subida { background: #F4F4F6; }
+/* «Revisar mi perfil» dice para qué sirve (20-nov-2026). */
+.iv2-revisar-perfil { display: flex; flex-direction: column; gap: 2px; }

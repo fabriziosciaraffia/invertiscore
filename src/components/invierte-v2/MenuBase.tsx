@@ -13,6 +13,7 @@ import { MENU_COPY, URL_DOCUMENTOS, urlWhatsapp } from "@/lib/invierte-v2/base";
 import { URL_PERFIL } from "@/lib/invierte-v2/destino";
 import { PREGUNTAS_INVIERTE, TITULO_PREGUNTAS_INVIERTE } from "@/lib/invierte-v2/preguntas";
 import { ListaPreguntas, VentanaDocumento } from "./VentanaDocumento";
+import { IconoWhatsapp } from "./IconoWhatsapp";
 
 const M = MENU_COPY;
 
@@ -66,7 +67,7 @@ export function MenuBase({ nombre, perfilLinea, whatsapp }: { nombre: string | n
               </button>
               {whatsapp && (
                 <a href={urlWhatsapp(whatsapp)} target="_blank" rel="noopener noreferrer" className="iv2-menu-item" data-inv2="menu-escribirle">
-                  <span className="iv2-menu-txt"><span className="iv2-menu-it">{M.escribirle}</span><span className="iv2-menu-s">{M.escribirleLinea}</span></span><Flecha />
+                  <span className="iv2-menu-txt"><span className="iv2-menu-it iv2-con-icono"><IconoWhatsapp />{M.escribirle}</span><span className="iv2-menu-s">{M.escribirleLinea}</span></span><Flecha />
                 </a>
               )}
             </nav>
@@ -91,7 +92,7 @@ export function EnlacesBase({ whatsapp }: { whatsapp: string | null }) {
       <Link href={URL_PERFIL} className="iv2-enlace-fila" data-inv2="pc-perfil">{M.perfil}</Link>
       <Link href={URL_DOCUMENTOS} className="iv2-enlace-fila" data-inv2="pc-documentos">{M.documentos}</Link>
       <button type="button" className="iv2-enlace-fila" onClick={() => setPreguntas(true)} aria-haspopup="dialog" data-inv2="pc-preguntas">{M.preguntas}</button>
-      {whatsapp && <a href={urlWhatsapp(whatsapp)} target="_blank" rel="noopener noreferrer" className="iv2-enlace-fila" data-inv2="pc-escribirle">{M.escribirle}</a>}
+      {whatsapp && <a href={urlWhatsapp(whatsapp)} target="_blank" rel="noopener noreferrer" className="iv2-enlace-fila iv2-con-icono" data-inv2="pc-escribirle"><IconoWhatsapp />{M.escribirle}</a>}
       {preguntas && (
         <VentanaDocumento nombre="preguntas" titulo={TITULO_PREGUNTAS_INVIERTE} variante="lista" alCerrar={() => setPreguntas(false)}>
           <ListaPreguntas preguntas={PREGUNTAS_INVIERTE} />

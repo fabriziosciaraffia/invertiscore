@@ -14,7 +14,8 @@ import { VerOrden } from "@/components/invierte-v2/VerOrden";
 import { VerPreaprobacion } from "@/components/invierte-v2/Preaprobacion";
 
 // TUS DOCUMENTOS (entrega 2, 19-nov-2026; lámina 3.3-documentos). La orden firmada se «Ver» en la ventana de documentos, sobre la
-// página (la misma de Partimos); «Los detalles de tus deptos» lleva a la base, donde cada uno tiene «Abrir». La preaprobación
+// página (la misma de Partimos). «Los detalles de tus deptos» salió (20-nov-2026, Fabrizio: no es un documento y devolvía a la
+// base; cada depto se abre desde la base). La preaprobación
 // (entrega 3) muestra su estado: por subir («Subir», en rojo como la lámina), en revisión, aprobada o por corregir. La oferta, la
 // promesa y la escritura dicen «Más adelante». Sin acceso: 404; sin orden: /invierte decide.
 export const dynamic = "force-dynamic";
@@ -60,9 +61,6 @@ export default async function DocumentosPage() {
             ? <VerPreaprobacion etiqueta={D.ver} estado={pre.estado === "aprobada" ? "Aprobada" : null} titulo={PREAPROB_COPY.cabecera} meta={lineaPre} mime={d.mime} />
             : pre.estado === "sin_credito" ? <span className="iv2-depto-s iv2-nowrap">{ESTADOS_COPY.sin_credito.chip}</span>
             : <Link href={pre.estado === "por_corregir" ? `${URL_PREAPROBACION}?subir=1` : URL_PREAPROBACION} className="iv2-enlace-azul iv2-doc-accion iv2-accion-roja" data-inv2="doc-subir">{pre.estado === "por_corregir" ? ESTADOS_COPY.por_corregir.boton : D.subir}</Link>}
-        </Fila>
-        <Fila nombre="detalles" titulo={D.detalles} linea={D.detallesLinea}>
-          <Link href={URL_BASE} className="iv2-enlace-azul iv2-doc-accion" data-inv2="doc-ver-detalles">{D.ver}</Link>
         </Fila>
         <Fila nombre="oferta" titulo={D.oferta} linea={D.ofertaLinea} apagada>
           <span className="iv2-depto-s iv2-nowrap">{D.masAdelante}</span>

@@ -16,7 +16,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { hastaCuanto } from "./perfil";
 import { leerPerfilInv, mercado } from "./perfil-servidor";
 import { anotar, sha256, ultimaOrdenDe, BUCKET_INVIERTE, type ContextoPedido } from "./servidor";
-import { estadoVisible, nombreCoincide, validarArchivo, type Aprobacion, type EstadoDocumento, type EstadoVisible } from "./preaprobacion";
+import { estadoVisible, hoyChile, nombreCoincide, validarArchivo, vigente, type Aprobacion, type EstadoDocumento, type EstadoVisible } from "./preaprobacion";
 import type { ResultadoLectura } from "./preaprobacion-ia";
 
 const T_DOCS = "inv_documentos";
@@ -37,7 +37,13 @@ const aDoc = (f: Record<string, unknown>): DocumentoInv => ({
 
 export const MOTIVO_REEMPLAZADA = "Reemplazada por la que subiste después.";
 
-export interface Preaprobacion { doc: DocumentoInv | null; explicando: boolean; estado: EstadoVisible }
+export interface Preaprobacion {
+  doc: DocumentoInv | null;
+  explicando: boolean;
+  estado: EstadoVisible;
+  /** Con una aprobada vigente (20-nov-2026), la subida posterior que se rechazó o que se revisa: se muestra aparte, con su motivo. */
+  otra: DocumentoInv | null;
+}
 
 /** Lo vigente: el último documento que no quedó a medio subir, y si espera que le expliquen cómo pedirla. */
 export async function leerPreaprobacion(admin: SupabaseClient, userId: string): Promise<Preaprobacion> {
@@ -45,10 +51,16 @@ export async function leerPreaprobacion(admin: SupabaseClient, userId: string): 
     admin.from(T_DOCS).select(COLS).eq("user_id", userId).order("created_at", { ascending: false }).limit(10),
     admin.from("inv_tareas").select("id").eq("user_id", userId).eq("tipo", "explicar_preaprobacion").eq("estado", "pendiente").limit(1),
   ]);
-  const f = (docs ?? []).find((d) => d.estado !== "subiendo");
-  const doc = f ? aDoc(f as Record<string, unknown>) : null;
+  const todos = (docs ?? []).filter((d) => d.estado !== "subiendo").map((d) => aDoc(d as Record<string, unknown>));
+  const ultima = todos[0] ?? null;
   const explicando = (tareas ?? []).length > 0;
-  return { doc, explicando, estado: estadoVisible(doc, explicando) };
+  // Una aprobada que sigue vigente manda (20-nov-2026, Fabrizio): si después subió otra y esa se rechazó (o se revisa), su
+  // estado sigue siendo «Aprobada» y la nueva se muestra aparte, con su motivo.
+  const aprobada = todos.find((d) => d.estado === "aprobada" && vigente(d.vigenteHasta, hoyChile())) ?? null;
+  if (aprobada && ultima && ultima.id !== aprobada.id && (ultima.estado === "por_corregir" || ultima.estado === "en_revision")) {
+    return { doc: aprobada, explicando, estado: "aprobada", otra: ultima };
+  }
+  return { doc: ultima, explicando, estado: estadoVisible(ultima, explicando), otra: null };
 }
 
 // ── SUBIR ────────────────────────────────────────────────────────────────────
