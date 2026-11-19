@@ -120,3 +120,48 @@ export function ReiniciarPrueba({ userId, email }: { userId: string; email: stri
     </span>
   );
 }
+
+/** «Marcar hecha» de una tarea interna (la ficha de la persona, entrega 2). */
+export function TareaHecha({ id }: { id: string }) {
+  const router = useRouter();
+  const [ocupado, setOcupado] = useState(false);
+  const [error, setError] = useState(false);
+  async function hecha() {
+    setOcupado(true); setError(false);
+    const r = await llamar({ accion: "tarea", id });
+    setOcupado(false);
+    if (!r.ok) { setError(true); return; }
+    router.refresh();
+  }
+  return (
+    <span className="inline-flex items-center gap-2">
+      <button type="button" className={CLASE_BTN} disabled={ocupado} onClick={() => void hecha()} data-admin="inv2-tarea-hecha">Marcar hecha</button>
+      {error && <span className="text-[12px] text-[var(--signal-red)]" role="alert">No se guardó</span>}
+    </span>
+  );
+}
+
+/** El número de «Escribirle» de la base (modo prueba, entrega 2): +569 y ocho dígitos. Vacío lo quita. */
+export function NumeroWhatsapp({ inicial }: { inicial: string | null }) {
+  const router = useRouter();
+  const [numero, setNumero] = useState(inicial ?? "");
+  const [ocupado, setOcupado] = useState(false);
+  const [estado, setEstado] = useState<string | null>(null);
+  async function enviar(e: FormEvent) {
+    e.preventDefault();
+    setOcupado(true); setEstado(null);
+    const r = await llamar({ accion: "whatsapp", numero });
+    setOcupado(false);
+    if (!r.ok) { setEstado(r.error === "numero" ? "Ese número no es válido (+569 y ocho dígitos)" : "No se guardó"); return; }
+    setEstado("Guardado");
+    router.refresh();
+  }
+  return (
+    <form onSubmit={enviar} className="flex flex-wrap items-center gap-2" data-admin="inv2-whatsapp">
+      <input value={numero} onChange={(e) => setNumero(e.target.value)} placeholder="+569…" inputMode="tel" aria-label="WhatsApp de Franco"
+        className="rounded-md border border-[var(--franco-border)] bg-[var(--franco-card)] px-2 py-1 font-mono text-[12px] text-[var(--franco-text)]" />
+      <button type="submit" className={CLASE_BTN} disabled={ocupado}>Guardar</button>
+      {estado && <span className="text-[12px] text-[var(--franco-text-secondary)]" role="status">{estado}</span>}
+    </form>
+  );
+}

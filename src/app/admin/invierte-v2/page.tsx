@@ -5,7 +5,8 @@ import { INVIERTE_COPY, esPie, esUrgencia } from "@/lib/invierte/invierte";
 import { estadoInterruptor } from "@/lib/invierte-v2/acceso-servidor";
 import { leerCrm } from "@/lib/invierte-v2/servidor";
 import { RAZON_SOCIAL_POR_CONFIRMAR, VERSION_ORDEN } from "@/lib/invierte-v2/orden";
-import { AgregarCorreo, ModoSelect, QuitarCorreo, ReenviarCopia, ReiniciarPrueba } from "./controles";
+import { AgregarCorreo, ModoSelect, NumeroWhatsapp, QuitarCorreo, ReenviarCopia, ReiniciarPrueba } from "./controles";
+import { numeroFranco } from "@/lib/invierte-v2/base-servidor";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,13 @@ export const dynamic = "force-dynamic";
  */
 export default async function AdminInvierteV2Page() {
   const { sb } = await requireAdminPage();
-  const [{ modo, lista }, { filas, sinTabla }] = await Promise.all([estadoInterruptor(), leerCrm(sb)]);
+  const [{ modo, lista }, { filas, sinTabla }, whatsapp, { data: tareas }] = await Promise.all([
+    estadoInterruptor(), leerCrm(sb), numeroFranco(sb),
+    sb.from("inv_tareas").select("user_id").eq("estado", "pendiente").limit(1000),
+  ]);
+  // Las tareas pendientes por persona (entrega 2): se ven y se marcan en su ficha.
+  const pendientes = new Map<string, number>();
+  for (const t of tareas ?? []) if (t.user_id) pendientes.set(t.user_id as string, (pendientes.get(t.user_id as string) ?? 0) + 1);
   const H = INVIERTE_COPY.hoja;
   const firmaron = filas.filter((f) => f.orden).length;
   const sinCopia = filas.filter((f) => f.orden && !f.orden.copia).length;
@@ -54,6 +61,10 @@ export default async function AdminInvierteV2Page() {
           ))}
         </ul>
         <AgregarCorreo />
+        <div className="mt-4 flex flex-wrap items-center gap-3 font-body text-[13px]">
+          <span>WhatsApp de «Escribirle» (modo prueba):</span> <NumeroWhatsapp inicial={whatsapp} />
+          {!whatsapp && <span className="text-[12px] text-[var(--franco-text-muted)]">Sin número, la base no muestra «Escribirle».</span>}
+        </div>
       </section>
 
       <section className="overflow-x-auto rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] shadow-sm">
@@ -76,7 +87,7 @@ export default async function AdminInvierteV2Page() {
             {filas.map((f) => (
               <tr key={f.userId} className="border-b border-[var(--franco-border)] align-top last:border-0" data-estado={f.orden ? "firmo" : "contacto"}>
                 <td className="whitespace-nowrap px-3 py-2 font-mono text-[12px]">{fmtDateShort(f.updatedAt)}</td>
-                <td className="px-3 py-2"><Link href={`/admin/usuarios/${f.userId}`} className="underline decoration-[var(--franco-border)] underline-offset-2">{f.email ?? f.userId}</Link></td>
+                <td className="px-3 py-2"><Link href={`/admin/invierte-v2/${f.userId}`} className="underline decoration-[var(--franco-border)] underline-offset-2" data-admin="inv2-ficha">{f.email ?? f.userId}</Link>{(pendientes.get(f.userId) ?? 0) > 0 && <div className="text-[12px] font-semibold" data-admin="inv2-pendientes">{pendientes.get(f.userId)} {pendientes.get(f.userId) === 1 ? "tarea pendiente" : "tareas pendientes"}</div>}</td>
                 <td className="whitespace-nowrap px-3 py-2 font-semibold">{f.orden ? "Firmó" : "Contacto"}</td>
                 <td className="px-3 py-2">{f.linea ?? f.avisoOrigen}{f.precioUF != null && <span className="font-mono text-[12px]"> · UF {Math.round(f.precioUF).toLocaleString("es-CL")}</span>}<div className="text-[12px] text-[var(--franco-text-muted)]">desde {f.origen} · {f.campanaTexto}</div></td>
                 <td className="whitespace-nowrap px-3 py-2">{esUrgencia(f.urgencia) ? H.urgencias[f.urgencia] : f.urgencia}</td>
