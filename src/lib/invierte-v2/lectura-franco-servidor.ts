@@ -100,24 +100,7 @@ async function entradaDe(admin: SupabaseClient, avisoId: string): Promise<{ entr
 
 /** La lectura de un depto: la guardada si está vigente; si no, la genera (con su tope y su marca). `leerSiFalta`: si la publicación
  *  todavía no se leyó, quien llama la lee (por el carril de Invierte, 20-nov-2026) antes de escribir la lectura. */
-/** El cap rate de las otras opciones del resultado de una persona (sus deptos elegidos y opciones, sin este), con la misma fórmula y UF
- *  que la tarjeta: contexto para la síntesis (20-nov-2026). Sin persona, nada. */
-export async function capRatesDeSuResultado(admin: SupabaseClient, userId: string | null, sinAviso: string): Promise<string[]> {
-  if (!userId) return [];
-  const { data: deptos } = await admin.from("inv_deptos").select("aviso_id").eq("user_id", userId).in("estado", ["opcion", "elegido"]);
-  const ids = (deptos ?? []).map((d) => d.aviso_id as string).filter((x) => x !== sinAviso).slice(0, 8);
-  if (!ids.length) return [];
-  const [{ data: ev }, { data: cfg }] = await Promise.all([
-    admin.from("avisos_evaluados").select("aviso_id, precio_uf, arriendo").in("aviso_id", ids),
-    admin.from("config").select("value").eq("key", "uf_value").maybeSingle(),
-  ]);
-  const uf = Number(cfg?.value);
-  return ((ev ?? []) as { precio_uf: unknown; arriendo: { monto?: number } | null }[])
-    .map((f) => capRatePct(f.arriendo?.monto ?? null, Number(f.precio_uf ?? 0), Number.isFinite(uf) && uf > 0 ? uf : null))
-    .filter((c): c is number => c != null).map((c) => pctUno(c));
-}
-
-export async function lecturaDe(admin: SupabaseClient, cliente: Anthropic, avisoId: string, ahora: Date = new Date(), leerSiFalta?: () => Promise<void>, userId: string | null = null): Promise<EstadoLectura> {
+export async function lecturaDe(admin: SupabaseClient, cliente: Anthropic, avisoId: string, ahora: Date = new Date(), leerSiFalta?: () => Promise<void>): Promise<EstadoLectura> {
   const [{ data: fila }, { data: det }] = await Promise.all([
     admin.from(T).select("aviso_id, estado, version, lectura, detalle_leido_at, updated_at, error").eq("aviso_id", avisoId).maybeSingle(),
     admin.from("publicacion_detalle").select("leido_at").eq("aviso_id", avisoId).maybeSingle(),
@@ -138,8 +121,9 @@ export async function lecturaDe(admin: SupabaseClient, cliente: Anthropic, aviso
   const marca = await admin.from(T).upsert({ aviso_id: avisoId, estado: "generando", version: VERSION_LECTURA, updated_at: ahora.toISOString() }, { onConflict: "aviso_id" });
   if (marca.error) return { estado: "error" };
   if (!det && leerSiFalta) await leerSiFalta().catch(() => undefined);
+  // La lectura depende SOLO del depto (20-nov-2026, Fabrizio): se guarda una vez y la ven todas las personas, así que no recibe nada
+  // del resultado de quien la pide.
   const e = await entradaDe(admin, avisoId);
-  if (e) e.entrada.capRatesOtras = await capRatesDeSuResultado(admin, userId, avisoId).catch(() => []);
   if (!e) {
     await admin.from(T).update({ estado: "error", error: textoError(intento, "sin-datos", "la publicación no tiene fotos ni texto guardados"), updated_at: new Date().toISOString() }).eq("aviso_id", avisoId);
     return { estado: "sin-datos" };

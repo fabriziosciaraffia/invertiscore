@@ -39,7 +39,7 @@ export async function POST(request: Request) {
       const avisoId = v.pedido.avisoId;
       waitUntil((async () => {
         await chequearPublicacionInvierte(admin, { avisoId, userId: user.id, origen: "firma" }).catch(() => undefined);
-        if (process.env.ANTHROPIC_API_KEY) await lecturaDe(admin, new Anthropic(), avisoId, new Date(), undefined, user.id).catch(() => undefined);
+        if (process.env.ANTHROPIC_API_KEY) await lecturaDe(admin, new Anthropic(), avisoId).catch(() => undefined);
       })());
       await capturarServidor({
         event: EVENTOS_INV2.firma,

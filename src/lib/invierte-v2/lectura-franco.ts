@@ -19,7 +19,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Sube con cada cambio de la instrucción: una lectura de otra versión se vuelve a generar. */
-export const VERSION_LECTURA = 9;
+export const VERSION_LECTURA = 10;
 /** Todas las fotos de la publicación, hasta este tope (20-nov-2026; antes 8, y la lectura decía que faltaban fotos que sí estaban). */
 export const MAX_FOTOS_LECTURA = 24;
 /** Lecturas nuevas por hora, entre todas las personas (resguardo de costo). */
@@ -93,7 +93,7 @@ Entregas tres cosas:
 3. La versión corta: EXACTAMENTE tres líneas para la tarjeta del resultado, sin etiqueta. Cada línea es UNA sola frase de unos 110 caracteres (nunca más de 120; no dos frases, no punto seguido).
    - La primera línea es la SÍNTESIS: una frase que dice qué significa este depto como inversión, a partir de lo que MÁS pesa en él. Decide tú qué pesa más en este depto en particular: algo que se ve en las fotos, algo que dice la publicación o un número de la tarjeta, y cómo se cruzan.
      · Empieza por lo que más pesa. Si lo que más pesa es lo que se ve o lo que dice la publicación, la frase parte por eso y el número, si va, la cierra; si lo que más pesa es el número, parte por él. El número no va siempre al inicio.
-     · Usa el número que más dice de este depto. Muchas veces es lo que deja o pide al mes, no el cap rate. Si el cap rate de este depto es parecido al de las otras opciones del resultado (vienen en «otras opciones del resultado»), no lo distingue: prefiere lo que deja o pide al mes.
+     · Usa el número que más dice de este depto por sí solo: el cap rate o lo que deja o pide al mes. No lo compares con otros deptos.
      · Si ningún número agrega algo a lo que se ve, la síntesis va sin número.
      · Tiene que notarse que alguien miró este depto. No uses una frase de partida fija ni una estructura que sirva para cualquier depto.
    - Cada línea termina con punto. No nombres «la tarjeta» ni «el informe»: quien lee los está mirando.
