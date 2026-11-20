@@ -728,7 +728,8 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       const mds = codigo("src/lib/invierte-v2/detalles-modo-servidor.ts");
       if (!/if \(v\.estado === "ya"\) return \{ cabeza, relacion: "suyo"/.test(mds) || !/if \(v\.estado !== "listo" \|\| !v\.alcanza \|\| v\.datos\?\.veredicto !== "COMPRAR" \|\| !v\.orden \|\| !v\.perfil\) return null;/.test(mds)) F("11f · «Te lo recomendamos» sin que dé Comprar y le alcance (o «Uno de tus deptos» sin estar en su base)");
       const det = codigo("src/components/invierte-v2/DetallesInvierte.tsx");
-      if (!/modo\.relacion === "suyo"\s*\? <span className="iv2-det-chip iv2-det-chip-suyo"[^>]*>\{D\.chipSuyo\}<\/span>\s*: <span className="iv2-det-chip iv2-det-chip-reco"[^>]*>\{D\.chipRecomendado\}<\/span>/.test(det)) F("11f · el chip no dice qué es el depto para la persona");
+      // ⚠ ACTA (20-nov-2026): su depto de entrada, antes de elegir, también lleva «Uno de tus deptos» (§16b).
+      if (!/modo\.relacion !== "recomendado"\s*\? <span className="iv2-det-chip iv2-det-chip-suyo"[^>]*>\{D\.chipSuyo\}<\/span>\s*: <span className="iv2-det-chip iv2-det-chip-reco"[^>]*>\{D\.chipRecomendado\}<\/span>/.test(det)) F("11f · el chip no dice qué es el depto para la persona");
       if (!/<SumarDepto avisoId=\{modo\.avisoId\} etiqueta=\{D\.seguir\} origen="base" variante="principal"/.test(det) || !/\{D\.estadoSuyo\}/.test(det) || !/href=\{urlWhatsapp\(modo\.whatsapp\)\}/.test(det)) F("11f · la acción no es «Seguir con este» (recomendación) o su estado y «Escribirle a Franco» (suyo)");
       if (DETALLES_COPY.chipSuyo !== "Uno de tus deptos" || DETALLES_COPY.chipRecomendado !== "Te lo recomendamos" || DETALLES_COPY.estadoSuyo !== "Ya sigues con este depto. Franco lo está gestionando." || DETALLES_COPY.escribirle !== "Escribirle a Franco" || DETALLES_COPY.seguir !== "Seguir con este") F("11f · los textos de los detalles no son los de la lámina");
       if (lineaRecomendado("a 4 cuadras del tuyo", "te pide $40.000 menos al mes") !== "Franco te lo recomienda: a 4 cuadras del tuyo y te pide $40.000 menos al mes.") F("11f · la línea de la recomendación no es la de la lámina");
@@ -956,6 +957,40 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       const css14 = leer("src/components/invierte-v2/invierte-v2.css");
       if (!/\.iv2-depto-tocable \{[^}]*flex-direction: row;[^}]*min-height: 44px;/.test(css14) || !/\.iv2-depto-cuerpo \.iv2-depto-t, \.iv2-depto-cuerpo \.iv2-depto-s, \.iv2-depto-cuerpo \.iv2-cambio, \.iv2-depto-cuerpo \.iv2-cambio-sub \{ display: block; \}/.test(css14)) F("14f · la tarjeta no pone la flecha a la derecha, no llega a 44 px o sus filas no van en bloque");
       if (!/data-inv2="escribirle"><IconoWhatsapp \/>\{B\.escribirle\}<\/a>/.test(vb)) F("14f · «Escribirle a Franco» cambió (se rediseña con el flujo de cada depto)");
+    }
+
+    // ── 16 · LA PRUEBA DEL RESULTADO DE FABRIZIO, SEGUNDA RONDA (20-nov-2026) ─────────────────────────────────────────────────
+    {
+      // 16a · Su depto de entrada, abierto desde el resultado antes de elegir, va en modo Invierte aunque tenga alerta grave o no
+      // tenga fotos. El 7022b35a (sin fotos, grave) se abría como el informe común: caía en la rama de los recomendados, donde
+      // «grave» devuelve null. La entrada se decide ANTES de esa rama, por su fila en la base.
+      const md = codigo("src/lib/invierte-v2/detalles-modo-servidor.ts");
+      const iEnt = md.search(/if \(fila\?\.estado === "opcion" && fila\.origen === "entrada"\) return \{ cabeza, relacion: "entrada", avisoId, alcanza: !!v\.alcanza,/);
+      const iGrave = md.indexOf("if (!recomendable(cabeza.lectura)) return null;");
+      if (iEnt < 0 || iGrave < 0 || iEnt > iGrave || !/if \(v\.estado === "listo"\) \{\s*const \{ data: fila \} = await admin\.from\("inv_deptos"\)\.select\("estado, origen"\)\.eq\("user_id", userId\)\.eq\("aviso_id", avisoId\)\.maybeSingle\(\);/.test(md)) F("16a · su depto de entrada no va en modo Invierte con alerta grave (la entrada no se decide antes de la rama de los recomendados)");
+      if (/if \([^)]*fotos[^)]*\)\s*return null/.test(md) || /cabeza\.fotos\s*(?:===|<|>|&&)/.test(md)) F("16a · el modo Invierte depende de que haya fotos");
+
+      // 16b · En los detalles: el chip «Uno de tus deptos» y la acción de la entrada («Es el depto que elegiste…» y «Seguir con
+      // este» si le alcanza). Sin fotos, el bloque de fotos no se dibuja y «Lo que ve Franco» sí.
+      const di = codigo("src/components/invierte-v2/DetallesInvierte.tsx");
+      if (!/\{modo\.relacion !== "recomendado"\s*\? <span className="iv2-det-chip iv2-det-chip-suyo" data-inv2="chip-suyo">\{D\.chipSuyo\}<\/span>/.test(di) || !/modo\.relacion === "entrada" \? \(\s*<>\s*<p className="iv2-det-accion-t" data-inv2="estado-entrada">\{modo\.alcanza \? D\.estadoEntrada : D\.fueraDeAlcance\}<\/p>\s*\{modo\.alcanza && \(\s*<SumarDepto avisoId=\{modo\.avisoId\}/.test(di)) F("16b · los detalles de su depto de entrada no llevan el chip o la acción");
+      if (DETALLES_COPY.estadoEntrada !== "Es el depto que elegiste. Decide en tu resultado si sigues con él.") F("16b · el texto de la acción de la entrada cambió");
+      const dc = codigo("src/components/invierte-v2/DetallesCabezaCliente.tsx");
+      if (!/<FotosDepto avisoId=\{avisoId\} n=\{fotos\} clase="iv2-det-fotos" \/>\s*\{children\}\s*(?:\{\}\s*)?<LoQueVeFranco avisoId=\{avisoId\} variante="detalles"/.test(dc)) F("16b · «Lo que ve Franco» de los detalles depende de las fotos");
+
+      // 16c · Una lectura con la versión corta vacía (dos de la prueba: la larga completa, la corta sin líneas) igual tiene su
+      // línea en la alternativa: la corta sale de la larga, sin «Ojo» si hay otras.
+      const larga16 = [{ etiqueta: "Estado", texto: "Parquet gastado.", fuente: "fotos" }, { etiqueta: "Ubicación", texto: "Metro cerca.", fuente: "datos" }, { etiqueta: "Ojo", texto: "Pregunta el año.", fuente: "datos" }];
+      const sinCorta = sanearLectura({ alerta: { nivel: "ninguna", motivo: null }, larga: larga16, corta: [] });
+      const soloOjo = sanearLectura({ alerta: { nivel: "ninguna", motivo: null }, larga: [larga16[2]], corta: [] });
+      if (sinCorta?.corta.join("|") !== "Parquet gastado.|Metro cerca." || soloOjo?.corta.join("|") !== "Pregunta el año." || !sinCorta || lineaAlternativa(sinCorta) !== "Parquet gastado.") F("16c · una lectura sin versión corta deja a la alternativa sin su línea");
+
+      // 16d · Con alerta grave en el elegido, el título lo dice; la casilla sigue marcada y la persona decide.
+      const r16 = codigo("src/components/invierte-v2/ResultadoOpciones.tsx");
+      if (A12.tituloGrave !== "Tu depto te alcanza, pero revisa esto antes de seguir.") F("16d · el título con alerta grave no es el de Fabrizio");
+      if (!/const titulo = p\.caso === "alcanza" && entrada \? \(graves\.has\(entrada\.avisoId\) \? A\.tituloGrave : A\.titulo\(/.test(r16) || !/<LoQueVeFranco avisoId=\{entrada\.avisoId\} variante="elegido" inicial=\{p\.lecturas\[entrada\.avisoId\] \?\? null\} alLlegar=\{siEsGrave\(entrada\.avisoId\)\}/.test(r16)) F("16d · el título no cambia cuando el elegido tiene alerta grave (también cuando la lectura llega después)");
+      const ini16 = r16.slice(r16.indexOf("const [marcados, setMarcados]"), r16.indexOf("\n", r16.indexOf("const [marcados, setMarcados]")));
+      if (!ini16 || /graves|recomendable/.test(ini16)) F("16d · la alerta grave desmarca su casilla (la persona decide)");
     }
 
     // ── 15 · LA PRUEBA DEL RESULTADO DE FABRIZIO (20-nov-2026, preview) ─────────────────────────────────────────────────────────
