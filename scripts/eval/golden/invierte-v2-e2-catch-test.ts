@@ -11,7 +11,7 @@ import { INTENTOS_LECTURA, LECTURAS_EN_PARALELO as LECTURAS_EN_PARALELO18, esper
 import { MAX_FOTOS, parsearDetalleFicha } from "../../../src/lib/guia/detalle-ficha";
 import { leerFicha } from "../../../src/lib/guia/publicacion";
 import { MAX_FOTOS_VISTA, pedidoFoto, respuestaFotoValida } from "../../../src/lib/invierte-v2/fotos";
-import { ESQUEMA_LECTURA_FRANCO, INSTRUCCION_LECTURA_FRANCO, INSTRUCCION_LECTURA_FRANCO as I15, LECTURA_COPY, MAX_FOTOS_LECTURA as MAX_FOTOS_LECTURA15, VERSION_LECTURA as VERSION_LECTURA15, afirmaFaltanFotos as afirmaFaltanFotos15, reglaDescarte as reglaDescarte17, sanearConRegistro as sanearConRegistro17, problemaCorta as problemaCorta18, TOPE_INTENTOS_LECTURA as TOPE_INTENTOS18, cortaSinRepetirAlerta, lineaAlternativa, lineasElegido, lineaPermitida, recomendable, sanearLectura } from "../../../src/lib/invierte-v2/lectura-franco";
+import { ESQUEMA_LECTURA_FRANCO, INSTRUCCION_LECTURA_FRANCO, INSTRUCCION_LECTURA_FRANCO as I15, LECTURA_COPY, MAX_FOTOS_LECTURA as MAX_FOTOS_LECTURA15, VERSION_LECTURA as VERSION_LECTURA15, afirmaFaltanFotos as afirmaFaltanFotos15, reglaDescarte as reglaDescarte17, sanearConRegistro as sanearConRegistro17, problemaCorta as problemaCorta18, TOPE_INTENTOS_LECTURA as TOPE_INTENTOS18, conAlertaSinFotos as conAlertaSinFotos18, MOTIVO_SIN_FOTOS as MOTIVO_SIN_FOTOS18, cortaSinRepetirAlerta, lineaAlternativa, lineasElegido, lineaPermitida, recomendable, sanearLectura } from "../../../src/lib/invierte-v2/lectura-franco";
 import { fotosCompletas as fotosCompletas15, bajarFotos as bajarFotos18, clasificarError as clasificarError18, INTENTOS_LLAMADA as INTENTOS_LLAMADA18, ESPERAS_MS as ESPERAS_MS18 } from "../../../src/lib/invierte-v2/lectura-franco-ia";
 import { textoError as textoError18, intentosDe as intentosDe18, reintentable as reintentable18 } from "../../../src/lib/invierte-v2/lectura-franco-servidor";
 import { CLAUDE_MODEL_LECTURA } from "../../../src/lib/ai-config";
@@ -1015,6 +1015,14 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (!/if \(errorVigente && !reintentable\(f, ahora\)\) return \{ estado: "error" \};\s*const intento = errorVigente \? intentosDe\(f\.error\) \+ 1 : 1;/.test(sv18)) F("18d · lecturaDe no reintenta la lectura en error");
 
       // 18e · Como mucho dos lecturas a la vez desde la página, con espera creciente ante un límite de pedidos o un corte.
+      // 18f · ⚠ ACTA (20-nov-2026, Fabrizio): si no se puede bajar NINGUNA foto (la publicación no trae, o todas ya no existen en la
+      // fuente, como b20a316f), cuenta como sin ninguna foto del interior: alerta grave que pone el código, primera línea de la corta,
+      // y no se recomienda como alternativa (igual que el 7022b35a).
+      const base18 = { alerta: { nivel: "ninguna" as const, motivo: null }, larga: [], corta: ["A.", "B.", "C."] };
+      const sf = conAlertaSinFotos18(base18);
+      if (sf.alerta.nivel !== "grave" || sf.alerta.motivo !== MOTIVO_SIN_FOTOS18 || sf.corta.join("|") !== `${MOTIVO_SIN_FOTOS18}|A.|B.` || recomendable(sf) || problemaCorta18(sf) !== null) F("18f · sin fotos que se puedan ver no queda grave, primera en la corta y fuera de las recomendadas");
+      if (!/const lectura = saneada\.lectura && !fotos\.length \? conAlertaSinFotos\(saneada\.lectura\) : saneada\.lectura;/.test(ia18)) F("18f · la lectura sin ninguna foto que se pueda ver no lleva la alerta grave");
+
       if (LECTURAS_EN_PARALELO18 !== 2 || !/const r = await conTurno\(\(\) => fetch\(URL_LECTURA,/.test(lq18) || !/if \(r\.status === 429 \|\| r\.status >= 500\) espera = esperaReintento\(cortes\+\+\);/.test(lq18) || !(esperaReintento18(1) > esperaReintento18(0))) F("18e · las lecturas se piden todas a la vez, o sin espera creciente ante un límite o un corte");
     }
 
@@ -1088,7 +1096,7 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (!fotosCompletas15(n(24)) || fotosCompletas15(n(25)) || !fotosCompletas15(n(1))) F("15a · «recibió todas las fotos» no es «la publicación tiene 24 o menos»");
       const ia15 = codigo("src/lib/invierte-v2/lectura-franco-ia.ts");
       // ⚠ ACTA (20-nov-2026, Fabrizio, tercera ronda): «todas» exige además que bajaran todas (§18a).
-      if (!/const completas = fotosCompletas\(e\.fotos\) && fotos\.length === urls\.length;/.test(ia15) || !/son TODAS sus fotos/.test(ia15) || !/así que no digas que falta una foto de algo ni pidas fotos/.test(ia15) || !/No se pudo ver ninguna foto de la publicación: no digas nada de las fotos/.test(ia15)) F("15a · el mensaje al modelo no le dice si recibió todas las fotos");
+      if (!/const completas = fotosCompletas\(e\.fotos\) && fotos\.length === urls\.length;/.test(ia15) || !/son TODAS sus fotos/.test(ia15) || !/así que no digas que falta una foto de algo ni pidas fotos/.test(ia15) || !/No se pudo ver ninguna foto de la publicación: Franco ya marca eso aparte, así que no hables de las fotos/.test(ia15)) F("15a · el mensaje al modelo no le dice si recibió todas las fotos");
 
       // 15b · Solo puede decir que no hay fotos de algo si las recibió todas: si no, el saneado saca esas líneas y la alerta por eso.
       for (const t of ["Pide fotos del baño antes de ofertar.", "No hay fotos del baño ni de la cocina.", "Faltan fotos del living.", "Las fotos no muestran los baños: pídelas antes de ofertar."]) if (!afirmaFaltanFotos15(t)) F(`15b · no reconoce que «${t}» dice que faltan fotos`);
@@ -1158,7 +1166,7 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (!/^\{"anyOf":\[\{"type":"string","maxLength":110,"description":"[^"]+"\},\{"type":"null"\}\]\}$/.test(JSON.stringify(ESQUEMA_LECTURA_FRANCO.properties.alerta.properties.motivo))) F("13a · el motivo de la alerta no va con anyOf (la API rechaza `type: [x, \"null\"]` con enum)");
       const ia13 = codigo("src/lib/invierte-v2/lectura-franco-ia.ts");
       // ⚠ ACTA (20-nov-2026, prueba de Fabrizio del resultado): el saneado sabe si la lectura recibió todas las fotos (§15b).
-      if (!/model: CLAUDE_MODEL_LECTURA,/.test(ia13) || !/system: INSTRUCCION_LECTURA_FRANCO,/.test(ia13) || !/const \{ lectura, descartes \} = sanearConRegistro\(JSON\.parse\(txt\), \{ fotosCompletas: completas \}\);/.test(ia13) || /precio_uf|precioUF|flujo|arriendo/.test(ia13.slice(ia13.indexOf("export interface EntradaLectura"), ia13.indexOf("export type ResultadoLecturaFranco")))) F("13a · la llamada no usa el modelo elegido, la instrucción o el saneado, o le pasa el precio al modelo");
+      if (!/model: CLAUDE_MODEL_LECTURA,/.test(ia13) || !/system: INSTRUCCION_LECTURA_FRANCO,/.test(ia13) || !/const saneada = sanearConRegistro\(JSON\.parse\(txt\), \{ fotosCompletas: completas \}\);/.test(ia13) || /precio_uf|precioUF|flujo|arriendo/.test(ia13.slice(ia13.indexOf("export interface EntradaLectura"), ia13.indexOf("export type ResultadoLecturaFranco")))) F("13a · la llamada no usa el modelo elegido, la instrucción o el saneado, o le pasa el precio al modelo");
       if (CLAUDE_MODEL_LECTURA !== "claude-opus-5-5") F("13a · el modelo de la lectura no es el que eligió Fabrizio (Opus 5.5)");
 
       // 13b · Una por depto, guardada; se pide aparte, solo quien firmó y de un depto de su base; con tope por hora y marca.
