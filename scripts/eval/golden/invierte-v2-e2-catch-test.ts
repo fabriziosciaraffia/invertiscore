@@ -885,7 +885,7 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
     {
       // 14a · La publicación se lee al firmar (el elegido) y al mostrarse el resultado (los que no la tienen), y la tarjeta se completa sola.
       const fir14 = codigo("src/app/api/invierte-v2/firma/route.ts");
-      if (!/if \(!r\.yaFirmada\) \{[\s\S]*?waitUntil\(\(async \(\) => \{\s*await chequearPublicacionInvierte\(admin, \{ avisoId, userId: user\.id, origen: "firma" \}\)[^;]*;\s*if \(process\.env\.ANTHROPIC_API_KEY\) await lecturaDe\(admin, new Anthropic\(\), avisoId, new Date\(\), undefined, user\.id\)/.test(fir14)) F("14a · al firmar no se lee la publicación del elegido ni se escribe su lectura en segundo plano");
+      if (!/if \(!r\.yaFirmada\) \{[\s\S]*?waitUntil\(\(async \(\) => \{\s*await chequearPublicacionInvierte\(admin, \{ avisoId, userId: user\.id, origen: "firma" \}\)[^;]*;\s*if \(process\.env\.ANTHROPIC_API_KEY\) await lecturaDe\(admin, new Anthropic\(\), avisoId\)/.test(fir14)) F("14a · al firmar no se lee la publicación del elegido ni se escribe su lectura en segundo plano");
       const srv14 = codigo("src/lib/invierte-v2/lectura-franco-servidor.ts");
       const iMarca = srv14.indexOf('estado: "generando", version: VERSION_LECTURA'), iLeer = srv14.indexOf("if (!det && leerSiFalta) await leerSiFalta()"), iEntrada = srv14.indexOf("const e = await entradaDe(admin, avisoId);");
       if (iMarca < 0 || iLeer < 0 || iEntrada < 0 || !(iMarca < iLeer && iLeer < iEntrada)) F("14a · la lectura no lee la publicación que falta (o la lee antes de marcar «generando» y dos pantallas la leerían dos veces)");
@@ -1023,14 +1023,16 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
     {
       const I = INSTRUCCION_LECTURA_FRANCO;
       if (!/El número no va siempre al inicio/.test(I) || !/Si lo que más pesa es lo que se ve o lo que dice la publicación, la frase parte por eso y el número, si va, la cierra/.test(I)) F("19e · la instrucción no deja que la síntesis parta por lo que se ve y cierre con el número");
-      if (!/Muchas veces es lo que deja o pide al mes, no el cap rate\. Si el cap rate de este depto es parecido al de las otras opciones del resultado/.test(I) || !/prefiere lo que deja o pide al mes/.test(I)) F("19e · la instrucción no prefiere el flujo cuando el cap rate no distingue al depto de las otras opciones");
+      // ⚠ ACTA (20-nov-2026, Fabrizio): la lectura depende SOLO del depto: el número que más dice por sí solo, sin comparar con otros.
+      if (!/Usa el número que más dice de este depto por sí solo: el cap rate o lo que deja o pide al mes\. No lo compares con otros deptos\./.test(I) || /otras opciones del resultado/.test(I)) F("19e · la instrucción no pide el número que más dice del depto por sí solo (o lo compara con otros deptos)");
       if (!/Si ningún número agrega algo a lo que se ve, la síntesis va sin número/.test(I)) F("19e · la instrucción obliga a poner un número en la síntesis");
       // Sin una lista de arranques ni ejemplos que la modelen: los ejemplos de antes partían con el número.
       if (/Ejemplos del tono|«Cap rate de 5,8 %|«Deja \$88 mil/.test(I)) F("19e · la instrucción vuelve a traer ejemplos de arranque (otra plantilla)");
       const ia19 = codigo("src/lib/invierte-v2/lectura-franco-ia.ts");
       const sv19e = codigo("src/lib/invierte-v2/lectura-franco-servidor.ts");
-      if (!/const otras = e\.capRatesOtras\?\.length \? `\\nOTRAS OPCIONES DEL RESULTADO \(solo para comparar; no las cites\): cap rate \$\{e\.capRatesOtras\.join\(", "\)\}\.` : "";/.test(ia19) || !/if \(e\) e\.entrada\.capRatesOtras = await capRatesDeSuResultado\(admin, userId, avisoId\)/.test(sv19e) || !/lecturaDe\(admin, new Anthropic\(\), avisoId, new Date\(\), leer, user\.id\)/.test(codigo("src/app/api/invierte-v2/lectura/route.ts"))) F("19e · la lectura no recibe el cap rate de las otras opciones del resultado");
-      if (VERSION_LECTURA15 < 9) F("19e · la versión no subió: las síntesis con plantilla no se rehacen");
+      // La lectura se guarda una vez por depto y la ven todos: no recibe nada del resultado de quien la pide.
+      if (/capRatesOtras|OTRAS OPCIONES DEL RESULTADO|capRatesDeSuResultado/.test(ia19 + sv19e) || /lecturaDe\(admin[^;]*user\.id/.test(codigo("src/app/api/invierte-v2/lectura/route.ts") + codigo("src/app/api/invierte-v2/firma/route.ts"))) F("19e · la lectura depende del resultado de quien la pide (se guarda por depto y la ven todos)");
+      if (VERSION_LECTURA15 < 10) F("19e · la versión no subió: las lecturas que comparaban con otros deptos no se rehacen");
       // ⚠ ACTA (20-nov-2026): con maxLength 120 en el esquema la API cortaba la frase; el esquema queda holgado (200) y el código exige el
       // largo (120) y el punto final, y rehace la lectura si falta.
       const ok19 = { alerta: { nivel: "ninguna" as const, motivo: null }, larga: [], corta: ["A.", "B.", "C."] };
