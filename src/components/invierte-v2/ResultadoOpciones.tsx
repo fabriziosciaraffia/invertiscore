@@ -262,16 +262,14 @@ export function ResultadoOpciones(p: PropsResultado) {
     </div>
   );
 
-  // El elegido: foto con flechas, nombre y chip, tres datos y su casilla. «Lo que ve Franco» (entrega 4) espera la aprobación
-  // de Fabrizio: todavía no se muestra.
+  // El elegido: foto con flechas, nombre y chip, tres datos, UN bloque «Lo que ve Franco» con tres líneas (si hay alerta, la primera,
+  // con su chip; 20-nov-2026) y su casilla.
   const elegidoCard = entrada ? (
     <section className="iv2-res-elegido" data-marcado={marcados.has(entrada.avisoId) ? "1" : undefined} aria-labelledby="iv2-ele-t" data-inv2="elegido">
       <FotosDepto avisoId={entrada.avisoId} n={fotos[entrada.avisoId] ?? 0} clase="iv2-res-elegido-foto" />
       <div className="iv2-res-elegido-cuerpo">
         <span className="iv2-res-rotulo">{A.elQueElegiste}</span>
         <div className="iv2-res-fila"><span className="iv2-res-nombre" id="iv2-ele-t">{nombreDepto(entrada)}</span><Chip o={entrada} /></div>
-        {/* «Lo que el puntaje no considera» (grave o revisar) va primero en el elegido (entrega 4). */}
-        <LoQueVeFranco avisoId={entrada.avisoId} variante="alerta" inicial={p.lecturas[entrada.avisoId] ?? null} />
         <dl className="iv2-res-datos" data-inv2="tres-datos">
           <div><dt>{A.precio}</dt><dd>UF {fmtUF(entrada.precioUF)}</dd></div>
           <div><dt>{A.arriendo}</dt><dd>{entrada.arriendoCLP ? fmtCLP(entrada.arriendoCLP) : "—"}</dd></div>

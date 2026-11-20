@@ -1,18 +1,21 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// «LO QUE VE FRANCO» EN PANTALLA (entrega 4 de las láminas del 19-nov-2026). Tres formas, de la misma lectura guardada por depto:
-//   · alerta + elegido (resultado): «Lo que el puntaje no considera» (grave o revisar) va arriba de los tres datos; la versión
-//     corta, debajo, sin repetir la alerta.
-//   · detalles: igual, con la versión larga (Estado, Para arrendar, Edificio, Ubicación, Ojo).
-//   · linea (una alternativa): la primera línea de la corta (si hay alerta, es la alerta).
+// «LO QUE VE FRANCO» EN PANTALLA (entrega 4 de las láminas del 19-nov-2026; rehecho tras la prueba de Fabrizio del 20-nov-2026).
+// Tres formas, de la misma lectura guardada por depto:
+//   · elegido (resultado): UN bloque «Lo que ve Franco» con las tres líneas de la corta; si hay alerta, es la primera línea, con su
+//     chip («Revisar» o «Grave») y el recuadro en ciruela claro. «Lo que el puntaje no considera» ya no va en el resultado.
+//   · linea (una alternativa): el mismo recuadro con UNA línea —la alerta si existe; si no, la primera de la corta—, dos renglones
+//     como máximo. Azul claro (el de las tarjetas que explican) o ciruela claro con su chip si es una alerta; nunca rojo.
+//   · detalles: «Lo que el puntaje no considera» (grave o revisar) arriba, y la versión larga (Estado, Para arrendar, Edificio,
+//     Ubicación, Ojo).
 // Si la lectura no está, se pide aparte (POST /api/invierte-v2/lectura) y la tarjeta se completa sola; mientras tanto no se dibuja
 // nada y nada espera. Si la publicación todavía no se leyó, la ruta la lee por el carril y escribe la lectura; la tarjeta sigue
 // preguntando mientras la respuesta sea «generando» (20-nov-2026), y con la lectura llegan las fotos (`alFotos`). Un mismo depto se
 // pide una sola vez aunque esté dos veces en la página.
 // ─────────────────────────────────────────────────────────────────────────────
 import { useEffect, useState } from "react";
-import { LECTURA_COPY as L, alertaPrimero, cortaSinRepetirAlerta, partirLinea, type LecturaFranco } from "@/lib/invierte-v2/lectura-franco";
+import { LECTURA_COPY as L, alertaPrimero, lineaAlternativa, lineasElegido, partirLinea, type LecturaFranco } from "@/lib/invierte-v2/lectura-franco";
 
 export const URL_LECTURA = "/api/invierte-v2/lectura";
 const PAUSA_MS = 6000;
@@ -74,19 +77,32 @@ function Linea({ t }: { t: string }) {
   return <span>{p.fuerte ? <b>{p.fuerte}</b> : null}{p.resto}</span>;
 }
 
-export function LoQueVeFranco({ avisoId, variante, inicial = null, alLlegar, alFotos }: { avisoId: string; variante: "alerta" | "elegido" | "detalles" | "linea"; inicial?: LecturaFranco | null; alLlegar?: (l: LecturaFranco) => void; /** Cuántas fotos hay, cuando la publicación se leyó en segundo plano. */ alFotos?: (n: number) => void }) {
+/** El recuadro del resultado: la etiqueta chica «LO QUE VE FRANCO» y, si hay alerta, su chip; azul claro, o ciruela claro con alerta. */
+function Caja({ l, lineas, variante }: { l: LecturaFranco; lineas: string[]; variante: "elegido" | "linea" }) {
+  if (!lineas.length) return null;
+  const alerta = alertaPrimero(l) ? (l.alerta.nivel === "grave" ? "grave" : "revisar") : null;
+  return (
+    <section className={`iv2-lectura-caja iv2-lectura-${variante}`} data-alerta={alerta ?? undefined} data-inv2={variante === "linea" ? "lectura-linea" : "lectura-corta"}>
+      <span className="iv2-lectura-cab">
+        <span className="iv2-lectura-rotulo">{L.rotulo}</span>
+        {alerta && <span className="iv2-lectura-chip" data-inv2="lectura-chip">{L.alertaNivel[alerta]}</span>}
+      </span>
+      <div className="iv2-lectura-lineas">{lineas.map((t, i) => <Linea key={i} t={t} />)}</div>
+    </section>
+  );
+}
+
+export function LoQueVeFranco({ avisoId, variante, inicial = null, alLlegar, alFotos }: { avisoId: string; variante: "elegido" | "detalles" | "linea"; inicial?: LecturaFranco | null; alLlegar?: (l: LecturaFranco) => void; /** Cuántas fotos hay, cuando la publicación se leyó en segundo plano. */ alFotos?: (n: number) => void }) {
   const l = useLectura(avisoId, inicial, alLlegar, alFotos);
   if (!l) return null;
-  if (variante === "alerta") return <Alerta l={l} />;
-  if (variante === "linea") return l.corta[0] ? <p className="iv2-lectura-linea" data-inv2="lectura-linea">{l.corta[0]}</p> : null;
-  const lineas = variante === "detalles"
-    ? l.larga.map((x) => <span key={x.etiqueta}><b>{x.etiqueta}.</b> {x.texto}</span>)
-    : cortaSinRepetirAlerta(l).map((t, i) => <Linea key={i} t={t} />);
+  if (variante === "elegido") return <Caja l={l} variante="elegido" lineas={lineasElegido(l)} />;
+  if (variante === "linea") { const t = lineaAlternativa(l); return t ? <Caja l={l} variante="linea" lineas={[t]} /> : null; }
+  const lineas = l.larga.map((x) => <span key={x.etiqueta}><b>{x.etiqueta}.</b> {x.texto}</span>);
   return (
     <>
-      {variante === "detalles" && <Alerta l={l} />}
+      <Alerta l={l} />
       {lineas.length > 0 && (
-        <section className="iv2-lectura-caja" data-inv2={variante === "detalles" ? "lectura-larga" : "lectura-corta"}>
+        <section className="iv2-lectura-caja" data-inv2="lectura-larga">
           <span className="iv2-lectura-rotulo">{L.rotulo}</span>
           <div className="iv2-lectura-lineas">{lineas}</div>
         </section>
