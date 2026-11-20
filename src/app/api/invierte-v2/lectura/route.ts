@@ -31,7 +31,7 @@ export async function POST(request: Request) {
   if (!suyo) return NO_EXISTE();
   if (!process.env.ANTHROPIC_API_KEY) return NextResponse.json({ estado: "error" }, { headers: { "Cache-Control": "no-store" } });
   const leer = async () => { await chequearPublicacionInvierte(admin, { avisoId, userId: user.id, origen: "resultado", forzar: true }); };
-  const r = await lecturaDe(admin, new Anthropic(), avisoId, new Date(), leer);
+  const r = await lecturaDe(admin, new Anthropic(), avisoId, new Date(), leer, user.id);
   const fotos = (await fotosDe(admin, [avisoId]))[avisoId] ?? 0;
   return NextResponse.json({ ...r, fotos }, { status: r.estado === "generando" ? 202 : 200, headers: { "Cache-Control": "no-store" } });
 }

@@ -19,7 +19,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Sube con cada cambio de la instrucción: una lectura de otra versión se vuelve a generar. */
-export const VERSION_LECTURA = 7;
+export const VERSION_LECTURA = 9;
 /** Todas las fotos de la publicación, hasta este tope (20-nov-2026; antes 8, y la lectura decía que faltaban fotos que sí estaban). */
 export const MAX_FOTOS_LECTURA = 24;
 /** Lecturas nuevas por hora, entre todas las personas (resguardo de costo). */
@@ -27,6 +27,9 @@ export const TOPE_LECTURAS_POR_HORA = 60;
 /** La versión corta (20-nov-2026, Fabrizio): exactamente tres líneas, cada una UNA frase de unos 110 caracteres. Si el modelo pasa de
  *  este tope, la lectura se rehace (no se corta la frase a la mitad). 120 y no 110: los ejemplos de síntesis de Fabrizio llegan a 113. */
 export const MAX_CARACTERES_CORTA = 120;
+/** El tope del ESQUEMA es holgado a propósito (20-nov-2026): con maxLength 120 la API cortaba la frase en el carácter 120 («…antes de
+ *  que te sobren $75.060», sin «al mes»). El esquema solo frena lo desmedido; el largo real lo exige el código, que rehace la lectura. */
+export const MAX_CARACTERES_ESQUEMA = 200;
 export const LINEAS_CORTA = 3;
 /** Una lectura en error se vuelve a intentar cuando alguien vuelve a ver el depto, con espera creciente y un tope (20-nov-2026). */
 export const TOPE_INTENTOS_LECTURA = 4;
@@ -88,7 +91,12 @@ Entregas tres cosas:
    - Ojo: lo que falta saber antes de ofertar, como pregunta o acción («Pregunta si…», «Confirma…»). Si la antigüedad no viene informada, va aquí como pregunta. Si recibiste todas las fotos y falta alguna parte clave (el baño, la cocina, los dormitorios), va como pedido: «Pide fotos del baño antes de ofertar.» Si la publicación no da ninguna razón para su precio, puedes escribir «La publicación no explica su precio: pregúntalo», sin números.
 
 3. La versión corta: EXACTAMENTE tres líneas para la tarjeta del resultado, sin etiqueta. Cada línea es UNA sola frase de unos 110 caracteres (nunca más de 120; no dos frases, no punto seguido).
-   - La primera línea es la SÍNTESIS: cruza un número de la tarjeta (o el veredicto, si no vienen números) con lo que se ve en las fotos o dice la publicación, en una frase que diga qué significa para esta inversión. Tiene que notarse que alguien miró este depto: nada de plantillas ni frases fijas. Ejemplos del tono, no para copiar: «Cap rate de 5,8 %, pero la cocina y los baños son originales: parte de esa ventaja se va en dejarlo arrendable.» · «Deja $88 mil al mes y está listo para arrendar.» · «Buen número en el papel, pero es un quinto piso sin ascensor: se arrienda más lento de lo que supone el cálculo.»
+   - La primera línea es la SÍNTESIS: una frase que dice qué significa este depto como inversión, a partir de lo que MÁS pesa en él. Decide tú qué pesa más en este depto en particular: algo que se ve en las fotos, algo que dice la publicación o un número de la tarjeta, y cómo se cruzan.
+     · Empieza por lo que más pesa. Si lo que más pesa es lo que se ve o lo que dice la publicación, la frase parte por eso y el número, si va, la cierra; si lo que más pesa es el número, parte por él. El número no va siempre al inicio.
+     · Usa el número que más dice de este depto. Muchas veces es lo que deja o pide al mes, no el cap rate. Si el cap rate de este depto es parecido al de las otras opciones del resultado (vienen en «otras opciones del resultado»), no lo distingue: prefiere lo que deja o pide al mes.
+     · Si ningún número agrega algo a lo que se ve, la síntesis va sin número.
+     · Tiene que notarse que alguien miró este depto. No uses una frase de partida fija ni una estructura que sirva para cualquier depto.
+   - Cada línea termina con punto. No nombres «la tarjeta» ni «el informe»: quien lee los está mirando.
    - Si la alerta no es «ninguna», la primera línea es esa alerta y la síntesis pasa a la segunda.
    - Las otras líneas respaldan la síntesis con lo que más pesa para la decisión.
 
@@ -120,7 +128,7 @@ export const ESQUEMA_LECTURA_FRANCO = {
       properties: {
         nivel: { type: "string", enum: ["ninguna", "revisar", "grave"] },
         // Un valor con nulo va con anyOf (la API rechaza `type: [x, "null"]` junto a un enum; medido el 19-nov-2026).
-        motivo: { anyOf: [{ type: "string", maxLength: MAX_CARACTERES_CORTA, description: "Una sola frase de unos 110 caracteres (nunca más de 120)." }, { type: "null" }] },
+        motivo: { anyOf: [{ type: "string", maxLength: MAX_CARACTERES_ESQUEMA, description: "Una sola frase de unos 110 caracteres (nunca más de 120)." }, { type: "null" }] },
       },
     },
     estado_arriendo: { type: "string", enum: [...ESTADOS_ARRIENDO], description: "Interno: listo, arreglos_menores o remodelacion." },
@@ -138,7 +146,7 @@ export const ESQUEMA_LECTURA_FRANCO = {
       type: "array",
       minItems: 1,
       description: "Exactamente tres líneas; la primera, la síntesis (o la alerta y después la síntesis). Cada una, una sola frase de unos 110 caracteres.",
-      items: { type: "object", additionalProperties: false, required: ["texto", "fuente"], properties: { texto: { type: "string", maxLength: MAX_CARACTERES_CORTA, description: "Una sola frase de unos 110 caracteres (nunca más de 120)." }, fuente: FUENTE } },
+      items: { type: "object", additionalProperties: false, required: ["texto", "fuente"], properties: { texto: { type: "string", maxLength: MAX_CARACTERES_ESQUEMA, description: "Una sola frase de unos 110 caracteres (nunca más de 120)." }, fuente: FUENTE } },
     },
   },
 } as const;
@@ -242,6 +250,9 @@ export function problemaCorta(l: LecturaFranco): string | null {
   if (largas.length) return `una línea pasa de ${MAX_CARACTERES_CORTA} caracteres (${largas[0].length})`;
   const dobles = [...l.corta, ...(l.alerta.motivo ? [l.alerta.motivo] : [])].filter((t) => !unaFrase(t));
   if (dobles.length) return "una línea tiene más de una frase";
+  // Una línea sin cierre puede venir cortada: se rehace (20-nov-2026).
+  const abiertas = [...l.corta, ...(l.alerta.motivo ? [l.alerta.motivo] : [])].filter((t) => !/[.!?…»)]$/.test(t.trim()));
+  if (abiertas.length) return "una línea no termina en punto";
   return null;
 }
 

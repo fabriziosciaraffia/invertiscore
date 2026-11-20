@@ -26,6 +26,9 @@ export interface EntradaLectura {
   tarjeta: { veredicto: string | null; cap_rate_bruto: string | null; al_mes: string | null };
   /** Las mismas cifras en número, para que el saneado las permita tal cual y bote cualquier otra. */
   cifras: CifrasTarjeta | null;
+  /** El cap rate de las otras opciones del resultado de quien la pide (20-nov-2026, Fabrizio): si el de este depto es parecido, la
+   *  síntesis prefiere lo que deja al mes. Solo como contexto: la lectura no lo cita. */
+  capRatesOtras?: string[];
 }
 
 /** ¿La lectura recibe todas las fotos? Solo si la publicación tiene MAX_FOTOS_LECTURA o menos (las guardadas llegan hasta 40). */
@@ -92,8 +95,9 @@ export async function generarLecturaFranco(cliente: Anthropic, e: EntradaLectura
     : completas
       ? `Arriba van las ${fotos.length} fotos de la publicación, en su orden: son TODAS sus fotos.`
       : `Arriba van ${fotos.length} fotos de la publicación, en su orden: la publicación tiene más (o algunas no se pudieron ver), así que no digas que falta una foto de algo ni pidas fotos.`;
+  const otras = e.capRatesOtras?.length ? `\nOTRAS OPCIONES DEL RESULTADO (solo para comparar; no las cites): cap rate ${e.capRatesOtras.join(", ")}.` : "";
   const numeros = e.tarjeta.cap_rate_bruto || e.tarjeta.al_mes
-    ? `NÚMEROS DE LA TARJETA (cítalos tal cual, sin recalcularlos ni proponer otros):\n${JSON.stringify(e.tarjeta, null, 2)}`
+    ? `NÚMEROS DE LA TARJETA (cítalos tal cual, sin recalcularlos ni proponer otros):\n${JSON.stringify(e.tarjeta, null, 2)}${otras}`
     : `NÚMEROS DE LA TARJETA: solo el veredicto (${e.tarjeta.veredicto ?? "sin veredicto"}). Este depto no tiene suficientes arriendos comparables de su tamaño: no hables de cap rate ni de lo que deja al mes.`;
   const texto = `PUBLICACIÓN (lo que escribió quien publica):\n${JSON.stringify({ titulo: e.titulo, descripcion: e.descripcion }, null, 2)}\n\nNUESTROS DATOS:\n${JSON.stringify(e.datos, null, 2)}\n\n${numeros}\n\n${cuantas} Escribe la lectura.`;
   const esperar = opts.esperar ?? ((ms: number) => new Promise<void>((ok) => setTimeout(ok, ms)));
