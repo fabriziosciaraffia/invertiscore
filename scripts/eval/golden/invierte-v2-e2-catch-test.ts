@@ -11,7 +11,8 @@ import { INTENTOS_LECTURA } from "../../../src/components/invierte-v2/LoQueVeFra
 import { MAX_FOTOS, parsearDetalleFicha } from "../../../src/lib/guia/detalle-ficha";
 import { leerFicha } from "../../../src/lib/guia/publicacion";
 import { MAX_FOTOS_VISTA, pedidoFoto, respuestaFotoValida } from "../../../src/lib/invierte-v2/fotos";
-import { ESQUEMA_LECTURA_FRANCO, INSTRUCCION_LECTURA_FRANCO, LECTURA_COPY, cortaSinRepetirAlerta, lineaPermitida, recomendable, sanearLectura } from "../../../src/lib/invierte-v2/lectura-franco";
+import { ESQUEMA_LECTURA_FRANCO, INSTRUCCION_LECTURA_FRANCO, INSTRUCCION_LECTURA_FRANCO as I15, LECTURA_COPY, MAX_FOTOS_LECTURA as MAX_FOTOS_LECTURA15, VERSION_LECTURA as VERSION_LECTURA15, afirmaFaltanFotos as afirmaFaltanFotos15, cortaSinRepetirAlerta, lineaAlternativa, lineasElegido, lineaPermitida, recomendable, sanearLectura } from "../../../src/lib/invierte-v2/lectura-franco";
+import { fotosCompletas as fotosCompletas15 } from "../../../src/lib/invierte-v2/lectura-franco-ia";
 import { CLAUDE_MODEL_LECTURA } from "../../../src/lib/ai-config";
 import {
   elegirOpciones, etiquetar, casoDe, porQueNoAlcanza, vsParecidos, textoMetro, textoAlMes, textoEtiqueta, estaCerca, UMBRAL_CERCA_PCT, lecturaDeFranco, MAX_ACTIVOS, MAX_OPCIONES, MIN_PARECIDOS,
@@ -249,9 +250,7 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       // la bitácora los anota con su origen («firma», «resultado»; SQL 20261125_lecturas_invierte_origenes para Claude).
       if (!/await chequearPublicacionInvierte\(admin, \{ avisoId, userId: user\.id, origen: "firma" \}\)/.test(codigo("src/app/api/invierte-v2/firma/route.ts")) || !/chequearPublicacionInvierte\(admin, \{ avisoId, userId: user\.id, origen: "resultado", forzar: true \}\)/.test(codigo("src/app/api/invierte-v2/lectura/route.ts"))) F("8 · el carril no lee al firmar o al mostrarse el resultado (o lo hace con otro origen)");
       if (!/'firma', 'resultado'/.test(leer("supabase/migrations/20261125_lecturas_invierte_origenes.sql"))) F("8 · el SQL de los orígenes nuevos del carril no está");
-      // Resguardo hasta que se aplique ese SQL: una anotación rechazada por la regla (23514) se reintenta como 'abrir', para que el
-      // tope de 60 por hora cuente la lectura que ya se hizo.
-      if (!/if \(error\?\.code === "23514" && quien\.origen !== "abrir"\) \(\{ error \} = await admin\.from\("lecturas_invierte"\)\.insert\(\{ \.\.\.fila, origen: "abrir" \}\)\);/.test(codigo("src/lib/invierte-v2/carril-servidor.ts"))) F("8 · sin el SQL de los orígenes, las lecturas al firmar y del resultado no cuentan para el tope de 60 por hora");
+      // El resguardo que anotaba como 'abrir' mientras faltaba ese SQL se retiró (20-nov-2026: aplicado por Claude y verificado).
       // El carril: 60 pedidos por hora, memoria de 24 horas, fusible; lee también lo que la memoria da por despublicado.
       if (TOPE_CARRIL_POR_HORA !== 60 || RELECTURA_MS !== 24 * 3600 * 1000) F("8 · el carril no es de 60 pedidos por hora con relectura cada 24 horas");
       const ahora = new Date("2026-11-20T12:00:00Z");
@@ -870,7 +869,8 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (ruta12.indexOf("sinEnlaceAlPortal(admin, user.id)") < 0 || ruta12.indexOf("sinEnlaceAlPortal(admin, user.id)") > ruta12.indexOf('from("publicacion_detalle")') || !/if \(!user\) return NO_EXISTE\(\);/.test(ruta12)) F("12g · la ruta de fotos las entrega sin sesión o sin orden firmada");
       if (/NextResponse\.redirect|json\(\{[^}]*url/.test(ruta12)) F("12g · la ruta de fotos le pasa al navegador la dirección de la fuente");
       const fd = codigo("src/components/invierte-v2/FotosDepto.tsx");
-      if (!/src=\{urlFoto\(avisoId,/.test(fd) || !/if \(!n \|\| rota\) return null;/.test(fd) || !/onError=\{\(\) => setRota\(true\)\}/.test(fd)) F("12g · las fotos no van por la ruta propia, o una tarjeta sin fotos deja un hueco");
+      // ⚠ ACTA (20-nov-2026, prueba de Fabrizio del resultado): si una foto que no es la primera no carga, se salta a la siguiente; si no carga la primera, la tarjeta va sin foto.
+      if (!/src=\{urlFoto\(avisoId, i\)\}/.test(fd) || !/if \(!n \|\| rota\) return null;/.test(fd) || !/onError=\{\(\) => \(i === 0 \? setRota\(true\) : ir\(1\)\)\}/.test(fd)) F("12g · las fotos no van por la ruta propia, o una tarjeta sin fotos deja un hueco");
       if (!/select\("aviso_id, fotos"\)/.test(codigo("src/lib/invierte-v2/fotos-servidor.ts")) || !/Math\.min\(\(f\.fotos \?\? \[\]\)\.length, MAX_FOTOS_VISTA\)/.test(codigo("src/lib/invierte-v2/fotos-servidor.ts"))) F("12g · a la pantalla llega algo más que cuántas fotos hay");
       // ⚠ ACTA (20-nov-2026, decisión de Fabrizio): las fotos de los detalles viven en DetallesCabezaCliente: llegan solas si la publicación se lee en segundo plano.
       if (!/<FotosDepto avisoId=\{avisoId\} n=\{fotos\} clase="iv2-det-fotos" \/>/.test(codigo("src/components/invierte-v2/DetallesCabezaCliente.tsx")) || !/<DetallesCabezaCliente avisoId=\{c\.avisoId\} fotos=\{c\.fotos\} lectura=\{c\.lectura\}>/.test(codigo("src/components/invierte-v2/DetallesInvierte.tsx")) || !/\{modoInvierte && <CabezaDeDetalles modo=\{modoInvierte\} \/>\}/.test(codigo("src/app/analisis/[id]/informe-ltr.tsx"))) F("12g · los detalles desde Invierte no llevan las fotos arriba del informe");
@@ -958,13 +958,69 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (!/data-inv2="escribirle"><IconoWhatsapp \/>\{B\.escribirle\}<\/a>/.test(vb)) F("14f · «Escribirle a Franco» cambió (se rediseña con el flujo de cada depto)");
     }
 
+    // ── 15 · LA PRUEBA DEL RESULTADO DE FABRIZIO (20-nov-2026, preview) ─────────────────────────────────────────────────────────
+    {
+      // 15a · La lectura recibe TODAS las fotos de la publicación, hasta 24 (antes 8: decía que faltaban fotos que sí estaban), y la
+      // persona ve las mismas en las flechas. La versión sube para que las de antes se rehagan.
+      if (MAX_FOTOS_LECTURA15 !== 24 || VERSION_LECTURA15 < 5 || MAX_FOTOS_VISTA !== MAX_FOTOS_LECTURA15) F("15a · la lectura no recibe hasta 24 fotos, la versión no subió o la persona no ve las mismas fotos que lee Franco");
+      const n = (k: number) => Array.from({ length: k }, (_, i) => `https://x/${i}.jpg`);
+      if (!fotosCompletas15(n(24)) || fotosCompletas15(n(25)) || !fotosCompletas15(n(1))) F("15a · «recibió todas las fotos» no es «la publicación tiene 24 o menos»");
+      const ia15 = codigo("src/lib/invierte-v2/lectura-franco-ia.ts");
+      if (!/const fotos = e\.fotos\.slice\(0, MAX_FOTOS_LECTURA\);\s*const completas = fotosCompletas\(e\.fotos\);/.test(ia15) || !/son TODAS sus fotos/.test(ia15) || !/la publicación tiene más, así que no digas que falta una foto de algo ni pidas fotos/.test(ia15)) F("15a · el mensaje al modelo no le dice si recibió todas las fotos");
+
+      // 15b · Solo puede decir que no hay fotos de algo si las recibió todas: si no, el saneado saca esas líneas y la alerta por eso.
+      for (const t of ["Pide fotos del baño antes de ofertar.", "No hay fotos del baño ni de la cocina.", "Faltan fotos del living.", "Las fotos no muestran los baños: pídelas antes de ofertar."]) if (!afirmaFaltanFotos15(t)) F(`15b · no reconoce que «${t}» dice que faltan fotos`);
+      for (const t of ["En las fotos se ve la cocina renovada.", "Dos dormitorios y un baño, con metro a pie.", "La publicación dice estudio, pero nuestros datos lo cuentan como de un dormitorio."]) if (afirmaFaltanFotos15(t)) F(`15b · toma «${t}» como si dijera que faltan fotos`);
+      const crudo = { alerta: { nivel: "revisar", motivo: "No hay fotos del baño." }, larga: [{ etiqueta: "Ojo", texto: "Pide fotos del baño antes de ofertar.", fuente: "fotos" }, { etiqueta: "Estado", texto: "Cocina renovada.", fuente: "fotos" }], corta: [{ texto: "No hay fotos del baño.", fuente: "fotos" }, { texto: "Cocina renovada.", fuente: "fotos" }] };
+      const sinTodas = sanearLectura(crudo, { fotosCompletas: false });
+      const conTodas = sanearLectura(crudo, { fotosCompletas: true });
+      if (!sinTodas || sinTodas.alerta.nivel !== "ninguna" || sinTodas.larga.some((x) => x.etiqueta === "Ojo") || sinTodas.corta.join("|") !== "Cocina renovada.") F("15b · sin todas las fotos, la lectura igual dice que faltan fotos (o lo deja como alerta)");
+      if (!conTodas || !conTodas.larga.some((x) => x.texto === "Pide fotos del baño antes de ofertar.")) F("15b · con todas las fotos, el pedido de fotos no pasa");
+
+      // 15c · Que falten fotos deja de ser alerta: va como línea normal, en forma de pedido. «Revisar», solo datos que se contradicen.
+      if (!/Que falten fotos de algo \(el baño, la cocina, un dormitorio\) NUNCA es alerta/.test(I15) || !/«Pide fotos del baño antes de ofertar\.»/.test(I15) || !/Solo puedes decir que no hay fotos de algo, o pedir fotos, si recibiste todas las fotos de la publicación/.test(I15)) F("15c · la instrucción no dice que faltar fotos no es alerta, que va como pedido, o que solo se afirma con todas las fotos");
+
+      // 15d · Una lectura guardada se relee entera: la corta se guarda como texto y el saneado la perdía (el resultado mostraba solo
+      // la alerta). Sanear dos veces da lo mismo.
+      const una = sanearLectura({ alerta: { nivel: "ninguna", motivo: null }, larga: [{ etiqueta: "Estado", texto: "Bien.", fuente: "fotos" }], corta: [{ texto: "A.", fuente: "fotos" }, { texto: "B.", fuente: "datos" }, { texto: "C.", fuente: "datos" }] });
+      if (!una || JSON.stringify(sanearLectura(una)) !== JSON.stringify(una)) F("15d · al releer una lectura guardada se pierde la versión corta");
+
+      // 15e · El elegido: UN bloque «Lo que ve Franco» con tres líneas; si hay alerta, es la primera, con su chip. Una alternativa: una
+      // sola línea, la alerta si existe; si no, la primera de la corta.
+      const conAlerta = { alerta: { nivel: "revisar" as const, motivo: "La publicación dice estudio." }, larga: [], corta: ["La publicación dice estudio.", "B.", "C.", "D."] };
+      const sinAlerta = { alerta: { nivel: "ninguna" as const, motivo: null }, larga: [], corta: ["A.", "B.", "C."] };
+      if (lineasElegido(conAlerta).join("|") !== "La publicación dice estudio.|B.|C." || lineasElegido(sinAlerta).join("|") !== "A.|B.|C.") F("15e · el elegido no muestra tres líneas con la alerta primero");
+      if (lineaAlternativa(conAlerta) !== "La publicación dice estudio." || lineaAlternativa(sinAlerta) !== "A.") F("15e · la línea de una alternativa no es la alerta o la primera de la corta");
+      const lq15 = codigo("src/components/invierte-v2/LoQueVeFranco.tsx");
+      if (!/if \(variante === "elegido"\) return <Caja l=\{l\} variante="elegido" lineas=\{lineasElegido\(l\)\} \/>;/.test(lq15) || !/if \(variante === "linea"\) \{ const t = lineaAlternativa\(l\); return t \? <Caja l=\{l\} variante="linea" lineas=\{\[t\]\} \/> : null; \}/.test(lq15)) F("15e · el elegido o las alternativas no usan sus líneas");
+      if (!/<span className="iv2-lectura-rotulo">\{L\.rotulo\}<\/span>\s*\{alerta && <span className="iv2-lectura-chip" data-inv2="lectura-chip">\{L\.alertaNivel\[alerta\]\}<\/span>\}/.test(lq15) || !/data-alerta=\{alerta \?\? undefined\}/.test(lq15)) F("15e · el recuadro no lleva la etiqueta y, con alerta, su chip y su color");
+      if (LECTURA_COPY.alertaNivel.revisar !== "Revisar" || LECTURA_COPY.alertaNivel.grave !== "Grave") F("15e · el chip no dice «Revisar» o «Grave»");
+
+      // 15f · El recuadro: azul claro (el de las tarjetas que explican), ciruela claro con alerta, nunca rojo; el texto oscuro; en una
+      // alternativa, dos renglones como máximo.
+      const css15 = leer("src/components/invierte-v2/invierte-v2.css");
+      const reglas = css15.split("\n").filter((x) => /iv2-lectura-(caja|linea|chip|cab|lineas|rotulo)/.test(x)).join("\n");
+      if (!/\[data-theme="light"\] \.iv2-lectura-caja \{ background: #EEF2F8; \}/.test(css15) || !/\[data-theme="light"\] \.iv2-lectura-caja\[data-alerta\] \{ background: #F3EDF1; \}/.test(css15) || /#C8323C|#E05A63|signal-red/i.test(reglas)) F("15f · el recuadro no es azul claro, o con alerta no es ciruela claro (o usa rojo)");
+      if (!/\.iv2-lectura-linea \.iv2-lectura-lineas \{ display: -webkit-box; -webkit-line-clamp: 2;/.test(css15) || !/\.iv2-lectura-lineas \{[^}]*color: var\(--franco-text\);/.test(css15) || /\.iv2-lectura-linea \{[^}]*color:/.test(css15)) F("15f · la línea de una alternativa no va en color oscuro o pasa de dos renglones");
+
+      // 15g · Las fotos de las alternativas: recortadas para llenar el recuadro sin deformarse, con flechas, contador y puntos.
+      const fd15 = codigo("src/components/invierte-v2/FotosDepto.tsx");
+      if (!/\.iv2-fotos img \{ display: block; width: 100%; height: 100%; object-fit: cover; \}/.test(css15) || /!chica && n > 1/.test(fd15) || !/\{n > 1 && \(/.test(fd15) || !/\.iv2-fotos-chica \.iv2-foto-flecha \{/.test(css15)) F("15g · la foto de una alternativa se deforma o no lleva flechas, contador y puntos");
+
+      // 15h · El resultado cabe en un notebook bajo: en las pantallas de 820 px o menos de alto se aprietan los espacios y la foto de
+      // las alternativas baja. (Qué sale si aun así no cabe a 1.210 × 615 lo decide Fabrizio.)
+      const bajo = css15.slice(css15.indexOf("@media (min-width: 1024px) and (max-height: 820px)"));
+      if (!/\.iv2-res-nuevo \.iv2-fotos-chica \{ height: 64px; \}/.test(bajo) || !/\.iv2-res-nuevo \.iv2-res-elegido \.iv2-fotos \{ height: auto; min-height: 170px; align-self: stretch; \}/.test(bajo) || !/\.iv2-resultado-eleccion\.iv2-res-nuevo \{ padding-top: 14px; \}/.test(bajo)) F("15h · en un notebook bajo el resultado no aprieta los espacios ni baja la foto de las alternativas");
+    }
+
     // ── 13 · LÁMINAS DEL 19-nov-2026, ENTREGA 4: «Lo que ve Franco» (textos aprobados por Fabrizio el 19-nov-2026) y «Lo que el
     //        puntaje no considera»; una alternativa grave no se recomienda; «El tuyo es el mejor…» ──
     {
       // 13a · La lectura no cita ni juzga el precio: la instrucción lo prohíbe y el saneado saca la línea que se salga.
       const I13 = INSTRUCCION_LECTURA_FRANCO;
       if (!/Nunca cites ni juzgues el precio/.test(I13) || !/Nunca cites una cifra del informe/.test(I13) || /precio_m2_vs_zona|−25 %|-25 %/.test(I13)) F("13a · la instrucción permite citar o juzgar el precio, o le pasa el porcentaje contra la zona");
-      if (!/nivel «grave»: la publicación o las fotos muestran que es para remodelar o está sin terminar, que es un remate, que se venden derechos o acciones, o no hay ninguna foto del interior/.test(I13) || !/nivel «revisar»: datos que se contradicen[\s\S]*?las fotos o el texto contradicen un dato con que se calculó el informe —los dormitorios, los baños, la superficie o el piso[\s\S]*?faltan fotos de partes clave, como los baños o la cocina/.test(I13) || !/Se decide SOLO con lo que muestran las fotos o dice el texto de la publicación, nunca por el precio/.test(I13)) F("13a · la alerta no es la de Fabrizio (grave, revisar y ninguna, solo con evidencia)");
+      // ⚠ ACTA (20-nov-2026, prueba de Fabrizio del resultado): «revisar» queda SOLO para datos que se contradicen; que falten fotos ya no es alerta (va como pedido, §15c).
+      if (!/nivel «grave»: la publicación o las fotos muestran que es para remodelar o está sin terminar, que es un remate, que se venden derechos o acciones, o —solo si recibiste todas las fotos— no hay ninguna foto del interior/.test(I13) || !/nivel «revisar»: SOLO cuando los datos se contradicen: las fotos o el texto contradicen un dato con que se calculó el informe —los dormitorios, los baños, la superficie o el piso/.test(I13) || /faltan fotos de partes clave/.test(I13) || !/Se decide SOLO con lo que muestran las fotos o dice el texto de la publicación, nunca por el precio/.test(I13)) F("13a · la alerta no es la de Fabrizio (grave, revisar y ninguna, solo con evidencia)");
       if (!/La publicación no explica su precio: pregúntalo/.test(I13)) F("13a · «Ojo» no tiene la pregunta sin número del precio");
       for (const malo of ["Cuesta cerca de la mitad que su zona.", "Está un 34 % bajo su zona.", "A 300 m del metro.", "Precio de UF 2.700, conveniente.", "Gastos comunes de $80.000.", "Más barato que sus parecidos.", "Tiene un buen precio para la comuna.", "Subió un 20 % desde marzo."]) if (lineaPermitida(malo)) F(`13a · el saneado deja pasar «${malo}»`);
       for (const bueno of ["La publicación no explica su precio: pregúntalo.", "El tercer dormitorio mide 6,6 m², más de escritorio que de dormitorio.", "Según la publicación, el edificio es de 2012.", "Tiene metro cerca, a pie."]) if (!lineaPermitida(bueno)) F(`13a · el saneado saca «${bueno}», que está permitido`);
@@ -974,7 +1030,8 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (sanearLectura({ alerta: { nivel: "revisar", motivo: "Cuesta 30 % menos que su zona." }, larga: [{ etiqueta: "Estado", texto: "Bien." }], corta: [] })?.alerta.motivo !== null) F("13a · una alerta que se sostiene en el precio se muestra");
       if (JSON.stringify(ESQUEMA_LECTURA_FRANCO.properties.alerta.properties.motivo) !== '{"anyOf":[{"type":"string"},{"type":"null"}]}') F("13a · el motivo de la alerta no va con anyOf (la API rechaza `type: [x, \"null\"]` con enum)");
       const ia13 = codigo("src/lib/invierte-v2/lectura-franco-ia.ts");
-      if (!/model: CLAUDE_MODEL_LECTURA,/.test(ia13) || !/system: INSTRUCCION_LECTURA_FRANCO,/.test(ia13) || !/const lectura = sanearLectura\(JSON\.parse\(txt\)\);/.test(ia13) || /precio_uf|precioUF|flujo|arriendo/.test(ia13.slice(ia13.indexOf("export interface EntradaLectura"), ia13.indexOf("export type ResultadoLecturaFranco")))) F("13a · la llamada no usa el modelo elegido, la instrucción o el saneado, o le pasa el precio al modelo");
+      // ⚠ ACTA (20-nov-2026, prueba de Fabrizio del resultado): el saneado sabe si la lectura recibió todas las fotos (§15b).
+      if (!/model: CLAUDE_MODEL_LECTURA,/.test(ia13) || !/system: INSTRUCCION_LECTURA_FRANCO,/.test(ia13) || !/const lectura = sanearLectura\(JSON\.parse\(txt\), \{ fotosCompletas: completas \}\);/.test(ia13) || /precio_uf|precioUF|flujo|arriendo/.test(ia13.slice(ia13.indexOf("export interface EntradaLectura"), ia13.indexOf("export type ResultadoLecturaFranco")))) F("13a · la llamada no usa el modelo elegido, la instrucción o el saneado, o le pasa el precio al modelo");
       if (CLAUDE_MODEL_LECTURA !== "claude-opus-5-5") F("13a · el modelo de la lectura no es el que eligió Fabrizio (Opus 5.5)");
 
       // 13b · Una por depto, guardada; se pide aparte, solo quien firmó y de un depto de su base; con tope por hora y marca.
@@ -989,10 +1046,12 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
 
       // 13c · En pantalla: «Lo que el puntaje no considera» primero en el elegido y en los detalles; la corta, la larga y la línea.
       if (LECTURA_COPY.rotulo !== "Lo que ve Franco" || LECTURA_COPY.alertaRotulo !== "Lo que el puntaje no considera") F("13c · los rótulos no son los aprobados");
-      if (!/if \(variante === "alerta"\) return <Alerta l=\{l\} \/>;/.test(lq13) || !/\{variante === "detalles" && <Alerta l=\{l\} \/>\}\s*\{lineas\.length > 0 && \(/.test(lq13)) F("13c · la alerta no va primero en los detalles (o no se puede poner sola en el elegido)");
+      // ⚠ ACTA (20-nov-2026, prueba de Fabrizio del resultado): «Lo que el puntaje no considera» queda solo en los detalles, arriba de la versión larga; el resultado ya no la pone sola (§15e).
+      if (!/const lineas = l\.larga\.map[\s\S]*?<Alerta l=\{l\} \/>\s*\{lineas\.length > 0 && \(/.test(lq13) || /variante === "alerta"/.test(lq13)) F("13c · la alerta no va primero en los detalles (o el resultado la pone sola)");
       const res13 = codigo("src/components/invierte-v2/ResultadoOpciones.tsx");
-      const ia = res13.indexOf('<LoQueVeFranco avisoId={entrada.avisoId} variante="alerta"'), id = res13.indexOf('data-inv2="tres-datos"'), ic = res13.indexOf('<LoQueVeFranco avisoId={entrada.avisoId} variante="elegido"');
-      if (ia < 0 || id < 0 || ic < 0 || !(ia < id && id < ic)) F("13c · en el elegido la alerta no va primero, o «Lo que ve Franco» no va después de los tres datos");
+      const id = res13.indexOf('data-inv2="tres-datos"'), ic = res13.indexOf('<LoQueVeFranco avisoId={entrada.avisoId} variante="elegido"');
+      // ⚠ ACTA (20-nov-2026, prueba de Fabrizio del resultado): en el elegido va UN bloque «Lo que ve Franco» después de los tres datos (con la alerta como primera línea, §15e).
+      if (id < 0 || ic < 0 || !(id < ic) || /variante="alerta"/.test(res13)) F("13c · en el elegido «Lo que ve Franco» no va después de los tres datos, o la alerta va aparte");
       if (!/<LoQueVeFranco avisoId=\{o\.avisoId\} variante="linea" inicial=\{p\.lecturas\[o\.avisoId\] \?\? null\} alLlegar=\{siEsGrave\(o\.avisoId\)\} alFotos=\{conFotos\(o\.avisoId\)\} \/>/.test(res13)) F("13c · las alternativas no llevan su línea de Franco");
       if (!/<LoQueVeFranco avisoId=\{avisoId\} variante="detalles" inicial=\{lectura\} alFotos=/.test(codigo("src/components/invierte-v2/DetallesCabezaCliente.tsx"))) F("13c · los detalles no llevan la versión larga");
       if (JSON.stringify(cortaSinRepetirAlerta({ alerta: { nivel: "revisar", motivo: "Faltan fotos del baño." }, larga: [], corta: ["Faltan fotos del baño.", "B", "C"] })) !== '["B","C"]' || JSON.stringify(cortaSinRepetirAlerta({ alerta: { nivel: "ninguna", motivo: null }, larga: [], corta: ["A", "B", "C"] })) !== '["A","B","C"]') F("13c · la corta del elegido repite la alerta que ya va arriba (o pierde líneas sin alerta)");

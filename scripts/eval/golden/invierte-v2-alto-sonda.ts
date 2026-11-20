@@ -3,7 +3,8 @@
 // con barra de scroll» en un notebook de ~650 px de alto útil). Contra /dev/invierte-v2 (next dev o un preview), mide la hoja
 // de contacto, «Ver mi orden» y las preguntas de la firma en las medidas de la regla de revisión visual de CLAUDE.md:
 //   celular 390 × 844 y 360 × 740 (WebKit con perfil de iPhone) · notebook 1366 × 768 y 1280 × 720 CON la barra del navegador
-//   (1366 × 650 y 1280 × 610 de alto útil) · escritorio 1920 × 1080 (1920 × 960 útil), en Chromium.
+//   (1366 × 650 y 1280 × 610 de alto útil) · la pantalla de Fabrizio, 1.210 × 615 útiles (20-nov-2026) · escritorio 1920 × 1080
+//   (1920 × 960 útil), en Chromium.
 // En cada una:
 //   ALTO · la ventana entera dentro de la pantalla y SIN barra propia (su scrollHeight ≤ clientHeight). Si el contenido es largo,
 //          el scroll va adentro (el cuerpo de la hoja o el texto del documento) y el botón principal queda a la vista: dentro
@@ -28,6 +29,8 @@ const MEDIDAS = [
   { n: "360×740", w: 360, h: 740, movil: true },
   { n: "1366×768", w: 1366, h: 650, movil: false },
   { n: "1280×720", w: 1280, h: 610, movil: false },
+  // La pantalla de Fabrizio (20-nov-2026): ~1.210 × 615 px útiles.
+  { n: "1210×615", w: 1210, h: 615, movil: false },
   { n: "1920×1080", w: 1920, h: 960, movil: false },
 ] as const;
 
@@ -126,7 +129,7 @@ async function main(): Promise<void> {
 main()
   .then(() => {
     if (fallas.length) { console.log(`\n✗ ${fallas.length} falla(s):\n  ${fallas.join("\n  ")}`); process.exit(1); }
-    console.log("\n✓ las cuatro ventanas caben en las cinco medidas, con el botón a la vista");
+    console.log(`\n✓ las cuatro ventanas caben en las ${MEDIDAS.length} medidas, con el botón a la vista`);
   })
   .catch((e) => {
     if (fallas.length) console.log(`\n✗ ${fallas.length} falla(s) antes de cortarse:\n  ${fallas.join("\n  ")}`);
