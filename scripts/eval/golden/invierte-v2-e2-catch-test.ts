@@ -885,7 +885,7 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
     {
       // 14a · La publicación se lee al firmar (el elegido) y al mostrarse el resultado (los que no la tienen), y la tarjeta se completa sola.
       const fir14 = codigo("src/app/api/invierte-v2/firma/route.ts");
-      if (!/if \(!r\.yaFirmada\) \{[\s\S]*?waitUntil\(\(async \(\) => \{\s*await chequearPublicacionInvierte\(admin, \{ avisoId, userId: user\.id, origen: "firma" \}\)[^;]*;\s*if \(process\.env\.ANTHROPIC_API_KEY\) await lecturaDe\(admin, new Anthropic\(\), avisoId\)/.test(fir14)) F("14a · al firmar no se lee la publicación del elegido ni se escribe su lectura en segundo plano");
+      if (!/if \(!r\.yaFirmada\) \{[\s\S]*?waitUntil\(\(async \(\) => \{\s*await chequearPublicacionInvierte\(admin, \{ avisoId, userId: user\.id, origen: "firma" \}\)[^;]*;\s*if \(process\.env\.ANTHROPIC_API_KEY\) await lecturaDe\(admin, new Anthropic\(\), avisoId, new Date\(\), undefined, user\.id\)/.test(fir14)) F("14a · al firmar no se lee la publicación del elegido ni se escribe su lectura en segundo plano");
       const srv14 = codigo("src/lib/invierte-v2/lectura-franco-servidor.ts");
       const iMarca = srv14.indexOf('estado: "generando", version: VERSION_LECTURA'), iLeer = srv14.indexOf("if (!det && leerSiFalta) await leerSiFalta()"), iEntrada = srv14.indexOf("const e = await entradaDe(admin, avisoId);");
       if (iMarca < 0 || iLeer < 0 || iEntrada < 0 || !(iMarca < iLeer && iLeer < iEntrada)) F("14a · la lectura no lee la publicación que falta (o la lee antes de marcar «generando» y dos pantallas la leerían dos veces)");
@@ -1010,12 +1010,32 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       const g19 = sanearLectura({ alerta: { nivel: "ninguna", motivo: null }, larga: [{ etiqueta: "Estado", texto: "Bien.", fuente: "fotos" }], corta: [{ texto: "Deja $88 mil al mes y está listo.", fuente: "datos" }, { texto: "B.", fuente: "datos" }, { texto: "C.", fuente: "datos" }], estado_arriendo: "listo" }, { cifras: cif });
       if (!g19 || g19.estadoArriendo !== "listo" || g19.corta.length !== 3 || JSON.stringify(sanearLectura(g19)) !== JSON.stringify(g19)) F("19d · el estado para arrendar no queda, o al releer la lectura se botan las cifras que ya pasaron");
       if (ESQUEMA_LECTURA_FRANCO.required.join("|") !== "alerta|larga|corta|estado_arriendo" || ESQUEMA_LECTURA_FRANCO.properties.estado_arriendo.enum.join("|") !== "listo|arreglos_menores|remodelacion" || VERSION_LECTURA15 < 7 || MIN_ARRIENDOS19 !== 6) F("19d · falta el estado para arrendar en el esquema, la versión no subió o el mínimo de arriendos no es 6");
-      if (!/La primera línea es la SÍNTESIS: cruza un número de la tarjeta/.test(INSTRUCCION_LECTURA_FRANCO) || !/Si la alerta no es «ninguna», la primera línea es esa alerta y la síntesis pasa a la segunda/.test(INSTRUCCION_LECTURA_FRANCO) || !/No los recalcules, no los corrijas/.test(INSTRUCCION_LECTURA_FRANCO)) F("19d · la instrucción no pide la síntesis primero (segunda con alerta) o deja recalcular los números");
+      // ⚠ ACTA (20-nov-2026, Fabrizio): la síntesis ya no «cruza un número» siempre: parte por lo que más pesa (§19e).
+      if (!/La primera línea es la SÍNTESIS: una frase que dice qué significa este depto como inversión, a partir de lo que MÁS pesa en él/.test(INSTRUCCION_LECTURA_FRANCO) || !/Si la alerta no es «ninguna», la primera línea es esa alerta y la síntesis pasa a la segunda/.test(INSTRUCCION_LECTURA_FRANCO) || !/No los recalcules, no los corrijas/.test(INSTRUCCION_LECTURA_FRANCO)) F("19d · la instrucción no pide la síntesis primero (segunda con alerta) o deja recalcular los números");
       const sv19 = codigo("src/lib/invierte-v2/lectura-franco-servidor.ts");
       if (!/const confiable = n >= MIN_ARRIENDOS_COMPARABLES;/.test(sv19) || !/cifras: confiable \? \{ capRatePct: cap, flujoCLP: flujo \} : null,/.test(sv19) || !/\.filter\(\(a\) => a\.superficie_m2 != null && Number\(a\.superficie_m2\) >= p\.m2 \* 0\.8 && Number\(a\.superficie_m2\) <= p\.m2 \* 1\.2\)/.test(sv19)) F("19d · la lectura recibe cap rate y flujo sin 6 arriendos de su tamaño (±20 %) en el radio del motor");
       const r19 = codigo("src/components/invierte-v2/ResultadoOpciones.tsx");
       if (!/<div data-inv2="cap-rate"><dt>\{A\.capRate\}<\/dt><dd>\{entrada\.capRatePct != null \? pctUno\(entrada\.capRatePct\) : "—"\}<\/dd><\/div>/.test(r19) || !/etiqueta=\{o\.capRatePct != null \? `\$\{A\.capRate\} \$\{pctUno\(o\.capRatePct\)\}` : null\}/.test(r19)) F("19d · el cap rate no va como cuarto dato del elegido o sobre la foto de cada alternativa");
       if (!/const conCap = opciones\.map\(\(o\) => \(\{ \.\.\.o, capRatePct: capRatePct\(o\.arriendoCLP, o\.precioUF, m\.uf\) \}\)\);/.test(ps19)) F("19d · el cap rate del resultado no es el de la tarjeta del mapa");
+    }
+
+    // ── 19e · LA SÍNTESIS NO SUENA A PLANTILLA (20-nov-2026, Fabrizio: las cuatro partían con «Cap rate de X %», y dos tenían el mismo 7,1 %) ──
+    {
+      const I = INSTRUCCION_LECTURA_FRANCO;
+      if (!/El número no va siempre al inicio/.test(I) || !/Si lo que más pesa es lo que se ve o lo que dice la publicación, la frase parte por eso y el número, si va, la cierra/.test(I)) F("19e · la instrucción no deja que la síntesis parta por lo que se ve y cierre con el número");
+      if (!/Muchas veces es lo que deja o pide al mes, no el cap rate\. Si el cap rate de este depto es parecido al de las otras opciones del resultado/.test(I) || !/prefiere lo que deja o pide al mes/.test(I)) F("19e · la instrucción no prefiere el flujo cuando el cap rate no distingue al depto de las otras opciones");
+      if (!/Si ningún número agrega algo a lo que se ve, la síntesis va sin número/.test(I)) F("19e · la instrucción obliga a poner un número en la síntesis");
+      // Sin una lista de arranques ni ejemplos que la modelen: los ejemplos de antes partían con el número.
+      if (/Ejemplos del tono|«Cap rate de 5,8 %|«Deja \$88 mil/.test(I)) F("19e · la instrucción vuelve a traer ejemplos de arranque (otra plantilla)");
+      const ia19 = codigo("src/lib/invierte-v2/lectura-franco-ia.ts");
+      const sv19e = codigo("src/lib/invierte-v2/lectura-franco-servidor.ts");
+      if (!/const otras = e\.capRatesOtras\?\.length \? `\\nOTRAS OPCIONES DEL RESULTADO \(solo para comparar; no las cites\): cap rate \$\{e\.capRatesOtras\.join\(", "\)\}\.` : "";/.test(ia19) || !/if \(e\) e\.entrada\.capRatesOtras = await capRatesDeSuResultado\(admin, userId, avisoId\)/.test(sv19e) || !/lecturaDe\(admin, new Anthropic\(\), avisoId, new Date\(\), leer, user\.id\)/.test(codigo("src/app/api/invierte-v2/lectura/route.ts"))) F("19e · la lectura no recibe el cap rate de las otras opciones del resultado");
+      if (VERSION_LECTURA15 < 9) F("19e · la versión no subió: las síntesis con plantilla no se rehacen");
+      // ⚠ ACTA (20-nov-2026): con maxLength 120 en el esquema la API cortaba la frase; el esquema queda holgado (200) y el código exige el
+      // largo (120) y el punto final, y rehace la lectura si falta.
+      const ok19 = { alerta: { nivel: "ninguna" as const, motivo: null }, larga: [], corta: ["A.", "B.", "C."] };
+      if (problemaCorta18({ ...ok19, corta: ["A.", "B.", "piden inversión antes de que te sobren $75.060"] }) === null || problemaCorta18(ok19) !== null) F("19e · una línea sin punto final (cortada) pasa como válida");
+      if (!/No nombres «la tarjeta» ni «el informe»/.test(INSTRUCCION_LECTURA_FRANCO)) F("19e · la instrucción deja nombrar «la tarjeta»");
     }
 
     // ── 18 · LECTURAS QUE FALLAN Y LA CORTA DE UNA FRASE (20-nov-2026, Fabrizio, tercera ronda) ──────────────────────────────────
@@ -1049,9 +1069,9 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       const ok3 = { alerta: { nivel: "ninguna" as const, motivo: null }, larga: [], corta: ["Cocina renovada y lista para arrendar.", "Dos dormitorios con clóset.", "Metro a pie."] };
       if (problemaCorta18(ok3) !== null) F("18c · una corta válida no pasa");
       // ⚠ ACTA (20-nov-2026, revisión de Fabrizio, pasos 1 a 5): el tope de la corta es 120 (los ejemplos de síntesis de Fabrizio llegan a 113; la instrucción pide unos 110).
-      if (problemaCorta18({ ...ok3, corta: ok3.corta.slice(0, 2) }) === null || problemaCorta18({ ...ok3, corta: [...ok3.corta.slice(0, 2), "x".repeat(121)] }) === null || problemaCorta18({ ...ok3, corta: [...ok3.corta.slice(0, 2), "x".repeat(120)] }) !== null || problemaCorta18({ ...ok3, corta: [...ok3.corta.slice(0, 2), "La cocina está bien. El baño no."] }) === null) F("18c · pasa una corta de menos líneas, más larga de 120 o de dos frases");
+      if (problemaCorta18({ ...ok3, corta: ok3.corta.slice(0, 2) }) === null || problemaCorta18({ ...ok3, corta: [...ok3.corta.slice(0, 2), "x".repeat(120) + "."] }) === null || problemaCorta18({ ...ok3, corta: [...ok3.corta.slice(0, 2), "x".repeat(119) + "."] }) !== null || problemaCorta18({ ...ok3, corta: [...ok3.corta.slice(0, 2), "La cocina está bien. El baño no."] }) === null) F("18c · pasa una corta de menos líneas, más larga de 120 o de dos frases");
       if (problemaCorta18({ ...ok3, alerta: { nivel: "revisar", motivo: "y".repeat(130) } }) === null) F("18c · el motivo de la alerta pasa de 120 caracteres");
-      if (!/EXACTAMENTE tres líneas para la tarjeta del resultado, sin etiqueta\. Cada línea es UNA sola frase de unos 110 caracteres \(nunca más de 120/.test(INSTRUCCION_LECTURA_FRANCO) || ESQUEMA_LECTURA_FRANCO.properties.corta.items.properties.texto.maxLength !== 120 || ESQUEMA_LECTURA_FRANCO.properties.corta.minItems !== 1) F("18c · la regla de la corta no está en la instrucción o en el esquema");
+      if (!/EXACTAMENTE tres líneas para la tarjeta del resultado, sin etiqueta\. Cada línea es UNA sola frase de unos 110 caracteres \(nunca más de 120/.test(INSTRUCCION_LECTURA_FRANCO) || ESQUEMA_LECTURA_FRANCO.properties.corta.items.properties.texto.maxLength !== 200 || ESQUEMA_LECTURA_FRANCO.properties.corta.minItems !== 1) F("18c · la regla de la corta no está en la instrucción o en el esquema");
       if (!/const problema = problemaCorta\(lectura\);\s*if \(problema\) \{ ultima = \{ motivo: "corta", detalle: problema \};[^\n]*?continue; \}/.test(ia18)) F("18c · una corta que no cumple no se rehace");
       if (VERSION_LECTURA15 < 6) F("18c · la versión no subió: las lecturas con la corta larga no se rehacen");
       if (!/if \(c != null\) gastado = \(gastado \?\? 0\) \+ c;/.test(ia18) || !/costoUsd: gastado,/.test(ia18)) F("18c · el costo guardado no suma los intentos (una corta que se rehace también se paga)");
@@ -1222,7 +1242,7 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (sanearLectura({ alerta: { nivel: "ninguna", motivo: "algo" }, larga: [{ etiqueta: "Estado", texto: "Bien." }], corta: [] })?.alerta.motivo !== null) F("13a · con alerta «ninguna» queda un motivo");
       if (sanearLectura({ alerta: { nivel: "revisar", motivo: "Cuesta 30 % menos que su zona." }, larga: [{ etiqueta: "Estado", texto: "Bien." }], corta: [] })?.alerta.motivo !== null) F("13a · una alerta que se sostiene en el precio se muestra");
       // ⚠ ACTA (20-nov-2026, Fabrizio, tercera ronda): el motivo lleva su largo máximo (maxLength, aceptado por la API; medido).
-      if (!/^\{"anyOf":\[\{"type":"string","maxLength":120,"description":"[^"]+"\},\{"type":"null"\}\]\}$/.test(JSON.stringify(ESQUEMA_LECTURA_FRANCO.properties.alerta.properties.motivo))) F("13a · el motivo de la alerta no va con anyOf (la API rechaza `type: [x, \"null\"]` con enum)");
+      if (!/^\{"anyOf":\[\{"type":"string","maxLength":200,"description":"[^"]+"\},\{"type":"null"\}\]\}$/.test(JSON.stringify(ESQUEMA_LECTURA_FRANCO.properties.alerta.properties.motivo))) F("13a · el motivo de la alerta no va con anyOf (la API rechaza `type: [x, \"null\"]` con enum)");
       const ia13 = codigo("src/lib/invierte-v2/lectura-franco-ia.ts");
       // ⚠ ACTA (20-nov-2026, prueba de Fabrizio del resultado): el saneado sabe si la lectura recibió todas las fotos (§15b).
       if (!/model: CLAUDE_MODEL_LECTURA,/.test(ia13) || !/system: INSTRUCCION_LECTURA_FRANCO,/.test(ia13) || !/const saneada = sanearConRegistro\(JSON\.parse\(txt\), \{ fotosCompletas: completas, cifras: e\.cifras \}\);/.test(ia13) || /precio_uf|precioUF|precio:|arriendoCLP/.test(ia13.slice(ia13.indexOf("export interface EntradaLectura"), ia13.indexOf("export type ResultadoLecturaFranco")))) F("13a · la llamada no usa el modelo elegido, la instrucción o el saneado, o le pasa el precio al modelo");
