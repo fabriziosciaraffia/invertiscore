@@ -260,7 +260,7 @@ Motivo: master avanza en paralelo. Una rama que no rebasa obliga a ritual manual
 
 ## Revisión visual fija (regla permanente, decisión de Fabrizio, 18-nov-2026)
 **Antes de pedirle a Fabrizio que revise cualquier pantalla nueva o cambiada, la revisa el agente en el navegador y le manda las capturas con el resultado de cada punto. Si algo falla, se corrige antes de avisar.** Motivo: la ventana de contacto de Invierte con Franco llegó al preview con barra de scroll y la letra chica cortada en un notebook común; la vio él, no el gate.
-- **Medidas**: celular **390 × 844** y **360 × 740**; notebook **1366 × 768** y **1280 × 720** con la barra del navegador (≈650 y ≈610 px de alto útil); escritorio **1920 × 1080**.
+- **Medidas**: celular **390 × 844** y **360 × 740**; notebook **1366 × 768** y **1280 × 720** con la barra del navegador (≈650 y ≈610 px de alto útil); la pantalla de Fabrizio, **≈1.210 × 615 px útiles** (20-nov-2026); escritorio **1920 × 1080**.
 - **Qué se revisa en cada una**:
   - **Ventanas y hojas caben enteras, sin barra de scroll propia.** Si el contenido es largo, el scroll va adentro y el botón principal queda siempre a la vista. Nada cortado abajo.
   - La página **sin scroll horizontal** en ninguna medida.
