@@ -20,8 +20,9 @@ import { LoQueVeFranco } from "./LoQueVeFranco";
 import { recomendable, type LecturaFranco } from "@/lib/invierte-v2/lectura-franco";
 import { abrirDetalles, prepararEnSegundoPlano, urlDetallesInvierte } from "@/lib/invierte-v2/detalles-cliente";
 import type { Veredicto } from "@/lib/types";
-import { lineaTope, type Donde, type Objetivo, type Preocupacion, type Tope } from "@/lib/invierte-v2/perfil";
-import { ALTERNATIVAS_COPY as A, indicadorAlternativa, lineaPrecioDistancia, type NivelAlt } from "@/lib/invierte-v2/alternativas";
+import { lineaTope, sinCortar, type Donde, type Objetivo, type Preocupacion, type Tope } from "@/lib/invierte-v2/perfil";
+import { ALTERNATIVAS_COPY as A, indicadorAlternativa, lineaPrecioDistancia, nivelDelBloque, nivelDelTitulo, subtituloAlternativas, type NivelAlt } from "@/lib/invierte-v2/alternativas";
+import { olvidarMenu } from "@/lib/invierte-v2/menu-cliente";
 import {
   MAX_ACTIVOS, RESULTADO_COPY as R, comunasEnFrase, estaCerca, fmtCLP, fmtUF, lecturaDeFranco, pieDe, porQueNoAlcanza,
   textoAlMes, textoMetro, textoVsParecidos, type Caso, type Etiqueta, type OpcionDepto,
@@ -35,7 +36,7 @@ export interface PropsResultado {
   opciones: OpcionDepto[];
   etiquetas: Record<string, Etiqueta>;
   elegidos: string[];
-  tope: Pick<Tope, "topeUF" | "fuente" | "limita" | "creditoUF" | "porPieUF" | "menosPreciso">;
+  tope: Pick<Tope, "topeUF" | "fuente" | "limita" | "creditoUF" | "porPieUF" | "menosPreciso"> & { pieUF?: number | null; pieNoSabe?: boolean };
   pieUF: number | null;
   masBaratoUF: number | null;
   objetivo: Objetivo;
@@ -45,6 +46,8 @@ export interface PropsResultado {
   nivel: NivelAlt;
   donde: Donde;
   distancias: Record<string, number | null>;
+  /** De qué nivel salió cada alternativa (20-nov-2026): el subtítulo dice cuántas hay de cada uno cuando se mezclan. */
+  niveles: Record<string, NivelAlt | null>;
   fotos: Record<string, number>;
   /** «Lo que ve Franco» de los que ya la tienen (entrega 4); los demás se completan solos. */
   lecturas: Record<string, LecturaFranco>;
@@ -64,6 +67,9 @@ export function ResultadoOpciones(p: PropsResultado) {
   // Una alternativa cuya lectura llega con alerta grave deja de recomendarse en el acto (entrega 4).
   const [graves, setGraves] = useState<Set<string>>(() => new Set(Object.entries(p.lecturas).filter(([, l]) => !recomendable(l)).map(([id]) => id)));
   const siEsGrave = (id: string) => (l: LecturaFranco) => { if (!recomendable(l)) setGraves((g) => (g.has(id) ? g : new Set([...Array.from(g), id]))); };
+  // Las fotos llegan junto con la lectura cuando la publicación se lee en segundo plano (20-nov-2026): la tarjeta se completa sola.
+  const [fotos, setFotos] = useState<Record<string, number>>(p.fotos);
+  const conFotos = (id: string) => (n: number) => setFotos((f) => (f[id] === n ? f : { ...f, [id]: n }));
   const [abrirEleccion, setAbrirEleccion] = useState(p.caso !== "caso1");
   const [marcados, setMarcados] = useState<Set<string>>(() => new Set(p.elegidos.length ? p.elegidos.filter((id) => vivas.some((o) => o.avisoId === id)) : entrada?.alcanza ? [entrada.avisoId] : []));
   const [enviando, setEnviando] = useState(false);
@@ -98,7 +104,7 @@ export function ResultadoOpciones(p: PropsResultado) {
     try {
       const res = await fetch("/api/invierte-v2/eleccion", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ avisoIds: Array.from(marcados) }) });
       // Los detalles de los elegidos se preparan en segundo plano apenas elige (entrega 2): al abrirlos, abren al instante.
-      if (res.ok) { prepararEnSegundoPlano(Array.from(marcados)); router.push(URL_BASE); return; }
+      if (res.ok) { prepararEnSegundoPlano(Array.from(marcados)); olvidarMenu(); router.push(URL_BASE); router.refresh(); return; }
       setError("No pudimos guardar tu elección. Intenta de nuevo.");
     } catch {
       setError("No pudimos guardar tu elección. Intenta de nuevo.");
@@ -111,7 +117,7 @@ export function ResultadoOpciones(p: PropsResultado) {
     if (res?.ok) setAvisado(true); else setError("No pudimos guardar tu aviso. Intenta de nuevo.");
   }
 
-  const linea = <p className="iv2-linea-chica" data-inv2="linea-tope">{lineaTope(p.tope, fmtUF)}</p>;
+  const linea = <p className="iv2-linea-chica" data-inv2="linea-tope">{sinCortar(lineaTope(p.tope, fmtUF))}</p>;
   const conPre = p.tope.fuente === "preaprobacion" || p.tope.fuente === "aprobada";
 
   // ── CASO 2: no le alcanza ninguno ──
@@ -190,7 +196,8 @@ export function ResultadoOpciones(p: PropsResultado) {
   //    en ventana, con las mismas casillas). Un solo botón rojo: «Seguir con estos N». ──
   const alternativas = p.opciones.filter((o) => !o.esEntrada && (p.caso !== "caso1" || o.alcanza) && !graves.has(o.avisoId));
   const listaOpciones = [...(entrada ? [entrada] : []), ...alternativas];
-  const titulo = p.caso === "alcanza" && entrada ? A.titulo(alternativas.length, p.nivel, entrada.comuna) : R.sinEntrada(vivas.length);
+  const itemsNivel = alternativas.map((o) => ({ nivel: p.niveles[o.avisoId] ?? null, distanciaM: p.distancias[o.avisoId] ?? null }));
+  const titulo = p.caso === "alcanza" && entrada ? A.titulo(alternativas.length, nivelDelTitulo(itemsNivel), entrada.comuna) : R.sinEntrada(vivas.length);
   const mejor = (val: (o: OpcionDepto) => number | null, menor: boolean) => {
     const xs = vivas.map(val).filter((x): x is number => x != null);
     return xs.length ? (menor ? Math.min(...xs) : Math.max(...xs)) : null;
@@ -259,7 +266,7 @@ export function ResultadoOpciones(p: PropsResultado) {
   // de Fabrizio: todavía no se muestra.
   const elegidoCard = entrada ? (
     <section className="iv2-res-elegido" data-marcado={marcados.has(entrada.avisoId) ? "1" : undefined} aria-labelledby="iv2-ele-t" data-inv2="elegido">
-      <FotosDepto avisoId={entrada.avisoId} n={p.fotos[entrada.avisoId] ?? 0} clase="iv2-res-elegido-foto" />
+      <FotosDepto avisoId={entrada.avisoId} n={fotos[entrada.avisoId] ?? 0} clase="iv2-res-elegido-foto" />
       <div className="iv2-res-elegido-cuerpo">
         <span className="iv2-res-rotulo">{A.elQueElegiste}</span>
         <div className="iv2-res-fila"><span className="iv2-res-nombre" id="iv2-ele-t">{nombreDepto(entrada)}</span><Chip o={entrada} /></div>
@@ -270,7 +277,7 @@ export function ResultadoOpciones(p: PropsResultado) {
           <div><dt>{A.arriendo}</dt><dd>{entrada.arriendoCLP ? fmtCLP(entrada.arriendoCLP) : "—"}</dd></div>
           <div><dt>{A.alMes}</dt><dd>{(() => { const m = textoAlMes(entrada); return m.pones ? <span className="iv2-pones">{m.t}</span> : m.t; })()}</dd></div>
         </dl>
-        <LoQueVeFranco avisoId={entrada.avisoId} variante="elegido" inicial={p.lecturas[entrada.avisoId] ?? null} />
+        <LoQueVeFranco avisoId={entrada.avisoId} variante="elegido" inicial={p.lecturas[entrada.avisoId] ?? null} alFotos={conFotos(entrada.avisoId)} />
         <div className="iv2-res-acciones">
           <label className="iv2-res-sigo">
             <input type="checkbox" className="iv2-check" checked={marcados.has(entrada.avisoId)} disabled={!entrada.alcanza} onChange={() => toggle(entrada.avisoId)} data-inv2="check" />
@@ -288,18 +295,18 @@ export function ResultadoOpciones(p: PropsResultado) {
     return (
       <li key={o.avisoId} className="iv2-res-alt" data-marcado={marcados.has(o.avisoId) ? "1" : undefined} data-inv2="alternativa">
         <div className="iv2-res-alt-arriba">
-          <FotosDepto avisoId={o.avisoId} n={p.fotos[o.avisoId] ?? 0} chica clase="iv2-res-alt-foto" />
+          <FotosDepto avisoId={o.avisoId} n={fotos[o.avisoId] ?? 0} chica clase="iv2-res-alt-foto" />
           <div className="iv2-res-alt-texto">
             <div className="iv2-res-fila"><span className="iv2-res-alt-nombre">{nombreDepto(o)}</span><Chip o={o} /></div>
-            <span className="iv2-linea-chica" data-inv2="precio-distancia">{lineaPrecioDistancia(o.precioUF, p.distancias[o.avisoId] ?? null, o.comuna, p.donde)}</span>
-            {ind && <span className="iv2-res-indicador" data-inv2="indicador">{ind.texto}</span>}
+            <span className="iv2-linea-chica" data-inv2="precio-distancia">{lineaPrecioDistancia(o.precioUF, p.distancias[o.avisoId] ?? null, o.comuna, p.donde, entrada?.comuna ?? null)}</span>
+            {ind && <span className={ind.supera ? "iv2-res-indicador" : "iv2-linea-chica iv2-res-neutro"} data-inv2="indicador" data-supera={ind.supera ? "1" : undefined}>{ind.texto}</span>}
           </div>
         </div>
-        <LoQueVeFranco avisoId={o.avisoId} variante="linea" inicial={p.lecturas[o.avisoId] ?? null} alLlegar={siEsGrave(o.avisoId)} />
+        <LoQueVeFranco avisoId={o.avisoId} variante="linea" inicial={p.lecturas[o.avisoId] ?? null} alLlegar={siEsGrave(o.avisoId)} alFotos={conFotos(o.avisoId)} />
         <div className="iv2-res-acciones">
           <label className="iv2-res-sigo">
             <input type="checkbox" className="iv2-check" checked={marcados.has(o.avisoId)} disabled={!o.alcanza} onChange={() => toggle(o.avisoId)} data-inv2="check" />
-            <span className="iv2-solo-movil-res">{A.sigo}</span><span className="iv2-solo-pc-res">{A.sigoCorto}</span>
+            {A.sumar}
           </label>
           <button type="button" className="iv2-enlace-azul" onClick={() => verDetalles(o)} disabled={!!abriendo} data-inv2="ver-detalles">{abriendo === o.avisoId ? "Abriendo…" : R.verDetalles}</button>
         </div>
@@ -308,11 +315,11 @@ export function ResultadoOpciones(p: PropsResultado) {
   };
 
   // Si ninguna supera al suyo en nada, el subtítulo lo dice (decisión de Fabrizio, 19-nov-2026).
-  const ningunaSupera = !!entrada && alternativas.length > 0 && alternativas.every((o) => !indicadorAlternativa(o, entrada, grupo, { objetivo: p.objetivo, preocupaciones: p.preocupaciones, limitaPie: p.tope.limita === "pie" })?.supera);
+  const ningunaSupera = !!entrada && alternativas.length > 0 && alternativas.every((o) => !indicadorAlternativa(o, entrada, grupo, { objetivo: p.objetivo, preocupaciones: p.preocupaciones, limitaPie: p.tope.limita === "pie" }).supera);
   const bloqueAlternativas = alternativas.length ? (
     <section className="iv2-res-alts" aria-labelledby="iv2-alts-t" data-inv2="alternativas" data-nivel={p.nivel}>
       <div className="iv2-res-alts-cab">
-        <h2 className="iv2-res-alts-t" id="iv2-alts-t" data-inv2="subtitulo">{ningunaSupera ? A.tuyoMejor(p.nivel, entrada?.comuna ?? null) : A.subtitulo(alternativas.length, p.nivel, p.donde, entrada?.comuna ?? null)}</h2>
+        <h2 className="iv2-res-alts-t" id="iv2-alts-t" data-inv2="subtitulo">{ningunaSupera ? A.tuyoMejor(nivelDelBloque(itemsNivel.map((x) => x.nivel)), entrada?.comuna ?? null) : subtituloAlternativas(itemsNivel, p.donde, entrada?.comuna ?? null)}</h2>
         <p className="iv2-linea-chica iv2-solo-movil-res">{A.marca}</p>
       </div>
       <ul className="iv2-res-alts-lista">{alternativas.map(altCard)}</ul>

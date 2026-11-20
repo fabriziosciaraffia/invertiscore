@@ -11,8 +11,7 @@ import { URL_INVIERTE } from "@/lib/invierte-v2/destino";
 import { DETALLES_COPY, type ModoDetalles } from "@/lib/invierte-v2/detalles-modo";
 import { urlWhatsapp, type LineaDepto } from "@/lib/invierte-v2/base";
 import { IconoWhatsapp } from "./IconoWhatsapp";
-import { FotosDepto } from "./FotosDepto";
-import { LoQueVeFranco } from "./LoQueVeFranco";
+import { DetallesCabezaCliente } from "./DetallesCabezaCliente";
 import { ChipVeredicto } from "@/components/analysis/shared/ChipVeredicto";
 import type { Veredicto } from "@/lib/types";
 import { SumarDepto } from "./SumarDepto";
@@ -46,15 +45,14 @@ export function CabezaDeDetalles({ modo }: { modo: ModoDetalles }) {
   const c = modo.cabeza;
   return (
     <section className="iv2-det-cabeza" data-inv2="detalles-cabeza">
-      <FotosDepto avisoId={c.avisoId} n={c.fotos} clase="iv2-det-fotos" />
-      {c.nombre && (
-        <div className="iv2-res-fila">
-          <span className="iv2-res-nombre">{c.nombre}</span>
-          {c.veredicto && <ChipVeredicto v={c.veredicto as Veredicto} puntaje={c.veredicto === "COMPRAR" ? c.score : null} />}
-        </div>
-      )}
-      {/* La versión larga, antes del informe; «Lo que el puntaje no considera» (grave o revisar) va primero (entrega 4). */}
-      <LoQueVeFranco avisoId={c.avisoId} variante="detalles" inicial={c.lectura} />
+      <DetallesCabezaCliente avisoId={c.avisoId} fotos={c.fotos} lectura={c.lectura}>
+        {c.nombre && (
+          <div className="iv2-res-fila">
+            <span className="iv2-res-nombre">{c.nombre}</span>
+            {c.veredicto && <ChipVeredicto v={c.veredicto as Veredicto} puntaje={c.veredicto === "COMPRAR" ? c.score : null} />}
+          </div>
+        )}
+      </DetallesCabezaCliente>
     </section>
   );
 }

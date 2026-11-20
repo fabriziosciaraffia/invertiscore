@@ -11,7 +11,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { findNearestStation } from "@/lib/metro-stations";
 import { VENTANA_SEMANAL_DIAS } from "@/lib/guia/semanal";
-import { hastaCuanto, comunasPrecargadas, piePrecargado, type PedidoPerfil, type Tope, type Objetivo, type Preocupacion, type Donde } from "./perfil";
+import { hastaCuanto, comunasPrecargadas, ayudaPie, type PedidoPerfil, type Tope, type Objetivo, type Preocupacion, type Donde } from "./perfil";
 import { casoDe, etiquetar, vsParecidos, type Caso, type Etiqueta, type OpcionDepto } from "./opciones";
 import { MAX_RECOMENDADOS, cuantasPedir, esNivel, nivelDelBloque, type NivelAlt } from "./alternativas";
 import { metrosEntre } from "./detalles-modo";
@@ -86,6 +86,8 @@ export interface ContextoPerfil {
   deEntrada: string | null;
   dePerfil: string[];
   pieSugeridoUF: number | null;
+  /** «Para el depto que elegiste necesitas UF X (20 %)», solo si en el contacto dijo que tiene el pie (20-nov-2026). */
+  pieAyudaUF: number | null;
   guardado: PerfilInv | null;
   tasaPct: number;
   uf: number;
@@ -99,7 +101,8 @@ export async function contextoPerfil(admin: SupabaseClient, userId: string): Pro
   const entrada = await deptoEntrada(admin, persona?.avisoOrigen ?? null);
   // Lo ya confirmado manda; si no, la comuna de entrada y las del perfil de la selección semanal.
   const pre = comunasPrecargadas(entrada?.comuna ?? null, guardado?.comunas?.length ? guardado.comunas : ((pb?.comunas as string[] | null) ?? []));
-  return { ...pre, pieSugeridoUF: guardado?.pieUF ?? piePrecargado(persona?.pie ?? null, entrada?.precioUF ?? null), guardado, tasaPct: m.tasaPct, uf: m.uf };
+  // El pie solo viene de lo que la persona escribió antes (su perfil guardado); nada financiero se deduce del depto (20-nov-2026).
+  return { ...pre, pieSugeridoUF: guardado?.pieUF ?? null, pieAyudaUF: ayudaPie(persona?.pie ?? null, entrada?.precioUF ?? null), guardado, tasaPct: m.tasaPct, uf: m.uf };
 }
 
 export type ResultadoPerfil = { ok: true; tope: Tope; editado: boolean } | { ok: false; error: "sin-orden" | "guardar" };
@@ -122,7 +125,9 @@ export async function confirmarPerfil(admin: SupabaseClient, user: { id: string;
   // El cambio del perfil (entrega 2, lámina 3.3-perfil-editado): lo de antes y lo de ahora, y cómo estaban sus deptos ANTES del
   // recálculo, para que «Perfil actualizado» diga qué entra y qué queda fuera aunque la página se recargue.
   const ultimoCambio = previo ? await cambioDelPerfil(admin, user.id, previo, pedido, tope.topeUF) : null;
-  const supuestos = { ...tope.supuestos, limita: tope.limita, porPieUF: tope.porPieUF, creditoUF: tope.creditoUF, precioMaxAnterior: anterior, reemplazoPrecioMax: reemplaza, ...(comunasAnterior ? { comunasAnterior } : {}), ...(previo?.topeSupuestos?.aprobadaUF ? { aprobadaUF: previo.topeSupuestos.aprobadaUF } : {}), ...(ultimoCambio ? { ultimoCambio } : {}) };
+  const supuestos = { ...tope.supuestos, limita: tope.limita, porPieUF: tope.porPieUF, creditoUF: tope.creditoUF, precioMaxAnterior: anterior, reemplazoPrecioMax: reemplaza, ...(comunasAnterior ? { comunasAnterior } : {}), ...(previo?.topeSupuestos?.aprobadaUF ? { aprobadaUF: previo.topeSupuestos.aprobadaUF } : {}), ...(ultimoCambio ? { ultimoCambio } : {}),
+    // Un perfil guardado pide una búsqueda nueva de alternativas (las que no eligió se descartan abajo); después la lista queda fija.
+    buscarAlternativas: true };
   const fila = {
     user_id: user.id, objetivo: pedido.objetivo, preocupaciones: pedido.preocupaciones, comunas: pedido.comunas, donde: pedido.donde, preaprobado: pedido.preaprobado,
     monto_preaprobado_uf: pedido.montoPreaprobadoUF, pie_tiene: pedido.pieTiene, pie_uf: pedido.pieUF, renta_liquida_clp: pedido.rentaCLP,
@@ -210,6 +215,8 @@ export interface ResultadoOpciones {
   /** Láminas del 19-nov-2026: de qué nivel salieron las alternativas (el subtítulo dice su verdad) y a qué distancia está cada una. */
   nivel: NivelAlt;
   distancias: Record<string, number | null>;
+  /** El nivel de cada alternativa (20-nov-2026): el subtítulo dice cuántas hay de cada uno cuando se mezclan. */
+  niveles: Record<string, NivelAlt | null>;
   /** «Lo que ve Franco» de los que ya la tienen (entrega 4); los demás la piden aparte y se completan solos. */
   lecturas: Record<string, LecturaFranco>;
 }
@@ -263,8 +270,12 @@ export async function calcularOpciones(admin: SupabaseClient, user: { id: string
   }
   if (descartar.length) await admin.from(T_DEPTOS).update({ estado: "descartado", updated_at: ahora }).eq("user_id", user.id).in("aviso_id", descartar);
 
-  // 2 · Las que faltan, de la función, sin su base (elegidos y opciones) ni el depto con que entró.
-  const cuantas = cuantasPedir(elegidasFranco.length + opcionesValidas.length);
+  // 2 · Las que faltan, de la función, sin su base (elegidos y opciones) ni el depto con que entró. LAS ALTERNATIVAS QUEDAN FIJAS
+  //     desde que se muestran (decisión de Fabrizio, 20-nov-2026): se piden todas solo en la primera búsqueda después de guardar el
+  //     perfil (o si nunca hubo una); después, solo para reemplazar las que dejaron de valer en esta pasada. Antes, cada visita
+  //     rellenaba el cupo: si la primera búsqueda halló 2 «cerca», la siguiente amplió a 3 km y sumó una tercera sin aviso.
+  const buscarTodas = perfil.topeSupuestos?.buscarAlternativas === true || !previos.some((f) => f.origen === "franco");
+  const cuantas = Math.min(cuantasPedir(elegidasFranco.length + opcionesValidas.length), buscarTodas ? MAX_RECOMENDADOS : descartar.length);
   const excluir = Array.from(new Set([...previos.filter((f) => f.estado === "elegido" || f.estado === "opcion").map((f) => f.aviso_id), ...(avisoEntrada ? [avisoEntrada] : [])])).filter(esUuid);
   const pedidas = cuantas > 0 && avisoEntrada && esUuid(avisoEntrada) && tope > 0
     ? await pedirAlternativas(admin, { aviso: avisoEntrada, modo: perfil.donde, tope, excluir, cuantas: cuantas + MAX_RECOMENDADOS })
@@ -272,6 +283,10 @@ export async function calcularOpciones(admin: SupabaseClient, user: { id: string
   // Se piden de más por si alguna ya tiene alerta grave: esas no se recomiendan, y se toman las siguientes hasta el cupo.
   const lecturasNuevas = await leerLecturas(admin, pedidas.filas.map((r) => r.avisoId));
   const nuevasE = (await Promise.all(pedidas.filas.filter((r) => recomendable(lecturasNuevas[r.avisoId])).slice(0, cuantas).map(async (r) => ({ r, e: await filaEntrada(admin, r.avisoId) })))).filter((x) => !!x.e);
+  // La primera búsqueda se hizo: desde ahora la lista queda fija (hasta que edite el perfil).
+  if (buscarTodas && perfil.topeSupuestos?.buscarAlternativas === true) {
+    await admin.from(T_PERFILES).update({ tope_supuestos: { ...perfil.topeSupuestos, buscarAlternativas: false } }).eq("user_id", user.id);
+  }
 
   // 3 · Lo que se muestra: el de entrada, las de Franco que siguen (opción y elegidas) y las nuevas; nunca más de tres de Franco.
   const deFranco = [
@@ -285,6 +300,7 @@ export async function calcularOpciones(admin: SupabaseClient, user: { id: string
   const pEntrada = punto(ent?.fila);
   const filaDe = new Map([...filasPrev, ...nuevasE.map((x) => ({ f: null, e: x.e }))].filter((x) => x.e).map((x) => [x.e!.fila.id, x.e!.fila]));
   const distancias = Object.fromEntries(deFranco.map((x) => { const pa = punto(filaDe.get(x.o.avisoId)); return [x.o.avisoId, pEntrada && pa ? Math.round(metrosEntre(pEntrada, pa)) : x.dist]; }));
+  const niveles = Object.fromEntries(deFranco.map((x) => [x.o.avisoId, x.nivel]));
   const etiquetas = Object.fromEntries(etiquetar(opciones));
   const caso = casoDe(opciones);
   const masBaratoUF = caso === "caso2" ? await masBarato(admin, entrada?.comuna ? [entrada.comuna] : perfil.comunas, Math.max(tope, 500)) : null;
@@ -308,7 +324,7 @@ export async function calcularOpciones(admin: SupabaseClient, user: { id: string
   if (nuevos.length) await anotar(admin, { userId: user.id, email: user.email, ordenId: orden.id, actor: "sistema", accion: "depto_presentado", detalle: { avisos: nuevos.map((o) => ({ aviso_id: o.avisoId, etiqueta: etiquetas[o.avisoId] ?? null, precio_uf: o.precioUF, nivel: o.esEntrada ? null : nivel })) }, esPrueba: perfil.esPrueba });
   const elegidos = previos.filter((p) => p.estado === "elegido" && opciones.some((o) => o.avisoId === p.aviso_id)).map((p) => p.aviso_id);
   const lecturas = await leerLecturas(admin, opciones.map((o) => o.avisoId));
-  return { caso, opciones, etiquetas, elegidos, entrada, masBaratoUF, perfil, nivel, distancias, lecturas };
+  return { caso, opciones, etiquetas, elegidos, entrada, masBaratoUF, perfil, nivel, distancias, niveles, lecturas };
 }
 
 // ── LA ELECCIÓN ──────────────────────────────────────────────────────────────

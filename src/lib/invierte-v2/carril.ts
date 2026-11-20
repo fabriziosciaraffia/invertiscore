@@ -18,7 +18,9 @@ export const RELECTURA_MS = 24 * 60 * 60 * 1000;
 export const PAUSA_FUSIBLE_CARRIL_MS = 6 * 60 * 60 * 1000;
 export const CLAVE_FUSIBLE_CARRIL = "invierte_carril_fusible";
 
-export type OrigenLectura = "elegir" | "abrir" | "noche";
+/** «firma» (el depto elegido, apenas se firma) y «resultado» (los deptos del resultado, apenas se muestran): 20-nov-2026, para que
+ *  las fotos y «Lo que ve Franco» estén donde se decide. */
+export type OrigenLectura = "elegir" | "abrir" | "noche" | "firma" | "resultado";
 
 export const leidaFresca = (leidaAt: Date | null, ahora: Date): boolean => !!leidaAt && ahora.getTime() - leidaAt.getTime() < RELECTURA_MS;
 

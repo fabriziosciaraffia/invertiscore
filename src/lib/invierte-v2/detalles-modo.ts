@@ -67,9 +67,10 @@ export function distanciaDelTuyo(metros: number, comuna: string | null, enKm = f
   return comuna ? `en ${comuna}, a ${txt} km del tuyo` : `a ${txt} km del tuyo`;
 }
 
-/** Diferencias bajo esto no se dicen: no hacen diferencia. */
-export const UMBRAL_MES_CLP = 5_000;
-export const UMBRAL_PRECIO_UF = 50;
+/** Una ventaja solo cuenta si es relevante (decisión de Fabrizio, 20-nov-2026): $20.000 o más al mes, o 5 % o más del precio (y
+ *  del pie, que es su 20 %). Bajo eso no se dice: se leería como una ventaja que no es. */
+export const UMBRAL_MES_CLP = 20_000;
+export const UMBRAL_PRECIO_PCT = 5;
 
 /**
  * EL INDICADOR ÚNICO contra el suyo (LEEME del 19-nov-2026): por reglas, solo lo que favorece a la alternativa, y de eso, lo que
@@ -91,7 +92,7 @@ export function indicadorContraElegido(
     else mes = { tipo: "mes", frase: `te deja ${fmtCLP(d)} más al mes` };
   }
   let precio: { tipo: "precio"; frase: string } | null = null;
-  if (alt.precioUF != null && ele.precioUF != null && ele.precioUF - alt.precioUF >= UMBRAL_PRECIO_UF) {
+  if (alt.precioUF != null && ele.precioUF != null && ele.precioUF - alt.precioUF >= ele.precioUF * UMBRAL_PRECIO_PCT / 100) {
     precio = { tipo: "precio", frase: `cuesta UF ${fmtUF(ele.precioUF - alt.precioUF)} menos` };
   }
   const porMes = perfil.objetivo === "arriendo" || perfil.preocupaciones.includes("poner_plata") || perfil.preocupaciones.includes("no_arriende");

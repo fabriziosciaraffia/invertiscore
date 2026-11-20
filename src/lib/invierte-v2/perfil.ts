@@ -61,6 +61,9 @@ export const PERFIL_COPY = {
     piesTiene: { si: "Sí", parte: "Una parte", no: "Todavía no" } as Record<PieTiene, string>,
     pieParte: "¿Cuánto tienes de pie?",
     pie: "Pie disponible",
+    /** Debajo del pie, solo si en el contacto dijo que lo tiene (20-nov-2026); nunca llena el campo. */
+    pieAyuda: (x: string) => `Para el depto que elegiste necesitas UF ${x} (20 %).`,
+    pieNoSe: "Todavía no sé",
     renta: "Renta líquida al mes",
     rentaAclara: "La usamos solo para estimar qué deptos te alcanzan. No se comparte con nadie.",
     cuotas: "Otras cuotas al mes",
@@ -77,7 +80,8 @@ export const PERFIL_COPY = {
     preaprobado: "Dinos si tienes un crédito preaprobado.",
     monto: "Escribe el monto preaprobado, en UF.",
     pieTiene: "Dinos si tienes ese pie.",
-    pie: "Escribe tu pie, en UF.",
+    pie: "Escribe tu pie, en UF, o marca «Todavía no sé».",
+    pieNoSabe: "Sin tu pie, necesitamos tu renta para estimar hasta cuánto puedes comprar.",
     renta: "Escribe tu renta líquida al mes, o marca «Prefiero no decir mi renta».",
     red: "No pudimos guardar tu perfil. Intenta de nuevo.",
   },
@@ -104,6 +108,8 @@ export interface EntradaTope {
   rentaCLP?: number | null;
   otrasCuotasCLP?: number | null;
   noDiceRenta?: boolean;
+  /** «Todavía no sé» mi pie (20-nov-2026): se calcula solo por la renta, suponiendo un pie de 20 %. */
+  pieNoSabe?: boolean;
   /** Tasa anual del motor, en % (config.tasa_hipotecaria). */
   tasaPct: number;
   /** UF del día, en pesos. */
@@ -121,7 +127,7 @@ export interface Tope {
   /** El crédito: el que alcanza la renta, o el preaprobado. Null sin renta. */
   creditoUF: number | null;
   menosPreciso: boolean;
-  supuestos: { version: number; piePct: number; dividendoMaxPct: number; cargaMaxPct: number; plazoAnios: number; tasaPct: number; uf: number };
+  supuestos: { version: number; piePct: number; dividendoMaxPct: number; cargaMaxPct: number; plazoAnios: number; tasaPct: number; uf: number; /** «Todavía no sé» mi pie (20-nov-2026). */ pieNoSabe?: boolean };
 }
 
 const r2 = (x: number) => Math.round(x * 100) / 100;
@@ -154,6 +160,12 @@ export function hastaCuanto(e: EntradaTope): Tope {
     const porCredito = monto + pieReal;
     return { topeUF: r2(Math.min(porPieReal, porCredito)), fuente, limita: porPieReal <= porCredito ? "pie" : "credito", porPieUF: r2(porPieReal), creditoUF: r2(monto), menosPreciso: false, supuestos };
   }
+  // «Todavía no sé» mi pie (decisión de Fabrizio, 20-nov-2026): solo por la renta, con un pie de 20 % (el crédito es el 80 %).
+  if (e.pieNoSabe && !e.noDiceRenta && e.rentaCLP && e.rentaCLP > 0) {
+    const credito = creditoPorRenta(e.rentaCLP, e.otrasCuotasCLP ?? 0, e.tasaPct, e.uf);
+    const tope = credito / (1 - fraccionPie);
+    return { topeUF: r2(tope), fuente: "renta", limita: "credito", porPieUF: r2(tope), creditoUF: r2(credito), menosPreciso: true, supuestos: { ...supuestos, pieNoSabe: true } };
+  }
   if (e.noDiceRenta || !e.rentaCLP || e.rentaCLP <= 0) {
     return { topeUF: r2(porPie), fuente: "solo_pie", limita: "pie", porPieUF: r2(porPie), creditoUF: null, menosPreciso: true, supuestos };
   }
@@ -162,10 +174,13 @@ export function hastaCuanto(e: EntradaTope): Tope {
   return { topeUF: r2(Math.min(porPie, porCredito)), fuente: "renta", limita: porPie <= porCredito ? "pie" : "credito", porPieUF: r2(porPie), creditoUF: r2(credito), menosPreciso: false, supuestos };
 }
 
-/** La segunda línea bajo el resultado (nunca el titular). */
-export function lineaTope(t: Pick<Tope, "topeUF" | "fuente">, fmtUF: (n: number) => string): string {
+/** La segunda línea bajo el resultado (nunca el titular). Según qué limita (decisión de Fabrizio, 20-nov-2026): sin el pie, por la
+ *  renta con un pie de 20 %; si limita el pie que escribió, lo dice y cuánto le prestaría el banco; si limita la renta, como antes. */
+export function lineaTope(t: Pick<Tope, "topeUF" | "fuente"> & { limita?: Tope["limita"]; creditoUF?: number | null; pieUF?: number | null; pieNoSabe?: boolean }, fmtUF: (n: number) => string): string {
   if (t.fuente === "preaprobacion" || t.fuente === "aprobada") return `Según tu preaprobación, puedes comprar hasta UF ${fmtUF(t.topeUF)}. Sujeto a evaluación del banco.`;
   if (t.fuente === "solo_pie") return `Con tu pie, estimamos que puedes comprar hasta UF ${fmtUF(t.topeUF)}. Sin tu renta es menos preciso. Sujeto a evaluación del banco.`;
+  if (t.pieNoSabe && t.creditoUF != null) return `Por tu renta, el banco podría prestarte hasta UF ${fmtUF(t.creditoUF)}. Con un pie de 20 % podrías comprar hasta UF ${fmtUF(t.topeUF)}. Dinos tu pie para afinarlo.`;
+  if (t.limita === "pie" && t.pieUF != null && t.creditoUF != null) return `Con tu pie de UF ${fmtUF(t.pieUF)} puedes comprar hasta UF ${fmtUF(t.topeUF)}. Por tu renta, el banco podría prestarte hasta UF ${fmtUF(t.creditoUF)}: con más pie te alcanzan deptos más grandes.`;
   return `Con tu pie y tu renta, estimamos que puedes comprar hasta UF ${fmtUF(t.topeUF)}. Sujeto a evaluación del banco.`;
 }
 
@@ -181,14 +196,18 @@ export function comunasPrecargadas(comunaEntrada: string | null, delPerfil: read
   return { comunas, deEntrada, dePerfil: comunas.filter((c) => c !== deEntrada) };
 }
 
-/** El pie sugerido: si en el contacto dijo que tiene el pie, el 20 % del depto con que entró; si no, nada. */
-export function piePrecargado(respuestaContacto: string | null, precioEntradaUF: number | null): number | null {
+/** LA AYUDA DEL PIE (20-nov-2026): si en el contacto dijo que tiene el pie, debajo del campo «Para el depto que elegiste necesitas
+ *  UF X (20 %)». NUNCA llena el campo: en el perfil solo se llena lo que la persona dijo antes, y nada financiero se deduce del
+ *  depto (decisión de Fabrizio: el pie deducido del depto hacía que el tope fuera su precio, y el cálculo daba vueltas en círculo). */
+export function ayudaPie(respuestaContacto: string | null, precioEntradaUF: number | null): number | null {
   return respuestaContacto === "si" && precioEntradaUF ? Math.round(precioEntradaUF * REGLA_TOPE.piePct / 100) : null;
 }
 
 // ── LA VALIDACIÓN (la ruta vuelve a exigir todo) ─────────────────────────────
 export interface PedidoPerfil {
   comunas: string[];
+  /** «Todavía no sé» mi pie (20-nov-2026): sin pie, solo por la renta con un pie de 20 %. */
+  pieNoSabe?: boolean;
   /** «¿Dónde buscamos?» (láminas del 19-nov-2026): reemplaza a la pregunta de comunas. Las comunas siguen, derivadas (la del
    *  depto con que entró), para el perfil de la selección semanal. */
   donde: Donde;
@@ -228,10 +247,17 @@ export function validarPerfil(b: Record<string, unknown> | null | undefined): { 
     if (pieTiene === "parte" && (pieUF == null || pieUF <= 0)) return { ok: false, error: "pie" };
     return { ok: true, pedido: { comunas, donde, objetivo: x.objetivo as Objetivo, preocupaciones, preaprobado, montoPreaprobadoUF: monto, pieTiene, pieUF: pieTiene === "parte" ? pieUF : null, rentaCLP: null, otrasCuotasCLP: null, noDiceRenta: false } };
   }
-  if (pieUF == null || pieUF < 0 || pieUF > 100000) return { ok: false, error: "pie" };
+  // El pie es obligatorio (lo escribe la persona), salvo «Todavía no sé», que entonces exige la renta.
+  const pieNoSabe = x.pieNoSabe === true;
+  if (!pieNoSabe && (pieUF == null || pieUF < 0 || pieUF > 100000)) return { ok: false, error: "pie" };
   const noDiceRenta = x.noDiceRenta === true;
   const renta = num(x.rentaCLP);
+  if (pieNoSabe && (noDiceRenta || !renta || renta <= 0)) return { ok: false, error: "pieNoSabe" };
   if (!noDiceRenta && (!renta || renta <= 0)) return { ok: false, error: "renta" };
   const cuotas = num(x.otrasCuotasCLP);
-  return { ok: true, pedido: { comunas, donde, objetivo: x.objetivo as Objetivo, preocupaciones, preaprobado, montoPreaprobadoUF: null, pieTiene: null, pieUF, rentaCLP: noDiceRenta ? null : Math.round(renta!), otrasCuotasCLP: noDiceRenta ? null : Math.max(0, Math.round(cuotas ?? 0)), noDiceRenta } };
+  return { ok: true, pedido: { comunas, donde, objetivo: x.objetivo as Objetivo, preocupaciones, preaprobado, montoPreaprobadoUF: null, pieTiene: null, pieUF: pieNoSabe ? null : pieUF, pieNoSabe, rentaCLP: noDiceRenta ? null : Math.round(renta!), otrasCuotasCLP: noDiceRenta ? null : Math.max(0, Math.round(cuotas ?? 0)), noDiceRenta } };
 }
+
+/** Al dibujar un texto con porcentajes, el «%» no queda solo en la línea siguiente (20-nov-2026: «(20 %)» se cortaba a 360 px).
+ *  Cambia el espacio antes de «%» por uno que no se corta; el texto guardado y el que fija el tier no cambian. */
+export const sinCortar = (t: string): string => t.replace(/ %/g, " %");

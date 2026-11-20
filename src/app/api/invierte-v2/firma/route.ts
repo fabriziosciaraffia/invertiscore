@@ -5,6 +5,10 @@ import { capturarServidor } from "@/lib/posthog-servidor";
 import { EVENTOS_INV2, validarFirma } from "@/lib/invierte-v2/flujo";
 import { firmar } from "@/lib/invierte-v2/servidor";
 import { DEPS_FIRMA, NO_EXISTE, contextoDe, personaConAcceso } from "@/lib/invierte-v2/rutas";
+import Anthropic from "@anthropic-ai/sdk";
+import { waitUntil } from "@vercel/functions";
+import { chequearPublicacionInvierte } from "@/lib/invierte-v2/carril-servidor";
+import { lecturaDe } from "@/lib/invierte-v2/lectura-franco-servidor";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/invierte-v2/firma (etapa 1 de Invierte con Franco, 18-nov-2026): la firma electrónica simple de la orden de
@@ -30,6 +34,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: r.error }, { status });
     }
     if (!r.yaFirmada) {
+      // Apenas se firma, en segundo plano y sin demorar la firma (20-nov-2026): la publicación del depto elegido se lee por el carril
+      // de Invierte (origen «firma») y se escribe «Lo que ve Franco», para que el resultado ya los tenga.
+      const avisoId = v.pedido.avisoId;
+      waitUntil((async () => {
+        await chequearPublicacionInvierte(admin, { avisoId, userId: user.id, origen: "firma" }).catch(() => undefined);
+        if (process.env.ANTHROPIC_API_KEY) await lecturaDe(admin, new Anthropic(), avisoId).catch(() => undefined);
+      })());
       await capturarServidor({
         event: EVENTOS_INV2.firma,
         distinctId: user.id,

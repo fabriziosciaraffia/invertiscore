@@ -23,7 +23,8 @@ export default async function OpcionesPage() {
   // Las fotos (entrega 3): solo cuántas tiene cada depto; las sirve la ruta propia, solo a quien firmó.
   const fotos = await fotosDe(createServiceClient(), r.opciones.map((o) => o.avisoId));
   const s = (r.perfil.topeSupuestos ?? {}) as Record<string, unknown>;
-  const tope: Pick<Tope, "topeUF" | "fuente" | "limita" | "creditoUF" | "porPieUF" | "menosPreciso"> = {
+  const tope: Pick<Tope, "topeUF" | "fuente" | "limita" | "creditoUF" | "porPieUF" | "menosPreciso"> & { pieUF: number | null; pieNoSabe: boolean } = {
+    pieUF: r.perfil.pieUF, pieNoSabe: s.pieNoSabe === true,
     topeUF: r.perfil.topeUF ?? 0, fuente: r.perfil.topeFuente ?? "solo_pie", limita: (s.limita as Tope["limita"]) ?? null,
     creditoUF: (s.creditoUF as number | null) ?? null, porPieUF: (s.porPieUF as number) ?? 0, menosPreciso: r.perfil.topeFuente === "solo_pie",
   };
@@ -31,7 +32,7 @@ export default async function OpcionesPage() {
     <MarcoInvierte volver={null} pantalla="opciones" layout="contenido" cabecera={RESULTADO_COPY.rotulo} pc={{ sesionEmail: user.email ?? null, invierte: true }}>
       <ResultadoOpciones caso={r.caso} opciones={r.opciones} etiquetas={r.etiquetas} elegidos={r.elegidos} tope={tope}
         pieUF={r.perfil.pieUF} masBaratoUF={r.masBaratoUF} objetivo={r.perfil.objetivo} preocupaciones={r.perfil.preocupaciones} comunas={r.perfil.comunas}
-        nivel={r.nivel} donde={r.perfil.donde} distancias={r.distancias} fotos={fotos} lecturas={r.lecturas} />
+        nivel={r.nivel} donde={r.perfil.donde} distancias={r.distancias} niveles={r.niveles} fotos={fotos} lecturas={r.lecturas} />
     </MarcoInvierte>
   );
 }

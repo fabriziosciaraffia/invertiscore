@@ -41,7 +41,7 @@ export async function modoDetalles(admin: SupabaseClient, userId: string, avisoI
   if (!recomendable(cabeza.lectura)) return null;
   const [alt, ele] = await Promise.all([puntoYFlujo(admin, avisoId), puntoYFlujo(admin, v.orden.avisoId)]);
   const enKm = v.perfil.donde === "convenga";
-  const distancia = alt && ele ? distanciaDelTuyo(metrosEntre(alt, ele), alt.comuna, enKm) : null;
+  const distancia = alt && ele ? distanciaDelTuyo(metrosEntre(alt, ele), alt.comuna && alt.comuna !== ele.comuna ? alt.comuna : null, enKm) : null;
   const ind = alt && ele ? indicadorContraElegido(alt, ele, v.perfil) : null;
   if (!distancia && !ind) return null;
   const linea = distancia ? lineaRecomendado(distancia, ind?.frase ?? null) : lineaRecomendado(ind!.frase, null);

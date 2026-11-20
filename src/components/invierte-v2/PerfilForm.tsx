@@ -10,7 +10,7 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { botonOcupado } from "@/lib/carga-global";
 import {
-  DONDES, OBJETIVOS, PERFIL_COPY, PIES_TIENE, PREAPROBADOS, PREOCUPACIONES, REGLA_TOPE, validarPerfil,
+  DONDES, OBJETIVOS, PERFIL_COPY, PIES_TIENE, PREAPROBADOS, PREOCUPACIONES, REGLA_TOPE, sinCortar, validarPerfil,
   type Donde, type Objetivo, type PieTiene, type Preaprobado, type Preocupacion,
 } from "@/lib/invierte-v2/perfil";
 import { fmtUF } from "@/lib/invierte-v2/opciones";
@@ -29,6 +29,10 @@ export interface InicialPerfil {
   deEntrada: string | null;
   dePerfil: string[];
   pieSugeridoUF: number | null;
+  /** La ayuda bajo el pie (solo si en el contacto dijo que lo tiene); nunca llena el campo. */
+  pieAyudaUF?: number | null;
+  /** «Todavía no sé» mi pie, si así lo guardó. */
+  pieNoSabe?: boolean;
   objetivo: Objetivo | null;
   preocupaciones: Preocupacion[];
   preaprobado: Preaprobado | null;
@@ -70,6 +74,7 @@ export function PerfilForm({ inicial }: { inicial: InicialPerfil }) {
   const [renta, setRenta] = useState(inicial.rentaCLP ? conPuntos(String(inicial.rentaCLP)) : "");
   const [cuotas, setCuotas] = useState(inicial.otrasCuotasCLP ? conPuntos(String(inicial.otrasCuotasCLP)) : "");
   const [noDice, setNoDice] = useState(inicial.noDiceRenta);
+  const [pieNoSabe, setPieNoSabe] = useState(inicial.pieNoSabe === true);
   const [error, setError] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
 
@@ -95,7 +100,7 @@ export function PerfilForm({ inicial }: { inicial: InicialPerfil }) {
     if (enviando) return;
     const cuerpo = {
       comunas, donde, objetivo, preocupaciones: Array.from(preocupaciones), preaprobado,
-      montoPreaprobadoUF: montoNum, pieTiene, pieUF: aNum(pie), rentaCLP: noDice ? null : aNum(renta), otrasCuotasCLP: noDice ? null : aNum(cuotas) ?? 0, noDiceRenta: noDice,
+      montoPreaprobadoUF: montoNum, pieTiene, pieUF: pieNoSabe && preaprobado !== "tengo" ? null : aNum(pie), pieNoSabe: preaprobado !== "tengo" && pieNoSabe, rentaCLP: noDice ? null : aNum(renta), otrasCuotasCLP: noDice ? null : aNum(cuotas) ?? 0, noDiceRenta: noDice,
     };
     const v = validarPerfil(cuerpo);
     if (!v.ok) { setError(PERFIL_COPY.errores[v.error]); return; }
@@ -107,6 +112,7 @@ export function PerfilForm({ inicial }: { inicial: InicialPerfil }) {
       // Quien ya había elegido deptos y cambia su perfil ve «Perfil actualizado» (lámina 3.3-perfil-editado); la primera vez, el resultado.
       const d = (await res.json().catch(() => null)) as { editado?: boolean } | null;
       router.push(d?.editado ? URL_PERFIL_ACTUALIZADO : URL_OPCIONES);
+      router.refresh();
     } catch {
       setError(PERFIL_COPY.errores.red);
       setEnviando(false);
@@ -177,7 +183,12 @@ export function PerfilForm({ inicial }: { inicial: InicialPerfil }) {
         <>
           <div className="inv-pregunta">
             <label htmlFor="iv2-pie" className="inv-legend">{P2.pie}</label>
-            <div className="iv2-campo-uf"><span aria-hidden="true">UF</span><input id="iv2-pie" className="inv-campo" inputMode="numeric" value={pie} onChange={(e) => setPie(conPuntos(e.target.value))} data-inv2="pie" /></div>
+            <div className="iv2-campo-uf"><span aria-hidden="true">UF</span><input id="iv2-pie" className="inv-campo" inputMode="numeric" value={pieNoSabe ? "" : pie} disabled={pieNoSabe} onChange={(e) => { setPie(conPuntos(e.target.value)); setError(null); }} data-inv2="pie" /></div>
+            {inicial.pieAyudaUF != null && <p className="iv2-linea-chica" data-inv2="pie-ayuda">{sinCortar(P2.pieAyuda(fmtUF(inicial.pieAyudaUF)))}</p>}
+            <label className="iv2-casilla">
+              <input type="checkbox" checked={pieNoSabe} onChange={(e) => { setPieNoSabe(e.target.checked); setError(null); }} data-inv2="pie-no-se" />
+              <span>{P2.pieNoSe}</span>
+            </label>
           </div>
           {!noDice && (
             <>

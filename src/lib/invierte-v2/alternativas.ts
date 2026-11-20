@@ -10,8 +10,8 @@
 //   · El indicador único de cada una se arma por reglas, contra el elegido, según lo que la persona dijo que busca.
 // ─────────────────────────────────────────────────────────────────────────────
 import type { Donde, Objetivo, Preocupacion } from "./perfil";
-import { distanciaDelTuyo, indicadorContraElegido } from "./detalles-modo";
-import { fmtCLP, fmtUF, pieDe } from "./opciones";
+import { UMBRAL_PRECIO_PCT, distanciaDelTuyo, indicadorContraElegido } from "./detalles-modo";
+import { fmtUF, pieDe } from "./opciones";
 
 export const MAX_RECOMENDADOS = 3;
 
@@ -48,10 +48,12 @@ export const ALTERNATIVAS_COPY = {
     if (modo === "cerca") return `Cerca del tuyo no hay otros que convengan; ${n === 1 ? "este está" : "estos están"} en el resto de ${comuna ?? "la comuna"}`;
     return comuna ? `${otros}, en ${comuna}` : `${otros}, en la comuna`;
   },
-  /** Ninguna alternativa supera al suyo en nada (decisión de Fabrizio, 19-nov-2026): el subtítulo lo dice. */
+  /** Ninguna alternativa supera al suyo en nada relevante (decisión de Fabrizio, 19-nov-2026): el subtítulo lo dice. Con el nivel
+   *  más lejano de la lista, para que «cerca» no mienta. */
   tuyoMejor: (nivel: NivelAlt, comuna: string | null) =>
     nivel === "perfil" ? "El tuyo es el que más conviene entre los parecidos. Estos te sirven de respaldo si no se da."
     : nivel === "comuna" ? `El tuyo es el mejor de los parecidos que hay en ${comuna ?? "la comuna"}. Estos te sirven de respaldo si no se da.`
+    : nivel === "tres_km" ? "El tuyo es el mejor de los parecidos que hay a menos de 3 km. Estos te sirven de respaldo si no se da."
     : "El tuyo es el mejor de los parecidos que hay cerca. Estos te sirven de respaldo si no se da.",
   marca: "Marca los que te interesen. Puedes seguir con varios.",
   soloElegido: "Hoy no hay otros parecidos que convengan. Te avisamos si aparece uno.",
@@ -60,7 +62,9 @@ export const ALTERNATIVAS_COPY = {
   arriendo: "Arriendo estimado",
   alMes: "Al mes",
   sigo: "Sigo con este",
-  sigoCorto: "Sigo",
+  /** La casilla de una alternativa (20-nov-2026): «Sumar»; la del elegido sigue «Sigo con este». */
+  sumar: "Sumar",
+  neutro: "Parecido al tuyo",
   comparar: (n: number) => `Comparar los ${n} lado a lado`,
   compararTitulo: (n: number) => `Los ${n} lado a lado`,
   volverResultado: "Volver a tu resultado",
@@ -69,10 +73,40 @@ export const ALTERNATIVAS_COPY = {
   fotoSiguiente: "Foto siguiente",
 } as const;
 
-/** «UF 3.180 · a 4 cuadras del tuyo» (o, en «Donde más convenga», «UF 3.180 · en La Florida, a 12 km del tuyo»). */
-export function lineaPrecioDistancia(precioUF: number, distanciaM: number | null, comuna: string | null, modo: Donde): string {
+/** «UF 3.180 · a 4 cuadras del tuyo», «UF 3.180 · a 1,8 km del tuyo» o, en otra comuna, «UF 3.180 · en La Florida, a 12 km del
+ *  tuyo»: la comuna se nombra solo cuando es otra que la del suyo (decisión de Fabrizio, 20-nov-2026). */
+export function lineaPrecioDistancia(precioUF: number, distanciaM: number | null, comuna: string | null, modo: Donde, comunaDelSuyo: string | null = null): string {
   const precio = `UF ${fmtUF(precioUF)}`;
-  return distanciaM == null ? precio : `${precio} · ${distanciaDelTuyo(distanciaM, comuna, modo === "convenga")}`;
+  const otra = comuna && (!comunaDelSuyo || comuna.trim().toLowerCase() !== comunaDelSuyo.trim().toLowerCase()) ? comuna : null;
+  return distanciaM == null ? precio : `${precio} · ${distanciaDelTuyo(distanciaM, otra, modo === "convenga")}`;
+}
+
+const km = (m: number) => { const k = m / 1000; return k < 10 ? k.toLocaleString("es-CL", { maximumFractionDigits: 1 }) : String(Math.round(k)); };
+const unir = (xs: string[]) => (xs.length <= 1 ? xs[0] ?? "" : `${xs.slice(0, -1).join(", ")} y ${xs[xs.length - 1]}`);
+
+/**
+ * EL SUBTÍTULO CON NIVELES MEZCLADOS (decisión de Fabrizio, 20-nov-2026): si todas las alternativas salieron del mismo nivel, el
+ * subtítulo de ese nivel; si se mezclan, cuántas hay de cada uno: «Otros 3 parecidos: 2 cerca del tuyo y 1 a 1,8 km.».
+ */
+export function subtituloAlternativas(items: readonly { nivel: NivelAlt | null; distanciaM: number | null }[], modo: Donde, comuna: string | null): string {
+  const n = items.length;
+  const niveles = Array.from(new Set(items.map((x) => x.nivel ?? "perfil")));
+  if (niveles.length <= 1) return ALTERNATIVAS_COPY.subtitulo(n, nivelDelBloque(items.map((x) => x.nivel)), modo, comuna);
+  const de = (nv: NivelAlt) => items.filter((x) => (x.nivel ?? "perfil") === nv);
+  const partes: string[] = [];
+  const cerca = de("cerca"), tres = de("tres_km"), com = de("comuna"), otras = de("perfil");
+  if (cerca.length) partes.push(`${cerca.length} cerca del tuyo`);
+  if (tres.length) partes.push(tres.length === 1 && tres[0].distanciaM != null ? `1 a ${km(tres[0].distanciaM)} km` : `${tres.length} a menos de 3 km`);
+  if (com.length) partes.push(`${com.length} en el resto de ${comuna ?? "la comuna"}`);
+  if (otras.length) partes.push(`${otras.length} más`);
+  return `Otros ${n} parecidos: ${unir(partes)}.`;
+}
+
+/** El título con niveles mezclados no nombra un lugar: «Y hay 3 parecidos que también convienen.». */
+export function nivelDelTitulo(items: readonly { nivel: NivelAlt | null }[]): NivelAlt {
+  const niveles = Array.from(new Set(items.map((x) => x.nivel ?? "perfil")));
+  if (!items.length) return "solo_elegido";
+  return niveles.length === 1 ? (niveles[0] as NivelAlt) : "perfil";
 }
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -80,17 +114,18 @@ const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 /**
  * EL INDICADOR ÚNICO de una alternativa, contra el suyo (LEEME del 19-nov-2026). Solo lo que la favorece, y de eso lo que más
  * pesa según lo que dijo: si el pie es lo que hoy lo limita, «El pie más bajo» (si es el más bajo del grupo y bajo el suyo);
- * después lo que pide o deja al mes, o el precio (indicadorContraElegido decide el orden por objetivo y preocupaciones); y si
- * nada de eso la favorece, el puntaje; si tampoco, lo que deja o pide al mes, sin compararlo.
+ * después lo que pide o deja al mes, o el precio (indicadorContraElegido decide el orden por objetivo y preocupaciones). Solo
+ * ventajas relevantes: $20.000 o más al mes, 5 % o más en precio o pie. Si no hay ninguna, «Parecido al tuyo», sin cifra.
  */
 export function indicadorAlternativa(
   alt: { avisoId: string; precioUF: number; flujoCLP: number | null; score: number | null },
   ele: { precioUF: number; flujoCLP: number | null; score: number | null },
   grupo: readonly { avisoId: string; precioUF: number }[],
   perfil: { objetivo: Objetivo | null; preocupaciones: readonly Preocupacion[]; limitaPie: boolean },
-): { texto: string; supera: boolean } | null {
+): { texto: string; supera: boolean } {
   const pieAlt = pieDe(alt.precioUF);
-  const elMasBajo = grupo.every((g) => g.avisoId === alt.avisoId || pieDe(g.precioUF) > pieAlt) && pieAlt < pieDe(ele.precioUF);
+  // El pie más bajo cuenta solo si es relevante: 5 % o más bajo que el suyo (20-nov-2026).
+  const elMasBajo = grupo.every((g) => g.avisoId === alt.avisoId || pieDe(g.precioUF) > pieAlt) && pieAlt <= pieDe(ele.precioUF) * (1 - UMBRAL_PRECIO_PCT / 100);
   if (perfil.limitaPie && elMasBajo) return { texto: `El pie más bajo: UF ${fmtUF(pieAlt)}`, supera: true };
   const ind = indicadorContraElegido(alt, ele, perfil);
   if (ind) {
@@ -98,10 +133,8 @@ export function indicadorAlternativa(
     return { texto: `${cap(ind.frase)} que el tuyo`, supera: true };
   }
   if (elMasBajo) return { texto: `El pie más bajo: UF ${fmtUF(pieAlt)}`, supera: true };
-  if (alt.score != null && ele.score != null && alt.score > ele.score) return { texto: `Mejor puntaje que el tuyo: ${alt.score}`, supera: true };
-  // Nada la favorece contra el suyo (que ya es muy bueno): su dato más fuerte, sin compararlo (decisión de Fabrizio, 19-nov-2026).
-  if (alt.flujoCLP != null) return { texto: alt.flujoCLP >= 0 ? `Te deja ${fmtCLP(Math.round(alt.flujoCLP / 1000) * 1000)} al mes` : `Pide ${fmtCLP(Math.round(-alt.flujoCLP / 1000) * 1000)} al mes`, supera: false };
-  return null;
+  // Ninguna ventaja relevante (decisión de Fabrizio, 20-nov-2026): algo neutro, sin una cifra que se lea como ventaja.
+  return { texto: ALTERNATIVAS_COPY.neutro, supera: false };
 }
 
 /** Las recomendaciones que cuentan para el cupo: de Franco, como opción o ya elegidas. */

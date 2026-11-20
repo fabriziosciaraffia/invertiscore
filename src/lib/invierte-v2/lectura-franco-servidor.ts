@@ -53,8 +53,9 @@ async function entradaDe(admin: SupabaseClient, avisoId: string): Promise<{ entr
   };
 }
 
-/** La lectura de un depto: la guardada si está vigente; si no, la genera (con su tope y su marca). */
-export async function lecturaDe(admin: SupabaseClient, cliente: Anthropic, avisoId: string, ahora: Date = new Date()): Promise<EstadoLectura> {
+/** La lectura de un depto: la guardada si está vigente; si no, la genera (con su tope y su marca). `leerSiFalta`: si la publicación
+ *  todavía no se leyó, quien llama la lee (por el carril de Invierte, 20-nov-2026) antes de escribir la lectura. */
+export async function lecturaDe(admin: SupabaseClient, cliente: Anthropic, avisoId: string, ahora: Date = new Date(), leerSiFalta?: () => Promise<void>): Promise<EstadoLectura> {
   const [{ data: fila }, { data: det }] = await Promise.all([
     admin.from(T).select("aviso_id, estado, version, lectura, detalle_leido_at, updated_at").eq("aviso_id", avisoId).maybeSingle(),
     admin.from("publicacion_detalle").select("leido_at").eq("aviso_id", avisoId).maybeSingle(),
@@ -63,13 +64,19 @@ export async function lecturaDe(admin: SupabaseClient, cliente: Anthropic, aviso
   const vigente = f && f.estado === "lista" && f.version === VERSION_LECTURA && (!det?.leido_at || !f.detalle_leido_at || f.detalle_leido_at >= (det.leido_at as string));
   if (vigente) { const l = sanearLectura(f.lectura); if (l) return { estado: "lista", lectura: l }; }
   if (f?.estado === "generando" && ahora.getTime() - new Date(f.updated_at).getTime() < GENERANDO_VENCE_MS) return { estado: "generando" };
-  const e = await entradaDe(admin, avisoId);
-  if (!e) return { estado: "sin-datos" };
+  if (!det && !leerSiFalta) return { estado: "sin-datos" };
   const desde = new Date(ahora.getTime() - 60 * 60 * 1000).toISOString();
   const { count } = await admin.from(T).select("aviso_id", { count: "exact", head: true }).gte("generado_at", desde);
   if (count == null || count >= TOPE_LECTURAS_POR_HORA) return { estado: "tope" };
+  // La marca va antes de leer la publicación: otra pantalla que pida este depto espera («generando») en vez de leerlo de nuevo.
   const marca = await admin.from(T).upsert({ aviso_id: avisoId, estado: "generando", version: VERSION_LECTURA, updated_at: ahora.toISOString() }, { onConflict: "aviso_id" });
   if (marca.error) return { estado: "error" };
+  if (!det && leerSiFalta) await leerSiFalta().catch(() => undefined);
+  const e = await entradaDe(admin, avisoId);
+  if (!e) {
+    await admin.from(T).update({ estado: "error", error: "sin-datos", updated_at: new Date().toISOString() }).eq("aviso_id", avisoId);
+    return { estado: "sin-datos" };
+  }
   const r = await generarLecturaFranco(cliente, e.entrada);
   const fin = new Date().toISOString();
   if (!r.ok) {
