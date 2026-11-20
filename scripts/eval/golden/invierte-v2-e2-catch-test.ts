@@ -996,11 +996,11 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (!/<span className="iv2-lectura-rotulo">\{L\.rotulo\}<\/span>\s*\{alerta && <span className="iv2-lectura-chip" data-inv2="lectura-chip">\{L\.alertaNivel\[alerta\]\}<\/span>\}/.test(lq15) || !/data-alerta=\{alerta \?\? undefined\}/.test(lq15)) F("15e · el recuadro no lleva la etiqueta y, con alerta, su chip y su color");
       if (LECTURA_COPY.alertaNivel.revisar !== "Revisar" || LECTURA_COPY.alertaNivel.grave !== "Grave") F("15e · el chip no dice «Revisar» o «Grave»");
 
-      // 15f · El recuadro: azul claro (el de las tarjetas que explican), ciruela claro con alerta, nunca rojo; el texto oscuro; en una
-      // alternativa, dos renglones como máximo.
+      // 15f · El recuadro: el MISMO azul claro en todos, con o sin alerta (Fabrizio, 20-nov-2026: la alerta, solo por su chip en
+      // ciruela), nunca rojo; el texto oscuro; en una alternativa, dos renglones como máximo.
       const css15 = leer("src/components/invierte-v2/invierte-v2.css");
       const reglas = css15.split("\n").filter((x) => /iv2-lectura-(caja|linea|chip|cab|lineas|rotulo)/.test(x)).join("\n");
-      if (!/\[data-theme="light"\] \.iv2-lectura-caja \{ background: #EEF2F8; \}/.test(css15) || !/\[data-theme="light"\] \.iv2-lectura-caja\[data-alerta\] \{ background: #F3EDF1; \}/.test(css15) || /#C8323C|#E05A63|signal-red/i.test(reglas)) F("15f · el recuadro no es azul claro, o con alerta no es ciruela claro (o usa rojo)");
+      if (!/\[data-theme="light"\] \.iv2-lectura-caja \{ background: #EEF2F8; \}/.test(css15) || /\.iv2-lectura-caja\[data-alerta\][^{]*\{[^}]*background/.test(css15) || !/\[data-theme="light"\] \.iv2-lectura-chip \{ background: #F1E4EC; color: #6E4560; \}/.test(css15) || /#C8323C|#E05A63|signal-red/i.test(reglas)) F("15f · el recuadro no tiene el mismo azul claro en todos, el chip no es ciruela, o usa rojo");
       if (!/\.iv2-lectura-linea \.iv2-lectura-lineas \{ display: -webkit-box; -webkit-line-clamp: 2;/.test(css15) || !/\.iv2-lectura-lineas \{[^}]*color: var\(--franco-text\);/.test(css15) || /\.iv2-lectura-linea \{[^}]*color:/.test(css15)) F("15f · la línea de una alternativa no va en color oscuro o pasa de dos renglones");
 
       // 15g · Las fotos de las alternativas: recortadas para llenar el recuadro sin deformarse, con flechas, contador y puntos.

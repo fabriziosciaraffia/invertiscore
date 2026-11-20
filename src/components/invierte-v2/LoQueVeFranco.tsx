@@ -4,9 +4,9 @@
 // «LO QUE VE FRANCO» EN PANTALLA (entrega 4 de las láminas del 19-nov-2026; rehecho tras la prueba de Fabrizio del 20-nov-2026).
 // Tres formas, de la misma lectura guardada por depto:
 //   · elegido (resultado): UN bloque «Lo que ve Franco» con las tres líneas de la corta; si hay alerta, es la primera línea, con su
-//     chip («Revisar» o «Grave») y el recuadro en ciruela claro. «Lo que el puntaje no considera» ya no va en el resultado.
+//     chip («Revisar» o «Grave», en ciruela). «Lo que el puntaje no considera» ya no va en el resultado.
 //   · linea (una alternativa): el mismo recuadro con UNA línea —la alerta si existe; si no, la primera de la corta—, dos renglones
-//     como máximo. Azul claro (el de las tarjetas que explican) o ciruela claro con su chip si es una alerta; nunca rojo.
+//     como máximo. Siempre el mismo fondo azul claro (el de las tarjetas que explican); la alerta, solo por su chip; nunca rojo.
 //   · detalles: «Lo que el puntaje no considera» (grave o revisar) arriba, y la versión larga (Estado, Para arrendar, Edificio,
 //     Ubicación, Ojo).
 // Si la lectura no está, se pide aparte (POST /api/invierte-v2/lectura) y la tarjeta se completa sola; mientras tanto no se dibuja
@@ -77,7 +77,7 @@ function Linea({ t }: { t: string }) {
   return <span>{p.fuerte ? <b>{p.fuerte}</b> : null}{p.resto}</span>;
 }
 
-/** El recuadro del resultado: la etiqueta chica «LO QUE VE FRANCO» y, si hay alerta, su chip; azul claro, o ciruela claro con alerta. */
+/** El recuadro del resultado: la etiqueta chica «LO QUE VE FRANCO» y, si hay alerta, su chip; siempre el mismo fondo azul claro. */
 function Caja({ l, lineas, variante }: { l: LecturaFranco; lineas: string[]; variante: "elegido" | "linea" }) {
   if (!lineas.length) return null;
   const alerta = alertaPrimero(l) ? (l.alerta.nivel === "grave" ? "grave" : "revisar") : null;

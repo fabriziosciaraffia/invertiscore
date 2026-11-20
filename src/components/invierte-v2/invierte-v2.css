@@ -659,16 +659,13 @@
 [data-theme="light"] .iv2-lectura-rotulo { color: #1E3F6B; }
 .iv2-lectura-lineas { display: flex; flex-direction: column; gap: 6px; font-size: 13px; line-height: 1.45; color: var(--franco-text); }
 .iv2-lectura-lineas b { font-weight: 600; }
-/* El resultado (20-nov-2026, Fabrizio): la etiqueta chica y, si hay alerta, su chip; el recuadro en ciruela claro con alerta, nunca
-   en rojo. En una alternativa, una sola línea en color oscuro, dos renglones como máximo. */
+/* El resultado (20-nov-2026, Fabrizio): la etiqueta chica y, si hay alerta, su chip en ciruela (nunca rojo). El recuadro tiene el
+   MISMO fondo azul claro en todos, con o sin alerta (Fabrizio, 20-nov-2026): la alerta se distingue solo por el chip. En una
+   alternativa, una sola línea en color oscuro, dos renglones como máximo. */
 .iv2-lectura-cab { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .iv2-lectura-chip { flex: none; font-size: 11px; font-weight: 700; line-height: 1.4; padding: 1px 8px; border-radius: 999px; background: rgba(255, 255, 255, 0.08); color: var(--franco-text); }
-[data-theme="light"] .iv2-lectura-chip { background: #FFFFFF; color: #6E4560; }
+[data-theme="light"] .iv2-lectura-chip { background: #F1E4EC; color: #6E4560; }
 .iv2-lectura-caja[data-alerta="grave"] .iv2-lectura-chip { background: #6E4560; color: #FFFFFF; }
-.iv2-lectura-caja[data-alerta] { background: rgba(216, 174, 202, 0.14); }
-[data-theme="light"] .iv2-lectura-caja[data-alerta] { background: #F3EDF1; }
-.iv2-lectura-caja[data-alerta] .iv2-lectura-rotulo { color: #D8AECA; }
-[data-theme="light"] .iv2-lectura-caja[data-alerta] .iv2-lectura-rotulo { color: #6E4560; }
 .iv2-lectura-linea { gap: 4px; padding: 8px 10px; }
 .iv2-lectura-linea .iv2-lectura-lineas { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 12.5px; line-height: 1.4; }
 .iv2-alerta { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border-radius: 12px; background: rgba(216, 174, 202, 0.14); }
