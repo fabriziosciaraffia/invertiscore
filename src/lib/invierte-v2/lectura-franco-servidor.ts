@@ -10,12 +10,25 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { findNearestStation } from "@/lib/metro-stations";
-import { GENERANDO_VENCE_MS, TOPE_LECTURAS_POR_HORA, VERSION_LECTURA, sanearLectura, type LecturaFranco } from "./lectura-franco";
+import { ESPERA_REINTENTO_MS, GENERANDO_VENCE_MS, TOPE_INTENTOS_LECTURA, TOPE_LECTURAS_POR_HORA, VERSION_LECTURA, sanearLectura, type LecturaFranco } from "./lectura-franco";
 import { generarLecturaFranco, type EntradaLectura } from "./lectura-franco-ia";
 
 const T = "lecturas_franco";
 
-interface FilaLectura { aviso_id: string; estado: string; version: number; lectura: unknown; detalle_leido_at: string | null; updated_at: string }
+interface FilaLectura { aviso_id: string; estado: string; version: number; lectura: unknown; detalle_leido_at: string | null; updated_at: string; error: string | null }
+
+/** El error guardado lleva su intento: «[intento 2] limite: 429 rate_limit_error: …» (20-nov-2026: el error real, nunca solo «error»). */
+export const textoError = (intento: number, motivo: string, detalle: string) => `[intento ${intento}] ${motivo}: ${detalle}`.slice(0, 500);
+export const intentosDe = (error: string | null | undefined) => Number(/^\[intento (\d+)\]/.exec(error ?? "")?.[1] ?? (error ? 1 : 0));
+
+/** ¿Se vuelve a intentar una lectura en error? (20-nov-2026, Fabrizio: «no puede quedar en error para siempre, porque la lectura se
+ *  guarda por depto y la ven todos».) Sí, cuando alguien vuelve a ver el depto, si no llegó al tope de intentos y ya pasó la espera,
+ *  que crece con cada intento (2, 4, 6 minutos…). */
+export function reintentable(f: Pick<FilaLectura, "estado" | "error" | "updated_at">, ahora: Date): boolean {
+  if (f.estado !== "error") return false;
+  const n = intentosDe(f.error);
+  return n < TOPE_INTENTOS_LECTURA && ahora.getTime() - new Date(f.updated_at).getTime() >= ESPERA_REINTENTO_MS * Math.max(1, n);
+}
 
 export async function leerLecturas(admin: SupabaseClient, avisoIds: readonly string[]): Promise<Record<string, LecturaFranco>> {
   const ids = Array.from(new Set(avisoIds)).filter((x) => /^[0-9a-f-]{36}$/i.test(x)).slice(0, 100);
@@ -57,13 +70,17 @@ async function entradaDe(admin: SupabaseClient, avisoId: string): Promise<{ entr
  *  todavía no se leyó, quien llama la lee (por el carril de Invierte, 20-nov-2026) antes de escribir la lectura. */
 export async function lecturaDe(admin: SupabaseClient, cliente: Anthropic, avisoId: string, ahora: Date = new Date(), leerSiFalta?: () => Promise<void>): Promise<EstadoLectura> {
   const [{ data: fila }, { data: det }] = await Promise.all([
-    admin.from(T).select("aviso_id, estado, version, lectura, detalle_leido_at, updated_at").eq("aviso_id", avisoId).maybeSingle(),
+    admin.from(T).select("aviso_id, estado, version, lectura, detalle_leido_at, updated_at, error").eq("aviso_id", avisoId).maybeSingle(),
     admin.from("publicacion_detalle").select("leido_at").eq("aviso_id", avisoId).maybeSingle(),
   ]);
   const f = fila as FilaLectura | null;
   const vigente = f && f.estado === "lista" && f.version === VERSION_LECTURA && (!det?.leido_at || !f.detalle_leido_at || f.detalle_leido_at >= (det.leido_at as string));
   if (vigente) { const l = sanearLectura(f.lectura); if (l) return { estado: "lista", lectura: l }; }
   if (f?.estado === "generando" && ahora.getTime() - new Date(f.updated_at).getTime() < GENERANDO_VENCE_MS) return { estado: "generando" };
+  // En error (de la versión vigente y de esta lectura de la publicación): se reintenta solo con espera y tope; si no, sigue en error.
+  const errorVigente = f?.estado === "error" && f.version === VERSION_LECTURA && (!det?.leido_at || !f.detalle_leido_at || f.detalle_leido_at >= (det.leido_at as string));
+  if (errorVigente && !reintentable(f, ahora)) return { estado: "error" };
+  const intento = errorVigente ? intentosDe(f.error) + 1 : 1;
   if (!det && !leerSiFalta) return { estado: "sin-datos" };
   const desde = new Date(ahora.getTime() - 60 * 60 * 1000).toISOString();
   const { count } = await admin.from(T).select("aviso_id", { count: "exact", head: true }).gte("generado_at", desde);
@@ -74,13 +91,13 @@ export async function lecturaDe(admin: SupabaseClient, cliente: Anthropic, aviso
   if (!det && leerSiFalta) await leerSiFalta().catch(() => undefined);
   const e = await entradaDe(admin, avisoId);
   if (!e) {
-    await admin.from(T).update({ estado: "error", error: "sin-datos", updated_at: new Date().toISOString() }).eq("aviso_id", avisoId);
+    await admin.from(T).update({ estado: "error", error: textoError(intento, "sin-datos", "la publicación no tiene fotos ni texto guardados"), updated_at: new Date().toISOString() }).eq("aviso_id", avisoId);
     return { estado: "sin-datos" };
   }
   const r = await generarLecturaFranco(cliente, e.entrada);
   const fin = new Date().toISOString();
   if (!r.ok) {
-    await admin.from(T).update({ estado: "error", error: r.motivo, updated_at: fin }).eq("aviso_id", avisoId);
+    await admin.from(T).update({ estado: "error", error: textoError(intento, r.motivo, r.detalle), detalle_leido_at: e.leidoAt, updated_at: fin }).eq("aviso_id", avisoId);
     return { estado: "error" };
   }
   const { error } = await admin.from(T).update({
@@ -88,5 +105,8 @@ export async function lecturaDe(admin: SupabaseClient, cliente: Anthropic, aviso
     ms: r.ms, detalle_leido_at: e.leidoAt, error: null, generado_at: fin, updated_at: fin,
   }).eq("aviso_id", avisoId);
   if (error) return { estado: "error" };
+  // Las líneas que el saneado borró (20-nov-2026), aparte: si la columna todavía no existe (20261126_lecturas_franco_descartes),
+  // la lectura ya quedó guardada y no se pierde; el log igual las tiene.
+  await admin.from(T).update({ descartes: r.descartes }).eq("aviso_id", avisoId).then(() => undefined, () => undefined);
   return { estado: "lista", lectura: r.lectura };
 }

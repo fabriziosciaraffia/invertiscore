@@ -18,7 +18,7 @@ import { lecturaDe } from "@/lib/invierte-v2/lectura-franco-servidor";
 // (si fallan, la firma queda y se reintentan). Quien ya firmó la versión vigente no firma de nuevo.
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const maxDuration = 120;
+export const maxDuration = 180;
 
 export async function POST(request: Request) {
   const user = await personaConAcceso();

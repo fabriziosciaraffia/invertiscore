@@ -19,11 +19,18 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Sube con cada cambio de la instrucción: una lectura de otra versión se vuelve a generar. */
-export const VERSION_LECTURA = 5;
+export const VERSION_LECTURA = 6;
 /** Todas las fotos de la publicación, hasta este tope (20-nov-2026; antes 8, y la lectura decía que faltaban fotos que sí estaban). */
 export const MAX_FOTOS_LECTURA = 24;
 /** Lecturas nuevas por hora, entre todas las personas (resguardo de costo). */
 export const TOPE_LECTURAS_POR_HORA = 60;
+/** La versión corta (20-nov-2026, Fabrizio): exactamente tres líneas, cada una UNA frase de este largo como máximo. Si el modelo se
+ *  pasa, la lectura se rehace (no se corta la frase a la mitad). */
+export const MAX_CARACTERES_CORTA = 110;
+export const LINEAS_CORTA = 3;
+/** Una lectura en error se vuelve a intentar cuando alguien vuelve a ver el depto, con espera creciente y un tope (20-nov-2026). */
+export const TOPE_INTENTOS_LECTURA = 4;
+export const ESPERA_REINTENTO_MS = 2 * 60 * 1000;
 /** Una lectura «generando» que lleva más de esto se da por caída y se puede reintentar. */
 export const GENERANDO_VENCE_MS = 3 * 60 * 1000;
 
@@ -56,7 +63,7 @@ Entregas tres cosas:
    - nivel «revisar»: SOLO cuando los datos se contradicen: las fotos o el texto contradicen un dato con que se calculó el informe —los dormitorios, los baños, la superficie o el piso de «nuestros datos»— (por ejemplo, un dormitorio tan chico que no sirve como dormitorio, o la publicación dice estudio y nuestros datos dicen un dormitorio).
    - Que falten fotos de algo (el baño, la cocina, un dormitorio) NUNCA es alerta: si corresponde, va como una línea normal en forma de pedido.
    - nivel «ninguna»: el resto; entonces motivo va null.
-   - motivo: una frase corta que dice qué se ve o qué falta, sin cifras.
+   - motivo: UNA frase de 110 caracteres como máximo que dice qué se ve o qué se contradice, sin cifras.
 
 2. La versión larga: cinco líneas como máximo, con estas etiquetas, en este orden, sin repetir: Estado, Para arrendar, Edificio, Ubicación, Ojo.
    - Estado: cómo está el depto por dentro (terminaciones, cocina, baños, pisos) y si pide inversión antes de arrendar.
@@ -65,14 +72,14 @@ Entregas tres cosas:
    - Ubicación: hechos concretos que afecten el arriendo (que tiene metro cerca, que está sobre una avenida de alto tráfico), sin distancias.
    - Ojo: lo que falta saber antes de ofertar, como pregunta o acción («Pregunta si…», «Confirma…»). Si la antigüedad no viene informada, va aquí como pregunta. Si recibiste todas las fotos y falta alguna parte clave (el baño, la cocina, los dormitorios), va como pedido: «Pide fotos del baño antes de ofertar.» Si la publicación no da ninguna razón para su precio, puedes escribir «La publicación no explica su precio: pregúntalo», sin números.
 
-3. La versión corta: tres líneas para la tarjeta del resultado, sin etiqueta. Si la alerta no es «ninguna», la primera línea es esa alerta. Las otras, lo que más pesa para la decisión.
+3. La versión corta: EXACTAMENTE tres líneas para la tarjeta del resultado, sin etiqueta. Cada línea es UNA sola frase de 110 caracteres como máximo (no dos frases, no punto seguido). Si la alerta no es «ninguna», la primera línea es esa alerta. Las otras, lo que más pesa para la decisión.
 
 Reglas:
 - Nunca cites ni juzgues el precio: nada de precios, precio por m², porcentajes, «bajo su zona», «más barato», «buen precio» ni comparaciones con la zona o con otros deptos. Eso lo dice el informe, con otra referencia.
 - Nunca cites una cifra del informe: precio, arriendo, flujo, gastos comunes, distancia al metro, superficie total. Solo puedes usar medidas que vengan de la publicación y sirvan para arrendar (por ejemplo, un dormitorio de 6,6 m²) y años de construcción informados.
 - No repitas el marketing de quien publica: supermercados, colegios, clínicas, «excelente conectividad», «sector consolidado». No describas lo que no cambia la inversión: luz, vista, colores, decoración, juegos infantiles, quinchos.
 - La antigüedad solo se afirma si viene informada. Nunca presentes una antigüedad supuesta como dato.
-- Solo puedes decir que no hay fotos de algo, o pedir fotos, si recibiste todas las fotos de la publicación. Si recibiste solo las primeras, nunca digas que falta una foto ni pidas fotos: puede estar entre las que no viste.
+- Solo puedes decir que no hay fotos de algo, o pedir fotos, si recibiste todas las fotos de la publicación. Si recibiste solo las primeras, nunca digas que falta una foto ni pidas fotos: puede estar entre las que no viste. Si el mensaje dice que no se pudo ver ninguna foto, no digas nada de las fotos.
 - Cada línea necesita evidencia en las fotos, en el texto de la publicación o en nuestros datos, y declara su fuente en «fuente»: «fotos», «publicacion» o «datos» (la que más pesa).
 - Lo que afirma quien publica va marcado con «según la publicación». Lo que ves en las fotos lo dices como lo que se ve («En las fotos se ve…»), sin asegurar lo que una foto no permite.
 - Si no hay evidencia para una etiqueta, omite esa línea. No inventes datos, años ni servicios.
@@ -93,7 +100,7 @@ export const ESQUEMA_LECTURA_FRANCO = {
       properties: {
         nivel: { type: "string", enum: ["ninguna", "revisar", "grave"] },
         // Un valor con nulo va con anyOf (la API rechaza `type: [x, "null"]` junto a un enum; medido el 19-nov-2026).
-        motivo: { anyOf: [{ type: "string" }, { type: "null" }] },
+        motivo: { anyOf: [{ type: "string", maxLength: MAX_CARACTERES_CORTA, description: "Una sola frase de 110 caracteres como máximo." }, { type: "null" }] },
       },
     },
     larga: {
@@ -105,24 +112,43 @@ export const ESQUEMA_LECTURA_FRANCO = {
         properties: { etiqueta: { type: "string", enum: [...ETIQUETAS_LARGA] }, texto: { type: "string" }, fuente: FUENTE },
       },
     },
+    // La API acepta minItems 0 o 1 y maxLength (medido el 20-nov-2026: minItems 3 da 400). Las tres líneas las exige el código.
     corta: {
       type: "array",
-      items: { type: "object", additionalProperties: false, required: ["texto", "fuente"], properties: { texto: { type: "string" }, fuente: FUENTE } },
+      minItems: 1,
+      description: "Exactamente tres líneas; cada una, una sola frase de 110 caracteres como máximo.",
+      items: { type: "object", additionalProperties: false, required: ["texto", "fuente"], properties: { texto: { type: "string", maxLength: MAX_CARACTERES_CORTA, description: "Una sola frase de 110 caracteres como máximo." }, fuente: FUENTE } },
     },
   },
 } as const;
 
 /**
- * La red, por si el modelo se sale de la regla: una línea con una cifra de precio o una comparación de precio NO se muestra.
- * Porcentajes, montos en UF o en pesos, distancias en metros o kilómetros, precio por m², «bajo su zona», «más barato», «buen
- * precio», «que los parecidos». La pregunta sin número de «Ojo» («La publicación no explica su precio: pregúntalo») sí pasa.
+ * La red, por si el modelo se sale de la regla (reescrita el 20-nov-2026, decisión de Fabrizio: la de antes borraba también
+ * distancias en metros y cualquier porcentaje, y se llevaba frases válidas). Solo borra una línea que cite PLATA o COMPARE EL PRECIO:
+ *   · precio_uf      un monto en UF («UF 2.700»);
+ *   · pesos          un monto en pesos («$80.000», «450 mil», «2 millones»): precio, arriendo, flujo o gastos comunes;
+ *   · precio_m2      precio por m² («UF por m²», «/ m²»);
+ *   · comparacion    una comparación de precio en palabras («bajo su zona», «más barato», «buen precio», «descuento»…);
+ *   · porcentaje     un porcentaje que habla de precio («un 34 % bajo su zona», «subió un 20 %»).
+ * Años, pisos, cantidades de dormitorios o baños, m² y distancias SE QUEDAN. La pregunta sin número de «Ojo» («La publicación no
+ * explica su precio: pregúntalo») también pasa.
  */
-export function lineaPermitida(texto: string): boolean {
+export type ReglaDescarte = "precio_uf" | "pesos" | "precio_m2" | "comparacion" | "porcentaje" | "faltan_fotos";
+export function reglaDescarte(texto: string): Exclude<ReglaDescarte, "faltan_fotos"> | null {
   const t = texto.toLowerCase();
-  if (/%|\buf\b|\$\s?\d|\d\s*(?:mil|millones)\b|\d+(?:[.,]\d+)?\s*(?:metros|mts|m|km|kil[oó]metros)\b(?!²)|por\s+m²|\/\s*m²/.test(t)) return false;
-  if (/(bajo|sobre|que)\s+(su|la)\s+zona|m[aá]s\s+barat|m[aá]s\s+car[oa]|buen\s+precio|precio\s+(bajo|alto|atractivo|conveniente|de\s+oportunidad)|bajo\s+(el\s+)?mercado|que\s+(los|sus)\s+parecidos|descuento/.test(t)) return false;
-  return true;
+  if (/\buf\s*\d|\d[\d.,]*\s*uf\b/.test(t)) return "precio_uf";
+  if (/\$\s?\d|\d\s*(?:mil|millones|mm)\b/.test(t)) return "pesos";
+  if (/(?:uf|\$|pesos)\s*(?:por|\/)\s*m²|\bpor\s+m²|\/\s*m²/.test(t)) return "precio_m2";
+  if (/(bajo|sobre|que)\s+(su|la)\s+zona|m[aá]s\s+barat|m[aá]s\s+car[oa]|buen\s+precio|precio\s+(bajo|alto|atractivo|conveniente|de\s+oportunidad)|bajo\s+(el\s+)?mercado|que\s+(los|sus)\s+parecidos|descuento/.test(t)) return "comparacion";
+  if (/\d\s*%|%/.test(t) && /precio|zona|mercado|parecid|barat|car[oa]\b|descuento|tasaci|aval[uú]o|subi[oó]|baj[oó]|rebaj|cuesta|vale|valor/.test(t)) return "porcentaje";
+  return null;
 }
+
+/** ¿La línea pasa la red de precio? */
+export const lineaPermitida = (texto: string): boolean => reglaDescarte(texto) === null;
+
+/** Una línea que el saneado borró: en qué campo estaba, el texto y la regla (20-nov-2026: queda registrada para verla después). */
+export interface Descarte { campo: "alerta" | "larga" | "corta"; texto: string; regla: ReglaDescarte }
 
 const limpio = (x: unknown) => (typeof x === "string" && x.trim() ? x.replace(/\s+/g, " ").trim().slice(0, 400) : null);
 
@@ -135,14 +161,23 @@ export function afirmaFaltanFotos(texto: string): boolean {
  *  (20-nov-2026): si la lectura no recibió todas las fotos, se cae toda línea que diga que falta una foto o que pida fotos, y una
  *  alerta por eso no queda como alerta. */
 export function sanearLectura(j: unknown, opts: { fotosCompletas?: boolean } = {}): LecturaFranco | null {
-  const permitida = (t: string) => lineaPermitida(t) && (opts.fotosCompletas !== false || !afirmaFaltanFotos(t));
-  if (!j || typeof j !== "object") return null;
+  return sanearConRegistro(j, opts).lectura;
+}
+
+/** Lo mismo, y además qué líneas borró y por qué regla (20-nov-2026, Fabrizio: «deja registro cada vez que el saneado borra una
+ *  línea»). Quien genera la lectura lo guarda (`lecturas_franco.descartes`) y lo anota en el log. */
+export function sanearConRegistro(j: unknown, opts: { fotosCompletas?: boolean } = {}): { lectura: LecturaFranco | null; descartes: Descarte[] } {
+  const descartes: Descarte[] = [];
+  const motivoDe = (t: string): ReglaDescarte | null => reglaDescarte(t) ?? (opts.fotosCompletas === false && afirmaFaltanFotos(t) ? "faltan_fotos" : null);
+  const filtro = (campo: Descarte["campo"]) => (t: string) => { const r = motivoDe(t); if (r) descartes.push({ campo, texto: t, regla: r }); return !r; };
+  const permitida = filtro("larga");
+  if (!j || typeof j !== "object") return { lectura: null, descartes };
   const o = j as { alerta?: { nivel?: unknown; motivo?: unknown }; larga?: unknown; corta?: unknown };
   const motivoCrudo = limpio(o.alerta?.motivo);
   const nivelCrudo: NivelAlerta = o.alerta?.nivel === "grave" || o.alerta?.nivel === "revisar" ? o.alerta.nivel : "ninguna";
   // Sin todas las fotos, una alerta que dice que faltan fotos no se sostiene: no queda como alerta.
   const nivel: NivelAlerta = nivelCrudo !== "ninguna" && opts.fotosCompletas === false && motivoCrudo && afirmaFaltanFotos(motivoCrudo) ? "ninguna" : nivelCrudo;
-  const motivo = nivel === "ninguna" ? null : motivoCrudo && permitida(motivoCrudo) ? motivoCrudo : null;
+  const motivo = nivel === "ninguna" ? null : motivoCrudo && filtro("alerta")(motivoCrudo) ? motivoCrudo : null;
   const vistas = new Set<string>();
   const larga = (Array.isArray(o.larga) ? o.larga : [])
     .map((l) => ({ etiqueta: (l as { etiqueta?: unknown }).etiqueta, texto: limpio((l as { texto?: unknown }).texto) }))
@@ -151,16 +186,25 @@ export function sanearLectura(j: unknown, opts: { fotosCompletas?: boolean } = {
     .slice(0, 5);
   // La corta llega del modelo como { texto, fuente } y se guarda como texto: se aceptan las dos (20-nov-2026: al releer una lectura
   // guardada, la corta se perdía entera y el resultado mostraba solo la alerta).
-  const corta = (Array.isArray(o.corta) ? o.corta : []).map((l) => limpio(typeof l === "string" ? l : (l as { texto?: unknown } | null)?.texto)).filter((t): t is string => !!t && permitida(t)).slice(0, 3);
-  if (!larga.length && !corta.length) return null;
-  // Sin versión corta (20-nov-2026: dos lecturas de la prueba de Fabrizio quedaron con la corta vacía y la larga completa, y su
-  // alternativa salía sin recuadro), la corta sale de la larga: sus primeras líneas, en su orden, sin «Ojo» si hay otras.
-  if (!corta.length) {
-    const sinOjo = larga.filter((x) => x.etiqueta !== "Ojo");
-    corta.push(...(sinOjo.length ? sinOjo : larga).slice(0, 3).map((x) => x.texto));
-  }
+  const corta = (Array.isArray(o.corta) ? o.corta : []).map((l) => limpio(typeof l === "string" ? l : (l as { texto?: unknown } | null)?.texto)).filter((t): t is string => !!t && filtro("corta")(t)).slice(0, 3);
+  if (!larga.length && !corta.length) return { lectura: null, descartes };
   // Una alerta sin motivo legible no se muestra como alerta (queda el nivel para decidir si se recomienda).
-  return { alerta: { nivel, motivo }, larga, corta };
+  return { lectura: { alerta: { nivel, motivo }, larga, corta }, descartes };
+}
+
+/** ¿Esta línea es UNA frase? Un punto, signo de cierre o exclamación seguido de otra frase la parte en dos. */
+export const unaFrase = (t: string) => !/[.!?…]\s+[A-ZÁÉÍÓÚÑ¿¡«]/.test(t.trim());
+
+/** ¿La versión corta cumple la regla (20-nov-2026, Fabrizio)? Tres líneas, cada una UNA frase de MAX_CARACTERES_CORTA o menos, y el
+ *  motivo de la alerta igual. Devuelve el problema, o null. Una corta que no cumple se REHACE, no se recorta: las dos lecturas con la
+ *  corta vacía del 20-nov-2026 eran del modelo (escribió menos de tres líneas), no del saneado. */
+export function problemaCorta(l: LecturaFranco): string | null {
+  if (l.corta.length !== LINEAS_CORTA) return `la corta tiene ${l.corta.length} líneas`;
+  const largas = [...l.corta, ...(l.alerta.motivo ? [l.alerta.motivo] : [])].filter((t) => t.length > MAX_CARACTERES_CORTA);
+  if (largas.length) return `una línea pasa de ${MAX_CARACTERES_CORTA} caracteres (${largas[0].length})`;
+  const dobles = [...l.corta, ...(l.alerta.motivo ? [l.alerta.motivo] : [])].filter((t) => !unaFrase(t));
+  if (dobles.length) return "una línea tiene más de una frase";
+  return null;
 }
 
 /** ¿Se puede recomendar como alternativa? Con alerta grave, no. */
