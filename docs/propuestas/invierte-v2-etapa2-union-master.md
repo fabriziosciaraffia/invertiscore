@@ -10,9 +10,10 @@ Rama `claude/invierte-v2-etapa2`. Nada sube a master sin avisarle antes a Fabriz
 - `publicacion_detalle` (fotos, texto y dirección de cada publicación), vacía, con RLS y solo para el servidor.
 - `lecturas_franco` (la tabla de «Lo que ve Franco»), aplicada por Claude el 20-nov-2026.
 
-## Pendiente de aplicar ANTES de unir (y antes de que Fabrizio repita el recorrido en el preview)
+## Pendiente de aplicar ANTES de unir
 
-- `supabase/migrations/20261125_lecturas_invierte_origenes.sql`: la bitácora del carril acepta los orígenes `firma` y `resultado` (las lecturas al firmar y al mostrarse el resultado, decisión de Fabrizio del 20-nov-2026). No toca filas. Sin él, esas lecturas se anotan como `abrir` (resguardo del código para que el tope de 60 por hora las cuente igual).
+- `supabase/migrations/20261125_lecturas_invierte_origenes.sql`: aplicado por Claude el 20-nov-2026 (verificado).
+- `supabase/migrations/20261126_lecturas_franco_descartes.sql`: la columna `descartes` de `lecturas_franco`, el registro de cada línea que el saneado borra (qué línea y por qué regla). No toca filas. Sin ella la lectura se guarda igual (el registro va en una escritura aparte que no falla la lectura) y lo borrado queda solo en el log.
 
 ## El MISMO DÍA de la unión, después del push a master
 

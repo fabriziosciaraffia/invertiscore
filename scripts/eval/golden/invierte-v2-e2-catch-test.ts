@@ -7,12 +7,13 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { hastaCuanto, creditoPorRenta, validarPerfil, comunasPrecargadas, ayudaPie, lineaTope, sinCortar, REGLA_TOPE, PERFIL_COPY, DONDES } from "../../../src/lib/invierte-v2/perfil";
 import { ALTERNATIVAS_COPY as A12, MAX_RECOMENDADOS, cuantasPedir, cupoUsado, indicadorAlternativa, lineaPrecioDistancia, nivelDelBloque, nivelDelTitulo, subtituloAlternativas } from "../../../src/lib/invierte-v2/alternativas";
-import { INTENTOS_LECTURA } from "../../../src/components/invierte-v2/LoQueVeFranco";
+import { INTENTOS_LECTURA, LECTURAS_EN_PARALELO as LECTURAS_EN_PARALELO18, esperaReintento as esperaReintento18 } from "../../../src/components/invierte-v2/LoQueVeFranco";
 import { MAX_FOTOS, parsearDetalleFicha } from "../../../src/lib/guia/detalle-ficha";
 import { leerFicha } from "../../../src/lib/guia/publicacion";
 import { MAX_FOTOS_VISTA, pedidoFoto, respuestaFotoValida } from "../../../src/lib/invierte-v2/fotos";
-import { ESQUEMA_LECTURA_FRANCO, INSTRUCCION_LECTURA_FRANCO, INSTRUCCION_LECTURA_FRANCO as I15, LECTURA_COPY, MAX_FOTOS_LECTURA as MAX_FOTOS_LECTURA15, VERSION_LECTURA as VERSION_LECTURA15, afirmaFaltanFotos as afirmaFaltanFotos15, cortaSinRepetirAlerta, lineaAlternativa, lineasElegido, lineaPermitida, recomendable, sanearLectura } from "../../../src/lib/invierte-v2/lectura-franco";
-import { fotosCompletas as fotosCompletas15 } from "../../../src/lib/invierte-v2/lectura-franco-ia";
+import { ESQUEMA_LECTURA_FRANCO, INSTRUCCION_LECTURA_FRANCO, INSTRUCCION_LECTURA_FRANCO as I15, LECTURA_COPY, MAX_FOTOS_LECTURA as MAX_FOTOS_LECTURA15, VERSION_LECTURA as VERSION_LECTURA15, afirmaFaltanFotos as afirmaFaltanFotos15, reglaDescarte as reglaDescarte17, sanearConRegistro as sanearConRegistro17, problemaCorta as problemaCorta18, TOPE_INTENTOS_LECTURA as TOPE_INTENTOS18, cortaSinRepetirAlerta, lineaAlternativa, lineasElegido, lineaPermitida, recomendable, sanearLectura } from "../../../src/lib/invierte-v2/lectura-franco";
+import { fotosCompletas as fotosCompletas15, bajarFotos as bajarFotos18, clasificarError as clasificarError18, INTENTOS_LLAMADA as INTENTOS_LLAMADA18, ESPERAS_MS as ESPERAS_MS18 } from "../../../src/lib/invierte-v2/lectura-franco-ia";
+import { textoError as textoError18, intentosDe as intentosDe18, reintentable as reintentable18 } from "../../../src/lib/invierte-v2/lectura-franco-servidor";
 import { CLAUDE_MODEL_LECTURA } from "../../../src/lib/ai-config";
 import {
   elegirOpciones, etiquetar, casoDe, porQueNoAlcanza, vsParecidos, textoMetro, textoAlMes, textoEtiqueta, estaCerca, UMBRAL_CERCA_PCT, lecturaDeFranco, MAX_ACTIVOS, MAX_OPCIONES, MIN_PARECIDOS,
@@ -728,8 +729,8 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       const mds = codigo("src/lib/invierte-v2/detalles-modo-servidor.ts");
       if (!/if \(v\.estado === "ya"\) return \{ cabeza, relacion: "suyo"/.test(mds) || !/if \(v\.estado !== "listo" \|\| !v\.alcanza \|\| v\.datos\?\.veredicto !== "COMPRAR" \|\| !v\.orden \|\| !v\.perfil\) return null;/.test(mds)) F("11f · «Te lo recomendamos» sin que dé Comprar y le alcance (o «Uno de tus deptos» sin estar en su base)");
       const det = codigo("src/components/invierte-v2/DetallesInvierte.tsx");
-      // ⚠ ACTA (20-nov-2026): su depto de entrada, antes de elegir, también lleva «Uno de tus deptos» (§16b).
-      if (!/modo\.relacion !== "recomendado"\s*\? <span className="iv2-det-chip iv2-det-chip-suyo"[^>]*>\{D\.chipSuyo\}<\/span>\s*: <span className="iv2-det-chip iv2-det-chip-reco"[^>]*>\{D\.chipRecomendado\}<\/span>/.test(det)) F("11f · el chip no dice qué es el depto para la persona");
+      // ⚠ ACTA (20-nov-2026, Fabrizio): su depto de entrada, antes de elegirlo, dice «El que elegiste» como en el resultado; «Uno de tus deptos», después (§17d).
+      if (!/modo\.relacion === "entrada"\s*\? <span className="iv2-det-chip iv2-det-chip-suyo"[^>]*>\{D\.chipEntrada\}<\/span>\s*: modo\.relacion === "suyo"\s*\? <span className="iv2-det-chip iv2-det-chip-suyo"[^>]*>\{D\.chipSuyo\}<\/span>\s*: <span className="iv2-det-chip iv2-det-chip-reco"[^>]*>\{D\.chipRecomendado\}<\/span>/.test(det)) F("11f · el chip no dice qué es el depto para la persona");
       if (!/<SumarDepto avisoId=\{modo\.avisoId\} etiqueta=\{D\.seguir\} origen="base" variante="principal"/.test(det) || !/\{D\.estadoSuyo\}/.test(det) || !/href=\{urlWhatsapp\(modo\.whatsapp\)\}/.test(det)) F("11f · la acción no es «Seguir con este» (recomendación) o su estado y «Escribirle a Franco» (suyo)");
       if (DETALLES_COPY.chipSuyo !== "Uno de tus deptos" || DETALLES_COPY.chipRecomendado !== "Te lo recomendamos" || DETALLES_COPY.estadoSuyo !== "Ya sigues con este depto. Franco lo está gestionando." || DETALLES_COPY.escribirle !== "Escribirle a Franco" || DETALLES_COPY.seguir !== "Seguir con este") F("11f · los textos de los detalles no son los de la lámina");
       if (lineaRecomendado("a 4 cuadras del tuyo", "te pide $40.000 menos al mes") !== "Franco te lo recomienda: a 4 cuadras del tuyo y te pide $40.000 menos al mes.") F("11f · la línea de la recomendación no es la de la lámina");
@@ -871,7 +872,8 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (/NextResponse\.redirect|json\(\{[^}]*url/.test(ruta12)) F("12g · la ruta de fotos le pasa al navegador la dirección de la fuente");
       const fd = codigo("src/components/invierte-v2/FotosDepto.tsx");
       // ⚠ ACTA (20-nov-2026, prueba de Fabrizio del resultado): si una foto que no es la primera no carga, se salta a la siguiente; si no carga la primera, la tarjeta va sin foto.
-      if (!/src=\{urlFoto\(avisoId, i\)\}/.test(fd) || !/if \(!n \|\| rota\) return null;/.test(fd) || !/onError=\{\(\) => \(i === 0 \? setRota\(true\) : ir\(1\)\)\}/.test(fd)) F("12g · las fotos no van por la ruta propia, o una tarjeta sin fotos deja un hueco");
+      // ⚠ ACTA (20-nov-2026, Fabrizio, tercera ronda): una foto rota se salta, también la primera; solo si no carga ninguna, la tarjeta va sin el bloque (§18d).
+      if (!/src=\{urlFoto\(avisoId, i\)\}/.test(fd) || !/if \(!n \|\| rotas\.size >= n\) return null;/.test(fd) || !/onError=\{romper\}/.test(fd)) F("12g · las fotos no van por la ruta propia, o una tarjeta sin fotos deja un hueco");
       if (!/select\("aviso_id, fotos"\)/.test(codigo("src/lib/invierte-v2/fotos-servidor.ts")) || !/Math\.min\(\(f\.fotos \?\? \[\]\)\.length, MAX_FOTOS_VISTA\)/.test(codigo("src/lib/invierte-v2/fotos-servidor.ts"))) F("12g · a la pantalla llega algo más que cuántas fotos hay");
       // ⚠ ACTA (20-nov-2026, decisión de Fabrizio): las fotos de los detalles viven en DetallesCabezaCliente: llegan solas si la publicación se lee en segundo plano.
       if (!/<FotosDepto avisoId=\{avisoId\} n=\{fotos\} clase="iv2-det-fotos" \/>/.test(codigo("src/components/invierte-v2/DetallesCabezaCliente.tsx")) || !/<DetallesCabezaCliente avisoId=\{c\.avisoId\} fotos=\{c\.fotos\} lectura=\{c\.lectura\}>/.test(codigo("src/components/invierte-v2/DetallesInvierte.tsx")) || !/\{modoInvierte && <CabezaDeDetalles modo=\{modoInvierte\} \/>\}/.test(codigo("src/app/analisis/[id]/informe-ltr.tsx"))) F("12g · los detalles desde Invierte no llevan las fotos arriba del informe");
@@ -959,6 +961,92 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (!/data-inv2="escribirle"><IconoWhatsapp \/>\{B\.escribirle\}<\/a>/.test(vb)) F("14f · «Escribirle a Franco» cambió (se rediseña con el flujo de cada depto)");
     }
 
+    // ── 18 · LECTURAS QUE FALLAN Y LA CORTA DE UNA FRASE (20-nov-2026, Fabrizio, tercera ronda) ──────────────────────────────────
+    {
+      // 18a · La causa de las dos lecturas en error (b20a316f y b4302934): la API rechazaba la lectura entera con «Unable to download
+      // the file» (400, logs del preview) porque fotos de la publicación ya no existen en la fuente (404; en b20a316f las 19). Franco
+      // baja las fotos y las pasa como imagen; las que no bajan se saltan, y entonces no son «todas».
+      const ia18 = codigo("src/lib/invierte-v2/lectura-franco-ia.ts");
+      if (!/source: \{ type: "base64", media_type: f\.media_type, data: f\.data \}/.test(ia18) || /source: \{ type: "url"/.test(ia18)) F("18a · las fotos van a la API por URL (una borrada en la fuente tumba la lectura entera)");
+      {
+        const resp = (ok: boolean, tipo: string, bytes = 10) => ({ ok, headers: { get: () => tipo }, arrayBuffer: async () => new Uint8Array(bytes).buffer }) as unknown as Response;
+        const urls = ["https://x/0.jpg", "https://x/1.jpg", "https://x/2.jpg", "https://x/3.jpg"];
+        const pedir = (async (u: string) => (u.endsWith("1.jpg") ? resp(false, "application/xml") : u.endsWith("2.jpg") ? resp(true, "text/html") : resp(true, "image/jpeg"))) as unknown as typeof fetch;
+        const b = await bajarFotos18(urls, pedir);
+        if (b.map((x) => (x ? x.media_type : "-")).join("|") !== "image/jpeg|-|-|image/jpeg") F("18a · las fotos que no bajan (404, o que no son imagen) no se saltan, o se pierde el orden");
+      }
+
+      // 18b · Se guarda siempre el error real (qué fue y su detalle, con el intento), nunca la palabra «error» sola; y un límite de
+      // pedidos, una API sobrecargada o un corte se reintentan ahí mismo con espera creciente.
+      const c429 = clasificarError18({ status: 429, error: { error: { type: "rate_limit_error", message: "Too many" } } });
+      const c400 = clasificarError18({ status: 400, error: { error: { type: "invalid_request_error", message: "Unable to download the file." } } });
+      const cTiempo = clasificarError18({ name: "APIConnectionTimeoutError", message: "Request timed out." });
+      if (c429.motivo !== "limite" || !c429.reintentar || c400.motivo !== "solicitud" || c400.reintentar || !/400 invalid_request_error: Unable to download the file\./.test(c400.detalle) || cTiempo.motivo !== "corte" || !cTiempo.reintentar) F("18b · el error no se clasifica (límite, corte, solicitud) o se pierde su detalle");
+      if (textoError18(2, "limite", "429 rate_limit_error: Too many") !== "[intento 2] limite: 429 rate_limit_error: Too many" || intentosDe18("[intento 3] corte: x") !== 3 || intentosDe18("error") !== 1 || intentosDe18(null) !== 0) F("18b · el error guardado no lleva su intento y su detalle");
+      const sv18 = codigo("src/lib/invierte-v2/lectura-franco-servidor.ts");
+      if (!/error: textoError\(intento, r\.motivo, r\.detalle\)/.test(sv18) || /error: r\.motivo\b/.test(sv18)) F("18b · la lectura en error guarda la palabra y no el error real");
+      if (INTENTOS_LLAMADA18 < 2 || !/if \(!c\.reintentar\) break;/.test(ia18) || !/await esperar\(ESPERAS_MS\[/.test(ia18) || !(ESPERAS_MS18[1] > ESPERAS_MS18[0])) F("18b · un límite de pedidos o un corte no se reintenta con espera creciente");
+
+      // 18c · La corta: exactamente tres líneas, cada una UNA frase de 110 caracteres como máximo; en la instrucción, en el esquema
+      // (maxLength; la API no acepta minItems 3, medido) y en el código, que la rehace si no cumple (no la corta a la mitad).
+      const ok3 = { alerta: { nivel: "ninguna" as const, motivo: null }, larga: [], corta: ["Cocina renovada y lista para arrendar.", "Dos dormitorios con clóset.", "Metro a pie."] };
+      if (problemaCorta18(ok3) !== null) F("18c · una corta válida no pasa");
+      if (problemaCorta18({ ...ok3, corta: ok3.corta.slice(0, 2) }) === null || problemaCorta18({ ...ok3, corta: [...ok3.corta.slice(0, 2), "x".repeat(111)] }) === null || problemaCorta18({ ...ok3, corta: [...ok3.corta.slice(0, 2), "La cocina está bien. El baño no."] }) === null) F("18c · pasa una corta de menos líneas, más larga de 110 o de dos frases");
+      if (problemaCorta18({ ...ok3, alerta: { nivel: "revisar", motivo: "y".repeat(120) } }) === null) F("18c · el motivo de la alerta pasa de 110 caracteres");
+      if (!/EXACTAMENTE tres líneas para la tarjeta del resultado, sin etiqueta\. Cada línea es UNA sola frase de 110 caracteres como máximo/.test(INSTRUCCION_LECTURA_FRANCO) || ESQUEMA_LECTURA_FRANCO.properties.corta.items.properties.texto.maxLength !== 110 || ESQUEMA_LECTURA_FRANCO.properties.corta.minItems !== 1) F("18c · la regla de la corta no está en la instrucción o en el esquema");
+      if (!/const problema = problemaCorta\(lectura\);\s*if \(problema\) \{ ultima = \{ motivo: "corta", detalle: problema \};[^\n]*?continue; \}/.test(ia18)) F("18c · una corta que no cumple no se rehace");
+      if (VERSION_LECTURA15 < 6) F("18c · la versión no subió: las lecturas con la corta larga no se rehacen");
+      if (!/if \(c != null\) gastado = \(gastado \?\? 0\) \+ c;/.test(ia18) || !/costoUsd: gastado,/.test(ia18)) F("18c · el costo guardado no suma los intentos (una corta que se rehace también se paga)");
+
+      // 18d · Una lectura en error: la tarjeta muestra sus fotos (no dependen de la lectura) y no muestra el recuadro; y se reintenta
+      // cuando alguien vuelve a ver el depto, con espera creciente y un tope de intentos.
+      const lq18 = codigo("src/components/invierte-v2/LoQueVeFranco.tsx");
+      if (!/if \(typeof d\?\.fotos === "number" && d\.fotos !== fotos\) \{ fotos = d\.fotos; avisarFotos\(avisoId, fotos\); \}/.test(lq18) || !/else if \(r\.status !== 202\) return \{ lectura: null, fotos \};/.test(lq18) || !/if \(!l\) return null;/.test(lq18)) F("18d · con la lectura en error, la tarjeta no muestra las fotos o muestra el recuadro");
+      const fd18 = codigo("src/components/invierte-v2/FotosDepto.tsx");
+      if (!/const romper = \(\) => \{ const nueva = new Set\(rotas\); nueva\.add\(i\); setRotas\(nueva\); const k = siguiente\(i, nueva\); if \(k != null\) setI\(k\); \};/.test(fd18)) F("18d · una foto rota (también la primera) no se salta");
+      const ruta18 = codigo("src/app/api/invierte-v2/foto/route.ts");
+      if (!/if \(!r\.ok \|\| !respuestaFotoValida\(tipo, largo\)\) return ROTA\(\);/.test(ruta18) || !/if \(!user\) return NO_EXISTE\(\);/.test(ruta18) || !/onLoad=\{\(e\) => \{ if \(e\.currentTarget\.naturalWidth <= 1\) romper\(\);/.test(fd18)) F("18d · una foto que la fuente borró llena la consola de 404 (o la tarjeta no la reconoce como rota)");
+      if (!/data-buscando=\{rotas\.size > 0 && !buena \? "1" : undefined\}/.test(fd18) || !/else setBuena\(true\);/.test(fd18) || !/\.iv2-fotos\[data-buscando\] \{ display: none; \}/.test(leer("src/components/invierte-v2/invierte-v2.css"))) F("18d · mientras busca una foto que cargue, la tarjeta muestra un recuadro vacío con flechas");
+      const ahora = new Date("2026-11-20T17:00:00Z");
+      const hace = (min: number) => new Date(ahora.getTime() - min * 60_000).toISOString();
+      if (!reintentable18({ estado: "error", error: "[intento 1] solicitud: 400", updated_at: hace(3) }, ahora)) F("18d · una lectura en error no se reintenta a los pocos minutos");
+      if (reintentable18({ estado: "error", error: "[intento 1] solicitud: 400", updated_at: hace(1) }, ahora) || reintentable18({ estado: "error", error: "[intento 2] corte: x", updated_at: hace(3) }, ahora)) F("18d · el reintento no espera, o la espera no crece con los intentos");
+      if (reintentable18({ estado: "error", error: `[intento ${TOPE_INTENTOS18}] corte: x`, updated_at: hace(600) }, ahora) || reintentable18({ estado: "lista", error: null, updated_at: hace(600) }, ahora)) F("18d · el reintento no tiene tope (o reintenta una lectura lista)");
+      if (!/if \(errorVigente && !reintentable\(f, ahora\)\) return \{ estado: "error" \};\s*const intento = errorVigente \? intentosDe\(f\.error\) \+ 1 : 1;/.test(sv18)) F("18d · lecturaDe no reintenta la lectura en error");
+
+      // 18e · Como mucho dos lecturas a la vez desde la página, con espera creciente ante un límite de pedidos o un corte.
+      if (LECTURAS_EN_PARALELO18 !== 2 || !/const r = await conTurno\(\(\) => fetch\(URL_LECTURA,/.test(lq18) || !/if \(r\.status === 429 \|\| r\.status >= 500\) espera = esperaReintento\(cortes\+\+\);/.test(lq18) || !(esperaReintento18(1) > esperaReintento18(0))) F("18e · las lecturas se piden todas a la vez, o sin espera creciente ante un límite o un corte");
+    }
+
+    // ── 17 · LA RED DEL SANEADO Y SU REGISTRO; EL CHIP DE LA ENTRADA (20-nov-2026, Fabrizio) ───────────────────────────────────
+    {
+      // 17a · La red borra SOLO líneas que citan plata (precio, arriendo, flujo, gastos comunes: en UF o en pesos) o comparan el
+      // precio (en palabras o con un porcentaje). Años, pisos, dormitorios, m² y distancias se quedan: la regla de antes se llevaba
+      // frases válidas como «a 300 m del metro» o «un 30 % más grande».
+      const borra: [string, string][] = [["Precio de UF 2.700.", "precio_uf"], ["Cuesta 2.700 UF.", "precio_uf"], ["Gastos comunes de $80.000.", "pesos"], ["Se arrienda en 450 mil.", "pesos"], ["Deja 2 millones al año.", "pesos"], ["Sale a 60 UF por m².", "precio_uf"], ["El precio por m² es alto.", "precio_m2"], ["Está bajo su zona.", "comparacion"], ["Más barato que sus parecidos.", "comparacion"], ["Un 34 % bajo su zona.", "comparacion"], ["Subió un 20 % desde marzo.", "porcentaje"], ["Cuesta un 15 % menos.", "porcentaje"]];
+      for (const [t, r] of borra) if (reglaDescarte17(t) !== r) F(`17a · «${t}» debía caer por ${r} (cae por ${reglaDescarte17(t) ?? "nada"})`);
+      for (const t of ["Según la publicación, el edificio es de 2010.", "Es un piso 7 con vista despejada.", "Cuatro dormitorios y 2 baños.", "Tiene 96 m² útiles.", "El tercer dormitorio mide 6,6 m².", "A 5 minutos a pie del metro.", "A 300 m del metro Santa Ana.", "A 1,2 km del metro.", "El living es un 30 % más grande que el dormitorio.", "La publicación no explica su precio: pregúntalo."]) if (reglaDescarte17(t) !== null) F(`17a · «${t}» se borra (por ${reglaDescarte17(t)}) y es una frase válida`);
+
+      // 17b · Cada línea que el saneado borra queda registrada: el campo, el texto y la regla.
+      const reg = sanearConRegistro17({ alerta: { nivel: "revisar", motivo: "Cuesta un 30 % menos que su zona." }, larga: [{ etiqueta: "Estado", texto: "Bien.", fuente: "fotos" }, { etiqueta: "Ubicación", texto: "A 300 m del metro.", fuente: "datos" }, { etiqueta: "Ojo", texto: "Gastos comunes de $90.000.", fuente: "publicacion" }], corta: [{ texto: "Precio de UF 2.700.", fuente: "datos" }, { texto: "Piso 7.", fuente: "publicacion" }] }, { fotosCompletas: false });
+      const vistos = reg.descartes.map((d) => `${d.campo}:${d.regla}`).sort().join("|");
+      if (vistos !== "alerta:comparacion|corta:precio_uf|larga:pesos" || !reg.lectura || reg.lectura.larga.length !== 2 || reg.lectura.corta.join("|") !== "Piso 7.") F(`17b · el registro de lo borrado no dice campo y regla de cada línea (${vistos})`);
+      const conFaltan = sanearConRegistro17({ alerta: { nivel: "ninguna", motivo: null }, larga: [{ etiqueta: "Ojo", texto: "Pide fotos del baño.", fuente: "fotos" }, { etiqueta: "Estado", texto: "Bien.", fuente: "fotos" }], corta: [] }, { fotosCompletas: false });
+      if (conFaltan.descartes.map((d) => d.regla).join("|") !== "faltan_fotos") F("17b · el registro no anota la línea de fotos que faltan cuando la lectura no las recibió todas");
+
+      // 17c · El registro se guarda (columna `descartes`, SQL para Claude) aparte de la lectura —si la columna falta, la lectura no se
+      // pierde— y queda en el log.
+      const ia17 = codigo("src/lib/invierte-v2/lectura-franco-ia.ts");
+      const sv17 = codigo("src/lib/invierte-v2/lectura-franco-servidor.ts");
+      if (!/for \(const d of descartes\) console\.warn\(`\[inv2\] lectura de Franco: el saneado borró una línea \(\$\{d\.campo\}, regla \$\{d\.regla\}\): \$\{d\.texto\}`\);/.test(ia17) || !/return \{ ok: true, lectura, descartes,/.test(ia17)) F("17c · lo que borra el saneado no queda en el log o no vuelve a quien guarda");
+      const iGuarda = sv17.indexOf('estado: "lista", version: VERSION_LECTURA, lectura: r.lectura'), iDesc = sv17.indexOf("await admin.from(T).update({ descartes: r.descartes }).eq(\"aviso_id\", avisoId).then(() => undefined, () => undefined);");
+      if (iGuarda < 0 || iDesc < 0 || iDesc < iGuarda) F("17c · el registro no se guarda aparte, después de la lectura");
+      if (!/alter table public\.lecturas_franco add column if not exists descartes jsonb;/.test(leer("supabase/migrations/20261126_lecturas_franco_descartes.sql"))) F("17c · falta el SQL de la columna del registro");
+
+      // 17d · Los detalles de su depto de entrada, antes de elegirlo, dicen «El que elegiste», como el resultado.
+      if (DETALLES_COPY.chipEntrada !== "El que elegiste" || DETALLES_COPY.chipSuyo !== "Uno de tus deptos") F("17d · el chip de la entrada no dice «El que elegiste» (o cambió «Uno de tus deptos»)");
+    }
+
     // ── 16 · LA PRUEBA DEL RESULTADO DE FABRIZIO, SEGUNDA RONDA (20-nov-2026) ─────────────────────────────────────────────────
     {
       // 16a · Su depto de entrada, abierto desde el resultado antes de elegir, va en modo Invierte aunque tenga alerta grave o no
@@ -973,17 +1061,15 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       // 16b · En los detalles: el chip «Uno de tus deptos» y la acción de la entrada («Es el depto que elegiste…» y «Seguir con
       // este» si le alcanza). Sin fotos, el bloque de fotos no se dibuja y «Lo que ve Franco» sí.
       const di = codigo("src/components/invierte-v2/DetallesInvierte.tsx");
-      if (!/\{modo\.relacion !== "recomendado"\s*\? <span className="iv2-det-chip iv2-det-chip-suyo" data-inv2="chip-suyo">\{D\.chipSuyo\}<\/span>/.test(di) || !/modo\.relacion === "entrada" \? \(\s*<>\s*<p className="iv2-det-accion-t" data-inv2="estado-entrada">\{modo\.alcanza \? D\.estadoEntrada : D\.fueraDeAlcance\}<\/p>\s*\{modo\.alcanza && \(\s*<SumarDepto avisoId=\{modo\.avisoId\}/.test(di)) F("16b · los detalles de su depto de entrada no llevan el chip o la acción");
+      if (!/\{modo\.relacion === "entrada"\s*\? <span className="iv2-det-chip iv2-det-chip-suyo" data-inv2="chip-entrada">\{D\.chipEntrada\}<\/span>/.test(di) || !/modo\.relacion === "entrada" \? \(\s*<>\s*<p className="iv2-det-accion-t" data-inv2="estado-entrada">\{modo\.alcanza \? D\.estadoEntrada : D\.fueraDeAlcance\}<\/p>\s*\{modo\.alcanza && \(\s*<SumarDepto avisoId=\{modo\.avisoId\}/.test(di)) F("16b · los detalles de su depto de entrada no llevan el chip o la acción");
       if (DETALLES_COPY.estadoEntrada !== "Es el depto que elegiste. Decide en tu resultado si sigues con él.") F("16b · el texto de la acción de la entrada cambió");
       const dc = codigo("src/components/invierte-v2/DetallesCabezaCliente.tsx");
       if (!/<FotosDepto avisoId=\{avisoId\} n=\{fotos\} clase="iv2-det-fotos" \/>\s*\{children\}\s*(?:\{\}\s*)?<LoQueVeFranco avisoId=\{avisoId\} variante="detalles"/.test(dc)) F("16b · «Lo que ve Franco» de los detalles depende de las fotos");
 
-      // 16c · Una lectura con la versión corta vacía (dos de la prueba: la larga completa, la corta sin líneas) igual tiene su
-      // línea en la alternativa: la corta sale de la larga, sin «Ojo» si hay otras.
-      const larga16 = [{ etiqueta: "Estado", texto: "Parquet gastado.", fuente: "fotos" }, { etiqueta: "Ubicación", texto: "Metro cerca.", fuente: "datos" }, { etiqueta: "Ojo", texto: "Pregunta el año.", fuente: "datos" }];
-      const sinCorta = sanearLectura({ alerta: { nivel: "ninguna", motivo: null }, larga: larga16, corta: [] });
-      const soloOjo = sanearLectura({ alerta: { nivel: "ninguna", motivo: null }, larga: [larga16[2]], corta: [] });
-      if (sinCorta?.corta.join("|") !== "Parquet gastado.|Metro cerca." || soloOjo?.corta.join("|") !== "Pregunta el año." || !sinCorta || lineaAlternativa(sinCorta) !== "Parquet gastado.") F("16c · una lectura sin versión corta deja a la alternativa sin su línea");
+      // 16c · ⚠ ACTA (20-nov-2026, tercera ronda): el respaldo que llenaba la corta con la larga se RETIRÓ —en el elegido 2639896e las
+      // tres líneas eran las de la larga (178, 145 y 115 caracteres) y la tarjeta crecía—. Una corta que no cumple se rehace (§18c).
+      const sinCorta = sanearLectura({ alerta: { nivel: "ninguna", motivo: null }, larga: [{ etiqueta: "Estado", texto: "Parquet gastado.", fuente: "fotos" }], corta: [] });
+      if (!sinCorta || sinCorta.corta.length !== 0 || problemaCorta18(sinCorta) === null) F("16c · una corta vacía se llena con la larga (o pasa como válida) en vez de rehacerse");
 
       // 16d · Con alerta grave en el elegido, el título lo dice; la casilla sigue marcada y la persona decide.
       const r16 = codigo("src/components/invierte-v2/ResultadoOpciones.tsx");
@@ -1001,7 +1087,8 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       const n = (k: number) => Array.from({ length: k }, (_, i) => `https://x/${i}.jpg`);
       if (!fotosCompletas15(n(24)) || fotosCompletas15(n(25)) || !fotosCompletas15(n(1))) F("15a · «recibió todas las fotos» no es «la publicación tiene 24 o menos»");
       const ia15 = codigo("src/lib/invierte-v2/lectura-franco-ia.ts");
-      if (!/const fotos = e\.fotos\.slice\(0, MAX_FOTOS_LECTURA\);\s*const completas = fotosCompletas\(e\.fotos\);/.test(ia15) || !/son TODAS sus fotos/.test(ia15) || !/la publicación tiene más, así que no digas que falta una foto de algo ni pidas fotos/.test(ia15)) F("15a · el mensaje al modelo no le dice si recibió todas las fotos");
+      // ⚠ ACTA (20-nov-2026, Fabrizio, tercera ronda): «todas» exige además que bajaran todas (§18a).
+      if (!/const completas = fotosCompletas\(e\.fotos\) && fotos\.length === urls\.length;/.test(ia15) || !/son TODAS sus fotos/.test(ia15) || !/así que no digas que falta una foto de algo ni pidas fotos/.test(ia15) || !/No se pudo ver ninguna foto de la publicación: no digas nada de las fotos/.test(ia15)) F("15a · el mensaje al modelo no le dice si recibió todas las fotos");
 
       // 15b · Solo puede decir que no hay fotos de algo si las recibió todas: si no, el saneado saca esas líneas y la alerta por eso.
       for (const t of ["Pide fotos del baño antes de ofertar.", "No hay fotos del baño ni de la cocina.", "Faltan fotos del living.", "Las fotos no muestran los baños: pídelas antes de ofertar."]) if (!afirmaFaltanFotos15(t)) F(`15b · no reconoce que «${t}» dice que faltan fotos`);
@@ -1060,16 +1147,18 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       // ⚠ ACTA (20-nov-2026, prueba de Fabrizio del resultado): «revisar» queda SOLO para datos que se contradicen; que falten fotos ya no es alerta (va como pedido, §15c).
       if (!/nivel «grave»: la publicación o las fotos muestran que es para remodelar o está sin terminar, que es un remate, que se venden derechos o acciones, o —solo si recibiste todas las fotos— no hay ninguna foto del interior/.test(I13) || !/nivel «revisar»: SOLO cuando los datos se contradicen: las fotos o el texto contradicen un dato con que se calculó el informe —los dormitorios, los baños, la superficie o el piso/.test(I13) || /faltan fotos de partes clave/.test(I13) || !/Se decide SOLO con lo que muestran las fotos o dice el texto de la publicación, nunca por el precio/.test(I13)) F("13a · la alerta no es la de Fabrizio (grave, revisar y ninguna, solo con evidencia)");
       if (!/La publicación no explica su precio: pregúntalo/.test(I13)) F("13a · «Ojo» no tiene la pregunta sin número del precio");
-      for (const malo of ["Cuesta cerca de la mitad que su zona.", "Está un 34 % bajo su zona.", "A 300 m del metro.", "Precio de UF 2.700, conveniente.", "Gastos comunes de $80.000.", "Más barato que sus parecidos.", "Tiene un buen precio para la comuna.", "Subió un 20 % desde marzo."]) if (lineaPermitida(malo)) F(`13a · el saneado deja pasar «${malo}»`);
-      for (const bueno of ["La publicación no explica su precio: pregúntalo.", "El tercer dormitorio mide 6,6 m², más de escritorio que de dormitorio.", "Según la publicación, el edificio es de 2012.", "Tiene metro cerca, a pie."]) if (!lineaPermitida(bueno)) F(`13a · el saneado saca «${bueno}», que está permitido`);
+      // ⚠ ACTA (20-nov-2026, Fabrizio): la red borra solo plata y comparación de precio: las distancias se quedan (§17a).
+      for (const malo of ["Cuesta cerca de la mitad que su zona.", "Está un 34 % bajo su zona.", "Precio de UF 2.700, conveniente.", "Gastos comunes de $80.000.", "Más barato que sus parecidos.", "Tiene un buen precio para la comuna.", "Subió un 20 % desde marzo."]) if (lineaPermitida(malo)) F(`13a · el saneado deja pasar «${malo}»`);
+      for (const bueno of ["La publicación no explica su precio: pregúntalo.", "El tercer dormitorio mide 6,6 m², más de escritorio que de dormitorio.", "Según la publicación, el edificio es de 2012.", "Tiene metro cerca, a pie.", "A 300 m del metro."]) if (!lineaPermitida(bueno)) F(`13a · el saneado saca «${bueno}», que está permitido`);
       const s13 = sanearLectura({ alerta: { nivel: "grave", motivo: "Según la publicación, es para remodelar y no hay fotos del interior." }, larga: [{ etiqueta: "Ojo", texto: "Pide fotos del interior." }, { etiqueta: "Estado", texto: "Según la publicación, es para remodelar." }, { etiqueta: "Estado", texto: "Repetida." }, { etiqueta: "Precio", texto: "Inventada." }, { etiqueta: "Ubicación", texto: "Está 40 % bajo su zona." }], corta: [{ texto: "Es para remodelar." }, { texto: "Cuesta la mitad que su zona." }, { texto: "Pide fotos." }, { texto: "Cuarta." }] });
       if (!s13 || s13.alerta.nivel !== "grave" || s13.larga.map((l) => l.etiqueta).join("|") !== "Estado|Ojo" || s13.corta.join("|") !== "Es para remodelar.|Pide fotos.|Cuarta.") F("13a · el saneado no ordena, no deduplica o deja pasar etiquetas inventadas o líneas con el precio");
       if (sanearLectura({ alerta: { nivel: "ninguna", motivo: "algo" }, larga: [{ etiqueta: "Estado", texto: "Bien." }], corta: [] })?.alerta.motivo !== null) F("13a · con alerta «ninguna» queda un motivo");
       if (sanearLectura({ alerta: { nivel: "revisar", motivo: "Cuesta 30 % menos que su zona." }, larga: [{ etiqueta: "Estado", texto: "Bien." }], corta: [] })?.alerta.motivo !== null) F("13a · una alerta que se sostiene en el precio se muestra");
-      if (JSON.stringify(ESQUEMA_LECTURA_FRANCO.properties.alerta.properties.motivo) !== '{"anyOf":[{"type":"string"},{"type":"null"}]}') F("13a · el motivo de la alerta no va con anyOf (la API rechaza `type: [x, \"null\"]` con enum)");
+      // ⚠ ACTA (20-nov-2026, Fabrizio, tercera ronda): el motivo lleva su largo máximo (maxLength, aceptado por la API; medido).
+      if (!/^\{"anyOf":\[\{"type":"string","maxLength":110,"description":"[^"]+"\},\{"type":"null"\}\]\}$/.test(JSON.stringify(ESQUEMA_LECTURA_FRANCO.properties.alerta.properties.motivo))) F("13a · el motivo de la alerta no va con anyOf (la API rechaza `type: [x, \"null\"]` con enum)");
       const ia13 = codigo("src/lib/invierte-v2/lectura-franco-ia.ts");
       // ⚠ ACTA (20-nov-2026, prueba de Fabrizio del resultado): el saneado sabe si la lectura recibió todas las fotos (§15b).
-      if (!/model: CLAUDE_MODEL_LECTURA,/.test(ia13) || !/system: INSTRUCCION_LECTURA_FRANCO,/.test(ia13) || !/const lectura = sanearLectura\(JSON\.parse\(txt\), \{ fotosCompletas: completas \}\);/.test(ia13) || /precio_uf|precioUF|flujo|arriendo/.test(ia13.slice(ia13.indexOf("export interface EntradaLectura"), ia13.indexOf("export type ResultadoLecturaFranco")))) F("13a · la llamada no usa el modelo elegido, la instrucción o el saneado, o le pasa el precio al modelo");
+      if (!/model: CLAUDE_MODEL_LECTURA,/.test(ia13) || !/system: INSTRUCCION_LECTURA_FRANCO,/.test(ia13) || !/const \{ lectura, descartes \} = sanearConRegistro\(JSON\.parse\(txt\), \{ fotosCompletas: completas \}\);/.test(ia13) || /precio_uf|precioUF|flujo|arriendo/.test(ia13.slice(ia13.indexOf("export interface EntradaLectura"), ia13.indexOf("export type ResultadoLecturaFranco")))) F("13a · la llamada no usa el modelo elegido, la instrucción o el saneado, o le pasa el precio al modelo");
       if (CLAUDE_MODEL_LECTURA !== "claude-opus-5-5") F("13a · el modelo de la lectura no es el que eligió Fabrizio (Opus 5.5)");
 
       // 13b · Una por depto, guardada; se pide aparte, solo quien firmó y de un depto de su base; con tope por hora y marca.
