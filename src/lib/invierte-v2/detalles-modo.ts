@@ -21,6 +21,9 @@ export const DETALLES_COPY = {
   chipSuyo: "Uno de tus deptos",
   chipRecomendado: "Te lo recomendamos",
   estadoSuyo: "Ya sigues con este depto. Franco lo está gestionando.",
+  /** Su depto de entrada, abierto desde el resultado antes de elegir (20-nov-2026). */
+  estadoEntrada: "Es el depto que elegiste. Decide en tu resultado si sigues con él.",
+  fueraDeAlcance: "Hoy está fuera de tu alcance.",
   escribirle: "Escribirle a Franco",
   seguir: "Seguir con este",
   recomienda: (por: string) => `Franco te lo recomienda: ${por}.`,
@@ -31,6 +34,7 @@ export interface CabezaDetalles { avisoId: string; nombre: string; veredicto: st
 
 export type ModoDetalles = { cabeza: CabezaDetalles } & (
   | { relacion: "suyo"; whatsapp: string | null }
+  | { relacion: "entrada"; avisoId: string; alcanza: boolean; activos: { avisoId: string; datos: Record<string, unknown> }[] }
   | { relacion: "recomendado"; avisoId: string; linea: string; activos: { avisoId: string; datos: Record<string, unknown> }[] });
 
 /** «Ñuñoa · 2D2B · 58 m²», como la lámina. */

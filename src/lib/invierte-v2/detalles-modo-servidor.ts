@@ -2,6 +2,10 @@
 // QUÉ ES ESTE DEPTO PARA LA PERSONA, en los detalles abiertos desde Invierte (láminas del 19-nov-2026). Lo decide el servidor por
 // su base, nunca el enlace:
 //   · elegido en su base → «Uno de tus deptos», su estado y «Escribirle a Franco»;
+//   · su depto de entrada, todavía sin elegir (en el resultado, antes de «Seguir con estos») → «Uno de tus deptos», «Es el depto
+//     que elegiste» y «Seguir con este» si le alcanza. Aunque tenga alerta grave o no tenga fotos (20-nov-2026, prueba de
+//     Fabrizio: el 7022b35a, sin fotos y con alerta grave, se abría como el informe común porque caía en la rama de los
+//     recomendados, donde «grave» devuelve null);
 //   · si no, y hoy da Comprar y le alcanza → «Te lo recomendamos», por qué (contra el suyo: el depto con que firmó) y «Seguir
 //     con este»;
 //   · si no (sin perfil, no le alcanza, ya no conviene) → null: el informe se ve como hoy (sin el enlace a la publicación, porque
@@ -36,6 +40,11 @@ export async function modoDetalles(admin: SupabaseClient, userId: string, avisoI
   const d = v.datos;
   const cabeza: CabezaDetalles = { avisoId, nombre: d ? nombreDeDatos(d) : "", veredicto: d?.veredicto ?? null, score: d?.score ?? null, fotos: fotos[avisoId] ?? 0, lectura: lecturas[avisoId] ?? null };
   if (v.estado === "ya") return { cabeza, relacion: "suyo", whatsapp: await numeroFranco(whatsappAdmin).catch(() => null) };
+  // Su depto de entrada, todavía como opción del resultado: es suyo, con o sin alerta y con o sin fotos.
+  if (v.estado === "listo") {
+    const { data: fila } = await admin.from("inv_deptos").select("estado, origen").eq("user_id", userId).eq("aviso_id", avisoId).maybeSingle();
+    if (fila?.estado === "opcion" && fila.origen === "entrada") return { cabeza, relacion: "entrada", avisoId, alcanza: !!v.alcanza, activos: (v.activos ?? []).map((a) => ({ avisoId: a.avisoId, datos: a.datos as unknown as Record<string, unknown> })) };
+  }
   if (v.estado !== "listo" || !v.alcanza || v.datos?.veredicto !== "COMPRAR" || !v.orden || !v.perfil) return null;
   // Con alerta grave no se recomienda (entrega 4): sus detalles se ven como hoy, sin «Te lo recomendamos».
   if (!recomendable(cabeza.lectura)) return null;

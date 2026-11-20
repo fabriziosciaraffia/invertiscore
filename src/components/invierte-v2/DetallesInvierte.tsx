@@ -34,7 +34,7 @@ export function BarraDetalles({ modo }: { modo: ModoDetalles }) {
   return (
     <div className="iv2-det-barra" data-inv2="detalles-barra">
       <Link href={URL_INVIERTE} className="iv2-mi-inversion-a" data-inv2="mi-inversion">← {D.miInversion}</Link>
-      {modo.relacion === "suyo"
+      {modo.relacion !== "recomendado"
         ? <span className="iv2-det-chip iv2-det-chip-suyo" data-inv2="chip-suyo">{D.chipSuyo}</span>
         : <span className="iv2-det-chip iv2-det-chip-reco" data-inv2="chip-recomendado">{D.chipRecomendado}</span>}
     </div>
@@ -68,6 +68,14 @@ export function AccionDetalles({ modo }: { modo: ModoDetalles }) {
               <a href={urlWhatsapp(modo.whatsapp)} target="_blank" rel="noopener noreferrer" className="iv2-secundario iv2-det-escribir" data-inv2="escribirle">
                 <IconoWhatsapp /> {D.escribirle}
               </a>
+            )}
+          </>
+        ) : modo.relacion === "entrada" ? (
+          <>
+            <p className="iv2-det-accion-t" data-inv2="estado-entrada">{modo.alcanza ? D.estadoEntrada : D.fueraDeAlcance}</p>
+            {modo.alcanza && (
+              <SumarDepto avisoId={modo.avisoId} etiqueta={D.seguir} origen="base" variante="principal"
+                activos={modo.activos.map((a) => ({ avisoId: a.avisoId, datos: a.datos as unknown as LineaDepto }))} />
             )}
           </>
         ) : (
