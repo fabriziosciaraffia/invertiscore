@@ -16,7 +16,7 @@ import { NO_EXISTE, personaConSesion } from "@/lib/invierte-v2/rutas";
 // preguntar), «sin-datos» (no se pudo leer la publicación), «tope» o «error» (la tarjeta queda sin el bloque).
 // ─────────────────────────────────────────────────────────────────────────────
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

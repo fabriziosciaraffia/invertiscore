@@ -5,8 +5,9 @@
 // utilizables, la tarjeta va sin foto, no con un hueco.
 // ─────────────────────────────────────────────────────────────────────────────
 export const URL_FOTO = "/api/invierte-v2/foto";
-/** Cuántas fotos se ofrecen por depto en las flechas (las primeras de la publicación). */
-export const MAX_FOTOS_VISTA = 12;
+/** Cuántas fotos se ofrecen por depto en las flechas (las primeras de la publicación): las mismas que lee «Lo que ve Franco»
+ *  (MAX_FOTOS_LECTURA, 20-nov-2026; antes 12). */
+export const MAX_FOTOS_VISTA = 24;
 /** Lo más pesada que puede ser una foto que pasa por la ruta. */
 export const MAX_BYTES_FOTO = 6 * 1024 * 1024;
 

@@ -28,12 +28,7 @@ export function almacenCarril(admin: SupabaseClient, quien: { userId: string | n
       return error || count == null ? Number.POSITIVE_INFINITY : count;
     },
     async anotar(l) {
-      const fila = { aviso_id: l.avisoId, user_id: quien.userId, origen: quien.origen, codigo: l.codigo, motivo: l.motivo, destino: l.destino };
-      let { error } = await admin.from("lecturas_invierte").insert(fila);
-      // Resguardo (20-nov-2026): mientras no esté aplicada 20261125_lecturas_invierte_origenes, la regla de la tabla rechaza los
-      // orígenes 'firma' y 'resultado' (23514). La lectura ya se hizo: se anota como 'abrir' para que el tope de 60 por hora la
-      // cuente igual. Con la migración aplicada, este camino no corre.
-      if (error?.code === "23514" && quien.origen !== "abrir") ({ error } = await admin.from("lecturas_invierte").insert({ ...fila, origen: "abrir" }));
+      const { error } = await admin.from("lecturas_invierte").insert({ aviso_id: l.avisoId, user_id: quien.userId, origen: quien.origen, codigo: l.codigo, motivo: l.motivo, destino: l.destino });
       reportarFalloQuery(error, { ruta: RUTA, operacion: "anotar-lectura" });
     },
     // El bloqueo del carril lo maneja su fusible: no entra a la vigilancia de las lecturas de las personas.
