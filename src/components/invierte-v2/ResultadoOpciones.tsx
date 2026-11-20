@@ -23,6 +23,7 @@ import type { Veredicto } from "@/lib/types";
 import { lineaTope, sinCortar, type Donde, type Objetivo, type Preocupacion, type Tope } from "@/lib/invierte-v2/perfil";
 import { ALTERNATIVAS_COPY as A, indicadorAlternativa, lineaPrecioDistancia, nivelDelBloque, nivelDelTitulo, subtituloAlternativas, type NivelAlt } from "@/lib/invierte-v2/alternativas";
 import { olvidarMenu } from "@/lib/invierte-v2/menu-cliente";
+import { pctUno } from "@/lib/explorar/explorar";
 import {
   MAX_ACTIVOS, RESULTADO_COPY as R, comunasEnFrase, estaCerca, fmtCLP, fmtUF, lecturaDeFranco, pieDe, porQueNoAlcanza,
   textoAlMes, textoMetro, textoVsParecidos, type Caso, type Etiqueta, type OpcionDepto,
@@ -275,6 +276,7 @@ export function ResultadoOpciones(p: PropsResultado) {
           <div><dt>{A.precio}</dt><dd>UF {fmtUF(entrada.precioUF)}</dd></div>
           <div><dt>{A.arriendo}</dt><dd>{entrada.arriendoCLP ? fmtCLP(entrada.arriendoCLP) : "—"}</dd></div>
           <div><dt>{A.alMes}</dt><dd>{(() => { const m = textoAlMes(entrada); return m.pones ? <span className="iv2-pones">{m.t}</span> : m.t; })()}</dd></div>
+          <div data-inv2="cap-rate"><dt>{A.capRate}</dt><dd>{entrada.capRatePct != null ? pctUno(entrada.capRatePct) : "—"}</dd></div>
         </dl>
         <LoQueVeFranco avisoId={entrada.avisoId} variante="elegido" inicial={p.lecturas[entrada.avisoId] ?? null} alLlegar={siEsGrave(entrada.avisoId)} alFotos={conFotos(entrada.avisoId)} />
         <div className="iv2-res-acciones">
@@ -294,10 +296,10 @@ export function ResultadoOpciones(p: PropsResultado) {
     return (
       <li key={o.avisoId} className="iv2-res-alt" data-marcado={marcados.has(o.avisoId) ? "1" : undefined} data-inv2="alternativa">
         <div className="iv2-res-alt-arriba">
-          <FotosDepto avisoId={o.avisoId} n={fotos[o.avisoId] ?? 0} chica clase="iv2-res-alt-foto" />
+          <FotosDepto avisoId={o.avisoId} n={fotos[o.avisoId] ?? 0} chica clase="iv2-res-alt-foto" etiqueta={o.capRatePct != null ? `${A.capRate} ${pctUno(o.capRatePct)}` : null} />
           <div className="iv2-res-alt-texto">
             <div className="iv2-res-fila"><span className="iv2-res-alt-nombre">{nombreDepto(o)}</span><Chip o={o} /></div>
-            <span className="iv2-linea-chica" data-inv2="precio-distancia">{lineaPrecioDistancia(o.precioUF, p.distancias[o.avisoId] ?? null, o.comuna, p.donde, entrada?.comuna ?? null)}</span>
+            <span className="iv2-linea-chica" data-inv2="precio-distancia">{lineaPrecioDistancia(o.precioUF, p.distancias[o.avisoId] ?? null, o.comuna, p.donde, entrada?.comuna ?? null)}{o.capRatePct != null && <span className={(fotos[o.avisoId] ?? 0) ? "iv2-cap-linea iv2-cap-solo-movil" : "iv2-cap-linea"} data-inv2="cap-rate-linea"> · {A.capRate} {pctUno(o.capRatePct)}</span>}</span>
             {ind && <span className={ind.supera ? "iv2-res-indicador" : "iv2-linea-chica iv2-res-neutro"} data-inv2="indicador" data-supera={ind.supera ? "1" : undefined}>{ind.texto}</span>}
           </div>
         </div>

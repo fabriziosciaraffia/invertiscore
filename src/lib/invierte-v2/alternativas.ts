@@ -66,6 +66,8 @@ export const ALTERNATIVAS_COPY = {
   sigo: "Sigo con este",
   /** La casilla de una alternativa (20-nov-2026): «Sumar»; la del elegido sigue «Sigo con este». */
   sumar: "Sumar",
+  /** Cap rate bruto (20-nov-2026): cuarto dato del elegido y etiqueta sobre la foto de cada alternativa. */
+  capRate: "Cap rate",
   neutro: "Parecido al tuyo",
   comparar: (n: number) => `Comparar los ${n} lado a lado`,
   compararTitulo: (n: number) => `Los ${n} lado a lado`,

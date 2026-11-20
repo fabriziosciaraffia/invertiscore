@@ -12,7 +12,7 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { CLAUDE_MODEL_LECTURA } from "@/lib/ai-config";
 import { costoLlamada } from "./preaprobacion-ia";
-import { ESQUEMA_LECTURA_FRANCO, INSTRUCCION_LECTURA_FRANCO, MAX_FOTOS_LECTURA, conAlertaSinFotos, problemaCorta, sanearConRegistro, type Descarte, type LecturaFranco } from "./lectura-franco";
+import { ESQUEMA_LECTURA_FRANCO, INSTRUCCION_LECTURA_FRANCO, MAX_FOTOS_LECTURA, conAlertaSinFotos, problemaCorta, sanearConRegistro, type CifrasTarjeta, type Descarte, type LecturaFranco } from "./lectura-franco";
 
 export interface EntradaLectura {
   /** Todas las fotos guardadas de la publicación; a la llamada van las primeras MAX_FOTOS_LECTURA. */
@@ -21,6 +21,11 @@ export interface EntradaLectura {
   descripcion: string | null;
   /** Nuestros datos, sin precio ni ninguna otra cifra del informe que la lectura pudiera repetir. */
   datos: { comuna: string | null; dormitorios: number | null; banos: number | null; superficie_m2: number | null; antiguedad: { anio: number } | "no informada"; metro: { estacion: string; a_pie: boolean } | null };
+  /** Lo que muestra la tarjeta, tal cual (20-nov-2026): el veredicto siempre; el cap rate bruto y lo que deja o pide al mes solo con al
+   *  menos 6 arriendos de su tamaño (si no, null: el arriendo del motor no es confiable). */
+  tarjeta: { veredicto: string | null; cap_rate_bruto: string | null; al_mes: string | null };
+  /** Las mismas cifras en número, para que el saneado las permita tal cual y bote cualquier otra. */
+  cifras: CifrasTarjeta | null;
 }
 
 /** ¿La lectura recibe todas las fotos? Solo si la publicación tiene MAX_FOTOS_LECTURA o menos (las guardadas llegan hasta 40). */
@@ -87,7 +92,10 @@ export async function generarLecturaFranco(cliente: Anthropic, e: EntradaLectura
     : completas
       ? `Arriba van las ${fotos.length} fotos de la publicación, en su orden: son TODAS sus fotos.`
       : `Arriba van ${fotos.length} fotos de la publicación, en su orden: la publicación tiene más (o algunas no se pudieron ver), así que no digas que falta una foto de algo ni pidas fotos.`;
-  const texto = `PUBLICACIÓN (lo que escribió quien publica):\n${JSON.stringify({ titulo: e.titulo, descripcion: e.descripcion }, null, 2)}\n\nNUESTROS DATOS:\n${JSON.stringify(e.datos, null, 2)}\n\n${cuantas} Escribe la lectura.`;
+  const numeros = e.tarjeta.cap_rate_bruto || e.tarjeta.al_mes
+    ? `NÚMEROS DE LA TARJETA (cítalos tal cual, sin recalcularlos ni proponer otros):\n${JSON.stringify(e.tarjeta, null, 2)}`
+    : `NÚMEROS DE LA TARJETA: solo el veredicto (${e.tarjeta.veredicto ?? "sin veredicto"}). Este depto no tiene suficientes arriendos comparables de su tamaño: no hables de cap rate ni de lo que deja al mes.`;
+  const texto = `PUBLICACIÓN (lo que escribió quien publica):\n${JSON.stringify({ titulo: e.titulo, descripcion: e.descripcion }, null, 2)}\n\nNUESTROS DATOS:\n${JSON.stringify(e.datos, null, 2)}\n\n${numeros}\n\n${cuantas} Escribe la lectura.`;
   const esperar = opts.esperar ?? ((ms: number) => new Promise<void>((ok) => setTimeout(ok, ms)));
   const t0 = Date.now();
   let ultima: { motivo: MotivoFalla; detalle: string } = { motivo: "error", detalle: "sin intentos" };
@@ -110,7 +118,7 @@ export async function generarLecturaFranco(cliente: Anthropic, e: EntradaLectura
       if (r.stop_reason === "refusal") return { ok: false, motivo: "rechazo", detalle: "el modelo se negó" };
       const txt = r.content.find((b): b is Anthropic.TextBlock => b.type === "text")?.text;
       if (!txt) { ultima = { motivo: "vacio", detalle: `sin texto (stop_reason ${r.stop_reason})` }; continue; }
-      const saneada = sanearConRegistro(JSON.parse(txt), { fotosCompletas: completas });
+      const saneada = sanearConRegistro(JSON.parse(txt), { fotosCompletas: completas, cifras: e.cifras });
       const descartes = saneada.descartes;
       // Sin ninguna foto que se pueda ver, alerta grave (la pone el código, 20-nov-2026): no se recomienda como alternativa.
       const lectura = saneada.lectura && !fotos.length ? conAlertaSinFotos(saneada.lectura) : saneada.lectura;

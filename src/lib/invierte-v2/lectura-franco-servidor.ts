@@ -10,7 +10,10 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { findNearestStation } from "@/lib/metro-stations";
-import { ESPERA_REINTENTO_MS, GENERANDO_VENCE_MS, TOPE_INTENTOS_LECTURA, TOPE_LECTURAS_POR_HORA, VERSION_LECTURA, sanearLectura, type LecturaFranco } from "./lectura-franco";
+import { ESPERA_REINTENTO_MS, GENERANDO_VENCE_MS, MIN_ARRIENDOS_COMPARABLES, TOPE_INTENTOS_LECTURA, TOPE_LECTURAS_POR_HORA, VERSION_LECTURA, sanearLectura, type LecturaFranco } from "./lectura-franco";
+import { capRatePct, pctUno } from "@/lib/explorar/explorar";
+import { textoAlMes } from "./opciones";
+import { etiquetaVeredicto, signoVeredicto } from "@/lib/veredicto-etiqueta";
 import { generarLecturaFranco, type EntradaLectura } from "./lectura-franco-ia";
 
 const T = "lecturas_franco";
@@ -41,11 +44,29 @@ export async function leerLecturas(admin: SupabaseClient, avisoIds: readonly str
 
 export type EstadoLectura = { estado: "lista"; lectura: LecturaFranco } | { estado: "generando" | "sin-datos" | "tope" | "error" };
 
+/** ¿Cuántos arriendos activos de su tamaño (±20 % m²) hay en el radio con que el motor midió su arriendo? El mismo criterio del filtro de
+ *  alternativas (`invierte_alternativas`, p_min_comp): con menos de 6, el arriendo del motor no es confiable (20-nov-2026, Fabrizio). */
+export async function arriendosDeSuTamano(admin: SupabaseClient, p: { lat: number; lng: number; radio: number; m2: number }, hasta = MIN_ARRIENDOS_COMPARABLES): Promise<number> {
+  // Paginado con orden total (PostgREST corta cada respuesta en 1.000 filas sin avisar); se corta apenas hay `hasta` de su tamaño.
+  const PAGINA = 1000;
+  let n = 0;
+  for (let off = 0; off < 20 * PAGINA; off += PAGINA) {
+    const { data, error } = await admin.rpc("properties_within_radius", { center_lat: p.lat, center_lng: p.lng, radius_meters: p.radio, prop_type: "arriendo", prop_dorms: null, prop_comuna: null, prop_condicion: null })
+      .order("distance_meters", { ascending: true }).order("id", { ascending: true }).range(off, off + PAGINA - 1);
+    if (error) return n;
+    const filas = (data ?? []) as { superficie_m2?: number | null }[];
+    n += filas.filter((a) => a.superficie_m2 != null && Number(a.superficie_m2) >= p.m2 * 0.8 && Number(a.superficie_m2) <= p.m2 * 1.2).length;
+    if (n >= hasta || filas.length < PAGINA) return n;
+  }
+  return n;
+}
+
 async function entradaDe(admin: SupabaseClient, avisoId: string): Promise<{ entrada: EntradaLectura; leidoAt: string } | null> {
-  const [{ data: d }, { data: sp }, { data: ae }] = await Promise.all([
+  const [{ data: d }, { data: sp }, { data: ae }, { data: cfg }] = await Promise.all([
     admin.from("publicacion_detalle").select("fotos, descripcion, leido_at").eq("aviso_id", avisoId).maybeSingle(),
     admin.from("scraped_properties").select("titulo, comuna, dormitorios, banos, superficie_m2, lat, lng").eq("id", avisoId).order("id").limit(1).maybeSingle(),
-    admin.from("avisos_evaluados").select("antiguedad_anios, antiguedad_origen").eq("aviso_id", avisoId).maybeSingle(),
+    admin.from("avisos_evaluados").select("antiguedad_anios, antiguedad_origen, precio_uf, arriendo, flujo_20, veredicto_20, score_20").eq("aviso_id", avisoId).maybeSingle(),
+    admin.from("config").select("value").eq("key", "uf_value").maybeSingle(),
   ]);
   const fotos = ((d?.fotos as string[] | null) ?? []).filter((u) => /^https:\/\//.test(u));
   if (!d || (!fotos.length && !d.descripcion)) return null;
@@ -53,6 +74,15 @@ async function entradaDe(admin: SupabaseClient, avisoId: string): Promise<{ entr
   // La antigüedad, solo si viene informada (de la ficha o de otro aviso del edificio); la supuesta no se presenta como dato.
   const informada = ae?.antiguedad_origen === "ficha" || ae?.antiguedad_origen === "edificio";
   const anio = informada && typeof ae?.antiguedad_anios === "number" ? new Date().getFullYear() - (ae.antiguedad_anios as number) : null;
+  // Lo que muestra la tarjeta (20-nov-2026): el veredicto siempre; el cap rate y lo que deja al mes, solo si el arriendo es confiable.
+  const veredicto = typeof ae?.veredicto_20 === "string" ? `${signoVeredicto(ae.veredicto_20 as never)} ${etiquetaVeredicto(ae.veredicto_20 as never, "frase")}${ae.veredicto_20 === "COMPRAR" && typeof ae.score_20 === "number" ? ` · ${ae.score_20}` : ""}` : null;
+  const arr = (ae?.arriendo ?? null) as { monto?: number; radio?: number } | null;
+  const m2 = sp?.superficie_m2 == null ? null : Number(sp.superficie_m2);
+  const n = sp?.lat != null && sp?.lng != null && m2 ? await arriendosDeSuTamano(admin, { lat: Number(sp.lat), lng: Number(sp.lng), radio: arr?.radio ?? 1000, m2 }) : 0;
+  const confiable = n >= MIN_ARRIENDOS_COMPARABLES;
+  const uf = Number(cfg?.value);
+  const cap = confiable ? capRatePct(arr?.monto ?? null, Number(ae?.precio_uf ?? 0), Number.isFinite(uf) && uf > 0 ? uf : null) : null;
+  const flujo = confiable && typeof ae?.flujo_20 === "number" ? (ae.flujo_20 as number) : null;
   return {
     leidoAt: d.leido_at as string,
     entrada: {
@@ -62,6 +92,8 @@ async function entradaDe(admin: SupabaseClient, avisoId: string): Promise<{ entr
         superficie_m2: sp?.superficie_m2 == null ? null : Number(sp.superficie_m2), antiguedad: anio ? { anio } : "no informada",
         metro: est ? { estacion: est.station.name, a_pie: est.distance <= 1000 } : null,
       },
+      tarjeta: { veredicto, cap_rate_bruto: cap != null ? pctUno(cap) : null, al_mes: flujo != null ? textoAlMes({ flujoCLP: flujo }).t : null },
+      cifras: confiable ? { capRatePct: cap, flujoCLP: flujo } : null,
     },
   };
 }

@@ -28,7 +28,7 @@ export const dynamic = "force-dynamic";
 
 const op = (id: string, o: Partial<OpcionDepto>): OpcionDepto => ({
   avisoId: id, comuna: "Ñuñoa", dormitorios: 2, banos: 2, m2: 58, precioUF: 3000, veredicto: "COMPRAR", score: 80, flujoCLP: 50000,
-  arriendoCLP: 520000, vsParecidosPct: null, metro: { estacion: "Ñuñoa", metros: 450 }, esEntrada: false, alcanza: true, ...o,
+  arriendoCLP: 520000, vsParecidosPct: null, metro: { estacion: "Ñuñoa", metros: 450 }, esEntrada: false, alcanza: true, capRatePct: 5.8, ...o,
 });
 
 const MUESTRA: OpcionDepto[] = [

@@ -11,7 +11,7 @@ import { useRef, useState } from "react";
 import { ALTERNATIVAS_COPY as A } from "@/lib/invierte-v2/alternativas";
 import { urlFoto } from "@/lib/invierte-v2/fotos";
 
-export function FotosDepto({ avisoId, n, chica = false, clase = "" }: { avisoId: string; n: number; chica?: boolean; clase?: string }) {
+export function FotosDepto({ avisoId, n, chica = false, clase = "", etiqueta = null }: { avisoId: string; n: number; chica?: boolean; clase?: string; /** Sobre la foto, arriba a la izquierda (el cap rate de una alternativa, 20-nov-2026). */ etiqueta?: string | null }) {
   const [i, setI] = useState(0);
   // Las fotos que la fuente ya borró (404) se saltan, también la primera (20-nov-2026: una alternativa quedaba sin fotos porque su
   // primera foto estaba rota y las otras doce no); solo si no carga ninguna, la tarjeta va sin el bloque.
@@ -29,6 +29,7 @@ export function FotosDepto({ avisoId, n, chica = false, clase = "" }: { avisoId:
       onTouchEnd={(e) => { const x0 = toque.current; toque.current = null; const x1 = e.changedTouches[0]?.clientX; if (x0 == null || x1 == null || Math.abs(x1 - x0) < 40) return; ir(x1 < x0 ? 1 : -1); }}>
       {/* eslint-disable-next-line @next/next/no-img-element -- la sirve la ruta propia, con su caché; no pasa por el optimizador */}
       <img src={urlFoto(avisoId, i)} alt={A.foto(i + 1, n)} loading={chica && i === 0 ? "lazy" : "eager"} decoding="async" onError={romper} onLoad={(e) => { if (e.currentTarget.naturalWidth <= 1) romper(); else setBuena(true); }} />
+      {etiqueta && <span className="iv2-foto-etiqueta" data-inv2="foto-etiqueta">{etiqueta}</span>}
       {n > 1 && (
         <>
           <button type="button" className="iv2-foto-flecha iv2-foto-ant" aria-label={A.fotoAnterior} onClick={() => ir(-1)} data-inv2="foto-anterior">‹</button>

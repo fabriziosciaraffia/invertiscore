@@ -21,6 +21,8 @@ export const MAX_OPCIONES = 5; // la de entrada más cuatro: en el PC caben toda
 export const MIN_PARECIDOS = 30;
 
 export interface OpcionDepto {
+  /** Cap rate bruto (20-nov-2026): el mismo número que la tarjeta del mapa (arriendo × 12 / precio, con la UF del día). */
+  capRatePct?: number | null;
   avisoId: string;
   comuna: string;
   dormitorios: number | null;
