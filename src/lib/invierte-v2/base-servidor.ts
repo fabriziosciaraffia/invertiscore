@@ -11,7 +11,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { MAX_ACTIVOS } from "./opciones";
 import { cuantasPedir } from "./alternativas";
-import { CLAVE_WHATSAPP_FRANCO, numeroWhatsapp } from "./base";
+import { CLAVE_WHATSAPP_FRANCO, numeroWhatsapp, rangoSumar } from "./base";
 import { lineaCambio, type TipoCambio, type Vigente } from "./cambios";
 import { aOpcion, calcularOpciones, filaEntrada, leerPerfilInv, tareasGestionar, type CambioPerfil, type PerfilInv } from "./perfil-servidor";
 import { anotar, ultimaOrdenDe, type ContextoPedido, type OrdenInv } from "./servidor";
@@ -60,6 +60,9 @@ export interface Base {
   whatsapp: string | null;
   /** La preaprobación (entrega 3): decide «Lo que te toca hoy». */
   preaprobacion: EstadoVisible;
+  /** Lo que la base dice de la preaprobación (20-nov-2026): el motivo si hay que corregirla, la aprobada (banco y vigencia), el archivo
+   *  del documento vigente y la subida posterior, si la hay. */
+  preDetalle: { motivo: string | null; banco: string | null; vigenteHasta: string | null; mime: string | null; otra: { estado: string; mime: string | null } | null };
 }
 
 export async function leerBase(admin: SupabaseClient, userId: string): Promise<Base | null> {
@@ -97,7 +100,8 @@ export async function leerBase(admin: SupabaseClient, userId: string): Promise<B
     .map((f) => ({ avisoId: f.aviso_id as string, datos: (f.datos ?? {}) as DatosDepto }))
     .sort((a, b) => (b.datos.score ?? 0) - (a.datos.score ?? 0))
     .slice(0, cuantasPedir(elegidasFranco));
-  return { orden, perfil, elegidos, otras, whatsapp, preaprobacion: pre.estado };
+  const preDetalle = { motivo: pre.doc?.motivo ?? null, banco: pre.doc?.banco ?? null, vigenteHasta: pre.doc?.vigenteHasta ?? null, mime: pre.doc?.mime ?? null, otra: pre.otra ? { estado: pre.otra.estado, mime: pre.otra.mime } : null };
+  return { orden, perfil, elegidos, otras, whatsapp, preaprobacion: pre.estado, preDetalle };
 }
 
 // ── SUMAR UN DEPTO ───────────────────────────────────────────────────────────
@@ -128,7 +132,8 @@ export async function sumarDepto(admin: SupabaseClient, user: { id: string; emai
   const v = await vistaSumar(admin, user.id, avisoId);
   if (v.estado === "sin-orden" || v.estado === "sin-perfil" || v.estado === "depto") return { ok: false, error: v.estado };
   if (v.estado === "ya") return { ok: true, ya: true };
-  if (!v.alcanza) return { ok: false, error: "fuera" };
+  // Un poco sobre su rango (hasta 15 %, sin preaprobación aprobada) se puede sumar igual (20-nov-2026); fuera de rango, no.
+  if (!v.alcanza && rangoSumar({ precioUF: v.datos?.precioUF ?? Infinity, topeUF: v.perfil?.topeUF ?? 0, firme: v.perfil?.topeFuente === "aprobada" }) !== "poco_sobre") return { ok: false, error: "fuera" };
   const activos = v.activos ?? [];
   if (activos.length >= MAX_ACTIVOS && !deja) return { ok: false, error: "maximo" };
   if (deja && !activos.some((a) => a.avisoId === deja)) return { ok: false, error: "deja" };
@@ -139,7 +144,7 @@ export async function sumarDepto(admin: SupabaseClient, user: { id: string; emai
   const { data: previa } = await admin.from(T_DEPTOS).select("origen").eq("user_id", user.id).eq("aviso_id", avisoId).maybeSingle();
   const up = await admin.from(T_DEPTOS).upsert({
     user_id: user.id, aviso_id: avisoId, estado: "elegido", elegido_at: ahora, origen: (previa?.origen as string | undefined) ?? "mapa",
-    alcanza: true, fuera_de_alcance_at: null, datos: d, es_prueba: esPrueba, updated_at: ahora,
+    alcanza: v.alcanza === true, fuera_de_alcance_at: v.alcanza ? null : ahora, datos: d, es_prueba: esPrueba, updated_at: ahora,
   }, { onConflict: "user_id,aviso_id" });
   if (up.error) return { ok: false, error: "guardar" };
   if (deja && activos.length >= MAX_ACTIVOS) {

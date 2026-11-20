@@ -100,11 +100,37 @@ export function lineaAprobada(d: { banco: string | null; montoUF: number | null;
   return partes.length ? `${partes.join(" · ")}.` : "";
 }
 
-/** «Lo que te toca hoy» en la base: solo cuando le toca a la persona (sin nada vigente, o por corregir). */
-export function teTocaHoy(e: EstadoVisible): { titulo: string; boton: string } | null {
-  if (e === "subir") return { titulo: "Sube tu preaprobación para ofertar o visitar", boton: PREAPROB_COPY.subir };
-  if (e === "por_corregir") return { titulo: "Sube de nuevo tu preaprobación para ofertar o visitar", boton: ESTADOS_COPY.por_corregir.boton };
+/** «Lo que te toca hoy» en la base (20-nov-2026, Fabrizio):
+ *  · sin nada vigente: «Sube tu preaprobación…» y el botón rojo;
+ *  · CADA VEZ que sube una (también la primera, y aunque tenga una aprobada vigente): «Tu preaprobación está en revisión», el chip
+ *    «Franco está en eso», «Te avisamos apenas la revisemos» y «Ver lo que subí», sin botón rojo, hasta que se apruebe o se corrija;
+ *  · por corregir: el chip «Por corregir», el motivo que escribió la persona de Franco (como mensaje de Franco) y «Subir otra». */
+export type TeTocaHoy =
+  | { tipo: "subir"; titulo: string; boton: string }
+  | { tipo: "revision"; titulo: string; chip: string; linea: string; ver: string }
+  | { tipo: "corregir"; titulo: string; chip: string; motivo: string | null; boton: string };
+export const TE_TOCA_COPY = {
+  revision: { titulo: "Tu preaprobación está en revisión", chip: "Franco está en eso", linea: "Te avisamos apenas la revisemos", ver: "Ver lo que subí" },
+  corregir: { titulo: "Sube de nuevo tu preaprobación para ofertar o visitar", chip: "Por corregir" },
+  mensajeDeFranco: "Franco",
+} as const;
+export function teTocaHoy(e: EstadoVisible, otra: { estado: string } | null = null, motivo: string | null = null): TeTocaHoy | null {
+  if (e === "en_revision" || otra?.estado === "en_revision") return { tipo: "revision", ...TE_TOCA_COPY.revision };
+  if (e === "subir") return { tipo: "subir", titulo: "Sube tu preaprobación para ofertar o visitar", boton: PREAPROB_COPY.subir };
+  if (e === "por_corregir") return { tipo: "corregir", ...TE_TOCA_COPY.corregir, motivo: motivo?.trim() || null, boton: ESTADOS_COPY.por_corregir.boton };
   return null;
+}
+
+/** Bajo el título de la base (20-nov-2026, Fabrizio): hasta cuánto puede comprar, porque después de elegir ya no vuelve al resultado.
+ *  Con la preaprobación aprobada, según esa preaprobación (con «Ver»); si no, la estimación, «Sujeto a evaluación del banco». */
+export function lineaCapacidad(p: { topeUF: number | null; aprobada: { banco: string | null; vigenteHasta: string | null } | null }): string | null {
+  if (!p.topeUF) return null;
+  if (p.aprobada) {
+    const banco = p.aprobada.banco ? ` de Banco ${p.aprobada.banco.replace(/^banco\s+/i, "")}` : "";
+    const hasta = p.aprobada.vigenteHasta ? `, vigente hasta el ${diaMes(p.aprobada.vigenteHasta)}` : "";
+    return `Puedes comprar hasta UF ${fmtUF(p.topeUF)}, según tu preaprobación${banco}${hasta}.`;
+  }
+  return `Estimamos que puedes comprar hasta UF ${fmtUF(p.topeUF)}. Sujeto a evaluación del banco.`;
 }
 export const TE_TOCA_ROTULO = "Lo que te toca hoy";
 

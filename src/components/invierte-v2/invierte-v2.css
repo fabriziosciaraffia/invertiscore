@@ -356,6 +356,17 @@
 .iv2-depto .chip-v { flex: none; }
 /* «Tus deptos» en la base (20-nov-2026, decisión de Fabrizio): la tarjeta entera es un botón que abre los detalles, con una
    flecha a la derecha en vez de «Abrir». Su contenido va en span: se muestran en bloque. */
+/* «Lo que te toca hoy» (20-nov-2026): el chip de su estado, la revisión sin botón rojo y el motivo como mensaje de Franco; bajo el
+   título de la base, hasta cuánto puede comprar. Los parecidos que sí alcanzan, en la pantalla de sumar. */
+.iv2-toca-chip { align-self: flex-start; }
+.iv2-toca-revision { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; }
+.iv2-msj-franco { margin: 0; display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 12px; background: var(--franco-elevated, #EEF2F8); font-size: 13px; line-height: 1.45; color: var(--franco-text); }
+[data-theme="light"] .iv2-msj-franco { background: #EEF2F8; }
+.iv2-msj-franco-de { font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: #8DB0E3; }
+[data-theme="light"] .iv2-msj-franco-de { color: #1E3F6B; }
+.iv2-base-capacidad { margin: -4px 0 0; }
+.iv2-base-capacidad .iv2-enlace-azul { min-height: 0; display: inline; }
+.iv2-sumar-parecidos { display: flex; flex-direction: column; gap: 10px; }
 .iv2-depto-li { list-style: none; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .iv2-depto-tocable { width: 100%; flex-direction: row; align-items: center; gap: 12px; text-align: left; font: inherit; color: inherit; cursor: pointer; min-height: 44px;
   transition: border-color 0.15s ease, background-color 0.15s ease; }
@@ -465,6 +476,9 @@
 .iv2-chip-arriba { margin-top: 0; }
 .iv2-tarjeta-estado .iv2-secundario { margin-top: 4px; }
 .iv2-doc-img { display: block; max-width: 100%; height: auto; margin: 0 auto; border-radius: 8px; }
+/* El PDF de la preaprobación, dentro de la ventana (20-nov-2026): llena el recuadro; el scroll es el del visor. */
+.iv2-doc-texto:has(.iv2-doc-pdf) { padding: 0; overflow: hidden; }
+.iv2-doc-pdf { display: block; flex: 1; width: 100%; height: 100%; min-height: 360px; border: 0; border-radius: 12px; background: #FFFFFF; }
 /* «Lo que te toca hoy» en la base (lámina 3.3-base): borde de tinta, el rótulo chico, el texto y el botón rojo. */
 .iv2-toca { box-sizing: border-box; border: 1.5px solid var(--franco-text); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 10px; background: var(--franco-card); }
 .iv2-toca-et { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase; color: var(--franco-text-secondary); }
@@ -555,7 +569,9 @@
 .iv2-res-rotulo { font-size: 12px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--franco-text-muted); }
 .iv2-res-fila { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .iv2-res-nombre { font-size: 16px; font-weight: 700; line-height: 1.3; min-width: 0; overflow-wrap: anywhere; }
-.iv2-res-datos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0; }
+/* Cuatro datos del elegido (20-nov-2026: se suma el cap rate): dos por fila en el celular, los cuatro en una en el PC. */
+.iv2-res-datos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 0; }
+@media (min-width: 1024px) { .iv2-res-datos { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 .iv2-res-datos div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .iv2-res-datos dt { font-size: 11px; color: var(--franco-text-muted); }
 .iv2-res-datos dd { margin: 0; font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
@@ -594,6 +610,11 @@
 .iv2-foto-puntos { position: absolute; left: 0; right: 0; bottom: 8px; display: flex; justify-content: center; gap: 5px; }
 .iv2-foto-puntos span { width: 6px; height: 6px; border-radius: 999px; background: rgba(255, 255, 255, 0.55); }
 .iv2-foto-puntos span[data-activo] { background: #FFFFFF; }
+/* El cap rate de una alternativa (20-nov-2026): sobre la foto en el PC; en el celular, donde la foto mide 96 px y chocaría con el
+   contador, en la línea del precio. */
+@media (max-width: 1023px) { .iv2-fotos-chica .iv2-foto-etiqueta { display: none; } }
+@media (min-width: 1024px) { .iv2-cap-solo-movil { display: none; } }
+.iv2-foto-etiqueta { position: absolute; left: 6px; top: 6px; padding: 2px 7px; border-radius: 999px; background: rgba(15, 15, 15, 0.7); color: #FFFFFF; font-size: 10.5px; font-weight: 700; line-height: 1.4; }
 /* La foto de una alternativa (20-nov-2026): las mismas flechas, contador y puntos, más chicos. La flecha mide 26 px y su zona de toque
    crece con ::before; el contador y los puntos se apartan del borde. */
 .iv2-fotos-chica .iv2-foto-flecha { width: 26px; height: 26px; font-size: 15px; }

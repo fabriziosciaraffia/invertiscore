@@ -6,6 +6,7 @@ import { INVIERTE_COPY, esPie, esUrgencia } from "@/lib/invierte/invierte";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 import { leerPersona, ultimaOrdenDe } from "@/lib/invierte-v2/servidor";
 import { leerPerfilInv } from "@/lib/invierte-v2/perfil-servidor";
+import { porQueTopeAdmin } from "@/lib/invierte-v2/perfil";
 import { lineaDepto } from "@/lib/invierte-v2/base";
 import type { DatosDepto } from "@/lib/invierte-v2/base-servidor";
 import { lineaCambio, type TipoCambio } from "@/lib/invierte-v2/cambios";
@@ -32,7 +33,6 @@ const TIPO_TAREA: Record<string, string> = {
   explicar_preaprobacion: "Explicarle la preaprobación",
 };
 const ESTADO_DEPTO: Record<string, string> = { elegido: "Elegido", opcion: "Opción", descartado: "Descartado" };
-const FUENTE_TOPE: Record<string, string> = { renta: "con su renta", solo_pie: "solo con el pie (sin renta)", preaprobacion: "con su preaprobación", aprobada: "preaprobación aprobada" };
 
 const caja = "mb-6 rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-4 shadow-sm";
 const th = "px-3 py-2 font-medium";
@@ -128,7 +128,7 @@ export default async function FichaInvierteV2Page({ params }: { params: { userId
           <h2 className="m-0 mb-3 font-heading text-lg font-bold">Perfil de inversión</h2>
           {perfil ? (
             <dl className="m-0 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 font-body text-[13px]">
-              <dt className="text-[var(--franco-text-muted)]">Hasta</dt><dd className="m-0 font-semibold">{perfil.topeUF ? `UF ${fmtUF(perfil.topeUF)}` : "—"} <span className="font-normal text-[var(--franco-text-secondary)]">{perfil.topeFuente ? FUENTE_TOPE[perfil.topeFuente] : ""}</span></dd>
+              <dt className="text-[var(--franco-text-muted)]">Hasta</dt><dd className="m-0 font-semibold">{perfil.topeUF ? `UF ${fmtUF(perfil.topeUF)}` : "—"} <span className="font-normal text-[var(--franco-text-secondary)]">{porQueTopeAdmin(perfil, fmtUF)}</span></dd>
               <dt className="text-[var(--franco-text-muted)]">Comunas</dt><dd className="m-0">{perfil.comunas.join(", ") || "—"}</dd>
               <dt className="text-[var(--franco-text-muted)]">Pie</dt><dd className="m-0">{perfil.pieUF != null ? `UF ${fmtUF(perfil.pieUF)}` : "—"}</dd>
               <dt className="text-[var(--franco-text-muted)]">Renta líquida</dt><dd className="m-0">{perfil.noDiceRenta ? "No la dijo" : perfil.rentaCLP != null ? `$${perfil.rentaCLP.toLocaleString("es-CL")}` : "—"}{perfil.otrasCuotasCLP ? ` · otras cuotas $${perfil.otrasCuotasCLP.toLocaleString("es-CL")}` : ""}</dd>

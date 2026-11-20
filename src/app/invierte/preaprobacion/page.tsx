@@ -68,7 +68,6 @@ export default async function PreaprobacionPage({ searchParams }: { searchParams
               <span className="iv2-estado-ciruela iv2-chip-arriba">{E.por_corregir.chip}</span>
               <p className="iv2-estado-t">{E.por_corregir.titulo}</p>
               {d!.motivo && <p className="iv2-linea-chica" data-inv2="motivo">{d!.motivo}</p>}
-              <Link href={`${URL_PREAPROBACION}?subir=1`} className="iv2-secundario" data-inv2="subir-otra">{E.por_corregir.boton}</Link>
             </>}
             {pre.estado === "sin_credito" && <>
               <span className="iv2-estado">{E.sin_credito.chip}</span>
@@ -83,7 +82,15 @@ export default async function PreaprobacionPage({ searchParams }: { searchParams
               <Link href={`${URL_PREAPROBACION}?subir=1`} className="iv2-enlace-azul iv2-doc-accion" data-inv2="subir-igual">{P.subir}</Link>
             </>}
           </div>
-          <div className="iv2-acciones"><Link href={URL_BASE} className="inv-principal" data-inv2="volver-deptos">{P.volver}</Link></div>
+          {/* Por corregir (20-nov-2026, Fabrizio): «Subir otra» es el botón rojo y «Volver a mis deptos», el secundario. */}
+          {pre.estado === "por_corregir" ? (
+            <div className="iv2-acciones">
+              <Link href={`${URL_PREAPROBACION}?subir=1`} className="inv-principal" data-inv2="subir-otra">{E.por_corregir.boton}</Link>
+              <Link href={URL_BASE} className="iv2-secundario" data-inv2="volver-deptos">{P.volver}</Link>
+            </div>
+          ) : (
+            <div className="iv2-acciones"><Link href={URL_BASE} className="inv-principal" data-inv2="volver-deptos">{P.volver}</Link></div>
+          )}
         </>
       )}
     </MarcoInvierte>

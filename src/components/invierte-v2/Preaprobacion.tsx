@@ -7,7 +7,8 @@
 //     veces). `variante="perfil"` es el bloque compacto del paso 2 del perfil (se puede subir ahora o después).
 //   · OtrasOpciones: «Todavía no la tengo» y «Compro sin crédito».
 //   · VerPreaprobacion: «Ver lo que subí» / «Ver mi preaprobación» en la misma ventana de «Ver mi orden»; una foto se ve adentro,
-//     un PDF se abre en una pestaña nueva («Abrir PDF»).
+//     un PDF se ve DENTRO de la ventana (20-nov-2026, Fabrizio); si el navegador no tiene visor de PDF (Chrome en Android), queda
+//     «Abrir PDF» como respaldo, en una pestaña nueva.
 // ─────────────────────────────────────────────────────────────────────────────
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -120,25 +121,33 @@ export function OtrasOpciones({ deshabilitado = false }: { deshabilitado?: boole
   );
 }
 
-export function VerPreaprobacion({ etiqueta, estado, titulo, meta, mime }: { etiqueta: string; estado: string | null; titulo: string; meta: string; mime: string | null }) {
+export function VerPreaprobacion({ etiqueta, estado, titulo, meta, mime, ultima = false }: { etiqueta: string; estado: string | null; titulo: string; meta: string; mime: string | null; /** La última subida (la que se revisa), aunque haya una aprobada vigente. */ ultima?: boolean }) {
+  const ruta = ultima ? `${URL_API_PREAPROBACION}?ultima=1` : URL_API_PREAPROBACION;
   const [abierta, setAbierta] = useState(false);
   const [src, setSrc] = useState<string | null>(null);
   const esFoto = !!mime && mime.startsWith("image/") && !/hei[cf]/.test(mime);
-  // La foto se muestra con la URL firmada directa (WebKit no sigue la redirección dentro de un <img>); vence en 60 s.
+  const esPdf = mime === "application/pdf";
+  // ¿El navegador muestra un PDF dentro de la página? (Chrome en Android, no: ahí queda «Abrir PDF».)
+  const [visorPdf, setVisorPdf] = useState(false);
+  useEffect(() => { setVisorPdf(typeof navigator !== "undefined" && (navigator as Navigator & { pdfViewerEnabled?: boolean }).pdfViewerEnabled === true); }, []);
+  const adentro = esFoto || (esPdf && visorPdf);
+  // La foto y el PDF se muestran con la URL firmada directa (WebKit no sigue la redirección dentro de un <img>); vence en 60 s.
   useEffect(() => {
-    if (!abierta || !esFoto) return;
+    if (!abierta || !adentro) return;
     let vivo = true;
-    fetch(`${URL_API_PREAPROBACION}?formato=json`, { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).then((d: { url?: string } | null) => { if (vivo) setSrc(d?.url ?? null); }).catch(() => undefined);
+    fetch(`${ruta}${ultima ? "&" : "?"}formato=json`, { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).then((d: { url?: string } | null) => { if (vivo) setSrc(d?.url ?? null); }).catch(() => undefined);
     return () => { vivo = false; };
-  }, [abierta, esFoto]);
+  }, [abierta, adentro, ruta, ultima]);
   return (
     <>
       <button type="button" className="iv2-enlace-azul iv2-doc-accion" onClick={() => setAbierta(true)} aria-haspopup="dialog" data-inv2="ver-preaprobacion">{etiqueta}</button>
       {abierta && (
         <VentanaDocumento nombre="preaprobacion" estado={estado} titulo={titulo} meta={<span>{meta}</span>} variante="documento"
-          pdf={esFoto ? null : { href: URL_API_PREAPROBACION, etiqueta: mime === "application/pdf" ? undefined : "Abrir archivo" }} alCerrar={() => setAbierta(false)}>
+          pdf={esFoto ? null : { href: ruta, etiqueta: mime === "application/pdf" ? undefined : "Abrir archivo" }} alCerrar={() => setAbierta(false)}>
           {/* eslint-disable-next-line @next/next/no-img-element -- la URL firmada vence en 60 s: no pasa por el optimizador de imágenes */}
-          {esFoto ? (src ? <img src={src} alt={titulo} className="iv2-doc-img" /> : <p className="iv2-linea-chica">Cargando…</p>) : <p>{mime === "application/pdf" ? "Es un PDF: se abre en una pestaña nueva." : "Este archivo se abre en una pestaña nueva."}</p>}
+          {esFoto ? (src ? <img src={src} alt={titulo} className="iv2-doc-img" /> : <p className="iv2-linea-chica">Cargando…</p>)
+            : esPdf && visorPdf ? (src ? <iframe src={src} title={titulo} className="iv2-doc-pdf" data-inv2="preaprobacion-pdf" /> : <p className="iv2-linea-chica">Cargando…</p>)
+            : <p>{esPdf ? "Tu navegador no muestra el PDF aquí: ábrelo con «Abrir PDF»." : "Este archivo se abre en una pestaña nueva."}</p>}
         </VentanaDocumento>
       )}
     </>

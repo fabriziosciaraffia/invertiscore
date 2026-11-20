@@ -261,3 +261,17 @@ export function validarPerfil(b: Record<string, unknown> | null | undefined): { 
 /** Al dibujar un texto con porcentajes, el «%» no queda solo en la línea siguiente (20-nov-2026: «(20 %)» se cortaba a 360 px).
  *  Cambia el espacio antes de «%» por uno que no se corta; el texto guardado y el que fija el tier no cambian. */
 export const sinCortar = (t: string): string => t.replace(/ %/g, " %");
+
+/** En el admin, ficha del comprador (20-nov-2026, Fabrizio): qué limita su tope, igual que el resultado. Antes decía «con su renta» también
+ *  cuando lo limitaba el pie. */
+export function porQueTopeAdmin(p: { topeFuente: string | null; pieUF: number | null; topeSupuestos: Record<string, unknown> | null }, fmt: (n: number) => string): string {
+  const s = p.topeSupuestos ?? {};
+  const credito = typeof s.creditoUF === "number" ? s.creditoUF : null;
+  if (p.topeFuente === "aprobada") return "según su preaprobación aprobada";
+  if (p.topeFuente === "preaprobacion") return "con su preaprobación";
+  if (s.pieNoSabe === true) return `por su renta, con un pie supuesto de 20 % (no sabe su pie)${credito ? `; el banco le prestaría hasta UF ${fmt(credito)}` : ""}`;
+  if (p.topeFuente === "solo_pie") return "solo con el pie (sin renta)";
+  if (s.limita === "pie") return `lo limita su pie${p.pieUF != null ? ` (UF ${fmt(p.pieUF)})` : ""}${credito ? `; por su renta, el banco le prestaría hasta UF ${fmt(credito)}` : ""}`;
+  if (s.limita === "credito") return `lo limita su renta${credito ? ` (el banco le prestaría hasta UF ${fmt(credito)})` : ""}`;
+  return p.topeFuente === "renta" ? "con su pie y su renta" : "";
+}

@@ -44,6 +44,8 @@ export const BASE_COPY = {
   tusDeptosLinea: (n: number) => (n === 1 ? "El que elegiste para seguir." : `Los ${n === 2 ? "dos" : n} con que elegiste seguir. Cada uno avanza por su cuenta.`),
   teTocaATi: "Te toca a ti",
   francoEnEso: "Franco está en eso",
+  /** Junto a la línea de capacidad, con la preaprobación aprobada (20-nov-2026): la abre en su ventana. */
+  ver: "Ver",
   abrir: "Abrir",
   /** La tarjeta entera de «Tus deptos» abre los detalles (20-nov-2026): lo que lee el lector de pantalla. */
   abrirDepto: (depto: string) => `Abrir ${depto}`,
@@ -93,16 +95,32 @@ export const DOCUMENTOS_COPY = {
   masAdelante: "Más adelante",
 } as const;
 
+/** SUMAR UN DEPTO QUE NO ALCANZA (20-nov-2026, decisión de Fabrizio). Sin preaprobación aprobada, la estimación no es exacta y el
+ *  precio se negocia: hasta TOLERANCIA_SOBRE_TOPE por sobre el tope se puede sumar igual («un poco sobre tu rango»); más allá, no
+ *  («fuera de tu rango por ahora»). Con la preaprobación aprobada el tope es firme: sin tolerancia. */
+export const TOLERANCIA_SOBRE_TOPE = 0.15;
+export type RangoSumar = "alcanza" | "poco_sobre" | "fuera";
+export function rangoSumar(p: { precioUF: number; topeUF: number; firme: boolean }): RangoSumar {
+  if (p.precioUF <= p.topeUF + 0.5) return "alcanza";
+  if (!p.firme && p.topeUF > 0 && p.precioUF <= p.topeUF * (1 + TOLERANCIA_SOBRE_TOPE) + 0.5) return "poco_sobre";
+  return "fuera";
+}
+
 export const SUMAR_COPY = {
   cabecera: "Invierte con Franco",
   volver: "Volver al mapa",
   titulo: "Súmalo a tus opciones de inversión",
   /** El botón del mapa cuando ya firmó la orden (20-nov-2026). */
   botonMapa: "Sumar a mis opciones de inversión",
-  // Cuando hoy no le alcanza (20-nov-2026): sin el recuadro de la firma, con el precio, hasta cuánto puede comprar y tres salidas.
-  noAlcanzaTitulo: "Este depto hoy no te alcanza",
-  noAlcanzaLinea: (precioUF: number, topeUF: number) => `Cuesta UF ${fmtUF(precioUF)} y hoy puedes comprar hasta UF ${fmtUF(topeUF)}.`,
-  irAMiInversion: "Ir a mi inversión",
+  // Un poco sobre su rango (hasta 15 %, sin preaprobación aprobada): se puede sumar igual.
+  pocoSobreTitulo: "Este depto está un poco sobre tu rango",
+  pocoSobreLinea: (precioUF: number, topeUF: number) => `Cuesta UF ${fmtUF(precioUF)} y estimamos que puedes comprar hasta UF ${fmtUF(topeUF)}. La estimación no es exacta y el precio se negocia.`,
+  sumarloIgual: "Sumarlo igual",
+  // Fuera de su rango: no se suma; el pie que necesitaría y hasta tres parecidos que sí le alcanzan, cerca de ese depto.
+  fueraTitulo: "Este depto está fuera de tu rango por ahora",
+  fueraLinea: (precioUF: number, topeUF: number, firme: boolean) => `Cuesta UF ${fmtUF(precioUF)} y ${firme ? "según tu preaprobación" : "estimamos que"} puedes comprar hasta UF ${fmtUF(topeUF)}. Para comprarlo necesitarías un pie de UF ${fmtUF(Math.round(precioUF * 0.2))} (el 20 % del precio).`,
+  parecidosT: "Parecidos que sí te alcanzan, cerca de este",
+  sumarParecido: "Sumar",
   revisarPerfilPara: "Si cambiaron tu pie o tu renta, actualízalos y vemos de nuevo hasta cuánto puedes comprar.",
   sinFirmaT: "No tienes que firmar de nuevo",
   sinFirma: (fecha: string) => `Tu orden del ${fecha} cubre también este depto. Franco empieza a gestionarlo y puedes ver todos sus detalles desde tus deptos.`,

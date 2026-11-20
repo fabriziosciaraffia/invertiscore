@@ -47,7 +47,9 @@ export async function GET(request: Request) {
   const user = await personaConAcceso();
   if (!user) return NO_EXISTE();
   const admin = createServiceClient();
-  const { doc } = await leerPreaprobacion(admin, user.id);
+  const pre = await leerPreaprobacion(admin, user.id);
+  // «Ver lo que subí» en la base (20-nov-2026): con ?ultima=1, la última subida (la que se revisa), aunque haya una aprobada vigente.
+  const doc = new URL(request.url).searchParams.get("ultima") === "1" ? pre.otra ?? pre.doc : pre.doc;
   const url = doc ? await urlDocumento(admin, doc) : null;
   if (!url) return NextResponse.json({ error: "no-existe" }, { status: 404 });
   if (new URL(request.url).searchParams.get("formato") === "json") return NextResponse.json({ url }, { headers: { "Cache-Control": "no-store" } });

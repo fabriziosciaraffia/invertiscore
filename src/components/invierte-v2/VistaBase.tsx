@@ -18,7 +18,8 @@ import { PrepararDetalles, TarjetaDetalles } from "./BotonDetalles";
 import { EnlacesBase, MenuBase } from "./MenuBase";
 import { SumarDepto } from "./SumarDepto";
 import { IconoWhatsapp } from "./IconoWhatsapp";
-import { TE_TOCA_ROTULO, URL_PREAPROBACION, teTocaHoy } from "@/lib/invierte-v2/preaprobacion";
+import { PREAPROB_COPY, TE_TOCA_COPY, TE_TOCA_ROTULO, URL_PREAPROBACION, lineaCapacidad, teTocaHoy } from "@/lib/invierte-v2/preaprobacion";
+import { VerPreaprobacion } from "./Preaprobacion";
 
 
 const B = BASE_COPY;
@@ -33,8 +34,12 @@ export function VistaBase({ base }: { base: Base }) {
   const sinPreparar = base.elegidos.filter((d) => !d.preparado).map((d) => d.avisoId);
   const activos = base.elegidos.map((d) => ({ avisoId: d.avisoId, datos: d.datos }));
   const perfilLinea = MENU_COPY.perfilLinea(base.perfil?.topeUF ?? null, base.perfil?.comunas ?? []);
-  // «Lo que te toca hoy» (entrega 3): solo cuando le toca a la persona; es la única acción principal (en rojo) de la base.
-  const toca = teTocaHoy(base.preaprobacion);
+  // «Lo que te toca hoy» (entrega 3; 20-nov-2026): por subir, en revisión (cada vez que sube una) o por corregir (con el motivo).
+  const pd = base.preDetalle;
+  const toca = teTocaHoy(base.preaprobacion, pd.otra, pd.motivo);
+  // Bajo el título, hasta cuánto puede comprar (20-nov-2026): según la preaprobación aprobada, o la estimación.
+  const aprobada = base.preaprobacion === "aprobada";
+  const capacidad = lineaCapacidad({ topeUF: base.perfil?.topeUF ?? null, aprobada: aprobada ? { banco: pd.banco, vigenteHasta: pd.vigenteHasta } : null });
   return (
     <>
       <PrepararDetalles avisoIds={sinPreparar} />
@@ -44,13 +49,32 @@ export function VistaBase({ base }: { base: Base }) {
             <h1 className="iv2-titulo-res" id="iv2-t">{B.titulo}</h1>
             <span className="iv2-solo-movil-base"><MenuBase nombre={base.orden.nombre} perfilLinea={perfilLinea} whatsapp={base.whatsapp} /></span>
           </div>
+          {capacidad && (
+            <p className="iv2-linea-chica iv2-base-capacidad" data-inv2="capacidad">
+              {capacidad}
+              {aprobada && <> <VerPreaprobacion etiqueta={B.ver} estado="Aprobada" titulo={PREAPROB_COPY.cabecera} meta={capacidad} mime={pd.mime} /></>}
+            </p>
+          )}
           {toca && (
-            <section className="iv2-toca" aria-labelledby="iv2-toca-t" data-inv2="te-toca-hoy">
+            <section className="iv2-toca" aria-labelledby="iv2-toca-t" data-inv2="te-toca-hoy" data-tipo={toca.tipo}>
               <p className="iv2-toca-et">{TE_TOCA_ROTULO}</p>
+              {toca.tipo !== "subir" && <span className={toca.tipo === "corregir" ? "iv2-estado-ciruela iv2-toca-chip" : "iv2-estado-gris iv2-toca-chip"} data-inv2="te-toca-chip">{toca.chip}</span>}
               <div className="iv2-toca-fila">
                 <h2 className="iv2-toca-t" id="iv2-toca-t">{toca.titulo}</h2>
-                <Link href={URL_PREAPROBACION} className="inv-principal" data-inv2="te-toca-boton">{toca.boton}</Link>
+                {toca.tipo === "subir" && <Link href={URL_PREAPROBACION} className="inv-principal" data-inv2="te-toca-boton">{toca.boton}</Link>}
               </div>
+              {toca.tipo === "revision" && (
+                <div className="iv2-toca-revision">
+                  <p className="iv2-linea-chica" data-inv2="te-toca-linea">{toca.linea}</p>
+                  <VerPreaprobacion etiqueta={toca.ver} estado={null} titulo={PREAPROB_COPY.cabecera} meta={toca.linea} mime={pd.otra?.estado === "en_revision" ? pd.otra.mime : pd.mime} ultima />
+                </div>
+              )}
+              {toca.tipo === "corregir" && (
+                <>
+                  {toca.motivo && <p className="iv2-msj-franco" data-inv2="te-toca-motivo"><span className="iv2-msj-franco-de">{TE_TOCA_COPY.mensajeDeFranco}</span>{toca.motivo}</p>}
+                  <Link href={`${URL_PREAPROBACION}?subir=1`} className="inv-principal" data-inv2="te-toca-boton">{toca.boton}</Link>
+                </>
+              )}
             </section>
           )}
           <section aria-labelledby="iv2-tus-t" data-inv2="tus-deptos" className="iv2-base-sec">

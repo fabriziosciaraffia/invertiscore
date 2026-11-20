@@ -10,6 +10,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { findNearestStation } from "@/lib/metro-stations";
+import { capRatePct } from "@/lib/explorar/explorar";
 import { VENTANA_SEMANAL_DIAS } from "@/lib/guia/semanal";
 import { hastaCuanto, comunasPrecargadas, ayudaPie, type PedidoPerfil, type Tope, type Objetivo, type Preocupacion, type Donde } from "./perfil";
 import { casoDe, etiquetar, vsParecidos, type Caso, type Etiqueta, type OpcionDepto } from "./opciones";
@@ -234,6 +235,20 @@ async function pedirAlternativas(admin: SupabaseClient, p: { aviso: string; modo
 
 const esUuid = (x: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(x);
 
+/** Hasta tres parecidos que SÍ le alcanzan, cerca de un depto que está fuera de su rango (20-nov-2026, decisión de Fabrizio; pantalla de
+ *  sumar). La misma función de alternativas y los mismos filtros que el resultado, alrededor de ESE depto, sin los de su base; una
+ *  alternativa con alerta grave no se ofrece. Solo lee. */
+export async function parecidosQueAlcanzan(admin: SupabaseClient, userId: string, avisoId: string, topeUF: number): Promise<(OpcionDepto & { distanciaM: number | null })[]> {
+  if (!esUuid(avisoId) || !(topeUF > 0)) return [];
+  const { data: base } = await admin.from(T_DEPTOS).select("aviso_id").eq("user_id", userId).in("estado", ["elegido", "opcion"]);
+  const excluir = Array.from(new Set([...(base ?? []).map((f) => f.aviso_id as string), avisoId])).filter(esUuid);
+  const pedidas = await pedirAlternativas(admin, { aviso: avisoId, modo: "cerca", tope: topeUF, excluir, cuantas: MAX_RECOMENDADOS * 2 }).catch(() => ({ filas: [] as { avisoId: string; distanciaM: number | null }[], nivel: "solo_elegido" as NivelAlt }));
+  const lecturas = await leerLecturas(admin, pedidas.filas.map((r) => r.avisoId));
+  const filas = pedidas.filas.filter((r) => recomendable(lecturas[r.avisoId])).slice(0, MAX_RECOMENDADOS);
+  const out = await Promise.all(filas.map(async (r) => { const e = await filaEntrada(admin, r.avisoId); return e ? { ...aOpcion(e.fila, topeUF, false, e.veredicto), distanciaM: r.distanciaM } : null; }));
+  return out.filter((o): o is OpcionDepto & { distanciaM: number | null } => !!o && o.alcanza && o.veredicto === "COMPRAR");
+}
+
 /**
  * EL RESULTADO (láminas del 19-nov-2026): el depto con que entró primero y, como mucho, MAX_RECOMENDADOS alternativas de Franco
  * en todo el flujo (alternativas.ts). Las que ya estaban como opción y siguen valiendo se quedan; las que ya eligió cuentan para
@@ -324,7 +339,10 @@ export async function calcularOpciones(admin: SupabaseClient, user: { id: string
   if (nuevos.length) await anotar(admin, { userId: user.id, email: user.email, ordenId: orden.id, actor: "sistema", accion: "depto_presentado", detalle: { avisos: nuevos.map((o) => ({ aviso_id: o.avisoId, etiqueta: etiquetas[o.avisoId] ?? null, precio_uf: o.precioUF, nivel: o.esEntrada ? null : nivel })) }, esPrueba: perfil.esPrueba });
   const elegidos = previos.filter((p) => p.estado === "elegido" && opciones.some((o) => o.avisoId === p.aviso_id)).map((p) => p.aviso_id);
   const lecturas = await leerLecturas(admin, opciones.map((o) => o.avisoId));
-  return { caso, opciones, etiquetas, elegidos, entrada, masBaratoUF, perfil, nivel, distancias, niveles, lecturas };
+  // El cap rate bruto de cada opción (20-nov-2026): el mismo número que la tarjeta del mapa.
+  const m = await mercado(admin);
+  const conCap = opciones.map((o) => ({ ...o, capRatePct: capRatePct(o.arriendoCLP, o.precioUF, m.uf) }));
+  return { caso, opciones: conCap, etiquetas, elegidos, entrada, masBaratoUF, perfil, nivel, distancias, niveles, lecturas };
 }
 
 // ── LA ELECCIÓN ──────────────────────────────────────────────────────────────

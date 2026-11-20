@@ -56,7 +56,13 @@ export default function BaseDemo({ searchParams }: { searchParams: { vista?: str
     orden: { id: "o", nombre: "María José Fernández Valdivieso", firmadoAt: "2026-11-15T15:00:00Z" } as OrdenInv,
     perfil: { topeUF: 3500, comunas: ["Pedro Aguirre Cerda", "Estación Central", "Independencia"] } as PerfilInv,
     elegidos: (seis ? ELEGIDOS : ELEGIDOS.slice(0, 4)).map(conAlMes), otras: OTRAS, whatsapp: "+56912345678",
-    preaprobacion: searchParams.pre === "corregir" ? "por_corregir" : searchParams.pre === "aprobada" ? "aprobada" : "subir",
+    preaprobacion: searchParams.pre === "corregir" ? "por_corregir" : searchParams.pre === "aprobada" || searchParams.pre === "aprobada-revision" ? "aprobada" : searchParams.pre === "revision" ? "en_revision" : "subir",
+    // ?pre=subir|revision|corregir|aprobada|aprobada-revision (20-nov-2026): las formas de «Lo que te toca hoy» y la línea de capacidad.
+    preDetalle: {
+      motivo: searchParams.pre === "corregir" ? "La imagen está cortada y no se ve el monto aprobado. Súbela completa, por favor." : null,
+      banco: searchParams.pre?.startsWith("aprobada") ? "Santander" : null, vigenteHasta: searchParams.pre?.startsWith("aprobada") ? "2027-01-15" : null,
+      mime: "application/pdf", otra: searchParams.pre === "aprobada-revision" ? { estado: "en_revision", mime: "image/jpeg" } : null,
+    },
   };
   return (
     <MarcoInvierte volver={null} pantalla="base" layout="contenido" cabecera={BASE_COPY.hola("María José")} pc={{ sesionEmail: "muestra@ejemplo.cl" }}>
