@@ -1,12 +1,13 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// TIER INVIERTE-V2-E2 · Invierte con Franco, comprador · etapa 2, entrega 1 (18-nov-2026; §11 a §13, láminas del 19-nov-2026): el perfil, hasta cuánto puede comprar,
+// TIER INVIERTE-V2-E2 · Invierte con Franco, comprador · etapa 2, entrega 1 (18-nov-2026; §11 a §14, láminas del 19-nov-2026 y la prueba del 20-nov): el perfil, hasta cuánto puede comprar,
 // el resultado (los tres casos y el porqué), las etiquetas y la lectura por reglas, la elección, /invierte, y los detalles sin
 // gastar créditos (charge_mode 'invierte') con su categoría propia en los paneles. 0 tokens.
 // ─────────────────────────────────────────────────────────────────────────────
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import { hastaCuanto, creditoPorRenta, validarPerfil, comunasPrecargadas, piePrecargado, lineaTope, REGLA_TOPE, PERFIL_COPY, DONDES } from "../../../src/lib/invierte-v2/perfil";
-import { ALTERNATIVAS_COPY as A12, MAX_RECOMENDADOS, cuantasPedir, cupoUsado, indicadorAlternativa, lineaPrecioDistancia, nivelDelBloque } from "../../../src/lib/invierte-v2/alternativas";
+import { hastaCuanto, creditoPorRenta, validarPerfil, comunasPrecargadas, ayudaPie, lineaTope, sinCortar, REGLA_TOPE, PERFIL_COPY, DONDES } from "../../../src/lib/invierte-v2/perfil";
+import { ALTERNATIVAS_COPY as A12, MAX_RECOMENDADOS, cuantasPedir, cupoUsado, indicadorAlternativa, lineaPrecioDistancia, nivelDelBloque, nivelDelTitulo, subtituloAlternativas } from "../../../src/lib/invierte-v2/alternativas";
+import { INTENTOS_LECTURA } from "../../../src/components/invierte-v2/LoQueVeFranco";
 import { MAX_FOTOS, parsearDetalleFicha } from "../../../src/lib/guia/detalle-ficha";
 import { leerFicha } from "../../../src/lib/guia/publicacion";
 import { MAX_FOTOS_VISTA, pedidoFoto, respuestaFotoValida } from "../../../src/lib/invierte-v2/fotos";
@@ -22,8 +23,8 @@ import { falso, USER } from "./invierte-v2-catch-test";
 import { chequearPorCarril, leidaFresca, RELECTURA_MS, TOPE_CARRIL_POR_HORA, type DepsCarril } from "../../../src/lib/invierte-v2/carril";
 import { detectarCambios, lineaCambio, textoVeredicto, asuntoCambios, parrafoDepto, UMBRAL_CORREO_PCT, UMBRAL_LINEA_PCT, type Vigente } from "../../../src/lib/invierte-v2/cambios";
 import { abrirDetalles, cuerpoDetalles, urlDetallesInvierte } from "../../../src/lib/invierte-v2/detalles-cliente";
-import { DETALLES_COPY, abiertoDesdeInvierte, distanciaDelTuyo, indicadorContraElegido, lineaRecomendado, metrosEntre } from "../../../src/lib/invierte-v2/detalles-modo";
-import { CLAVE_MENU_INVIERTE, consultarMenu, guardarMenu, leerMenuGuardado, olvidarMenu } from "../../../src/lib/invierte-v2/menu-cliente";
+import { DETALLES_COPY, abiertoDesdeInvierte, distanciaDelTuyo, indicadorContraElegido, lineaRecomendado, metrosEntre, UMBRAL_MES_CLP, UMBRAL_PRECIO_PCT } from "../../../src/lib/invierte-v2/detalles-modo";
+import { CLAVE_MENU_INVIERTE, consultarMenu, entradaMenu, guardarMenu, leerMenuGuardado, olvidarMenu } from "../../../src/lib/invierte-v2/menu-cliente";
 import { FLUJO_COPY, primerNombre } from "../../../src/lib/invierte-v2/flujo";
 import { etiquetaVeredicto } from "../../../src/lib/veredicto-etiqueta";
 import { ACTUALIZADO_COPY, BASE_COPY, DOCUMENTOS_COPY, MENU_COPY, SUMAR_COPY, fraseCambioPerfil, lineaDepto, numeroWhatsapp, urlWhatsapp, type PerfilComparable } from "../../../src/lib/invierte-v2/base";
@@ -95,7 +96,9 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (/tipo de renta|primera inversi/.test(sinLaPregunta)) F("2 · el perfil todavía pregunta el tipo de renta o si es su primera inversión");
       const c = comunasPrecargadas("Ñuñoa", ["Macul", "ñuñoa", "San Miguel"]);
       if (c.comunas.join("|") !== "Ñuñoa|Macul|San Miguel" || c.deEntrada !== "Ñuñoa" || c.dePerfil.join("|") !== "Macul|San Miguel") F("2 · las comunas no vienen primero la de entrada y después las del perfil, sin repetir");
-      if (piePrecargado("si", 3250) !== 650 || piePrecargado("parte", 3250) !== null) F("2 · el pie sugerido no es el 20 % del depto cuando dijo que tiene el pie");
+      // ⚠ ACTA (20-nov-2026, decisión de Fabrizio): el «Sí» del contacto ya no llena el pie: solo muestra la ayuda «Para el depto que elegiste
+      // necesitas UF X (20 %)». El campo va vacío y lo escribe la persona (§14b fija que el tope no salga del precio del depto).
+      if (ayudaPie("si", 3250) !== 650 || ayudaPie("parte", 3250) !== null || ayudaPie(null, 3250) !== null) F("2 · la ayuda del pie no es el 20 % del depto solo cuando dijo que tiene el pie");
       const srv = codigo("src/lib/invierte-v2/perfil-servidor.ts");
       if (!/const reemplaza = tope\.fuente !== "solo_pie";/.test(srv) || !/if \(reemplaza && tope\.topeUF > 0\) pbFila\.precio_max_uf = /.test(srv)) F("2 · el tope reemplaza el precio máximo también sin renta (o nunca)");
       if (!/precioMaxAnterior: anterior/.test(srv) || !/previo\?\.topeSupuestos\?\.precioMaxAnterior/.test(srv)) F("2 · el precio máximo anterior no se guarda (o se pisa en cada cambio)");
@@ -242,6 +245,13 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
 
     // ── 8 · ENTREGA 2: EL CARRIL, ABRIR DIRECTO, PREPARAR AL ELEGIR, LOS CAMBIOS Y SU CORREO ──
     {
+      // ⚠ ACTA (20-nov-2026, decisión de Fabrizio): el carril lee también al firmar y al mostrarse el resultado, con su mismo tope, memoria y fusible;
+      // la bitácora los anota con su origen («firma», «resultado»; SQL 20261125_lecturas_invierte_origenes para Claude).
+      if (!/await chequearPublicacionInvierte\(admin, \{ avisoId, userId: user\.id, origen: "firma" \}\)/.test(codigo("src/app/api/invierte-v2/firma/route.ts")) || !/chequearPublicacionInvierte\(admin, \{ avisoId, userId: user\.id, origen: "resultado", forzar: true \}\)/.test(codigo("src/app/api/invierte-v2/lectura/route.ts"))) F("8 · el carril no lee al firmar o al mostrarse el resultado (o lo hace con otro origen)");
+      if (!/'firma', 'resultado'/.test(leer("supabase/migrations/20261125_lecturas_invierte_origenes.sql"))) F("8 · el SQL de los orígenes nuevos del carril no está");
+      // Resguardo hasta que se aplique ese SQL: una anotación rechazada por la regla (23514) se reintenta como 'abrir', para que el
+      // tope de 60 por hora cuente la lectura que ya se hizo.
+      if (!/if \(error\?\.code === "23514" && quien\.origen !== "abrir"\) \(\{ error \} = await admin\.from\("lecturas_invierte"\)\.insert\(\{ \.\.\.fila, origen: "abrir" \}\)\);/.test(codigo("src/lib/invierte-v2/carril-servidor.ts"))) F("8 · sin el SQL de los orígenes, las lecturas al firmar y del resultado no cuentan para el tope de 60 por hora");
       // El carril: 60 pedidos por hora, memoria de 24 horas, fusible; lee también lo que la memoria da por despublicado.
       if (TOPE_CARRIL_POR_HORA !== 60 || RELECTURA_MS !== 24 * 3600 * 1000) F("8 · el carril no es de 60 pedidos por hora con relectura cada 24 horas");
       const ahora = new Date("2026-11-20T12:00:00Z");
@@ -280,7 +290,8 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (!/const modoInvierte = gratisInvierte && b\.invierte === true;/.test(ruta) || iYa < 0 || iYa > iMeta || iYa > iChq || !/if \(ya\) return salir\(NextResponse\.json\(\{ id: ya, estado: "ya-creado"/.test(ruta)) F("8 · abrir lo ya preparado no es directo (lee o prepara antes)");
       if (!/async chequear\(\) \{\s*if \(modoInvierte\) \{\s*const c = await chequearPublicacionInvierte\(admin, \{ avisoId: b\.avisoId!, userId: user\.id, origen: b\.origenInvierte === "elegir" \? "elegir" : "abrir" \}\);/.test(ruta)) F("8 · el modo Invierte lee la ficha por el tope de las personas");
       // Preparar al elegir, y al entrar a la base lo que falte.
-      if (!/if \(res\.ok\) \{ prepararEnSegundoPlano\(Array\.from\(marcados\)\); router\.push\(URL_BASE\); return; \}/.test(codigo("src/components/invierte-v2/ResultadoOpciones.tsx"))) F("8 · los detalles no se preparan al elegir");
+      // ⚠ ACTA (20-nov-2026, decisión de Fabrizio): al elegir, además, se olvida el menú y se refresca el caché de navegación (§11d).
+      if (!/if \(res\.ok\) \{ prepararEnSegundoPlano\(Array\.from\(marcados\)\); olvidarMenu\(\); router\.push\(URL_BASE\); router\.refresh\(\); return; \}/.test(codigo("src/components/invierte-v2/ResultadoOpciones.tsx"))) F("8 · los detalles no se preparan al elegir");
       if (!/keepalive: true/.test(codigo("src/lib/invierte-v2/detalles-cliente.ts")) || !/cuerpoDetalles\(id, "elegir"\)/.test(codigo("src/lib/invierte-v2/detalles-cliente.ts"))) F("8 · la preparación no sigue si cambia la pantalla o no lee como «elegir»");
       const base = codigo("src/components/invierte-v2/VistaBase.tsx"); // ⚠ ACTA (19-nov-2026): lo que dibuja la base vive en VistaBase (la usan la página y /dev/invierte-v2/base)
       // ⚠ ACTA (19-nov-2026, base completa): qué está preparado lo lee base-servidor › leerBase (guia_analisis con informe) y la
@@ -386,7 +397,8 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       const vs = vigenteSobre({ precioUF: 3000, veredicto: "AJUSTA SUPUESTOS", flujoCLP: -20000, score: 70, comuna: "Macul" }, { precioUF: 2850, veredicto: "COMPRAR", flujoCLP: 52000 });
       if (vs.precioUF !== 2850 || vs.veredicto !== "COMPRAR" || vs.flujoCLP !== 52000 || vs.score !== 70) F("9 · la tarjeta de la base no muestra el precio, el veredicto o el al mes vigentes");
       if (!/datos: vigenteSobre\(\(f\.datos \?\? \{\}\) as DatosDepto, f\.vigente/.test(codigo("src/lib/invierte-v2/base-servidor.ts"))) F("9 · la base no pone lo vigente sobre la foto del depto");
-      if (!/\{d\.datos\.flujoCLP != null && !d\.alMesEnCambio && <p/.test(codigo("src/components/invierte-v2/VistaBase.tsx"))) F("9 · la base repite «Al mes» cuando lo que cambió ya lo dice");
+      // ⚠ ACTA (20-nov-2026, decisión de Fabrizio): la tarjeta entera es un botón (§14f): sus filas van en span.
+      if (!/\{d\.datos\.flujoCLP != null && !d\.alMesEnCambio && <span/.test(codigo("src/components/invierte-v2/VistaBase.tsx"))) F("9 · la base repite «Al mes» cuando lo que cambió ya lo dice");
       if (!lineaDepto({ comuna: "X", m2: 58 }).includes("58 m²")) F("9 · «58 m²» puede quedar partido en dos renglones");
       const vb = codigo("src/components/invierte-v2/VistaBase.tsx");
       if (!/<ConMontoNegativo texto=\{l\} \/>/.test(vb) || !vb.includes("texto.split(/(pones \\$[\\d.]+)/)") || !vb.includes('<span key={i} className="iv2-pones iv2-nowrap">')) F("9 · «pones $X» de la línea de lo que cambió no va en rojo");
@@ -648,9 +660,20 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (primerNombre("María José Pérez", "María José") !== "María" || primerNombre("Camila Rojas", null) !== "Camila") F("11c · el saludo no sale de los nombres (o de `nombre` en las órdenes de antes)");
       for (const f of ["src/app/invierte/base/page.tsx", "src/app/invierte/partimos/page.tsx"]) if (!/primerNombre\([a-z.]*orden\.nombre, [a-z.]*orden\.nombres\)/.test(codigo(f))) F(`11c · ${f} no saluda con los nombres`);
 
-      // 11d · «Mi inversión» en el menú: solo con firma y acceso; la consulta liviana se guarda por correo en la sesión del navegador.
+      // 11d · La entrada de Invierte en el menú: solo con firma y acceso; el texto, según el estado; la consulta se guarda por correo.
+      // ⚠ ACTA (20-nov-2026, decisión de Fabrizio): antes de elegir deptos dice «Seguir con Franco» y va a /invierte (que la lleva
+      // adonde quedó: el perfil o el resultado); desde que elige al menos uno, «Mi inversión», a la base. Lo guardado en la sesión
+      // del navegador es el estado, no un sí/no. Y elegir, sumar, firmar o guardar el perfil limpian el caché de navegación: sin eso,
+      // «Volver» y «Mi inversión» reusaban el desvío guardado de /invierte al resultado (Mis documentos llevaba a /invierte/opciones
+      // aunque la persona ya había elegido).
       const ms = codigo("src/lib/invierte-v2/menu-servidor.ts");
-      if (!/if \(!\(await accesoInvierteV2\(user\)\.catch\(\(\) => false\)\)\) return false;/.test(ms) || !/return \(await ultimaOrdenDe\(createServiceClient\(\), user\.id\)[^;]*\) != null;/.test(ms)) F("11d · «Mi inversión» no exige firma y acceso");
+      if (!/if \(!\(await accesoInvierteV2\(user\)\.catch\(\(\) => false\)\)\) return false;/.test(ms) || !/return \(await ultimaOrdenDe\(createServiceClient\(\), user\.id\)[^;]*\) != null;/.test(ms)) F("11d · la entrada del menú no exige firma y acceso");
+      if (!/if \(!user \|\| !\(await muestraMiInversion\(user\)\)\) return "ninguno";/.test(ms) || !/\.eq\("user_id", user\.id\)\.eq\("estado", "elegido"\);\s*return \(count \?\? 0\) > 0 \? "inversion" : "seguir";/.test(ms)) F("11d · el estado del menú no sale de la firma y de los deptos elegidos");
+      if (!/const estado = await estadoMenuInvierte\(user \?\? null\);\s*return NextResponse\.json\(\{ estado,/.test(codigo("src/app/api/invierte-v2/menu/route.ts"))) F("11d · la consulta del menú no responde el estado");
+      {
+        const se = entradaMenu("seguir"), inv = entradaMenu("inversion");
+        if (se?.texto !== "Seguir con Franco" || se.href !== "/invierte" || inv?.texto !== "Mi inversión" || inv.href !== URL_BASE || entradaMenu("ninguno") !== null || entradaMenu(null) !== null) F("11d · el menú no dice «Seguir con Franco» (a /invierte) antes de elegir y «Mi inversión» (a la base) después");
+      }
       {
         const caja = new Map<string, string>();
         const g = globalThis as unknown as { window?: unknown };
@@ -658,20 +681,30 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
         g.window = { sessionStorage: { getItem: (k: string) => caja.get(k) ?? null, setItem: (k: string, v: string) => void caja.set(k, v), removeItem: (k: string) => void caja.delete(k) } };
         try {
           if (leerMenuGuardado("a@x.cl") !== null) F("11d · sin consulta, el menú inventa una respuesta");
-          guardarMenu("a@x.cl", true);
-          if (leerMenuGuardado("a@x.cl") !== true || leerMenuGuardado("b@x.cl") !== null) F("11d · la respuesta guardada no es por correo");
+          guardarMenu("a@x.cl", "seguir");
+          if (leerMenuGuardado("a@x.cl") !== "seguir" || leerMenuGuardado("b@x.cl") !== null) F("11d · la respuesta guardada no es por correo");
+          caja.set(CLAVE_MENU_INVIERTE, JSON.stringify({ email: "a@x.cl", firmo: true }));
+          if (leerMenuGuardado("a@x.cl") !== null) F("11d · lo guardado antes del 20-nov (solo «firmó») elige el texto sin volver a preguntar");
+          guardarMenu("a@x.cl", "inversion");
           olvidarMenu();
-          if (leerMenuGuardado("a@x.cl") !== null) F("11d · al firmar o salir no se olvida la respuesta");
+          if (leerMenuGuardado("a@x.cl") !== null) F("11d · al firmar, elegir o salir no se olvida la respuesta");
         } finally { g.window = antes; }
-        const ok = await consultarMenu((async () => ({ ok: true, json: async () => ({ firmo: true }) })) as unknown as typeof fetch);
-        const no = await consultarMenu((async () => ({ ok: false, json: async () => ({}) })) as unknown as typeof fetch);
-        if (ok !== true || no !== null || CLAVE_MENU_INVIERTE !== "franco_inv2_menu") F("11d · la consulta del menú no lee su respuesta (o inventa una ante un error)");
+        const resp = (cuerpo: unknown, ok = true) => (async () => ({ ok, json: async () => cuerpo })) as unknown as typeof fetch;
+        const inv = await consultarMenu(resp({ estado: "inversion", firmo: true }));
+        const viejo = await consultarMenu(resp({ firmo: true }));
+        const no = await consultarMenu(resp({}, false));
+        if (inv !== "inversion" || viejo !== null || no !== null || CLAVE_MENU_INVIERTE !== "franco_inv2_menu") F("11d · la consulta del menú no lee su respuesta (o inventa una ante un error)");
       }
       const header = codigo("src/components/chrome/HeaderFranco.tsx");
       const conSesion = header.slice(header.indexOf("  } else {\n    derecha = ("));
-      if (!/\{miInversion && <EnlaceCarga href="\/invierte" className="hf-lnk hf-solo-ancho" data-hf="mi-inversion">\{MI_INVERSION\}<\/EnlaceCarga>\}\s*<EnlaceCarga href="\/dashboard"/.test(conSesion)) F("11d · «Mi inversión» no es la primera entrada del menú del PC, o no va a /invierte");
-      if (!/<div className="hf-menu-mail">\{email\}<\/div>\s*(?:\{\}\s*)?\{miInversion && <EnlaceCarga href="\/invierte" role="menuitem"/.test(header)) F("11d · «Mi inversión» no va primera en el menú del celular");
-      if (!/const MI_INVERSION = "Mi inversión";/.test(header) || !/if \(!email\) \{ setFirmo\(false\); return; \}/.test(header) || !/return !!email && firmo;/.test(header)) F("11d · el menú muestra «Mi inversión» sin sesión o sin saber si firmó");
+      if (!/\{entradaInvierte && <EnlaceCarga href=\{entradaInvierte\.href\} className="hf-lnk hf-solo-ancho" data-hf="mi-inversion">\{entradaInvierte\.texto\}<\/EnlaceCarga>\}\s*<EnlaceCarga href="\/dashboard"/.test(conSesion)) F("11d · la entrada de Invierte no es la primera del menú del PC, o no sale del estado");
+      if (!/<div className="hf-menu-mail">\{email\}<\/div>\s*(?:\{\}\s*)?\{entrada && <EnlaceCarga href=\{entrada\.href\} role="menuitem" onClick=\{\(\) => setAbierto\(false\)\} data-hf="mi-inversion-menu">\{entrada\.texto\}<\/EnlaceCarga>\}/.test(header)) F("11d · la entrada de Invierte no va primera en el menú del celular");
+      if (!/if \(!email\) \{ setEstado\(null\); return; \}/.test(header) || !/return email \? entradaMenu\(estado\) : null;/.test(header) || !/if \(dePagina === false\) \{ setEstado\("ninguno"\);/.test(header) || !/if \(esEstadoMenu\(dePagina\)\) \{ setEstado\(dePagina\); guardarMenu\(email, dePagina\); return; \}/.test(header)) F("11d · el menú muestra la entrada sin sesión, sin saber si firmó o sin respetar lo que dice la página");
+      if (!/pc=\{\{ sesionEmail: user\.email \?\? null, invierte: "inversion" \}\}/.test(codigo("src/app/invierte/base/page.tsx"))) F("11d · la base no le dice al menú que ya eligió");
+      if (!/olvidarMenu\(\); router\.push\(URL_BASE\); router\.refresh\(\);/.test(codigo("src/components/invierte-v2/ResultadoOpciones.tsx"))
+        || !/olvidarMenu\(\); router\.push\(URL_BASE\); router\.refresh\(\);/.test(codigo("src/components/invierte-v2/SumarDepto.tsx"))
+        || !/router\.push\(URL_PERFIL\);\s*router\.refresh\(\);/.test(codigo("src/components/invierte-v2/FirmaForm.tsx"))
+        || !/router\.push\(d\?\.editado \? URL_PERFIL_ACTUALIZADO : URL_OPCIONES\);\s*router\.refresh\(\);/.test(codigo("src/components/invierte-v2/PerfilForm.tsx"))) F("11d · elegir, sumar, firmar o guardar el perfil no limpian el caché de navegación (Volver y «Mi inversión» reusan el desvío viejo)");
       if (!/purgarBorradoresYPestana\(\);\s*olvidarMenu\(\);/.test(header)) F("11d · al cerrar sesión no se olvida «Mi inversión»");
 
       // 11e · «← Mi inversión» arriba de las páginas de Invierte que no son la base (ni adonde /invierte lleva solo).
@@ -704,7 +737,8 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (Math.abs(metrosEntre({ lat: -33.45, lng: -70.6 }, { lat: -33.46, lng: -70.6 }) - 1112) > 5) F("11f · la distancia entre dos puntos está mal medida");
       const P0 = { objetivo: "arriendo" as const, preocupaciones: [] };
       if (indicadorContraElegido({ precioUF: 3180, flujoCLP: -45000 }, { precioUF: 3250, flujoCLP: -85000 }, P0)?.frase !== "te pide $40.000 menos al mes") F("11f · el indicador no dice lo que pide menos al mes");
-      if (indicadorContraElegido({ precioUF: 3090, flujoCLP: -45000 }, { precioUF: 3250, flujoCLP: -85000 }, { objetivo: "plusvalia", preocupaciones: [] })?.frase !== "cuesta UF 160 menos") F("11f · buscando plusvalía, el indicador no prefiere el precio");
+      // ⚠ ACTA (20-nov-2026, decisión de Fabrizio): una ventaja cuenta solo si es relevante (5 % o más en precio): 160 de 3.250 (4,9 %) ya no; 170 sí.
+      if (indicadorContraElegido({ precioUF: 3080, flujoCLP: -45000 }, { precioUF: 3250, flujoCLP: -85000 }, { objetivo: "plusvalia", preocupaciones: [] })?.frase !== "cuesta UF 170 menos" || indicadorContraElegido({ precioUF: 3090, flujoCLP: -90000 }, { precioUF: 3250, flujoCLP: -85000 }, { objetivo: "plusvalia", preocupaciones: [] }) !== null) F("11f · buscando plusvalía, el indicador no prefiere el precio (o cuenta una diferencia bajo el 5 %)");
       if (indicadorContraElegido({ precioUF: 3090, flujoCLP: -45000 }, { precioUF: 3250, flujoCLP: -85000 }, { objetivo: "plusvalia", preocupaciones: ["poner_plata"] })?.tipo !== "mes") F("11f · si le preocupa poner plata cada mes, el indicador no prefiere el mes");
       if (indicadorContraElegido({ precioUF: 3300, flujoCLP: -90000 }, { precioUF: 3250, flujoCLP: -85000 }, P0) !== null) F("11f · el indicador dice algo que no favorece a la alternativa");
       if (indicadorContraElegido({ precioUF: 3250, flujoCLP: 20000 }, { precioUF: 3250, flujoCLP: -30000 }, P0)?.frase !== "te deja $20.000 al mes" || indicadorContraElegido({ precioUF: 3250, flujoCLP: 60000 }, { precioUF: 3250, flujoCLP: 20000 }, P0)?.frase !== "te deja $40.000 más al mes") F("11f · el indicador no dice lo que deja al mes");
@@ -750,7 +784,9 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       const ps = codigo("src/lib/invierte-v2/perfil-servidor.ts");
       const calc = ps.slice(ps.indexOf("export async function calcularOpciones"), ps.indexOf("// ── LA ELECCIÓN"));
       if (!/admin\.rpc\("invierte_alternativas", \{ p_aviso: p\.aviso, p_modo: p\.modo, p_tope: p\.tope, p_comunas: null, p_excluir: p\.excluir, p_max: p\.cuantas \}\)/.test(ps)) F("12a · las alternativas no salen de la función con «¿Dónde buscamos?», el tope, la exclusión y el cupo");
-      if (!/const cuantas = cuantasPedir\(elegidasFranco\.length \+ opcionesValidas\.length\);/.test(calc) || !/modo: perfil\.donde, tope, excluir, cuantas/.test(calc)) F("12a · se piden alternativas sin descontar las que ya cuentan (las elegidas y las opciones vigentes)");
+      // ⚠ ACTA (20-nov-2026, decisión de Fabrizio): las alternativas quedan fijas; se piden todas solo en la primera búsqueda tras guardar el perfil, y
+      // después solo para reemplazar las que dejaron de valer (§14c).
+      if (!/const cuantas = Math\.min\(cuantasPedir\(elegidasFranco\.length \+ opcionesValidas\.length\), buscarTodas \? MAX_RECOMENDADOS : descartar\.length\);/.test(calc) || !/modo: perfil\.donde, tope, excluir, cuantas/.test(calc)) F("12a · se piden alternativas sin descontar las que ya cuentan (las elegidas y las opciones vigentes)");
       if (!/if \(vale && elegidasFranco\.length \+ opcionesValidas\.length < MAX_RECOMENDADOS\) opcionesValidas\.push\(x\);\s*else descartar\.push\(x\.f\.aviso_id\);/.test(calc)) F("12a · una opción de más (o que dejó de valer) no se descarta");
       if (!/x\.e\.veredicto === "COMPRAR" && Number\(x\.e\.fila\.precio_uf\) <= tope \+ 0\.5 && esNivel\(x\.f\.datos\?\.nivel\)/.test(calc)) F("12a · se queda una opción que ya no conviene, no le alcanza o no salió de la función");
       if (!/\]\.filter\(\(x\): x is \{ o: OpcionDepto; nivel: NivelAlt \| null; dist: number \| null \} => !!x\.o\)\.slice\(0, MAX_RECOMENDADOS\);/.test(calc)) F("12a · el resultado puede mostrar más de tres de Franco");
@@ -779,8 +815,10 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       // ⚠ ACTA (19-nov-2026): el indicador dice además si supera al suyo (para el subtítulo «El tuyo es el mejor…»); se compara su texto.
       if (indicadorAlternativa({ avisoId: "a", precioUF: 3180, flujoCLP: -45000, score: 77 }, ele12, grupo12, per({}))?.texto !== "Te pide $40.000 menos al mes que el tuyo") F("12d · el indicador no dice lo que pide menos al mes, como la lámina");
       if (indicadorAlternativa({ avisoId: "b", precioUF: 2940, flujoCLP: -90000, score: 76 }, ele12, grupo12, per({ limitaPie: true }))?.texto !== "El pie más bajo: UF 588") F("12d · si el pie es lo que lo limita, el indicador no dice el pie más bajo, como la lámina");
-      if (indicadorAlternativa({ avisoId: "b", precioUF: 3090, flujoCLP: -45000, score: 81 }, ele12, [{ avisoId: "b", precioUF: 3090 }, { avisoId: "c", precioUF: 3000 }], per({ objetivo: "plusvalia" }))?.texto !== "Cuesta UF 160 menos que el tuyo") F("12d · buscando plusvalía, el indicador no dice el precio, como la lámina");
-      if (indicadorAlternativa({ avisoId: "x", precioUF: 3300, flujoCLP: 20000, score: 70 }, { precioUF: 3250, flujoCLP: 90000, score: 80 }, [], per({}))?.texto !== "Te deja $20.000 al mes") F("12d · sin nada a favor, no dice lo que deja al mes sin compararlo (o inventa una ventaja)");
+      if (indicadorAlternativa({ avisoId: "b", precioUF: 3080, flujoCLP: -45000, score: 81 }, ele12, [{ avisoId: "b", precioUF: 3080 }, { avisoId: "c", precioUF: 3000 }], per({ objetivo: "plusvalia" })).texto !== "Cuesta UF 170 menos que el tuyo") F("12d · buscando plusvalía, el indicador no dice el precio, como la lámina");
+      // ⚠ ACTA (20-nov-2026, decisión de Fabrizio): sin ventaja relevante, «Parecido al tuyo», sin una cifra que se lea como ventaja (antes, lo que dejaba al mes).
+      { const n12 = indicadorAlternativa({ avisoId: "x", precioUF: 3300, flujoCLP: 20000, score: 70 }, { precioUF: 3250, flujoCLP: 90000, score: 80 }, [], per({}));
+        if (n12.texto !== "Parecido al tuyo" || n12.supera !== false) F("12d · sin nada a favor, no dice algo neutro (o inventa una ventaja)"); }
 
       // 12e · La pantalla: un solo botón rojo, sin pestañas Lista/Comparar, la tabla en ventana, sin alternativas la línea.
       const res12 = codigo("src/components/invierte-v2/ResultadoOpciones.tsx");
@@ -790,12 +828,13 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (!/\{comparando && \(\s*<VentanaDocumento nombre="comparar" titulo=\{A\.compararTitulo\(listaOpciones\.length\)\}/.test(ele) || !/onClick=\{\(\) => setComparando\(true\)\} aria-haspopup="dialog" data-inv2="comparar">\{A\.comparar\(listaOpciones\.length\)\}/.test(ele)) F("12e · la tabla no se abre a pedido, en ventana, desde «Comparar los N lado a lado»");
       if (!/\) : entrada \? \(\s*<p className="iv2-linea-chica iv2-res-solo" data-inv2="solo-elegido">\{A\.soloElegido\}<\/p>/.test(ele)) F("12e · sin alternativas no va solo el elegido con su línea");
       // ⚠ ACTA (19-nov-2026, Fabrizio): cuando ninguna alternativa supera al suyo, el subtítulo es «El tuyo es el mejor…» (§13e).
-      if (!/data-inv2="subtitulo">\{ningunaSupera \? A\.tuyoMejor\(p\.nivel, entrada\?\.comuna \?\? null\) : A\.subtitulo\(alternativas\.length, p\.nivel, p\.donde, entrada\?\.comuna \?\? null\)\}/.test(ele)) F("12e · el subtítulo no sale del nivel usado");
+      // ⚠ ACTA (20-nov-2026, decisión de Fabrizio): con niveles mezclados, el subtítulo dice cuántas hay de cada uno (subtituloAlternativas, §14d).
+      if (!/data-inv2="subtitulo">\{ningunaSupera \? A\.tuyoMejor\(nivelDelBloque\(itemsNivel\.map\(\(x\) => x\.nivel\)\), entrada\?\.comuna \?\? null\) : subtituloAlternativas\(itemsNivel, p\.donde, entrada\?\.comuna \?\? null\)\}/.test(ele)) F("12e · el subtítulo no sale del nivel usado");
       // ⚠ ACTA (19-nov-2026): Fabrizio aprobó los textos de «Lo que ve Franco»; esta regla pasa a la §13 (que exige que esté y
       // cómo). Lo que queda acá: el resultado no escribe la lectura a mano, la toma de LoQueVeFranco.
       if (/Lo que ve Franco|LO QUE VE FRANCO/.test(res12)) F("12e · el resultado escribe «Lo que ve Franco» a mano en vez de usar LoQueVeFranco");
       const opPag = codigo("src/app/invierte/opciones/page.tsx");
-      if (!/const fotos = await fotosDe\(createServiceClient\(\), r\.opciones\.map\(\(o\) => o\.avisoId\)\);/.test(opPag) || !/nivel=\{r\.nivel\} donde=\{r\.perfil\.donde\} distancias=\{r\.distancias\} fotos=\{fotos\}/.test(opPag)) F("12e · el resultado no recibe el nivel, la distancia y las fotos");
+      if (!/const fotos = await fotosDe\(createServiceClient\(\), r\.opciones\.map\(\(o\) => o\.avisoId\)\);/.test(opPag) || !/nivel=\{r\.nivel\} donde=\{r\.perfil\.donde\} distancias=\{r\.distancias\} niveles=\{r\.niveles\} fotos=\{fotos\}/.test(opPag)) F("12e · el resultado no recibe el nivel, la distancia y las fotos");
 
       // 12f · Las fotos, el texto y la dirección: del mismo 200 de la ficha, sin un GET extra; nunca con la dirección de la fuente.
       const img = (n: string) => `https://cdn.ejemplo.cl/fotos/${n}.jpg`;
@@ -833,7 +872,92 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       const fd = codigo("src/components/invierte-v2/FotosDepto.tsx");
       if (!/src=\{urlFoto\(avisoId,/.test(fd) || !/if \(!n \|\| rota\) return null;/.test(fd) || !/onError=\{\(\) => setRota\(true\)\}/.test(fd)) F("12g · las fotos no van por la ruta propia, o una tarjeta sin fotos deja un hueco");
       if (!/select\("aviso_id, fotos"\)/.test(codigo("src/lib/invierte-v2/fotos-servidor.ts")) || !/Math\.min\(\(f\.fotos \?\? \[\]\)\.length, MAX_FOTOS_VISTA\)/.test(codigo("src/lib/invierte-v2/fotos-servidor.ts"))) F("12g · a la pantalla llega algo más que cuántas fotos hay");
-      if (!/<FotosDepto avisoId=\{c\.avisoId\} n=\{c\.fotos\}/.test(codigo("src/components/invierte-v2/DetallesInvierte.tsx")) || !/\{modoInvierte && <CabezaDeDetalles modo=\{modoInvierte\} \/>\}/.test(codigo("src/app/analisis/[id]/informe-ltr.tsx"))) F("12g · los detalles desde Invierte no llevan las fotos arriba del informe");
+      // ⚠ ACTA (20-nov-2026, decisión de Fabrizio): las fotos de los detalles viven en DetallesCabezaCliente: llegan solas si la publicación se lee en segundo plano.
+      if (!/<FotosDepto avisoId=\{avisoId\} n=\{fotos\} clase="iv2-det-fotos" \/>/.test(codigo("src/components/invierte-v2/DetallesCabezaCliente.tsx")) || !/<DetallesCabezaCliente avisoId=\{c\.avisoId\} fotos=\{c\.fotos\} lectura=\{c\.lectura\}>/.test(codigo("src/components/invierte-v2/DetallesInvierte.tsx")) || !/\{modoInvierte && <CabezaDeDetalles modo=\{modoInvierte\} \/>\}/.test(codigo("src/app/analisis/[id]/informe-ltr.tsx"))) F("12g · los detalles desde Invierte no llevan las fotos arriba del informe");
+    // ── 14 · PRUEBA DE FABRIZIO EN EL PREVIEW (20-nov-2026): las fotos y la lectura llegan al resultado; el pie lo escribe la
+    //        persona; ventajas solo relevantes; «Sumar»; alternativas fijas; el subtítulo con niveles mezclados; la comuna solo
+    //        si es otra ──
+    {
+      // 14a · La publicación se lee al firmar (el elegido) y al mostrarse el resultado (los que no la tienen), y la tarjeta se completa sola.
+      const fir14 = codigo("src/app/api/invierte-v2/firma/route.ts");
+      if (!/if \(!r\.yaFirmada\) \{[\s\S]*?waitUntil\(\(async \(\) => \{\s*await chequearPublicacionInvierte\(admin, \{ avisoId, userId: user\.id, origen: "firma" \}\)[^;]*;\s*if \(process\.env\.ANTHROPIC_API_KEY\) await lecturaDe\(admin, new Anthropic\(\), avisoId\)/.test(fir14)) F("14a · al firmar no se lee la publicación del elegido ni se escribe su lectura en segundo plano");
+      const srv14 = codigo("src/lib/invierte-v2/lectura-franco-servidor.ts");
+      const iMarca = srv14.indexOf('estado: "generando", version: VERSION_LECTURA'), iLeer = srv14.indexOf("if (!det && leerSiFalta) await leerSiFalta()"), iEntrada = srv14.indexOf("const e = await entradaDe(admin, avisoId);");
+      if (iMarca < 0 || iLeer < 0 || iEntrada < 0 || !(iMarca < iLeer && iLeer < iEntrada)) F("14a · la lectura no lee la publicación que falta (o la lee antes de marcar «generando» y dos pantallas la leerían dos veces)");
+      const lq14 = codigo("src/components/invierte-v2/LoQueVeFranco.tsx");
+      if (INTENTOS_LECTURA < 15 || !/if \(r\.status !== 202\) return \{ lectura: null, fotos \};/.test(lq14) || !/if \(x\.fotos != null\) alFotos\?\.\(x\.fotos\);/.test(lq14)) F("14a · la tarjeta no sigue preguntando hasta que llega la lectura, o no avisa las fotos");
+      const res14 = codigo("src/components/invierte-v2/ResultadoOpciones.tsx");
+      if (!/const \[fotos, setFotos\] = useState<Record<string, number>>\(p\.fotos\);/.test(res14) || !/n=\{fotos\[entrada\.avisoId\] \?\? 0\}/.test(res14) || !/alFotos=\{conFotos\(entrada\.avisoId\)\}/.test(res14)) F("14a · las fotos del resultado no aparecen solas cuando llegan");
+
+      // 14b · El pie lo escribe la persona: el tope nunca sale del precio del depto elegido (decisión de Fabrizio, 20-nov-2026).
+      const ps14 = codigo("src/lib/invierte-v2/perfil-servidor.ts");
+      if (!/pieSugeridoUF: guardado\?\.pieUF \?\? null, pieAyudaUF: ayudaPie\(persona\?\.pie \?\? null, entrada\?\.precioUF \?\? null\)/.test(ps14) || (ps14.match(/ayudaPie\(/g) ?? []).length !== 1) F("14b · el pie se llena con el precio del depto elegido (el tope saldría de su precio)");
+      const pf14 = codigo("src/components/invierte-v2/PerfilForm.tsx");
+      if (!/const \[pie, setPie\] = useState\(inicial\.pieSugeridoUF != null \? conPuntos\(String\(Math\.round\(inicial\.pieSugeridoUF\)\)\) : ""\);/.test(pf14) || /pieAyudaUF[^\n]*setPie|setPie\([^)]*pieAyudaUF/.test(pf14)) F("14b · el formulario llena el pie con la ayuda");
+      // ⚠ ACTA (20-nov-2026): la ayuda se dibuja con sinCortar, para que «(20 %)» no se corte (§14g).
+      if (!/\{inicial\.pieAyudaUF != null && <p className="iv2-linea-chica" data-inv2="pie-ayuda">\{sinCortar\(P2\.pieAyuda\(fmtUF\(inicial\.pieAyudaUF\)\)\)\}<\/p>\}/.test(pf14) || !/data-inv2="pie-no-se"/.test(pf14)) F("14b · bajo el pie no va la ayuda o falta «Todavía no sé»");
+      if (PERFIL_COPY.p2.pieAyuda("220") !== "Para el depto que elegiste necesitas UF 220 (20 %)." || PERFIL_COPY.p2.pieNoSe !== "Todavía no sé") F("14b · los textos del pie no son los de Fabrizio");
+      // Con un depto de UF 1.100, renta de $3.000.000 y el pie escrito (o «Todavía no sé»), el tope no puede ser el precio del depto.
+      const m14 = { tasaPct: 4.1, uf: 39000 };
+      const credito14 = creditoPorRenta(3000000, 0, 4.1, 39000);
+      const noSe = hastaCuanto({ preaprobado: "no", pieNoSabe: true, rentaCLP: 3000000, otrasCuotasCLP: 0, ...m14 });
+      if (!cerca(noSe.topeUF, credito14 / 0.8, 0.02) || noSe.limita !== "credito" || noSe.supuestos.pieNoSabe !== true || cerca(noSe.topeUF, 1100, 1)) F("14b · «Todavía no sé» no calcula por la renta con un pie de 20 %");
+      if (validarPerfil({ comunas: ["Ñuñoa"], donde: "cerca", objetivo: "arriendo", preocupaciones: [], preaprobado: "no", rentaCLP: 3000000 }).ok) F("14b · se acepta un perfil sin pie y sin «Todavía no sé» (el pie es obligatorio)");
+      if (validarPerfil({ comunas: ["Ñuñoa"], donde: "cerca", objetivo: "arriendo", preocupaciones: [], preaprobado: "no", pieNoSabe: true, noDiceRenta: true }).ok) F("14b · «Todavía no sé» sin renta se acepta (no hay con qué estimar)");
+      { const v14 = validarPerfil({ comunas: ["Ñuñoa"], donde: "cerca", objetivo: "arriendo", preocupaciones: [], preaprobado: "no", pieNoSabe: true, pieUF: 220, rentaCLP: 3000000 });
+        if (!v14.ok || v14.pedido.pieUF !== null || v14.pedido.pieNoSabe !== true) F("14b · con «Todavía no sé» se guarda igual un pie"); }
+      // La línea de hasta cuánto, según qué limita.
+      if (lineaTope({ topeUF: 1100, fuente: "renta", limita: "pie", pieUF: 220, creditoUF: 3752 }, fmtUF) !== "Con tu pie de UF 220 puedes comprar hasta UF 1.100. Por tu renta, el banco podría prestarte hasta UF 3.752: con más pie te alcanzan deptos más grandes.") F("14b · cuando limita el pie, la línea no lo dice como Fabrizio");
+      if (lineaTope({ topeUF: 4690, fuente: "renta", limita: "credito", pieNoSabe: true, creditoUF: 3752 }, fmtUF) !== "Por tu renta, el banco podría prestarte hasta UF 3.752. Con un pie de 20 % podrías comprar hasta UF 4.690. Dinos tu pie para afinarlo.") F("14b · con «Todavía no sé», la línea no es la de Fabrizio");
+      if (!/^Con tu pie y tu renta, estimamos/.test(lineaTope({ topeUF: 3000, fuente: "renta", limita: "credito", pieUF: 900, creditoUF: 2100 }, fmtUF))) F("14b · cuando limita la renta, la línea cambió");
+
+      // 14c · Las alternativas quedan fijas desde que se muestran: solo se piden todas tras guardar el perfil.
+      if (!/const buscarTodas = perfil\.topeSupuestos\?\.buscarAlternativas === true \|\| !previos\.some\(\(f\) => f\.origen === "franco"\);/.test(ps14)) F("14c · el resultado vuelve a buscar alternativas en cada visita");
+      if (!/buscarAlternativas: true \};/.test(ps14) || !/tope_supuestos: \{ \.\.\.perfil\.topeSupuestos, buscarAlternativas: false \}/.test(ps14)) F("14c · guardar el perfil no pide una búsqueda nueva, o la lista no queda fija después de la primera");
+
+      // 14d · El subtítulo con niveles mezclados y la comuna solo si es otra.
+      if (subtituloAlternativas([{ nivel: "cerca", distanciaM: 420 }, { nivel: "cerca", distanciaM: 690 }, { nivel: "tres_km", distanciaM: 1800 }], "cerca", "Ñuñoa") !== "Otros 3 parecidos: 2 cerca del tuyo y 1 a 1,8 km.") F("14d · con niveles mezclados el subtítulo no dice cuántos de cada uno");
+      if (subtituloAlternativas([{ nivel: "cerca", distanciaM: 420 }, { nivel: "cerca", distanciaM: 690 }], "cerca", "Ñuñoa") !== "Otros 2 parecidos, cerca del tuyo") F("14d · con un solo nivel el subtítulo cambió");
+      if (nivelDelTitulo([{ nivel: "cerca" }, { nivel: "tres_km" }]) !== "perfil" || A12.titulo(3, nivelDelTitulo([{ nivel: "cerca" }, { nivel: "tres_km" }, { nivel: "cerca" }]), "Ñuñoa") !== "Tu depto te alcanza. Y hay 3 parecidos que también convienen.") F("14d · con niveles mezclados el título nombra un lugar que no es de todas");
+      if (lineaPrecioDistancia(3180, 1800, "Ñuñoa", "cerca", "Ñuñoa") !== "UF 3.180 · a 1,8 km del tuyo" || lineaPrecioDistancia(3180, 1800, "Macul", "cerca", "Ñuñoa") !== "UF 3.180 · en Macul, a 1,8 km del tuyo") F("14d · la línea nombra la comuna cuando es la misma (o no la nombra cuando es otra)");
+      if (!/alt\.comuna && alt\.comuna !== ele\.comuna \? alt\.comuna : null/.test(codigo("src/lib/invierte-v2/detalles-modo-servidor.ts"))) F("14d · los detalles nombran la comuna cuando es la misma");
+      if (A12.tuyoMejor("tres_km", null) !== "El tuyo es el mejor de los parecidos que hay a menos de 3 km. Estos te sirven de respaldo si no se da.") F("14d · el respaldo con alternativas a menos de 3 km dice «cerca»");
+
+      // 14e · Solo ventajas relevantes: 5 % o más en precio o pie, o $20.000 o más al mes; si no, algo neutro. «Sumar».
+      if (UMBRAL_MES_CLP !== 20000 || UMBRAL_PRECIO_PCT !== 5) F("14e · los umbrales de ventaja no son los de Fabrizio ($20.000 al mes, 5 %)");
+      const ele14 = { precioUF: 1100, flujoCLP: 80506, score: 88 };
+      const g14 = [{ avisoId: "e", precioUF: 1100 }, { avisoId: "x", precioUF: 1065 }];
+      const caso14 = indicadorAlternativa({ avisoId: "x", precioUF: 1065, flujoCLP: 55000, score: 80 }, ele14, g14, per({ limitaPie: true }));
+      if (caso14.supera || caso14.texto !== "Parecido al tuyo") F("14e · el caso de Fabrizio (pie UF 213 contra 220, $55.000 contra $80.506) se muestra como ventaja");
+      if (indicadorAlternativa({ avisoId: "x", precioUF: 1000, flujoCLP: 55000, score: 80 }, ele14, [{ avisoId: "e", precioUF: 1100 }, { avisoId: "x", precioUF: 1000 }], per({ limitaPie: true })).texto !== "El pie más bajo: UF 200") F("14e · un pie 9 % más bajo no cuenta como ventaja");
+      if (indicadorAlternativa({ avisoId: "x", precioUF: 1100, flujoCLP: 100600, score: 80 }, ele14, [], per({})).texto !== "Te deja $20.000 más al mes que el tuyo" || indicadorAlternativa({ avisoId: "x", precioUF: 1100, flujoCLP: 99000, score: 80 }, ele14, [], per({})).supera) F("14e · el mes no cuenta desde $20.000 (o cuenta menos)");
+      if (!/className=\{ind\.supera \? "iv2-res-indicador" : "iv2-linea-chica iv2-res-neutro"\}/.test(res14)) F("14e · lo neutro se ve como una ventaja (en azul)");
+      if (A12.sumar !== "Sumar" || !/data-inv2="check" \/>\s*\{A\.sumar\}/.test(res14) || !/\{entrada\.alcanza \? A\.sigo : "Fuera de tu alcance hoy"\}/.test(res14)) F("14e · la casilla de las alternativas no dice «Sumar» (o el elegido dejó de decir «Sigo con este»)");
+    }
+
+    // 14g · El «%» no queda solo en la línea siguiente (20-nov-2026: «(20 %)» se cortaba a 360 px): la ayuda del pie y la línea
+    // del tope se dibujan con sinCortar; el texto y lo que fija el tier no cambian.
+    if (sinCortar("UF 540 (20 %).") !== "UF 540 (20 %)." || !/\{sinCortar\(P2\.pieAyuda\(fmtUF\(inicial\.pieAyudaUF\)\)\)\}/.test(codigo("src/components/invierte-v2/PerfilForm.tsx")) || !/\{sinCortar\(lineaTope\(p\.tope, fmtUF\)\)\}/.test(codigo("src/components/invierte-v2/ResultadoOpciones.tsx"))) F("14g · el «%» de la ayuda del pie o de la línea del tope puede quedar solo en otra línea");
+    if (!/\.iv2-campo-uf \.inv-campo:disabled \{ opacity: 0\.5;/.test(leer("src/components/invierte-v2/invierte-v2.css"))) F("14g · el pie con «Todavía no sé» se ve como un campo vacío por llenar, no apagado");
+
+    // 14f · «Tus deptos» en la base (20-nov-2026, decisión de Fabrizio): la tarjeta entera se toca y abre los detalles, con una
+    // flecha a la derecha en vez del enlace «Abrir». Por ahora lleva a los detalles. «Escribirle a Franco» se queda como está.
+    {
+      const vb = codigo("src/components/invierte-v2/VistaBase.tsx");
+      const bd = codigo("src/components/invierte-v2/BotonDetalles.tsx");
+      const tarjeta = bd.slice(bd.indexOf("export function TarjetaDetalles"), bd.indexOf("export function PrepararDetalles"));
+      const dentro = vb.slice(vb.indexOf("<TarjetaDetalles"), vb.indexOf("</TarjetaDetalles>"));
+      if (!/<li key=\{d\.avisoId\} className="iv2-depto-li" data-inv2="depto-base">\s*(?:\{\}\s*)?<TarjetaDetalles avisoId=\{d\.avisoId\} etiqueta=\{B\.abrirDepto\(lineaDepto\(d\.datos\)\)\}>/.test(vb) || /<BotonDetalles/.test(vb) || /B\.abrir\}/.test(vb)) F("14f · la tarjeta de «Tus deptos» no se toca entera (o sigue el enlace «Abrir»)");
+      if (!dentro || /<(p|div|a|button)[\s>]/.test(dentro)) F("14f · dentro de la tarjeta hay un bloque o un control (un botón solo admite texto en línea)");
+      if (!/<button type="button" className="iv2-depto iv2-depto-tocable" onClick=\{abrir\} disabled=\{estado === "abriendo"\} aria-label=\{etiqueta\}/.test(tarjeta)
+        || !/<span className="iv2-depto-cuerpo">\{children\}<\/span>\s*<span className="iv2-depto-flecha" aria-hidden="true">›<\/span>\s*<\/button>/.test(tarjeta)
+        || !/const id = await abrirDetalles\(avisoId\);\s*if \(id\) \{ window\.location\.assign\(urlDetallesInvierte\(id\)\); return; \}\s*setEstado\("error"\);/.test(tarjeta)) F("14f · la tarjeta no abre los detalles en modo Invierte, o no lleva la flecha a la derecha");
+      if (BASE_COPY.abrirDepto("2D · 1B · 52 m²") !== "Abrir 2D · 1B · 52 m²") F("14f · el lector de pantalla no dice qué depto abre");
+      const css14 = leer("src/components/invierte-v2/invierte-v2.css");
+      if (!/\.iv2-depto-tocable \{[^}]*flex-direction: row;[^}]*min-height: 44px;/.test(css14) || !/\.iv2-depto-cuerpo \.iv2-depto-t, \.iv2-depto-cuerpo \.iv2-depto-s, \.iv2-depto-cuerpo \.iv2-cambio, \.iv2-depto-cuerpo \.iv2-cambio-sub \{ display: block; \}/.test(css14)) F("14f · la tarjeta no pone la flecha a la derecha, no llega a 44 px o sus filas no van en bloque");
+      if (!/data-inv2="escribirle"><IconoWhatsapp \/>\{B\.escribirle\}<\/a>/.test(vb)) F("14f · «Escribirle a Franco» cambió (se rediseña con el flujo de cada depto)");
+    }
+
     // ── 13 · LÁMINAS DEL 19-nov-2026, ENTREGA 4: «Lo que ve Franco» (textos aprobados por Fabrizio el 19-nov-2026) y «Lo que el
     //        puntaje no considera»; una alternativa grave no se recomienda; «El tuyo es el mejor…» ──
     {
@@ -869,8 +993,8 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       const res13 = codigo("src/components/invierte-v2/ResultadoOpciones.tsx");
       const ia = res13.indexOf('<LoQueVeFranco avisoId={entrada.avisoId} variante="alerta"'), id = res13.indexOf('data-inv2="tres-datos"'), ic = res13.indexOf('<LoQueVeFranco avisoId={entrada.avisoId} variante="elegido"');
       if (ia < 0 || id < 0 || ic < 0 || !(ia < id && id < ic)) F("13c · en el elegido la alerta no va primero, o «Lo que ve Franco» no va después de los tres datos");
-      if (!/<LoQueVeFranco avisoId=\{o\.avisoId\} variante="linea" inicial=\{p\.lecturas\[o\.avisoId\] \?\? null\} alLlegar=\{siEsGrave\(o\.avisoId\)\} \/>/.test(res13)) F("13c · las alternativas no llevan su línea de Franco");
-      if (!/<LoQueVeFranco avisoId=\{c\.avisoId\} variante="detalles" inicial=\{c\.lectura\} \/>/.test(codigo("src/components/invierte-v2/DetallesInvierte.tsx"))) F("13c · los detalles no llevan la versión larga");
+      if (!/<LoQueVeFranco avisoId=\{o\.avisoId\} variante="linea" inicial=\{p\.lecturas\[o\.avisoId\] \?\? null\} alLlegar=\{siEsGrave\(o\.avisoId\)\} alFotos=\{conFotos\(o\.avisoId\)\} \/>/.test(res13)) F("13c · las alternativas no llevan su línea de Franco");
+      if (!/<LoQueVeFranco avisoId=\{avisoId\} variante="detalles" inicial=\{lectura\} alFotos=/.test(codigo("src/components/invierte-v2/DetallesCabezaCliente.tsx"))) F("13c · los detalles no llevan la versión larga");
       if (JSON.stringify(cortaSinRepetirAlerta({ alerta: { nivel: "revisar", motivo: "Faltan fotos del baño." }, larga: [], corta: ["Faltan fotos del baño.", "B", "C"] })) !== '["B","C"]' || JSON.stringify(cortaSinRepetirAlerta({ alerta: { nivel: "ninguna", motivo: null }, larga: [], corta: ["A", "B", "C"] })) !== '["A","B","C"]') F("13c · la corta del elegido repite la alerta que ya va arriba (o pierde líneas sin alerta)");
 
       // 13d · Una alternativa con alerta grave no se recomienda: ni del servidor, ni cuando la lectura llega en la pantalla.
@@ -883,7 +1007,7 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       // 13e · Ninguna alternativa supera al suyo en nada: el subtítulo lo dice; cada una, su dato más fuerte sin comparar.
       if (A12.tuyoMejor("cerca", "Ñuñoa") !== "El tuyo es el mejor de los parecidos que hay cerca. Estos te sirven de respaldo si no se da." || A12.tuyoMejor("perfil", null) !== "El tuyo es el que más conviene entre los parecidos. Estos te sirven de respaldo si no se da." || A12.tuyoMejor("comuna", "Ñuñoa") !== "El tuyo es el mejor de los parecidos que hay en Ñuñoa. Estos te sirven de respaldo si no se da.") F("13e · el subtítulo de «el tuyo es el mejor» no es el de Fabrizio (cerca, comuna y «Donde más convenga»)");
       if (indicadorAlternativa({ avisoId: "x", precioUF: 3300, flujoCLP: 20000, score: 70 }, { precioUF: 3250, flujoCLP: 90000, score: 80 }, [], per({}))?.supera !== false || indicadorAlternativa({ avisoId: "a", precioUF: 3180, flujoCLP: -45000, score: 77 }, ele12, grupo12, per({}))?.supera !== true) F("13e · el indicador no distingue si supera al suyo");
-      if (!/const ningunaSupera = !!entrada && alternativas\.length > 0 && alternativas\.every\(\(o\) => !indicadorAlternativa\(o, entrada, grupo,[^)]*\}\)\?\.supera\);/.test(res13) || !/\{ningunaSupera \? A\.tuyoMejor\(p\.nivel, entrada\?\.comuna \?\? null\) : A\.subtitulo\(/.test(res13)) F("13e · cuando ninguna supera al suyo, el subtítulo no lo dice");
+      if (!/const ningunaSupera = !!entrada && alternativas\.length > 0 && alternativas\.every\(\(o\) => !indicadorAlternativa\(o, entrada, grupo,[^)]*\}\)\.supera\);/.test(res13) || !/\{ningunaSupera \? A\.tuyoMejor\(/.test(res13)) F("13e · cuando ninguna supera al suyo, el subtítulo no lo dice");
     }
 
     }

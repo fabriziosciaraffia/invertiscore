@@ -249,6 +249,12 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
     // 24 horas y su fusible (src/lib/invierte-v2/carril.ts): no gastan el cupo de 30 del mapa. Lo fija este bloque y el tier
     // INVIERTE-V2-E2 §8. Se reescribe con su excepción, no se afloja.
     const CARRIL = "src/lib/invierte-v2/carril-servidor.ts";
+    // ⚠ ACTA (20-nov-2026, decisión de Fabrizio): el carril lee también al firmar (el depto elegido, en segundo plano) y al mostrarse el resultado
+    // (desde la ruta de «Lo que ve Franco», los deptos sin la publicación leída), siempre por chequearPublicacionInvierte —su tope,
+    // su bitácora, su memoria y su fusible—. Solo estos archivos lo llaman; cualquier otro es una puerta nueva a la ficha.
+    const LLAMAN_AL_CARRIL = new Set(["src/app/api/lo-que-sigue/guia/analizar/route.ts", "src/lib/invierte-v2/vigilancia-servidor.ts", "src/app/api/invierte-v2/firma/route.ts", "src/app/api/invierte-v2/lectura/route.ts"]);
+    if (/\bchequearPublicacionInvierte\(/.test(s) && f !== CARRIL && !LLAMAN_AL_CARRIL.has(f)) F(`3 · ${f} lee la ficha por el carril de Invierte sin estar entre sus puertas (firma, resultado, elegir, abrir y la mañana)`);
+    if (f === "src/lib/invierte-v2/carril.ts" && !/export type OrigenLectura = "elegir" \| "abrir" \| "noche" \| "firma" \| "resultado";/.test(s)) F("3 · los orígenes del carril no son los cinco de la excepción");
     if (/\bbajarFicha\b|\bleerFicha\(|\bchequearPublicacion\(/.test(s) && !ANALIZAR_ESTE.includes(f) && f !== "src/app/api/lo-que-sigue/quiero-verlo/route.ts" && f !== RELLENO && f !== CARRIL) F(`3 · ${f} entra a la ficha por fuera de la guía, de «Ver este depto», de «Quiero verlo», del relleno por Decodo y del carril de Invierte`);
     // ⚠ ACTA (19-nov-2026, láminas del 19-nov, entregas 2 y 3): el carril además dice su puerta (`puerta: "invierte"`) para guardar las fotos, el texto y
     // la dirección del mismo 200 (detalle-ficha.ts); el tope sigue siendo el suyo.
