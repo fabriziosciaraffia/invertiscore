@@ -5,13 +5,13 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import { hastaCuanto, creditoPorRenta, validarPerfil, comunasPrecargadas, ayudaPie, lineaTope, sinCortar, REGLA_TOPE, PERFIL_COPY, DONDES } from "../../../src/lib/invierte-v2/perfil";
+import { porQueTopeAdmin as porQueTopeAdmin19, hastaCuanto, creditoPorRenta, validarPerfil, comunasPrecargadas, ayudaPie, lineaTope, sinCortar, REGLA_TOPE, PERFIL_COPY, DONDES } from "../../../src/lib/invierte-v2/perfil";
 import { ALTERNATIVAS_COPY as A12, MAX_RECOMENDADOS, cuantasPedir, cupoUsado, indicadorAlternativa, lineaPrecioDistancia, nivelDelBloque, nivelDelTitulo, subtituloAlternativas } from "../../../src/lib/invierte-v2/alternativas";
 import { INTENTOS_LECTURA, LECTURAS_EN_PARALELO as LECTURAS_EN_PARALELO18, esperaReintento as esperaReintento18 } from "../../../src/components/invierte-v2/LoQueVeFranco";
 import { MAX_FOTOS, parsearDetalleFicha } from "../../../src/lib/guia/detalle-ficha";
 import { leerFicha } from "../../../src/lib/guia/publicacion";
 import { MAX_FOTOS_VISTA, pedidoFoto, respuestaFotoValida } from "../../../src/lib/invierte-v2/fotos";
-import { ESQUEMA_LECTURA_FRANCO, INSTRUCCION_LECTURA_FRANCO, INSTRUCCION_LECTURA_FRANCO as I15, LECTURA_COPY, MAX_FOTOS_LECTURA as MAX_FOTOS_LECTURA15, VERSION_LECTURA as VERSION_LECTURA15, afirmaFaltanFotos as afirmaFaltanFotos15, reglaDescarte as reglaDescarte17, sanearConRegistro as sanearConRegistro17, problemaCorta as problemaCorta18, TOPE_INTENTOS_LECTURA as TOPE_INTENTOS18, conAlertaSinFotos as conAlertaSinFotos18, MOTIVO_SIN_FOTOS as MOTIVO_SIN_FOTOS18, cortaSinRepetirAlerta, lineaAlternativa, lineasElegido, lineaPermitida, recomendable, sanearLectura } from "../../../src/lib/invierte-v2/lectura-franco";
+import { ESQUEMA_LECTURA_FRANCO, INSTRUCCION_LECTURA_FRANCO, INSTRUCCION_LECTURA_FRANCO as I15, LECTURA_COPY, MAX_FOTOS_LECTURA as MAX_FOTOS_LECTURA15, VERSION_LECTURA as VERSION_LECTURA15, afirmaFaltanFotos as afirmaFaltanFotos15, reglaDescarte as reglaDescarte17, sanearConRegistro as sanearConRegistro17, MIN_ARRIENDOS_COMPARABLES as MIN_ARRIENDOS19, problemaCorta as problemaCorta18, TOPE_INTENTOS_LECTURA as TOPE_INTENTOS18, conAlertaSinFotos as conAlertaSinFotos18, MOTIVO_SIN_FOTOS as MOTIVO_SIN_FOTOS18, cortaSinRepetirAlerta, lineaAlternativa, lineasElegido, lineaPermitida, recomendable, sanearLectura } from "../../../src/lib/invierte-v2/lectura-franco";
 import { fotosCompletas as fotosCompletas15, bajarFotos as bajarFotos18, clasificarError as clasificarError18, INTENTOS_LLAMADA as INTENTOS_LLAMADA18, ESPERAS_MS as ESPERAS_MS18 } from "../../../src/lib/invierte-v2/lectura-franco-ia";
 import { textoError as textoError18, intentosDe as intentosDe18, reintentable as reintentable18 } from "../../../src/lib/invierte-v2/lectura-franco-servidor";
 import { CLAUDE_MODEL_LECTURA } from "../../../src/lib/ai-config";
@@ -29,9 +29,9 @@ import { DETALLES_COPY, abiertoDesdeInvierte, distanciaDelTuyo, indicadorContraE
 import { CLAVE_MENU_INVIERTE, consultarMenu, entradaMenu, guardarMenu, leerMenuGuardado, olvidarMenu } from "../../../src/lib/invierte-v2/menu-cliente";
 import { FLUJO_COPY, primerNombre } from "../../../src/lib/invierte-v2/flujo";
 import { etiquetaVeredicto } from "../../../src/lib/veredicto-etiqueta";
-import { ACTUALIZADO_COPY, BASE_COPY, DOCUMENTOS_COPY, MENU_COPY, SUMAR_COPY, fraseCambioPerfil, lineaDepto, numeroWhatsapp, urlWhatsapp, type PerfilComparable } from "../../../src/lib/invierte-v2/base";
+import { ACTUALIZADO_COPY, BASE_COPY, DOCUMENTOS_COPY, MENU_COPY, SUMAR_COPY, TOLERANCIA_SOBRE_TOPE as TOLERANCIA_SOBRE_TOPE19, rangoSumar as rangoSumar19, fraseCambioPerfil, lineaDepto, numeroWhatsapp, urlWhatsapp, type PerfilComparable } from "../../../src/lib/invierte-v2/base";
 import { sumarDepto, vigenteSobre } from "../../../src/lib/invierte-v2/base-servidor";
-import { CORREO_PREAPROB, ESTADOS_COPY, MAX_BYTES_PREAPROBACION, PREAPROB_COPY, TE_TOCA_ROTULO, estadoVisible, lineaAprobada, nombreCoincide, puedeOfertar, teTocaHoy, validarAprobacion, validarArchivo, validarMotivo, vigente, hoyChile } from "../../../src/lib/invierte-v2/preaprobacion";
+import { lineaCapacidad, CORREO_PREAPROB, ESTADOS_COPY, MAX_BYTES_PREAPROBACION, PREAPROB_COPY, TE_TOCA_ROTULO, estadoVisible, lineaAprobada, nombreCoincide, puedeOfertar, teTocaHoy, validarAprobacion, validarArchivo, validarMotivo, vigente, hoyChile } from "../../../src/lib/invierte-v2/preaprobacion";
 import { MOTIVO_REEMPLAZADA, aprobar, borrarArchivosPreaprobacion, confirmarSubida, leerPreaprobacion, pedirCorregir, pedirSubida } from "../../../src/lib/invierte-v2/preaprobacion-servidor";
 import { ESQUEMA_LECTURA, INSTRUCCION_LECTURA, leerPreaprobacionIA } from "../../../src/lib/invierte-v2/preaprobacion-ia";
 import { CLAUDE_MODEL_DOCUMENTOS } from "../../../src/lib/ai-config";
@@ -376,7 +376,7 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
         [MENU_COPY.escribirle, "Escribirle a Franco"], [MENU_COPY.escribirleLinea, "Tu contacto durante todo el proceso"], [MENU_COPY.perfilLinea(4200, ["Ñuñoa", "Macul"]), "Hasta UF 4.200 · Ñuñoa y Macul"],
         [DOCUMENTOS_COPY.orden, "Orden de visita y acompañamiento"], [DOCUMENTOS_COPY.ordenLinea("15 de noviembre"), "Firmada el 15 de noviembre. Cubre todos tus deptos."],
         [DOCUMENTOS_COPY.preaprobacionLinea, "La necesitas para ofertar o visitar. Foto o PDF de tu banco."], [DOCUMENTOS_COPY.detallesLinea, "Los que elegiste, cada uno con todos sus detalles."],
-        [DOCUMENTOS_COPY.promesaLinea, "Se firman en notaría; aquí queda la copia."], [SUMAR_COPY.titulo, "Súmalo a tus opciones de inversión"], [SUMAR_COPY.botonMapa, "Sumar a mis opciones de inversión"], [SUMAR_COPY.noAlcanzaTitulo, "Este depto hoy no te alcanza"], [SUMAR_COPY.irAMiInversion, "Ir a mi inversión"], [SUMAR_COPY.sinFirmaT, "No tienes que firmar de nuevo"],
+        [DOCUMENTOS_COPY.promesaLinea, "Se firman en notaría; aquí queda la copia."], [SUMAR_COPY.titulo, "Súmalo a tus opciones de inversión"], [SUMAR_COPY.botonMapa, "Sumar a mis opciones de inversión"], [SUMAR_COPY.pocoSobreTitulo, "Este depto está un poco sobre tu rango"], [SUMAR_COPY.fueraTitulo, "Este depto está fuera de tu rango por ahora"], [SUMAR_COPY.sumarloIgual, "Sumarlo igual"], [SUMAR_COPY.sinFirmaT, "No tienes que firmar de nuevo"],
         [SUMAR_COPY.sinFirma("15 de noviembre"), "Tu orden del 15 de noviembre cubre también este depto. Franco empieza a gestionarlo y puedes ver todos sus detalles desde tus deptos."],
         [`${SUMAR_COPY.teAlcanza} ${SUMAR_COPY.conQue("renta")}`, "Te alcanza con tu pie y tu renta."], [`${SUMAR_COPY.entra} ${SUMAR_COPY.entraLinea(4)}`, "Entra a tu comparativo junto a las cuatro opciones que ya tienes."],
         [SUMAR_COPY.boton, "Sumar a mis opciones de inversión"], [ACTUALIZADO_COPY.titulo, "Perfil actualizado"], [ACTUALIZADO_COPY.masDeptos(2), "Ahora te alcanzan 2 deptos más"],
@@ -466,7 +466,8 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       // firma ni «Franco empieza a gestionarlo», con el precio y hasta cuánto puede comprar, y tres salidas (volver al mapa, ir a mi
       // inversión y revisar mi perfil, que dice para qué sirve). Antes exigía `{v.alcanza ? <SumarDepto`.
       const rama = sumar.match(/if \(v\.estado === "listo" && !v\.alcanza\) \{[\s\S]*?\n  \}\n/)?.[0] ?? "";
-      if (!rama || /SumarDepto|sinFirma|S\.entra\b/.test(rama) || !/\{S\.noAlcanzaTitulo\}/.test(rama) || !/S\.noAlcanzaLinea\(/.test(rama) || !/data-inv2="volver-mapa"/.test(rama) || !/href=\{URL_BASE\}[^>]*data-inv2="ir-mi-inversion"/.test(rama) || !/data-inv2="revisar-perfil"[\s\S]*\{S\.revisarPerfilPara\}/.test(rama)) F("9 · la pantalla de sumar cuando no alcanza no es la pedida (título, sin firma, precio y tope, tres salidas)");
+      // ⚠ ACTA (20-nov-2026, revisión de Fabrizio, pasos 1 a 5): un poco sobre su rango se suma igual; fuera de rango no, con el pie y los parecidos (§19b); un solo enlace arriba (§19c).
+      if (!rama || /sinFirma|S\.entra\b/.test(rama) || !/\{rango === "poco_sobre" \? S\.pocoSobreTitulo : S\.fueraTitulo\}/.test(rama) || !/data-inv2="volver-mapa"/.test(rama) || !/data-inv2="revisar-perfil"/.test(rama)) F("9 · la pantalla de sumar cuando no alcanza no es la pedida (título, precio y tope, salidas)");
       if (sumar.indexOf('if (v.estado === "listo" && !v.alcanza)') > sumar.indexOf("<SumarDepto")) F("9 · la pantalla de sumar ofrece sumar antes de mirar si alcanza");
       if (!/volver=\{volverPerfil\(searchParams\.volver, g != null\)\}/.test(codigo("src/app/invierte/perfil/page.tsx"))) F("9 · el perfil no tiene «Volver»");
       // 5 · «Mis documentos» sin «Los detalles de tus deptos»; 7 · «Escribirle» con el ícono de WhatsApp; 8 · el botón del mapa.
@@ -509,7 +510,8 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       // Quien entró por la renta (sin la pregunta del pie) y le aprueban la preaprobación: cuenta el pie que declaró.
       if (hastaCuanto({ preaprobado: "no", pieUF: 700, rentaCLP: 2500000, otrasCuotasCLP: 0, tasaPct: 4.1, uf: 41357, aprobadaUF: 2600 }).topeUF !== 3300) F("10 · con un monto aprobado, el pie declarado por el camino de la renta cuenta como cero");
       if (MAX_BYTES_PREAPROBACION !== 15 * 1024 * 1024) F("10 · el tope del archivo no es el del bucket (15 MB)");
-      if (teTocaHoy("en_revision") || teTocaHoy("aprobada") || teTocaHoy("sin_credito") || teTocaHoy("explicando") || !teTocaHoy("por_corregir")) F("10 · «Lo que te toca hoy» aparece cuando no le toca a la persona (o falta cuando hay que corregir)");
+      // ⚠ ACTA (20-nov-2026, revisión de Fabrizio, pasos 1 a 5): en revisión también tiene su bloque (sin botón rojo, §19a).
+      if (teTocaHoy("en_revision")?.tipo !== "revision" || teTocaHoy("aprobada") || teTocaHoy("sin_credito") || teTocaHoy("explicando") || teTocaHoy("por_corregir")?.tipo !== "corregir") F("10 · «Lo que te toca hoy» aparece cuando no le toca a la persona (o falta cuando hay que corregir)");
       if (!puedeOfertar("aprobada") || !puedeOfertar("sin_credito") || puedeOfertar("en_revision") || puedeOfertar("subir") || puedeOfertar("por_corregir")) F("10 · se puede ofertar sin una preaprobación aprobada (o sin «compro sin crédito»)");
       if (estadoVisible(null, false) !== "subir" || estadoVisible(null, true) !== "explicando" || estadoVisible({ estado: "subiendo" }, false) !== "subir" || estadoVisible({ estado: "en_revision" }, true) !== "en_revision") F("10 · el estado visible no sale del documento y de la tarea de explicar");
       if (nombreCoincide("CAMILA ANDREA ROJAS PEREZ", "Camila Rojas Pérez") !== true || nombreCoincide("Rojas Pérez, Camila", "Camila Rojas Pérez") !== true || nombreCoincide("Pedro Rojas", "Camila Rojas Pérez") !== false || nombreCoincide("Camila", "Camila Rojas Pérez") !== false || nombreCoincide(null, "Camila Rojas") !== null) F("10 · el nombre del documento no se compara bien con el de la orden");
@@ -620,7 +622,7 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       const adm = codigo("src/app/api/admin/invierte-v2/route.ts");
       if (!/puedeRecibir: async \(email\) => \{ const \{ modo, lista \} = await estadoInterruptor\(\); return puedeRecibirCopia\(modo, lista, email\); \}/.test(adm) || !/const v = validarAprobacion\(b\);/.test(adm) || !/const motivo = validarMotivo\(b\?\.motivo\);/.test(adm)) F("10 · el admin aprueba o corrige sin validar, o el correo no mira la lista");
       const vb = codigo("src/components/invierte-v2/VistaBase.tsx");
-      if (!/const toca = teTocaHoy\(base\.preaprobacion\);/.test(vb) || !/<Link href=\{URL_PREAPROBACION\} className="inv-principal" data-inv2="te-toca-boton">/.test(vb)) F("10 · «Lo que te toca hoy» no está en la base o no lleva a la preaprobación");
+      if (!/const toca = teTocaHoy\(base\.preaprobacion, pd\.otra, pd\.motivo\);/.test(vb) || !/\{toca\.tipo === "subir" && <Link href=\{URL_PREAPROBACION\} className="inv-principal" data-inv2="te-toca-boton">/.test(vb)) F("10 · «Lo que te toca hoy» no está en la base o no lleva a la preaprobación");
       if (vb.indexOf('data-inv2="te-toca-hoy"') < 0 || vb.indexOf('data-inv2="te-toca-hoy"') > vb.indexOf('data-inv2="tus-deptos"')) F("10 · «Lo que te toca hoy» no va arriba de «Tus deptos» (lámina 3.3-base)");
       if (!/await borrarArchivosPreaprobacion\(admin, user\.id\);/.test(codigo("src/app/api/account/request-deletion/route.ts"))) F("10 · pedir la eliminación de la cuenta no borra los archivos de la preaprobación");
       if (!/\{inicial\.puedeSubirPreaprobacion && <SubirPreaprobacion variante="perfil" \/>\}/.test(codigo("src/components/invierte-v2/PerfilForm.tsx"))) F("10 · el paso 2 del perfil con preaprobación no deja subirla");
@@ -961,6 +963,61 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (!/data-inv2="escribirle"><IconoWhatsapp \/>\{B\.escribirle\}<\/a>/.test(vb)) F("14f · «Escribirle a Franco» cambió (se rediseña con el flujo de cada depto)");
     }
 
+    // ── 19 · LA REVISIÓN DE FABRIZIO, PASOS 1 A 5 (20-nov-2026): correcciones, la síntesis con el cap rate y sumar fuera de rango ──────
+    {
+      // 19a · «Lo que te toca hoy»: cada vez que sube una preaprobación (también la primera, y aunque tenga una aprobada), en revisión,
+      // con el chip, la línea y «Ver lo que subí», sin botón rojo; por corregir, con el chip y el motivo como mensaje de Franco; bajo el
+      // título, hasta cuánto puede comprar.
+      const rev = teTocaHoy("en_revision"), revOtra = teTocaHoy("aprobada", { estado: "en_revision" }), cor = teTocaHoy("por_corregir", null, "La imagen está cortada.");
+      if (rev?.tipo !== "revision" || rev.titulo !== "Tu preaprobación está en revisión" || rev.chip !== "Franco está en eso" || rev.linea !== "Te avisamos apenas la revisemos" || rev.ver !== "Ver lo que subí" || revOtra?.tipo !== "revision") F("19a · al subir una preaprobación (aunque haya una aprobada) no queda «en revisión» con su chip, línea y «Ver lo que subí»");
+      if (cor?.tipo !== "corregir" || cor.chip !== "Por corregir" || cor.motivo !== "La imagen está cortada." || teTocaHoy("aprobada", { estado: "por_corregir" }) !== null) F("19a · por corregir no lleva el chip y el motivo (o una aprobada vigente pide corregir)");
+      const vb19 = codigo("src/components/invierte-v2/VistaBase.tsx");
+      const rev19 = vb19.slice(vb19.indexOf('{toca.tipo === "revision" && ('), vb19.indexOf('{toca.tipo === "corregir" && ('));
+      if (!rev19 || /inv-principal/.test(rev19) || !/<VerPreaprobacion etiqueta=\{toca\.ver\}[^>]*ultima \/>/.test(rev19)) F("19a · «en revisión» lleva botón rojo o no deja ver lo que subió");
+      if (!/\{toca\.motivo && <p className="iv2-msj-franco" data-inv2="te-toca-motivo"><span className="iv2-msj-franco-de">\{TE_TOCA_COPY\.mensajeDeFranco\}<\/span>\{toca\.motivo\}<\/p>\}\s*<Link href=\{`\$\{URL_PREAPROBACION\}\?subir=1`\} className="inv-principal"/.test(vb19)) F("19a · el motivo no va como mensaje de Franco antes del botón");
+      if (lineaCapacidad({ topeUF: 3300, aprobada: { banco: "Santander", vigenteHasta: "2027-01-15" } }) !== "Puedes comprar hasta UF 3.300, según tu preaprobación de Banco Santander, vigente hasta el 15 de enero." || lineaCapacidad({ topeUF: 3500, aprobada: null }) !== "Estimamos que puedes comprar hasta UF 3.500. Sujeto a evaluación del banco." || lineaCapacidad({ topeUF: null, aprobada: null }) !== null) F("19a · la línea de capacidad de la base no es la pedida");
+      if (!/\{capacidad && \(\s*<p className="iv2-linea-chica iv2-base-capacidad" data-inv2="capacidad">/.test(vb19) || vb19.indexOf('data-inv2="capacidad"') > vb19.indexOf('data-inv2="te-toca-hoy"')) F("19a · la capacidad no va bajo el título de la base");
+      const rpre = codigo("src/app/api/invierte-v2/preaprobacion/route.ts");
+      if (!/const doc = new URL\(request\.url\)\.searchParams\.get\("ultima"\) === "1" \? pre\.otra \?\? pre\.doc : pre\.doc;/.test(rpre)) F("19a · «Ver lo que subí» no muestra la última subida cuando hay una aprobada vigente");
+
+      // 19b · Sumar un depto que no alcanza: hasta 15 % sobre el tope y sin preaprobación aprobada, se suma igual; más, no (con el pie
+      // que necesitaría y hasta tres parecidos que sí le alcanzan); con la preaprobación aprobada, el tope es firme.
+      if (TOLERANCIA_SOBRE_TOPE19 !== 0.15 || rangoSumar19({ precioUF: 3000, topeUF: 3000, firme: false }) !== "alcanza" || rangoSumar19({ precioUF: 3450, topeUF: 3000, firme: false }) !== "poco_sobre" || rangoSumar19({ precioUF: 3460, topeUF: 3000, firme: false }) !== "fuera" || rangoSumar19({ precioUF: 3100, topeUF: 3000, firme: true }) !== "fuera") F("19b · la tolerancia de 15 % no es la pedida (o vale con la preaprobación aprobada)");
+      if (SUMAR_COPY.pocoSobreLinea(3400, 3000) !== "Cuesta UF 3.400 y estimamos que puedes comprar hasta UF 3.000. La estimación no es exacta y el precio se negocia." || SUMAR_COPY.fueraLinea(4000, 3000, false) !== "Cuesta UF 4.000 y estimamos que puedes comprar hasta UF 3.000. Para comprarlo necesitarías un pie de UF 800 (el 20 % del precio)." || !/según tu preaprobación puedes comprar/.test(SUMAR_COPY.fueraLinea(4000, 3000, true))) F("19b · los textos de sumar fuera de rango no son los pedidos");
+      const bs19 = codigo("src/lib/invierte-v2/base-servidor.ts");
+      if (!/if \(!v\.alcanza && rangoSumar\(\{ precioUF: v\.datos\?\.precioUF \?\? Infinity, topeUF: v\.perfil\?\.topeUF \?\? 0, firme: v\.perfil\?\.topeFuente === "aprobada" \}\) !== "poco_sobre"\) return \{ ok: false, error: "fuera" \};/.test(bs19)) F("19b · el servidor deja sumar fuera de rango (o no deja sumar un poco sobre)");
+      const sp19 = codigo("src/app/invierte/[avisoId]/sumar/page.tsx");
+      if (!/\{rango === "poco_sobre" && <SumarDepto avisoId=\{depto\.avisoId\} etiqueta=\{S\.sumarloIgual\} origen="mapa" activos=\{activos\} variante="principal" \/>\}/.test(sp19) || !/const parecidos = rango === "fuera" \? await parecidosQueAlcanzan\(/.test(sp19) || !/className=\{rango === "fuera" && !parecidos\.length \? "inv-principal" : "iv2-secundario"\} data-inv2="volver-mapa"/.test(sp19)) F("19b · la pantalla no ofrece «Sumarlo igual», los parecidos o «Volver al mapa» como corresponde");
+      const ps19 = codigo("src/lib/invierte-v2/perfil-servidor.ts");
+      if (!/pedirAlternativas\(admin, \{ aviso: avisoId, modo: "cerca", tope: topeUF, excluir, cuantas: MAX_RECOMENDADOS \* 2 \}\)/.test(ps19) || !/filter\(\(r\) => recomendable\(lecturas\[r\.avisoId\]\)\)\.slice\(0, MAX_RECOMENDADOS\)/.test(ps19)) F("19b · los parecidos no salen de la misma función de alternativas, alrededor del depto, sin los graves y como mucho tres");
+      // B4 · Lo que se suma así (origen «mapa») no cuenta para el cupo de tres recomendaciones: el cupo cuenta solo las de Franco.
+      if (cupoUsado([{ origen: "franco", estado: "opcion" }, { origen: "mapa", estado: "elegido" }, { origen: "entrada", estado: "elegido" }] as never) !== 1) F("19b · un depto sumado desde el mapa cuenta para el cupo de recomendaciones");
+
+      // 19c · Correcciones de pantalla: el PDF se ve dentro de la ventana (con «Abrir PDF» si no hay visor), «Subir otra» es el principal al
+      // corregir, un solo enlace para volver en sumar, y el admin dice qué limita el tope.
+      const pre19 = codigo("src/components/invierte-v2/Preaprobacion.tsx");
+      if (!/esPdf && visorPdf \? \(src \? <iframe src=\{src\} title=\{titulo\} className="iv2-doc-pdf"/.test(pre19) || !/pdfViewerEnabled === true/.test(pre19) || /Es un PDF: se abre en una pestaña nueva/.test(pre19)) F("19c · el PDF no se ve dentro de la ventana (o falta el respaldo sin visor)");
+      const pp19 = codigo("src/app/invierte/preaprobacion/page.tsx");
+      if (!/\{pre\.estado === "por_corregir" \? \(\s*<div className="iv2-acciones">\s*<Link href=\{`\$\{URL_PREAPROBACION\}\?subir=1`\} className="inv-principal" data-inv2="subir-otra">\{E\.por_corregir\.boton\}<\/Link>\s*<Link href=\{URL_BASE\} className="iv2-secundario" data-inv2="volver-deptos">/.test(pp19)) F("19c · por corregir, «Subir otra» no es el principal (o «Volver a mis deptos» no es el secundario)");
+      if (!/<MarcoInvierte volver=\{null\} pantalla="sumar"[^>]*miInversion>/.test(sp19.slice(sp19.indexOf("if (v.estado === \"listo\" && !v.alcanza)")))) F("19c · sumar fuera de alcance tiene dos enlaces para volver arriba");
+      if (porQueTopeAdmin19({ topeFuente: "renta", pieUF: 700, topeSupuestos: { limita: "pie", creditoUF: 3800 } }, fmtUF) !== "lo limita su pie (UF 700); por su renta, el banco le prestaría hasta UF 3.800" || porQueTopeAdmin19({ topeFuente: "renta", pieUF: 1500, topeSupuestos: { limita: "credito", creditoUF: 3000 } }, fmtUF) !== "lo limita su renta (el banco le prestaría hasta UF 3.000)" || !/\{porQueTopeAdmin\(perfil, fmtUF\)\}/.test(codigo("src/app/admin/invierte-v2/[userId]/page.tsx"))) F("19c · el admin no dice qué limita el tope");
+
+      // 19d · Cambio A: la lectura cita SOLO las cifras de la tarjeta (cap rate, al mes), tal cual, y solo con al menos 6 arriendos de su
+      // tamaño; la primera línea es la síntesis (segunda si hay alerta); devuelve el estado para arrendar; el cap rate está en las tarjetas.
+      const cif = { capRatePct: 5.728, flujoCLP: 88244 };
+      if (reglaDescarte17("Cap rate de 5,7 %, pero la cocina es original.", cif) !== null || reglaDescarte17("Deja $88 mil al mes y está listo para arrendar.", cif) !== null || reglaDescarte17("Te sobran $88.244 al mes.", cif) !== null) F("19d · el saneado bota una cifra de la tarjeta citada tal cual");
+      if (reglaDescarte17("Cap rate de 6,1 %, buen número.", cif) === null || reglaDescarte17("Deja $95 mil al mes.", cif) === null || reglaDescarte17("Cap rate de 5,7 %.", null) === null || reglaDescarte17("Deja $88 mil al mes.", null) === null) F("19d · el saneado deja pasar un cap rate o un flujo que no es el de la tarjeta (o sin arriendo confiable)");
+      const g19 = sanearLectura({ alerta: { nivel: "ninguna", motivo: null }, larga: [{ etiqueta: "Estado", texto: "Bien.", fuente: "fotos" }], corta: [{ texto: "Deja $88 mil al mes y está listo.", fuente: "datos" }, { texto: "B.", fuente: "datos" }, { texto: "C.", fuente: "datos" }], estado_arriendo: "listo" }, { cifras: cif });
+      if (!g19 || g19.estadoArriendo !== "listo" || g19.corta.length !== 3 || JSON.stringify(sanearLectura(g19)) !== JSON.stringify(g19)) F("19d · el estado para arrendar no queda, o al releer la lectura se botan las cifras que ya pasaron");
+      if (ESQUEMA_LECTURA_FRANCO.required.join("|") !== "alerta|larga|corta|estado_arriendo" || ESQUEMA_LECTURA_FRANCO.properties.estado_arriendo.enum.join("|") !== "listo|arreglos_menores|remodelacion" || VERSION_LECTURA15 < 7 || MIN_ARRIENDOS19 !== 6) F("19d · falta el estado para arrendar en el esquema, la versión no subió o el mínimo de arriendos no es 6");
+      if (!/La primera línea es la SÍNTESIS: cruza un número de la tarjeta/.test(INSTRUCCION_LECTURA_FRANCO) || !/Si la alerta no es «ninguna», la primera línea es esa alerta y la síntesis pasa a la segunda/.test(INSTRUCCION_LECTURA_FRANCO) || !/No los recalcules, no los corrijas/.test(INSTRUCCION_LECTURA_FRANCO)) F("19d · la instrucción no pide la síntesis primero (segunda con alerta) o deja recalcular los números");
+      const sv19 = codigo("src/lib/invierte-v2/lectura-franco-servidor.ts");
+      if (!/const confiable = n >= MIN_ARRIENDOS_COMPARABLES;/.test(sv19) || !/cifras: confiable \? \{ capRatePct: cap, flujoCLP: flujo \} : null,/.test(sv19) || !/\.filter\(\(a\) => a\.superficie_m2 != null && Number\(a\.superficie_m2\) >= p\.m2 \* 0\.8 && Number\(a\.superficie_m2\) <= p\.m2 \* 1\.2\)/.test(sv19)) F("19d · la lectura recibe cap rate y flujo sin 6 arriendos de su tamaño (±20 %) en el radio del motor");
+      const r19 = codigo("src/components/invierte-v2/ResultadoOpciones.tsx");
+      if (!/<div data-inv2="cap-rate"><dt>\{A\.capRate\}<\/dt><dd>\{entrada\.capRatePct != null \? pctUno\(entrada\.capRatePct\) : "—"\}<\/dd><\/div>/.test(r19) || !/etiqueta=\{o\.capRatePct != null \? `\$\{A\.capRate\} \$\{pctUno\(o\.capRatePct\)\}` : null\}/.test(r19)) F("19d · el cap rate no va como cuarto dato del elegido o sobre la foto de cada alternativa");
+      if (!/const conCap = opciones\.map\(\(o\) => \(\{ \.\.\.o, capRatePct: capRatePct\(o\.arriendoCLP, o\.precioUF, m\.uf\) \}\)\);/.test(ps19)) F("19d · el cap rate del resultado no es el de la tarjeta del mapa");
+    }
+
     // ── 18 · LECTURAS QUE FALLAN Y LA CORTA DE UNA FRASE (20-nov-2026, Fabrizio, tercera ronda) ──────────────────────────────────
     {
       // 18a · La causa de las dos lecturas en error (b20a316f y b4302934): la API rechazaba la lectura entera con «Unable to download
@@ -991,9 +1048,10 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       // (maxLength; la API no acepta minItems 3, medido) y en el código, que la rehace si no cumple (no la corta a la mitad).
       const ok3 = { alerta: { nivel: "ninguna" as const, motivo: null }, larga: [], corta: ["Cocina renovada y lista para arrendar.", "Dos dormitorios con clóset.", "Metro a pie."] };
       if (problemaCorta18(ok3) !== null) F("18c · una corta válida no pasa");
-      if (problemaCorta18({ ...ok3, corta: ok3.corta.slice(0, 2) }) === null || problemaCorta18({ ...ok3, corta: [...ok3.corta.slice(0, 2), "x".repeat(111)] }) === null || problemaCorta18({ ...ok3, corta: [...ok3.corta.slice(0, 2), "La cocina está bien. El baño no."] }) === null) F("18c · pasa una corta de menos líneas, más larga de 110 o de dos frases");
-      if (problemaCorta18({ ...ok3, alerta: { nivel: "revisar", motivo: "y".repeat(120) } }) === null) F("18c · el motivo de la alerta pasa de 110 caracteres");
-      if (!/EXACTAMENTE tres líneas para la tarjeta del resultado, sin etiqueta\. Cada línea es UNA sola frase de 110 caracteres como máximo/.test(INSTRUCCION_LECTURA_FRANCO) || ESQUEMA_LECTURA_FRANCO.properties.corta.items.properties.texto.maxLength !== 110 || ESQUEMA_LECTURA_FRANCO.properties.corta.minItems !== 1) F("18c · la regla de la corta no está en la instrucción o en el esquema");
+      // ⚠ ACTA (20-nov-2026, revisión de Fabrizio, pasos 1 a 5): el tope de la corta es 120 (los ejemplos de síntesis de Fabrizio llegan a 113; la instrucción pide unos 110).
+      if (problemaCorta18({ ...ok3, corta: ok3.corta.slice(0, 2) }) === null || problemaCorta18({ ...ok3, corta: [...ok3.corta.slice(0, 2), "x".repeat(121)] }) === null || problemaCorta18({ ...ok3, corta: [...ok3.corta.slice(0, 2), "x".repeat(120)] }) !== null || problemaCorta18({ ...ok3, corta: [...ok3.corta.slice(0, 2), "La cocina está bien. El baño no."] }) === null) F("18c · pasa una corta de menos líneas, más larga de 120 o de dos frases");
+      if (problemaCorta18({ ...ok3, alerta: { nivel: "revisar", motivo: "y".repeat(130) } }) === null) F("18c · el motivo de la alerta pasa de 120 caracteres");
+      if (!/EXACTAMENTE tres líneas para la tarjeta del resultado, sin etiqueta\. Cada línea es UNA sola frase de unos 110 caracteres \(nunca más de 120/.test(INSTRUCCION_LECTURA_FRANCO) || ESQUEMA_LECTURA_FRANCO.properties.corta.items.properties.texto.maxLength !== 120 || ESQUEMA_LECTURA_FRANCO.properties.corta.minItems !== 1) F("18c · la regla de la corta no está en la instrucción o en el esquema");
       if (!/const problema = problemaCorta\(lectura\);\s*if \(problema\) \{ ultima = \{ motivo: "corta", detalle: problema \};[^\n]*?continue; \}/.test(ia18)) F("18c · una corta que no cumple no se rehace");
       if (VERSION_LECTURA15 < 6) F("18c · la versión no subió: las lecturas con la corta larga no se rehacen");
       if (!/if \(c != null\) gastado = \(gastado \?\? 0\) \+ c;/.test(ia18) || !/costoUsd: gastado,/.test(ia18)) F("18c · el costo guardado no suma los intentos (una corta que se rehace también se paga)");
@@ -1151,7 +1209,8 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
     {
       // 13a · La lectura no cita ni juzga el precio: la instrucción lo prohíbe y el saneado saca la línea que se salga.
       const I13 = INSTRUCCION_LECTURA_FRANCO;
-      if (!/Nunca cites ni juzgues el precio/.test(I13) || !/Nunca cites una cifra del informe/.test(I13) || /precio_m2_vs_zona|−25 %|-25 %/.test(I13)) F("13a · la instrucción permite citar o juzgar el precio, o le pasa el porcentaje contra la zona");
+      // ⚠ ACTA (20-nov-2026, revisión de Fabrizio, pasos 1 a 5): la lectura puede citar SOLO las cifras de la tarjeta (cap rate, al mes, veredicto), tal cual (§19d).
+      if (!/Nunca cites ni juzgues el precio/.test(I13) || !/De las cifras del motor, solo las de la tarjeta \(cap rate bruto, lo que deja o pide al mes y el veredicto\), tal cual/.test(I13) || /precio_m2_vs_zona|−25 %|-25 %/.test(I13)) F("13a · la instrucción permite citar o juzgar el precio, o le pasa el porcentaje contra la zona");
       // ⚠ ACTA (20-nov-2026, prueba de Fabrizio del resultado): «revisar» queda SOLO para datos que se contradicen; que falten fotos ya no es alerta (va como pedido, §15c).
       if (!/nivel «grave»: la publicación o las fotos muestran que es para remodelar o está sin terminar, que es un remate, que se venden derechos o acciones, o —solo si recibiste todas las fotos— no hay ninguna foto del interior/.test(I13) || !/nivel «revisar»: SOLO cuando los datos se contradicen: las fotos o el texto contradicen un dato con que se calculó el informe —los dormitorios, los baños, la superficie o el piso/.test(I13) || /faltan fotos de partes clave/.test(I13) || !/Se decide SOLO con lo que muestran las fotos o dice el texto de la publicación, nunca por el precio/.test(I13)) F("13a · la alerta no es la de Fabrizio (grave, revisar y ninguna, solo con evidencia)");
       if (!/La publicación no explica su precio: pregúntalo/.test(I13)) F("13a · «Ojo» no tiene la pregunta sin número del precio");
@@ -1163,10 +1222,10 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (sanearLectura({ alerta: { nivel: "ninguna", motivo: "algo" }, larga: [{ etiqueta: "Estado", texto: "Bien." }], corta: [] })?.alerta.motivo !== null) F("13a · con alerta «ninguna» queda un motivo");
       if (sanearLectura({ alerta: { nivel: "revisar", motivo: "Cuesta 30 % menos que su zona." }, larga: [{ etiqueta: "Estado", texto: "Bien." }], corta: [] })?.alerta.motivo !== null) F("13a · una alerta que se sostiene en el precio se muestra");
       // ⚠ ACTA (20-nov-2026, Fabrizio, tercera ronda): el motivo lleva su largo máximo (maxLength, aceptado por la API; medido).
-      if (!/^\{"anyOf":\[\{"type":"string","maxLength":110,"description":"[^"]+"\},\{"type":"null"\}\]\}$/.test(JSON.stringify(ESQUEMA_LECTURA_FRANCO.properties.alerta.properties.motivo))) F("13a · el motivo de la alerta no va con anyOf (la API rechaza `type: [x, \"null\"]` con enum)");
+      if (!/^\{"anyOf":\[\{"type":"string","maxLength":120,"description":"[^"]+"\},\{"type":"null"\}\]\}$/.test(JSON.stringify(ESQUEMA_LECTURA_FRANCO.properties.alerta.properties.motivo))) F("13a · el motivo de la alerta no va con anyOf (la API rechaza `type: [x, \"null\"]` con enum)");
       const ia13 = codigo("src/lib/invierte-v2/lectura-franco-ia.ts");
       // ⚠ ACTA (20-nov-2026, prueba de Fabrizio del resultado): el saneado sabe si la lectura recibió todas las fotos (§15b).
-      if (!/model: CLAUDE_MODEL_LECTURA,/.test(ia13) || !/system: INSTRUCCION_LECTURA_FRANCO,/.test(ia13) || !/const saneada = sanearConRegistro\(JSON\.parse\(txt\), \{ fotosCompletas: completas \}\);/.test(ia13) || /precio_uf|precioUF|flujo|arriendo/.test(ia13.slice(ia13.indexOf("export interface EntradaLectura"), ia13.indexOf("export type ResultadoLecturaFranco")))) F("13a · la llamada no usa el modelo elegido, la instrucción o el saneado, o le pasa el precio al modelo");
+      if (!/model: CLAUDE_MODEL_LECTURA,/.test(ia13) || !/system: INSTRUCCION_LECTURA_FRANCO,/.test(ia13) || !/const saneada = sanearConRegistro\(JSON\.parse\(txt\), \{ fotosCompletas: completas, cifras: e\.cifras \}\);/.test(ia13) || /precio_uf|precioUF|precio:|arriendoCLP/.test(ia13.slice(ia13.indexOf("export interface EntradaLectura"), ia13.indexOf("export type ResultadoLecturaFranco")))) F("13a · la llamada no usa el modelo elegido, la instrucción o el saneado, o le pasa el precio al modelo");
       if (CLAUDE_MODEL_LECTURA !== "claude-opus-5-5") F("13a · el modelo de la lectura no es el que eligió Fabrizio (Opus 5.5)");
 
       // 13b · Una por depto, guardada; se pide aparte, solo quien firmó y de un depto de su base; con tope por hora y marca.
