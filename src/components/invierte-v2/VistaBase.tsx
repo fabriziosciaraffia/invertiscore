@@ -7,14 +7,11 @@
 // /dev/invierte-v2/base.
 // ─────────────────────────────────────────────────────────────────────────────
 import Link from "next/link";
-import { ChipVeredicto } from "@/components/analysis/shared/ChipVeredicto";
-import type { Veredicto } from "@/lib/types";
 import { URL_OPCIONES } from "@/lib/invierte-v2/destino";
-import { RESULTADO_COPY, fmtUF, textoAlMes } from "@/lib/invierte-v2/opciones";
 import { BASE_COPY, MENU_COPY, lineaDepto, urlWhatsapp } from "@/lib/invierte-v2/base";
 import type { Base } from "@/lib/invierte-v2/base-servidor";
-import { etiquetaVeredicto, signoVeredicto } from "@/lib/veredicto-etiqueta";
-import { PrepararDetalles, TarjetaDetalles } from "./BotonDetalles";
+import { BotonDetalles, PrepararDetalles, TarjetaDetalles } from "./BotonDetalles";
+import { TarjetaBase, TarjetaOtra } from "./TarjetaDepto";
 import { EnlacesBase, MenuBase } from "./MenuBase";
 import { SumarDepto } from "./SumarDepto";
 import { IconoWhatsapp } from "./IconoWhatsapp";
@@ -83,29 +80,15 @@ export function VistaBase({ base }: { base: Base }) {
               <p className="iv2-linea-chica">{B.tusDeptosLinea(base.elegidos.length)}</p>
             </div>
             <ul className="iv2-deptos">
-              {base.elegidos.map((d) => {
-                const alMes = textoAlMes({ flujoCLP: d.datos.flujoCLP ?? null });
-                return (
-                  <li key={d.avisoId} className="iv2-depto-li" data-inv2="depto-base">
-                    {/* La tarjeta entera abre los detalles, con la flecha a la derecha (20-nov-2026, decisión de Fabrizio). */}
-                    <TarjetaDetalles avisoId={d.avisoId} etiqueta={B.abrirDepto(lineaDepto(d.datos))}>
-                      <span className="iv2-depto-fila">
-                        <span className="iv2-depto-id">
-                          <span className="iv2-depto-t">{lineaDepto(d.datos)}</span>
-                          <span className="iv2-depto-s">{d.datos.precioUF ? `UF ${fmtUF(d.datos.precioUF)}` : ""}{d.alcanza ? "" : ` · ${B.fueraDeAlcance}`}</span>
-                        </span>
-                        {d.datos.veredicto && <ChipVeredicto v={d.datos.veredicto as Veredicto} puntaje={d.datos.veredicto === "COMPRAR" ? d.datos.score ?? null : null} />}
-                      </span>
-                      {d.lineas.map((l, i) => <span key={i} className={i === 0 ? "iv2-cambio" : "iv2-cambio-sub"} data-inv2="cambio"><ConMontoNegativo texto={l} /></span>)}
-                      {/* Si lo que cambió ya dice lo que deja al mes, la fila fija no lo repite. */}
-                      {d.datos.flujoCLP != null && !d.alMesEnCambio && <span className="iv2-depto-s" data-inv2="base-al-mes">{RESULTADO_COPY.filas.pones}: <span className={alMes.pones ? "iv2-nowrap iv2-pones" : "iv2-nowrap"}>{alMes.t}</span></span>}
-                      <span className="iv2-depto-fila">
-                        <span className="iv2-estado-gris" data-inv2="estado-depto">{B.francoEnEso}</span>
-                      </span>
-                    </TarjetaDetalles>
-                  </li>
-                );
-              })}
+              {/* Una tarjeta por fila (etapa 3, parte A; lámina 3.3-base). La tarjeta entera se toca: hoy abre los detalles; cuando exista la
+                  página de cada depto (parte B), esa página. Lo que cambió en la publicación pasa a esa página (lámina 4.2). */}
+              {base.elegidos.map((d) => (
+                <li key={d.avisoId} className="iv2-depto-li" data-inv2="depto-base">
+                  <TarjetaDetalles avisoId={d.avisoId} etiqueta={B.abrirDepto(d.ficha?.titulo ?? lineaDepto(d.datos))} sinFlecha>
+                    <TarjetaBase avisoId={d.avisoId} datos={d.datos} ficha={d.ficha} origen={d.origen} alcanza={d.alcanza} estado={{ chip: B.francoEnEso, linea: B.confirmandoLinea }} />
+                  </TarjetaDetalles>
+                </li>
+              ))}
             </ul>
           </section>
           <div className="iv2-acompana iv2-solo-movil-base" data-inv2="acompana">
@@ -119,12 +102,11 @@ export function VistaBase({ base }: { base: Base }) {
               <h2 className="iv2-base-h3" id="iv2-otras-t">{B.otras(base.otras.length)}</h2>
               <ul className="iv2-otras">
                 {base.otras.map((o) => (
-                  <li key={o.avisoId} className="iv2-otra" data-inv2="otra">
-                    <div className="iv2-depto-id">
-                      <p className="iv2-depto-t">{lineaDepto(o.datos)}</p>
-                      <p className="iv2-depto-s">{[o.datos.precioUF ? `UF ${fmtUF(o.datos.precioUF)}` : null, `${signoVeredicto("COMPRAR")} ${etiquetaVeredicto("COMPRAR", "frase")}${o.datos.score != null ? ` · ${o.datos.score}` : ""}`].filter(Boolean).join(" · ")}</p>
-                    </div>
-                    <SumarDepto avisoId={o.avisoId} etiqueta={B.seguirConEste} origen="base" activos={activos} variante="enlace" />
+                  <li key={o.avisoId} className="iv2-otra-li">
+                    <TarjetaOtra avisoId={o.avisoId} datos={o.datos} ficha={o.ficha} acciones={<>
+                      <BotonDetalles avisoId={o.avisoId} etiqueta={B.verDetalles} clase="iv2-enlace-azul iv2-otra-accion" />
+                      <SumarDepto avisoId={o.avisoId} etiqueta={B.seguirConEste} origen="base" activos={activos} variante="enlace" />
+                    </>} />
                   </li>
                 ))}
               </ul>

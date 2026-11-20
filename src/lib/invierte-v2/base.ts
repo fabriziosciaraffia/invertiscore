@@ -44,6 +44,12 @@ export const BASE_COPY = {
   tusDeptosLinea: (n: number) => (n === 1 ? "El que elegiste para seguir." : `Los ${n === 2 ? "dos" : n} con que elegiste seguir. Cada uno avanza por su cuenta.`),
   teTocaATi: "Te toca a ti",
   francoEnEso: "Franco está en eso",
+  /** La tarjeta de cada depto (etapa 3, parte A; lámina 3.3-base): de dónde salió, su estado con una línea y, en el PC, «Abrir este
+   *  depto». Mientras no exista el flujo de cada depto (parte B), todos están en «Confirmando». */
+  origen: { entrada: "El que elegiste", mapa: "El que elegiste", franco: "Te lo recomendamos" } as Record<"entrada" | "mapa" | "franco", string>,
+  confirmandoLinea: "Confirmando con quien lo vende que sigue disponible",
+  abrirEsteDepto: "Abrir este depto",
+  verDetalles: "Ver detalles",
   /** Junto a la línea de capacidad, con la preaprobación aprobada (20-nov-2026): la abre en su ventana. */
   ver: "Ver",
   abrir: "Abrir",
