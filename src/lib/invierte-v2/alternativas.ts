@@ -33,6 +33,8 @@ const parecidos = (n: number) => (n === 1 ? "1 parecido" : `${n} parecidos`);
 
 export const ALTERNATIVAS_COPY = {
   /** El título del resultado cuando el suyo le alcanza (lámina 3.2): «Tu depto te alcanza. Y hay 3 parecidos cerca que también convienen.» */
+  /** Si el depto elegido tiene alerta grave (20-nov-2026, Fabrizio): el título lo dice; la casilla sigue marcada y la persona decide. */
+  tituloGrave: "Tu depto te alcanza, pero revisa esto antes de seguir.",
   titulo: (n: number, nivel: NivelAlt, comuna: string | null) => {
     if (!n || nivel === "solo_elegido") return "Tu depto te alcanza.";
     const conv = n === 1 ? "que también conviene" : "que también convienen";

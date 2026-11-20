@@ -197,7 +197,8 @@ export function ResultadoOpciones(p: PropsResultado) {
   const alternativas = p.opciones.filter((o) => !o.esEntrada && (p.caso !== "caso1" || o.alcanza) && !graves.has(o.avisoId));
   const listaOpciones = [...(entrada ? [entrada] : []), ...alternativas];
   const itemsNivel = alternativas.map((o) => ({ nivel: p.niveles[o.avisoId] ?? null, distanciaM: p.distancias[o.avisoId] ?? null }));
-  const titulo = p.caso === "alcanza" && entrada ? A.titulo(alternativas.length, nivelDelTitulo(itemsNivel), entrada.comuna) : R.sinEntrada(vivas.length);
+  // Con alerta grave en el elegido, el título lo dice (20-nov-2026); el resto queda igual: su casilla sigue marcada y la persona decide.
+  const titulo = p.caso === "alcanza" && entrada ? (graves.has(entrada.avisoId) ? A.tituloGrave : A.titulo(alternativas.length, nivelDelTitulo(itemsNivel), entrada.comuna)) : R.sinEntrada(vivas.length);
   const mejor = (val: (o: OpcionDepto) => number | null, menor: boolean) => {
     const xs = vivas.map(val).filter((x): x is number => x != null);
     return xs.length ? (menor ? Math.min(...xs) : Math.max(...xs)) : null;
@@ -275,7 +276,7 @@ export function ResultadoOpciones(p: PropsResultado) {
           <div><dt>{A.arriendo}</dt><dd>{entrada.arriendoCLP ? fmtCLP(entrada.arriendoCLP) : "—"}</dd></div>
           <div><dt>{A.alMes}</dt><dd>{(() => { const m = textoAlMes(entrada); return m.pones ? <span className="iv2-pones">{m.t}</span> : m.t; })()}</dd></div>
         </dl>
-        <LoQueVeFranco avisoId={entrada.avisoId} variante="elegido" inicial={p.lecturas[entrada.avisoId] ?? null} alFotos={conFotos(entrada.avisoId)} />
+        <LoQueVeFranco avisoId={entrada.avisoId} variante="elegido" inicial={p.lecturas[entrada.avisoId] ?? null} alLlegar={siEsGrave(entrada.avisoId)} alFotos={conFotos(entrada.avisoId)} />
         <div className="iv2-res-acciones">
           <label className="iv2-res-sigo">
             <input type="checkbox" className="iv2-check" checked={marcados.has(entrada.avisoId)} disabled={!entrada.alcanza} onChange={() => toggle(entrada.avisoId)} data-inv2="check" />

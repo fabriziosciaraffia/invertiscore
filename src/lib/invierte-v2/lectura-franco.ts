@@ -153,6 +153,12 @@ export function sanearLectura(j: unknown, opts: { fotosCompletas?: boolean } = {
   // guardada, la corta se perdía entera y el resultado mostraba solo la alerta).
   const corta = (Array.isArray(o.corta) ? o.corta : []).map((l) => limpio(typeof l === "string" ? l : (l as { texto?: unknown } | null)?.texto)).filter((t): t is string => !!t && permitida(t)).slice(0, 3);
   if (!larga.length && !corta.length) return null;
+  // Sin versión corta (20-nov-2026: dos lecturas de la prueba de Fabrizio quedaron con la corta vacía y la larga completa, y su
+  // alternativa salía sin recuadro), la corta sale de la larga: sus primeras líneas, en su orden, sin «Ojo» si hay otras.
+  if (!corta.length) {
+    const sinOjo = larga.filter((x) => x.etiqueta !== "Ojo");
+    corta.push(...(sinOjo.length ? sinOjo : larga).slice(0, 3).map((x) => x.texto));
+  }
   // Una alerta sin motivo legible no se muestra como alerta (queda el nivel para decidir si se recomienda).
   return { alerta: { nivel, motivo }, larga, corta };
 }
