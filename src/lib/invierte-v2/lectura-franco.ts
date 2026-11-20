@@ -18,8 +18,11 @@
 //   · Si la lectura no está lista, la tarjeta se muestra sin ese bloque y se completa sola; nunca se bloquea la pantalla.
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Sube con cada cambio de la instrucción: una lectura de otra versión se vuelve a generar. */
-export const VERSION_LECTURA = 10;
+import { limpiarCalle, limpiarNumero } from "./titulo-depto";
+
+/** Sube con cada cambio de la instrucción: una lectura de otra versión se vuelve a generar. 11 (etapa 3, 20-nov-2026): la calle y el
+ *  número, internos, para el título del depto. */
+export const VERSION_LECTURA = 11;
 /** Todas las fotos de la publicación, hasta este tope (20-nov-2026; antes 8, y la lectura decía que faltaban fotos que sí estaban). */
 export const MAX_FOTOS_LECTURA = 24;
 /** Lecturas nuevas por hora, entre todas las personas (resguardo de costo). */
@@ -54,6 +57,11 @@ export interface LecturaFranco {
   estadoArriendo?: EstadoArriendo | null;
   /** Las cifras de la tarjeta con que se escribió (se guardan con la lectura: al releerla, el saneado las sigue permitiendo). */
   cifras?: CifrasTarjeta | null;
+  /** Interno (etapa 3, 20-nov-2026): la calle según la publicación, sin número, para el título del depto (titulo-depto.ts). Null si la
+   *  publicación no la dice con claridad. */
+  calle?: string | null;
+  /** Interno: el número de la calle, solo si la publicación lo dice y sale limpio. No va en el título: solo en la página del depto. */
+  numero?: string | null;
 }
 
 /** Las cifras del motor que la lectura PUEDE citar, tal como las muestra la tarjeta (20-nov-2026, Fabrizio): el cap rate bruto y lo que
@@ -102,6 +110,8 @@ Entregas tres cosas:
 
 4. estado_arriendo (interno, no se muestra): cómo está el depto para arrendar según las fotos y el texto: «listo» (se arrienda tal como está), «arreglos_menores» (pintura, alfombras, artefactos) o «remodelacion» (cocina, baños o terminaciones completas).
 
+5. calle y numero (internos, no se muestran en la lectura; sirven para nombrar el depto): la calle donde está el depto según la dirección o el texto de la publicación, sin número ni comuna, escrita con mayúsculas normales («Dublé Almeyda», «Av. Irarrázaval»); y su número, solo si la publicación lo dice tal cual. Si la publicación no dice la calle con claridad, calle es null; si no dice el número, numero es null. Nunca los deduzcas de la ubicación, del metro ni de las fotos, y no los nombres en las líneas de la lectura.
+
 Reglas:
 - Nunca cites ni juzgues el precio: nada de precios, precio por m², «bajo su zona», «más barato», «buen precio» ni comparaciones con la zona o con otros deptos. Eso lo dice el informe, con otra referencia.
 - De las cifras del motor, solo las de la tarjeta (cap rate bruto, lo que deja o pide al mes y el veredicto), tal cual. Ninguna otra: ni precio, ni arriendo, ni gastos comunes en pesos, ni distancia al metro. Sí puedes usar medidas que vengan de la publicación y sirvan para arrendar (por ejemplo, un dormitorio de 6,6 m²), pisos, cantidades de dormitorios y años de construcción informados.
@@ -119,8 +129,10 @@ const FUENTE = { type: "string", enum: ["fotos", "publicacion", "datos"] } as co
 export const ESQUEMA_LECTURA_FRANCO = {
   type: "object",
   additionalProperties: false,
-  required: ["alerta", "larga", "corta", "estado_arriendo"],
+  required: ["alerta", "larga", "corta", "estado_arriendo", "calle", "numero"],
   properties: {
+    calle: { anyOf: [{ type: "string", maxLength: 80, description: "Interno: la calle según la publicación, sin número ni comuna." }, { type: "null" }] },
+    numero: { anyOf: [{ type: "string", maxLength: 12, description: "Interno: el número de la calle, solo si la publicación lo dice." }, { type: "null" }] },
     alerta: {
       type: "object",
       additionalProperties: false,
@@ -216,7 +228,10 @@ export function sanearConRegistro(j: unknown, opts: { fotosCompletas?: boolean; 
   const filtro = (campo: Descarte["campo"]) => (t: string) => { const r = motivoDe(t); if (r) descartes.push({ campo, texto: t, regla: r }); return !r; };
   const permitida = filtro("larga");
   if (!j || typeof j !== "object") return { lectura: null, descartes };
-  const o = j as { alerta?: { nivel?: unknown; motivo?: unknown }; larga?: unknown; corta?: unknown; estado_arriendo?: unknown; estadoArriendo?: unknown };
+  const o = j as { alerta?: { nivel?: unknown; motivo?: unknown }; larga?: unknown; corta?: unknown; estado_arriendo?: unknown; estadoArriendo?: unknown; calle?: unknown; numero?: unknown };
+  // La calle y el número pasan por la misma limpieza que el título (etapa 3): lo que no es una calle confiable queda en null.
+  const calle = limpiarCalle(typeof o.calle === "string" ? o.calle : null);
+  const numero = calle ? limpiarNumero(typeof o.numero === "string" ? o.numero : null) : null;
   const estadoCrudo = o.estado_arriendo ?? o.estadoArriendo;
   const estadoArriendo: EstadoArriendo | null = (ESTADOS_ARRIENDO as readonly unknown[]).includes(estadoCrudo) ? (estadoCrudo as EstadoArriendo) : null;
   const motivoCrudo = limpio(o.alerta?.motivo);
@@ -235,7 +250,7 @@ export function sanearConRegistro(j: unknown, opts: { fotosCompletas?: boolean; 
   const corta = (Array.isArray(o.corta) ? o.corta : []).map((l) => limpio(typeof l === "string" ? l : (l as { texto?: unknown } | null)?.texto)).filter((t): t is string => !!t && filtro("corta")(t)).slice(0, 3);
   if (!larga.length && !corta.length) return { lectura: null, descartes };
   // Una alerta sin motivo legible no se muestra como alerta (queda el nivel para decidir si se recomienda).
-  return { lectura: { alerta: { nivel, motivo }, larga, corta, estadoArriendo, cifras }, descartes };
+  return { lectura: { alerta: { nivel, motivo }, larga, corta, estadoArriendo, cifras, calle, numero }, descartes };
 }
 
 /** ¿Esta línea es UNA frase? Un punto, signo de cierre o exclamación seguido de otra frase la parte en dos. */

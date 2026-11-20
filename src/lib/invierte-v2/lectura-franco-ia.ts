@@ -19,6 +19,8 @@ export interface EntradaLectura {
   fotos: string[];
   titulo: string | null;
   descripcion: string | null;
+  /** La dirección que guardamos de la publicación (etapa 3): suele venir sucia; la lectura saca de ahí (o del texto) la calle. */
+  direccion?: string | null;
   /** Nuestros datos, sin precio ni ninguna otra cifra del informe que la lectura pudiera repetir. */
   datos: { comuna: string | null; dormitorios: number | null; banos: number | null; superficie_m2: number | null; antiguedad: { anio: number } | "no informada"; metro: { estacion: string; a_pie: boolean } | null };
   /** Lo que muestra la tarjeta, tal cual (20-nov-2026): el veredicto siempre; el cap rate bruto y lo que deja o pide al mes solo con al
@@ -95,7 +97,7 @@ export async function generarLecturaFranco(cliente: Anthropic, e: EntradaLectura
   const numeros = e.tarjeta.cap_rate_bruto || e.tarjeta.al_mes
     ? `NÚMEROS DE LA TARJETA (cítalos tal cual, sin recalcularlos ni proponer otros):\n${JSON.stringify(e.tarjeta, null, 2)}`
     : `NÚMEROS DE LA TARJETA: solo el veredicto (${e.tarjeta.veredicto ?? "sin veredicto"}). Este depto no tiene suficientes arriendos comparables de su tamaño: no hables de cap rate ni de lo que deja al mes.`;
-  const texto = `PUBLICACIÓN (lo que escribió quien publica):\n${JSON.stringify({ titulo: e.titulo, descripcion: e.descripcion }, null, 2)}\n\nNUESTROS DATOS:\n${JSON.stringify(e.datos, null, 2)}\n\n${numeros}\n\n${cuantas} Escribe la lectura.`;
+  const texto = `PUBLICACIÓN (lo que escribió quien publica):\n${JSON.stringify({ titulo: e.titulo, descripcion: e.descripcion, direccion: e.direccion ?? null }, null, 2)}\n\nNUESTROS DATOS:\n${JSON.stringify(e.datos, null, 2)}\n\n${numeros}\n\n${cuantas} Escribe la lectura.`;
   const esperar = opts.esperar ?? ((ms: number) => new Promise<void>((ok) => setTimeout(ok, ms)));
   const t0 = Date.now();
   let ultima: { motivo: MotivoFalla; detalle: string } = { motivo: "error", detalle: "sin intentos" };

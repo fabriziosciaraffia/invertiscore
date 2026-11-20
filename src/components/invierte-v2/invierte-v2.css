@@ -700,3 +700,63 @@
 [data-theme="light"] .iv2-alerta-chip { background: #FFFFFF; color: #6E4560; }
 .iv2-alerta[data-nivel="grave"] .iv2-alerta-chip { background: #6E4560; color: #FFFFFF; }
 .iv2-alerta-t { margin: 0; font-size: 13px; line-height: 1.45; color: var(--franco-text); }
+
+/* LA TARJETA DE UN DEPTO EN LA BASE (etapa 3, parte A, 20-nov-2026; láminas 3.3-base y 3.3-base-pc). Celular: la foto con de dónde
+   salió, el título calle·metro, comuna y programa y el veredicto; la síntesis en el recuadro azul; precio, cap rate y al mes; el estado
+   con su línea y la flecha. PC: una por fila, la foto a la izquierda, al centro lo mismo y a la derecha el estado con «Abrir este depto».
+   Las otras opciones, lo mismo en chico. Todo en span dentro del botón de la tarjeta. */
+.iv2-td { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.iv2-td-principal { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.iv2-td-cab { display: flex; gap: 12px; min-width: 0; }
+.iv2-portada { display: block; flex: none; overflow: hidden; border-radius: 10px; background: var(--franco-bg); }
+[data-theme="light"] .iv2-portada { background: #E6E8EC; }
+.iv2-portada img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.iv2-td-foto { width: 92px; height: 92px; }
+.iv2-td-id { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.iv2-depto-cuerpo .iv2-td-id > span { display: block; }
+.iv2-td-origen { font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--franco-text-secondary); margin-bottom: 2px; }
+.iv2-td-t { font-size: 15px; font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
+.iv2-depto-cuerpo .iv2-td-chip { display: flex; margin-top: 4px; }
+.iv2-td-sintesis { gap: 5px; padding: 10px 12px; border-radius: 10px; }
+.iv2-td-sintesis-t { font-size: 13px; line-height: 1.4; font-weight: 600; color: var(--franco-text); }
+.iv2-td-datos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.iv2-td-dato { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.iv2-td-dato-et { font-size: 11px; color: var(--franco-text-secondary); }
+.iv2-td-dato-v { font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+.iv2-td-estado { display: flex; justify-content: space-between; align-items: center; gap: 10px; border-top: 1px solid var(--franco-border); padding-top: 10px; }
+.iv2-td-estado-txt { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; }
+.iv2-td-estado-linea { font-size: 12px; line-height: 1.45; color: var(--franco-text-secondary); }
+.iv2-td-abrir { display: none; }
+.iv2-td-flecha { flex: none; font-size: 22px; line-height: 1; color: var(--franco-text); }
+.iv2-depto-li > .iv2-depto-tocable:has(.iv2-td) { align-items: stretch; }
+.iv2-otra-li { list-style: none; min-width: 0; }
+.iv2-otra-mini { box-sizing: border-box; border: 1px solid var(--franco-border); border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 8px; background: var(--franco-card); min-width: 0; }
+.iv2-otra-mini-cab { display: flex; gap: 12px; min-width: 0; }
+.iv2-otra-mini-foto { width: 60px; height: 60px; }
+.iv2-otra-mini-id { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.iv2-otra-mini-id p, .iv2-otra-mini-linea { margin: 0; }
+.iv2-otra-mini-t { font-size: 14px; font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
+.iv2-otra-mini-resumen { font-size: 12px; line-height: 1.45; font-weight: 600; color: var(--franco-text); }
+.iv2-otra-mini-linea { font-size: 13px; line-height: 1.45; color: var(--franco-text-secondary); }
+[data-theme="light"] .iv2-otra-mini-linea { color: #3A3A3F; }
+.iv2-otra-mini-acciones { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.iv2-otra-mini-acciones .iv2-enlace-azul { font-size: 13px; font-weight: 600; min-height: 44px; }
+@media (min-width: 1024px) {
+  .iv2-deptos { display: flex; flex-direction: column; gap: 14px; }
+  .iv2-td { flex-direction: row; gap: 16px; }
+  .iv2-td-principal { flex: 1; display: grid; grid-template-columns: 170px minmax(0, 1fr); column-gap: 16px; row-gap: 8px; align-content: start; }
+  .iv2-td-principal:not(:has(.iv2-portada)) { grid-template-columns: minmax(0, 1fr); }
+  .iv2-td-cab { display: contents; }
+  .iv2-td-foto { grid-column: 1; grid-row: 1 / span 3; width: 170px; height: 150px; }
+  .iv2-td-id, .iv2-td-sintesis, .iv2-td-datos { grid-column: -2 / -1; }
+  .iv2-td-id { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 10px; align-items: start; }
+  .iv2-td-id > span { grid-column: 1; }
+  .iv2-depto-cuerpo .iv2-td-id > .iv2-td-chip { grid-column: 2; grid-row: 1 / span 3; margin-top: 0; }
+  .iv2-td-t { font-size: 16px; }
+  .iv2-td-estado { width: 190px; flex: none; flex-direction: column; justify-content: center; align-items: flex-start; border-top: 0; border-left: 1px solid var(--franco-border); padding: 0 0 0 16px; }
+  .iv2-td-estado-linea { font-size: 13px; color: var(--franco-text); }
+  [data-theme="light"] .iv2-td-estado-linea { color: #3A3A3F; }
+  .iv2-td-abrir { display: block; margin-top: 4px; font-size: 13px; font-weight: 600; color: #8DB0E3; }
+  [data-theme="light"] .iv2-td-abrir { color: #2B558F; }
+  .iv2-td-flecha { display: none; }
+}

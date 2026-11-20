@@ -17,11 +17,14 @@ import { aOpcion, calcularOpciones, filaEntrada, leerPerfilInv, tareasGestionar,
 import { anotar, ultimaOrdenDe, type ContextoPedido, type OrdenInv } from "./servidor";
 import { leerPreaprobacion } from "./preaprobacion-servidor";
 import type { EstadoVisible } from "./preaprobacion";
+import { fichasDe, type FichaDepto } from "./ficha-depto-servidor";
 
 const T_DEPTOS = "inv_deptos";
 
 export interface DatosDepto { precioUF?: number; veredicto?: string | null; score?: number | null; comuna?: string; m2?: number | null; dormitorios?: number | null; banos?: number | null; flujoCLP?: number | null }
-export interface DeptoDeBase { avisoId: string; alcanza: boolean; datos: DatosDepto; lineas: string[]; preparado: boolean; alMesEnCambio: boolean }
+/** De dónde salió (lámina 3.3-base, etapa 3): «El que elegiste» (entrada o mapa) o «Te lo recomendamos» (Franco). */
+export type OrigenDepto = "entrada" | "franco" | "mapa";
+export interface DeptoDeBase { avisoId: string; alcanza: boolean; datos: DatosDepto; lineas: string[]; preparado: boolean; alMesEnCambio: boolean; origen: OrigenDepto; ficha: FichaDepto | null }
 
 interface FilaCambio { aviso_id: string; tipo: TipoCambio; antes: Record<string, unknown>; despues: Record<string, unknown>; fecha: string }
 const PRINCIPALES: TipoCambio[] = ["precio_baja", "precio_sube", "despublicado", "republicado"];
@@ -56,7 +59,7 @@ export interface Base {
   perfil: PerfilInv | null;
   elegidos: DeptoDeBase[];
   /** Las otras opciones que convienen y le alcanzan, de mejor a peor puntaje. */
-  otras: { avisoId: string; datos: DatosDepto }[];
+  otras: { avisoId: string; datos: DatosDepto; ficha: FichaDepto | null }[];
   whatsapp: string | null;
   /** La preaprobación (entrega 3): decide «Lo que te toca hoy». */
   preaprobacion: EstadoVisible;
@@ -90,6 +93,7 @@ export async function leerBase(admin: SupabaseClient, userId: string): Promise<B
     return {
       avisoId: id, alcanza: f.alcanza === true, datos: vigenteSobre((f.datos ?? {}) as DatosDepto, f.vigente as Partial<Vigente> | null), lineas: lineas.get(id) ?? [],
       preparado: listos.has(id), alMesEnCambio: conCambioAlMes.has(`${id}|${ultimaFecha.get(id) ?? ""}`),
+      origen: ((f.origen as string | null) ?? "mapa") as OrigenDepto, ficha: null as FichaDepto | null,
     };
   });
   // «Otras opciones que convienen»: las recomendaciones de Franco que no eligió, nunca más del cupo de tres en todo el flujo
@@ -97,9 +101,13 @@ export async function leerBase(admin: SupabaseClient, userId: string): Promise<B
   const elegidasFranco = filas.filter((f) => f.estado === "elegido" && f.origen === "franco").length;
   const otras = filas
     .filter((f) => f.estado === "opcion" && f.origen === "franco" && f.alcanza === true && (f.datos as DatosDepto | null)?.veredicto === "COMPRAR")
-    .map((f) => ({ avisoId: f.aviso_id as string, datos: (f.datos ?? {}) as DatosDepto }))
+    .map((f) => ({ avisoId: f.aviso_id as string, datos: (f.datos ?? {}) as DatosDepto, ficha: null as FichaDepto | null }))
     .sort((a, b) => (b.datos.score ?? 0) - (a.datos.score ?? 0))
     .slice(0, cuantasPedir(elegidasFranco));
+  // La ficha de cada tarjeta (etapa 3, parte A): título calle·metro, fotos, cap rate y «Lo que ve Franco» si ya está.
+  const todos = [...elegidos, ...otras];
+  const fichas = await fichasDe(admin, todos.map((d) => d.avisoId), Object.fromEntries(todos.map((d) => [d.avisoId, d.datos.precioUF ?? null])));
+  for (const d of todos) d.ficha = fichas[d.avisoId] ?? null;
   const preDetalle = { motivo: pre.doc?.motivo ?? null, banco: pre.doc?.banco ?? null, vigenteHasta: pre.doc?.vigenteHasta ?? null, mime: pre.doc?.mime ?? null, otra: pre.otra ? { estado: pre.otra.estado, mime: pre.otra.mime } : null };
   return { orden, perfil, elegidos, otras, whatsapp, preaprobacion: pre.estado, preDetalle };
 }

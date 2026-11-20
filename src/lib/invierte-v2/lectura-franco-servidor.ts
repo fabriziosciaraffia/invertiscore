@@ -63,7 +63,7 @@ export async function arriendosDeSuTamano(admin: SupabaseClient, p: { lat: numbe
 
 async function entradaDe(admin: SupabaseClient, avisoId: string): Promise<{ entrada: EntradaLectura; leidoAt: string } | null> {
   const [{ data: d }, { data: sp }, { data: ae }, { data: cfg }] = await Promise.all([
-    admin.from("publicacion_detalle").select("fotos, descripcion, leido_at").eq("aviso_id", avisoId).maybeSingle(),
+    admin.from("publicacion_detalle").select("fotos, descripcion, direccion, leido_at").eq("aviso_id", avisoId).maybeSingle(),
     admin.from("scraped_properties").select("titulo, comuna, dormitorios, banos, superficie_m2, lat, lng").eq("id", avisoId).order("id").limit(1).maybeSingle(),
     admin.from("avisos_evaluados").select("antiguedad_anios, antiguedad_origen, precio_uf, arriendo, flujo_20, veredicto_20, score_20").eq("aviso_id", avisoId).maybeSingle(),
     admin.from("config").select("value").eq("key", "uf_value").maybeSingle(),
@@ -86,7 +86,7 @@ async function entradaDe(admin: SupabaseClient, avisoId: string): Promise<{ entr
   return {
     leidoAt: d.leido_at as string,
     entrada: {
-      fotos, titulo: (sp?.titulo as string | null) ?? null, descripcion: (d.descripcion as string | null) ?? null,
+      fotos, titulo: (sp?.titulo as string | null) ?? null, descripcion: (d.descripcion as string | null) ?? null, direccion: (d.direccion as string | null) ?? null,
       datos: {
         comuna: (sp?.comuna as string | null) ?? null, dormitorios: (sp?.dormitorios as number | null) ?? null, banos: (sp?.banos as number | null) ?? null,
         superficie_m2: sp?.superficie_m2 == null ? null : Number(sp.superficie_m2), antiguedad: anio ? { anio } : "no informada",

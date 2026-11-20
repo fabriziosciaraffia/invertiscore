@@ -12,26 +12,39 @@ import { lineaCambio } from "@/lib/invierte-v2/cambios";
 import type { Base, DatosDepto, PerfilActualizado } from "@/lib/invierte-v2/base-servidor";
 import type { OrdenInv } from "@/lib/invierte-v2/servidor";
 import type { PerfilInv } from "@/lib/invierte-v2/perfil-servidor";
+import type { FichaDepto } from "@/lib/invierte-v2/ficha-depto-servidor";
+import type { LecturaFranco } from "@/lib/invierte-v2/lectura-franco";
+import { tituloDepto } from "@/lib/invierte-v2/titulo-depto";
 
 export const dynamic = "force-dynamic";
 
 const dep = (comuna: string, o: Partial<DatosDepto> = {}): DatosDepto => ({ comuna, dormitorios: 2, banos: 2, m2: 58, precioUF: 3250, veredicto: "COMPRAR", score: 78, flujoCLP: 52000, ...o });
 const HOY = "2026-11-20";
+// La ficha de cada tarjeta (etapa 3, parte A): calles y metros de muestra, una sin calle (queda el metro), una sin calle ni metro
+// cerca (queda la comuna) y una con calle larga; sin fotos (la ruta de fotos no sirve datos de muestra).
+const lec = (sintesis: string, alerta: string | null = null): LecturaFranco => ({ alerta: alerta ? { nivel: "revisar", motivo: alerta } : { nivel: "ninguna", motivo: null }, larga: [], corta: [sintesis, "Segunda línea.", "Tercera línea."] });
+const fic = (calle: string | null, estacion: string | null, metros: number, comuna: string, cap: number | null, l: LecturaFranco | null, fotos = 0): FichaDepto => {
+  const metro = estacion ? { estacion, metros } : null;
+  return { titulo: tituloDepto({ calle, metro, comuna }), metro, comuna, fotos, capRatePct: cap, lectura: l };
+};
 const L = (tipo: Parameters<typeof lineaCambio>[0]["tipo"], antes: Record<string, unknown>, despues: Record<string, unknown>) => lineaCambio({ tipo, antes, despues }, HOY)!;
 
 const ELEGIDOS: Omit<Base["elegidos"][number], "alMesEnCambio">[] = [
-  { avisoId: "m1", alcanza: true, preparado: true, datos: dep("Pedro Aguirre Cerda", { m2: 61, precioUF: 2850, flujoCLP: 52000 }),
-    lineas: [L("precio_baja", { precioUF: 3000 }, { precioUF: 2850 }), L("veredicto", { veredicto: "AJUSTA SUPUESTOS" }, { veredicto: "COMPRAR" }), L("al_mes", {}, { flujoCLP: 52000 })] },
+  // m1 y o1 con fotos de deptos reales (solo se ven con la sesión de quien firmó la orden, como la cuenta de QA).
+  { avisoId: "50abb999-65ed-4148-b907-ec7601db8083", alcanza: true, preparado: true, datos: dep("Pedro Aguirre Cerda", { m2: 61, precioUF: 2850, flujoCLP: 52000 }),
+    lineas: [L("precio_baja", { precioUF: 3000 }, { precioUF: 2850 }), L("veredicto", { veredicto: "AJUSTA SUPUESTOS" }, { veredicto: "COMPRAR" }), L("al_mes", {}, { flujoCLP: 52000 })],
+    origen: "entrada", ficha: fic("Dublé Almeyda", "Lo Valledor", 640, "Pedro Aguirre Cerda", 4.7, lec("Te sobran $52.000 al mes, y cocina y baños están renovados: se arrienda tal como está."), 3) },
   { avisoId: "m2", alcanza: true, preparado: true, datos: dep("Estación Central", { precioUF: 3310, flujoCLP: -120500, score: 81 }),
-    lineas: [L("precio_sube", { precioUF: 3180 }, { precioUF: 3310 }), L("al_mes", {}, { flujoCLP: -120500 })] },
-  { avisoId: "m3", alcanza: false, preparado: true, datos: dep("Independencia", { precioUF: 3720, flujoCLP: -9000 }), lineas: [L("despublicado", {}, {})] },
-  { avisoId: "m4", alcanza: true, preparado: true, datos: dep("San Miguel", { dormitorios: 3, m2: 72, precioUF: 3090, score: 88 }), lineas: [L("republicado", {}, {})] },
-  { avisoId: "m5", alcanza: true, preparado: true, datos: dep("La Cisterna", { dormitorios: 1, banos: 1, m2: 40, precioUF: 2640 }), lineas: [] },
-  { avisoId: "m6", alcanza: true, preparado: true, datos: dep("Quinta Normal", { precioUF: 3190, flujoCLP: 4000 }), lineas: [] },
+    lineas: [L("precio_sube", { precioUF: 3180 }, { precioUF: 3310 }), L("al_mes", {}, { flujoCLP: -120500 })],
+    origen: "franco", ficha: fic("Avenida Libertador Bernardo O'Higgins", "Universidad de Santiago", 300, "Estación Central", 5.0, lec("Cap rate de 5,0 %, pero la cocina es original: parte de esa ventaja se va en dejarlo arrendable.", "La publicación dice 58 m² y el plano muestra 49.")) },
+  { avisoId: "m3", alcanza: false, preparado: true, datos: dep("Independencia", { precioUF: 3720, flujoCLP: -9000 }), lineas: [L("despublicado", {}, {})], origen: "mapa", ficha: fic(null, "Cal y Canto", 820, "Independencia", null, null) },
+  { avisoId: "m4", alcanza: true, preparado: true, datos: dep("San Miguel", { dormitorios: 3, m2: 72, precioUF: 3090, score: 88 }), lineas: [L("republicado", {}, {})], origen: "franco", ficha: fic(null, null, 0, "San Miguel", 5.4, lec("Tres dormitorios para arrendar por pieza: en las fotos se ve todo en orden.")) },
+  { avisoId: "m5", alcanza: true, preparado: true, datos: dep("La Cisterna", { dormitorios: 1, banos: 1, m2: 40, precioUF: 2640 }), lineas: [], origen: "franco", ficha: fic("Gran Avenida", "Lo Ovalle", 450, "La Cisterna", 5.2, lec("Uno más uno chico, fácil de arrendar.")) },
+  { avisoId: "m6", alcanza: true, preparado: true, datos: dep("Quinta Normal", { precioUF: 3190, flujoCLP: 4000 }), lineas: [], origen: "franco", ficha: fic("Carrascal", "Quinta Normal", 900, "Quinta Normal", 5.6, null) },
 ];
 const OTRAS: Base["otras"] = [
-  { avisoId: "o1", datos: dep("Ñuñoa", { m2: 55, precioUF: 3090, score: 81 }) },
-  { avisoId: "o2", datos: dep("San Miguel", { banos: 1, m2: 52, precioUF: 2640, score: 76 }) },
+  { avisoId: "43b61f12-f529-4aea-9fd5-56e841f492c7", datos: dep("Ñuñoa", { m2: 55, precioUF: 3090, score: 81 }), ficha: fic("Av. Grecia", "Estadio Nacional", 500, "Ñuñoa", 5.1, lec("Cap rate de 5,1 % y viene amoblado y en buen estado: listo para arrendar."), 3) },
+  { avisoId: "o2", datos: dep("San Miguel", { banos: 1, m2: 52, precioUF: 2640, score: 76 }), ficha: fic("Simón Bolívar", "El Llano", 700, "San Miguel", 4.8, lec("Pide fotos del baño antes de ofertar.", "La publicación dice 56 m² y el plano muestra 49.")) },
 ];
 
 const conAlMes = (e: Omit<Base["elegidos"][number], "alMesEnCambio">): Base["elegidos"][number] => ({ ...e, alMesEnCambio: e.lineas.some((l) => /al mes$/.test(l)) });

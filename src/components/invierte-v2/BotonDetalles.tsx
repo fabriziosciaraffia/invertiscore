@@ -30,7 +30,7 @@ export function BotonDetalles({ avisoId, etiqueta, clase = "iv2-enlace-azul" }: 
 /** En la base, «Tus deptos» (20-nov-2026, decisión de Fabrizio): la tarjeta entera se toca y abre los detalles, con una flecha a
  *  la derecha en vez del enlace «Abrir». Por ahora lleva a los detalles; cuando exista el flujo de cada depto, a esa página. El
  *  contenido va en `span` (un botón solo admite texto en línea). */
-export function TarjetaDetalles({ avisoId, etiqueta, children }: { avisoId: string; etiqueta: string; children: ReactNode }) {
+export function TarjetaDetalles({ avisoId, etiqueta, children, sinFlecha = false }: { avisoId: string; etiqueta: string; children: ReactNode; /** La tarjeta de la etapa 3 lleva su flecha en la fila del estado. */ sinFlecha?: boolean }) {
   const [estado, setEstado] = useState<"listo" | "abriendo" | "error">("listo");
   async function abrir() {
     if (estado === "abriendo") return;
@@ -43,7 +43,7 @@ export function TarjetaDetalles({ avisoId, etiqueta, children }: { avisoId: stri
     <>
       <button type="button" className="iv2-depto iv2-depto-tocable" onClick={abrir} disabled={estado === "abriendo"} aria-label={etiqueta} data-inv2="ver-detalles">
         <span className="iv2-depto-cuerpo">{children}</span>
-        <span className="iv2-depto-flecha" aria-hidden="true">›</span>
+        {!sinFlecha && <span className="iv2-depto-flecha" aria-hidden="true">›</span>}
       </button>
       {estado === "error" && <span className="iv2-depto-error" role="alert">No se pudo abrir: intenta de nuevo</span>}
       {estado === "abriendo" && <CargandoDetalles />}
