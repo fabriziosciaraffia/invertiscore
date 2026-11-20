@@ -19,6 +19,8 @@ export const DESDE_INVIERTE = "invierte";
 export const DETALLES_COPY = {
   miInversion: "Mi inversión",
   chipSuyo: "Uno de tus deptos",
+  /** Su depto de entrada antes de elegirlo: como en el resultado (20-nov-2026); «Uno de tus deptos» queda para después de elegir. */
+  chipEntrada: "El que elegiste",
   chipRecomendado: "Te lo recomendamos",
   estadoSuyo: "Ya sigues con este depto. Franco lo está gestionando.",
   /** Su depto de entrada, abierto desde el resultado antes de elegir (20-nov-2026). */

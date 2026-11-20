@@ -34,7 +34,9 @@ export function BarraDetalles({ modo }: { modo: ModoDetalles }) {
   return (
     <div className="iv2-det-barra" data-inv2="detalles-barra">
       <Link href={URL_INVIERTE} className="iv2-mi-inversion-a" data-inv2="mi-inversion">← {D.miInversion}</Link>
-      {modo.relacion !== "recomendado"
+      {modo.relacion === "entrada"
+        ? <span className="iv2-det-chip iv2-det-chip-suyo" data-inv2="chip-entrada">{D.chipEntrada}</span>
+        : modo.relacion === "suyo"
         ? <span className="iv2-det-chip iv2-det-chip-suyo" data-inv2="chip-suyo">{D.chipSuyo}</span>
         : <span className="iv2-det-chip iv2-det-chip-reco" data-inv2="chip-recomendado">{D.chipRecomendado}</span>}
     </div>
