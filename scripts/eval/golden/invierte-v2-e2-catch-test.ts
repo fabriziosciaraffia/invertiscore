@@ -36,6 +36,10 @@ import { MOTIVO_REEMPLAZADA, aprobar, borrarArchivosPreaprobacion, confirmarSubi
 import { ESQUEMA_LECTURA, INSTRUCCION_LECTURA, leerPreaprobacionIA } from "../../../src/lib/invierte-v2/preaprobacion-ia";
 import { CLAUDE_MODEL_DOCUMENTOS } from "../../../src/lib/ai-config";
 import { TARIFAS } from "../../../src/lib/costo-ia";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { DIST_METRO_TITULO, limpiarCalle, limpiarNumero, tituloDepto } from "../../../src/lib/invierte-v2/titulo-depto";
+import { TarjetaBase, TarjetaOtra } from "../../../src/components/invierte-v2/TarjetaDepto";
 
 const RAIZ = join(__dirname, "..", "..", "..");
 const leer = (p: string) => readFileSync(join(RAIZ, p), "utf8").replace(/\r\n/g, "\n");
@@ -158,7 +162,9 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (!/\.iv2-pones \{ color: var\(--signal-red/.test(leer("src/components/invierte-v2/invierte-v2.css"))) F("3 · «Pones» no va en rojo");
       const base = codigo("src/components/invierte-v2/VistaBase.tsx"); // ⚠ ACTA (19-nov-2026): lo que dibuja la base vive en VistaBase (la usan la página y /dev/invierte-v2/base)
       // ⚠ ACTA (19-nov-2026, base completa): los datos del depto vienen en `d.datos` (base-servidor › leerBase).
-      if (!/const alMes = textoAlMes\(\{ flujoCLP: d\.datos\.flujoCLP \?\? null \}\);/.test(base) || !/\{RESULTADO_COPY\.filas\.pones\}: <span className=\{alMes\.pones \? "iv2-nowrap iv2-pones" : "iv2-nowrap"\}>\{alMes\.t\}/.test(base)) F("3 · la base no dice «Al mes» de cada depto");
+      // ⚠ ACTA (20-nov-2026, etapa 3 A1, lámina 3.3-base): la tarjeta de la base vive en TarjetaDepto (TarjetaBase); «Al mes» es su tercer dato.
+      const td3 = codigo("src/components/invierte-v2/TarjetaDepto.tsx");
+      if (!/<TarjetaBase /.test(base) || !/const alMes = textoAlMes\(\{ flujoCLP: datos\.flujoCLP \?\? null \}\);/.test(td3) || !/<Dato et=\{A\.alMes\} clave="base-al-mes"><span className=\{alMes\.pones \? "iv2-pones" : undefined\}>\{alMes\.t\}<\/span><\/Dato>/.test(td3)) F("3 · la base no dice «Al mes» de cada depto");
       // «Estás cerca» solo si lo que falta es poco (el más barato, a lo más un 10 % sobre lo que puede comprar), igual con pie y renta.
       if (UMBRAL_CERCA_PCT !== 10 || !estaCerca(1000, 1100) || estaCerca(1000, 1101) || estaCerca(1000, null) || estaCerca(0, 900)) F("3 · el umbral de «Estás cerca» no es el 10 %");
       if (RESULTADO_COPY.caso2.tituloCredito(false) !== "Hoy tu renta limita el crédito" || RESULTADO_COPY.caso2.tituloCredito(true) !== "Estás cerca: tu renta limita el crédito" || RESULTADO_COPY.caso2.tituloPie("97", false) !== "Hoy te faltan UF 97 de pie" || RESULTADO_COPY.caso2.tituloPie("97", true) !== "Estás cerca: te faltan UF 97 de pie") F("3 · los títulos del caso 2 no son «Hoy…» / «Estás cerca: …»");
@@ -398,10 +404,13 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (vs.precioUF !== 2850 || vs.veredicto !== "COMPRAR" || vs.flujoCLP !== 52000 || vs.score !== 70) F("9 · la tarjeta de la base no muestra el precio, el veredicto o el al mes vigentes");
       if (!/datos: vigenteSobre\(\(f\.datos \?\? \{\}\) as DatosDepto, f\.vigente/.test(codigo("src/lib/invierte-v2/base-servidor.ts"))) F("9 · la base no pone lo vigente sobre la foto del depto");
       // ⚠ ACTA (20-nov-2026, decisión de Fabrizio): la tarjeta entera es un botón (§14f): sus filas van en span.
-      if (!/\{d\.datos\.flujoCLP != null && !d\.alMesEnCambio && <span/.test(codigo("src/components/invierte-v2/VistaBase.tsx"))) F("9 · la base repite «Al mes» cuando lo que cambió ya lo dice");
+      // ⚠ ACTA (20-nov-2026, etapa 3 A1, lámina 3.3-base): lo que cambió en la publicación sale de la tarjeta y pasa a la página del depto
+      // (lámina 4.2, parte B): la tarjeta dice «Al mes» una sola vez, siempre como su tercer dato.
+      if (/d\.lineas\.map/.test(codigo("src/components/invierte-v2/VistaBase.tsx"))) F("9 · la tarjeta de la base vuelve a traer lo que cambió (va en la página del depto)");
       if (!lineaDepto({ comuna: "X", m2: 58 }).includes("58 m²")) F("9 · «58 m²» puede quedar partido en dos renglones");
       const vb = codigo("src/components/invierte-v2/VistaBase.tsx");
-      if (!/<ConMontoNegativo texto=\{l\} \/>/.test(vb) || !vb.includes("texto.split(/(pones \\$[\\d.]+)/)") || !vb.includes('<span key={i} className="iv2-pones iv2-nowrap">')) F("9 · «pones $X» de la línea de lo que cambió no va en rojo");
+      // ⚠ ACTA (20-nov-2026, etapa 3 A1): la línea de lo que cambió ya no va en la tarjeta; ConMontoNegativo queda para la página del depto.
+      if (!vb.includes("texto.split(/(pones \\$[\\d.]+)/)") || !vb.includes('<span key={i} className="iv2-pones iv2-nowrap">')) F("9 · «pones $X» de la línea de lo que cambió no va en rojo");
       // Sumar: solo lo que le alcanza, hasta seis; con seis, deja uno elegido por ella; cada sumado deja su tarea interna.
       const ORDEN = { id: "o-1", user_id: USER.id, email: USER.email, nombre: "Camila Rojas", rut: "12345678-5", aviso_id: "a0", depto_linea: "x", texto_version: 1, texto_sha256: "h", texto: "t", es_prueba: true, firmado_at: "2026-11-15T15:00:00Z" };
       const PERFIL = { user_id: USER.id, objetivo: "arriendo", comunas: ["Macul"], preaprobado: "no", tope_uf: 3000, tope_fuente: "renta", es_prueba: true, updated_at: "x" };
@@ -952,10 +961,12 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       const bd = codigo("src/components/invierte-v2/BotonDetalles.tsx");
       const tarjeta = bd.slice(bd.indexOf("export function TarjetaDetalles"), bd.indexOf("export function PrepararDetalles"));
       const dentro = vb.slice(vb.indexOf("<TarjetaDetalles"), vb.indexOf("</TarjetaDetalles>"));
-      if (!/<li key=\{d\.avisoId\} className="iv2-depto-li" data-inv2="depto-base">\s*(?:\{\}\s*)?<TarjetaDetalles avisoId=\{d\.avisoId\} etiqueta=\{B\.abrirDepto\(lineaDepto\(d\.datos\)\)\}>/.test(vb) || /<BotonDetalles/.test(vb) || /B\.abrir\}/.test(vb)) F("14f · la tarjeta de «Tus deptos» no se toca entera (o sigue el enlace «Abrir»)");
+      if (!/<li key=\{d\.avisoId\} className="iv2-depto-li" data-inv2="depto-base">\s*(?:\{\}\s*)?<TarjetaDetalles avisoId=\{d\.avisoId\} etiqueta=\{B\.abrirDepto\(d\.ficha\?\.titulo \?\? lineaDepto\(d\.datos\)\)\} sinFlecha>/.test(vb) || /<BotonDetalles/.test(dentro) /* ⚠ ACTA (20-nov-2026, etapa 3 A1): «Ver detalles» vuelve, solo en las otras opciones */ || /B\.abrir\}/.test(vb)) F("14f · la tarjeta de «Tus deptos» no se toca entera (o sigue el enlace «Abrir»)");
       if (!dentro || /<(p|div|a|button)[\s>]/.test(dentro)) F("14f · dentro de la tarjeta hay un bloque o un control (un botón solo admite texto en línea)");
       if (!/<button type="button" className="iv2-depto iv2-depto-tocable" onClick=\{abrir\} disabled=\{estado === "abriendo"\} aria-label=\{etiqueta\}/.test(tarjeta)
-        || !/<span className="iv2-depto-cuerpo">\{children\}<\/span>\s*<span className="iv2-depto-flecha" aria-hidden="true">›<\/span>\s*<\/button>/.test(tarjeta)
+        // ⚠ ACTA (20-nov-2026, etapa 3 A1): la tarjeta de la base lleva su flecha en la fila del estado (TarjetaBase, iv2-td-flecha): `sinFlecha`.
+        || !/<span className="iv2-depto-cuerpo">\{children\}<\/span>\s*\{!sinFlecha && <span className="iv2-depto-flecha" aria-hidden="true">›<\/span>\}\s*<\/button>/.test(tarjeta)
+        || !/<span className="iv2-td-flecha" aria-hidden="true">›<\/span>/.test(codigo("src/components/invierte-v2/TarjetaDepto.tsx"))
         || !/const id = await abrirDetalles\(avisoId\);\s*if \(id\) \{ window\.location\.assign\(urlDetallesInvierte\(id\)\); return; \}\s*setEstado\("error"\);/.test(tarjeta)) F("14f · la tarjeta no abre los detalles en modo Invierte, o no lleva la flecha a la derecha");
       if (BASE_COPY.abrirDepto("2D · 1B · 52 m²") !== "Abrir 2D · 1B · 52 m²") F("14f · el lector de pantalla no dice qué depto abre");
       const css14 = leer("src/components/invierte-v2/invierte-v2.css");
@@ -1009,7 +1020,7 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (reglaDescarte17("Cap rate de 6,1 %, buen número.", cif) === null || reglaDescarte17("Deja $95 mil al mes.", cif) === null || reglaDescarte17("Cap rate de 5,7 %.", null) === null || reglaDescarte17("Deja $88 mil al mes.", null) === null) F("19d · el saneado deja pasar un cap rate o un flujo que no es el de la tarjeta (o sin arriendo confiable)");
       const g19 = sanearLectura({ alerta: { nivel: "ninguna", motivo: null }, larga: [{ etiqueta: "Estado", texto: "Bien.", fuente: "fotos" }], corta: [{ texto: "Deja $88 mil al mes y está listo.", fuente: "datos" }, { texto: "B.", fuente: "datos" }, { texto: "C.", fuente: "datos" }], estado_arriendo: "listo" }, { cifras: cif });
       if (!g19 || g19.estadoArriendo !== "listo" || g19.corta.length !== 3 || JSON.stringify(sanearLectura(g19)) !== JSON.stringify(g19)) F("19d · el estado para arrendar no queda, o al releer la lectura se botan las cifras que ya pasaron");
-      if (ESQUEMA_LECTURA_FRANCO.required.join("|") !== "alerta|larga|corta|estado_arriendo" || ESQUEMA_LECTURA_FRANCO.properties.estado_arriendo.enum.join("|") !== "listo|arreglos_menores|remodelacion" || VERSION_LECTURA15 < 7 || MIN_ARRIENDOS19 !== 6) F("19d · falta el estado para arrendar en el esquema, la versión no subió o el mínimo de arriendos no es 6");
+      if (ESQUEMA_LECTURA_FRANCO.required.join("|") !== "alerta|larga|corta|estado_arriendo|calle|numero" /* ⚠ ACTA (20-nov-2026, etapa 3 A1): más la calle y el número (§20c) */ || ESQUEMA_LECTURA_FRANCO.properties.estado_arriendo.enum.join("|") !== "listo|arreglos_menores|remodelacion" || VERSION_LECTURA15 < 7 || MIN_ARRIENDOS19 !== 6) F("19d · falta el estado para arrendar en el esquema, la versión no subió o el mínimo de arriendos no es 6");
       // ⚠ ACTA (20-nov-2026, Fabrizio): la síntesis ya no «cruza un número» siempre: parte por lo que más pesa (§19e).
       if (!/La primera línea es la SÍNTESIS: una frase que dice qué significa este depto como inversión, a partir de lo que MÁS pesa en él/.test(INSTRUCCION_LECTURA_FRANCO) || !/Si la alerta no es «ninguna», la primera línea es esa alerta y la síntesis pasa a la segunda/.test(INSTRUCCION_LECTURA_FRANCO) || !/No los recalcules, no los corrijas/.test(INSTRUCCION_LECTURA_FRANCO)) F("19d · la instrucción no pide la síntesis primero (segunda con alerta) o deja recalcular los números");
       const sv19 = codigo("src/lib/invierte-v2/lectura-franco-servidor.ts");
@@ -1038,6 +1049,58 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       const ok19 = { alerta: { nivel: "ninguna" as const, motivo: null }, larga: [], corta: ["A.", "B.", "C."] };
       if (problemaCorta18({ ...ok19, corta: ["A.", "B.", "piden inversión antes de que te sobren $75.060"] }) === null || problemaCorta18(ok19) !== null) F("19e · una línea sin punto final (cortada) pasa como válida");
       if (!/No nombres «la tarjeta» ni «el informe»/.test(INSTRUCCION_LECTURA_FRANCO)) F("19e · la instrucción deja nombrar «la tarjeta»");
+    }
+
+    // ── 20 · ETAPA 3, PARTE A1: LA TARJETA DE LA BASE Y LA CALLE (20-nov-2026, láminas 3.3-base y 3.3-base-pc, y su LEEME) ──
+    {
+      // 20a · El título: calle y metro cercano, SIN número; sin calle, el metro; sin metro cerca, el sector (la comuna).
+      const m = (metros: number) => ({ estacion: "Ñuñoa", metros });
+      if (tituloDepto({ calle: "Dublé Almeyda", metro: m(400), comuna: "Ñuñoa" }) !== "Dublé Almeyda · Metro Ñuñoa") F("20a · el título no es «calle · Metro estación»");
+      if (tituloDepto({ calle: null, metro: m(400), comuna: "Ñuñoa" }) !== "Metro Ñuñoa") F("20a · sin calle, el título no es el metro");
+      if (tituloDepto({ calle: null, metro: m(DIST_METRO_TITULO + 300), comuna: "Macul" }) !== "Macul") F("20a · sin calle y con el metro lejos, el título no es el sector");
+      if (tituloDepto({ calle: "Serrano", metro: m(DIST_METRO_TITULO + 300), comuna: "Santiago" }) !== "Serrano") F("20a · con el metro lejos, el título no se queda solo con la calle");
+      if (/\d/.test(tituloDepto({ calle: "Av. Irarrázaval 2400, depto 304", metro: m(300), comuna: "Ñuñoa" }))) F("20a · el título lleva número");
+      // 20b · La dirección sucia: lo que no es una calle confiable no entra al título.
+      const casos: [string, string | null, string | null][] = [
+        ["Serrano Sin número", "Santiago", "Serrano"], ["SANTIAGO CENTRO 0", "Santiago Centro", null], ["ANTIGUO AMUNATEGUI REMODELADO 0", "Santiago", null],
+        ["DUBLE ALMEYDA 1234", "Ñuñoa", "Duble Almeyda"], ["Av. Irarrázaval 2400, depto 304", "Ñuñoa", "Av. Irarrázaval"], ["Ñuñoa", "Ñuñoa", null],
+      ];
+      for (const [x, c, esp] of casos) if (limpiarCalle(x, c) !== esp) F(`20b · limpiarCalle(${JSON.stringify(x)}) = ${JSON.stringify(limpiarCalle(x, c))}, se esperaba ${JSON.stringify(esp)}`);
+      if (limpiarNumero("1234") !== "1234" || limpiarNumero("s/n") !== null || limpiarNumero("0") !== null) F("20b · el número no sale solo cuando es limpio");
+      // 20c · La lectura trae la calle y el número (internos), con la misma limpieza; sin calle, sin número.
+      const base20 = { alerta: { nivel: "ninguna", motivo: null }, larga: [], corta: ["Una.", "Dos.", "Tres."], estado_arriendo: "listo" };
+      const l20 = sanearLectura({ ...base20, calle: "DUBLE ALMEYDA 1234", numero: "1234" });
+      if (l20?.calle !== "Duble Almeyda" || l20?.numero !== "1234") F("20c · la lectura no guarda la calle limpia y su número");
+      const l20b = sanearLectura({ ...base20, calle: "ANTIGUO AMUNATEGUI REMODELADO 0", numero: "1234" });
+      if (l20b?.calle !== null || l20b?.numero !== null) F("20c · una calle que no es confiable (o su número) queda en la lectura");
+      const req20 = (ESQUEMA_LECTURA_FRANCO as unknown as { required: string[] }).required;
+      if (!req20.includes("calle") || !req20.includes("numero")) F("20c · el esquema no pide la calle y el número");
+      if (!/5\. calle y numero \(internos, no se muestran en la lectura; sirven para nombrar el depto\)/.test(INSTRUCCION_LECTURA_FRANCO) || !/Nunca los deduzcas de la ubicación, del metro ni de las fotos/.test(INSTRUCCION_LECTURA_FRANCO)) F("20c · la instrucción no pide la calle de la publicación sin deducirla");
+      if (VERSION_LECTURA15 < 11) F("20c · la versión no subió: las lecturas sin calle no se rehacen");
+      const ia20 = codigo("src/lib/invierte-v2/lectura-franco-ia.ts"), sv20 = codigo("src/lib/invierte-v2/lectura-franco-servidor.ts");
+      if (!/JSON\.stringify\(\{ titulo: e\.titulo, descripcion: e\.descripcion, direccion: e\.direccion \?\? null \}/.test(ia20) || !/select\("fotos, descripcion, direccion, leido_at"\)/.test(sv20) || !/direccion: \(d\.direccion as string \| null\) \?\? null/.test(sv20)) F("20c · la lectura no recibe la dirección de la publicación");
+      // 20d · La tarjeta de «Tus deptos», dibujada: de dónde salió, el título con la calle de la lectura, la síntesis, los tres datos y el estado.
+      const lec20 = { alerta: { nivel: "ninguna" as const, motivo: null }, larga: [], corta: ["Cocina y baños renovados: se arrienda tal como está.", "Dos.", "Tres."], calle: "Dublé Almeyda" };
+      const ficha20 = { titulo: "Metro Ñuñoa", metro: m(400), comuna: "Ñuñoa", fotos: 0, capRatePct: 4.7, lectura: lec20 };
+      const datos20 = { comuna: "Ñuñoa", dormitorios: 2, banos: 2, m2: 58, precioUF: 3250, veredicto: "COMPRAR", score: 78, flujoCLP: -85000 };
+      const h20 = renderToStaticMarkup(createElement(TarjetaBase, { avisoId: "x", datos: datos20, ficha: ficha20, origen: "franco", alcanza: true, estado: { chip: BASE_COPY.francoEnEso, linea: BASE_COPY.confirmandoLinea } }));
+      const t20 = h20.replace(/<[^>]+>/g, "|");
+      if (!t20.includes("|Te lo recomendamos|")) F("20d · la tarjeta no dice de dónde salió");
+      if (!t20.includes("|Dublé Almeyda · Metro Ñuñoa|")) F("20d · el título de la tarjeta no lleva la calle que leyó la lectura");
+      if (!t20.includes("|Cocina y baños renovados: se arrienda tal como está.|")) F("20d · la tarjeta no muestra la síntesis de «Lo que ve Franco»");
+      if (!t20.includes("|UF 3.250|") || !t20.includes("|4,7 %|") || !t20.includes("|Pones $85.000|")) F("20d · la tarjeta no muestra precio, cap rate y al mes");
+      if (!t20.includes(`|${BASE_COPY.francoEnEso}|`) || !t20.includes(`|${BASE_COPY.confirmandoLinea}|`)) F("20d · la tarjeta no dice su estado con su línea");
+      if (/<(div|section|p|ul|li)\b/.test(h20)) F("20d · la tarjeta trae bloques que un botón no admite (debe ir en span)");
+      const o20 = renderToStaticMarkup(createElement(TarjetaOtra, { avisoId: "y", datos: datos20, ficha: ficha20, acciones: null })).replace(/<[^>]+>/g, "|");
+      if (!o20.includes("|Dublé Almeyda · Metro Ñuñoa|") || !o20.includes("|UF 3.250 · Cap rate 4,7 % · ✓ Comprar · 78|") || !o20.includes("|Cocina y baños renovados: se arrienda tal como está.|")) F("20d · la otra opción no lleva lo mismo en chico (título, resumen con cap rate, una línea de Franco)");
+      // 20e · Cableado: la base lee la ficha de cada tarjeta y la dibuja una por fila.
+      const bs20 = codigo("src/lib/invierte-v2/base-servidor.ts"), vb20 = codigo("src/components/invierte-v2/VistaBase.tsx");
+      if (!/const fichas = await fichasDe\(admin, todos\.map\(\(d\) => d\.avisoId\)/.test(bs20) || !/for \(const d of todos\) d\.ficha = fichas\[d\.avisoId\] \?\? null;/.test(bs20)) F("20e · la base no lee la ficha de sus tarjetas");
+      if (!/<TarjetaBase avisoId=\{d\.avisoId\} datos=\{d\.datos\} ficha=\{d\.ficha\} origen=\{d\.origen\}/.test(vb20) || !/<TarjetaOtra avisoId=\{o\.avisoId\} datos=\{o\.datos\} ficha=\{o\.ficha\}/.test(vb20)) F("20e · la base no dibuja la tarjeta nueva");
+      const css20 = leer("src/components/invierte-v2/invierte-v2.css");
+      const pc20 = css20.slice(css20.indexOf("/* LA TARJETA DE UN DEPTO EN LA BASE (etapa 3"));
+      if (!/@media \(min-width: 1024px\) \{\n  \.iv2-deptos \{ display: flex; flex-direction: column; gap: 14px; \}/.test(pc20)) F("20e · en el PC las tarjetas no van una por fila");
+      if (!/\.iv2-td-principal \{ flex: 1; display: grid; grid-template-columns: 170px minmax\(0, 1fr\);/.test(pc20)) F("20e · en el PC la foto no va a la izquierda");
     }
 
     // ── 18 · LECTURAS QUE FALLAN Y LA CORTA DE UNA FRASE (20-nov-2026, Fabrizio, tercera ronda) ──────────────────────────────────
