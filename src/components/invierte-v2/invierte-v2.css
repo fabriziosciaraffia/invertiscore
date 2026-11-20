@@ -24,6 +24,8 @@
 .iv2-casilla { display: flex; gap: 10px; align-items: center; min-height: 44px; font-size: 14px; line-height: 1.45; cursor: pointer; color: var(--franco-text); }
 .iv2-casilla input { width: 20px; height: 20px; margin: 1px 0 0; flex: none; accent-color: var(--franco-text); }
 .iv2-casilla input:disabled + span { color: var(--franco-text-muted); }
+/* El pie con «Todavía no sé» (20-nov-2026): el campo apagado se ve apagado, no como uno vacío por llenar. */
+.iv2-campo-uf .inv-campo:disabled { opacity: 0.5; cursor: not-allowed; }
 .iv2-casilla input:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; }
 .iv2-nota-boton { margin: 0; font-size: 13px; line-height: 1.45; text-align: center; color: var(--franco-text-secondary); }
 .iv2-acciones { margin-top: auto; display: flex; flex-direction: column; gap: 10px; }
@@ -352,6 +354,19 @@
 .iv2-depto-t { margin: 0; font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
 .iv2-depto-s { margin: 0; font-size: 12px; line-height: 1.45; color: var(--franco-text-secondary); }
 .iv2-depto .chip-v { flex: none; }
+/* «Tus deptos» en la base (20-nov-2026, decisión de Fabrizio): la tarjeta entera es un botón que abre los detalles, con una
+   flecha a la derecha en vez de «Abrir». Su contenido va en span: se muestran en bloque. */
+.iv2-depto-li { list-style: none; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.iv2-depto-tocable { width: 100%; flex-direction: row; align-items: center; gap: 12px; text-align: left; font: inherit; color: inherit; cursor: pointer; min-height: 44px;
+  transition: border-color 0.15s ease, background-color 0.15s ease; }
+.iv2-depto-tocable:hover { border-color: var(--franco-text-muted); }
+.iv2-depto-tocable:focus-visible { outline: 2px solid #2B558F; outline-offset: 2px; }
+.iv2-depto-tocable:disabled { cursor: progress; opacity: 0.7; }
+.iv2-depto-li > .iv2-depto-tocable { flex: 1; }
+.iv2-depto-cuerpo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.iv2-depto-cuerpo .iv2-depto-t, .iv2-depto-cuerpo .iv2-depto-s, .iv2-depto-cuerpo .iv2-cambio, .iv2-depto-cuerpo .iv2-cambio-sub { display: block; }
+.iv2-depto-flecha { flex: none; font-size: 24px; line-height: 1; color: var(--franco-text-muted); }
+.iv2-depto-error { font-size: 12px; color: var(--franco-text-secondary); padding: 0 4px; }
 .iv2-otra { box-sizing: border-box; border: 1px solid var(--franco-border); border-radius: 14px; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; gap: 10px; background: var(--franco-card); }
 .iv2-seguir { flex: none; white-space: nowrap; font-size: 13px; font-weight: 600; min-height: 44px; }
 .iv2-estado-gris { display: inline-flex; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; white-space: nowrap; background: rgba(255, 255, 255, 0.08); color: var(--franco-text-secondary); }

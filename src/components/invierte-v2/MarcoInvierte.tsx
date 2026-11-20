@@ -13,6 +13,7 @@ import { FLUJO_COPY } from "@/lib/invierte-v2/flujo";
 import { URL_BASE, URL_INVIERTE } from "@/lib/invierte-v2/destino";
 import { ChipVeredictoTokens } from "@/components/analysis/shared/ChipVeredicto";
 import { HeaderFranco } from "@/components/chrome/HeaderFranco";
+import type { EstadoMenu } from "@/lib/invierte-v2/menu-cliente";
 import "@/components/invierte/invierte.css";
 import "./invierte-v2.css";
 
@@ -21,7 +22,7 @@ export function MarcoInvierte({ volver, children, pantalla, pc, layout, cabecera
   children: ReactNode;
   pantalla: string;
   /** El formato de PC: el header de Franco, con la sesión de la página. */
-  pc?: { sesionEmail: string | null; /** Firmó la orden: el header lleva «Mi inversión» sin consultar (láminas del 19-nov-2026). */ invierte?: boolean };
+  pc?: { sesionEmail: string | null; /** Firmó la orden (`true`: el header consulta el texto) o el estado ya sabido («inversion» en la base): la entrada del menú (menu-cliente.ts). */ invierte?: boolean | EstadoMenu };
   /** firma y partimos: dos columnas en el PC; formulario: el formulario en una tarjeta centrada (perfil, etapa 2); contenido:
    *  dos columnas de contenido (resultado y base, etapa 2). */
   layout?: "firma" | "partimos" | "formulario" | "contenido";

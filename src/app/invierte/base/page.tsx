@@ -21,7 +21,7 @@ export default async function BasePage() {
   if (!base || !base.elegidos.length) redirect(URL_INVIERTE);
   const nombre = primerNombre(base.orden.nombre, base.orden.nombres);
   return (
-    <MarcoInvierte volver={null} pantalla="base" layout="contenido" cabecera={nombre ? BASE_COPY.hola(nombre) : BASE_COPY.titulo} pc={{ sesionEmail: user.email ?? null, invierte: true }}>
+    <MarcoInvierte volver={null} pantalla="base" layout="contenido" cabecera={nombre ? BASE_COPY.hola(nombre) : BASE_COPY.titulo} pc={{ sesionEmail: user.email ?? null, invierte: "inversion" }}>
       <VistaBase base={base} />
     </MarcoInvierte>
   );

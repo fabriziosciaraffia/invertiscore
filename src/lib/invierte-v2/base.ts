@@ -45,6 +45,8 @@ export const BASE_COPY = {
   teTocaATi: "Te toca a ti",
   francoEnEso: "Franco está en eso",
   abrir: "Abrir",
+  /** La tarjeta entera de «Tus deptos» abre los detalles (20-nov-2026): lo que lee el lector de pantalla. */
+  abrirDepto: (depto: string) => `Abrir ${depto}`,
   otras: (n: number) => `Otras opciones que convienen · ${n}`,
   seguirConEste: "Seguir con este",
   compararTodas: "Comparar todas",

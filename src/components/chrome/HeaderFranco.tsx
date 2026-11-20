@@ -47,7 +47,7 @@ import { usePathname } from "next/navigation";
 import type { Veredicto } from "@/lib/types";
 import { marcarPuertaCandidata } from "@/lib/atribucion-puerta";
 import { cuandoLaPaginaEsteQuieta } from "@/lib/pagina-quieta";
-import { consultarMenu, guardarMenu, leerMenuGuardado, olvidarMenu } from "@/lib/invierte-v2/menu-cliente";
+import { consultarMenu, entradaMenu, esEstadoMenu, guardarMenu, leerMenuGuardado, olvidarMenu, type EstadoMenu } from "@/lib/invierte-v2/menu-cliente";
 import "./header-franco.css";
 
 export type ContextoHeader = "sitio" | "wizard" | "auth";
@@ -67,9 +67,10 @@ export interface HeaderFrancoProps {
   sobreMaterial?: boolean;
   /** La sesión, si la página ya la conoce en el server. `undefined` = el header la busca. */
   sesion?: SesionHeader | null;
-  /** «Mi inversión» (láminas del 19-nov-2026): la página ya sabe si la persona firmó la orden. `undefined` = el header lo consulta
-   *  una vez por sesión del navegador (menu-cliente.ts). */
-  invierte?: boolean;
+  /** La entrada de Invierte (láminas del 19-nov-2026; texto según el estado, 20-nov-2026): la página ya sabe el estado
+   *  («seguir» o «inversion») o al menos si firmó. `false` = sin entrada; `true` o `undefined` = el header lo consulta una vez por
+   *  sesión del navegador (menu-cliente.ts). */
+  invierte?: boolean | EstadoMenu;
   informe?: {
     modo: ModoInforme;
     /** compartido: la fecha del análisis, junto a «Compartido contigo». */
@@ -131,28 +132,28 @@ function useSesion(inicial: SesionHeader | null | undefined): SesionHeader | nul
   return inicial !== undefined ? inicial : sesion;
 }
 
-/** ¿Va «Mi inversión»? Lo que diga la página; si no lo sabe, lo guardado en la sesión del navegador o, la primera vez, la
- *  consulta liviana. Hasta saberlo, no va (así nadie la ve sin haber firmado). */
-function useMiInversion(sesion: SesionHeader | null | undefined, dePagina: boolean | undefined): boolean {
-  const [firmo, setFirmo] = useState<boolean>(dePagina === true);
+/** ¿Qué entrada de Invierte va? (20-nov-2026, decisión de Fabrizio: «Seguir con Franco» antes de elegir, «Mi inversión» desde
+ *  que elige.) Lo que diga la página; si solo sabe que firmó (o nada), lo guardado en la sesión del navegador o, la primera vez,
+ *  la consulta liviana. Hasta saberlo, no va (así nadie la ve sin haber firmado, ni con el texto equivocado). */
+function useEntradaInvierte(sesion: SesionHeader | null | undefined, dePagina: boolean | EstadoMenu | undefined): { texto: string; href: string } | null {
+  const [estado, setEstado] = useState<EstadoMenu | null>(esEstadoMenu(dePagina) ? dePagina : null);
   const email = sesion?.email ?? null;
   useEffect(() => {
-    if (!email) { setFirmo(false); return; }
-    if (dePagina !== undefined) { setFirmo(dePagina); guardarMenu(email, dePagina); return; }
+    if (!email) { setEstado(null); return; }
+    if (dePagina === false) { setEstado("ninguno"); guardarMenu(email, "ninguno"); return; }
+    if (esEstadoMenu(dePagina)) { setEstado(dePagina); guardarMenu(email, dePagina); return; }
     const guardado = leerMenuGuardado(email);
-    if (guardado !== null) { setFirmo(guardado); return; }
+    if (guardado !== null) { setEstado(guardado); return; }
     let activo = true;
-    void consultarMenu().then((f) => {
-      if (!activo || f === null) return;
-      guardarMenu(email, f);
-      setFirmo(f);
+    void consultarMenu().then((e) => {
+      if (!activo || e === null) return;
+      guardarMenu(email, e);
+      setEstado(e);
     });
     return () => { activo = false; };
   }, [email, dePagina]);
-  return !!email && firmo;
+  return email ? entradaMenu(estado) : null;
 }
-
-const MI_INVERSION = "Mi inversión";
 
 /** La ruta actual para el `next` de «Entrar»: el path (también en el server) y, ya montado, su query. */
 function useRutaActual(): string {
@@ -183,7 +184,7 @@ function BotonTema({ className = "" }: { className?: string }) {
   );
 }
 
-function MenuCuenta({ email, miInversion = false }: { email: string; miInversion?: boolean }) {
+function MenuCuenta({ email, entrada = null }: { email: string; entrada?: { texto: string; href: string } | null }) {
   const [abierto, setAbierto] = useState(false);
   const [tema, setTemaActual] = useState<Theme>("light");
   const ref = useRef<HTMLDivElement>(null);
@@ -215,8 +216,8 @@ function MenuCuenta({ email, miInversion = false }: { email: string; miInversion
       {abierto && (
         <div className="hf-menu" role="menu">
           <div className="hf-menu-mail">{email}</div>
-          {/* En celular, «Mi inversión» va primera en el menú (lámina menu-mi-inversion del 19-nov-2026). */}
-          {miInversion && <EnlaceCarga href="/invierte" role="menuitem" onClick={() => setAbierto(false)} data-hf="mi-inversion-menu">{MI_INVERSION}</EnlaceCarga>}
+          {/* En celular, la entrada de Invierte va primera en el menú (lámina menu-mi-inversion del 19-nov-2026). */}
+          {entrada && <EnlaceCarga href={entrada.href} role="menuitem" onClick={() => setAbierto(false)} data-hf="mi-inversion-menu">{entrada.texto}</EnlaceCarga>}
           <EnlaceCarga href="/dashboard" role="menuitem" onClick={() => setAbierto(false)}>Dashboard</EnlaceCarga>
           {/* A 390 «Nuevo análisis» no va en la barra: va acá. Desde 768 está en la barra como enlace. */}
           <span className="hf-solo-angosto"><CtaAnalizar origen="nav">Nuevo análisis</CtaAnalizar></span>
@@ -239,7 +240,7 @@ function MenuCuenta({ email, miInversion = false }: { email: string; miInversion
 
 export function HeaderFranco({ contexto = "sitio", activo, sobreMaterial = false, sesion: sesionServer, informe, invierte }: HeaderFrancoProps) {
   const sesion = useSesion(sesionServer);
-  const miInversion = useMiInversion(sesion, invierte);
+  const entradaInvierte = useEntradaInvierte(sesion, invierte);
   const resuelta = sesion !== undefined;
   const logueado = !!sesion;
   const modo = informe?.modo;
@@ -290,7 +291,7 @@ export function HeaderFranco({ contexto = "sitio", activo, sobreMaterial = false
     // el campo. Con sesión (01-oct-2026), el avatar con su menú, como en el resto del sitio: Mis
     // análisis, Planes, Mi cuenta, Perfil, tema y Cerrar sesión (el tema va al menú, no a la barra).
     derecha = !resuelta ? null : logueado ? (
-      <MenuCuenta email={sesion?.email ?? ""} miInversion={miInversion} />
+      <MenuCuenta email={sesion?.email ?? ""} entrada={entradaInvierte} />
     ) : (
       <>
         <BotonTema />
@@ -328,14 +329,14 @@ export function HeaderFranco({ contexto = "sitio", activo, sobreMaterial = false
   } else {
     derecha = (
       <>
-        {/* Desde que firma la orden, «Mi inversión» es la primera entrada (lámina menu-mi-inversion del 19-nov-2026). */}
-        {miInversion && <EnlaceCarga href="/invierte" className="hf-lnk hf-solo-ancho" data-hf="mi-inversion">{MI_INVERSION}</EnlaceCarga>}
+        {/* Desde que firma la orden, la entrada de Invierte es la primera (lámina menu-mi-inversion del 19-nov-2026). */}
+        {entradaInvierte && <EnlaceCarga href={entradaInvierte.href} className="hf-lnk hf-solo-ancho" data-hf="mi-inversion">{entradaInvierte.texto}</EnlaceCarga>}
         <EnlaceCarga href="/dashboard" className={`hf-lnk hf-solo-ancho${activo === "mis" ? " on" : ""}`}>Dashboard</EnlaceCarga>
         <EnlaceCarga href="/pricing" className={`hf-lnk hf-solo-ancho${activo === "planes" ? " on" : ""}`}>Planes</EnlaceCarga>
         <CtaAnalizar origen="nav" className="hf-lnk hf-solo-ancho">Nuevo análisis</CtaAnalizar>
         {modo === "propio" && informe?.compartir ? <span className="hf-oculta-fija" style={{ display: "contents" }}>{informe.compartir}</span> : null}
         <EnlaceCarga href="/explorar" className="hf-btn hf-oculta-fija" data-hf="explorar">Mapa</EnlaceCarga>
-        <MenuCuenta email={sesion?.email ?? ""} miInversion={miInversion} />
+        <MenuCuenta email={sesion?.email ?? ""} entrada={entradaInvierte} />
       </>
     );
   }

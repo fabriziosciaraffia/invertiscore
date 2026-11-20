@@ -98,6 +98,7 @@ export function FirmaForm({ depto, deptoCorto, origen, analysisId, sinContacto }
       // Al firmar se cae directo en el paso 1 del perfil (láminas del 19-nov-2026): Partimos queda para quien vuelve sin perfil.
       olvidarMenu(); // desde ahora el menú lleva «Mi inversión»: la próxima página vuelve a preguntar
       router.push(URL_PERFIL);
+      router.refresh();
     } catch {
       setError(textoErrorFirma("red"));
       setEnviando(false);

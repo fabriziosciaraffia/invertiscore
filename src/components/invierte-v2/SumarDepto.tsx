@@ -12,6 +12,7 @@ import { MAX_ACTIVOS } from "@/lib/invierte-v2/opciones";
 import { BASE_COPY, SUMAR_COPY, lineaDepto, type LineaDepto } from "@/lib/invierte-v2/base";
 import { URL_BASE } from "@/lib/invierte-v2/destino";
 import { prepararEnSegundoPlano } from "@/lib/invierte-v2/detalles-cliente";
+import { olvidarMenu } from "@/lib/invierte-v2/menu-cliente";
 import { VentanaDocumento } from "./VentanaDocumento";
 
 export const URL_SUMAR_API = "/api/invierte-v2/sumar";
@@ -36,7 +37,7 @@ export function SumarDepto({ avisoId, etiqueta, origen, activos, variante }: {
     setError(false);
     try {
       const res = await fetch(URL_SUMAR_API, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ avisoId, deja: dejaId, origen }) });
-      if (res.ok) { prepararEnSegundoPlano([avisoId]); router.push(URL_BASE); router.refresh(); return; }
+      if (res.ok) { prepararEnSegundoPlano([avisoId]); olvidarMenu(); router.push(URL_BASE); router.refresh(); return; }
       const d = (await res.json().catch(() => null)) as { error?: string } | null;
       if (d?.error === "maximo") { setEligiendo(true); setEnviando(false); return; }
       setError(true);

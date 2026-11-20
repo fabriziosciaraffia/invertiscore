@@ -1,6 +1,6 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // LO QUE DIBUJA LA BASE (etapa 2, entrega 2, 19-nov-2026; láminas 3.3-base y 3.3-base-pc). Sus deptos elegidos (cada uno con su
-// veredicto, lo que cambió en su publicación, lo que deja o pide al mes y «Abrir», los detalles sin créditos), las otras opciones
+// veredicto, lo que cambió en su publicación, lo que deja o pide al mes; la tarjeta entera abre los detalles, sin créditos), las otras opciones
 // que convienen con «Seguir con este», «Comparar todas», «Buscar otro en el mapa» y «Escribirle». Perfil, documentos y preguntas
 // van en el menú (hoja en el celular; en el PC, la columna derecha). No se construyen en esta etapa: la barra de cuatro tramos y
 // el paso de cada depto, ni «Lo que te toca hoy» (espera a la preaprobación, etapa 3). Sin "use client": la usan la página y
@@ -14,7 +14,7 @@ import { RESULTADO_COPY, fmtUF, textoAlMes } from "@/lib/invierte-v2/opciones";
 import { BASE_COPY, MENU_COPY, lineaDepto, urlWhatsapp } from "@/lib/invierte-v2/base";
 import type { Base } from "@/lib/invierte-v2/base-servidor";
 import { etiquetaVeredicto, signoVeredicto } from "@/lib/veredicto-etiqueta";
-import { BotonDetalles, PrepararDetalles } from "./BotonDetalles";
+import { PrepararDetalles, TarjetaDetalles } from "./BotonDetalles";
 import { EnlacesBase, MenuBase } from "./MenuBase";
 import { SumarDepto } from "./SumarDepto";
 import { IconoWhatsapp } from "./IconoWhatsapp";
@@ -62,21 +62,23 @@ export function VistaBase({ base }: { base: Base }) {
               {base.elegidos.map((d) => {
                 const alMes = textoAlMes({ flujoCLP: d.datos.flujoCLP ?? null });
                 return (
-                  <li key={d.avisoId} className="iv2-depto" data-inv2="depto-base">
-                    <div className="iv2-depto-fila">
-                      <div className="iv2-depto-id">
-                        <p className="iv2-depto-t">{lineaDepto(d.datos)}</p>
-                        <p className="iv2-depto-s">{d.datos.precioUF ? `UF ${fmtUF(d.datos.precioUF)}` : ""}{d.alcanza ? "" : ` · ${B.fueraDeAlcance}`}</p>
-                      </div>
-                      {d.datos.veredicto && <ChipVeredicto v={d.datos.veredicto as Veredicto} puntaje={d.datos.veredicto === "COMPRAR" ? d.datos.score ?? null : null} />}
-                    </div>
-                    {d.lineas.map((l, i) => <p key={i} className={i === 0 ? "iv2-cambio" : "iv2-cambio-sub"} data-inv2="cambio"><ConMontoNegativo texto={l} /></p>)}
-                    {/* Si lo que cambió ya dice lo que deja al mes, la fila fija no lo repite. */}
-                    {d.datos.flujoCLP != null && !d.alMesEnCambio && <p className="iv2-depto-s" data-inv2="base-al-mes">{RESULTADO_COPY.filas.pones}: <span className={alMes.pones ? "iv2-nowrap iv2-pones" : "iv2-nowrap"}>{alMes.t}</span></p>}
-                    <div className="iv2-depto-fila">
-                      <span className="iv2-estado-gris" data-inv2="estado-depto">{B.francoEnEso}</span>
-                      <BotonDetalles avisoId={d.avisoId} etiqueta={B.abrir} />
-                    </div>
+                  <li key={d.avisoId} className="iv2-depto-li" data-inv2="depto-base">
+                    {/* La tarjeta entera abre los detalles, con la flecha a la derecha (20-nov-2026, decisión de Fabrizio). */}
+                    <TarjetaDetalles avisoId={d.avisoId} etiqueta={B.abrirDepto(lineaDepto(d.datos))}>
+                      <span className="iv2-depto-fila">
+                        <span className="iv2-depto-id">
+                          <span className="iv2-depto-t">{lineaDepto(d.datos)}</span>
+                          <span className="iv2-depto-s">{d.datos.precioUF ? `UF ${fmtUF(d.datos.precioUF)}` : ""}{d.alcanza ? "" : ` · ${B.fueraDeAlcance}`}</span>
+                        </span>
+                        {d.datos.veredicto && <ChipVeredicto v={d.datos.veredicto as Veredicto} puntaje={d.datos.veredicto === "COMPRAR" ? d.datos.score ?? null : null} />}
+                      </span>
+                      {d.lineas.map((l, i) => <span key={i} className={i === 0 ? "iv2-cambio" : "iv2-cambio-sub"} data-inv2="cambio"><ConMontoNegativo texto={l} /></span>)}
+                      {/* Si lo que cambió ya dice lo que deja al mes, la fila fija no lo repite. */}
+                      {d.datos.flujoCLP != null && !d.alMesEnCambio && <span className="iv2-depto-s" data-inv2="base-al-mes">{RESULTADO_COPY.filas.pones}: <span className={alMes.pones ? "iv2-nowrap iv2-pones" : "iv2-nowrap"}>{alMes.t}</span></span>}
+                      <span className="iv2-depto-fila">
+                        <span className="iv2-estado-gris" data-inv2="estado-depto">{B.francoEnEso}</span>
+                      </span>
+                    </TarjetaDetalles>
                   </li>
                 );
               })}
