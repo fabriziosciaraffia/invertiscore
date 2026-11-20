@@ -1008,9 +1008,12 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (!/\.iv2-fotos img \{ display: block; width: 100%; height: 100%; object-fit: cover; \}/.test(css15) || /!chica && n > 1/.test(fd15) || !/\{n > 1 && \(/.test(fd15) || !/\.iv2-fotos-chica \.iv2-foto-flecha \{/.test(css15)) F("15g · la foto de una alternativa se deforma o no lleva flechas, contador y puntos");
 
       // 15h · El resultado cabe en un notebook bajo: en las pantallas de 820 px o menos de alto se aprietan los espacios y la foto de
-      // las alternativas baja. (Qué sale si aun así no cabe a 1.210 × 615 lo decide Fabrizio.)
+      // las alternativas baja. ⚠ ACTA (20-nov-2026, decisión de Fabrizio): a 1.210 × 615 se acepta que la página pase ~85 px, sin
+      // sacar las fotos ni las líneas de «Lo que ve Franco», mientras el botón rojo siga a la vista en la columna izquierda (que lo
+      // sostiene, abajo) y con la pantalla entera de 1366 × 768 quepa completo (CLAUDE.md › Revisión visual fija).
       const bajo = css15.slice(css15.indexOf("@media (min-width: 1024px) and (max-height: 820px)"));
       if (!/\.iv2-res-nuevo \.iv2-fotos-chica \{ height: 64px; \}/.test(bajo) || !/\.iv2-res-nuevo \.iv2-res-elegido \.iv2-fotos \{ height: auto; min-height: 170px; align-self: stretch; \}/.test(bajo) || !/\.iv2-resultado-eleccion\.iv2-res-nuevo \{ padding-top: 14px; \}/.test(bajo)) F("15h · en un notebook bajo el resultado no aprieta los espacios ni baja la foto de las alternativas");
+      if (!/\.iv2-res-nuevo \.iv2-res-izq \{ position: sticky; top: 80px; \}/.test(css15) || /\.iv2-fotos-chica[^{]*\{[^}]*display: none/.test(bajo) || /iv2-lectura-lineas[^{]*\{[^}]*-webkit-line-clamp: 1/.test(bajo) || /iv2-lectura-lineas > span:nth-child/.test(css15)) F("15h · en un notebook el botón rojo no queda fijo a la vista, o se esconden las fotos de las alternativas o líneas de «Lo que ve Franco»");
     }
 
     // ── 13 · LÁMINAS DEL 19-nov-2026, ENTREGA 4: «Lo que ve Franco» (textos aprobados por Fabrizio el 19-nov-2026) y «Lo que el
