@@ -580,6 +580,8 @@
 /* Las fotos: con flechas, contador y puntos; la chica, sin nada encima. Sin fotos o si no carga, no hay hueco (no se dibuja). */
 .iv2-fotos { position: relative; overflow: hidden; border-radius: 10px; background: var(--franco-elevated, #EEF0F3); height: 170px; flex: none; }
 .iv2-fotos img { display: block; width: 100%; height: 100%; object-fit: cover; }
+/* Buscando una foto que cargue (la primera estaba rota): el bloque no se ve hasta que una cargue (20-nov-2026). */
+.iv2-fotos[data-buscando] { display: none; }
 .iv2-fotos-chica { width: 96px; height: 96px; }
 /* En el celular más angosto, la foto de la alternativa vuelve a 84 px: con 96 el nombre se partía en cuatro renglones a 360. */
 @media (max-width: 379px) { .iv2-fotos-chica { width: 84px; height: 84px; } }

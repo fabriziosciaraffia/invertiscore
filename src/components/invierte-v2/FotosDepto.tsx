@@ -13,16 +13,22 @@ import { urlFoto } from "@/lib/invierte-v2/fotos";
 
 export function FotosDepto({ avisoId, n, chica = false, clase = "" }: { avisoId: string; n: number; chica?: boolean; clase?: string }) {
   const [i, setI] = useState(0);
-  const [rota, setRota] = useState(false);
+  // Las fotos que la fuente ya borró (404) se saltan, también la primera (20-nov-2026: una alternativa quedaba sin fotos porque su
+  // primera foto estaba rota y las otras doce no); solo si no carga ninguna, la tarjeta va sin el bloque.
+  const [rotas, setRotas] = useState<Set<number>>(() => new Set());
+  // Mientras busca una foto que cargue (la primera falló), el bloque no se ve: nada de un recuadro vacío con flechas.
+  const [buena, setBuena] = useState(false);
   const toque = useRef<number | null>(null);
-  if (!n || rota) return null;
-  const ir = (d: number) => setI((x) => (x + d + n) % n);
+  if (!n || rotas.size >= n) return null;
+  const ir = (d: number) => setI((x) => { let k = x; for (let paso = 0; paso < n; paso++) { k = (k + d + n) % n; if (!rotas.has(k)) return k; } return x; });
+  const siguiente = (x: number, sin: Set<number>) => { for (let paso = 1; paso <= n; paso++) { const k = (x + paso) % n; if (!sin.has(k)) return k; } return null; };
+  const romper = () => { const nueva = new Set(rotas); nueva.add(i); setRotas(nueva); const k = siguiente(i, nueva); if (k != null) setI(k); };
   return (
-    <div className={`iv2-fotos${chica ? " iv2-fotos-chica" : ""} ${clase}`.trim()} data-inv2={chica ? "foto-chica" : "fotos"}
+    <div className={`iv2-fotos${chica ? " iv2-fotos-chica" : ""} ${clase}`.trim()} data-inv2={chica ? "foto-chica" : "fotos"} data-buscando={rotas.size > 0 && !buena ? "1" : undefined}
       onTouchStart={(e) => { toque.current = e.touches[0]?.clientX ?? null; }}
       onTouchEnd={(e) => { const x0 = toque.current; toque.current = null; const x1 = e.changedTouches[0]?.clientX; if (x0 == null || x1 == null || Math.abs(x1 - x0) < 40) return; ir(x1 < x0 ? 1 : -1); }}>
       {/* eslint-disable-next-line @next/next/no-img-element -- la sirve la ruta propia, con su caché; no pasa por el optimizador */}
-      <img src={urlFoto(avisoId, i)} alt={A.foto(i + 1, n)} loading={chica && i === 0 ? "lazy" : "eager"} decoding="async" onError={() => (i === 0 ? setRota(true) : ir(1))} />
+      <img src={urlFoto(avisoId, i)} alt={A.foto(i + 1, n)} loading={chica && i === 0 ? "lazy" : "eager"} decoding="async" onError={romper} onLoad={(e) => { if (e.currentTarget.naturalWidth <= 1) romper(); else setBuena(true); }} />
       {n > 1 && (
         <>
           <button type="button" className="iv2-foto-flecha iv2-foto-ant" aria-label={A.fotoAnterior} onClick={() => ir(-1)} data-inv2="foto-anterior">‹</button>

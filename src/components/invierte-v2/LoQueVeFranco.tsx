@@ -25,19 +25,41 @@ export const INTENTOS_LECTURA = 20;
 interface Llegada { lectura: LecturaFranco | null; fotos: number | null }
 const enCurso = new Map<string, Promise<Llegada>>();
 
+/** Como mucho DOS lecturas pedidas a la vez desde la página (20-nov-2026, Fabrizio: las tres alternativas se pedían en el mismo
+ *  segundo); las demás esperan su turno. */
+export const LECTURAS_EN_PARALELO = 2;
+let enVuelo = 0;
+const turnos: (() => void)[] = [];
+async function conTurno<T>(f: () => Promise<T>): Promise<T> {
+  if (enVuelo >= LECTURAS_EN_PARALELO) await new Promise<void>((ok) => turnos.push(ok));
+  enVuelo++;
+  try { return await f(); } finally { enVuelo--; turnos.shift()?.(); }
+}
+/** La espera ante un límite de pedidos o un corte: crece con cada intento (6, 12, 24 s…, hasta 48). */
+export const esperaReintento = (n: number) => Math.min(PAUSA_MS * 2 ** n, 48_000);
+
+/** Las fotos no esperan a la lectura (20-nov-2026): la primera respuesta que dice cuántas hay se las pasa a la tarjeta, aunque la
+ *  lectura siga generándose o termine en error. */
+const oyentesFotos = new Map<string, Set<(n: number) => void>>();
+const avisarFotos = (avisoId: string, n: number) => oyentesFotos.get(avisoId)?.forEach((f) => f(n));
+
 async function pedirLectura(avisoId: string): Promise<Llegada> {
   let fotos: number | null = null;
+  let cortes = 0;
   for (let i = 0; i < INTENTOS_LECTURA; i++) {
+    let espera = PAUSA_MS;
     try {
-      const r = await fetch(URL_LECTURA, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ avisoId }) });
+      const r = await conTurno(() => fetch(URL_LECTURA, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ avisoId }) }));
       const d = (await r.json().catch(() => null)) as { estado?: string; lectura?: LecturaFranco; fotos?: number } | null;
-      if (typeof d?.fotos === "number") fotos = d.fotos;
+      if (typeof d?.fotos === "number" && d.fotos !== fotos) { fotos = d.fotos; avisarFotos(avisoId, fotos); }
       if (d?.estado === "lista" && d.lectura) return { lectura: d.lectura, fotos };
-      if (r.status !== 202) return { lectura: null, fotos }; // sin datos, tope o error: la tarjeta queda sin el bloque
+      // Un límite de pedidos o un corte del servidor: se reintenta con espera creciente.
+      if (r.status === 429 || r.status >= 500) espera = esperaReintento(cortes++);
+      else if (r.status !== 202) return { lectura: null, fotos }; // sin datos, tope o error: la tarjeta queda sin el recuadro
     } catch {
-      return { lectura: null, fotos };
+      espera = esperaReintento(cortes++); // se cortó la conexión: se reintenta
     }
-    await new Promise((ok) => setTimeout(ok, PAUSA_MS));
+    await new Promise((ok) => setTimeout(ok, espera));
   }
   return { lectura: null, fotos };
 }
@@ -48,6 +70,9 @@ export function useLectura(avisoId: string, inicial: LecturaFranco | null, alLle
   useEffect(() => {
     if (inicial) { alLlegar?.(inicial); return; }
     let vivo = true;
+    const oyente = (n: number) => { if (vivo) alFotos?.(n); };
+    if (!oyentesFotos.has(avisoId)) oyentesFotos.set(avisoId, new Set());
+    oyentesFotos.get(avisoId)!.add(oyente);
     let p = enCurso.get(avisoId);
     if (!p) { p = pedirLectura(avisoId); enCurso.set(avisoId, p); }
     void p.then((x) => {
@@ -55,7 +80,7 @@ export function useLectura(avisoId: string, inicial: LecturaFranco | null, alLle
       if (x.fotos != null) alFotos?.(x.fotos);
       if (x.lectura) { setL(x.lectura); alLlegar?.(x.lectura); }
     });
-    return () => { vivo = false; };
+    return () => { vivo = false; oyentesFotos.get(avisoId)?.delete(oyente); };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- se pide una vez por depto
   }, [avisoId, inicial]);
   return l;
