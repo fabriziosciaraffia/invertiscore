@@ -12,7 +12,7 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { CLAUDE_MODEL_LECTURA } from "@/lib/ai-config";
 import { costoLlamada } from "./preaprobacion-ia";
-import { ESQUEMA_LECTURA_FRANCO, INSTRUCCION_LECTURA_FRANCO, MAX_FOTOS_LECTURA, problemaCorta, sanearConRegistro, type Descarte, type LecturaFranco } from "./lectura-franco";
+import { ESQUEMA_LECTURA_FRANCO, INSTRUCCION_LECTURA_FRANCO, MAX_FOTOS_LECTURA, conAlertaSinFotos, problemaCorta, sanearConRegistro, type Descarte, type LecturaFranco } from "./lectura-franco";
 
 export interface EntradaLectura {
   /** Todas las fotos guardadas de la publicación; a la llamada van las primeras MAX_FOTOS_LECTURA. */
@@ -83,7 +83,7 @@ export async function generarLecturaFranco(cliente: Anthropic, e: EntradaLectura
   // «Todas las fotos» solo si la publicación tiene 24 o menos Y bajaron todas: si una no bajó, puede ser justo la del baño.
   const completas = fotosCompletas(e.fotos) && fotos.length === urls.length;
   const cuantas = !fotos.length
-    ? "No se pudo ver ninguna foto de la publicación: no digas nada de las fotos ni de lo que falta en ellas."
+    ? "No se pudo ver ninguna foto de la publicación: Franco ya marca eso aparte, así que no hables de las fotos ni de lo que falta en ellas."
     : completas
       ? `Arriba van las ${fotos.length} fotos de la publicación, en su orden: son TODAS sus fotos.`
       : `Arriba van ${fotos.length} fotos de la publicación, en su orden: la publicación tiene más (o algunas no se pudieron ver), así que no digas que falta una foto de algo ni pidas fotos.`;
@@ -110,7 +110,10 @@ export async function generarLecturaFranco(cliente: Anthropic, e: EntradaLectura
       if (r.stop_reason === "refusal") return { ok: false, motivo: "rechazo", detalle: "el modelo se negó" };
       const txt = r.content.find((b): b is Anthropic.TextBlock => b.type === "text")?.text;
       if (!txt) { ultima = { motivo: "vacio", detalle: `sin texto (stop_reason ${r.stop_reason})` }; continue; }
-      const { lectura, descartes } = sanearConRegistro(JSON.parse(txt), { fotosCompletas: completas });
+      const saneada = sanearConRegistro(JSON.parse(txt), { fotosCompletas: completas });
+      const descartes = saneada.descartes;
+      // Sin ninguna foto que se pueda ver, alerta grave (la pone el código, 20-nov-2026): no se recomienda como alternativa.
+      const lectura = saneada.lectura && !fotos.length ? conAlertaSinFotos(saneada.lectura) : saneada.lectura;
       // Cada línea que el saneado borra queda en el log (y quien llama la guarda en la fila): qué línea y por qué regla.
       for (const d of descartes) console.warn(`[inv2] lectura de Franco: el saneado borró una línea (${d.campo}, regla ${d.regla}): ${d.texto}`);
       if (!lectura) { ultima = { motivo: "formato", detalle: "sin líneas que mostrar" }; continue; }

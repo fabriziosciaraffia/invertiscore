@@ -207,6 +207,15 @@ export function problemaCorta(l: LecturaFranco): string | null {
   return null;
 }
 
+/** Sin ninguna foto que se pueda ver (20-nov-2026, decisión de Fabrizio): la publicación no trae fotos, o todas las que nombra ya no
+ *  existen en la fuente (b20a316f: 19 de 19 en 404). Para la persona es un depto sin fotos: alerta grave, que no se recomienda como
+ *  alternativa, igual que el 7022b35a. La pone el CÓDIGO, no el modelo (al modelo se le dice que no hable de fotos). */
+export const MOTIVO_SIN_FOTOS = "La publicación no tiene ninguna foto del interior que se pueda ver.";
+export function conAlertaSinFotos(l: LecturaFranco): LecturaFranco {
+  const resto = l.corta.filter((t) => t !== MOTIVO_SIN_FOTOS && t !== l.alerta.motivo);
+  return { ...l, alerta: { nivel: "grave", motivo: MOTIVO_SIN_FOTOS }, corta: [MOTIVO_SIN_FOTOS, ...resto].slice(0, LINEAS_CORTA) };
+}
+
 /** ¿Se puede recomendar como alternativa? Con alerta grave, no. */
 export const recomendable = (l: Pick<LecturaFranco, "alerta"> | null | undefined) => l?.alerta.nivel !== "grave";
 /** ¿La alerta va primero (en el elegido y en sus detalles)? */
