@@ -264,6 +264,7 @@ Motivo: master avanza en paralelo. Una rama que no rebasa obliga a ritual manual
 - **Qué se revisa en cada una**:
   - **Ventanas y hojas caben enteras, sin barra de scroll propia.** Si el contenido es largo, el scroll va adentro y el botón principal queda siempre a la vista. Nada cortado abajo.
   - La página **sin scroll horizontal** en ninguna medida.
+  - **Las páginas pueden pasar hasta 100 px del alto útil en los notebooks** (1366 × 650, 1280 × 610 y 1.210 × 615) **si el botón principal sigue a la vista** sin bajar; las ventanas no (decisión de Fabrizio, 20-nov-2026, al medir el resultado de Invierte con Franco: a 1.210 × 615 pasa ~85 px y se acepta, sin sacar las fotos ni las líneas de «Lo que ve Franco»). Con la pantalla entera de 1366 × 768, el resultado cabe completo.
   - El botón principal se ve sin bajar en la primera pantalla, o queda claro que hay que bajar.
   - Los textos no se cortan ni se montan: títulos largos, nombres largos, montos grandes, comunas largas. **Con datos reales, no solo los de ejemplo.**
   - **Un solo tipo de letra**, el de la app (Inter). Sin monoespaciada ni la fuente del wordmark.
