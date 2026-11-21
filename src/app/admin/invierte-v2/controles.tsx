@@ -5,6 +5,7 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { MODOS_INVIERTE_V2, type ModoInvierteV2 } from "@/lib/invierte-v2/acceso";
+import { MapaPinAjustable } from "@/components/formulario-v4/MapaPinAjustable";
 
 const ROTULO_MODO: Record<ModoInvierteV2, string> = { apagado: "Apagado (todos ven Pronto)", lista: "Solo la lista", todos: "Todos" };
 
@@ -198,6 +199,63 @@ export function RevisarPreaprobacion({ id, banco, montoUF, vigenteHasta }: { id:
       <div className="flex flex-wrap items-center gap-2">
         <input value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Motivo para la persona (por ejemplo: Venció el 3 de noviembre. Pídele a tu banco una vigente.)" aria-label="Motivo" className={`${campo} min-w-[320px] flex-1`} />
         <button type="button" className={CLASE_BTN} disabled={ocupado} onClick={() => void enviar("corregir")} data-admin="inv2-corregir">Pedir corregir</button>
+      </div>
+      {estado && <span className="text-[12px] text-[var(--signal-red)]" role="alert">{estado}</span>}
+    </div>
+  );
+}
+
+/**
+ * EL FLUJO DE UN DEPTO ELEGIDO (etapa 3, B1, 21-nov-2026). La persona de Franco registra el acuerdo con quien vende y confirma la
+ * ubicación: la dirección (sin número), el número y el punto en el mapa —parte en el pin de la publicación; se mueve con el dedo o se
+ * pegan las coordenadas—. Al confirmar se rehace el análisis con el punto real y el depto pasa de etapa solo si hay acuerdo y el
+ * análisis rehecho da Comprar (o Ajusta supuestos con precio al que vuelve a Comprar). Sin dirección confirmada no pasa a listo.
+ */
+export function GestionDepto({ userId, avisoId, etapa, acuerdo, alternativa, comuna, pin, ubicacion }: {
+  userId: string; avisoId: string; etapa: string; acuerdo: string | null; alternativa: string | null; comuna: string | null;
+  pin: { lat: number; lng: number } | null;
+  ubicacion: { direccion: string; numero: string | null; lat: number; lng: number; distanciaM: number | null; veredicto: string | null; precioComprarUF: number | null; flujoCLP: number | null } | null;
+}) {
+  const router = useRouter();
+  const [ac, setAc] = useState(acuerdo ?? "pendiente");
+  const [alt, setAlt] = useState(alternativa ?? "");
+  const [dir, setDir] = useState(ubicacion?.direccion ?? "");
+  const [num, setNum] = useState(ubicacion?.numero ?? "");
+  const [lat, setLat] = useState(String(ubicacion?.lat ?? pin?.lat ?? ""));
+  const [lng, setLng] = useState(String(ubicacion?.lng ?? pin?.lng ?? ""));
+  const [ocupado, setOcupado] = useState<string | null>(null);
+  const [estado, setEstado] = useState<string | null>(null);
+  const ERR: Record<string, string> = { acuerdo: "Elige el acuerdo", depto: "El depto ya no está elegido", direccion: "Escribe la calle (sin número)", punto: "El punto no está en Gran Santiago", arriendo: "Sin arriendos para rehacer el análisis en ese punto", config: "Falta la UF o la tasa", guardar: "No se guardó", red: "Sin conexión" };
+  async function enviar(cuerpo: Record<string, unknown>, que: string) {
+    setOcupado(que); setEstado(null);
+    const r = await llamar(cuerpo);
+    setOcupado(null);
+    if (!r.ok) { setEstado(ERR[r.error ?? ""] ?? "No se guardó"); return; }
+    router.refresh();
+  }
+  const campo = "rounded-md border border-[var(--franco-border)] bg-[var(--franco-card)] px-2 py-1 font-body text-[13px] text-[var(--franco-text)]";
+  const nLat = Number(lat), nLng = Number(lng);
+  return (
+    <div className="flex flex-col gap-3 font-body text-[13px]" data-admin="inv2-gestion-depto">
+      <p className="m-0"><b>Etapa:</b> {etapa}{ubicacion ? ` · ubicación confirmada (${ubicacion.distanciaM ?? "?"} m del pin) · rehecho: ${ubicacion.veredicto ?? "—"}${ubicacion.precioComprarUF ? ` (Comprar a UF ${Math.round(ubicacion.precioComprarUF)})` : ""}${ubicacion.flujoCLP != null ? ` · al mes ${ubicacion.flujoCLP}` : ""}` : " · ubicación sin confirmar"}</p>
+      <div className="flex flex-wrap items-center gap-2">
+        <select value={ac} onChange={(e) => setAc(e.target.value)} aria-label="Acuerdo con quien vende" className={campo}>
+          <option value="pendiente">Acuerdo pendiente</option>
+          <option value="con_acuerdo">Con acuerdo</option>
+          <option value="sin_acuerdo">Sin acuerdo (no avanza)</option>
+        </select>
+        {ac === "sin_acuerdo" && <input value={alt} onChange={(e) => setAlt(e.target.value)} placeholder="Alternativa con acuerdo (id del aviso)" aria-label="Alternativa" className={`${campo} min-w-[300px]`} />}
+        <button type="button" className={CLASE_BTN} disabled={!!ocupado} onClick={() => void enviar({ accion: "acuerdo", userId, avisoId, acuerdo: ac, alternativa: alt || null }, "acuerdo")} data-admin="inv2-guardar-acuerdo">{ocupado === "acuerdo" ? "Guardando…" : "Guardar acuerdo"}</button>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <input value={dir} onChange={(e) => setDir(e.target.value)} placeholder="Calle (sin número)" aria-label="Calle" className={`${campo} min-w-[220px]`} />
+        <input value={num} onChange={(e) => setNum(e.target.value)} placeholder="Número" aria-label="Número" className={`${campo} w-24`} />
+        <input value={lat} onChange={(e) => setLat(e.target.value)} placeholder="Latitud" aria-label="Latitud" className={`${campo} w-32`} />
+        <input value={lng} onChange={(e) => setLng(e.target.value)} placeholder="Longitud" aria-label="Longitud" className={`${campo} w-32`} />
+        <button type="button" className={CLASE_BTN} disabled={!!ocupado} onClick={() => void enviar({ accion: "ubicacion", avisoId, direccion: dir, numero: num, lat: nLat, lng: nLng }, "ubicacion")} data-admin="inv2-confirmar-ubicacion">{ocupado === "ubicacion" ? "Rehaciendo el análisis…" : "Confirmar ubicación"}</button>
+      </div>
+      <div className="max-w-[520px]">
+        <MapaPinAjustable lat={Number.isFinite(nLat) ? nLat : null} lng={Number.isFinite(nLng) ? nLng : null} comuna={comuna} limite="cobertura" height={200} onMover={(a, b) => { setLat(a.toFixed(7)); setLng(b.toFixed(7)); }} />
       </div>
       {estado && <span className="text-[12px] text-[var(--signal-red)]" role="alert">{estado}</span>}
     </div>

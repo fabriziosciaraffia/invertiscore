@@ -10,6 +10,7 @@ import { validarAprobacion, validarMotivo } from "@/lib/invierte-v2/preaprobacio
 import { sendPreaprobacionInvierte } from "@/lib/email";
 import { estadoInterruptor } from "@/lib/invierte-v2/acceso-servidor";
 import { puedeRecibirCopia } from "@/lib/invierte-v2/copias-servidor";
+import { ajustarPorPreaprobacion, confirmarUbicacion, registrarAcuerdo } from "@/lib/invierte-v2/depto-servidor";
 
 /** El correo de la revisión: solo a quien el interruptor deja (mientras el modo no sea «todos», la lista). */
 const DEPS_REVISION: DepsRevision = {
@@ -27,6 +28,8 @@ const DEPS_REVISION: DepsRevision = {
 //   POST { accion: "whatsapp", numero }            → el número de «Escribirle» de la base (vacío lo quita; entrega 2).
 //   POST { accion: "aprobar", id, banco, montoUF, vigenteHasta } → aprueba la preaprobación (entrega 3) y le avisa por correo.
 //   POST { accion: "corregir", id, motivo }        → pide subirla de nuevo, con el motivo que ve la persona, y le avisa.
+//   POST { accion: "acuerdo", userId, avisoId, acuerdo, alternativa } → el acuerdo con quien vende (etapa 3, B1).
+//   POST { accion: "ubicacion", avisoId, direccion, numero, lat, lng } → la ubicación confirmada y el análisis rehecho (B1).
 //   GET  ?documento=<id>                            → «Ver» la preaprobación (URL firmada de 60 s), anotado en la bitácora.
 //   GET  ?orden=<id>                                → «Ver»: la orden firmada (URL firmada de 60 s), anotada en la bitácora.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -83,7 +86,23 @@ export async function POST(request: Request) {
       r = await pedirCorregir(createAdminServiceClient(), adminUser.email ?? null, b.id, motivo, DEPS_REVISION);
     }
     if (!r.ok) return NextResponse.json({ error: r.error }, { status: r.error === "no-existe" ? 404 : r.error === "estado" ? 409 : 500 });
+    // Etapa 3, B1: con la preaprobación que cambia, sus deptos que esperaban pasan a listo (y al revés).
+    const { data: doc } = await sb.from("inv_documentos").select("user_id").eq("id", b.id).maybeSingle();
+    if (doc?.user_id) await ajustarPorPreaprobacion(createAdminServiceClient(), doc.user_id as string);
     return NextResponse.json({ ok: true, correo: r.correo });
+  }
+  // Etapa 3, B1: el acuerdo con quien vende y la ubicación confirmada (con el análisis rehecho). Los hace una persona de Franco.
+  if (accion === "acuerdo") {
+    if (typeof b?.userId !== "string" || !UUID.test(b.userId) || typeof b?.avisoId !== "string") return NextResponse.json({ error: "datos" }, { status: 400 });
+    const r = await registrarAcuerdo(createAdminServiceClient(), { id: adminUser.id, email: adminUser.email ?? null }, b.userId, b.avisoId, b.acuerdo, b.alternativa);
+    if (!r.ok) return NextResponse.json({ error: r.error }, { status: r.error === "guardar" ? 500 : 400 });
+    return NextResponse.json(r);
+  }
+  if (accion === "ubicacion") {
+    if (typeof b?.avisoId !== "string" || !UUID.test(b.avisoId)) return NextResponse.json({ error: "datos" }, { status: 400 });
+    const r = await confirmarUbicacion(createAdminServiceClient(), { id: adminUser.id, email: adminUser.email ?? null }, b.avisoId, b);
+    if (!r.ok) return NextResponse.json({ error: r.error }, { status: r.error === "guardar" || r.error === "config" ? 500 : 400 });
+    return NextResponse.json(r);
   }
   if (accion === "tarea") {
     if (typeof b?.id !== "string" || !UUID.test(b.id)) return NextResponse.json({ error: "datos" }, { status: 400 });

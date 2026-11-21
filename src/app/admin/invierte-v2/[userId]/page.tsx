@@ -11,7 +11,9 @@ import { lineaDepto } from "@/lib/invierte-v2/base";
 import type { DatosDepto } from "@/lib/invierte-v2/base-servidor";
 import { lineaCambio, type TipoCambio } from "@/lib/invierte-v2/cambios";
 import { ETIQUETAS, fmtUF, textoAlMes, type Etiqueta } from "@/lib/invierte-v2/opciones";
-import { RevisarPreaprobacion, TareaHecha } from "../controles";
+import { GestionDepto, RevisarPreaprobacion, TareaHecha } from "../controles";
+import { leerUbicaciones } from "@/lib/invierte-v2/depto-servidor";
+import { etapaDe } from "@/lib/invierte-v2/depto-flujo";
 import { leerPreaprobacion } from "@/lib/invierte-v2/preaprobacion-servidor";
 import { lineaAprobada } from "@/lib/invierte-v2/preaprobacion";
 
@@ -45,7 +47,7 @@ export default async function FichaInvierteV2Page({ params }: { params: { userId
   const pre = await leerPreaprobacion(sb, userId);
   const [persona, orden, perfil, { data: deptos }, { data: tareas }, { data: cambios }, { data: bitacora }, { data: detalles }] = await Promise.all([
     leerPersona(sb, userId), ultimaOrdenDe(sb, userId), leerPerfilInv(sb, userId),
-    sb.from("inv_deptos").select("aviso_id, estado, origen, etiqueta, alcanza, datos, elegido_at, vigente, publicacion_leida_at, updated_at").eq("user_id", userId).order("estado").order("updated_at", { ascending: false }),
+    sb.from("inv_deptos").select("aviso_id, estado, origen, etiqueta, alcanza, datos, elegido_at, vigente, publicacion_leida_at, updated_at, etapa, acuerdo, alternativa_aviso_id").eq("user_id", userId).order("estado").order("updated_at", { ascending: false }),
     sb.from("inv_tareas").select("id, tipo, aviso_id, estado, detalle, hecha_por, hecha_at, created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(100),
     sb.from("inv_cambios").select("aviso_id, tipo, antes, despues, fecha, en_base, relevante, correo_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(40),
     sb.from("inv_bitacora").select("id, actor, actor_email, accion, detalle, created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(50),
@@ -54,6 +56,14 @@ export default async function FichaInvierteV2Page({ params }: { params: { userId
   if (!persona && !orden) notFound();
   const informe = new Map((detalles ?? []).map((d) => [d.aviso_id as string, d.analysis_id as string]));
   const linea = new Map((deptos ?? []).map((d) => [d.aviso_id as string, lineaDepto((d.datos ?? {}) as DatosDepto)]));
+  // Etapa 3, B1: el flujo de cada depto elegido (acuerdo, ubicación confirmada y análisis rehecho).
+  const elegidos = (deptos ?? []).filter((d) => d.estado === "elegido");
+  const idsEl = elegidos.map((d) => d.aviso_id as string);
+  const [ubic, { data: pines }] = await Promise.all([
+    leerUbicaciones(sb, idsEl),
+    idsEl.length ? sb.from("scraped_properties").select("id, lat, lng, comuna").in("id", idsEl).order("id").limit(50) : Promise.resolve({ data: [] as { id: string; lat: number | null; lng: number | null; comuna: string | null }[] }),
+  ]);
+  const pinDe = new Map(((pines ?? []) as { id: string; lat: number | null; lng: number | null; comuna: string | null }[]).map((x) => [x.id, x]));
   const pendientes = (tareas ?? []).filter((t) => t.estado === "pendiente");
   const hechas = (tareas ?? []).filter((t) => t.estado !== "pendiente");
   const H = INVIERTE_COPY.hoja;
@@ -169,6 +179,26 @@ export default async function FichaInvierteV2Page({ params }: { params: { userId
             })}
           </tbody>
         </table>
+      </section>
+
+      <section className={caja} data-admin="inv2-ficha-flujo">
+        <h2 className="m-0 mb-3 font-heading text-lg font-bold">Flujo de sus deptos</h2>
+        {elegidos.length === 0 && <p className="m-0 font-body text-[13px] text-[var(--franco-text-muted)]">Sin deptos elegidos.</p>}
+        <div className="flex flex-col gap-5">
+          {elegidos.map((d) => {
+            const id = d.aviso_id as string;
+            const u = ubic[id];
+            const pin = pinDe.get(id);
+            return (
+              <div key={id} className="border-b border-[var(--franco-border)] pb-4 last:border-0">
+                <p className="m-0 mb-2 font-body text-[13px] font-semibold">{lineaDepto((d.datos ?? {}) as DatosDepto) || id} <span className="font-mono text-[11px] font-normal text-[var(--franco-text-muted)]">{id}</span></p>
+                <GestionDepto userId={userId} avisoId={id} etapa={etapaDe({ estado: "elegido", etapa: (d.etapa as string | null) ?? null }) ?? "confirmando"} acuerdo={(d.acuerdo as string | null) ?? null} alternativa={(d.alternativa_aviso_id as string | null) ?? null}
+                  comuna={pin?.comuna ?? null} pin={pin?.lat != null && pin?.lng != null ? { lat: Number(pin.lat), lng: Number(pin.lng) } : null}
+                  ubicacion={u ? { direccion: u.direccion, numero: u.numero, lat: u.lat, lng: u.lng, distanciaM: u.distanciaM, veredicto: u.analisis?.veredicto ?? null, precioComprarUF: u.precioComprarUF, flujoCLP: u.analisis?.flujoCLP ?? null } : null} />
+              </div>
+            );
+          })}
+        </div>
       </section>
 
       <section className={caja} data-admin="inv2-ficha-cambios">

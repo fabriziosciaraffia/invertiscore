@@ -25,8 +25,8 @@ export function numeroWhatsapp(x: unknown): string | null {
 }
 
 /** El enlace de «Escribirle»: el mensaje no lleva datos de la persona. */
-export const urlWhatsapp = (numero: string) =>
-  `https://wa.me/${numero.replace(/^\+/, "")}?text=${encodeURIComponent("Hola, Franco. Te escribo por mi inversión.")}`;
+export const urlWhatsapp = (numero: string, texto = "Hola, Franco. Te escribo por mi inversión.") =>
+  `https://wa.me/${numero.replace(/^\+/, "")}?text=${encodeURIComponent(texto)}`;
 
 export interface LineaDepto { comuna?: string | null; dormitorios?: number | null; banos?: number | null; m2?: number | null }
 /** «Macul · 2D2B · 60 m²». */

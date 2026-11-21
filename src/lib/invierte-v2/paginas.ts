@@ -10,7 +10,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { esOrigen, type OrigenInvierte } from "@/lib/invierte/invierte";
 import { accesoInvierteV2 } from "./acceso-servidor";
-import { deptoDelFlujo } from "./servidor";
+import { deptoDeEntrada } from "./servidor";
 import type { DeptoFlujo } from "@/components/invierte-v2/ContactoForm";
 
 export const METADATA_FLUJO: Metadata = { title: "Invierte con Franco", robots: { index: false, follow: false } };
@@ -22,7 +22,7 @@ export async function sesionYAcceso(): Promise<{ user: User | null; acceso: bool
 }
 
 export async function deptoParaPagina(avisoId: string): Promise<DeptoFlujo | null> {
-  const aviso = await deptoDelFlujo(createServiceClient(), decodeURIComponent(avisoId));
+  const aviso = await deptoDeEntrada(createServiceClient(), decodeURIComponent(avisoId));
   if (!aviso) return null;
   const veredicto = aviso.veredicto === "COMPRAR" ? "COMPRAR" : aviso.veredicto === "AJUSTA SUPUESTOS" && aviso.negociable ? "AJUSTA SUPUESTOS" : null;
   return { avisoId: aviso.avisoId, linea: aviso.linea, precioUF: aviso.precioUF, veredicto, score: aviso.score };

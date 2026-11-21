@@ -28,7 +28,7 @@ export interface Vigente {
   publicadorId: number | null;
 }
 
-export type TipoCambio = "precio_baja" | "precio_sube" | "despublicado" | "republicado" | "veredicto" | "al_mes" | "publicador";
+export type TipoCambio = "precio_baja" | "precio_sube" | "despublicado" | "republicado" | "veredicto" | "al_mes" | "publicador" | "ubicacion";
 
 export interface Cambio {
   tipo: TipoCambio;
@@ -154,6 +154,12 @@ export function lineaCambio(c: { tipo: TipoCambio; antes: Record<string, unknown
       const b = num(c.despues, "flujoCLP");
       if (b == null) return null;
       return b > 0 ? `Con el precio nuevo, te sobran ${clp(b)} al mes` : `Con el precio nuevo, pones ${clp(b)} al mes`;
+    }
+    // Etapa 3, B1 (21-nov-2026): el análisis rehecho con la ubicación confirmada cambió los números.
+    case "ubicacion": {
+      const b = num(c.despues, "flujoCLP");
+      if (b == null) return `Se confirmó dónde está el ${f}`;
+      return b > 0 ? `Con la ubicación confirmada, te sobran ${clp(b)} al mes` : `Con la ubicación confirmada, pones ${clp(b)} al mes`;
     }
     default: return null;
   }

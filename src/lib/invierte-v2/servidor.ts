@@ -11,7 +11,7 @@
 import { createHash } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { leerAviso, textoCampana, type AvisoInvierte } from "@/lib/invierte/invierte-servidor";
-import { pieDelDepto } from "@/lib/invierte/invierte";
+import { pieDelDepto, puedeInvertir } from "@/lib/invierte/invierte";
 import { deptoDeLinea, ordenVigente, textoPlano, VERSION_ORDEN } from "./orden";
 import { formatearRut } from "./rut";
 import type { PedidoContacto, PedidoFirma } from "./flujo";
@@ -133,11 +133,19 @@ export async function deptoDelFlujo(admin: SupabaseClient, avisoId: string): Pro
   return aviso && aviso.condicion === "usado" ? aviso : null;
 }
 
+/** La entrada a Invierte con Franco (etapa 3, decisión de Fabrizio, 21-nov-2026): la misma regla del botón (`puedeInvertir`) —un
+ *  Comprar, o un Ajusta supuestos que se vuelve Comprar a un precio negociado— también en el contacto, la firma y la pantalla de
+ *  sumar, aunque se entre por la dirección directa. */
+export async function deptoDeEntrada(admin: SupabaseClient, avisoId: string): Promise<AvisoInvierte | null> {
+  const aviso = await deptoDelFlujo(admin, avisoId);
+  return aviso && puedeInvertir({ condicion: aviso.condicion, veredicto: aviso.veredicto, negociable: aviso.negociable }) ? aviso : null;
+}
+
 // ── EL CONTACTO ──────────────────────────────────────────────────────────────
 export type ResultadoContacto = { ok: true; firmo: boolean } | { ok: false; error: "depto" | "guardar" };
 
 export async function guardarContacto(admin: SupabaseClient, user: UsuarioInv, pedido: PedidoContacto, ctx: ContextoPedido, campana: Record<string, unknown> | null): Promise<ResultadoContacto> {
-  const aviso = await deptoDelFlujo(admin, pedido.avisoId);
+  const aviso = await deptoDeEntrada(admin, pedido.avisoId);
   if (!aviso) return { ok: false, error: "depto" };
   const previa = await leerPersona(admin, user.id);
   const firmada = await ordenVigenteDe(admin, user.id);
@@ -188,7 +196,7 @@ export async function firmar(admin: SupabaseClient, user: UsuarioInv, pedido: Pe
     const c = await completarOrden(admin, previa, deps, "firma");
     return { ok: true, ordenId: previa.id, yaFirmada: true, ...c };
   }
-  const aviso = await deptoDelFlujo(admin, pedido.avisoId);
+  const aviso = await deptoDeEntrada(admin, pedido.avisoId);
   if (!aviso) return { ok: false, error: "depto" };
   const depto = deptoDeLinea(aviso.linea);
   const texto = textoPlano(ordenVigente({ nombre: pedido.nombre, rut: formatearRut(pedido.rut), depto }));

@@ -7,7 +7,7 @@
 // `chica`: la foto de una alternativa, más baja y con las mismas flechas, contador y puntos, más chicos (20-nov-2026, Fabrizio).
 // La foto siempre se recorta para llenar el recuadro, sin deformarse (object-fit: cover).
 // ─────────────────────────────────────────────────────────────────────────────
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ALTERNATIVAS_COPY as A } from "@/lib/invierte-v2/alternativas";
 import { urlFoto } from "@/lib/invierte-v2/fotos";
 
@@ -19,6 +19,9 @@ export function FotosDepto({ avisoId, n, chica = false, clase = "", etiqueta = n
   // Mientras busca una foto que cargue (la primera falló), el bloque no se ve: nada de un recuadro vacío con flechas.
   const [buena, setBuena] = useState(false);
   const toque = useRef<number | null>(null);
+  const img = useRef<HTMLImageElement>(null);
+  // Una foto que falló antes de que la página despertara (sin `onError`) también se salta (21-nov-2026, como FotoPortada).
+  useEffect(() => { const x = img.current; if (x?.complete && x.naturalWidth <= 1) romper(); }, [i]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!n || rotas.size >= n) return null;
   const ir = (d: number) => setI((x) => { let k = x; for (let paso = 0; paso < n; paso++) { k = (k + d + n) % n; if (!rotas.has(k)) return k; } return x; });
   const siguiente = (x: number, sin: Set<number>) => { for (let paso = 1; paso <= n; paso++) { const k = (x + paso) % n; if (!sin.has(k)) return k; } return null; };
@@ -28,7 +31,7 @@ export function FotosDepto({ avisoId, n, chica = false, clase = "", etiqueta = n
       onTouchStart={(e) => { toque.current = e.touches[0]?.clientX ?? null; }}
       onTouchEnd={(e) => { const x0 = toque.current; toque.current = null; const x1 = e.changedTouches[0]?.clientX; if (x0 == null || x1 == null || Math.abs(x1 - x0) < 40) return; ir(x1 < x0 ? 1 : -1); }}>
       {/* eslint-disable-next-line @next/next/no-img-element -- la sirve la ruta propia, con su caché; no pasa por el optimizador */}
-      <img src={urlFoto(avisoId, i)} alt={A.foto(i + 1, n)} loading={chica && i === 0 ? "lazy" : "eager"} decoding="async" onError={romper} onLoad={(e) => { if (e.currentTarget.naturalWidth <= 1) romper(); else setBuena(true); }} />
+      <img ref={img} src={urlFoto(avisoId, i)} alt={A.foto(i + 1, n)} loading={chica && i === 0 ? "lazy" : "eager"} decoding="async" onError={romper} onLoad={(e) => { if (e.currentTarget.naturalWidth <= 1) romper(); else setBuena(true); }} />
       {etiqueta && <span className="iv2-foto-etiqueta" data-inv2="foto-etiqueta">{etiqueta}</span>}
       {n > 1 && (
         <>
