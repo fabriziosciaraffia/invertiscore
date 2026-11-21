@@ -39,7 +39,7 @@ import { TARIFAS } from "../../../src/lib/costo-ia";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { DIST_METRO_TITULO, limpiarCalle, limpiarNumero, tituloDepto } from "../../../src/lib/invierte-v2/titulo-depto";
-import { TarjetaBase, TarjetaOtra } from "../../../src/components/invierte-v2/TarjetaDepto";
+import { TarjetaBase, TarjetaOtra, TituloCalle } from "../../../src/components/invierte-v2/TarjetaDepto";
 
 const RAIZ = join(__dirname, "..", "..", "..");
 const leer = (p: string) => readFileSync(join(RAIZ, p), "utf8").replace(/\r\n/g, "\n");
@@ -1101,6 +1101,28 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       const pc20 = css20.slice(css20.indexOf("/* LA TARJETA DE UN DEPTO EN LA BASE (etapa 3"));
       if (!/@media \(min-width: 1024px\) \{\n  \.iv2-deptos \{ display: flex; flex-direction: column; gap: 14px; \}/.test(pc20)) F("20e · en el PC las tarjetas no van una por fila");
       if (!/\.iv2-td-principal \{ flex: 1; display: grid; grid-template-columns: 170px minmax\(0, 1fr\);/.test(pc20)) F("20e · en el PC la foto no va a la izquierda");
+    }
+
+    // ── 21 · ETAPA 3, PARTES A2 Y A3: EL TÍTULO EN EL RESULTADO Y LA PANTALLA DE SUMAR (20-nov-2026, láminas 3.2-resultado y 3.x-sumar-sobre-el-rango) ──
+    {
+      // 21a · El resultado: cada tarjeta lleva el título calle·metro (con la calle de la lectura) y, debajo, comuna y programa.
+      const t21 = renderToStaticMarkup(createElement(TituloCalle, { avisoId: "x", metro: { estacion: "Ñuñoa", metros: 300 }, comuna: "Ñuñoa", inicial: { alerta: { nivel: "ninguna", motivo: null }, larga: [], corta: ["a"], calle: "Dublé Almeyda" } }));
+      if (t21 !== "Dublé Almeyda · Metro Ñuñoa") F(`21a · el título del resultado no es calle · metro (${t21})`);
+      const ro21 = codigo("src/components/invierte-v2/ResultadoOpciones.tsx");
+      if (!/<span className="iv2-res-nombre" id="iv2-ele-t" data-inv2="titulo-depto"><TituloCalle avisoId=\{entrada\.avisoId\} metro=\{entrada\.metro\} comuna=\{entrada\.comuna\} inicial=\{p\.lecturas\[entrada\.avisoId\] \?\? null\} \/><\/span><span className="iv2-res-programa">\{nombreDepto\(entrada\)\}<\/span>/.test(ro21)) F("21a · el elegido del resultado no lleva el título calle·metro con su programa debajo");
+      if (!/<span className="iv2-res-alt-nombre" data-inv2="titulo-depto"><TituloCalle avisoId=\{o\.avisoId\} metro=\{o\.metro\} comuna=\{o\.comuna\} inicial=\{p\.lecturas\[o\.avisoId\] \?\? null\} \/><\/span><span className="iv2-res-programa">\{nombreDepto\(o\)\}<\/span>/.test(ro21)) F("21a · las alternativas del resultado no llevan el título calle·metro con su programa debajo");
+      if (!ro21.includes("${Math.round(o.m2)} m²")) F("21a · «62 m²» se puede partir en dos renglones en el resultado");
+      const css21 = leer("src/components/invierte-v2/invierte-v2.css");
+      if (!/\.iv2-res-fila:has\(\.iv2-res-nombre-bloque\) \{ align-items: flex-start; \}/.test(css21)) F("21a · el chip del resultado no queda arriba a la derecha del título");
+      // 21b · Sumar sobre el rango: el depto en su tarjeta con foto y título, la explicación en el recuadro azul, y los parecidos con foto,
+      // título, programa y precio, cap rate y veredicto, y «Sumar» como botón gris chico.
+      const su21 = codigo("src/app/invierte/[avisoId]/sumar/page.tsx");
+      if (!/const fichas = await fichasDe\(createServiceClient\(\), \[depto\.avisoId, \.\.\.parecidos\.map\(\(o\) => o\.avisoId\)\]/.test(su21)) F("21b · la pantalla de sumar no lee la ficha del depto y de sus parecidos");
+      if (!/<FotoPortada avisoId=\{depto\.avisoId\} n=\{fd\?\.fotos \?\? 0\} clase="iv2-sumar-depto-foto" \/>/.test(su21) || !/data-inv2="titulo-depto">\{fd\?\.titulo \?\? depto\.linea\}<\/p>/.test(su21)) F("21b · el depto de sumar no va en su tarjeta con foto y título calle·metro");
+      if (!/<p className="iv2-sumar-ex" data-inv2=\{rango === "poco_sobre" \? "poco-sobre" : "fuera-de-rango"\}>/.test(su21) || !/\.iv2-sumar-ex \{[^}]*background: var\(--franco-elevated, #EEF2F8\)/.test(css21)) F("21b · la explicación de sumar no va en el recuadro azul");
+      if (!/<FotoPortada avisoId=\{o\.avisoId\} n=\{fichas\[o\.avisoId\]\?\.fotos \?\? 0\} clase="iv2-sumar-parecido-foto" \/>/.test(su21) || !/`Cap rate \$\{pctUno\(fichas\[o\.avisoId\]!\.capRatePct!\)\}`/.test(su21) || !/variante="secundario" \/>/.test(su21)) F("21b · los parecidos de sumar no llevan foto, cap rate y «Sumar» gris");
+      if (!/lineaDepto\(\{ dormitorios: o\.dormitorios, banos: o\.banos, m2: o\.m2 \}\), `UF \$\{fmtUF\(o\.precioUF\)\}`/.test(su21)) F("21b · el programa del parecido no va sin la comuna y con su precio");
+      if (!/variante === "secundario" \? "iv2-secundario iv2-sumar-chico"/.test(codigo("src/components/invierte-v2/SumarDepto.tsx")) || !/\[data-theme="light"\] \.iv2-secundario\.iv2-sumar-chico \{ background: #F4F4F6;/.test(css21)) F("21b · «Sumar» del parecido no es el botón gris chico");
     }
 
     // ── 18 · LECTURAS QUE FALLAN Y LA CORTA DE UNA FRASE (20-nov-2026, Fabrizio, tercera ronda) ──────────────────────────────────
