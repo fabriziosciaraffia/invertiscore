@@ -23,7 +23,8 @@ export function SumarDepto({ avisoId, etiqueta, origen, activos, variante }: {
   origen: "base" | "mapa";
   /** Los que ya sigue (para elegir cuál deja si ya tiene seis). */
   activos: { avisoId: string; datos: LineaDepto }[];
-  variante: "principal" | "enlace";
+  /** «secundario» (A3, lámina 3.x-sumar-sobre-el-rango): el «Sumar» de un parecido, como botón gris chico. */
+  variante: "principal" | "enlace" | "secundario";
 }) {
   const router = useRouter();
   const [enviando, setEnviando] = useState(false);
@@ -50,7 +51,7 @@ export function SumarDepto({ avisoId, etiqueta, origen, activos, variante }: {
   const lleno = activos.length >= MAX_ACTIVOS;
   return (
     <>
-      <button type="button" className={variante === "principal" ? "inv-principal iv2-principal" : "iv2-enlace-azul iv2-seguir"} disabled={enviando}
+      <button type="button" className={variante === "principal" ? "inv-principal iv2-principal" : variante === "secundario" ? "iv2-secundario iv2-sumar-chico" : "iv2-enlace-azul iv2-seguir"} disabled={enviando}
         aria-busy={enviando || undefined} onClick={() => (lleno ? setEligiendo(true) : void sumar(null))} data-inv2={origen === "mapa" ? "boton-sumar" : "seguir-con-este"}>
         {etiqueta}
       </button>

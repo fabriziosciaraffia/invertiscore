@@ -122,3 +122,9 @@ export function TarjetaOtra({ avisoId, datos, ficha, acciones }: { avisoId: stri
     </div>
   );
 }
+
+/** El título calle·metro del resultado (A2, lámina 3.2-resultado): con la calle de la lectura, que puede llegar después. */
+export function TituloCalle({ avisoId, metro, comuna, inicial }: { avisoId: string; metro: { estacion: string; metros: number } | null; comuna: string | null; inicial: LecturaFranco | null }) {
+  const l = useLectura(avisoId, inicial);
+  return <>{tituloDepto({ calle: l?.calle ?? null, metro, comuna })}</>;
+}
