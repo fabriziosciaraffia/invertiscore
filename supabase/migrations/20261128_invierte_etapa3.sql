@@ -280,6 +280,10 @@ drop trigger if exists inv_ofertas_firma on public.inv_ofertas;
 create trigger inv_ofertas_firma before insert or update of firmada_at on public.inv_ofertas
   for each row execute function public.inv_ofertas_firma();
 
+-- Agregado por Claude al aplicar (21-nov-2026): las funciones de los triggers no se pueden llamar desde fuera.
+revoke execute on function public.inv_deptos_transicion() from public, anon, authenticated;
+revoke execute on function public.inv_ofertas_firma() from public, anon, authenticated;
+
 -- ── 7 · VALORES CONFIGURABLES ────────────────────────────────────────────────
 insert into public.config(key, value, updated_at) values
   ('invierte_oferta_vigencia_dias', '5', now()),
