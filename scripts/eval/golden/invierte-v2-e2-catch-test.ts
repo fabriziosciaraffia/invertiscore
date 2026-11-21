@@ -38,8 +38,12 @@ import { CLAUDE_MODEL_DOCUMENTOS } from "../../../src/lib/ai-config";
 import { TARIFAS } from "../../../src/lib/costo-ia";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { VERSION_EVALUACION as VERSION_EVALUACION22 } from "../../../src/lib/avisos/evaluar-aviso";
 import { DIST_METRO_TITULO, limpiarCalle, limpiarNumero, tituloDepto } from "../../../src/lib/invierte-v2/titulo-depto";
 import { TarjetaBase, TarjetaOtra, TituloCalle } from "../../../src/components/invierte-v2/TarjetaDepto";
+import { etapaDe, etapaSiguiente, etapaConPreaprobacion, loQueSigue, estadoEnBase, ubicacionConviene, urlDepto } from "../../../src/lib/invierte-v2/depto-flujo";
+import { numerosDe, validarUbicacion, reanalisisVencido } from "../../../src/lib/invierte-v2/depto-servidor";
+import { VistaDepto } from "../../../src/components/invierte-v2/VistaDepto";
 
 const RAIZ = join(__dirname, "..", "..", "..");
 const leer = (p: string) => readFileSync(join(RAIZ, p), "utf8").replace(/\r\n/g, "\n");
@@ -960,9 +964,10 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       const vb = codigo("src/components/invierte-v2/VistaBase.tsx");
       const bd = codigo("src/components/invierte-v2/BotonDetalles.tsx");
       const tarjeta = bd.slice(bd.indexOf("export function TarjetaDetalles"), bd.indexOf("export function PrepararDetalles"));
-      const dentro = vb.slice(vb.indexOf("<TarjetaDetalles"), vb.indexOf("</TarjetaDetalles>"));
-      if (!/<li key=\{d\.avisoId\} className="iv2-depto-li" data-inv2="depto-base">\s*(?:\{\}\s*)?<TarjetaDetalles avisoId=\{d\.avisoId\} etiqueta=\{B\.abrirDepto\(d\.ficha\?\.titulo \?\? lineaDepto\(d\.datos\)\)\} sinFlecha>/.test(vb) || /<BotonDetalles/.test(dentro) /* ⚠ ACTA (20-nov-2026, etapa 3 A1): «Ver detalles» vuelve, solo en las otras opciones */ || /B\.abrir\}/.test(vb)) F("14f · la tarjeta de «Tus deptos» no se toca entera (o sigue el enlace «Abrir»)");
-      if (!dentro || /<(p|div|a|button)[\s>]/.test(dentro)) F("14f · dentro de la tarjeta hay un bloque o un control (un botón solo admite texto en línea)");
+      // ⚠ ACTA (21-nov-2026, etapa 3 B1): la tarjeta de «Tus deptos» abre la página del depto (un enlace), ya no los detalles.
+      const dentro = vb.slice(vb.indexOf('data-inv2="abrir-depto">'), vb.indexOf("</Link>", vb.indexOf('data-inv2="abrir-depto">')));
+      if (!/<Link href=\{urlDepto\(d\.avisoId\)\} className="iv2-depto iv2-depto-tocable" aria-label=\{B\.abrirDepto\(d\.ficha\?\.titulo \?\? lineaDepto\(d\.datos\)\)\} data-inv2="abrir-depto">/.test(vb) || /<BotonDetalles/.test(dentro) /* ⚠ ACTA (20-nov-2026, etapa 3 A1): «Ver detalles» vuelve, solo en las otras opciones */ || /B\.abrir\}/.test(vb)) F("14f · la tarjeta de «Tus deptos» no se toca entera (o sigue el enlace «Abrir»)");
+      if (!dentro || /<(p|div|a|button|Link|BotonDetalles|SumarDepto)[\s>]/.test(dentro)) F("14f · dentro de la tarjeta hay un bloque o un control (un enlace no admite otro control adentro)");
       if (!/<button type="button" className="iv2-depto iv2-depto-tocable" onClick=\{abrir\} disabled=\{estado === "abriendo"\} aria-label=\{etiqueta\}/.test(tarjeta)
         // ⚠ ACTA (20-nov-2026, etapa 3 A1): la tarjeta de la base lleva su flecha en la fila del estado (TarjetaBase, iv2-td-flecha): `sinFlecha`.
         || !/<span className="iv2-depto-cuerpo">\{children\}<\/span>\s*\{!sinFlecha && <span className="iv2-depto-flecha" aria-hidden="true">›<\/span>\}\s*<\/button>/.test(tarjeta)
@@ -1095,7 +1100,7 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (!o20.includes("|Dublé Almeyda · Metro Ñuñoa|") || !o20.includes("|UF 3.250 · Cap rate 4,7 % · ✓ Comprar · 78|") || !o20.includes("|Cocina y baños renovados: se arrienda tal como está.|")) F("20d · la otra opción no lleva lo mismo en chico (título, resumen con cap rate, una línea de Franco)");
       // 20e · Cableado: la base lee la ficha de cada tarjeta y la dibuja una por fila.
       const bs20 = codigo("src/lib/invierte-v2/base-servidor.ts"), vb20 = codigo("src/components/invierte-v2/VistaBase.tsx");
-      if (!/const fichas = await fichasDe\(admin, todos\.map\(\(d\) => d\.avisoId\)/.test(bs20) || !/for \(const d of todos\) d\.ficha = fichas\[d\.avisoId\] \?\? null;/.test(bs20)) F("20e · la base no lee la ficha de sus tarjetas");
+      if (!/const fichas = await fichasDe\(admin, todos\.map\(\(d\) => d\.avisoId\)/.test(bs20) || !/for \(const d of todos\) \{ d\.ficha = fichas\[d\.avisoId\] \?\? null;/.test(bs20)) F("20e · la base no lee la ficha de sus tarjetas"); /* ⚠ ACTA (21-nov-2026, B1): con el cap rate del análisis rehecho encima */
       if (!/<TarjetaBase avisoId=\{d\.avisoId\} datos=\{d\.datos\} ficha=\{d\.ficha\} origen=\{d\.origen\}/.test(vb20) || !/<TarjetaOtra avisoId=\{o\.avisoId\} datos=\{o\.datos\} ficha=\{o\.ficha\}/.test(vb20)) F("20e · la base no dibuja la tarjeta nueva");
       const css20 = leer("src/components/invierte-v2/invierte-v2.css");
       const pc20 = css20.slice(css20.indexOf("/* LA TARJETA DE UN DEPTO EN LA BASE (etapa 3"));
@@ -1123,6 +1128,63 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (!/<FotoPortada avisoId=\{o\.avisoId\} n=\{fichas\[o\.avisoId\]\?\.fotos \?\? 0\} clase="iv2-sumar-parecido-foto" \/>/.test(su21) || !/`Cap rate \$\{pctUno\(fichas\[o\.avisoId\]!\.capRatePct!\)\}`/.test(su21) || !/variante="secundario" \/>/.test(su21)) F("21b · los parecidos de sumar no llevan foto, cap rate y «Sumar» gris");
       if (!/lineaDepto\(\{ dormitorios: o\.dormitorios, banos: o\.banos, m2: o\.m2 \}\), `UF \$\{fmtUF\(o\.precioUF\)\}`/.test(su21)) F("21b · el programa del parecido no va sin la comuna y con su precio");
       if (!/variante === "secundario" \? "iv2-secundario iv2-sumar-chico"/.test(codigo("src/components/invierte-v2/SumarDepto.tsx")) || !/\[data-theme="light"\] \.iv2-secundario\.iv2-sumar-chico \{ background: #F4F4F6;/.test(css21)) F("21b · «Sumar» del parecido no es el botón gris chico");
+    }
+
+    // ── 22 · ETAPA 3, B1: LA ETAPA DE CADA DEPTO, LA UBICACIÓN CONFIRMADA Y LA PÁGINA DEL DEPTO (21-nov-2026, láminas 4.1 y 4.2) ──
+    {
+      // 22a · Un elegido sin etapa guardada está confirmando; las opciones no tienen página.
+      if (etapaDe({ estado: "elegido", etapa: null }) !== "confirmando" || etapaDe({ estado: "opcion", etapa: null }) !== null || etapaDe({ estado: "elegido", etapa: "listo" }) !== "listo") F("22a · la etapa de un depto no se lee bien (un elegido sin etapa está confirmando)");
+      // 22b · Pasa de confirmando solo con acuerdo Y la ubicación confirmada con su análisis rehecho; Comprar, o Ajusta supuestos con precio a Comprar.
+      const C = { veredicto: "COMPRAR", precioComprarUF: null }, A = { veredicto: "AJUSTA SUPUESTOS", precioComprarUF: 2900 }, A0 = { veredicto: "AJUSTA SUPUESTOS", precioComprarUF: null }, B0 = { veredicto: "BUSCAR OTRA", precioComprarUF: null };
+      if (etapaSiguiente({ acuerdo: "con_acuerdo", ubicacion: null, preaprobacion: "aprobada" }) !== null) F("22b · sin la ubicación confirmada el depto deja de estar confirmando");
+      if (etapaSiguiente({ acuerdo: "pendiente", ubicacion: C, preaprobacion: "aprobada" }) !== null) F("22b · sin acuerdo el depto deja de estar confirmando");
+      if (etapaSiguiente({ acuerdo: "con_acuerdo", ubicacion: C, preaprobacion: "aprobada" })?.etapa !== "listo") F("22b · con acuerdo, ubicación en Comprar y preaprobación aprobada, no queda listo");
+      if (etapaSiguiente({ acuerdo: "con_acuerdo", ubicacion: C, preaprobacion: "subir" })?.etapa !== "sin_preaprobacion") F("22b · sin preaprobación queda listo");
+      if (etapaSiguiente({ acuerdo: "con_acuerdo", ubicacion: A, preaprobacion: "sin_credito" })?.etapa !== "listo") F("22b · un Ajusta supuestos con precio al que vuelve a Comprar no queda listo");
+      const d0 = etapaSiguiente({ acuerdo: "con_acuerdo", ubicacion: A0, preaprobacion: "aprobada" }), d1 = etapaSiguiente({ acuerdo: "con_acuerdo", ubicacion: B0, preaprobacion: "aprobada" });
+      if (d0?.etapa !== "no_avanza" || d0?.motivo !== "dejo_de_convenir" || d1?.motivo !== "dejo_de_convenir") F("22b · un depto que dejó de convenir con la ubicación confirmada no va a «no avanza, dejó de convenir»");
+      const s0 = etapaSiguiente({ acuerdo: "sin_acuerdo", ubicacion: null, preaprobacion: "aprobada" });
+      if (s0?.etapa !== "no_avanza" || s0?.motivo !== "sin_acuerdo") F("22b · sin acuerdo no va a «no avanza, sin acuerdo»");
+      if (!ubicacionConviene(A) || ubicacionConviene(A0) || ubicacionConviene(B0)) F("22b · la regla de lo que conviene con la ubicación confirmada cambió");
+      if (etapaConPreaprobacion("sin_preaprobacion", "aprobada") !== "listo" || etapaConPreaprobacion("listo", "por_corregir") !== "sin_preaprobacion" || etapaConPreaprobacion("confirmando", "aprobada") !== "confirmando") F("22b · la preaprobación no mueve bien a los que esperaban");
+      // 22c · La base lo impone también (el trigger de la migración de la etapa 3, con su revoke).
+      const mig22 = leer("supabase/migrations/20261128_invierte_etapa3.sql");
+      if (!/if new\.etapa = 'listo' and not exists \(\s*select 1 from public\.inv_ubicaciones u/.test(mig22) || !/if new\.etapa = 'no_sigo' and old\.etapa in \('en_firme','promesa','escritura','inscrito'\)/.test(mig22) || !/revoke execute on function public\.inv_deptos_transicion\(\) from public, anon, authenticated;/.test(mig22) || /muy_lejos/.test(mig22.replace(/--.*$/gm, ""))) F("22c · la migración de la etapa 3 no impone listo, no_sigo o el revoke (o volvió muy_lejos)");
+      // 22d · Una sola fuente de números: con ubicación confirmada, los del análisis rehecho (y la lectura y la base los usan).
+      const u22 = { avisoId: "x", direccion: "Serrano", numero: "1", lat: -33.4, lng: -70.6, distanciaM: 0, precioComprarUF: null, cargadaAt: "x", analisis: { veredicto: "BUSCAR OTRA", score: 40, flujoCLP: -90000, arriendoCLP: 400000, capRatePct: 3.1, precioUF: 3000, radio: 750, n: 9 } };
+      const n22 = numerosDe({ precioUF: 3000, veredicto: "COMPRAR", score: 80, flujoCLP: 50000 }, u22);
+      if (n22.veredicto !== "BUSCAR OTRA" || n22.flujoCLP !== -90000 || n22.precioUF !== 3000 || numerosDe({ veredicto: "COMPRAR" }, null).veredicto !== "COMPRAR") F("22d · con la ubicación confirmada no mandan los números del análisis rehecho");
+      if (!/for \(const d of todos\) d\.datos = numerosDe\(d\.datos, ubic\[d\.avisoId\]\);/.test(codigo("src/lib/invierte-v2/base-servidor.ts"))) F("22d · la base no usa los números del análisis rehecho");
+      if (!/admin\.from\("inv_ubicaciones"\)\.select\("lat, lng, analisis"\)/.test(codigo("src/lib/invierte-v2/lectura-franco-servidor.ts")) || !/await admin\.from\("lecturas_franco"\)\.delete\(\)\.eq\("aviso_id", avisoId\);/.test(codigo("src/lib/invierte-v2/depto-servidor.ts"))) F("22d · la lectura no se rehace con los números de la ubicación confirmada");
+      // 22e · El análisis se rehace cuando cambia el precio, la versión del motor o pasa una semana.
+      const ah = new Date("2026-11-21T12:00:00Z");
+      const base22 = { analisis_precio_uf: 3000, analisis_motor_version: VERSION_EVALUACION22, analisis_at: "2026-11-20T12:00:00Z" };
+      if (reanalisisVencido(base22, 3000, ah) || !reanalisisVencido(base22, 2950, ah) || !reanalisisVencido({ ...base22, analisis_motor_version: "otra" }, 3000, ah) || !reanalisisVencido({ ...base22, analisis_at: "2026-11-13T12:00:00Z" }, 3000, ah)) F("22e · el análisis rehecho no se rehace con el precio, el motor o la semana (o se rehace sin motivo)");
+      if (!/const reanalisis = await reanalizarVencidas\(admin, ahora\)/.test(codigo("src/app/api/cron/invierte-vigilar/route.ts"))) F("22e · la vigilancia de la mañana no rehace los análisis vencidos");
+      // 22f · La ubicación que carga el admin: calle y punto dentro de Gran Santiago.
+      if (validarUbicacion({ direccion: "Serrano", numero: "120", lat: -33.45, lng: -70.65 }).ok !== true || validarUbicacion({ direccion: "S", lat: -33.45, lng: -70.65 }).ok || validarUbicacion({ direccion: "Serrano", lat: -30, lng: -70.65 }).ok) F("22f · la ubicación confirmada no se valida (calle y punto en Gran Santiago)");
+      // 22g · La entrada: la misma regla del botón en el contacto, la firma y sumar.
+      const sv22 = codigo("src/lib/invierte-v2/servidor.ts");
+      if (!/export async function deptoDeEntrada[\s\S]{0,300}puedeInvertir\(\{ condicion: aviso\.condicion, veredicto: aviso\.veredicto, negociable: aviso\.negociable \}\)/.test(sv22) || (sv22.match(/= await deptoDeEntrada\(admin, pedido\.avisoId\);/g) ?? []).length !== 2 || !/await deptoDeEntrada\(createServiceClient\(\)/.test(codigo("src/lib/invierte-v2/paginas.ts")) || !/if \(!puedeInvertir\(\{ condicion: ent\.fila\.condicion \?\? "usado", veredicto: ent\.veredicto, negociable: ent\.negociable \}\)\) return \{ estado: "depto"/.test(codigo("src/lib/invierte-v2/base-servidor.ts"))) F("22g · el contacto, la firma o sumar dejan entrar un depto que el botón no ofrece");
+      // 22h · La base: la tarjeta abre la página del depto y su estado sale de la etapa.
+      if (urlDepto("abc") !== "/invierte/depto/abc") F("22h · la página del depto cambió de dirección");
+      if (estadoEnBase("listo", "aprobada", null).chip !== "Te toca a ti" || estadoEnBase("confirmando", "subir", null).linea !== "Confirmando con quien lo vende que sigue disponible" || estadoEnBase("no_avanza", "subir", "dejo_de_convenir").linea !== "Al confirmar dónde está, dejó de convenir") F("22h · la línea de estado de la tarjeta de la base no sale de la etapa");
+      if (!/estado=\{estadoEnBase\(d\.etapa, base\.preaprobacion, d\.noAvanzaMotivo\)\}/.test(codigo("src/components/invierte-v2/VistaBase.tsx"))) F("22h · la base no dibuja el estado de cada depto");
+      // 22i · «Lo que sigue»: a lo más un botón, rojo solo cuando le toca a la persona; la página entera cambia en «no avanza».
+      const ls = (e: Parameters<typeof loQueSigue>[0], pr: Parameters<typeof loQueSigue>[1]) => loQueSigue(e, pr, "/invierte/preaprobacion");
+      if (ls("confirmando", "subir")?.boton !== null || ls("sin_preaprobacion", "en_revision")?.boton !== null || ls("sin_preaprobacion", "subir")?.boton?.href !== "/invierte/preaprobacion" || ls("no_avanza", "subir") !== null) F("22i · «Lo que sigue» pone un botón cuando no le toca a la persona (o no lo pone cuando sí)");
+      const P22 = (etapa: string, o: Record<string, unknown> = {}) => ({ avisoId: "x", etapa, noAvanzaMotivo: null, datos: { comuna: "Ñuñoa", dormitorios: 2, banos: 2, m2: 58, precioUF: 3090, veredicto: "COMPRAR", score: 81 }, ficha: null, tituloConNumero: "Serrano 120 · Metro Ñuñoa", ubicacion: null, cambios: ["Bajó UF 80 el 12 nov"], preaprobacion: "subir", whatsapp: "+56912345678", alternativa: null, activos: [], ...o });
+      const h22 = renderToStaticMarkup(createElement(VistaDepto, { p: P22("confirmando") as never })).replace(/<[^>]+>/g, "|");
+      if (!h22.includes("|Serrano 120 · Metro Ñuñoa|") || !h22.includes("|Estamos confirmando este depto|") || !h22.includes("|Bajó UF 80 el 12 nov|") || !h22.includes("|Ubicación aproximada, según la publicación. Franco la confirma con quien lo vende.|")) F("22i · la página del depto en confirmando no dice su título, «Lo que sigue», los cambios o la ubicación aproximada");
+      const h22c = renderToStaticMarkup(createElement(VistaDepto, { p: P22("listo", { ubicacion: u22, preaprobacion: "aprobada" }) as never }));
+      if (/Ubicación aproximada/.test(h22c) || /class="inv-principal"/.test(h22c)) F("22i · con la ubicación confirmada sigue diciendo «aproximada», o listo trae un botón rojo antes de la oferta (B3)");
+      const h22n = renderToStaticMarkup(createElement(VistaDepto, { p: P22("no_avanza", { noAvanzaMotivo: "dejo_de_convenir" }) as never })).replace(/<[^>]+>/g, "|");
+      if (!h22n.includes("|No pudimos avanzar con este depto|") || !h22n.includes("dejó de convenir") || /Estamos confirmando/.test(h22n)) F("22i · «no avanza» no cambia la página entera o no dice que dejó de convenir");
+      const wa = renderToStaticMarkup(createElement(VistaDepto, { p: P22("confirmando") as never }));
+      if (!wa.includes(encodeURIComponent("Hola, tengo una pregunta sobre Serrano 120 · Metro Ñuñoa."))) F("22i · «Pregúntale a Franco» no abre WhatsApp con el depto ya escrito");
+      // 22j · El admin: acuerdo y ubicación (con el análisis rehecho) por la ruta del admin; la IA no mueve etapas.
+      const ra22 = codigo("src/app/api/admin/invierte-v2/route.ts");
+      if (!/if \(accion === "acuerdo"\)[\s\S]{0,400}registrarAcuerdo\(createAdminServiceClient\(\), \{ id: adminUser\.id/.test(ra22) || !/if \(accion === "ubicacion"\)[\s\S]{0,400}confirmarUbicacion\(createAdminServiceClient\(\), \{ id: adminUser\.id/.test(ra22) || !/if \(doc\?\.user_id\) await ajustarPorPreaprobacion\(/.test(ra22)) F("22j · el admin no registra el acuerdo, la ubicación o no ajusta los deptos al aprobar la preaprobación");
     }
 
     // ── 18 · LECTURAS QUE FALLAN Y LA CORTA DE UNA FRASE (20-nov-2026, Fabrizio, tercera ronda) ──────────────────────────────────
