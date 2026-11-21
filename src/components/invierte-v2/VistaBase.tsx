@@ -10,7 +10,8 @@ import Link from "next/link";
 import { URL_OPCIONES } from "@/lib/invierte-v2/destino";
 import { BASE_COPY, MENU_COPY, lineaDepto, urlWhatsapp } from "@/lib/invierte-v2/base";
 import type { Base } from "@/lib/invierte-v2/base-servidor";
-import { BotonDetalles, PrepararDetalles, TarjetaDetalles } from "./BotonDetalles";
+import { BotonDetalles, PrepararDetalles } from "./BotonDetalles";
+import { estadoEnBase, urlDepto } from "@/lib/invierte-v2/depto-flujo";
 import { TarjetaBase, TarjetaOtra } from "./TarjetaDepto";
 import { EnlacesBase, MenuBase } from "./MenuBase";
 import { SumarDepto } from "./SumarDepto";
@@ -84,9 +85,12 @@ export function VistaBase({ base }: { base: Base }) {
                   página de cada depto (parte B), esa página. Lo que cambió en la publicación pasa a esa página (lámina 4.2). */}
               {base.elegidos.map((d) => (
                 <li key={d.avisoId} className="iv2-depto-li" data-inv2="depto-base">
-                  <TarjetaDetalles avisoId={d.avisoId} etiqueta={B.abrirDepto(d.ficha?.titulo ?? lineaDepto(d.datos))} sinFlecha>
-                    <TarjetaBase avisoId={d.avisoId} datos={d.datos} ficha={d.ficha} origen={d.origen} alcanza={d.alcanza} estado={{ chip: B.francoEnEso, linea: B.confirmandoLinea }} />
-                  </TarjetaDetalles>
+                  {/* La tarjeta entera abre la página del depto (etapa 3, B1; lámina 3.3-base) y dice en qué va. */}
+                  <Link href={urlDepto(d.avisoId)} className="iv2-depto iv2-depto-tocable" aria-label={B.abrirDepto(d.ficha?.titulo ?? lineaDepto(d.datos))} data-inv2="abrir-depto">
+                    <span className="iv2-depto-cuerpo">
+                      <TarjetaBase avisoId={d.avisoId} datos={d.datos} ficha={d.ficha} origen={d.origen} alcanza={d.alcanza} estado={estadoEnBase(d.etapa, base.preaprobacion, d.noAvanzaMotivo)} />
+                    </span>
+                  </Link>
                 </li>
               ))}
             </ul>

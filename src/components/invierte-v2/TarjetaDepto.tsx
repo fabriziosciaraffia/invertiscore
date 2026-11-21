@@ -42,6 +42,7 @@ export function FotoPortada({ avisoId, n, clase }: { avisoId: string; n: number;
 /** El título calle·metro: con la calle de la lectura, cuando llega. */
 function tituloDe(f: FichaDepto | null, l: LecturaFranco | null, datos: DatosDepto): string {
   if (!f) return datos.comuna ?? "Depto";
+  if (f.calleConfirmada) return f.titulo;
   return l?.calle ? tituloDepto({ calle: l.calle, metro: f.metro, comuna: f.comuna }) : f.titulo;
 }
 
@@ -66,7 +67,7 @@ function Dato({ et, children, clave }: { et: string; children: ReactNode; clave:
 }
 
 /** «Tus deptos»: la tarjeta de un depto elegido (va dentro de TarjetaDetalles, que la vuelve tocable). */
-export function TarjetaBase({ avisoId, datos, ficha, origen, alcanza, estado }: { avisoId: string; datos: DatosDepto; ficha: FichaDepto | null; origen: OrigenDepto; alcanza: boolean; estado: { chip: string; linea: string } }) {
+export function TarjetaBase({ avisoId, datos, ficha, origen, alcanza, estado }: { avisoId: string; datos: DatosDepto; ficha: FichaDepto | null; origen: OrigenDepto; alcanza: boolean; estado: { chip: string; linea: string; tono?: "gris" | "ciruela" } }) {
   const l = useLectura(avisoId, ficha?.lectura ?? null);
   const titulo = tituloDe(ficha, l, datos);
   const alMes = textoAlMes({ flujoCLP: datos.flujoCLP ?? null });
@@ -91,7 +92,7 @@ export function TarjetaBase({ avisoId, datos, ficha, origen, alcanza, estado }: 
       </span>
       <span className="iv2-td-estado" data-inv2="estado">
         <span className="iv2-td-estado-txt">
-          <span className="iv2-estado-gris" data-inv2="estado-depto">{estado.chip}</span>
+          <span className={estado.tono === "ciruela" ? "iv2-estado-ciruela" : "iv2-estado-gris"} data-inv2="estado-depto">{estado.chip}</span>
           <span className="iv2-td-estado-linea">{estado.linea}</span>
           <span className="iv2-td-abrir" aria-hidden="true">{B.abrirEsteDepto} ›</span>
         </span>

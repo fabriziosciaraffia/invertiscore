@@ -20,20 +20,24 @@ export interface FichaDepto {
   fotos: number;
   capRatePct: number | null;
   lectura: LecturaFranco | null;
+  /** La calle que confirmó Franco con quien vende (etapa 3, B1): manda sobre la que leyó la lectura. */
+  calleConfirmada?: string | null;
 }
 
 /** Por depto: la ficha de su tarjeta. `precios`: el precio que muestra la tarjeta (el vigente), para que el cap rate diga lo mismo. */
 export async function fichasDe(admin: SupabaseClient, avisoIds: readonly string[], precios: Record<string, number | null | undefined> = {}): Promise<Record<string, FichaDepto>> {
   const ids = Array.from(new Set(avisoIds)).filter((x) => /^[0-9a-f-]{36}$/i.test(x)).slice(0, 100);
   if (!ids.length) return {};
-  const [{ data: sp }, { data: ae }, { data: cfg }, fotos, lecturas] = await Promise.all([
+  const [{ data: sp }, { data: ae }, { data: cfg }, fotos, lecturas, { data: ub }] = await Promise.all([
     // Lote acotado: a lo más 100 ids (arriba), muy bajo el corte de mil de PostgREST.
     admin.from("scraped_properties").select("id, comuna, lat, lng").in("id", ids).order("id").limit(100),
     admin.from("avisos_evaluados").select("aviso_id, precio_uf, arriendo").in("aviso_id", ids),
     admin.from("config").select("value").eq("key", "uf_value").maybeSingle(),
     fotosDe(admin, ids),
     leerLecturas(admin, ids),
+    admin.from("inv_ubicaciones").select("aviso_id, direccion").in("aviso_id", ids),
   ]);
+  const confirmada = new Map(((ub ?? []) as { aviso_id: string; direccion: string }[]).map((x) => [x.aviso_id, x.direccion]));
   const uf = Number(cfg?.value);
   const props = new Map(((sp ?? []) as { id: string; comuna: string | null; lat: number | null; lng: number | null }[]).map((f) => [f.id, f]));
   const evals = new Map(((ae ?? []) as { aviso_id: string; precio_uf: number | null; arriendo: { monto?: number } | null }[]).map((f) => [f.aviso_id, f]));
@@ -46,7 +50,7 @@ export async function fichasDe(admin: SupabaseClient, avisoIds: readonly string[
     const lectura = lecturas[id] ?? null;
     const precio = precios[id] ?? (e?.precio_uf != null ? Number(e.precio_uf) : null);
     out[id] = {
-      titulo: tituloDepto({ calle: lectura?.calle ?? null, metro, comuna: p?.comuna ?? null }),
+      titulo: tituloDepto({ calle: confirmada.get(id) ?? lectura?.calle ?? null, metro, comuna: p?.comuna ?? null }), calleConfirmada: confirmada.get(id) ?? null,
       metro, comuna: p?.comuna ?? null, fotos: fotos[id] ?? 0, lectura,
       capRatePct: precio ? capRatePct(e?.arriendo?.monto ?? null, precio, Number.isFinite(uf) && uf > 0 ? uf : null) : null,
     };

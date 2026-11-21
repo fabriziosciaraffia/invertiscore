@@ -15,16 +15,19 @@ import { CLAVE_WHATSAPP_FRANCO, numeroWhatsapp, rangoSumar } from "./base";
 import { lineaCambio, type TipoCambio, type Vigente } from "./cambios";
 import { aOpcion, calcularOpciones, filaEntrada, leerPerfilInv, tareasGestionar, type CambioPerfil, type PerfilInv } from "./perfil-servidor";
 import { anotar, ultimaOrdenDe, type ContextoPedido, type OrdenInv } from "./servidor";
+import { puedeInvertir } from "@/lib/invierte/invierte";
 import { leerPreaprobacion } from "./preaprobacion-servidor";
 import type { EstadoVisible } from "./preaprobacion";
 import { fichasDe, type FichaDepto } from "./ficha-depto-servidor";
+import { etapaDe, type Etapa } from "./depto-flujo";
+import { leerUbicaciones, numerosDe } from "./depto-servidor";
 
 const T_DEPTOS = "inv_deptos";
 
 export interface DatosDepto { precioUF?: number; veredicto?: string | null; score?: number | null; comuna?: string; m2?: number | null; dormitorios?: number | null; banos?: number | null; flujoCLP?: number | null }
 /** De dónde salió (lámina 3.3-base, etapa 3): «El que elegiste» (entrada o mapa) o «Te lo recomendamos» (Franco). */
 export type OrigenDepto = "entrada" | "franco" | "mapa";
-export interface DeptoDeBase { avisoId: string; alcanza: boolean; datos: DatosDepto; lineas: string[]; preparado: boolean; alMesEnCambio: boolean; origen: OrigenDepto; ficha: FichaDepto | null }
+export interface DeptoDeBase { avisoId: string; alcanza: boolean; datos: DatosDepto; lineas: string[]; preparado: boolean; alMesEnCambio: boolean; origen: OrigenDepto; ficha: FichaDepto | null; /** Etapa 3, B1: en qué va (la línea de estado de la tarjeta). */ etapa: Etapa; noAvanzaMotivo: string | null }
 
 interface FilaCambio { aviso_id: string; tipo: TipoCambio; antes: Record<string, unknown>; despues: Record<string, unknown>; fecha: string }
 const PRINCIPALES: TipoCambio[] = ["precio_baja", "precio_sube", "despublicado", "republicado"];
@@ -70,7 +73,7 @@ export interface Base {
 
 export async function leerBase(admin: SupabaseClient, userId: string): Promise<Base | null> {
   const [{ data }, orden, perfil, whatsapp, pre] = await Promise.all([
-    admin.from(T_DEPTOS).select("aviso_id, estado, origen, alcanza, datos, vigente, elegido_at").eq("user_id", userId).in("estado", ["elegido", "opcion"]),
+    admin.from(T_DEPTOS).select("aviso_id, estado, origen, alcanza, datos, vigente, elegido_at, etapa, no_avanza_motivo").eq("user_id", userId).in("estado", ["elegido", "opcion"]),
     ultimaOrdenDe(admin, userId), leerPerfilInv(admin, userId), numeroFranco(admin), leerPreaprobacion(admin, userId),
   ]);
   if (!orden) return null;
@@ -94,6 +97,7 @@ export async function leerBase(admin: SupabaseClient, userId: string): Promise<B
       avisoId: id, alcanza: f.alcanza === true, datos: vigenteSobre((f.datos ?? {}) as DatosDepto, f.vigente as Partial<Vigente> | null), lineas: lineas.get(id) ?? [],
       preparado: listos.has(id), alMesEnCambio: conCambioAlMes.has(`${id}|${ultimaFecha.get(id) ?? ""}`),
       origen: ((f.origen as string | null) ?? "mapa") as OrigenDepto, ficha: null as FichaDepto | null,
+      etapa: etapaDe({ estado: "elegido", etapa: (f.etapa as string | null) ?? null }) ?? "confirmando", noAvanzaMotivo: (f.no_avanza_motivo as string | null) ?? null,
     };
   });
   // «Otras opciones que convienen»: las recomendaciones de Franco que no eligió, nunca más del cupo de tres en todo el flujo
@@ -106,8 +110,11 @@ export async function leerBase(admin: SupabaseClient, userId: string): Promise<B
     .slice(0, cuantasPedir(elegidasFranco));
   // La ficha de cada tarjeta (etapa 3, parte A): título calle·metro, fotos, cap rate y «Lo que ve Franco» si ya está.
   const todos = [...elegidos, ...otras];
+  // Una sola fuente de números (B1): con la ubicación confirmada, los del análisis rehecho.
+  const ubic = await leerUbicaciones(admin, todos.map((d) => d.avisoId));
+  for (const d of todos) d.datos = numerosDe(d.datos, ubic[d.avisoId]);
   const fichas = await fichasDe(admin, todos.map((d) => d.avisoId), Object.fromEntries(todos.map((d) => [d.avisoId, d.datos.precioUF ?? null])));
-  for (const d of todos) d.ficha = fichas[d.avisoId] ?? null;
+  for (const d of todos) { d.ficha = fichas[d.avisoId] ?? null; const cap = ubic[d.avisoId]?.analisis?.capRatePct; if (d.ficha && cap != null) d.ficha.capRatePct = cap; }
   const preDetalle = { motivo: pre.doc?.motivo ?? null, banco: pre.doc?.banco ?? null, vigenteHasta: pre.doc?.vigenteHasta ?? null, mime: pre.doc?.mime ?? null, otra: pre.otra ? { estado: pre.otra.estado, mime: pre.otra.mime } : null };
   return { orden, perfil, elegidos, otras, whatsapp, preaprobacion: pre.estado, preDetalle };
 }
@@ -129,6 +136,8 @@ export async function vistaSumar(admin: SupabaseClient, userId: string, avisoId:
     filaEntrada(admin, avisoId),
   ]);
   if (!ent || (ent.fila.condicion ?? "usado") !== "usado") return { estado: "depto", orden, perfil };
+  // La misma regla de entrada del botón (etapa 3, 21-nov-2026): un Comprar o un Ajusta supuestos negociable.
+  if (!puedeInvertir({ condicion: ent.fila.condicion ?? "usado", veredicto: ent.veredicto, negociable: ent.negociable })) return { estado: "depto", orden, perfil };
   const o = aOpcion(ent.fila, perfil.topeUF ?? 0, false, ent.veredicto);
   const datos: DatosDepto = { precioUF: o.precioUF, veredicto: o.veredicto, score: o.score, flujoCLP: o.flujoCLP, comuna: o.comuna, m2: o.m2, dormitorios: o.dormitorios, banos: o.banos };
   const activos = (filas ?? []).map((f) => ({ avisoId: f.aviso_id as string, datos: (f.datos ?? {}) as DatosDepto }));

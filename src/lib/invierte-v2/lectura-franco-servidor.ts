@@ -62,12 +62,17 @@ export async function arriendosDeSuTamano(admin: SupabaseClient, p: { lat: numbe
 }
 
 async function entradaDe(admin: SupabaseClient, avisoId: string): Promise<{ entrada: EntradaLectura; leidoAt: string } | null> {
-  const [{ data: d }, { data: sp }, { data: ae }, { data: cfg }] = await Promise.all([
+  const [{ data: d }, { data: sp }, { data: ae0 }, { data: cfg }, { data: ub }] = await Promise.all([
     admin.from("publicacion_detalle").select("fotos, descripcion, direccion, leido_at").eq("aviso_id", avisoId).maybeSingle(),
     admin.from("scraped_properties").select("titulo, comuna, dormitorios, banos, superficie_m2, lat, lng").eq("id", avisoId).order("id").limit(1).maybeSingle(),
     admin.from("avisos_evaluados").select("antiguedad_anios, antiguedad_origen, precio_uf, arriendo, flujo_20, veredicto_20, score_20").eq("aviso_id", avisoId).maybeSingle(),
     admin.from("config").select("value").eq("key", "uf_value").maybeSingle(),
+    admin.from("inv_ubicaciones").select("lat, lng, analisis").eq("aviso_id", avisoId).maybeSingle(),
   ]);
+  // Una sola fuente de números (etapa 3, B1): con la ubicación confirmada, la lectura cita los del análisis rehecho, medidos en el punto real.
+  const an = (ub?.analisis ?? null) as { veredicto?: string | null; score?: number | null; flujoCLP?: number | null; arriendoCLP?: number | null; radio?: number | null; precioUF?: number } | null;
+  const ae = an && ae0 ? { ...ae0, veredicto_20: an.veredicto ?? ae0.veredicto_20, score_20: an.score ?? ae0.score_20, flujo_20: an.flujoCLP ?? ae0.flujo_20, arriendo: { monto: an.arriendoCLP ?? undefined, radio: an.radio ?? undefined } } : ae0;
+  const punto = ub && an ? { lat: Number(ub.lat), lng: Number(ub.lng) } : sp?.lat != null && sp?.lng != null ? { lat: Number(sp.lat), lng: Number(sp.lng) } : null;
   const fotos = ((d?.fotos as string[] | null) ?? []).filter((u) => /^https:\/\//.test(u));
   if (!d || (!fotos.length && !d.descripcion)) return null;
   const est = sp?.lat != null && sp?.lng != null ? findNearestStation(Number(sp.lat), Number(sp.lng), "active") : null;
@@ -78,7 +83,7 @@ async function entradaDe(admin: SupabaseClient, avisoId: string): Promise<{ entr
   const veredicto = typeof ae?.veredicto_20 === "string" ? `${signoVeredicto(ae.veredicto_20 as never)} ${etiquetaVeredicto(ae.veredicto_20 as never, "frase")}${ae.veredicto_20 === "COMPRAR" && typeof ae.score_20 === "number" ? ` · ${ae.score_20}` : ""}` : null;
   const arr = (ae?.arriendo ?? null) as { monto?: number; radio?: number } | null;
   const m2 = sp?.superficie_m2 == null ? null : Number(sp.superficie_m2);
-  const n = sp?.lat != null && sp?.lng != null && m2 ? await arriendosDeSuTamano(admin, { lat: Number(sp.lat), lng: Number(sp.lng), radio: arr?.radio ?? 1000, m2 }) : 0;
+  const n = punto && m2 ? await arriendosDeSuTamano(admin, { ...punto, radio: arr?.radio ?? 1000, m2 }) : 0;
   const confiable = n >= MIN_ARRIENDOS_COMPARABLES;
   const uf = Number(cfg?.value);
   const cap = confiable ? capRatePct(arr?.monto ?? null, Number(ae?.precio_uf ?? 0), Number.isFinite(uf) && uf > 0 ? uf : null) : null;

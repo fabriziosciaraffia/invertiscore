@@ -29,7 +29,7 @@ const fic = (calle: string | null, estacion: string | null, metros: number, comu
 };
 const L = (tipo: Parameters<typeof lineaCambio>[0]["tipo"], antes: Record<string, unknown>, despues: Record<string, unknown>) => lineaCambio({ tipo, antes, despues }, HOY)!;
 
-const ELEGIDOS: Omit<Base["elegidos"][number], "alMesEnCambio">[] = [
+const ELEGIDOS: Omit<Base["elegidos"][number], "alMesEnCambio" | "etapa" | "noAvanzaMotivo">[] = [
   // m1 y o1 con fotos de deptos reales (solo se ven con la sesión de quien firmó la orden, como la cuenta de QA).
   { avisoId: "50abb999-65ed-4148-b907-ec7601db8083", alcanza: true, preparado: true, datos: dep("Pedro Aguirre Cerda", { m2: 61, precioUF: 2850, flujoCLP: 52000 }),
     lineas: [L("precio_baja", { precioUF: 3000 }, { precioUF: 2850 }), L("veredicto", { veredicto: "AJUSTA SUPUESTOS" }, { veredicto: "COMPRAR" }), L("al_mes", {}, { flujoCLP: 52000 })],
@@ -47,7 +47,9 @@ const OTRAS: Base["otras"] = [
   { avisoId: "o2", datos: dep("San Miguel", { banos: 1, m2: 52, precioUF: 2640, score: 76 }), ficha: fic("Simón Bolívar", "El Llano", 700, "San Miguel", 4.8, lec("Pide fotos del baño antes de ofertar.", "La publicación dice 56 m² y el plano muestra 49.")) },
 ];
 
-const conAlMes = (e: Omit<Base["elegidos"][number], "alMesEnCambio">): Base["elegidos"][number] => ({ ...e, alMesEnCambio: e.lineas.some((l) => /al mes$/.test(l)) });
+// Etapa 3, B1: una etapa distinta por tarjeta, para ver cada línea de estado.
+const ETAPAS_MUESTRA: Base["elegidos"][number]["etapa"][] = ["confirmando", "listo", "no_avanza", "sin_preaprobacion", "confirmando", "confirmando"];
+const conAlMes = (e: Omit<Base["elegidos"][number], "alMesEnCambio" | "etapa" | "noAvanzaMotivo">, i: number): Base["elegidos"][number] => ({ ...e, alMesEnCambio: e.lineas.some((l) => /al mes$/.test(l)), etapa: ETAPAS_MUESTRA[i] ?? "confirmando", noAvanzaMotivo: null });
 
 export default function BaseDemo({ searchParams }: { searchParams: { vista?: string; pre?: string } }) {
   if (process.env.NODE_ENV === "production" && process.env.VERCEL_ENV !== "preview") notFound();

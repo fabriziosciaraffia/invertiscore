@@ -12,11 +12,13 @@
 /** Hasta qué distancia una estación cuenta como «metro cercano» para el título: la misma que «a pie» en la lectura. */
 export const DIST_METRO_TITULO = 1000;
 
-export interface PartesTitulo { calle?: string | null; metro?: { estacion: string; metros: number } | null; comuna?: string | null }
+export interface PartesTitulo { calle?: string | null; metro?: { estacion: string; metros: number } | null; comuna?: string | null; /** Solo la página del depto (B1): el número, si salió limpio. */ numero?: string | null }
 
 /** «Dublé Almeyda · Metro Ñuñoa»; «Metro Ñuñoa» sin calle; «Ñuñoa» (el sector) sin calle ni metro cerca. */
 export function tituloDepto(p: PartesTitulo): string {
-  const calle = limpiarCalle(p.calle ?? null, p.comuna ?? null);
+  const limpia = limpiarCalle(p.calle ?? null, p.comuna ?? null);
+  const numero = limpia ? limpiarNumero(p.numero ?? null) : null;
+  const calle = limpia && numero ? `${limpia} ${numero}` : limpia;
   const metro = p.metro && p.metro.metros <= DIST_METRO_TITULO ? `Metro ${p.metro.estacion.replace(/^(Estación|Metro)\s+/i, "")}` : null;
   const partes = [calle, metro].filter((x): x is string => !!x);
   return partes.length ? partes.join(" · ") : (p.comuna ?? "").trim() || "Depto";

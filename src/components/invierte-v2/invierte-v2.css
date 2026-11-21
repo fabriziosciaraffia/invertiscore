@@ -789,3 +789,52 @@
 .iv2-secundario.iv2-sumar-chico { width: auto; flex: none; min-height: 44px; padding: 0 16px; font-size: 13px; border-color: transparent; background: var(--franco-bg); }
 [data-theme="light"] .iv2-secundario.iv2-sumar-chico { background: #F4F4F6; color: #141414; }
 [data-theme="light"] .iv2-secundario.iv2-sumar-chico:hover { background: #EBEBEE; }
+
+/* LA PÁGINA DE UN DEPTO (etapa 3, B1; láminas 4.1 y 4.2, y 4.2-pc). Celular: la foto con flechas, el título calle·metro con el número
+   (si salió limpio) y el veredicto, comuna y programa, «Publicado en UF …» con «Ver los detalles», la línea de ubicación aproximada,
+   «Lo que sigue» en la tarjeta de borde fuerte, los cambios en la publicación y «Pregúntale a Franco». PC: a la izquierda la foto
+   (300 px) con el depto al lado y «Lo que sigue» debajo; a la derecha (380 px) lo que Franco hace por el depto. */
+.iv2-dp { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.iv2-dp-izq, .iv2-dp-der { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.iv2-dp-cabeza { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.iv2-dp-fotos { height: 220px; }
+.iv2-dp-info { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.iv2-dp-info p { margin: 0; }
+.iv2-dp-fila { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.iv2-dp-fila .chip-v { flex: none; margin-top: 2px; }
+.iv2-dp-t { margin: 0; font-size: 17px; font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
+.iv2-dp-precio { align-items: center; }
+.iv2-dp-detalles { font-size: 13px; font-weight: 600; min-height: 44px; }
+.iv2-dp-aprox { font-size: 12px; line-height: 1.45; color: var(--franco-text-secondary); }
+.iv2-dp-sigue { box-sizing: border-box; border: 1.5px solid var(--franco-text); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.iv2-dp-sigue-cab { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.iv2-dp-sigue-cab .iv2-estado-gris, .iv2-dp-sigue-cab .iv2-estado-ciruela { margin-top: 0; font-size: 11px; }
+.iv2-dp-rotulo { font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--franco-text-secondary); }
+.iv2-dp-sigue-t { margin: 0; font-size: 18px; font-weight: 700; line-height: 1.25; }
+.iv2-dp-sigue-txt { margin: 0; font-size: 13px; line-height: 1.45; color: var(--franco-text); }
+[data-theme="light"] .iv2-dp-sigue-txt { color: #3A3A3F; }
+.iv2-dp-sec { display: flex; flex-direction: column; }
+.iv2-dp-h2 { margin: 0 0 2px; font-size: 15px; font-weight: 700; }
+.iv2-dp-filas { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.iv2-dp-fila-item { padding: 10px 0; border-bottom: 1px solid var(--franco-border); font-size: 14px; font-weight: 600; line-height: 1.4; }
+.iv2-dp-fila-item:last-child { border-bottom: 0; }
+.iv2-dp-preguntale { box-sizing: border-box; display: flex; justify-content: center; align-items: center; gap: 8px; min-height: 46px; padding: 0 16px; border-radius: 999px;
+  background: var(--franco-bg); color: var(--franco-text); font-size: 14px; font-weight: 600; text-decoration: none; }
+[data-theme="light"] .iv2-dp-preguntale { background: #F4F4F6; color: #141414; }
+.iv2-dp-noavanza { display: flex; flex-direction: column; gap: 12px; min-width: 0; max-width: 640px; }
+.iv2-dp-alt { box-sizing: border-box; border: 1px solid var(--franco-border); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 10px; background: var(--franco-card); }
+.iv2-dp-alt-cab { display: flex; gap: 12px; min-width: 0; }
+.iv2-dp-alt-foto { width: 92px; height: 92px; }
+.iv2-dp-alt-id { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.iv2-dp-alt-id p { margin: 0; }
+.iv2-dp-alt-t { font-size: 15px; font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
+.iv2-dp-alt-acciones { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.iv2-dp-alt-acciones .iv2-enlace-azul { font-size: 13px; font-weight: 600; min-height: 44px; }
+@media (min-width: 1024px) {
+  .iv2-dp { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 40px; align-items: start; padding-top: 24px; }
+  .iv2-dp-cabeza { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 18px; align-items: start; }
+  .iv2-dp-cabeza:not(:has(.iv2-fotos)) { grid-template-columns: minmax(0, 1fr); }
+  .iv2-dp-fotos { height: 210px; }
+  .iv2-dp-t { font-size: 20px; }
+  .iv2-dp-noavanza { padding-top: 24px; }
+}

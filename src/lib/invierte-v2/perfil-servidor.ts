@@ -183,15 +183,16 @@ async function candidatos(admin: SupabaseClient, comunas: string[], ufMax: numbe
 }
 
 /** El depto de entrada con los mismos campos (aunque no dé Comprar o no le alcance). */
-export async function filaEntrada(admin: SupabaseClient, avisoId: string): Promise<{ fila: FilaCandidato; veredicto: string | null } | null> {
+export async function filaEntrada(admin: SupabaseClient, avisoId: string): Promise<{ fila: FilaCandidato; veredicto: string | null; negociable: boolean } | null> {
   const [{ data: sp }, { data: ae }] = await Promise.all([
     admin.from("scraped_properties").select("id, comuna, lat, lng, superficie_m2, dormitorios, banos, condicion").eq("id", avisoId).order("id").limit(1).maybeSingle(),
-    admin.from("avisos_evaluados").select("precio_uf, arriendo, venta, score_20, flujo_20, veredicto_20").eq("aviso_id", avisoId).maybeSingle(),
+    admin.from("avisos_evaluados").select("precio_uf, arriendo, venta, score_20, flujo_20, veredicto_20, negociar_20").eq("aviso_id", avisoId).maybeSingle(),
   ]);
   if (!sp || !ae?.precio_uf) return null;
   return {
     fila: { id: sp.id as string, comuna: sp.comuna as string, lat: sp.lat as number | null, lng: sp.lng as number | null, superficie_m2: sp.superficie_m2 as number | null, dormitorios: sp.dormitorios as number | null, banos: sp.banos as number | null, condicion: (sp.condicion as string | null) ?? "usado", precio_uf: Number(ae.precio_uf), arriendo: ae.arriendo as FilaCandidato["arriendo"], venta: ae.venta as FilaCandidato["venta"], score_cron: (ae.score_20 as number | null) ?? null, flujo: (ae.flujo_20 as number | null) ?? null },
     veredicto: (ae.veredicto_20 as string | null) ?? null,
+    negociable: ae.negociar_20 != null,
   };
 }
 
