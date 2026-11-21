@@ -8,10 +8,13 @@ import { fmtUF } from "@/lib/invierte-v2/opciones";
 import { SUMAR_COPY, diaMesChile, lineaDepto, rangoSumar, urlSumar } from "@/lib/invierte-v2/base";
 import { vistaSumar } from "@/lib/invierte-v2/base-servidor";
 import { parecidosQueAlcanzan } from "@/lib/invierte-v2/perfil-servidor";
-import { lineaPrecioDistancia } from "@/lib/invierte-v2/alternativas";
 import { METADATA_FLUJO, analysisDe, deptoParaPagina, origenDe, sesionYAcceso, volverAlOrigen } from "@/lib/invierte-v2/paginas";
 import { MarcoInvierte } from "@/components/invierte-v2/MarcoInvierte";
 import { SumarDepto } from "@/components/invierte-v2/SumarDepto";
+import { FotoPortada } from "@/components/invierte-v2/TarjetaDepto";
+import { fichasDe } from "@/lib/invierte-v2/ficha-depto-servidor";
+import { pctUno } from "@/lib/explorar/explorar";
+import { etiquetaVeredicto, signoVeredicto } from "@/lib/veredicto-etiqueta";
 
 // SÚMALO A TUS OPCIONES (entrega 2, 19-nov-2026; lámina 3.3-sumar-otro-depto). Lo que abre «Invierte con Franco» en el mapa
 // cuando la persona ya firmó: se salta el contacto y la firma (su orden cubre todos sus deptos). No hay botón para «solo verlo»:
@@ -48,27 +51,37 @@ export default async function SumarPage({ params, searchParams }: { params: { av
     const rango = rangoSumar({ precioUF, topeUF, firme });
     const revisarPerfil = `${URL_PERFIL}?volver=${encodeURIComponent(`${urlSumar(depto.avisoId)}?desde=${origen}${analysisId ? `&a=${analysisId}` : ""}`)}`;
     const parecidos = rango === "fuera" ? await parecidosQueAlcanzan(createServiceClient(), user.id, depto.avisoId, topeUF) : [];
+    // La tarjeta del depto y de cada parecido (A3, lámina 3.x-sumar-sobre-el-rango): foto, título calle·metro y su programa.
+    const fichas = await fichasDe(createServiceClient(), [depto.avisoId, ...parecidos.map((o) => o.avisoId)], { [depto.avisoId]: precioUF, ...Object.fromEntries(parecidos.map((o) => [o.avisoId, o.precioUF])) });
+    const fd = fichas[depto.avisoId];
     return (
       <MarcoInvierte volver={null} pantalla="sumar" layout="formulario" cabecera={S.cabecera} pc={{ sesionEmail: user.email ?? null, invierte: true }} miInversion>
         <div className="inv-encabezado iv2-sumar-cab">
           <h1 className="iv2-titulo-res" id="iv2-t">{rango === "poco_sobre" ? S.pocoSobreTitulo : S.fueraTitulo}</h1>
-          <p className="iv2-chip-linea" data-inv2="sumar-depto">
-            <span>{depto.linea}</span>
-            {depto.veredicto && <ChipVeredicto v={depto.veredicto as Veredicto} puntaje={depto.veredicto === "COMPRAR" ? depto.score ?? null : null} />}
-          </p>
         </div>
-        <p className="inv-parrafo" data-inv2={rango === "poco_sobre" ? "poco-sobre" : "fuera-de-rango"}>{rango === "poco_sobre" ? S.pocoSobreLinea(precioUF, topeUF) : S.fueraLinea(precioUF, topeUF, firme)}</p>
+        {/* El depto en su tarjeta (lámina 3.x): foto, título calle·metro, comuna y programa, precio y veredicto. */}
+        <div className="iv2-sumar-depto" data-inv2="sumar-depto">
+          <FotoPortada avisoId={depto.avisoId} n={fd?.fotos ?? 0} clase="iv2-sumar-depto-foto" />
+          <div className="iv2-sumar-depto-id">
+            <p className="iv2-sumar-depto-t" data-inv2="titulo-depto">{fd?.titulo ?? depto.linea}</p>
+            <p className="iv2-depto-s">{depto.linea}</p>
+            <p className="iv2-sumar-depto-precio"><span>UF {fmtUF(precioUF)}</span>{depto.veredicto && <ChipVeredicto v={depto.veredicto as Veredicto} puntaje={depto.veredicto === "COMPRAR" ? depto.score ?? null : null} />}</p>
+          </div>
+        </div>
+        <p className="iv2-sumar-ex" data-inv2={rango === "poco_sobre" ? "poco-sobre" : "fuera-de-rango"}>{rango === "poco_sobre" ? S.pocoSobreLinea(precioUF, topeUF) : S.fueraLinea(precioUF, topeUF, firme)}</p>
         {rango === "fuera" && parecidos.length > 0 && (
           <section className="iv2-sumar-parecidos" aria-labelledby="iv2-par-t" data-inv2="parecidos-alcanzan">
             <h2 className="iv2-base-h2" id="iv2-par-t">{S.parecidosT}</h2>
             <ul className="iv2-otras">
               {parecidos.map((o) => (
-                <li key={o.avisoId} className="iv2-otra" data-inv2="parecido">
-                  <div className="iv2-depto-id">
-                    <p className="iv2-depto-t">{lineaDepto({ comuna: o.comuna, dormitorios: o.dormitorios, banos: o.banos, m2: o.m2 })}</p>
-                    <p className="iv2-depto-s">{lineaPrecioDistancia(o.precioUF, o.distanciaM, o.comuna, "cerca", v.datos?.comuna ?? null)}</p>
+                <li key={o.avisoId} className="iv2-sumar-parecido" data-inv2="parecido">
+                  <FotoPortada avisoId={o.avisoId} n={fichas[o.avisoId]?.fotos ?? 0} clase="iv2-sumar-parecido-foto" />
+                  <div className="iv2-sumar-parecido-id">
+                    <p className="iv2-sumar-parecido-t" data-inv2="titulo-depto">{fichas[o.avisoId]?.titulo ?? lineaDepto({ comuna: o.comuna, dormitorios: o.dormitorios, banos: o.banos, m2: o.m2 })}</p>
+                    <p className="iv2-depto-s">{[lineaDepto({ dormitorios: o.dormitorios, banos: o.banos, m2: o.m2 }), `UF ${fmtUF(o.precioUF)}`].filter(Boolean).join(" · ")}</p>
+                    <p className="iv2-sumar-parecido-resumen">{[fichas[o.avisoId]?.capRatePct != null ? `Cap rate ${pctUno(fichas[o.avisoId]!.capRatePct!)}` : null, `${signoVeredicto("COMPRAR")} ${etiquetaVeredicto("COMPRAR", "frase")}${o.score != null ? ` · ${o.score}` : ""}`].filter(Boolean).join(" · ")}</p>
                   </div>
-                  <SumarDepto avisoId={o.avisoId} etiqueta={S.sumarParecido} origen="mapa" activos={activos} variante="enlace" />
+                  <SumarDepto avisoId={o.avisoId} etiqueta={S.sumarParecido} origen="mapa" activos={activos} variante="secundario" />
                 </li>
               ))}
             </ul>

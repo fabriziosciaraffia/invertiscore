@@ -17,6 +17,7 @@ import { CargandoDetalles } from "./CargandoDetalles";
 import { FotosDepto } from "./FotosDepto";
 import { VentanaDocumento } from "./VentanaDocumento";
 import { LoQueVeFranco } from "./LoQueVeFranco";
+import { TituloCalle } from "./TarjetaDepto";
 import { recomendable, type LecturaFranco } from "@/lib/invierte-v2/lectura-franco";
 import { abrirDetalles, prepararEnSegundoPlano, urlDetallesInvierte } from "@/lib/invierte-v2/detalles-cliente";
 import type { Veredicto } from "@/lib/types";
@@ -54,7 +55,7 @@ export interface PropsResultado {
   lecturas: Record<string, LecturaFranco>;
 }
 
-const nombreDepto = (o: OpcionDepto) => [o.comuna, o.dormitorios != null ? `${o.dormitorios}D${o.banos ?? 1}B` : null, o.m2 ? `${Math.round(o.m2)} m²` : null].filter(Boolean).join(" · ");
+const nombreDepto = (o: OpcionDepto) => [o.comuna, o.dormitorios != null ? `${o.dormitorios}D${o.banos ?? 1}B` : null, o.m2 ? `${Math.round(o.m2)} m²` : null].filter(Boolean).join(" · "); // «62 m²» no se parte en dos renglones
 
 function Chip({ o }: { o: OpcionDepto }) {
   return o.veredicto ? <ChipVeredicto v={o.veredicto as Veredicto} puntaje={o.veredicto === "COMPRAR" ? o.score : null} /> : null;
@@ -271,7 +272,7 @@ export function ResultadoOpciones(p: PropsResultado) {
       <FotosDepto avisoId={entrada.avisoId} n={fotos[entrada.avisoId] ?? 0} clase="iv2-res-elegido-foto" />
       <div className="iv2-res-elegido-cuerpo">
         <span className="iv2-res-rotulo">{A.elQueElegiste}</span>
-        <div className="iv2-res-fila"><span className="iv2-res-nombre" id="iv2-ele-t">{nombreDepto(entrada)}</span><Chip o={entrada} /></div>
+        <div className="iv2-res-fila"><span className="iv2-res-nombre-bloque"><span className="iv2-res-nombre" id="iv2-ele-t" data-inv2="titulo-depto"><TituloCalle avisoId={entrada.avisoId} metro={entrada.metro} comuna={entrada.comuna} inicial={p.lecturas[entrada.avisoId] ?? null} /></span><span className="iv2-res-programa">{nombreDepto(entrada)}</span></span><Chip o={entrada} /></div>
         <dl className="iv2-res-datos" data-inv2="tres-datos">
           <div><dt>{A.precio}</dt><dd>UF {fmtUF(entrada.precioUF)}</dd></div>
           <div><dt>{A.arriendo}</dt><dd>{entrada.arriendoCLP ? fmtCLP(entrada.arriendoCLP) : "—"}</dd></div>
@@ -298,7 +299,7 @@ export function ResultadoOpciones(p: PropsResultado) {
         <div className="iv2-res-alt-arriba">
           <FotosDepto avisoId={o.avisoId} n={fotos[o.avisoId] ?? 0} chica clase="iv2-res-alt-foto" etiqueta={o.capRatePct != null ? `${A.capRate} ${pctUno(o.capRatePct)}` : null} />
           <div className="iv2-res-alt-texto">
-            <div className="iv2-res-fila"><span className="iv2-res-alt-nombre">{nombreDepto(o)}</span><Chip o={o} /></div>
+            <div className="iv2-res-fila"><span className="iv2-res-nombre-bloque"><span className="iv2-res-alt-nombre" data-inv2="titulo-depto"><TituloCalle avisoId={o.avisoId} metro={o.metro} comuna={o.comuna} inicial={p.lecturas[o.avisoId] ?? null} /></span><span className="iv2-res-programa">{nombreDepto(o)}</span></span><Chip o={o} /></div>
             <span className="iv2-linea-chica" data-inv2="precio-distancia">{lineaPrecioDistancia(o.precioUF, p.distancias[o.avisoId] ?? null, o.comuna, p.donde, entrada?.comuna ?? null)}{o.capRatePct != null && <span className={(fotos[o.avisoId] ?? 0) ? "iv2-cap-linea iv2-cap-solo-movil" : "iv2-cap-linea"} data-inv2="cap-rate-linea"> · {A.capRate} {pctUno(o.capRatePct)}</span>}</span>
             {ind && <span className={ind.supera ? "iv2-res-indicador" : "iv2-linea-chica iv2-res-neutro"} data-inv2="indicador" data-supera={ind.supera ? "1" : undefined}>{ind.texto}</span>}
           </div>

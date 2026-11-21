@@ -760,3 +760,32 @@
   [data-theme="light"] .iv2-td-abrir { color: #2B558F; }
   .iv2-td-flecha { display: none; }
 }
+
+/* El resultado (etapa 3, A2; lámina 3.2-resultado): el título de cada tarjeta es la calle y el metro cercano, con comuna y programa
+   debajo; el chip queda arriba a la derecha. */
+.iv2-res-nombre-bloque { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.iv2-res-fila:has(.iv2-res-nombre-bloque) { align-items: flex-start; }
+.iv2-res-nombre-bloque .iv2-res-alt-nombre { font-weight: 700; }
+.iv2-res-programa { font-size: 12px; line-height: 1.4; color: var(--franco-text-secondary); overflow-wrap: anywhere; }
+
+/* Sumar un depto sobre el rango (etapa 3, A3; lámina 3.x-sumar-sobre-el-rango): el depto en su tarjeta con foto, la explicación en
+   el recuadro azul y, fuera del rango, los parecidos que sí alcanzan con foto, título, programa y precio, cap rate y veredicto, y
+   «Sumar» como botón gris chico. */
+.iv2-sumar-depto { box-sizing: border-box; display: flex; gap: 12px; padding: 12px; border: 1px solid var(--franco-border); border-radius: 14px; background: var(--franco-card); min-width: 0; }
+.iv2-sumar-depto-foto { width: 72px; height: 72px; }
+.iv2-sumar-depto-id { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.iv2-sumar-depto-id p { margin: 0; }
+.iv2-sumar-depto-t { font-size: 14px; font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
+.iv2-sumar-depto-precio { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; }
+.iv2-sumar-ex { margin: 0; padding: 12px 14px; border-radius: 12px; font-size: 14px; line-height: 1.45; background: var(--franco-elevated, #EEF2F8); color: var(--franco-text); }
+[data-theme="light"] .iv2-sumar-ex { background: #EEF2F8; color: #26262A; }
+.iv2-sumar-parecidos .iv2-otras { gap: 8px; }
+.iv2-sumar-parecido { box-sizing: border-box; display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid var(--franco-border); border-radius: 14px; background: var(--franco-card); min-width: 0; list-style: none; }
+.iv2-sumar-parecido-foto { width: 60px; height: 60px; }
+.iv2-sumar-parecido-id { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.iv2-sumar-parecido-id p { margin: 0; }
+.iv2-sumar-parecido-t { font-size: 13px; font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
+.iv2-sumar-parecido-resumen { font-size: 12px; line-height: 1.45; font-weight: 600; color: var(--franco-text); }
+.iv2-secundario.iv2-sumar-chico { width: auto; flex: none; min-height: 44px; padding: 0 16px; font-size: 13px; border-color: transparent; background: var(--franco-bg); }
+[data-theme="light"] .iv2-secundario.iv2-sumar-chico { background: #F4F4F6; color: #141414; }
+[data-theme="light"] .iv2-secundario.iv2-sumar-chico:hover { background: #EBEBEE; }
