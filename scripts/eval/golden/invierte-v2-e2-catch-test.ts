@@ -44,7 +44,11 @@ import { TarjetaBase, TarjetaOtra, TituloCalle } from "../../../src/components/i
 import { etapaDe, etapaSiguiente, etapaConPreaprobacion, loQueSigue, estadoEnBase, ubicacionConviene, urlDepto } from "../../../src/lib/invierte-v2/depto-flujo";
 import { numerosDe, validarUbicacion, reanalisisVencido, cambioDeUbicacionRelevante, CONFIRMAR_DIAS_TAREA } from "../../../src/lib/invierte-v2/depto-servidor";
 import { lineaPregunta, preguntasVisibles, conDocumentos } from "../../../src/lib/invierte-v2/depto-flujo";
-import { limpiarPreguntas, MAX_PREGUNTAS } from "../../../src/lib/invierte-v2/lectura-franco";
+import { limpiarPreguntas, MAX_PREGUNTAS, limpiarArreglos } from "../../../src/lib/invierte-v2/lectura-franco";
+import { calcularRango, avisoOferta, postura as posturaDe, CONFIG_RANGO_V1, REGLA_VERSION, OFERTA_COPY, FIRMA_COPY } from "../../../src/lib/invierte-v2/rango";
+import { textoOferta, VERSION_TEXTO_OFERTA, MARCA_BORRADOR } from "../../../src/lib/invierte-v2/oferta-documento";
+import { OfertaForm } from "../../../src/components/invierte-v2/OfertaForm";
+import { FirmaOfertaForm } from "../../../src/components/invierte-v2/FirmaOfertaForm";
 import { VistaDepto } from "../../../src/components/invierte-v2/VistaDepto";
 
 const RAIZ = join(__dirname, "..", "..", "..");
@@ -1027,7 +1031,7 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (reglaDescarte17("Cap rate de 6,1 %, buen número.", cif) === null || reglaDescarte17("Deja $95 mil al mes.", cif) === null || reglaDescarte17("Cap rate de 5,7 %.", null) === null || reglaDescarte17("Deja $88 mil al mes.", null) === null) F("19d · el saneado deja pasar un cap rate o un flujo que no es el de la tarjeta (o sin arriendo confiable)");
       const g19 = sanearLectura({ alerta: { nivel: "ninguna", motivo: null }, larga: [{ etiqueta: "Estado", texto: "Bien.", fuente: "fotos" }], corta: [{ texto: "Deja $88 mil al mes y está listo.", fuente: "datos" }, { texto: "B.", fuente: "datos" }, { texto: "C.", fuente: "datos" }], estado_arriendo: "listo" }, { cifras: cif });
       if (!g19 || g19.estadoArriendo !== "listo" || g19.corta.length !== 3 || JSON.stringify(sanearLectura(g19)) !== JSON.stringify(g19)) F("19d · el estado para arrendar no queda, o al releer la lectura se botan las cifras que ya pasaron");
-      if (ESQUEMA_LECTURA_FRANCO.required.join("|") !== "alerta|larga|corta|estado_arriendo|calle|numero|preguntas" /* ⚠ ACTA (20-nov-2026, etapa 3 A1): más la calle y el número (§20c); y las preguntas (22-nov-2026, B2, §23b) */ || ESQUEMA_LECTURA_FRANCO.properties.estado_arriendo.enum.join("|") !== "listo|arreglos_menores|remodelacion" || VERSION_LECTURA15 < 7 || MIN_ARRIENDOS19 !== 6) F("19d · falta el estado para arrendar en el esquema, la versión no subió o el mínimo de arriendos no es 6");
+      if (ESQUEMA_LECTURA_FRANCO.required.join("|") !== "alerta|larga|corta|estado_arriendo|calle|numero|preguntas|arreglos" /* ⚠ ACTA (22-nov-2026, B3, §24l): y los arreglos */ /* ⚠ ACTA (20-nov-2026, etapa 3 A1): más la calle y el número (§20c); y las preguntas (22-nov-2026, B2, §23b) */ || ESQUEMA_LECTURA_FRANCO.properties.estado_arriendo.enum.join("|") !== "listo|arreglos_menores|remodelacion" || VERSION_LECTURA15 < 7 || MIN_ARRIENDOS19 !== 6) F("19d · falta el estado para arrendar en el esquema, la versión no subió o el mínimo de arriendos no es 6");
       // ⚠ ACTA (20-nov-2026, Fabrizio): la síntesis ya no «cruza un número» siempre: parte por lo que más pesa (§19e).
       if (!/La primera línea es la SÍNTESIS: una frase que dice qué significa este depto como inversión, a partir de lo que MÁS pesa en él/.test(INSTRUCCION_LECTURA_FRANCO) || !/Si la alerta no es «ninguna», la primera línea es esa alerta y la síntesis pasa a la segunda/.test(INSTRUCCION_LECTURA_FRANCO) || !/No los recalcules, no los corrijas/.test(INSTRUCCION_LECTURA_FRANCO)) F("19d · la instrucción no pide la síntesis primero (segunda con alerta) o deja recalcular los números");
       const sv19 = codigo("src/lib/invierte-v2/lectura-franco-servidor.ts");
@@ -1226,6 +1230,71 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (!/accion === "preguntas_enviadas"/.test(ra23) || !/responderPregunta\(createAdminServiceClient\(\), \{ id: adminUser\.id/.test(ra23) || !/accion === "pregunta"/.test(ra23)) F("23e · el admin no puede marcar, responder o agregar preguntas");
       // 23f · A los 3 días confirmando, una tarea interna (una sola por depto), desde la vigilancia de la mañana.
       if (CONFIRMAR_DIAS_TAREA !== 3 || !/const atrasados = await tareasConfirmacionAtrasada\(admin, ahora\)/.test(codigo("src/app/api/cron/invierte-vigilar/route.ts")) || !/\.eq\("tipo", "confirmar_depto_atrasado"\);\n\s*if \(\(count \?\? 0\) > 0\) continue;/.test(ds23)) F("23f · la tarea de los 3 días confirmando no se crea (o se repite)");
+    }
+
+    // ── 24 · ETAPA 3, B3: EL RANGO v1, LA OFERTA Y SU FIRMA (22-nov-2026, láminas 5.1 y 5.1b; regla de Fabrizio con sus tres ajustes) ──
+    {
+      const ah24 = new Date("2026-11-22T12:00:00Z");
+      const S0 = { bajada: null, vecinos: null, pinSospechoso: false, estadoArriendo: "listo", arreglos: [] as string[] };
+      // 24a · Sin señales: la base (5 %), «Negocia un poco» y la razón única; el rango un punto arriba y uno abajo del recomendado.
+      const r0 = calcularRango(3000, S0, ah24);
+      if (r0.descuentoPct !== 5 || r0.postura !== "negocia_poco" || r0.recomendadoUF !== 2850 || r0.pisoUF !== 2820 || r0.altoUF !== 2880 || r0.techoUF !== 3000 || r0.regla !== "v1" || REGLA_VERSION !== "v1") F(`24a · la base del rango no da 5 % con su rango ±1 punto (${JSON.stringify(r0)})`);
+      if (r0.razones.join() !== "No vimos nada en este depto que mueva el precio. Estimamos que los vendedores de deptos usados que ajustan su precio ceden cerca de 5 %.") F("24a · sin señales, la razón no es la decidida");
+      // 24b · Ya bajó: +1, con cuánto y cuándo.
+      const r1 = calcularRango(3000, { ...S0, bajada: { uf: 80, fecha: "2026-11-01" } }, ah24);
+      if (r1.descuentoPct !== 6 || r1.razones[0] !== "Ya bajó UF 80 hace tres semanas: quien vende está dispuesto a moverse.") F(`24b · «ya bajó» no suma 1 o no dice cuánto y cuándo (${r1.razones[0]})`);
+      // 24c · Vecinos del edificio: +2 más de 5 % sobre su mediana; −1 más de 10 % bajo; sin señal con menos de 2, con pin sospechoso o si
+      // la diferencia pasa de 25 % (es otro edificio).
+      const V = (ufm2: number[], propio: number) => ({ ufm2, propioUfm2: propio });
+      const rs = calcularRango(3000, { ...S0, vecinos: V([50, 50, 60], 53) }, ah24), rb = calcularRango(3000, { ...S0, vecinos: V([60, 60, 60, 60, 60, 60, 60], 52) }, ah24);
+      if (rs.descuentoPct !== 7 || rs.razones[0] !== "En su mismo edificio se venden 2 deptos parecidos más baratos: es un argumento para pedir rebaja.") F(`24c · sobre sus vecinos no suma 2 o no lo dice en fácil (${rs.razones[0]})`);
+      if (rb.descuentoPct !== 4 || rb.razones[0] !== "Es más barato que los 7 deptos parecidos que se venden en su edificio: hay poco margen para pedir rebaja.") F(`24c · bajo sus vecinos no resta 1 o no lo dice en fácil (${rb.razones[0]})`);
+      if (calcularRango(3000, { ...S0, vecinos: V([60], 52) }, ah24).descuentoPct !== 5 || calcularRango(3000, { ...S0, vecinos: V([50, 50], 53), pinSospechoso: true }, ah24).descuentoPct !== 5) F("24c · la señal de vecinos se usa con un solo vecino o con el pin sospechoso");
+      if (calcularRango(3000, { ...S0, vecinos: V([53.6, 53.6], 35.7) }, ah24).descuentoPct !== 5 || calcularRango(3000, { ...S0, vecinos: V([40, 40], 52) }, ah24).descuentoPct !== 5) F("24c · con más de 25 % de diferencia (otro edificio) la señal de vecinos se usa");
+      // 24d · Arreglos: suman solo con un arreglo concreto nombrado (visto o dicho); remodelación +3.
+      if (calcularRango(3000, { ...S0, estadoArriendo: "arreglos_menores", arreglos: [] }, ah24).descuentoPct !== 5) F("24d · suma por arreglos sin que la lectura nombre uno concreto");
+      const ra = calcularRango(3000, { ...S0, estadoArriendo: "arreglos_menores", arreglos: ["la cocina tiene muebles dañados", "piso manchado"] }, ah24);
+      if (ra.descuentoPct !== 6 || ra.razones[0] !== "La cocina tiene muebles dañados y piso manchado: es un argumento concreto para pedir rebaja.") F(`24d · los arreglos no suman 1 o no lo dicen en fácil (${ra.razones[0]})`);
+      if (calcularRango(3000, { ...S0, estadoArriendo: "remodelacion", arreglos: ["la cocina está para cambiarla entera"] }, ah24).descuentoPct !== 8) F("24d · la remodelación no suma 3");
+      if (calcularRango(3000, { ...S0, estadoArriendo: "listo", arreglos: ["piso manchado"] }, ah24).descuentoPct !== 5) F("24d · un depto «listo» suma por arreglos");
+      // 24e · Tope 2 a 9 %, posturas 4 / 5-6 / 7+, el techo de un Ajusta supuestos y el borde alto que no pasa el techo.
+      const rmax = calcularRango(3000, { ...S0, bajada: { uf: 50, fecha: "2026-11-20" }, vecinos: V([50, 50], 55), estadoArriendo: "remodelacion", arreglos: ["x tiene y"] }, ah24);
+      if (rmax.descuentoPct !== 9 || calcularRango(3000, { ...S0, vecinos: V([60, 60], 52) }, ah24, { ...CONFIG_RANGO_V1, base: 1 }).descuentoPct !== 2) F("24e · el descuento no queda entre 2 y 9 %");
+      if (posturaDe(4) !== "asegura" || posturaDe(5) !== "negocia_poco" || posturaDe(6) !== "negocia_poco" || posturaDe(7) !== "negocia_argumentos") F("24e · las posturas no siguen los tramos 4 / 5-6 / 7+");
+      if (calcularRango(2700, S0, ah24).techoUF !== 2700 || r0.altoUF > r0.techoUF || calcularRango(3000, { ...S0, vecinos: V([60, 60], 52) }, ah24, { ...CONFIG_RANGO_V1, base: 1, min: 0 }).altoUF > 3000) F("24e · el rango no parte del techo o el borde alto pasa el techo");
+      // 24f · Las razones van en fácil: sin «mediana» ni UF por m².
+      const todas24 = [r0, r1, rs, rb, ra, rmax].flatMap((r) => r.razones).join(" ");
+      if (/mediana|\/m²|por m²|UF\/m/i.test(todas24)) F("24f · una razón habla de la mediana o de UF por m²");
+      // 24g · Los avisos: bajo el piso suave; piso menos oferta sobre 5 % del publicado, fuerte; sobre el borde alto, «puedes partir más abajo».
+      const R24 = { pisoUF: 2905, altoUF: 2967 };
+      if (avisoOferta(2936, R24, 3090) !== "ninguno" || avisoOferta(2880, R24, 3090) !== "bajo_piso" || avisoOferta(2700, R24, 3090) !== "bajo_piso_fuerte" || avisoOferta(3000, R24, 3090) !== "sobre_recomendado" || avisoOferta(2751, R24, 3090) !== "bajo_piso") F("24g · los avisos de la oferta no siguen la regla (suave, fuerte sobre 5 % del publicado, sobre lo recomendado)");
+      // 24h · La pantalla de la oferta: el campo parte en el recomendado; con aviso fuerte, el principal es «Hablarlo con Franco».
+      const OF = (monto: number | null) => renderToStaticMarkup(createElement(OfertaForm, { avisoId: "x", urlFirmar: "/f", postura: "negocia_poco", pisoUF: 2905, recomendadoUF: 2936, altoUF: 2967, publicadoUF: 3090, razones: ["Una razón."], avisoFuertePct: 5, montoInicial: monto }));
+      const o0 = OF(null), of = OF(2700);
+      if (!/value="2936"/.test(o0) || !/class="inv-principal" data-inv2="revisar"[^>]*>Revisar y firmar mi oferta</.test(o0) || /data-inv2="aviso"/.test(o0)) F("24h · la oferta no parte en el recomendado o su botón principal no es «Revisar y firmar mi oferta»");
+      if (!/class="inv-principal"[^>]*data-inv2="hablar">Hablarlo con Franco/.test(of) || !/data-nivel="bajo_piso_fuerte"/.test(of) || !/Es tu decisión: Franco la presenta igual\./.test(of) || !/Revisar y firmar igual por UF 2\.700/.test(of)) F("24h · con el aviso fuerte el principal no es «Hablarlo con Franco» o desaparece seguir igual");
+      if (/comisi|le conviene que yo pague|gana Franco/i.test(JSON.stringify(OFERTA_COPY) + JSON.stringify(FIRMA_COPY) + o0 + of)) F("24h · el flujo de la oferta habla de lo que gana Franco");
+      // 24i · La firma: el documento es de prueba y lo dice; el botón no se activa sin la casilla; se firma el texto exacto y su hash.
+      const doc24 = textoOferta({ nombre: "A", rut: "1-9", depto: "D", montoUF: 2936, publicadoUF: 3090, pagas: "P", sujetaAVisita: true, vigenciaDias: 5 });
+      if (!VERSION_TEXTO_OFERTA.startsWith("borrador-") || doc24[0] !== MARCA_BORRADOR || doc24[doc24.length - 1] !== MARCA_BORRADOR || !/BORRADOR/.test(MARCA_BORRADOR)) F("24i · el documento de la oferta no está marcado BORRADOR en el texto y en su versión");
+      const f24 = renderToStaticMarkup(createElement(FirmaOfertaForm, { avisoId: "x", montoUF: 2936, documento: doc24, urlVolver: "/v", resumen: null }));
+      if (!/disabled=""[^>]*data-inv2="boton-firmar-oferta"/.test(f24) || /type="checkbox" checked=""/.test(f24)) F("24i · el botón de firmar está activo antes de marcar la casilla (o la casilla parte marcada)");
+      const rg24 = codigo("src/lib/invierte-v2/rango-servidor.ts");
+      if (!/if \(pedido\.acepto !== true\) return \{ ok: false, error: "casilla" \};/.test(rg24) || !/texto_sha256: sha256\(texto\)/.test(rg24) || !/if \(p\.etapa !== "listo"\) return \{ ok: false, error: "etapa" \};/.test(rg24) || !/if \(!puedeOfertar\(p\.preaprobacion\)\) return \{ ok: false, error: "preaprobacion" \};/.test(rg24) || !/if \(!p\.ubicacion\) return \{ ok: false, error: "ubicacion" \};/.test(rg24)) F("24i · la firma no exige la casilla, el depto listo, la preaprobación y la ubicación, o no guarda el hash del texto");
+      if (!/const estado = \(viva \?\? \[\]\)\.length \? "en_cola" : "firmada";/.test(rg24) || !/if \(estado === "firmada"\) await admin\.from\("inv_tareas"\)\.insert\(\{ user_id: user\.id, tipo: "presentar_oferta"/.test(rg24) || /presentada_at|presentada_por/.test(rg24.slice(rg24.indexOf("export async function firmarOferta"), rg24.indexOf("export async function hablarConFranco")))) F("24i · con otra oferta viva no queda en cola, o firmar la presenta (la presenta una persona de Franco)");
+      // 24j · El rango vive en la oferta borrador: se recalcula si cambia el precio (o la regla), queda congelado al firmar; el admin lo corrige.
+      if (!/if \(abierta && abierta\.estado !== "borrador"\) return abierta;/.test(rg24) || !/Math\.abs\(Number\(filaAbierta\.publicado_uf\) - publicadoUF\) <= 0\.5 && filaAbierta\.regla_version === REGLA_VERSION\) return abierta;/.test(rg24) || !/const techoUF = ubic\?\.precioComprarUF \?\? publicadoUF;/.test(rg24)) F("24j · el rango no se recalcula con el precio, no se congela al firmar o no usa el techo del Ajusta supuestos");
+      if (!/rango_fuente: "admin", senales: \{ \.\.\.\(\(f\.senales \?\? \{\}\) as Record<string, unknown>\), alto, corregido: \{ por: quien\.email, at: ahora \} \}/.test(rg24) || !/accion === "rango"/.test(codigo("src/app/api/admin/invierte-v2/route.ts"))) F("24j · la corrección del admin no queda registrada con quién");
+      // 24k · La página del depto listo: «Haz tu oferta» con el rango y el botón a la oferta; firmada, sin botón.
+      const ls24 = loQueSigue("listo", "aprobada", "/p", { estado: "borrador", postura: "negocia_poco", pisoUF: 2905, altoUF: 2967, montoUF: null }, "/invierte/depto/x/oferta");
+      if (ls24?.titulo !== "Haz tu oferta" || ls24?.boton?.href !== "/invierte/depto/x/oferta" || !/entre UF 2\.905 y UF 2\.967/.test(ls24?.texto ?? "") || loQueSigue("listo", "aprobada", "/p", { estado: "firmada", postura: "asegura", pisoUF: 1, altoUF: 2, montoUF: 2900 }, "/o")?.boton !== null) F("24k · «Lo que sigue» en listo no lleva a la oferta con su rango (o firmada trae botón)");
+      // 24l · Los arreglos de la lectura: solo concretos; sin «no se ve» ni «falta información»; en el esquema y la versión.
+      if (limpiarArreglos(["la cocina tiene muebles dañados", "no se ve el baño", "falta información del estado", "piso manchado"]).join("|") !== "la cocina tiene muebles dañados|piso manchado" || !(ESQUEMA_LECTURA_FRANCO as unknown as { required: string[] }).required.includes("arreglos") || VERSION_LECTURA15 < 13) F("24l · la lectura no deja solo arreglos concretos (o falta en el esquema o la versión no subió)");
+      // 24m · La fecha de publicación: se captura de la ficha que ya se lee, y se guarda aparte (sin romper el guardado si falta la columna).
+      const html24 = `<html><body><span>Publicado hace 3 días</span><script id="__NEXT_DATA__" type="application/json">${JSON.stringify({ props: { pageProps: { initialState: { property: { property: { data: { multimedia: { images: [] }, description: "x", address: { street: "Serrano 1" }, publishedAt: "2026-10-01T10:00:00Z", stats: { daysPublished: 52 } } } } } } } })}</script></body></html>`;
+      const d24 = parsearDetalleFicha(html24);
+      if (d24?.publicado?.campos?.publishedAt !== "2026-10-01T10:00:00Z" || d24?.publicado?.campos?.["stats.daysPublished"] !== 52 || d24?.publicado?.texto !== "Publicado hace 3 días") F(`24m · la fecha de publicación no se captura de la ficha (${JSON.stringify(d24?.publicado)})`);
+      if (!/if \(!error\) await admin\.from\("publicacion_detalle"\)\.update\(\{ publicado_info: detalle\.publicado \?\? null \}\)\.eq\("aviso_id", avisoId\)\.then\(\(\) => undefined, \(\) => undefined\);/.test(codigo("src/lib/guia/ficha-servidor.ts"))) F("24m · la fecha de publicación no se guarda aparte (podría romper el guardado del detalle)");
     }
 
     // ── 18 · LECTURAS QUE FALLAN Y LA CORTA DE UNA FRASE (20-nov-2026, Fabrizio, tercera ronda) ──────────────────────────────────
