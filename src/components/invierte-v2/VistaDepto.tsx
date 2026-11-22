@@ -11,7 +11,8 @@ import { ChipVeredicto } from "@/components/analysis/shared/ChipVeredicto";
 import type { Veredicto } from "@/lib/types";
 import { fmtUF } from "@/lib/invierte-v2/opciones";
 import { lineaDepto, urlWhatsapp } from "@/lib/invierte-v2/base";
-import { AVERIGUO_COPY as AV, DEPTO_COPY as D, conDocumentos, lineaPregunta, loQueSigue, preguntasVisibles } from "@/lib/invierte-v2/depto-flujo";
+import { AVERIGUO_COPY as AV, DEPTO_COPY as D, conDocumentos, diaMes, lineaPregunta, loQueSigue, preguntasVisibles, urlOferta } from "@/lib/invierte-v2/depto-flujo";
+import { VerTexto } from "./VerTexto";
 import { URL_OPCIONES } from "@/lib/invierte-v2/destino";
 import { URL_PREAPROBACION } from "@/lib/invierte-v2/preaprobacion";
 import type { PaginaDepto } from "@/lib/invierte-v2/depto-pagina-servidor";
@@ -44,7 +45,7 @@ function Cabeza({ p }: { p: PaginaDepto }) {
 }
 
 function LoQueSigueBloque({ p }: { p: PaginaDepto }) {
-  const s = loQueSigue(p.etapa, p.preaprobacion, URL_PREAPROBACION);
+  const s = loQueSigue(p.etapa, p.preaprobacion, URL_PREAPROBACION, p.oferta ? { estado: p.oferta.estado, postura: p.oferta.postura, pisoUF: p.oferta.pisoUF, altoUF: p.oferta.altoUF, montoUF: p.oferta.montoUF } : null, urlOferta(p.avisoId));
   if (!s) return null;
   return (
     <section className="iv2-dp-sigue" aria-labelledby="iv2-sigue-t" data-inv2="lo-que-sigue" data-etapa={p.etapa}>
@@ -55,6 +56,22 @@ function LoQueSigueBloque({ p }: { p: PaginaDepto }) {
       <h2 className="iv2-dp-sigue-t" id="iv2-sigue-t">{s.titulo}</h2>
       {s.texto && <p className="iv2-dp-sigue-txt">{s.texto}{p.etapa === "confirmando" && preguntasVisibles(p.preguntas).length > 0 ? ` ${AV.mientras}` : ""}</p>}
       {s.boton && <Link href={s.boton.href} className="inv-principal" data-inv2="sigue-boton">{s.boton.texto}</Link>}
+    </section>
+  );
+}
+
+/** La tarjeta de la oferta (B3; lámina 4.2): lo que recomienda Franco y si está presentada. La visita llega en B5. */
+function TarjetaOferta({ p }: { p: PaginaDepto }) {
+  const o = p.oferta;
+  if (p.etapa !== "listo" || !o) return null;
+  const chip = o.estado === "borrador" ? "Sin presentar" : o.estado === "en_cola" ? "En cola" : o.estado === "firmada" ? "Firmada" : "Presentada";
+  return (
+    <section className="iv2-dp-tarjetas" aria-label="Oferta" data-inv2="tarjeta-oferta">
+      <div className="iv2-dp-mini">
+        <span className="iv2-dp-mini-t">Oferta</span>
+        <span className="iv2-depto-s">{o.estado === "borrador" ? "Lo que recomienda Franco" : o.montoUF ? `UF ${Math.round(o.montoUF).toLocaleString("es-CL")}` : ""}</span>
+        <span className="iv2-estado-gris">{chip}</span>
+      </div>
     </section>
   );
 }
@@ -95,7 +112,13 @@ function Documentos({ p }: { p: PaginaDepto }) {
   return (
     <section className="iv2-dp-sec" aria-labelledby="iv2-docs-t" data-inv2="documentos-depto">
       <h2 className="iv2-dp-h2" id="iv2-docs-t">{AV.documentosT}</h2>
-      {p.documentos.length === 0 && (
+      {p.oferta?.texto && p.oferta.firmadaAt && (
+        <div className="iv2-dp-doc" data-inv2="doc-oferta">
+          <span className="iv2-dp-doc-txt"><span className="iv2-dp-pregunta-t">Oferta de compra</span><span className="iv2-dp-pregunta-s">Firmada el {diaMes(p.oferta.firmadaAt)}</span></span>
+          <VerTexto titulo="Oferta de compra" parrafos={p.oferta.texto.split("\n\n")} />
+        </div>
+      )}
+      {p.documentos.length === 0 && !p.oferta?.firmadaAt && (
         <div className="iv2-dp-vacio" data-inv2="sin-documentos">
           <span className="iv2-dp-pregunta-t">{AV.sinDocumentosT}</span>
           <span className="iv2-dp-pregunta-s">{AV.sinDocumentos}</span>
@@ -154,6 +177,7 @@ export function VistaDepto({ p }: { p: PaginaDepto }) {
       <div className="iv2-dp-izq">
         <Cabeza p={p} />
         <LoQueSigueBloque p={p} />
+        <TarjetaOferta p={p} />
       </div>
       <div className="iv2-dp-der">
         <Averiguo p={p} />

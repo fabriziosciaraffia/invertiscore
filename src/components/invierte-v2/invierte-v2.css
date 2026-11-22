@@ -847,3 +847,49 @@
 .iv2-dp-pregunta-t { font-size: 14px; font-weight: 600; line-height: 1.35; }
 .iv2-dp-pregunta-s { font-size: 12px; line-height: 1.45; color: var(--franco-text-secondary); }
 .iv2-dp-vacio { display: flex; flex-direction: column; gap: 2px; padding: 10px 0; }
+
+/* LA OFERTA (etapa 3, B3; láminas 5.1 y 5.1b). La recomendación de Franco en el recuadro azul (postura, rango y razones), el campo con
+   − y + de a UF 10, el aviso en ciruela claro (nunca rojo: no es un error), «Sujeta a tu visita» y los botones; en la firma, el resumen,
+   qué pasa después, el documento con «Leer» y la casilla. En la página del depto, la tarjeta de la oferta y el documento firmado. */
+.iv2-of { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.iv2-of-recomienda { display: flex; flex-direction: column; gap: 6px; padding: 14px; border-radius: 14px; background: var(--franco-elevated, #EEF2F8); }
+[data-theme="light"] .iv2-of-recomienda { background: #EEF2F8; }
+.iv2-of-postura { font-size: 20px; font-weight: 700; line-height: 1.2; }
+.iv2-of-entre { font-size: 15px; font-weight: 600; }
+.iv2-of-razones { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: 13px; line-height: 1.45; color: var(--franco-text); }
+.iv2-of-razones b { font-weight: 600; }
+.iv2-of-campo { display: flex; flex-direction: column; gap: 8px; }
+.iv2-of-stepper { display: flex; align-items: center; gap: 10px; }
+.iv2-of-paso { flex: none; width: 48px; height: 48px; border-radius: 999px; border: 1.5px solid var(--franco-border); background: var(--franco-card); color: var(--franco-text); font: 600 22px var(--font-ui, var(--font-body)), "Inter", system-ui, sans-serif; cursor: pointer; }
+.iv2-of-valor { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 6px; height: 52px; border: 1.5px solid var(--franco-text); border-radius: 12px; font-size: 20px; font-weight: 700; }
+.iv2-of-valor input { width: 100%; max-width: 140px; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; outline: none; }
+.iv2-of-linea { margin: 0; font-size: 12px; line-height: 1.45; color: var(--franco-text-secondary); }
+.iv2-of-aviso { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border-radius: 12px; background: rgba(216, 174, 202, 0.14); font-size: 13px; line-height: 1.45; color: var(--franco-text); }
+[data-theme="light"] .iv2-of-aviso { background: #F3EDF1; color: #26262A; }
+.iv2-of-sujeta { margin: 0; }
+.iv2-of-acciones { display: flex; flex-direction: column; gap: 8px; }
+.iv2-of-enlace { align-self: center; justify-content: center; min-height: 44px; font-size: 14px; font-weight: 600; }
+.iv2-of-resumen { margin: 0; display: flex; flex-direction: column; border: 1px solid var(--franco-border); border-radius: 14px; padding: 2px 14px; }
+.iv2-of-resumen > div { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--franco-border); }
+.iv2-of-resumen > div:last-child { border-bottom: 0; }
+.iv2-of-resumen dt { font-size: 13px; color: var(--franco-text-secondary); flex: none; }
+.iv2-of-resumen dd { margin: 0; text-align: right; font-size: 14px; font-weight: 600; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; min-width: 0; }
+.iv2-of-ofreces { font-size: 18px !important; }
+.iv2-of-pre { font-size: 12px; font-weight: 400; color: var(--franco-text-secondary); }
+.iv2-of-pre .iv2-enlace-azul { min-height: 0; display: inline; font-size: 12px; }
+.iv2-of-pasos { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.iv2-of-pasos li { display: flex; align-items: flex-start; gap: 10px; font-size: 13px; line-height: 1.45; }
+.iv2-of-num { flex: none; width: 22px; height: 22px; border-radius: 999px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; background: var(--franco-bg); }
+[data-theme="light"] .iv2-of-num { background: #E9E9EC; }
+.iv2-of-doc, .iv2-dp-doc { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--franco-border); border-radius: 14px; }
+.iv2-dp-doc { border: 0; border-bottom: 1px solid var(--franco-border); border-radius: 0; padding: 10px 0; }
+.iv2-of-doc-txt, .iv2-dp-doc-txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.iv2-of-doc .iv2-enlace-azul, .iv2-dp-doc .iv2-enlace-azul { flex: none; min-height: 44px; font-size: 14px; font-weight: 600; }
+.iv2-of-casilla { min-height: 44px; }
+.iv2-of-nota { text-align: center; }
+.iv2-of-texto { display: flex; flex-direction: column; gap: 10px; font-size: 14px; line-height: 1.55; }
+.iv2-of-texto p { margin: 0; }
+.iv2-of-borrador { font-size: 12px; font-weight: 700; letter-spacing: 0.04em; color: #6E4560; }
+.iv2-dp-tarjetas { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+.iv2-dp-mini { box-sizing: border-box; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 12px 14px; border: 1px solid var(--franco-border); border-radius: 14px; background: var(--franco-card); }
+.iv2-dp-mini-t { font-size: 15px; font-weight: 700; }

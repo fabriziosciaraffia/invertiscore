@@ -14,7 +14,7 @@ import { tituloDepto } from "@/lib/invierte-v2/titulo-depto";
 
 export const dynamic = "force-dynamic";
 
-export default function DeptoDemo({ searchParams }: { searchParams: { etapa?: string; aviso?: string; confirmada?: string; preguntas?: string } }) {
+export default function DeptoDemo({ searchParams }: { searchParams: { etapa?: string; aviso?: string; confirmada?: string; preguntas?: string; oferta?: string } }) {
   if (process.env.NODE_ENV === "production" && process.env.VERCEL_ENV !== "preview") notFound();
   const e = searchParams.etapa ?? "confirmando";
   const etapa: Etapa = e === "revision" || e === "corregir" ? "sin_preaprobacion" : e === "dejo" ? "no_avanza" : (["confirmando", "sin_preaprobacion", "listo", "no_avanza"].includes(e) ? e : "confirmando") as Etapa;
@@ -39,6 +39,13 @@ export default function DeptoDemo({ searchParams }: { searchParams: { etapa?: st
       { id: "q3", pregunta: "¿De qué año es el edificio?", enviadaAt: "2026-11-18T15:00:00Z", respuesta: null, fuente: null, respondidaAt: null },
     ],
     documentos: [],
+    // B3: en listo, la oferta borrador con el rango de la regla v1 (?oferta=firmada la muestra firmada).
+    oferta: etapa === "listo" ? {
+      id: "of", estado: searchParams.oferta === "firmada" ? "firmada" : "borrador", postura: "negocia_poco", descuentoPct: 5, pisoUF: 2905, recomendadoUF: 2936, altoUF: 2967, techoUF: 3090, publicadoUF: 3090,
+      razones: ["Ya bajó UF 80 hace tres semanas: quien vende está dispuesto a moverse.", "La cocina tiene muebles dañados y piso manchado: es un argumento concreto para pedir rebaja."],
+      corregida: null, montoUF: searchParams.oferta === "firmada" ? 2930 : null, firmadaAt: searchParams.oferta === "firmada" ? "2026-11-22T15:00:00Z" : null,
+      texto: searchParams.oferta === "firmada" ? "BORRADOR · TEXTO DE PRUEBA · EN REVISIÓN LEGAL\n\nOFERTA DE COMPRA\n\nTexto de muestra." : null, textoVersion: null,
+    } : null,
   };
   return (
     <MarcoInvierte volver={null} pantalla="depto" layout="contenido" cabecera={DEPTO_COPY.cabecera} pc={{ sesionEmail: "muestra@ejemplo.cl", invierte: "inversion" }} miInversion>

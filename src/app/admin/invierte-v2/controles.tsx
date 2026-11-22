@@ -7,6 +7,8 @@ import { useRouter } from "next/navigation";
 import { MODOS_INVIERTE_V2, type ModoInvierteV2 } from "@/lib/invierte-v2/acceso";
 import { MapaPinAjustable } from "@/components/formulario-v4/MapaPinAjustable";
 import { FUENTES_RESPUESTA, lineaPregunta, type PreguntaDepto } from "@/lib/invierte-v2/depto-flujo";
+import { POSTURA_COPY, type Postura } from "@/lib/invierte-v2/rango";
+import type { OfertaVista } from "@/lib/invierte-v2/rango-servidor";
 
 const ROTULO_MODO: Record<ModoInvierteV2, string> = { apagado: "Apagado (todos ven Pronto)", lista: "Solo la lista", todos: "Todos" };
 
@@ -212,12 +214,14 @@ export function RevisarPreaprobacion({ id, banco, montoUF, vigenteHasta }: { id:
  * pegan las coordenadas—. Al confirmar se rehace el análisis con el punto real y el depto pasa de etapa solo si hay acuerdo y el
  * análisis rehecho da Comprar (o Ajusta supuestos con precio al que vuelve a Comprar). Sin dirección confirmada no pasa a listo.
  */
-export function GestionDepto({ userId, avisoId, etapa, acuerdo, alternativa, comuna, pin, ubicacion, preguntas }: {
+export function GestionDepto({ userId, avisoId, etapa, acuerdo, alternativa, comuna, pin, ubicacion, preguntas, rango }: {
   userId: string; avisoId: string; etapa: string; acuerdo: string | null; alternativa: string | null; comuna: string | null;
   pin: { lat: number; lng: number } | null;
   ubicacion: { direccion: string; numero: string | null; lat: number; lng: number; distanciaM: number | null; veredicto: string | null; precioComprarUF: number | null; flujoCLP: number | null } | null;
   /** B2: «Lo que Franco averiguó» de este depto. */
   preguntas: PreguntaDepto[];
+  /** B3: el rango (la oferta borrador o la firmada). */
+  rango: OfertaVista | null;
 }) {
   const router = useRouter();
   const [ac, setAc] = useState(acuerdo ?? "pendiente");
@@ -261,6 +265,7 @@ export function GestionDepto({ userId, avisoId, etapa, acuerdo, alternativa, com
         <MapaPinAjustable lat={Number.isFinite(nLat) ? nLat : null} lng={Number.isFinite(nLng) ? nLng : null} comuna={comuna} limite="cobertura" height={200} onMover={(a, b) => { setLat(a.toFixed(7)); setLng(b.toFixed(7)); }} />
       </div>
       <PreguntasDepto avisoId={avisoId} preguntas={preguntas} />
+      {rango && <RangoDepto userId={userId} avisoId={avisoId} r={rango} />}
       {estado && <span className="text-[12px] text-[var(--signal-red)]" role="alert">{estado}</span>}
     </div>
   );
@@ -313,6 +318,48 @@ function PreguntasDepto({ avisoId, preguntas }: { avisoId: string; preguntas: Pr
         <input value={nueva} onChange={(e) => setNueva(e.target.value)} placeholder="¿Otra pregunta para quien vende?" aria-label="Pregunta nueva" className={`${campo} min-w-[280px]`} />
         <button type="button" className={CLASE_BTN} disabled={ocupado || !nueva.trim()} onClick={() => void enviar({ accion: "pregunta", avisoId, pregunta: nueva })} data-admin="inv2-agregar-pregunta">Agregar</button>
       </span>
+      {estado && <span className="text-[12px] text-[var(--signal-red)]" role="alert">{estado}</span>}
+    </div>
+  );
+}
+
+/** El rango de oferta en el admin (B3): lo que calculó la regla v1 y, mientras la oferta no esté firmada, la corrección (opcional). */
+function RangoDepto({ userId, avisoId, r }: { userId: string; avisoId: string; r: OfertaVista }) {
+  const router = useRouter();
+  const [postura, setPostura] = useState<Postura>(r.postura);
+  const [piso, setPiso] = useState(String(r.pisoUF));
+  const [rec, setRec] = useState(String(r.recomendadoUF));
+  const [alto, setAlto] = useState(String(r.altoUF));
+  const [razones, setRazones] = useState(r.razones.join("\n"));
+  const [ocupado, setOcupado] = useState(false);
+  const [estado, setEstado] = useState<string | null>(null);
+  const campo = "rounded-md border border-[var(--franco-border)] bg-[var(--franco-card)] px-2 py-1 font-body text-[13px] text-[var(--franco-text)]";
+  async function guardar() {
+    setOcupado(true); setEstado(null);
+    const x = await llamar({ accion: "rango", userId, avisoId, postura, piso: Number(piso), recomendado: Number(rec), alto: Number(alto), razones: razones.split("\n") });
+    setOcupado(false);
+    if (!x.ok) { setEstado(x.error === "datos" ? "Revisa: piso ≤ recomendado ≤ borde alto ≤ techo, y al menos una razón" : x.error === "estado" ? "La oferta ya está firmada" : "No se guardó"); return; }
+    router.refresh();
+  }
+  const firmada = r.estado !== "borrador";
+  return (
+    <div className="flex flex-col gap-2" data-admin="inv2-rango">
+      <p className="m-0"><b>Rango de oferta</b> · {POSTURA_COPY[r.postura]} · {r.descuentoPct} % · UF {r.pisoUF}–{r.recomendadoUF}–{r.altoUF} (techo {r.techoUF}) · {firmada ? `oferta ${r.estado}${r.montoUF ? ` por UF ${r.montoUF}` : ""}` : r.corregida ? `corregido por ${r.corregida.por ?? "admin"}` : "de la regla v1"}</p>
+      <ul className="m-0 pl-5 text-[12px]">{r.razones.map((t, i) => <li key={i}>{t}</li>)}</ul>
+      {!firmada && (
+        <div className="flex flex-col gap-2">
+          <span className="flex flex-wrap items-center gap-2">
+            <select value={postura} onChange={(e) => setPostura(e.target.value as Postura)} aria-label="Postura" className={campo}>
+              {(Object.keys(POSTURA_COPY) as Postura[]).map((k) => <option key={k} value={k}>{POSTURA_COPY[k]}</option>)}
+            </select>
+            <input value={piso} onChange={(e) => setPiso(e.target.value)} aria-label="Piso UF" className={`${campo} w-24`} />
+            <input value={rec} onChange={(e) => setRec(e.target.value)} aria-label="Recomendado UF" className={`${campo} w-24`} />
+            <input value={alto} onChange={(e) => setAlto(e.target.value)} aria-label="Borde alto UF" className={`${campo} w-24`} />
+          </span>
+          <textarea value={razones} onChange={(e) => setRazones(e.target.value)} aria-label="Razones (una por línea)" rows={3} className={`${campo} min-w-[320px]`} />
+          <span><button type="button" className={CLASE_BTN} disabled={ocupado} onClick={() => void guardar()} data-admin="inv2-corregir-rango">{ocupado ? "Guardando…" : "Guardar corrección"}</button></span>
+        </div>
+      )}
       {estado && <span className="text-[12px] text-[var(--signal-red)]" role="alert">{estado}</span>}
     </div>
   );

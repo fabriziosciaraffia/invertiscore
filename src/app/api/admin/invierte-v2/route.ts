@@ -11,6 +11,7 @@ import { sendPreaprobacionInvierte } from "@/lib/email";
 import { estadoInterruptor } from "@/lib/invierte-v2/acceso-servidor";
 import { puedeRecibirCopia } from "@/lib/invierte-v2/copias-servidor";
 import { agregarPregunta, ajustarPorPreaprobacion, confirmarUbicacion, marcarPreguntasEnviadas, registrarAcuerdo, responderPregunta } from "@/lib/invierte-v2/depto-servidor";
+import { corregirRango } from "@/lib/invierte-v2/rango-servidor";
 
 /** El correo de la revisión: solo a quien el interruptor deja (mientras el modo no sea «todos», la lista). */
 const DEPS_REVISION: DepsRevision = {
@@ -119,6 +120,13 @@ export async function POST(request: Request) {
   if (accion === "pregunta") {
     if (typeof b?.avisoId !== "string" || !UUID.test(b.avisoId)) return NextResponse.json({ error: "datos" }, { status: 400 });
     const r = await agregarPregunta(createAdminServiceClient(), { email: adminUser.email ?? null }, b.avisoId, b.pregunta);
+    if (!r.ok) return NextResponse.json({ error: r.error }, { status: r.error === "guardar" ? 500 : 400 });
+    return NextResponse.json(r);
+  }
+  // B3: el admin corrige el rango de un depto (no es obligatorio); queda quién.
+  if (accion === "rango") {
+    if (typeof b?.userId !== "string" || !UUID.test(b.userId) || typeof b?.avisoId !== "string" || !UUID.test(b.avisoId)) return NextResponse.json({ error: "datos" }, { status: 400 });
+    const r = await corregirRango(createAdminServiceClient(), { email: adminUser.email ?? null }, b.userId, b.avisoId, b);
     if (!r.ok) return NextResponse.json({ error: r.error }, { status: r.error === "guardar" ? 500 : 400 });
     return NextResponse.json(r);
   }

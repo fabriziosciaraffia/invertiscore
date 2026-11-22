@@ -21,8 +21,9 @@
 import { limpiarCalle, limpiarNumero } from "./titulo-depto";
 
 /** Sube con cada cambio de la instrucción: una lectura de otra versión se vuelve a generar. 11 (etapa 3, 20-nov-2026): la calle y el
- *  número, internos, para el título del depto. 12 (etapa 3, B2, 22-nov-2026): las preguntas para quien vende (internas). */
-export const VERSION_LECTURA = 12;
+ *  número, internos, para el título del depto. 12 (etapa 3, B2, 22-nov-2026): las preguntas para quien vende (internas). 13 (B3, 22-nov-2026): los arreglos concretos
+ *  (internos), para la regla del rango de oferta. */
+export const VERSION_LECTURA = 13;
 /** Todas las fotos de la publicación, hasta este tope (20-nov-2026; antes 8, y la lectura decía que faltaban fotos que sí estaban). */
 export const MAX_FOTOS_LECTURA = 24;
 /** Lecturas nuevas por hora, entre todas las personas (resguardo de costo). */
@@ -64,6 +65,9 @@ export interface LecturaFranco {
   numero?: string | null;
   /** Interno (etapa 3, B2): lo que Franco le pregunta a quien vende mientras confirma el depto («Lo que Franco averiguó»). */
   preguntas?: string[];
+  /** Interno (etapa 3, B3): los arreglos CONCRETOS que se ven en las fotos o que dice la publicación («la cocina tiene muebles dañados»).
+   *  Vacío si no se ve ninguno o si la publicación simplemente no describe el estado: entonces el rango no suma por arreglos. */
+  arreglos?: string[];
 }
 
 /** Las cifras del motor que la lectura PUEDE citar, tal como las muestra la tarjeta (20-nov-2026, Fabrizio): el cap rate bruto y lo que
@@ -116,6 +120,8 @@ Entregas tres cosas:
 
 6. preguntas (internas; Franco se las hace a quien vende mientras confirma el depto, y la persona las ve con su respuesta): de una a cuatro preguntas cortas, cada una una sola pregunta entre signos de interrogación («¿Incluye estacionamiento?», «¿Cuánto son los gastos comunes?»), sobre lo que falta saber antes de ofertar y que quien vende puede responder: lo que dice «Ojo», lo que la publicación no informa (gastos comunes, estacionamiento, bodega, año del edificio, contribuciones) o lo que las fotos dejan en duda. Sin precio ni descuentos, sin pedir fotos y sin preguntas que la publicación ya responde.
 
+7. arreglos (internos; la oferta los usa como argumento): los arreglos CONCRETOS que se ven en las fotos o que dice la publicación, cada uno una frase corta en minúscula que nombra la parte y lo que tiene («la cocina tiene muebles dañados», «piso manchado en los dormitorios», «el baño necesita cambio de artefactos»). Solo lo que efectivamente se ve o se dice; si la publicación no describe el estado o las fotos no muestran nada que arreglar, la lista va vacía. Nunca pongas como arreglo que algo no se ve o que falta información.
+
 Reglas:
 - Nunca cites ni juzgues el precio: nada de precios, precio por m², «bajo su zona», «más barato», «buen precio» ni comparaciones con la zona o con otros deptos. Eso lo dice el informe, con otra referencia.
 - De las cifras del motor, solo las de la tarjeta (cap rate bruto, lo que deja o pide al mes y el veredicto), tal cual. Ninguna otra: ni precio, ni arriendo, ni gastos comunes en pesos, ni distancia al metro. Sí puedes usar medidas que vengan de la publicación y sirvan para arrendar (por ejemplo, un dormitorio de 6,6 m²), pisos, cantidades de dormitorios y años de construcción informados.
@@ -133,11 +139,12 @@ const FUENTE = { type: "string", enum: ["fotos", "publicacion", "datos"] } as co
 export const ESQUEMA_LECTURA_FRANCO = {
   type: "object",
   additionalProperties: false,
-  required: ["alerta", "larga", "corta", "estado_arriendo", "calle", "numero", "preguntas"],
+  required: ["alerta", "larga", "corta", "estado_arriendo", "calle", "numero", "preguntas", "arreglos"],
   properties: {
     calle: { anyOf: [{ type: "string", maxLength: 80, description: "Interno: la calle según la publicación, sin número ni comuna." }, { type: "null" }] },
     numero: { anyOf: [{ type: "string", maxLength: 12, description: "Interno: el número de la calle, solo si la publicación lo dice." }, { type: "null" }] },
     preguntas: { type: "array", items: { type: "string", maxLength: MAX_CARACTERES_ESQUEMA }, description: "Internas: de una a cuatro preguntas para quien vende." },
+    arreglos: { type: "array", items: { type: "string", maxLength: MAX_CARACTERES_ESQUEMA }, description: "Internos: los arreglos concretos vistos o dichos; vacío si no hay o no se describe el estado." },
     alerta: {
       type: "object",
       additionalProperties: false,
@@ -238,6 +245,7 @@ export function sanearConRegistro(j: unknown, opts: { fotosCompletas?: boolean; 
   const calle = limpiarCalle(typeof o.calle === "string" ? o.calle : null);
   const numero = calle ? limpiarNumero(typeof o.numero === "string" ? o.numero : null) : null;
   const preguntas = limpiarPreguntas((o as { preguntas?: unknown }).preguntas, cifras);
+  const arreglos = limpiarArreglos((o as { arreglos?: unknown }).arreglos, cifras);
   const estadoCrudo = o.estado_arriendo ?? o.estadoArriendo;
   const estadoArriendo: EstadoArriendo | null = (ESTADOS_ARRIENDO as readonly unknown[]).includes(estadoCrudo) ? (estadoCrudo as EstadoArriendo) : null;
   const motivoCrudo = limpio(o.alerta?.motivo);
@@ -256,7 +264,7 @@ export function sanearConRegistro(j: unknown, opts: { fotosCompletas?: boolean; 
   const corta = (Array.isArray(o.corta) ? o.corta : []).map((l) => limpio(typeof l === "string" ? l : (l as { texto?: unknown } | null)?.texto)).filter((t): t is string => !!t && filtro("corta")(t)).slice(0, 3);
   if (!larga.length && !corta.length) return { lectura: null, descartes };
   // Una alerta sin motivo legible no se muestra como alerta (queda el nivel para decidir si se recomienda).
-  return { lectura: { alerta: { nivel, motivo }, larga, corta, estadoArriendo, cifras, calle, numero, preguntas }, descartes };
+  return { lectura: { alerta: { nivel, motivo }, larga, corta, estadoArriendo, cifras, calle, numero, preguntas, arreglos }, descartes };
 }
 
 /** ¿Esta línea es UNA frase? Un punto, signo de cierre o exclamación seguido de otra frase la parte en dos. */
@@ -328,6 +336,23 @@ export function limpiarPreguntas(x: unknown, cifras: CifrasTarjeta | null = null
     vistas.add(k);
     out.push(t);
     if (out.length >= MAX_PREGUNTAS) break;
+  }
+  return out;
+}
+
+/** Los arreglos concretos (etapa 3, B3): hasta MAX_ARREGLOS, frases cortas, sin precio ni cifras de plata, sin «no se ve» ni «falta»
+ *  (eso no es un arreglo: es falta de información, y no mueve el rango). */
+export const MAX_ARREGLOS = 4;
+const NO_ES_ARREGLO = /\b(no se ve|no se ven|no muestra|no describe|no informa|falta informaci|sin informaci|no hay fotos|confirmar|pregunt)/i;
+export function limpiarArreglos(x: unknown, cifras: CifrasTarjeta | null = null): string[] {
+  if (!Array.isArray(x)) return [];
+  const out: string[] = [];
+  for (const raw of x) {
+    const t = typeof raw === "string" ? raw.replace(/\s+/g, " ").trim().replace(/[.;,]+$/, "") : "";
+    if (t.length < 6 || t.length > 90 || NO_ES_ARREGLO.test(t) || reglaDescarte(t, cifras)) continue;
+    if (out.some((y) => y.toLowerCase() === t.toLowerCase())) continue;
+    out.push(t.charAt(0).toLowerCase() + t.slice(1));
+    if (out.length >= MAX_ARREGLOS) break;
   }
   return out;
 }

@@ -14,6 +14,7 @@ import { ETIQUETAS, fmtUF, textoAlMes, type Etiqueta } from "@/lib/invierte-v2/o
 import { GestionDepto, RevisarPreaprobacion, TareaHecha } from "../controles";
 import { asegurarPreguntasDeLectura, leerPreguntas, leerUbicaciones } from "@/lib/invierte-v2/depto-servidor";
 import { leerLecturas } from "@/lib/invierte-v2/lectura-franco-servidor";
+import { asegurarRango } from "@/lib/invierte-v2/rango-servidor";
 import { etapaDe } from "@/lib/invierte-v2/depto-flujo";
 import { leerPreaprobacion } from "@/lib/invierte-v2/preaprobacion-servidor";
 import { lineaAprobada } from "@/lib/invierte-v2/preaprobacion";
@@ -35,6 +36,8 @@ const TIPO_TAREA: Record<string, string> = {
   contactar_listo: "Contactarla: está lista",
   explicar_preaprobacion: "Explicarle la preaprobación",
   confirmar_depto_atrasado: "Confirmar el depto: lleva 3 días",
+  presentar_oferta: "Presentar la oferta",
+  hablar_oferta: "Hablar la oferta con la persona",
 };
 const ESTADO_DEPTO: Record<string, string> = { elegido: "Elegido", opcion: "Opción", descartado: "Descartado" };
 
@@ -69,6 +72,8 @@ export default async function FichaInvierteV2Page({ params }: { params: { userId
   const lecturas = await leerLecturas(sb, idsEl);
   for (const d of elegidos) await asegurarPreguntasDeLectura(sb, d.aviso_id as string, lecturas[d.aviso_id as string]?.preguntas ?? [], d.es_prueba === true);
   const preguntasDe = Object.fromEntries(await Promise.all(idsEl.map(async (id) => [id, await leerPreguntas(sb, id)] as const)));
+  // B3: el rango de cada depto listo (la oferta borrador; firmada, congelada).
+  const rangoDe = Object.fromEntries(await Promise.all(idsEl.map(async (id) => [id, await asegurarRango(sb, userId, id)] as const)));
   const pinDe = new Map(((pines ?? []) as { id: string; lat: number | null; lng: number | null; comuna: string | null }[]).map((x) => [x.id, x]));
   const pendientes = (tareas ?? []).filter((t) => t.estado === "pendiente");
   const hechas = (tareas ?? []).filter((t) => t.estado !== "pendiente");
@@ -201,6 +206,7 @@ export default async function FichaInvierteV2Page({ params }: { params: { userId
                 <GestionDepto userId={userId} avisoId={id} etapa={etapaDe({ estado: "elegido", etapa: (d.etapa as string | null) ?? null }) ?? "confirmando"} acuerdo={(d.acuerdo as string | null) ?? null} alternativa={(d.alternativa_aviso_id as string | null) ?? null}
                   comuna={pin?.comuna ?? null} pin={pin?.lat != null && pin?.lng != null ? { lat: Number(pin.lat), lng: Number(pin.lng) } : null}
                   preguntas={preguntasDe[id] ?? []}
+                  rango={rangoDe[id] ?? null}
                   ubicacion={u ? { direccion: u.direccion, numero: u.numero, lat: u.lat, lng: u.lng, distanciaM: u.distanciaM, veredicto: u.analisis?.veredicto ?? null, precioComprarUF: u.precioComprarUF, flujoCLP: u.analisis?.flujoCLP ?? null } : null} />
               </div>
             );

@@ -67,8 +67,15 @@ export const DEPTO_COPY = {
 export type Tono = "gris" | "ciruela";
 export interface LoQueSigue { chip: string; tono: Tono; titulo: string; texto: string | null; boton: { texto: string; href: string } | null }
 
+/** La oferta del depto, lo que «Lo que sigue» necesita saber (B3). */
+export interface OfertaResumen { estado: string; postura: "asegura" | "negocia_poco" | "negocia_argumentos"; pisoUF: number; altoUF: number; montoUF: number | null }
+const POSTURA_FRASE: Record<OfertaResumen["postura"], string> = { asegura: "asegurarlo", negocia_poco: "negociar un poco", negocia_argumentos: "negociar con argumentos" };
+const uf0 = (n: number) => `UF ${Math.round(n).toLocaleString("es-CL")}`;
+/** La página de la oferta del depto (lámina 5.1). */
+export const urlOferta = (avisoId: string) => `${urlDepto(avisoId)}/oferta`;
+
 /** «Lo que sigue» en la página del depto, según su etapa y la preaprobación. null en no_avanza (la página entera cambia). */
-export function loQueSigue(etapa: Etapa, pre: EstadoVisible, urlPreaprobacion: string): LoQueSigue | null {
+export function loQueSigue(etapa: Etapa, pre: EstadoVisible, urlPreaprobacion: string, oferta: OfertaResumen | null = null, urlDeLaOferta = ""): LoQueSigue | null {
   if (etapa === "confirmando") {
     return { chip: "Franco está en eso", tono: "gris", titulo: "Estamos confirmando este depto", texto: "Franco está coordinando con el vendedor para dejarlo listo para tu oferta o tu visita. Te avisamos apenas esté.", boton: null };
   }
@@ -77,8 +84,18 @@ export function loQueSigue(etapa: Etapa, pre: EstadoVisible, urlPreaprobacion: s
     if (pre === "por_corregir") return { chip: "Te toca a ti", tono: "ciruela", titulo: "Sube de nuevo tu preaprobación para ofertar o visitar", texto: null, boton: { texto: "Subir otra", href: `${urlPreaprobacion}?subir=1` } };
     return { chip: "Te toca a ti", tono: "ciruela", titulo: "Sube tu preaprobación para ofertar o visitar", texto: "Se sube una vez y vale para todos tus deptos.", boton: { texto: "Subir mi preaprobación", href: urlPreaprobacion } };
   }
+  if (etapa === "listo" && oferta?.estado === "borrador") {
+    // B3 (lámina 4.2): la oferta que recomienda Franco, con su rango; el único botón de la página.
+    return { chip: "Te toca a ti", tono: "ciruela", titulo: "Haz tu oferta", texto: `Franco recomienda ${POSTURA_FRASE[oferta.postura]}: entre ${uf0(oferta.pisoUF)} y ${uf0(oferta.altoUF)}. Queda sujeta a tu visita: si después no te convence, la retiras.`, boton: { texto: "Ver la oferta que recomienda Franco", href: urlDeLaOferta } };
+  }
+  if (etapa === "listo" && oferta?.estado === "firmada") {
+    return { chip: "Franco está en eso", tono: "gris", titulo: "Tu oferta está firmada", texto: `${oferta.montoUF ? `Ofreces ${uf0(oferta.montoUF)}. ` : ""}Franco la presenta por escrito a quien vende. Te avisamos la respuesta.`, boton: null };
+  }
+  if (etapa === "listo" && oferta?.estado === "en_cola") {
+    return { chip: "Franco está en eso", tono: "gris", titulo: "Tu oferta quedó preparada", texto: "Franco la presenta cuando termine la oferta que tienes vigente. Nunca se presenta sola.", boton: null };
+  }
   if (etapa === "listo") {
-    // B1 (21-nov-2026): la oferta y la visita llegan en las entregas siguientes; mientras, sin botón.
+    // Sin rango calculado todavía (sin precio publicado): sin botón.
     return { chip: "Te toca a ti", tono: "ciruela", titulo: "Listo para ofertar o visitar", texto: "Franco ya lo dejó listo con quien lo vende. Muy pronto vas a poder hacer tu oferta o pedir una visita desde aquí.", boton: null };
   }
   return null;
