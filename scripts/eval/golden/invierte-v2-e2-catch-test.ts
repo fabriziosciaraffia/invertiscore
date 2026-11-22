@@ -47,7 +47,7 @@ import { lineaPregunta, preguntasVisibles, conDocumentos } from "../../../src/li
 import { limpiarPreguntas, MAX_PREGUNTAS, limpiarArreglos } from "../../../src/lib/invierte-v2/lectura-franco";
 import { calcularRango, avisoOferta, postura as posturaDe, CONFIG_RANGO_V1, REGLA_VERSION, OFERTA_COPY, FIRMA_COPY } from "../../../src/lib/invierte-v2/rango";
 import { textoOferta, VERSION_TEXTO_OFERTA, MARCA_BORRADOR } from "../../../src/lib/invierte-v2/oferta-documento";
-import { OfertaForm } from "../../../src/components/invierte-v2/OfertaForm";
+import { OfertaForm, llevarAvisoALaVista } from "../../../src/components/invierte-v2/OfertaForm";
 import { FirmaOfertaForm } from "../../../src/components/invierte-v2/FirmaOfertaForm";
 import { VistaDepto } from "../../../src/components/invierte-v2/VistaDepto";
 
@@ -1274,6 +1274,15 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (!/value="2936"/.test(o0) || !/class="inv-principal" data-inv2="revisar"[^>]*>Revisar y firmar mi oferta</.test(o0) || /data-inv2="aviso"/.test(o0)) F("24h · la oferta no parte en el recomendado o su botón principal no es «Revisar y firmar mi oferta»");
       if (!/class="inv-principal"[^>]*data-inv2="hablar">Hablarlo con Franco/.test(of) || !/data-nivel="bajo_piso_fuerte"/.test(of) || !/Es tu decisión: Franco la presenta igual\./.test(of) || !/Revisar y firmar igual por UF 2\.700/.test(of)) F("24h · con el aviso fuerte el principal no es «Hablarlo con Franco» o desaparece seguir igual");
       if (/comisi|le conviene que yo pague|gana Franco/i.test(JSON.stringify(OFERTA_COPY) + JSON.stringify(FIRMA_COPY) + o0 + of)) F("24h · el flujo de la oferta habla de lo que gana Franco");
+      // 24n · (ajuste del 22-nov) El aviso nunca queda tapado por la barra fija: cada vez que aparece o cambia de nivel se lleva a la vista,
+      // con el alto de la barra como margen inferior. Vale para el suave, el fuerte y el de ofrecer más que lo recomendado.
+      let pedido24: ScrollIntoViewOptions | null = null;
+      const av24 = { style: {} as Record<string, string>, scrollIntoView: (o: ScrollIntoViewOptions) => { pedido24 = o; } };
+      llevarAvisoALaVista(av24 as unknown as HTMLElement, { offsetHeight: 150 } as HTMLElement);
+      if (av24.style.scrollMarginBottom !== "162px" || (pedido24 as ScrollIntoViewOptions | null)?.block !== "nearest") F("24n · el aviso no se lleva a la vista por encima de la barra fija (margen = alto de la barra)");
+      const fOF = leer("src/components/invierte-v2/OfertaForm.tsx");
+      const refsAviso = (fOF.match(/<div ref=\{refAviso\} className="iv2-of-aviso" data-inv2="aviso"/g) ?? []).length;
+      if (!/useEffect\(\(\) => \{ if \(aviso !== "ninguno"\) llevarAvisoALaVista\(refAviso\.current, refBarra\.current\); \}, \[aviso\]\);/.test(fOF) || refsAviso !== 2 || !/<div ref=\{refBarra\} className="iv2-acciones iv2-of-acciones">/.test(fOF)) F("24n · la oferta no lleva el aviso a la vista al aparecer o cambiar de nivel (los dos avisos y la barra con su ref)");
       // 24i · La firma: el documento es de prueba y lo dice; el botón no se activa sin la casilla; se firma el texto exacto y su hash.
       const doc24 = textoOferta({ nombre: "A", rut: "1-9", depto: "D", montoUF: 2936, publicadoUF: 3090, pagas: "P", sujetaAVisita: true, vigenciaDias: 5 });
       if (!VERSION_TEXTO_OFERTA.startsWith("borrador-") || doc24[0] !== MARCA_BORRADOR || doc24[doc24.length - 1] !== MARCA_BORRADOR || !/BORRADOR/.test(MARCA_BORRADOR)) F("24i · el documento de la oferta no está marcado BORRADOR en el texto y en su versión");
