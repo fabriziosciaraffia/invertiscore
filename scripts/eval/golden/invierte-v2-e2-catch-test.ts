@@ -42,7 +42,9 @@ import { VERSION_EVALUACION as VERSION_EVALUACION22 } from "../../../src/lib/avi
 import { DIST_METRO_TITULO, limpiarCalle, limpiarNumero, tituloDepto } from "../../../src/lib/invierte-v2/titulo-depto";
 import { TarjetaBase, TarjetaOtra, TituloCalle } from "../../../src/components/invierte-v2/TarjetaDepto";
 import { etapaDe, etapaSiguiente, etapaConPreaprobacion, loQueSigue, estadoEnBase, ubicacionConviene, urlDepto } from "../../../src/lib/invierte-v2/depto-flujo";
-import { numerosDe, validarUbicacion, reanalisisVencido } from "../../../src/lib/invierte-v2/depto-servidor";
+import { numerosDe, validarUbicacion, reanalisisVencido, cambioDeUbicacionRelevante, CONFIRMAR_DIAS_TAREA } from "../../../src/lib/invierte-v2/depto-servidor";
+import { lineaPregunta, preguntasVisibles, conDocumentos } from "../../../src/lib/invierte-v2/depto-flujo";
+import { limpiarPreguntas, MAX_PREGUNTAS } from "../../../src/lib/invierte-v2/lectura-franco";
 import { VistaDepto } from "../../../src/components/invierte-v2/VistaDepto";
 
 const RAIZ = join(__dirname, "..", "..", "..");
@@ -1025,7 +1027,7 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (reglaDescarte17("Cap rate de 6,1 %, buen número.", cif) === null || reglaDescarte17("Deja $95 mil al mes.", cif) === null || reglaDescarte17("Cap rate de 5,7 %.", null) === null || reglaDescarte17("Deja $88 mil al mes.", null) === null) F("19d · el saneado deja pasar un cap rate o un flujo que no es el de la tarjeta (o sin arriendo confiable)");
       const g19 = sanearLectura({ alerta: { nivel: "ninguna", motivo: null }, larga: [{ etiqueta: "Estado", texto: "Bien.", fuente: "fotos" }], corta: [{ texto: "Deja $88 mil al mes y está listo.", fuente: "datos" }, { texto: "B.", fuente: "datos" }, { texto: "C.", fuente: "datos" }], estado_arriendo: "listo" }, { cifras: cif });
       if (!g19 || g19.estadoArriendo !== "listo" || g19.corta.length !== 3 || JSON.stringify(sanearLectura(g19)) !== JSON.stringify(g19)) F("19d · el estado para arrendar no queda, o al releer la lectura se botan las cifras que ya pasaron");
-      if (ESQUEMA_LECTURA_FRANCO.required.join("|") !== "alerta|larga|corta|estado_arriendo|calle|numero" /* ⚠ ACTA (20-nov-2026, etapa 3 A1): más la calle y el número (§20c) */ || ESQUEMA_LECTURA_FRANCO.properties.estado_arriendo.enum.join("|") !== "listo|arreglos_menores|remodelacion" || VERSION_LECTURA15 < 7 || MIN_ARRIENDOS19 !== 6) F("19d · falta el estado para arrendar en el esquema, la versión no subió o el mínimo de arriendos no es 6");
+      if (ESQUEMA_LECTURA_FRANCO.required.join("|") !== "alerta|larga|corta|estado_arriendo|calle|numero|preguntas" /* ⚠ ACTA (20-nov-2026, etapa 3 A1): más la calle y el número (§20c); y las preguntas (22-nov-2026, B2, §23b) */ || ESQUEMA_LECTURA_FRANCO.properties.estado_arriendo.enum.join("|") !== "listo|arreglos_menores|remodelacion" || VERSION_LECTURA15 < 7 || MIN_ARRIENDOS19 !== 6) F("19d · falta el estado para arrendar en el esquema, la versión no subió o el mínimo de arriendos no es 6");
       // ⚠ ACTA (20-nov-2026, Fabrizio): la síntesis ya no «cruza un número» siempre: parte por lo que más pesa (§19e).
       if (!/La primera línea es la SÍNTESIS: una frase que dice qué significa este depto como inversión, a partir de lo que MÁS pesa en él/.test(INSTRUCCION_LECTURA_FRANCO) || !/Si la alerta no es «ninguna», la primera línea es esa alerta y la síntesis pasa a la segunda/.test(INSTRUCCION_LECTURA_FRANCO) || !/No los recalcules, no los corrijas/.test(INSTRUCCION_LECTURA_FRANCO)) F("19d · la instrucción no pide la síntesis primero (segunda con alerta) o deja recalcular los números");
       const sv19 = codigo("src/lib/invierte-v2/lectura-franco-servidor.ts");
@@ -1173,7 +1175,7 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       // 22i · «Lo que sigue»: a lo más un botón, rojo solo cuando le toca a la persona; la página entera cambia en «no avanza».
       const ls = (e: Parameters<typeof loQueSigue>[0], pr: Parameters<typeof loQueSigue>[1]) => loQueSigue(e, pr, "/invierte/preaprobacion");
       if (ls("confirmando", "subir")?.boton !== null || ls("sin_preaprobacion", "en_revision")?.boton !== null || ls("sin_preaprobacion", "subir")?.boton?.href !== "/invierte/preaprobacion" || ls("no_avanza", "subir") !== null) F("22i · «Lo que sigue» pone un botón cuando no le toca a la persona (o no lo pone cuando sí)");
-      const P22 = (etapa: string, o: Record<string, unknown> = {}) => ({ avisoId: "x", etapa, noAvanzaMotivo: null, datos: { comuna: "Ñuñoa", dormitorios: 2, banos: 2, m2: 58, precioUF: 3090, veredicto: "COMPRAR", score: 81 }, ficha: null, tituloConNumero: "Serrano 120 · Metro Ñuñoa", ubicacion: null, cambios: ["Bajó UF 80 el 12 nov"], preaprobacion: "subir", whatsapp: "+56912345678", alternativa: null, activos: [], ...o });
+      const P22 = (etapa: string, o: Record<string, unknown> = {}) => ({ avisoId: "x", etapa, noAvanzaMotivo: null, datos: { comuna: "Ñuñoa", dormitorios: 2, banos: 2, m2: 58, precioUF: 3090, veredicto: "COMPRAR", score: 81 }, ficha: null, tituloConNumero: "Serrano 120 · Metro Ñuñoa", ubicacion: null, cambios: ["Bajó UF 80 el 12 nov"], preaprobacion: "subir", whatsapp: "+56912345678", alternativa: null, activos: [], preguntas: [], documentos: [], ...o });
       const h22 = renderToStaticMarkup(createElement(VistaDepto, { p: P22("confirmando") as never })).replace(/<[^>]+>/g, "|");
       if (!h22.includes("|Serrano 120 · Metro Ñuñoa|") || !h22.includes("|Estamos confirmando este depto|") || !h22.includes("|Bajó UF 80 el 12 nov|") || !h22.includes("|Ubicación aproximada, según la publicación. Franco la confirma con quien lo vende.|")) F("22i · la página del depto en confirmando no dice su título, «Lo que sigue», los cambios o la ubicación aproximada");
       const h22c = renderToStaticMarkup(createElement(VistaDepto, { p: P22("listo", { ubicacion: u22, preaprobacion: "aprobada" }) as never }));
@@ -1185,6 +1187,45 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       // 22j · El admin: acuerdo y ubicación (con el análisis rehecho) por la ruta del admin; la IA no mueve etapas.
       const ra22 = codigo("src/app/api/admin/invierte-v2/route.ts");
       if (!/if \(accion === "acuerdo"\)[\s\S]{0,400}registrarAcuerdo\(createAdminServiceClient\(\), \{ id: adminUser\.id/.test(ra22) || !/if \(accion === "ubicacion"\)[\s\S]{0,400}confirmarUbicacion\(createAdminServiceClient\(\), \{ id: adminUser\.id/.test(ra22) || !/if \(doc\?\.user_id\) await ajustarPorPreaprobacion\(/.test(ra22)) F("22j · el admin no registra el acuerdo, la ubicación o no ajusta los deptos al aprobar la preaprobación");
+    }
+
+    // ── 23 · ETAPA 3, B2 Y EL AJUSTE DE B1: LO QUE FRANCO AVERIGUÓ, LOS DOCUMENTOS Y LA LÍNEA DE UBICACIÓN (22-nov-2026, Fabrizio) ──
+    {
+      // 23a · La línea de la ubicación confirmada: solo si cambia el veredicto o lo que deja al mes cambia más que el umbral de los
+      // indicadores ($20.000); el texto no habla de la publicación.
+      const c0 = { veredicto: "COMPRAR", flujoCLP: 188927 };
+      if (cambioDeUbicacionRelevante(c0, { veredicto: "COMPRAR", flujoCLP: 179431 })) F("23a · una diferencia menor por los datos del día deja línea");
+      if (!cambioDeUbicacionRelevante(c0, { veredicto: "COMPRAR", flujoCLP: 160000 }) || !cambioDeUbicacionRelevante(c0, { veredicto: "AJUSTA SUPUESTOS", flujoCLP: 188000 })) F("23a · un cambio sobre el umbral o de veredicto no deja línea");
+      if (cambioDeUbicacionRelevante(null, c0)) F("23a · sin cálculo previo deja línea");
+      const l23 = lineaCambio({ tipo: "ubicacion" as never, antes: {}, despues: { flujoCLP: 179431 } }, "2026-11-22"), l23n = lineaCambio({ tipo: "ubicacion" as never, antes: {}, despues: { flujoCLP: -45000 } }, "2026-11-22");
+      if (l23 !== "Con la ubicación confirmada, el cálculo cambió: ahora deja $179.431 al mes." || l23n !== "Con la ubicación confirmada, el cálculo cambió: ahora pide $45.000 al mes.") F(`23a · el texto de la línea de ubicación cambió (${l23})`);
+      const ds23 = codigo("src/lib/invierte-v2/depto-servidor.ts");
+      if (!/const cambio = cambioDeUbicacionRelevante\(noche \? \{/.test(ds23) || !/const cambio = cambioDeUbicacionRelevante\(antes, r\.analisis\);/.test(ds23) || /\)\) >= 5000/.test(ds23)) F("23a · al confirmar o en la mañana no se usa el umbral de los indicadores");
+      // 23b · Las preguntas de la lectura: de una a cuatro, cada una UNA pregunta «¿…?», sin precio ni fotos; en el esquema y la versión.
+      const q23 = limpiarPreguntas(["¿Incluye estacionamiento?", "¿Cuánto cuesta? UF 2.700", "Pide fotos del baño", "¿Hay fotos del baño?", "¿Incluye estacionamiento?", "¿Cuánto son los gastos comunes?", "¿Tiene bodega?", "¿Hay ascensor?", "¿De qué año es?"]);
+      if (q23.join("|") !== "¿Incluye estacionamiento?|¿Cuánto son los gastos comunes?|¿Tiene bodega?|¿Hay ascensor?" || MAX_PREGUNTAS !== 4) F(`23b · las preguntas de la lectura no se limpian bien (${q23.join("|")})`);
+      if (!(ESQUEMA_LECTURA_FRANCO as unknown as { required: string[] }).required.includes("preguntas") || VERSION_LECTURA15 < 12 || !/6\. preguntas \(internas; Franco se las hace a quien vende mientras confirma el depto/.test(INSTRUCCION_LECTURA_FRANCO)) F("23b · la lectura no pide las preguntas para quien vende (o la versión no subió)");
+      const l23b = sanearLectura({ alerta: { nivel: "ninguna", motivo: null }, larga: [], corta: ["Una.", "Dos.", "Tres."], estado_arriendo: "listo", calle: null, numero: null, preguntas: ["¿Tiene bodega?"] });
+      if (l23b?.preguntas?.join() !== "¿Tiene bodega?") F("23b · el saneado no guarda las preguntas");
+      // 23c · Lo que ve la persona: solo lo preguntado, con la respuesta (quién y cuándo) o desde cuándo espera.
+      const P = (o: Record<string, unknown>) => ({ id: "q", pregunta: "¿Incluye estacionamiento?", enviadaAt: null, respuesta: null, fuente: null, respondidaAt: null, ...o }) as never;
+      if (lineaPregunta(P({})) !== null || preguntasVisibles([P({})]).length !== 0) F("23c · una pregunta que Franco todavía no hizo se muestra");
+      if (lineaPregunta(P({ enviadaAt: "2026-11-18T15:00:00Z" })) !== "Preguntado el 18 nov. Esperando respuesta.") F(`23c · la pregunta en espera no dice desde cuándo (${lineaPregunta(P({ enviadaAt: "2026-11-18T15:00:00Z" }))})`);
+      if (lineaPregunta(P({ enviadaAt: "2026-11-18T15:00:00Z", respuesta: "Sí, uno.", fuente: "quien_vende", respondidaAt: "2026-11-19T15:00:00Z" })) !== "Sí, uno. Respondió quien lo vende, el 19 nov.") F("23c · la respuesta no dice quién y cuándo");
+      // 23d · La página: «Lo que Franco averiguó» con lo preguntado; en confirmando, la frase de las preguntas; los documentos desde listo.
+      const P23 = (etapa: string, o: Record<string, unknown> = {}) => ({ avisoId: "x", etapa, noAvanzaMotivo: null, datos: { comuna: "Ñuñoa", precioUF: 3090, veredicto: "COMPRAR", score: 81 }, ficha: null, tituloConNumero: "Serrano · Metro Ñuñoa", ubicacion: null, cambios: [], preaprobacion: "aprobada", whatsapp: null, alternativa: null, activos: [], documentos: [], preguntas: [P({ enviadaAt: "2026-11-18T15:00:00Z" })], ...o });
+      const h23 = renderToStaticMarkup(createElement(VistaDepto, { p: P23("confirmando") as never })).replace(/<[^>]+>/g, "|");
+      if (!h23.includes("|Lo que Franco averiguó|") || !h23.includes("|¿Incluye estacionamiento?|") || !h23.includes("Mientras, ya le hicimos las preguntas que quedaron pendientes.") || h23.includes("Documentos de este depto")) F("23d · en confirmando la página no muestra lo averiguado o muestra los documentos");
+      const h23s = renderToStaticMarkup(createElement(VistaDepto, { p: P23("confirmando", { preguntas: [P({})] }) as never }));
+      if (/Lo que Franco averiguó|Mientras, ya le hicimos/.test(h23s)) F("23d · sin preguntas hechas igual aparece «Lo que Franco averiguó»");
+      const h23l = renderToStaticMarkup(createElement(VistaDepto, { p: P23("listo") as never })).replace(/<[^>]+>/g, "|");
+      if (!h23l.includes("|Documentos de este depto|") || !h23l.includes("|Todavía no hay documentos|") || !conDocumentos("sin_preaprobacion") || conDocumentos("confirmando")) F("23d · desde listo la página no muestra los documentos (con su vacío)");
+      // 23e · Las preguntas son por depto, la página las copia de la lectura y el admin las marca, responde y agrega.
+      const pg23 = codigo("src/lib/invierte-v2/depto-pagina-servidor.ts"), ra23 = codigo("src/app/api/admin/invierte-v2/route.ts");
+      if (!/await asegurarPreguntasDeLectura\(admin, avisoId, ficha\?\.lectura\?\.preguntas \?\? \[\]/.test(pg23) || !/\.eq\("aviso_id", avisoId\)\.is\("user_id", null\)/.test(ds23)) F("23e · las preguntas no se copian de la lectura o no son por depto");
+      if (!/accion === "preguntas_enviadas"/.test(ra23) || !/responderPregunta\(createAdminServiceClient\(\), \{ id: adminUser\.id/.test(ra23) || !/accion === "pregunta"/.test(ra23)) F("23e · el admin no puede marcar, responder o agregar preguntas");
+      // 23f · A los 3 días confirmando, una tarea interna (una sola por depto), desde la vigilancia de la mañana.
+      if (CONFIRMAR_DIAS_TAREA !== 3 || !/const atrasados = await tareasConfirmacionAtrasada\(admin, ahora\)/.test(codigo("src/app/api/cron/invierte-vigilar/route.ts")) || !/\.eq\("tipo", "confirmar_depto_atrasado"\);\n\s*if \(\(count \?\? 0\) > 0\) continue;/.test(ds23)) F("23f · la tarea de los 3 días confirmando no se crea (o se repite)");
     }
 
     // ── 18 · LECTURAS QUE FALLAN Y LA CORTA DE UNA FRASE (20-nov-2026, Fabrizio, tercera ronda) ──────────────────────────────────
