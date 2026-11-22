@@ -6,6 +6,7 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { MODOS_INVIERTE_V2, type ModoInvierteV2 } from "@/lib/invierte-v2/acceso";
 import { MapaPinAjustable } from "@/components/formulario-v4/MapaPinAjustable";
+import { FUENTES_RESPUESTA, lineaPregunta, type PreguntaDepto } from "@/lib/invierte-v2/depto-flujo";
 
 const ROTULO_MODO: Record<ModoInvierteV2, string> = { apagado: "Apagado (todos ven Pronto)", lista: "Solo la lista", todos: "Todos" };
 
@@ -211,10 +212,12 @@ export function RevisarPreaprobacion({ id, banco, montoUF, vigenteHasta }: { id:
  * pegan las coordenadas—. Al confirmar se rehace el análisis con el punto real y el depto pasa de etapa solo si hay acuerdo y el
  * análisis rehecho da Comprar (o Ajusta supuestos con precio al que vuelve a Comprar). Sin dirección confirmada no pasa a listo.
  */
-export function GestionDepto({ userId, avisoId, etapa, acuerdo, alternativa, comuna, pin, ubicacion }: {
+export function GestionDepto({ userId, avisoId, etapa, acuerdo, alternativa, comuna, pin, ubicacion, preguntas }: {
   userId: string; avisoId: string; etapa: string; acuerdo: string | null; alternativa: string | null; comuna: string | null;
   pin: { lat: number; lng: number } | null;
   ubicacion: { direccion: string; numero: string | null; lat: number; lng: number; distanciaM: number | null; veredicto: string | null; precioComprarUF: number | null; flujoCLP: number | null } | null;
+  /** B2: «Lo que Franco averiguó» de este depto. */
+  preguntas: PreguntaDepto[];
 }) {
   const router = useRouter();
   const [ac, setAc] = useState(acuerdo ?? "pendiente");
@@ -257,6 +260,59 @@ export function GestionDepto({ userId, avisoId, etapa, acuerdo, alternativa, com
       <div className="max-w-[520px]">
         <MapaPinAjustable lat={Number.isFinite(nLat) ? nLat : null} lng={Number.isFinite(nLng) ? nLng : null} comuna={comuna} limite="cobertura" height={200} onMover={(a, b) => { setLat(a.toFixed(7)); setLng(b.toFixed(7)); }} />
       </div>
+      <PreguntasDepto avisoId={avisoId} preguntas={preguntas} />
+      {estado && <span className="text-[12px] text-[var(--signal-red)]" role="alert">{estado}</span>}
+    </div>
+  );
+}
+
+const ROTULO_FUENTE: Record<(typeof FUENTES_RESPUESTA)[number], string> = { quien_vende: "Quien lo vende", documento: "Un documento", visita: "La visita", publicacion: "La publicación" };
+
+/** «Lo que Franco averiguó» en el admin (B2): las preguntas del depto (de la lectura y las agregadas), «Marcar preguntadas» (Franco se
+ *  las hizo a quien vende: la persona las ve «esperando respuesta»), la respuesta de cada una con su fuente y una pregunta más. */
+function PreguntasDepto({ avisoId, preguntas }: { avisoId: string; preguntas: PreguntaDepto[] }) {
+  const router = useRouter();
+  const [nueva, setNueva] = useState("");
+  const [resp, setResp] = useState<Record<string, { t: string; f: string }>>({});
+  const [ocupado, setOcupado] = useState(false);
+  const [estado, setEstado] = useState<string | null>(null);
+  const ERR: Record<string, string> = { respuesta: "Escribe la respuesta", fuente: "Elige de dónde salió", pregunta: "Escríbela entre «¿» y «?»", guardar: "No se guardó", red: "Sin conexión" };
+  async function enviar(cuerpo: Record<string, unknown>) {
+    setOcupado(true); setEstado(null);
+    const r = await llamar(cuerpo);
+    setOcupado(false);
+    if (!r.ok) { setEstado(ERR[r.error ?? ""] ?? "No se guardó"); return; }
+    setNueva(""); router.refresh();
+  }
+  const campo = "rounded-md border border-[var(--franco-border)] bg-[var(--franco-card)] px-2 py-1 font-body text-[13px] text-[var(--franco-text)]";
+  const pendientes = preguntas.filter((q) => !q.enviadaAt && !q.respuesta).length;
+  return (
+    <div className="flex flex-col gap-2" data-admin="inv2-preguntas">
+      <p className="m-0 font-semibold">Lo que Franco averiguó {pendientes > 0 && <button type="button" className={CLASE_BTN} disabled={ocupado} onClick={() => void enviar({ accion: "preguntas_enviadas", avisoId })} data-admin="inv2-marcar-preguntadas">Marcar {pendientes} como preguntadas</button>}</p>
+      {preguntas.length === 0 && <p className="m-0 text-[12px] text-[var(--franco-text-muted)]">Sin preguntas todavía (las deja la lectura de Franco).</p>}
+      <ul className="m-0 flex list-none flex-col gap-2 p-0">
+        {preguntas.map((q) => {
+          const r = resp[q.id] ?? { t: "", f: "quien_vende" };
+          return (
+            <li key={q.id} className="flex flex-col gap-1">
+              <span><b>{q.pregunta}</b> <span className="text-[12px] text-[var(--franco-text-muted)]">{lineaPregunta(q) ?? "Sin preguntar todavía"}</span></span>
+              {!q.respuesta && (
+                <span className="flex flex-wrap items-center gap-2">
+                  <input value={r.t} onChange={(e) => setResp({ ...resp, [q.id]: { ...r, t: e.target.value } })} placeholder="Respuesta (lo que ve la persona)" aria-label={`Respuesta a ${q.pregunta}`} className={`${campo} min-w-[280px]`} />
+                  <select value={r.f} onChange={(e) => setResp({ ...resp, [q.id]: { ...r, f: e.target.value } })} aria-label="De dónde salió" className={campo}>
+                    {FUENTES_RESPUESTA.map((f) => <option key={f} value={f}>{ROTULO_FUENTE[f]}</option>)}
+                  </select>
+                  <button type="button" className={CLASE_BTN} disabled={ocupado} onClick={() => void enviar({ accion: "respuesta", id: q.id, respuesta: r.t, fuente: r.f })} data-admin="inv2-responder">Guardar respuesta</button>
+                </span>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      <span className="flex flex-wrap items-center gap-2">
+        <input value={nueva} onChange={(e) => setNueva(e.target.value)} placeholder="¿Otra pregunta para quien vende?" aria-label="Pregunta nueva" className={`${campo} min-w-[280px]`} />
+        <button type="button" className={CLASE_BTN} disabled={ocupado || !nueva.trim()} onClick={() => void enviar({ accion: "pregunta", avisoId, pregunta: nueva })} data-admin="inv2-agregar-pregunta">Agregar</button>
+      </span>
       {estado && <span className="text-[12px] text-[var(--signal-red)]" role="alert">{estado}</span>}
     </div>
   );

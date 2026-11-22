@@ -93,3 +93,43 @@ export function estadoEnBase(etapa: Etapa, pre: EstadoVisible, motivo: string | 
   if (etapa === "listo") return { chip: "Te toca a ti", tono: "ciruela", linea: "Listo para ofertar o visitar" };
   return { chip: "Franco está en eso", tono: "gris", linea: "Confirmando con quien lo vende que sigue disponible" };
 }
+
+// ── LO QUE FRANCO AVERIGUÓ (B2, 22-nov-2026; láminas 4.1 y 4.2) ──────────────
+export const FUENTES_RESPUESTA = ["quien_vende", "documento", "visita", "publicacion"] as const;
+export type FuenteRespuesta = (typeof FUENTES_RESPUESTA)[number];
+const QUIEN: Record<FuenteRespuesta, string> = {
+  quien_vende: "Respondió quien lo vende",
+  documento: "Según un documento de quien lo vende",
+  visita: "Lo vio Franco en la visita",
+  publicacion: "Según la publicación",
+};
+export interface PreguntaDepto { id: string; pregunta: string; enviadaAt: string | null; respuesta: string | null; fuente: FuenteRespuesta | null; respondidaAt: string | null }
+
+export const AVERIGUO_COPY = {
+  titulo: "Lo que Franco averiguó",
+  linea: "Las preguntas que le hicimos a quien lo vende, y lo que respondió.",
+  mientras: "Mientras, ya le hicimos las preguntas que quedaron pendientes.",
+  documentosT: "Documentos de este depto",
+  sinDocumentosT: "Todavía no hay documentos",
+  sinDocumentos: "Aquí queda cada uno con «Ver»: oferta, contraofertas, reporte de visita, promesa.",
+} as const;
+
+/** La fecha corta de una fila: «18 nov». */
+export function diaMes(iso: string): string {
+  return new Intl.DateTimeFormat("es-CL", { timeZone: "America/Santiago", day: "numeric", month: "short" }).format(new Date(iso)).replace(".", "");
+}
+
+/** Lo que se ve bajo cada pregunta: la respuesta con quién la dio y cuándo, o desde cuándo se espera. Las no enviadas no se muestran. */
+export function lineaPregunta(p: PreguntaDepto): string | null {
+  if (p.respuesta) {
+    const r = p.respuesta.trim().replace(/[.\s]+$/, "");
+    return `${r}. ${p.fuente ? QUIEN[p.fuente] : QUIEN.quien_vende}${p.respondidaAt ? `, el ${diaMes(p.respondidaAt)}` : ""}.`;
+  }
+  return p.enviadaAt ? `Preguntado el ${diaMes(p.enviadaAt)}. Esperando respuesta.` : null;
+}
+
+/** Las que la persona ve: enviadas o respondidas. */
+export const preguntasVisibles = (ps: readonly PreguntaDepto[]) => ps.filter((p) => !!p.respuesta || !!p.enviadaAt);
+
+/** «Documentos de este depto» va desde que el depto está listo (lámina 4.2; la 4.1 no lo trae). */
+export const conDocumentos = (e: Etapa) => e !== "confirmando" && e !== "no_avanza" && e !== "no_sigo";

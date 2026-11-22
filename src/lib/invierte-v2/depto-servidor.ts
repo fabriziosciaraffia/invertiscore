@@ -15,12 +15,23 @@ import { evaluarAviso, VERSION_EVALUACION } from "@/lib/avisos/evaluar-aviso";
 import { candidatoDeEvaluacion } from "@/lib/avisos/estandar-deptos";
 import { negociarCandidato } from "@/lib/avisos/negociar";
 import { capRatePct } from "@/lib/explorar/explorar";
-import { etapaConPreaprobacion, etapaDe, etapaSiguiente, ubicacionConviene, type Acuerdo, type Etapa } from "./depto-flujo";
+import { etapaConPreaprobacion, etapaDe, etapaSiguiente, ubicacionConviene, FUENTES_RESPUESTA, type Acuerdo, type Etapa, type FuenteRespuesta, type PreguntaDepto } from "./depto-flujo";
 import { leerPreaprobacion } from "./preaprobacion-servidor";
 import { anotar, ultimaOrdenDe } from "./servidor";
+import { UMBRAL_MES_CLP } from "./detalles-modo";
 
 const T_DEPTOS = "inv_deptos";
 const T_UBIC = "inv_ubicaciones";
+
+/** ¿El cálculo con la ubicación confirmada cambió lo bastante para dejar una línea en «Cambios en la publicación»? (22-nov-2026,
+ *  Fabrizio): si cambia el veredicto, o lo que deja al mes cambia más que el umbral de los indicadores (UMBRAL_MES_CLP, $20.000).
+ *  Las diferencias menores por los datos del día actualizan el número sin dejar línea. */
+export function cambioDeUbicacionRelevante(antes: { veredicto: string | null; flujoCLP: number | null } | null, despues: { veredicto: string | null; flujoCLP: number | null }): boolean {
+  if (!antes) return false;
+  if ((antes.veredicto ?? null) !== (despues.veredicto ?? null)) return true;
+  if (antes.flujoCLP == null || despues.flujoCLP == null) return false;
+  return Math.abs(despues.flujoCLP - antes.flujoCLP) > UMBRAL_MES_CLP;
+}
 
 export interface AnalisisUbicacion { veredicto: string | null; score: number | null; flujoCLP: number | null; arriendoCLP: number | null; capRatePct: number | null; precioUF: number; radio: number | null; n: number | null }
 export interface Ubicacion { avisoId: string; direccion: string; numero: string | null; lat: number; lng: number; distanciaM: number | null; analisis: AnalisisUbicacion | null; precioComprarUF: number | null; cargadaAt: string }
@@ -123,7 +134,7 @@ export async function confirmarUbicacion(admin: SupabaseClient, quien: { id: str
   if (up.error) return { ok: false, error: "guardar" };
   // La lectura del depto se rehace con los números nuevos (se escribe sola la próxima vez que alguien la vea).
   await admin.from("lecturas_franco").delete().eq("aviso_id", avisoId);
-  const cambio = noche && (noche.veredicto_20 !== r.analisis.veredicto || Math.abs(Number(noche.flujo_20 ?? 0) - Number(r.analisis.flujoCLP ?? 0)) >= 5000);
+  const cambio = cambioDeUbicacionRelevante(noche ? { veredicto: (noche.veredicto_20 as string | null) ?? null, flujoCLP: noche.flujo_20 == null ? null : Number(noche.flujo_20) } : null, r.analisis);
   for (const t of tienen ?? []) {
     if (cambio) {
       await admin.from("inv_cambios").insert({
@@ -221,7 +232,7 @@ export async function reanalizarVencidas(admin: SupabaseClient, ahora: Date = ne
     await admin.from(T_UBIC).update({ analisis: r.analisis, analisis_veredicto: r.analisis.veredicto, analisis_precio_uf: r.analisis.precioUF, precio_comprar_uf: r.precioComprarUF, analisis_motor_version: VERSION_EVALUACION, analisis_at: fin, analisis_error: null }).eq("aviso_id", f.aviso_id);
     rehechos++;
     const antes = f.analisis;
-    const cambio = !antes || antes.veredicto !== r.analisis.veredicto || Math.abs(Number(antes.flujoCLP ?? 0) - Number(r.analisis.flujoCLP ?? 0)) >= 5000;
+    const cambio = cambioDeUbicacionRelevante(antes, r.analisis);
     const { data: tienen } = await admin.from(T_DEPTOS).select("user_id, estado, etapa, es_prueba").eq("aviso_id", f.aviso_id).in("estado", ["elegido", "opcion"]);
     for (const t of tienen ?? []) {
       if (cambio) await admin.from("inv_cambios").insert({ user_id: t.user_id, aviso_id: f.aviso_id, tipo: "ubicacion", antes: { veredicto: antes?.veredicto ?? null, flujoCLP: antes?.flujoCLP ?? null }, despues: { veredicto: r.analisis.veredicto, flujoCLP: r.analisis.flujoCLP }, fecha: fin.slice(0, 10), en_base: true, relevante: false, es_prueba: t.es_prueba === true });
@@ -232,4 +243,74 @@ export async function reanalizarVencidas(admin: SupabaseClient, ahora: Date = ne
     }
   }
   return { revisados: filas.length, rehechos, fallidos };
+}
+
+// ── LO QUE FRANCO AVERIGUÓ (B2, 22-nov-2026): las preguntas de la lectura (y las del admin), POR DEPTO ─────────
+const T_PREG = "inv_preguntas";
+
+function aPregunta(f: Record<string, unknown>): PreguntaDepto {
+  return { id: f.id as string, pregunta: f.pregunta as string, enviadaAt: (f.enviada_at as string | null) ?? null, respuesta: (f.respuesta as string | null) ?? null, fuente: (f.respuesta_fuente as FuenteRespuesta | null) ?? null, respondidaAt: (f.respondida_at as string | null) ?? null };
+}
+
+/** Las preguntas de un depto (las que valen para todas las personas), en su orden. */
+export async function leerPreguntas(admin: SupabaseClient, avisoId: string): Promise<PreguntaDepto[]> {
+  const { data } = await admin.from(T_PREG).select("id, pregunta, enviada_at, respuesta, respuesta_fuente, respondida_at, orden, created_at").eq("aviso_id", avisoId).is("user_id", null).eq("visible", true).order("orden").order("created_at").limit(20);
+  return ((data ?? []) as Record<string, unknown>[]).map(aPregunta);
+}
+
+/** Las preguntas que dejó la lectura se copian una vez por depto (el índice único las protege de un doble alta). */
+export async function asegurarPreguntasDeLectura(admin: SupabaseClient, avisoId: string, preguntas: readonly string[], esPrueba: boolean): Promise<void> {
+  if (!preguntas.length) return;
+  const { count } = await admin.from(T_PREG).select("id", { count: "exact", head: true }).eq("aviso_id", avisoId).eq("origen", "lectura");
+  if ((count ?? 0) > 0) return;
+  const { error } = await admin.from(T_PREG).insert(preguntas.map((pregunta, orden) => ({ aviso_id: avisoId, user_id: null, origen: "lectura", pregunta, orden, es_prueba: esPrueba })));
+  if (error && !/duplicate|unique/i.test(error.message)) console.error("[inv2] preguntas de la lectura:", error.message);
+}
+
+/** Admin: las pendientes de un depto quedan «preguntadas» hoy (Franco se las hizo a quien vende). */
+export async function marcarPreguntasEnviadas(admin: SupabaseClient, quien: { email: string | null }, avisoId: string): Promise<{ ok: boolean; n: number }> {
+  const { data, error } = await admin.from(T_PREG).update({ enviada_at: new Date().toISOString() }).eq("aviso_id", avisoId).is("enviada_at", null).is("respuesta", null).select("id");
+  if (error) return { ok: false, n: 0 };
+  await anotar(admin, { userId: null, email: null, actor: "admin", actorEmail: quien.email, accion: "preguntas_enviadas", detalle: { aviso_id: avisoId, n: (data ?? []).length }, esPrueba: false });
+  return { ok: true, n: (data ?? []).length };
+}
+
+/** Admin: la respuesta de una pregunta, con su fuente. La carga una persona de Franco (queda su id). */
+export async function responderPregunta(admin: SupabaseClient, quien: { id: string; email: string | null }, id: string, respuesta: unknown, fuente: unknown): Promise<{ ok: true } | { ok: false; error: "respuesta" | "fuente" | "guardar" }> {
+  const r = typeof respuesta === "string" ? respuesta.replace(/\s+/g, " ").trim() : "";
+  if (r.length < 2 || r.length > 300) return { ok: false, error: "respuesta" };
+  if (!(FUENTES_RESPUESTA as readonly unknown[]).includes(fuente)) return { ok: false, error: "fuente" };
+  const ahora = new Date().toISOString();
+  const { data: previa } = await admin.from(T_PREG).select("enviada_at, aviso_id").eq("id", id).maybeSingle();
+  const { error } = await admin.from(T_PREG).update({ respuesta: r, respuesta_fuente: fuente, respondida_at: ahora, respondida_por: quien.id, enviada_at: previa?.enviada_at ?? ahora }).eq("id", id);
+  if (error) return { ok: false, error: "guardar" };
+  await anotar(admin, { userId: null, email: null, actor: "admin", actorEmail: quien.email, accion: "pregunta_respondida", detalle: { aviso_id: previa?.aviso_id ?? null, id, fuente }, esPrueba: false });
+  return { ok: true };
+}
+
+/** Admin: una pregunta más para quien vende (por depto). */
+export async function agregarPregunta(admin: SupabaseClient, quien: { email: string | null }, avisoId: string, pregunta: unknown): Promise<{ ok: true } | { ok: false; error: "pregunta" | "guardar" }> {
+  const t = typeof pregunta === "string" ? pregunta.replace(/\s+/g, " ").trim() : "";
+  if (!/^¿[^¿?]{3,150}\?$/.test(t)) return { ok: false, error: "pregunta" };
+  const { count } = await admin.from(T_PREG).select("id", { count: "exact", head: true }).eq("aviso_id", avisoId);
+  const { error } = await admin.from(T_PREG).insert({ aviso_id: avisoId, user_id: null, origen: "admin", pregunta: t, orden: 100 + (count ?? 0) });
+  if (error) return { ok: false, error: "guardar" };
+  await anotar(admin, { userId: null, email: null, actor: "admin", actorEmail: quien.email, accion: "pregunta_agregada", detalle: { aviso_id: avisoId }, esPrueba: false });
+  return { ok: true };
+}
+
+/** La mañana: un depto que sigue confirmando después de CONFIRMAR_DIAS_TAREA días deja una tarea interna (una sola por depto;
+ *  lámina 4.1-confirmando: «si pasan 3 días sin confirmar, entra una tarea al CRM»). */
+export const CONFIRMAR_DIAS_TAREA = 3;
+export async function tareasConfirmacionAtrasada(admin: SupabaseClient, ahora: Date = new Date()): Promise<number> {
+  const limite = new Date(ahora.getTime() - CONFIRMAR_DIAS_TAREA * 864e5).toISOString();
+  const { data } = await admin.from(T_DEPTOS).select("user_id, aviso_id, etapa, es_prueba, elegido_at").eq("estado", "elegido").or("etapa.is.null,etapa.eq.confirmando").lt("elegido_at", limite).limit(200);
+  let n = 0;
+  for (const d of data ?? []) {
+    const { count } = await admin.from("inv_tareas").select("id", { count: "exact", head: true }).eq("user_id", d.user_id as string).eq("aviso_id", d.aviso_id as string).eq("tipo", "confirmar_depto_atrasado");
+    if ((count ?? 0) > 0) continue;
+    const { error } = await admin.from("inv_tareas").insert({ user_id: d.user_id, tipo: "confirmar_depto_atrasado", aviso_id: d.aviso_id, estado: "pendiente", detalle: { elegido_at: d.elegido_at, dias: CONFIRMAR_DIAS_TAREA }, es_prueba: d.es_prueba === true });
+    if (!error) n++;
+  }
+  return n;
 }

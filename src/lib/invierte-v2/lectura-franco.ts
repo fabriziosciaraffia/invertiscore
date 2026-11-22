@@ -21,8 +21,8 @@
 import { limpiarCalle, limpiarNumero } from "./titulo-depto";
 
 /** Sube con cada cambio de la instrucción: una lectura de otra versión se vuelve a generar. 11 (etapa 3, 20-nov-2026): la calle y el
- *  número, internos, para el título del depto. */
-export const VERSION_LECTURA = 11;
+ *  número, internos, para el título del depto. 12 (etapa 3, B2, 22-nov-2026): las preguntas para quien vende (internas). */
+export const VERSION_LECTURA = 12;
 /** Todas las fotos de la publicación, hasta este tope (20-nov-2026; antes 8, y la lectura decía que faltaban fotos que sí estaban). */
 export const MAX_FOTOS_LECTURA = 24;
 /** Lecturas nuevas por hora, entre todas las personas (resguardo de costo). */
@@ -62,6 +62,8 @@ export interface LecturaFranco {
   calle?: string | null;
   /** Interno: el número de la calle, solo si la publicación lo dice y sale limpio. No va en el título: solo en la página del depto. */
   numero?: string | null;
+  /** Interno (etapa 3, B2): lo que Franco le pregunta a quien vende mientras confirma el depto («Lo que Franco averiguó»). */
+  preguntas?: string[];
 }
 
 /** Las cifras del motor que la lectura PUEDE citar, tal como las muestra la tarjeta (20-nov-2026, Fabrizio): el cap rate bruto y lo que
@@ -112,6 +114,8 @@ Entregas tres cosas:
 
 5. calle y numero (internos, no se muestran en la lectura; sirven para nombrar el depto): la calle donde está el depto según la dirección o el texto de la publicación, sin número ni comuna, escrita con mayúsculas normales («Dublé Almeyda», «Av. Irarrázaval»); y su número, solo si la publicación lo dice tal cual. Si la publicación no dice la calle con claridad, calle es null; si no dice el número, numero es null. Nunca los deduzcas de la ubicación, del metro ni de las fotos, y no los nombres en las líneas de la lectura.
 
+6. preguntas (internas; Franco se las hace a quien vende mientras confirma el depto, y la persona las ve con su respuesta): de una a cuatro preguntas cortas, cada una una sola pregunta entre signos de interrogación («¿Incluye estacionamiento?», «¿Cuánto son los gastos comunes?»), sobre lo que falta saber antes de ofertar y que quien vende puede responder: lo que dice «Ojo», lo que la publicación no informa (gastos comunes, estacionamiento, bodega, año del edificio, contribuciones) o lo que las fotos dejan en duda. Sin precio ni descuentos, sin pedir fotos y sin preguntas que la publicación ya responde.
+
 Reglas:
 - Nunca cites ni juzgues el precio: nada de precios, precio por m², «bajo su zona», «más barato», «buen precio» ni comparaciones con la zona o con otros deptos. Eso lo dice el informe, con otra referencia.
 - De las cifras del motor, solo las de la tarjeta (cap rate bruto, lo que deja o pide al mes y el veredicto), tal cual. Ninguna otra: ni precio, ni arriendo, ni gastos comunes en pesos, ni distancia al metro. Sí puedes usar medidas que vengan de la publicación y sirvan para arrendar (por ejemplo, un dormitorio de 6,6 m²), pisos, cantidades de dormitorios y años de construcción informados.
@@ -129,10 +133,11 @@ const FUENTE = { type: "string", enum: ["fotos", "publicacion", "datos"] } as co
 export const ESQUEMA_LECTURA_FRANCO = {
   type: "object",
   additionalProperties: false,
-  required: ["alerta", "larga", "corta", "estado_arriendo", "calle", "numero"],
+  required: ["alerta", "larga", "corta", "estado_arriendo", "calle", "numero", "preguntas"],
   properties: {
     calle: { anyOf: [{ type: "string", maxLength: 80, description: "Interno: la calle según la publicación, sin número ni comuna." }, { type: "null" }] },
     numero: { anyOf: [{ type: "string", maxLength: 12, description: "Interno: el número de la calle, solo si la publicación lo dice." }, { type: "null" }] },
+    preguntas: { type: "array", items: { type: "string", maxLength: MAX_CARACTERES_ESQUEMA }, description: "Internas: de una a cuatro preguntas para quien vende." },
     alerta: {
       type: "object",
       additionalProperties: false,
@@ -232,6 +237,7 @@ export function sanearConRegistro(j: unknown, opts: { fotosCompletas?: boolean; 
   // La calle y el número pasan por la misma limpieza que el título (etapa 3): lo que no es una calle confiable queda en null.
   const calle = limpiarCalle(typeof o.calle === "string" ? o.calle : null);
   const numero = calle ? limpiarNumero(typeof o.numero === "string" ? o.numero : null) : null;
+  const preguntas = limpiarPreguntas((o as { preguntas?: unknown }).preguntas, cifras);
   const estadoCrudo = o.estado_arriendo ?? o.estadoArriendo;
   const estadoArriendo: EstadoArriendo | null = (ESTADOS_ARRIENDO as readonly unknown[]).includes(estadoCrudo) ? (estadoCrudo as EstadoArriendo) : null;
   const motivoCrudo = limpio(o.alerta?.motivo);
@@ -250,7 +256,7 @@ export function sanearConRegistro(j: unknown, opts: { fotosCompletas?: boolean; 
   const corta = (Array.isArray(o.corta) ? o.corta : []).map((l) => limpio(typeof l === "string" ? l : (l as { texto?: unknown } | null)?.texto)).filter((t): t is string => !!t && filtro("corta")(t)).slice(0, 3);
   if (!larga.length && !corta.length) return { lectura: null, descartes };
   // Una alerta sin motivo legible no se muestra como alerta (queda el nivel para decidir si se recomienda).
-  return { lectura: { alerta: { nivel, motivo }, larga, corta, estadoArriendo, cifras, calle, numero }, descartes };
+  return { lectura: { alerta: { nivel, motivo }, larga, corta, estadoArriendo, cifras, calle, numero, preguntas }, descartes };
 }
 
 /** ¿Esta línea es UNA frase? Un punto, signo de cierre o exclamación seguido de otra frase la parte en dos. */
@@ -305,4 +311,23 @@ export function lineaAlternativa(l: LecturaFranco): string | null {
 export function partirLinea(t: string): { fuerte: string | null; resto: string } {
   const i = t.indexOf(":");
   return i > 0 && i < 70 ? { fuerte: t.slice(0, i + 1), resto: t.slice(i + 1) } : { fuerte: null, resto: t };
+}
+
+/** Las preguntas para quien vende (etapa 3, B2): hasta MAX_PREGUNTAS, cada una UNA pregunta entre signos «¿…?», de 120 caracteres o
+ *  menos, sin precio (la misma red del saneado), sin pedir fotos y sin repetir. Lo que no cumple se cae: nunca se recorta. */
+export const MAX_PREGUNTAS = 4;
+export function limpiarPreguntas(x: unknown, cifras: CifrasTarjeta | null = null): string[] {
+  if (!Array.isArray(x)) return [];
+  const vistas = new Set<string>();
+  const out: string[] = [];
+  for (const raw of x) {
+    const t = typeof raw === "string" ? raw.replace(/\s+/g, " ").trim() : "";
+    if (!/^¿[^¿?]+\?$/.test(t) || t.length > MAX_CARACTERES_CORTA || reglaDescarte(t, cifras) || /\bfotos?\b/i.test(t)) continue;
+    const k = t.toLowerCase();
+    if (vistas.has(k)) continue;
+    vistas.add(k);
+    out.push(t);
+    if (out.length >= MAX_PREGUNTAS) break;
+  }
+  return out;
 }

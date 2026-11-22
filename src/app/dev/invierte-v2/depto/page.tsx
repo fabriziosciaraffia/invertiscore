@@ -14,7 +14,7 @@ import { tituloDepto } from "@/lib/invierte-v2/titulo-depto";
 
 export const dynamic = "force-dynamic";
 
-export default function DeptoDemo({ searchParams }: { searchParams: { etapa?: string; aviso?: string; confirmada?: string } }) {
+export default function DeptoDemo({ searchParams }: { searchParams: { etapa?: string; aviso?: string; confirmada?: string; preguntas?: string } }) {
   if (process.env.NODE_ENV === "production" && process.env.VERCEL_ENV !== "preview") notFound();
   const e = searchParams.etapa ?? "confirmando";
   const etapa: Etapa = e === "revision" || e === "corregir" ? "sin_preaprobacion" : e === "dejo" ? "no_avanza" : (["confirmando", "sin_preaprobacion", "listo", "no_avanza"].includes(e) ? e : "confirmando") as Etapa;
@@ -32,6 +32,13 @@ export default function DeptoDemo({ searchParams }: { searchParams: { etapa?: st
     preaprobacion: pre, whatsapp: "+56912345678",
     alternativa: e === "no_avanza" || e === "dejo" ? { avisoId: "alt", datos: { comuna: "Providencia", dormitorios: 2, banos: 2, m2: 60, precioUF: 3180, veredicto: "COMPRAR", score: 77 }, ficha: { titulo: "Av. Irarrázaval · Metro Chile España", metro: null, comuna: "Ñuñoa", fotos: 0, capRatePct: 5.0, lectura: null }, alcanza: true } : null,
     activos: [],
+    // «Lo que Franco averiguó» (B2): en confirmando, las tres preguntadas; desde listo, dos respondidas (lámina 4.2). ?preguntas=0 las saca.
+    preguntas: searchParams.preguntas === "0" ? [] : [
+      { id: "q1", pregunta: "¿Incluye estacionamiento?", enviadaAt: "2026-11-18T15:00:00Z", respuesta: etapa === "confirmando" ? null : "Sí, uno, inscrito con el depto", fuente: etapa === "confirmando" ? null : "quien_vende", respondidaAt: etapa === "confirmando" ? null : "2026-11-19T15:00:00Z" },
+      { id: "q2", pregunta: "¿Cuánto son los gastos comunes?", enviadaAt: "2026-11-18T15:00:00Z", respuesta: etapa === "confirmando" ? null : "$95.000 al mes", fuente: etapa === "confirmando" ? null : "quien_vende", respondidaAt: etapa === "confirmando" ? null : "2026-11-19T15:00:00Z" },
+      { id: "q3", pregunta: "¿De qué año es el edificio?", enviadaAt: "2026-11-18T15:00:00Z", respuesta: null, fuente: null, respondidaAt: null },
+    ],
+    documentos: [],
   };
   return (
     <MarcoInvierte volver={null} pantalla="depto" layout="contenido" cabecera={DEPTO_COPY.cabecera} pc={{ sesionEmail: "muestra@ejemplo.cl", invierte: "inversion" }} miInversion>

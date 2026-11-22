@@ -12,7 +12,8 @@ import type { DatosDepto } from "@/lib/invierte-v2/base-servidor";
 import { lineaCambio, type TipoCambio } from "@/lib/invierte-v2/cambios";
 import { ETIQUETAS, fmtUF, textoAlMes, type Etiqueta } from "@/lib/invierte-v2/opciones";
 import { GestionDepto, RevisarPreaprobacion, TareaHecha } from "../controles";
-import { leerUbicaciones } from "@/lib/invierte-v2/depto-servidor";
+import { asegurarPreguntasDeLectura, leerPreguntas, leerUbicaciones } from "@/lib/invierte-v2/depto-servidor";
+import { leerLecturas } from "@/lib/invierte-v2/lectura-franco-servidor";
 import { etapaDe } from "@/lib/invierte-v2/depto-flujo";
 import { leerPreaprobacion } from "@/lib/invierte-v2/preaprobacion-servidor";
 import { lineaAprobada } from "@/lib/invierte-v2/preaprobacion";
@@ -33,6 +34,7 @@ const TIPO_TAREA: Record<string, string> = {
   revisar_preaprobacion: "Revisar la preaprobación",
   contactar_listo: "Contactarla: está lista",
   explicar_preaprobacion: "Explicarle la preaprobación",
+  confirmar_depto_atrasado: "Confirmar el depto: lleva 3 días",
 };
 const ESTADO_DEPTO: Record<string, string> = { elegido: "Elegido", opcion: "Opción", descartado: "Descartado" };
 
@@ -47,7 +49,7 @@ export default async function FichaInvierteV2Page({ params }: { params: { userId
   const pre = await leerPreaprobacion(sb, userId);
   const [persona, orden, perfil, { data: deptos }, { data: tareas }, { data: cambios }, { data: bitacora }, { data: detalles }] = await Promise.all([
     leerPersona(sb, userId), ultimaOrdenDe(sb, userId), leerPerfilInv(sb, userId),
-    sb.from("inv_deptos").select("aviso_id, estado, origen, etiqueta, alcanza, datos, elegido_at, vigente, publicacion_leida_at, updated_at, etapa, acuerdo, alternativa_aviso_id").eq("user_id", userId).order("estado").order("updated_at", { ascending: false }),
+    sb.from("inv_deptos").select("aviso_id, estado, origen, etiqueta, alcanza, datos, elegido_at, vigente, publicacion_leida_at, updated_at, etapa, acuerdo, alternativa_aviso_id, es_prueba").eq("user_id", userId).order("estado").order("updated_at", { ascending: false }),
     sb.from("inv_tareas").select("id, tipo, aviso_id, estado, detalle, hecha_por, hecha_at, created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(100),
     sb.from("inv_cambios").select("aviso_id, tipo, antes, despues, fecha, en_base, relevante, correo_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(40),
     sb.from("inv_bitacora").select("id, actor, actor_email, accion, detalle, created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(50),
@@ -63,6 +65,10 @@ export default async function FichaInvierteV2Page({ params }: { params: { userId
     leerUbicaciones(sb, idsEl),
     idsEl.length ? sb.from("scraped_properties").select("id, lat, lng, comuna").in("id", idsEl).order("id").limit(50) : Promise.resolve({ data: [] as { id: string; lat: number | null; lng: number | null; comuna: string | null }[] }),
   ]);
+  // B2: las preguntas de cada depto (las de la lectura se copian aquí también, por si la persona todavía no abrió su página).
+  const lecturas = await leerLecturas(sb, idsEl);
+  for (const d of elegidos) await asegurarPreguntasDeLectura(sb, d.aviso_id as string, lecturas[d.aviso_id as string]?.preguntas ?? [], d.es_prueba === true);
+  const preguntasDe = Object.fromEntries(await Promise.all(idsEl.map(async (id) => [id, await leerPreguntas(sb, id)] as const)));
   const pinDe = new Map(((pines ?? []) as { id: string; lat: number | null; lng: number | null; comuna: string | null }[]).map((x) => [x.id, x]));
   const pendientes = (tareas ?? []).filter((t) => t.estado === "pendiente");
   const hechas = (tareas ?? []).filter((t) => t.estado !== "pendiente");
@@ -194,6 +200,7 @@ export default async function FichaInvierteV2Page({ params }: { params: { userId
                 <p className="m-0 mb-2 font-body text-[13px] font-semibold">{lineaDepto((d.datos ?? {}) as DatosDepto) || id} <span className="font-mono text-[11px] font-normal text-[var(--franco-text-muted)]">{id}</span></p>
                 <GestionDepto userId={userId} avisoId={id} etapa={etapaDe({ estado: "elegido", etapa: (d.etapa as string | null) ?? null }) ?? "confirmando"} acuerdo={(d.acuerdo as string | null) ?? null} alternativa={(d.alternativa_aviso_id as string | null) ?? null}
                   comuna={pin?.comuna ?? null} pin={pin?.lat != null && pin?.lng != null ? { lat: Number(pin.lat), lng: Number(pin.lng) } : null}
+                  preguntas={preguntasDe[id] ?? []}
                   ubicacion={u ? { direccion: u.direccion, numero: u.numero, lat: u.lat, lng: u.lng, distanciaM: u.distanciaM, veredicto: u.analisis?.veredicto ?? null, precioComprarUF: u.precioComprarUF, flujoCLP: u.analisis?.flujoCLP ?? null } : null} />
               </div>
             );

@@ -11,7 +11,7 @@ import { ChipVeredicto } from "@/components/analysis/shared/ChipVeredicto";
 import type { Veredicto } from "@/lib/types";
 import { fmtUF } from "@/lib/invierte-v2/opciones";
 import { lineaDepto, urlWhatsapp } from "@/lib/invierte-v2/base";
-import { DEPTO_COPY as D, loQueSigue } from "@/lib/invierte-v2/depto-flujo";
+import { AVERIGUO_COPY as AV, DEPTO_COPY as D, conDocumentos, lineaPregunta, loQueSigue, preguntasVisibles } from "@/lib/invierte-v2/depto-flujo";
 import { URL_OPCIONES } from "@/lib/invierte-v2/destino";
 import { URL_PREAPROBACION } from "@/lib/invierte-v2/preaprobacion";
 import type { PaginaDepto } from "@/lib/invierte-v2/depto-pagina-servidor";
@@ -53,7 +53,7 @@ function LoQueSigueBloque({ p }: { p: PaginaDepto }) {
         <span className={s.tono === "ciruela" ? "iv2-estado-ciruela" : "iv2-estado-gris"} data-inv2="sigue-chip">{s.chip}</span>
       </div>
       <h2 className="iv2-dp-sigue-t" id="iv2-sigue-t">{s.titulo}</h2>
-      {s.texto && <p className="iv2-dp-sigue-txt">{s.texto}</p>}
+      {s.texto && <p className="iv2-dp-sigue-txt">{s.texto}{p.etapa === "confirmando" && preguntasVisibles(p.preguntas).length > 0 ? ` ${AV.mientras}` : ""}</p>}
       {s.boton && <Link href={s.boton.href} className="inv-principal" data-inv2="sigue-boton">{s.boton.texto}</Link>}
     </section>
   );
@@ -65,6 +65,42 @@ function Cambios({ p }: { p: PaginaDepto }) {
     <section className="iv2-dp-sec" aria-labelledby="iv2-cambios-t" data-inv2="cambios-publicacion">
       <h2 className="iv2-dp-h2" id="iv2-cambios-t">{D.cambiosT}</h2>
       <ul className="iv2-dp-filas">{p.cambios.map((c, i) => <li key={i} className="iv2-dp-fila-item">{c}</li>)}</ul>
+    </section>
+  );
+}
+
+/** «Lo que Franco averiguó» (B2; láminas 4.1 y 4.2): solo las preguntas que Franco ya hizo, con su respuesta o desde cuándo espera. */
+function Averiguo({ p }: { p: PaginaDepto }) {
+  const vis = preguntasVisibles(p.preguntas);
+  if (!vis.length) return null;
+  return (
+    <section className="iv2-dp-sec" aria-labelledby="iv2-averiguo-t" data-inv2="lo-que-averiguo">
+      <h2 className="iv2-dp-h2" id="iv2-averiguo-t">{AV.titulo}</h2>
+      <p className="iv2-dp-sub">{AV.linea}</p>
+      <ul className="iv2-dp-filas">
+        {vis.map((q) => (
+          <li key={q.id} className="iv2-dp-pregunta" data-respondida={q.respuesta ? "1" : undefined}>
+            <span className="iv2-dp-pregunta-t">{q.pregunta}</span>
+            <span className="iv2-dp-pregunta-s">{lineaPregunta(q)}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/** «Documentos de este depto» (B2; lámina 4.2): desde que el depto está listo. Hoy, sin documentos todavía. */
+function Documentos({ p }: { p: PaginaDepto }) {
+  if (!conDocumentos(p.etapa)) return null;
+  return (
+    <section className="iv2-dp-sec" aria-labelledby="iv2-docs-t" data-inv2="documentos-depto">
+      <h2 className="iv2-dp-h2" id="iv2-docs-t">{AV.documentosT}</h2>
+      {p.documentos.length === 0 && (
+        <div className="iv2-dp-vacio" data-inv2="sin-documentos">
+          <span className="iv2-dp-pregunta-t">{AV.sinDocumentosT}</span>
+          <span className="iv2-dp-pregunta-s">{AV.sinDocumentos}</span>
+        </div>
+      )}
     </section>
   );
 }
@@ -120,7 +156,9 @@ export function VistaDepto({ p }: { p: PaginaDepto }) {
         <LoQueSigueBloque p={p} />
       </div>
       <div className="iv2-dp-der">
+        <Averiguo p={p} />
         <Cambios p={p} />
+        <Documentos p={p} />
         <Preguntale p={p} />
       </div>
     </div>

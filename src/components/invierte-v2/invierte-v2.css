@@ -838,3 +838,12 @@
   .iv2-dp-t { font-size: 20px; }
   .iv2-dp-noavanza { padding-top: 24px; }
 }
+
+/* «Lo que Franco averiguó» y «Documentos de este depto» (B2; láminas 4.1 y 4.2): filas separadas por una línea, la pregunta en negrita
+   y debajo la respuesta (con quién y cuándo) o desde cuándo se espera; sin documentos, el texto del vacío. */
+.iv2-dp-sub { margin: 0 0 2px; font-size: 12px; line-height: 1.45; color: var(--franco-text-secondary); }
+.iv2-dp-pregunta { display: flex; flex-direction: column; gap: 2px; padding: 10px 0; border-bottom: 1px solid var(--franco-border); }
+.iv2-dp-pregunta:last-child { border-bottom: 0; }
+.iv2-dp-pregunta-t { font-size: 14px; font-weight: 600; line-height: 1.35; }
+.iv2-dp-pregunta-s { font-size: 12px; line-height: 1.45; color: var(--franco-text-secondary); }
+.iv2-dp-vacio { display: flex; flex-direction: column; gap: 2px; padding: 10px 0; }

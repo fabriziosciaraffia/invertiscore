@@ -10,7 +10,7 @@ import { validarAprobacion, validarMotivo } from "@/lib/invierte-v2/preaprobacio
 import { sendPreaprobacionInvierte } from "@/lib/email";
 import { estadoInterruptor } from "@/lib/invierte-v2/acceso-servidor";
 import { puedeRecibirCopia } from "@/lib/invierte-v2/copias-servidor";
-import { ajustarPorPreaprobacion, confirmarUbicacion, registrarAcuerdo } from "@/lib/invierte-v2/depto-servidor";
+import { agregarPregunta, ajustarPorPreaprobacion, confirmarUbicacion, marcarPreguntasEnviadas, registrarAcuerdo, responderPregunta } from "@/lib/invierte-v2/depto-servidor";
 
 /** El correo de la revisión: solo a quien el interruptor deja (mientras el modo no sea «todos», la lista). */
 const DEPS_REVISION: DepsRevision = {
@@ -102,6 +102,24 @@ export async function POST(request: Request) {
     if (typeof b?.avisoId !== "string" || !UUID.test(b.avisoId)) return NextResponse.json({ error: "datos" }, { status: 400 });
     const r = await confirmarUbicacion(createAdminServiceClient(), { id: adminUser.id, email: adminUser.email ?? null }, b.avisoId, b);
     if (!r.ok) return NextResponse.json({ error: r.error }, { status: r.error === "guardar" || r.error === "config" ? 500 : 400 });
+    return NextResponse.json(r);
+  }
+  // B2: «Lo que Franco averiguó» (por depto). Marcar preguntadas, responder con su fuente, agregar una.
+  if (accion === "preguntas_enviadas") {
+    if (typeof b?.avisoId !== "string" || !UUID.test(b.avisoId)) return NextResponse.json({ error: "datos" }, { status: 400 });
+    const r = await marcarPreguntasEnviadas(createAdminServiceClient(), { email: adminUser.email ?? null }, b.avisoId);
+    return NextResponse.json(r, { status: r.ok ? 200 : 500 });
+  }
+  if (accion === "respuesta") {
+    if (typeof b?.id !== "string" || !UUID.test(b.id)) return NextResponse.json({ error: "datos" }, { status: 400 });
+    const r = await responderPregunta(createAdminServiceClient(), { id: adminUser.id, email: adminUser.email ?? null }, b.id, b.respuesta, b.fuente);
+    if (!r.ok) return NextResponse.json({ error: r.error }, { status: r.error === "guardar" ? 500 : 400 });
+    return NextResponse.json(r);
+  }
+  if (accion === "pregunta") {
+    if (typeof b?.avisoId !== "string" || !UUID.test(b.avisoId)) return NextResponse.json({ error: "datos" }, { status: 400 });
+    const r = await agregarPregunta(createAdminServiceClient(), { email: adminUser.email ?? null }, b.avisoId, b.pregunta);
+    if (!r.ok) return NextResponse.json({ error: r.error }, { status: r.error === "guardar" ? 500 : 400 });
     return NextResponse.json(r);
   }
   if (accion === "tarea") {
