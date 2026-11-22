@@ -68,6 +68,9 @@ export function almacenPublicacion(admin: SupabaseClient): AlmacenPublicacion {
         { onConflict: "aviso_id" },
       );
       reportarFalloQuery(error, { ruta: RUTA, operacion: "guardar-detalle" });
+      // La fecha o antigüedad de la publicación (22-nov-2026), aparte: si la columna todavía no existe
+      // (20261129_publicacion_detalle_publicado), la fila ya quedó guardada y no se pierde nada.
+      if (!error) await admin.from("publicacion_detalle").update({ publicado_info: detalle.publicado ?? null }).eq("aviso_id", avisoId).then(() => undefined, () => undefined);
     },
   };
 }
