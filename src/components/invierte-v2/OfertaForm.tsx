@@ -7,15 +7,26 @@
 //   · si el piso menos la oferta pasa de 5 % del publicado, aviso fuerte: el botón principal pasa a «Hablarlo con Franco» y revisar y
 //     firmar queda como enlace;
 //   · sobre el borde alto, que puede partir más abajo.
+// Cada vez que el aviso aparece o cambia de nivel se lleva a la vista, por encima de la barra fija de los botones (llevarAvisoALaVista):
+// meterlo en la zona fija la haría crecer a media pantalla en un celular con el aviso fuerte y sus tres botones.
 // Sin enlace ni texto sobre lo que gana Franco. Aquí no se firma: el botón lleva a «Revisa tu oferta antes de firmar» (5.1b).
 // ─────────────────────────────────────────────────────────────────────────────
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { OFERTA_COPY as O, POSTURA_COPY, avisoOferta, type Postura } from "@/lib/invierte-v2/rango";
 import { partirLinea } from "@/lib/invierte-v2/lectura-franco";
 
 export const URL_API_OFERTA = "/api/invierte-v2/oferta";
 const PASO = 10;
+
+/** Lleva el aviso a la vista sin que la barra fija de los botones lo tape: el margen inferior del desplazamiento es el alto de la barra. */
+export function llevarAvisoALaVista(aviso: HTMLElement | null, barra: HTMLElement | null) {
+  if (!aviso) return;
+  aviso.style.scrollMarginBottom = `${(barra?.offsetHeight ?? 0) + 12}px`;
+  aviso.style.scrollMarginTop = "12px";
+  const quieto = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  aviso.scrollIntoView({ block: "nearest", behavior: quieto ? "auto" : "smooth" });
+}
 
 export function OfertaForm({ avisoId, urlFirmar, postura, pisoUF, recomendadoUF, altoUF, publicadoUF, razones, avisoFuertePct, montoInicial }: {
   avisoId: string; urlFirmar: string; postura: Postura; pisoUF: number; recomendadoUF: number; altoUF: number; publicadoUF: number; razones: string[]; avisoFuertePct: number; montoInicial: number | null;
@@ -26,6 +37,9 @@ export function OfertaForm({ avisoId, urlFirmar, postura, pisoUF, recomendadoUF,
   const [enviando, setEnviando] = useState(false);
   const fijar = (n: number) => { const v = Math.max(1, Math.round(n)); setMonto(v); setTexto(String(v)); };
   const aviso = avisoOferta(monto, { pisoUF, altoUF }, publicadoUF, { avisoFuertePct });
+  const refAviso = useRef<HTMLDivElement>(null);
+  const refBarra = useRef<HTMLDivElement>(null);
+  useEffect(() => { if (aviso !== "ninguno") llevarAvisoALaVista(refAviso.current, refBarra.current); }, [aviso]);
   async function hablar() {
     if (enviando) return;
     setEnviando(true);
@@ -57,15 +71,15 @@ export function OfertaForm({ avisoId, urlFirmar, postura, pisoUF, recomendadoUF,
         <p className="iv2-of-linea">{O.campoLinea}</p>
       </section>
       {(aviso === "bajo_piso" || aviso === "bajo_piso_fuerte") && (
-        <div className="iv2-of-aviso" data-inv2="aviso" data-nivel={aviso} role="status">
+        <div ref={refAviso} className="iv2-of-aviso" data-inv2="aviso" data-nivel={aviso} role="status">
           <b>{O.bajoT(pisoUF - monto)}</b>
           <span>{aviso === "bajo_piso_fuerte" ? O.bajoFuerte : O.bajoSuave}</span>
           <span>{O.esTuDecision}</span>
         </div>
       )}
-      {aviso === "sobre_recomendado" && <div className="iv2-of-aviso" data-inv2="aviso" data-nivel={aviso} role="status"><span>{O.sobre(monto - altoUF)}</span></div>}
+      {aviso === "sobre_recomendado" && <div ref={refAviso} className="iv2-of-aviso" data-inv2="aviso" data-nivel={aviso} role="status"><span>{O.sobre(monto - altoUF)}</span></div>}
       <div className="iv2-msj-franco iv2-of-sujeta"><span className="iv2-msj-franco-de">{O.sujetaT}</span>{O.sujeta}</div>
-      <div className="iv2-acciones iv2-of-acciones">
+      <div ref={refBarra} className="iv2-acciones iv2-of-acciones">
         {aviso === "bajo_piso_fuerte" ? (
           <>
             <button type="button" className="inv-principal" onClick={() => void hablar()} disabled={enviando || hablado} aria-busy={enviando || undefined} data-inv2="hablar">{hablado ? O.hablarListo : O.hablar}</button>
