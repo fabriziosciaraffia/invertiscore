@@ -139,7 +139,7 @@ export function calcularRango(publicadoUF: number, s: SenalesRango, ahora: Date 
     aplicado.push({ senal: s.estadoArriendo === "remodelacion" ? "remodelacion" : "arreglos", puntos: pa, dato: { arreglos: s.arreglos } });
     razones.push(`${conMayuscula(arreglosEnUnaFrase(s.arreglos))}: es un argumento concreto para pedir rebaja.`);
   }
-  if (!razones.length) razones.push(`No vimos nada en este depto que mueva el precio. Estimamos que los vendedores de deptos usados que ajustan su precio ceden cerca de ${fmt(c.base)} %.`);
+  if (!razones.length) razones.push(`No vimos nada en este depto que mueva el precio. Estimamos que los vendedores de deptos usados que ajustan su precio ceden cerca de ${fmt(c.base)} %.`);
   const descuentoPct = Math.min(c.max, Math.max(c.min, pts));
   const pub = publicadoUF;
   const recomendadoUF = Math.round(pub * (1 - descuentoPct / 100));
@@ -165,7 +165,8 @@ export function calcularRango(publicadoUF: number, s: SenalesRango, ahora: Date 
 export const topeOferta = (publicadoUF: number) => Math.max(1, Math.floor(publicadoUF));
 export const acotarOferta = (montoUF: number, publicadoUF: number) => Math.min(topeOferta(publicadoUF), Math.max(1, Math.round(montoUF)));
 
-const pct1 = (x: number) => `${(Math.round(x * 10) / 10).toLocaleString("es-CL", { maximumFractionDigits: 1 })} %`;
+// Con espacio que no corta: «5 %» nunca queda partido en dos renglones.
+const pct1 = (x: number) => `${(Math.round(x * 10) / 10).toLocaleString("es-CL", { maximumFractionDigits: 1 })} %`;
 /** «5 % bajo el precio publicado», «7,8 %…». */
 export const pctBajoPublicado = (montoUF: number, publicadoUF: number) => `${pct1((1 - montoUF / publicadoUF) * 100)} bajo el precio publicado`;
 /** «4 % a 6 % bajo el precio publicado» (el rango, en puntos enteros). */

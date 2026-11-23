@@ -1242,7 +1242,7 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       // 24a · Sin señales: la base (5 %), «Negocia un poco» y la razón única; el rango un punto arriba y uno abajo del recomendado.
       const r0 = calcularRango(3000, S0, ah24);
       if (r0.descuentoPct !== 5 || r0.postura !== "negocia_poco" || r0.recomendadoUF !== 2850 || r0.pisoUF !== 2820 || r0.altoUF !== 2880 || r0.techoUF !== 3000 || r0.regla !== "v1.1" || REGLA_VERSION !== "v1.1" || r0.comprarUF !== null) F(`24a · la base del rango no da 5 % con su rango ±1 punto (${JSON.stringify(r0)})`);
-      if (r0.razones.join() !== "No vimos nada en este depto que mueva el precio. Estimamos que los vendedores de deptos usados que ajustan su precio ceden cerca de 5 %.") F("24a · sin señales, la razón no es la decidida");
+      if (r0.razones.join() !== "No vimos nada en este depto que mueva el precio. Estimamos que los vendedores de deptos usados que ajustan su precio ceden cerca de 5 %.") F("24a · sin señales, la razón no es la decidida");
       // 24b · Ya bajó: +1, con cuánto y cuándo.
       const r1 = calcularRango(3000, { ...S0, bajada: { uf: 80, fecha: "2026-11-01" } }, ah24);
       if (r1.descuentoPct !== 6 || r1.razones[0] !== "Ya bajó UF 80 hace tres semanas: quien vende está dispuesto a moverse.") F(`24b · «ya bajó» no suma 1 o no dice cuánto y cuándo (${r1.razones[0]})`);
@@ -1331,7 +1331,7 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (eb.maxUF !== 3090 || !(eb.minUF < fuerteDesde(2905, 3090)) || ((3085 - 3080) / (eb2.maxUF - eb2.minUF)) * 100 < FRANJA_MIN_PCT - 0.01) F(`24p · la barra no llega al publicado o la franja de un rango angosto no se ve (${JSON.stringify([eb, eb2])})`);
       if (fuerteDesde(2905, 3090) !== 2905 - 154.5) F("24p · la zona rayada no es el piso menos 5 % del publicado");
       // Los textos de una línea y los porcentajes.
-      if (pctBajoPublicado(2936, 3090) !== "5 % bajo el precio publicado" || pctBajoPublicado(2850, 3090) !== "7,8 % bajo el precio publicado" || rangoPctPublicado(2905, 2966, 3090) !== "4 % a 6 % bajo el precio publicado") F("24p · los porcentajes bajo el publicado no se dicen como en la lámina");
+      if (pctBajoPublicado(2936, 3090) !== "5 % bajo el precio publicado" || pctBajoPublicado(2850, 3090) !== "7,8 % bajo el precio publicado" || rangoPctPublicado(2905, 2966, 3090) !== "4 % a 6 % bajo el precio publicado") F("24p · los porcentajes bajo el publicado no se dicen como en la lámina");
       const os = OF(2880), osb = OF(3040);
       if (!/<b>Estás UF 25 bajo lo recomendado\.<\/b> Puedes ofertar igual\./.test(os) || !/class="inv-principal" data-inv2="revisar"[^>]*>Revisar y firmar por UF 2\.880</.test(os) || !/data-inv2="volver-recomendada">Volver a la recomendada</.test(os)) F("24p · el aviso suave no es de una línea o sus botones no son los de la lámina");
       if (!/<b>Estás UF 73 sobre lo recomendado\.<\/b> Puedes partir más abajo\./.test(osb) || !/class="inv-principal"[^>]*data-inv2="volver-recomendada">Volver a la recomendada</.test(osb) || !/data-inv2="revisar"[^>]*>Firmar igual por UF 3\.040</.test(osb)) F("24p · sobre lo recomendado, el rojo no es «Volver a la recomendada» con firmar igual como enlace");
@@ -1345,7 +1345,7 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       const iNo = fq.indexOf("Firmar no te obliga a comprar"), iRes = fq.indexOf('data-inv2="resumen-oferta"');
       if (iNo < 0 || iRes < 0 || iNo > iRes || FIRMA_COPY.pasos.join("|") !== "Firmas|Responden|Visitas el depto|Confirmas o la retiras" || (fq.match(/<li><i aria-hidden="true">\d<\/i>/g) ?? []).length !== 4) F("24q · la firma no parte con «Firmar no te obliga a comprar» y sus cuatro pasos");
       const filas = (fq.slice(iRes, fq.indexOf("</dl>", iRes)).match(/<dt>/g) ?? []).length;
-      if (filas !== 3 || !/<dt>Vigencia<\/dt><dd><span>5 días desde que Franco la presenta<\/span><span class="iv2-fo-dd-s" data-inv2="vigencia-otro">Mientras tanto no puedes ofertar por otro depto</.test(fq) || !/5 % bajo el precio publicado/.test(fq)) F(`24q · el resumen no son tres filas o la vigencia no dice que no puede ofertar por otro depto (${filas} filas)`);
+      if (filas !== 3 || !/<dt>Vigencia<\/dt><dd><span>5 días desde que Franco la presenta<\/span><span class="iv2-fo-dd-s" data-inv2="vigencia-otro">Mientras tanto no puedes ofertar por otro depto</.test(fq) || !/5\s% bajo el precio publicado/.test(fq)) F(`24q · el resumen no son tres filas o la vigencia no dice que no puede ofertar por otro depto (${filas} filas)`);
       if (FIRMA_COPY.sujetaVentana.length < 3 || FIRMA_COPY.sujetaVentana.length > 4 || !/data-inv2="que-significa">¿Qué significa «sujeta a visita»\?</.test(fq) || !/variante="chica"/.test(leer("src/components/invierte-v2/FirmaOfertaForm.tsx"))) F("24q · «¿Qué significa sujeta a visita?» no abre una ventana chica de tres o cuatro líneas");
       if (!/disabled=""[^>]*data-inv2="boton-firmar-oferta">Firmar mi oferta por UF 2\.936</.test(fq)) F("24q · el botón de firmar no está apagado hasta marcar la casilla o no dice el monto");
       const css24 = leer("src/components/invierte-v2/invierte-v2.css");
