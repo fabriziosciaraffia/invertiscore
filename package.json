@@ -9,7 +9,8 @@
     "lint": "next lint",
     "audit:attractors": "tsx scripts/audit-attractors.ts",
     "typecheck:scripts": "tsc --noEmit -p tsconfig.scripts.json",
-    "gate:invierte-b4": "node --env-file=.env.local --import tsx scripts/eval/invierte-b4-recorrido.ts"
+    "gate:invierte-b4": "node --env-file=.env.local --import tsx scripts/eval/invierte-b4-recorrido.ts",
+    "gate:invierte-b4-seguros": "node --env-file=.env.local --import tsx scripts/eval/invierte-b4-recorrido-seguros.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
