@@ -34,6 +34,8 @@ import { capturarServidor } from "@/lib/posthog-servidor";
 import { esPiePopup, esPlazoPopup } from "@/lib/explorar/explorar";
 import { eventoExplorarAnaliza } from "@/lib/explorar/servidor";
 import { devolverCobro } from "@/lib/access";
+import type { MarcaCambio } from "@/lib/guia/cobro-mostrado";
+import { devolverCobroPorCambio } from "@/lib/guia/cobro-mostrado-servidor";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // «Analizar este» en un depto de la selección de RENTA CORTA (14-oct-2026, decisión de Fabrizio). El bloque de renta
@@ -236,7 +238,7 @@ export async function POST(request: Request) {
                   waitUntil(sendAnalysisReadyEmail(user.email, nombreReal(user.user_metadata) ?? "", titulo, Number(data.score) || 0, veredicto, id, undefined, { userId: user.id })
                     .catch((e) => console.error("[semanal/analizar-str] correo listo:", e)));
                 }
-                return { id };
+                return { id, veredicto: readVeredicto(data.results as never) ?? null };
               },
               async marcarCreado(id) {
                 await admin.from("semanal_str_analisis").update({ analysis_id: id, creado_at: new Date().toISOString() }).match(clave);
@@ -247,6 +249,23 @@ export async function POST(request: Request) {
               },
               async soltar() {
                 await admin.from("semanal_str_analisis").delete().match(clave).is("analysis_id", null);
+              },
+              // EL RESPALDO EN RENTA CORTA (23-nov-2026, decisión de Fabrizio, guia/cobro-mostrado.ts): lo mostrado (el ítem de la
+              // selección, o el Comprar por zona de Explorar) contra la medición fina con que se crea el informe; «Analizar igual» es
+              // el aviso aceptado. El «no da» ya frena el cobro antes; si igual el informe sale distinto sin aviso, el crédito vuelve.
+              cotejo: {
+                mostrado: { veredicto: item.veredicto!, score: item.score ?? null, at: sel?.enviadaAt ?? new Date().toISOString(), fuente: desdeExplorar ? "pantalla" : "correo" },
+                hoy: { veredicto: fino.veredicto, score: fino.score },
+                aceptoCambio: b.igual === true,
+              },
+              async devolverPorCambio(id: string, _d, marca: MarcaCambio) {
+                const grantId = await devolverCobroPorCambio(admin, { userId: user.id, userEmail: user.email ?? null, analysisId: id, avisoId, marca, desde });
+                if (!grantId) { captureApiError(new Error("No se pudo devolver el cobro por cambio de veredicto (renta corta)"), { ruta: RUTA, operacion: "devolver-por-cambio", userId: user.id, extra: { analysisId: id } }); return false; }
+                const { data: f } = await admin.from("analisis").select("input_data").eq("id", id).maybeSingle();
+                const inp = (f?.input_data ?? {}) as Record<string, unknown> & { origenAviso?: Record<string, unknown> };
+                const { error } = await admin.from("analisis").update({ input_data: { ...inp, origenAviso: { ...(inp.origenAviso ?? { avisoId }), cobroDevuelto: { ...marca, grantId, at: new Date().toISOString() } } } }).eq("id", id);
+                if (error) captureApiError(error, { ruta: RUTA, operacion: "marcar-cobro-devuelto", userId: user.id, extra: { analysisId: id, grantId } });
+                return true;
               },
             },
           },
@@ -292,9 +311,10 @@ export async function POST(request: Request) {
     if (r.estado === "no-da") {
       return salir(NextResponse.json({ estado: "no-da", alternativas: r.alternativas, publicacion, porQue: porQueNoDa(r.zona, r.fino), saldo: saldoAlMedir }));
     }
-    // La renta corta no coteja lo mostrado (guia/cobro-mostrado.ts cubre la renta larga): sin cotejo, «cambio» no ocurre.
+    // «cambio» no ocurre en renta corta: lo mostrado siempre es Comprar y el «no da» (antes del cobro) corta primero cuando la medición
+    // fina no da Comprar; el cotejo de las piezas queda para el respaldo (guia/cobro-mostrado.ts).
     if (r.estado === "cambio") return salir(NextResponse.json({ error: "interno" }, { status: 500 }));
-    return salir(NextResponse.json({ id: r.id, estado: r.estado }));
+    return salir(NextResponse.json({ id: r.id, estado: r.estado, devuelto: r.estado === "creado" && r.devuelto === true }));
   } catch (e) {
     captureApiError(e, { ruta: RUTA, operacion: "analizar-aviso-str", userId: user.id, extra: { avisoId } });
     return salir(NextResponse.json({ error: "interno" }, { status: 500 }));

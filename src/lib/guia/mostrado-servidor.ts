@@ -27,3 +27,17 @@ export function mostradoDePantalla(c: CandidatoGuia, combo: { piePct: number; pl
   if (!s || !s.veredicto) return null;
   return { veredicto: s.veredicto, score: s.score, at: ahora.toISOString(), fuente: "pantalla" };
 }
+
+/**
+ * LO QUE MOSTRÓ LA GUÍA (23-nov-2026, decisión de Fabrizio): la guía se guarda 12 horas (`guias_calculadas`) y la persona la mira
+ * hecha. Si esa noche la fila del aviso se reevaluó, la sonda de hoy ya no es lo que vio: lo mostrado es el ítem de la guía
+ * guardada, con su fecha, si su combinación es la que se analiza. null si no hay guía guardada con ese aviso y esa combinación.
+ */
+export async function mostradoDeGuia(admin: SupabaseClient, analysisId: string, avisoId: string, combo: { piePct: number; plazoAnios: number }): Promise<Mostrado | null> {
+  const { data } = await admin.from("guias_calculadas").select("resultado, calculada_at").eq("analysis_id", analysisId).maybeSingle();
+  const r = data?.resultado as { disponible?: boolean; combinacion?: { piePct?: number; plazoAnios?: number } | null; items?: Array<{ avisoId: string; veredicto: string | null; score: number | null }> } | undefined;
+  if (!data || !r?.disponible || !r.combinacion || r.combinacion.piePct !== combo.piePct || r.combinacion.plazoAnios !== combo.plazoAnios) return null;
+  const it = (r.items ?? []).find((i) => i.avisoId === avisoId);
+  if (!it?.veredicto) return null;
+  return { veredicto: it.veredicto, score: typeof it.score === "number" ? it.score : null, at: String(data.calculada_at), fuente: "pantalla" };
+}

@@ -38,7 +38,7 @@ import { devolverCobro } from "@/lib/access";
 import { EVENTO_DETALLE_ABIERTO, MODO_INVIERTE, verGratisInvierte } from "@/lib/invierte-v2/detalles";
 import { chequearPublicacionInvierte, detallesPreparados } from "@/lib/invierte-v2/carril-servidor";
 import { avisadoDelCambio, type MarcaCambio, type Mostrado, type VeredictoHoy } from "@/lib/guia/cobro-mostrado";
-import { mostradoDePantalla, mostradoDelCorreo } from "@/lib/guia/mostrado-servidor";
+import { mostradoDeGuia, mostradoDePantalla, mostradoDelCorreo } from "@/lib/guia/mostrado-servidor";
 import { devolverCobroPorCambio } from "@/lib/guia/cobro-mostrado-servidor";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -248,9 +248,13 @@ export async function POST(request: Request) {
         // que `crear` hará el informe; lo mostrado, del correo o de la sonda de la pantalla con esta combinación y esta tasa.
         let cotejo: { mostrado: Mostrado | null; hoy: VeredictoHoy | null; aceptoCambio: boolean } | null = null;
         if (negociadoUF == null) {
+          // Desde la guía, la guía guardada que la persona tiene en pantalla (puede tener hasta 12 horas); sin ella, la sonda.
+          const mostradoGuia = !desdeCorreo && desde === "guia" && origen.analysisId
+            ? await mostradoDeGuia(admin, origen.analysisId, aviso.avisoId, combinacion).catch(() => null)
+            : null;
           const mostrado = desdeCorreo
             ? mostradoCorreo
-            : mostradoDePantalla(aviso, { piePct: combinacion.piePct, plazoAnios: combinacion.plazoAnios, tasa: tasaElegida ?? (desde === "guia" ? origen.tasa : null) }, { uf: ufValue, tasa: cfg.tasa });
+            : mostradoGuia ?? mostradoDePantalla(aviso, { piePct: combinacion.piePct, plazoAnios: combinacion.plazoAnios, tasa: tasaElegida ?? (desde === "guia" ? origen.tasa : null) }, { uf: ufValue, tasa: cfg.tasa });
           if (mostrado) {
             medianaDeHoy = medianaDeHoy ?? await prefetchMedianaComunaVenta(admin, body, ufValue);
             const r0 = runAnalysis(body, ufValue, medianaDeHoy);

@@ -30,6 +30,8 @@ import * as cm from "../../../src/lib/guia/cobro-mostrado";
 import * as ie from "../../../src/lib/guia/informe-en-camino";
 import { analizarUnaVez, type PiezasAnalizar, type Reclamo } from "../../../src/lib/guia/analizar-una-vez";
 import type { Devolucion } from "../../../src/lib/access-devolucion";
+import { mostradoDeGuia } from "../../../src/lib/guia/mostrado-servidor";
+import { analizarStrDeSemanal } from "../../../src/lib/guia/semanal-str";
 
 (globalThis as { React?: unknown }).React = React;
 (require as unknown as { extensions: Record<string, (m: { exports: unknown }) => void> }).extensions[".css"] = (m) => { m.exports = {}; };
@@ -182,7 +184,8 @@ export async function runCobroMostradoTier(): Promise<{ hard: number }> {
     // Lo mostrado, nunca del pedido: ningún veredicto ni puntaje leído del cuerpo.
     // Positivo (un guard solo negativo se evade con otra grafía, p. ej. `(b as …).mostrado`): lo mostrado es EXACTAMENTE el correo o
     // la sonda, sin nada antes; y negativo, ninguna lectura de esos campos sobre el cuerpo, con cualquier forma.
-    if (!/const mostrado = desdeCorreo\s*\?\s*mostradoCorreo\s*:\s*mostradoDePantalla\(/.test(ruta) || /\bb\b[^;\n]{0,40}\.(?:mostrado|veredicto|score|vista|esperado)\b/.test(ruta)) F("3 · la ruta lee lo mostrado desde el cuerpo del pedido (el navegador)");
+    // ⚠ ACTA (23-nov-2026, Fabrizio: la guía compara contra la tarjeta que vio) · desde la guía, primero la guía guardada.
+    if (!/const mostrado = desdeCorreo\s*\?\s*mostradoCorreo\s*:\s*mostradoGuia \?\? mostradoDePantalla\(/.test(ruta) || /\bb\b[^;\n]{0,40}\.(?:mostrado|veredicto|score|vista|esperado)\b/.test(ruta)) F("3 · la ruta lee lo mostrado desde el cuerpo del pedido (el navegador)");
     if (!/mostradoDelCorreo\(admin, b\.semanal!, user\.id, b\.avisoId\)/.test(ruta) || !/mostradoDePantalla\(aviso, \{ piePct: combinacion\.piePct, plazoAnios: combinacion\.plazoAnios, tasa: tasaElegida \?\? \(desde === "guia" \? origen\.tasa : null\) \}, \{ uf: ufValue, tasa: cfg\.tasa \}\)/.test(ruta)) F("3 · la ruta no reconstruye lo mostrado desde el correo o la sonda de la pantalla con la misma combinación y tasa");
     if (!/const desdeCorreo = typeof b\.semanal === "string" && !elegida && negociadoUF == null;/.test(ruta)) F("3 · el correo cuenta como lo mostrado aunque la persona eligió otra combinación (o con el precio negociado)");
     // El veredicto de hoy: del mismo cuerpo y la misma mediana que usa `crear`.
@@ -240,6 +243,46 @@ export async function runCobroMostradoTier(): Promise<{ hard: number }> {
     if (!/lineaCambio=\{lineaCambioPortada\(inputData\)\}/.test(codigo("src/components/analysis/SubjectCardGrid.tsx")) || !/\{lineaCambio && <p className="doc-hero-tasa" data-portada="cambio-mostrado"/.test(codigo("src/components/analysis/portada/PortadaInforme.tsx"))) F("5 · la portada no dibuja la línea del cambio");
   }
 
+  // ══ §6 · LA GUÍA: LO QUE VIO, NO LA SONDA DE HOY ═════════════════════════════
+  // El caso de Fabrizio: la guía guardada (12 h) mostró Comprar; esa noche la fila se reevaluó a Ajusta supuestos y en vivo también.
+  // Comparar contra la sonda de hoy diría «sin cambio» y cobraría; lo mostrado tiene que ser la tarjeta guardada.
+  {
+    const fila = { resultado: { disponible: true, combinacion: { piePct: 20, plazoAnios: 30 }, items: [{ avisoId: "av-1", veredicto: "COMPRAR", score: 82 }] }, calculada_at: AHORA.toISOString() };
+    const falso = (row: unknown) => ({ from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: row }) }) }) }) }) as never;
+    const m = await mostradoDeGuia(falso(fila), "an-1", "av-1", { piePct: 20, plazoAnios: 30 });
+    if (!m || m.veredicto !== "COMPRAR" || m.at !== AHORA.toISOString()) F("6 · desde la guía, lo mostrado no es la tarjeta guardada con su fecha");
+    if (m && cm.decidirAntesDeCobrar({ mostrado: m, hoy: H("AJUSTA SUPUESTOS"), aceptoCambio: false, ahora: AHORA }) !== "avisar") F("6 · la guía mostró Comprar, hoy da Ajusta supuestos y no avisa");
+    if (await mostradoDeGuia(falso(fila), "an-1", "av-1", { piePct: 10, plazoAnios: 30 })) F("6 · la guía guardada con otra combinación cuenta como lo mostrado");
+    if (await mostradoDeGuia(falso(fila), "an-1", "av-2", { piePct: 20, plazoAnios: 30 })) F("6 · un aviso que no está en la guía guardada cuenta como mostrado");
+    if (await mostradoDeGuia(falso(null), "an-1", "av-1", { piePct: 20, plazoAnios: 30 })) F("6 · sin guía guardada inventa lo mostrado");
+    const ruta = codigo("src/app/api/lo-que-sigue/guia/analizar/route.ts");
+    if (!/const mostradoGuia = !desdeCorreo && desde === "guia" && origen\.analysisId\s*\?\s*await mostradoDeGuia\(admin, origen\.analysisId, aviso\.avisoId, combinacion\)/.test(ruta)) F("6 · la ruta no lee la guía guardada cuando se analiza desde la guía");
+  }
+
+  // ══ §7 · RENTA CORTA: EL RESPALDO ════════════════════════════════════════════════
+  // El «no da» ya frena el cobro antes cuando la medición fina no da Comprar. El respaldo: si igual el informe de renta corta sale con
+  // otro veredicto que lo mostrado, sin «Analizar igual», el crédito vuelve.
+  {
+    const corre = async (o: { fino: string; informe: string; igual?: boolean }) => {
+      const { piezas, c } = banco({ veredictoInforme: o.informe, cotejo: { mostrado: M("COMPRAR", 0.5), hoy: H(o.fino, 70), aceptoCambio: o.igual === true } });
+      const r = await analizarStrDeSemanal({
+        igual: o.igual, yaCreado: async () => null, chequear: async () => "publicado", alDespublicar: async () => {}, registrar: async () => {}, alternativas: async () => [],
+        preparar: async () => ({ ok: true, m: { mostrado: { veredicto: "COMPRAR", score: 80 }, zona: null, fino: { veredicto: o.fino, score: 70, adr: null, ocupacion: null }, piezas } as never }),
+      });
+      return { r, c };
+    };
+    const a = await corre({ fino: "COMPRAR", informe: "AJUSTA SUPUESTOS" });
+    if (a.r.estado !== "creado" || a.c.devPorCambio !== 1) F(`7 · un informe de renta corta con otro veredicto que lo mostrado, sin aviso, queda cobrado (${a.r.estado}, ${a.c.devPorCambio} devoluciones)`);
+    const b = await corre({ fino: "AJUSTA SUPUESTOS", informe: "AJUSTA SUPUESTOS" });
+    if (b.r.estado !== "no-da" || b.c.cobros !== 0) F("7 · la medición fina no da Comprar y se cobra igual (sin «no da»)");
+    const g = await corre({ fino: "AJUSTA SUPUESTOS", informe: "AJUSTA SUPUESTOS", igual: true });
+    if (g.c.cobros !== 1 || g.c.devPorCambio !== 0) F("7 · con «Analizar igual» no se cobra normal o se devuelve igual");
+    const str = codigo("src/app/api/semanal/analizar-str/route.ts");
+    if (!/cotejo: \{\s*mostrado: \{ veredicto: item\.veredicto!, score: item\.score \?\? null, at: sel\?\.enviadaAt \?\? new Date\(\)\.toISOString\(\)/.test(str) || !/hoy: \{ veredicto: fino\.veredicto, score: fino\.score \},\s*aceptoCambio: b\.igual === true,/.test(str)) F("7 · la ruta de renta corta no coteja lo mostrado contra la medición fina");
+    if (!/async devolverPorCambio\(id: string, _d, marca: MarcaCambio\) \{\s*const grantId = await devolverCobroPorCambio\(admin,/.test(str) || !/return \{ id, veredicto: readVeredicto\(data\.results as never\) \?\? null \};/.test(str)) F("7 · la ruta de renta corta no devuelve el cobro o no dice el veredicto del informe");
+    if (!/lineaCambio=\{lineaCambioPortada\(inputData\)\}/.test(codigo("src/app/analisis/renta-corta/[id]/results-client.tsx"))) F("7 · el informe de renta corta no dice la línea del cambio");
+  }
+
   if (fallas.length === 0) console.log("  ✓ COBRO-MOSTRADO: todo en orden");
   for (const f of fallas) console.log(`  ✗ ${f}`);
   if (fallas.length) console.log(`  ${fallas.length} falla(s) dura(s)`);
@@ -267,4 +310,7 @@ if (require.main === module) {
 //   M12 `crear` sin el veredicto del informe .................................. §3
 //   12/12 en rojo (runner local: scripts/of-mutar-cobro-mostrado.mjs, untracked; restaura cada archivo desde su copia).
 //   M13 (23-nov-2026) el aviso vuelto a la forma «frase» («ahora sale Ajustar») ... §1 «no nombra AJUSTA SUPUESTOS con su nombre de siempre».
+//   M14 (23-nov) desde la guía, la sonda en vez de la guía guardada ............ §3 / §6
+//   M15 la guía guardada con otra combinación cuenta como mostrada ................ §6
+//   M16 renta corta sin respaldo (aceptoCambio siempre true) ....................... §7
 // ============================================================================
