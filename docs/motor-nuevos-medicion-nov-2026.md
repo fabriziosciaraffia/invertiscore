@@ -4,8 +4,8 @@ Goal de solo lectura, pegado por Fabrizio el 05-nov-2026. Nada de este documento
 prompts, el informe ni la base: todo recálculo corre en memoria con los scripts de `scripts/analisis/motor-nuevos/`,
 que llaman al motor real (`runAnalysis`) con los insumos guardados en `avisos_evaluados`.
 
-> **Estado: las cuatro fases y los anexos 1 a 3 en master (5839f71e, 18-nov-2026); los anexos 4 «salida al mayor cap»
-> (18-nov-2026) y 5 «nuevos con subsidio por defecto» (23-nov-2026) en la rama, a la espera del OK para el push.** Orden del documento: resumen, FASE 0, FASE 1, punto 0, FASE 2, punto 2, FASE 3, defectos,
+> **Estado: las cuatro fases y los anexos 1 a 5 en master (25900861, 23-nov-2026); el anexo 6 «valor del medio y dos
+> definiciones de Comprar» (24-nov-2026) en la rama, a la espera del OK para el push.** Orden del documento: resumen, FASE 0, FASE 1, punto 0, FASE 2, punto 2, FASE 3, defectos,
 > punto 1 (edad), FASE 4 (supuestos y resultados), lo que la base no puede responder, preguntas.
 
 ## Resumen (10 líneas): qué parte del 1,8 % explica cada cosa
@@ -3063,3 +3063,296 @@ motor (9,9 %).
   y el flujo de un depto que ya era negativo empeora. Con g = 0 % el bono pie es el peor de los tres casos en Ñuñoa y Puente Alto
   (en Santiago los tres son no calculables). El descuento real de 10 %, en cambio, mejora flujo, puntaje, saldo y la TIR con
   g = 3 % en las tres.
+
+## Anexo 6: valor del medio y dos definiciones de Comprar (24-nov-2026)
+
+**Resumen (5 líneas)**
+1. **Los dos testigos dicen que un nuevo vale menos de lo que cuesta en el 90 % de los casos** (4.221 de 4.690): el valor por ingreso queda 26 % bajo el precio y el del radio 31 % bajo, en mediana. En los usados la cuenta se reparte: 53 % los dos bajo, 25 % los dos sobre y 22 % no coinciden. El valor base queda al medio con el valor por ingreso en el 69 % de los nuevos.
+2. **La TIR con el valor del medio** es, en los nuevos, −5,5 %, 2,3 % y 7,0 % con g = 1 %, 3 % y 4,5 % (el motor les da 8,2 %). En los usados es 2,9 %, 8,7 % y 12,2 % (motor, 6,8 %).
+3. **Camino A** (veredicto de hoy más TIR ≥ 5 % con g = 3 %): hoy son Comprar 118 nuevos en 43 proyectos (con el subsidio por defecto) y 4.496 usados. Con flujo ≥ −$100.000 se suman 424 nuevos en 146 proyectos y 4.828 usados; con −$200.000, 1.075 en 216 y 6.783; con −$300.000, 1.275 en 246 y 7.813.
+4. **Camino B** (TIR ≥ 5 % con g = 1 %, sin señal grave, sin condición de flujo): 357 nuevos en 117 proyectos y 5.996 usados. De los Comprar de hoy se caen solo 18 y 24, todos por TIR pesimista baja. Entran 257 nuevos con un flujo mediano de −$87.000 (24 peor que −$200.000) y 1.524 usados con −$51.000. Con TIR ≥ 4 % son 509 y 7.266; con 6 %, 200 y 4.886.
+5. **En las listas manda el precio.** De los 17 Ajustar de Lo Barnechea que siguen con fila, 11 quedan valorados al precio pagado: el ingreso dice más y el radio dice menos. Pasan el camino B 9 de los 17: otros 7 tienen señal grave (sobreprecio comunal con flujo negativo o CoC severo). El Golden 17b4e10d no trae coordenadas en su input, así que su valor base es el precio por regla del mínimo, y su TIR pesimista da 9,5 %.
+
+**El método.** `27-anexo6-valor-medio.ts` (28 minutos, solo lectura).
+- **Universo:** los avisos de hoy, 21.725 activos con evaluación y 3.208 nuevos reactivados que siguen publicados. Quedan **23.834 limpios**: 4.690 nuevos en 496 proyectos y 19.144 usados.
+- **Motor:** el real, por la cadena de la noche, con la UF y la tasa de hoy (UF 41.392, tasa 4,10 %), pie 20 % y 30 años. La superficie de dos decimales va corregida en memoria; tocó a 3.736 avisos, con 919 medianas resueltas en vivo. Los 3.124 nuevos elegibles llevan el subsidio por defecto (tasa 3,50 %).
+- **Valor base de hoy:** la mediana entre el precio pagado, el **valor por ingreso** (arriendo bruto anual ÷ cap de mercado usado de su celda, el del anexo 2) y el **valor por comparables usados del radio** (anexo 1). Si falta una de las dos valoraciones, el valor base es el menor entre el precio y la disponible. La venta al año 10 es el valor base × (1 + g)^10, con g = 1 % (pesimista), 3 % (normal) y 4,5 % para precio y arriendo. El resto de la TIR queda como en todo el documento: `calcExitScenario` del motor, comisión y saldo.
+- **De dónde sale el radio:** en los usados, de la sugerencia de venta guardada en su fila de hoy. En los nuevos, del anexo 1 donde ya estaba, y en vivo para 17 que no estaban. (nuevos fila de hoy 0 · anexo 1 4.672 · en vivo 3 · sin radio 15; usados con radio 19.089, sin radio 55 · sin cap de celda: nuevos 102, usados 47.)
+- **Qué quedó al medio**, en los nuevos: precio 288 · ingreso 3.224 · radio 1.061 · menor: precio 0 · menor: ingreso 15 · menor: radio 102 · sin valor 0. En los usados: precio 4.146 · ingreso 7.498 · radio 7.398 · menor: precio 29 · menor: ingreso 35 · menor: radio 38 · sin valor 0.
+
+**Control del recálculo contra la noche** (`29-anexo6-control-noche.ts`). El veredicto de hoy recalculado, comparado aviso por aviso con el que guarda la noche (`veredicto_20`, pie 20 % y 30 años), sin los nuevos elegibles al subsidio, que acá van con otra tasa:
+
+| fecha de la evaluación de la noche | avisos | Comprar de la noche | Comprar recalculado hoy | coinciden | Comprar noche → no hoy | no noche → Comprar hoy | con superficie corregida |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| evaluados antes del 07-nov | 6.612 | 1.204 | 1.155 | 6.489 | 49 | 0 | 84 |
+| del 07 al 20-nov | 10.061 | 1.981 | 1.953 | 10.003 | 28 | 0 | 88 |
+| del 21-nov en adelante | 2.471 | 1.389 | 1.388 | 2.468 | 1 | 0 | 7 |
+
+En los evaluados desde el 21-nov coinciden 2.468 de 2.471. En los evaluados antes, 77 de 16.673 pasan de Comprar a no Comprar, por la tasa y la UF de hoy. **Los usados Comprar bajaron de 6.540 (corrida del 07-nov) a 4.496 hoy, y la noche dice lo mismo.** La baja es casi toda rotación: 3.941 usados de esa corrida ya no están publicados, entraron 1.994 nuevos (742 de ellos Comprar), y de los 3.862 Comprar que siguen siendo los mismos avisos, 3.646 lo siguen siendo. Los 216 que cayeron bajaron su arriendo estimado unos $34.000 al mes en mediana.
+
+### a · Los dos testigos contra el precio
+
+Diferencias en % del precio, medianas de cada grupo. «Un solo testigo» = falta el valor por ingreso (sin cap de celda) o el del radio
+(sin comparables usados).
+
+**Nuevos**
+
+| grupo | avisos | % | valor por ingreso vs precio | valor del radio vs precio | valor base vs precio |
+| --- | --- | --- | --- | --- | --- |
+| los dos sobre el precio | 64 | 1,4 % | 11,7 % | 4,9 % | 4,5 % |
+| los dos bajo el precio | 4.221 | 90,0 % | -25,8 % | -30,7 % | -24,1 % |
+| no coinciden | 288 | 6,1 % | 3,4 % | -11,3 % | 0,0 % |
+| un solo testigo | 117 | 2,5 % | -50,8 % | -46,6 % | -47,3 % |
+| sin testigos | 0 | 0,0 % | — | — | — |
+
+**Usados**
+
+| grupo | avisos | % | valor por ingreso vs precio | valor del radio vs precio | valor base vs precio |
+| --- | --- | --- | --- | --- | --- |
+| los dos sobre el precio | 4.730 | 24,7 % | 17,5 % | 11,0 % | 8,8 % |
+| los dos bajo el precio | 10.162 | 53,1 % | -14,6 % | -16,5 % | -11,4 % |
+| no coinciden | 4.150 | 21,7 % | 3,5 % | -4,0 % | -0,0 % |
+| un solo testigo | 102 | 0,5 % | -13,1 % | -16,5 % | -15,3 % |
+| sin testigos | 0 | 0,0 % | — | — | — |
+
+**Nuevos por comuna**
+
+| comuna | avisos | los dos sobre | los dos bajo | no coinciden | un testigo | base vs precio | ingreso vs precio | radio vs precio |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Gran Santiago | 4.690 | 64 | 4.221 | 288 | 117 | -23,3 % | -24,6 % | -29,5 % |
+| Santiago | 1.065 | 0 | 1.053 | 0 | 12 | -32,7 % | -33,7 % | -38,1 % |
+| Ñuñoa | 746 | 23 | 551 | 172 | 0 | -6,9 % | -7,0 % | -18,9 % |
+| La Florida | 503 | 11 | 468 | 24 | 0 | -18,1 % | -18,5 % | -29,7 % |
+| Macul | 399 | 8 | 387 | 4 | 0 | -24,7 % | -24,9 % | -31,1 % |
+| Providencia | 384 | 0 | 367 | 17 | 0 | -24,1 % | -25,0 % | -28,2 % |
+| Independencia | 295 | 0 | 293 | 2 | 0 | -35,3 % | -40,1 % | -37,5 % |
+| Las Condes | 186 | 5 | 172 | 8 | 1 | -21,9 % | -26,6 % | -25,0 % |
+| Vitacura | 131 | 2 | 115 | 14 | 0 | -16,4 % | -22,8 % | -20,1 % |
+| La Cisterna | 118 | 4 | 103 | 11 | 0 | -11,7 % | -12,5 % | -21,3 % |
+| Recoleta | 116 | 0 | 115 | 1 | 0 | -25,2 % | -29,6 % | -27,6 % |
+| Maipú | 116 | 0 | 116 | 0 | 0 | -22,9 % | -35,9 % | -24,2 % |
+| Puente Alto | 89 | 0 | 89 | 0 | 0 | -15,5 % | -15,5 % | -24,6 % |
+| Pudahuel | 83 | 0 | 0 | 0 | 83 | -42,7 % | — | -42,7 % |
+| Lo Barnechea | 73 | 3 | 59 | 11 | 0 | -9,3 % | -12,0 % | -15,7 % |
+| Estación Central | 63 | 0 | 59 | 3 | 1 | -22,1 % | -22,1 % | -29,4 % |
+| Quilicura | 63 | 0 | 63 | 0 | 0 | -52,0 % | -52,2 % | -54,8 % |
+| Cerrillos | 55 | 2 | 44 | 8 | 1 | -10,2 % | -13,5 % | -14,5 % |
+| Peñalolén | 51 | 5 | 38 | 8 | 0 | -9,1 % | -9,1 % | -25,5 % |
+| San Miguel | 29 | 1 | 27 | 1 | 0 | -21,3 % | -22,9 % | -30,4 % |
+| Huechuraba | 28 | 0 | 27 | 1 | 0 | -10,9 % | -10,9 % | -25,8 % |
+| Quinta Normal | 22 | 0 | 22 | 0 | 0 | -30,7 % | -30,7 % | -47,4 % |
+| Conchalí | 20 | 0 | 19 | 1 | 0 | -39,7 % | -45,7 % | -45,1 % |
+| El Bosque | 19 | 0 | 0 | 0 | 19 | -49,8 % | — | -49,8 % |
+| San Joaquín | 15 | 0 | 15 | 0 | 0 | -24,1 % | -24,1 % | -33,5 % |
+| Renca | 14 | 0 | 13 | 1 | 0 | -13,8 % | -20,8 % | -14,8 % |
+| La Reina | 7 | 0 | 6 | 1 | 0 | -24,7 % | -36,1 % | -34,1 % |
+
+**Usados por comuna**
+
+| comuna | avisos | los dos sobre | los dos bajo | no coinciden | un testigo | base vs precio | ingreso vs precio | radio vs precio |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Gran Santiago | 19.144 | 4.730 | 10.162 | 4.150 | 102 | -1,5 % | -4,2 % | -7,4 % |
+| Santiago | 5.022 | 1.258 | 2.906 | 821 | 37 | -3,7 % | -5,4 % | -9,5 % |
+| Ñuñoa | 1.925 | 521 | 878 | 526 | 0 | -0,0 % | 0,7 % | -7,0 % |
+| La Florida | 861 | 215 | 472 | 172 | 2 | -2,1 % | -3,9 % | -8,4 % |
+| Macul | 567 | 117 | 311 | 138 | 1 | -1,4 % | -3,4 % | -8,3 % |
+| Providencia | 1.136 | 326 | 573 | 236 | 1 | -0,1 % | -4,3 % | -5,0 % |
+| Independencia | 827 | 212 | 465 | 149 | 1 | -2,6 % | -4,9 % | -9,1 % |
+| Las Condes | 2.321 | 455 | 1.264 | 601 | 1 | -1,9 % | -8,6 % | -5,0 % |
+| Vitacura | 1.060 | 262 | 519 | 277 | 2 | -0,0 % | -6,7 % | -5,0 % |
+| La Cisterna | 509 | 137 | 237 | 132 | 3 | -0,0 % | 0,2 % | -7,9 % |
+| Recoleta | 264 | 57 | 147 | 59 | 1 | -2,5 % | -5,6 % | -8,3 % |
+| Maipú | 175 | 41 | 81 | 53 | 0 | -0,0 % | -12,0 % | -7,9 % |
+| Puente Alto | 54 | 13 | 31 | 10 | 0 | -5,9 % | -8,0 % | -10,9 % |
+| Pudahuel | 26 | 0 | 0 | 0 | 26 | -15,6 % | — | -15,6 % |
+| Lo Barnechea | 640 | 158 | 306 | 176 | 0 | -0,0 % | -2,3 % | -5,1 % |
+| Estación Central | 1.443 | 455 | 758 | 229 | 1 | -1,5 % | -2,3 % | -7,9 % |
+| Quilicura | 33 | 6 | 19 | 8 | 0 | -7,8 % | -9,4 % | -16,1 % |
+| Cerrillos | 48 | 9 | 26 | 12 | 1 | -1,8 % | -4,3 % | -7,9 % |
+| Peñalolén | 42 | 14 | 5 | 23 | 0 | 0,0 % | 40,7 % | -8,3 % |
+| San Miguel | 1.145 | 253 | 597 | 294 | 1 | -0,7 % | -2,4 % | -7,2 % |
+| Huechuraba | 165 | 23 | 78 | 64 | 0 | -0,0 % | -1,6 % | -8,8 % |
+| Quinta Normal | 390 | 99 | 212 | 78 | 1 | -2,7 % | -5,0 % | -8,6 % |
+| Conchalí | 47 | 10 | 29 | 8 | 0 | -8,2 % | -28,7 % | -10,1 % |
+| El Bosque | 9 | 0 | 0 | 0 | 9 | -30,1 % | — | -30,1 % |
+| San Joaquín | 193 | 50 | 112 | 30 | 1 | -2,1 % | -4,4 % | -7,5 % |
+| Renca | 19 | 4 | 12 | 3 | 0 | -2,5 % | -8,7 % | -8,7 % |
+| La Reina | 123 | 19 | 68 | 36 | 0 | -2,8 % | -7,3 % | -8,4 % |
+| San Bernardo | 88 | 16 | 56 | 15 | 1 | -6,9 % | -16,6 % | -7,0 % |
+| Padre Hurtado | 8 | 0 | 0 | 0 | 8 | -7,5 % | — | -3,7 % |
+| Lampa | 3 | 0 | 0 | 0 | 3 | -36,1 % | — | -36,1 % |
+| La Granja | 1 | 0 | 0 | 0 | 1 | -7,8 % | — | -7,8 % |
+
+### b · TIR a 10 años con el valor del medio
+
+Mediana · p25 · p75 (n con TIR), al lado de la del motor con su propia salida (precio × 1,03^10 − sobreprecio).
+
+| universo | g 1 % (pesimista) | g 3 % (normal) | g 4,5 % | TIR del motor |
+| --- | --- | --- | --- | --- |
+| nuevos | -5,5 % · -13,6 % · 0,9 % (4.112) | 2,3 % · -3,8 % · 7,1 % (4.602) | 7,0 % · 2,0 % · 11,1 % (4.688) | 8,2 % · 6,4 % · 9,3 % (4.690) |
+| usados | 2,9 % · -1,8 % · 6,2 % (18.912) | 8,7 % · 4,9 % · 11,4 % (19.102) | 12,2 % · 8,8 % · 14,8 % (19.127) | 6,8 % · 3,3 % · 9,4 % (19.137) |
+
+### c · Camino A: veredicto de hoy y los que además tienen TIR ≥ 5 % con g = 3 %
+
+«Adicionales» son los que hoy no son Comprar y tienen TIR ≥ 5 % con g = 3 % y flujo al menos −$100.000, −$200.000 o −$300.000. En
+los nuevos, unidades (proyectos) · inmediata / futura / sin fecha.
+
+| universo | Comprar de hoy | + adicionales con flujo ≥ −$100.000 | + adicionales con flujo ≥ −$200.000 | + adicionales con flujo ≥ −$300.000 | total con −$100.000 | total con −$200.000 | total con −$300.000 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| nuevos | 118 (43) · 77 / 3 / 38 | 424 (146) · 312 / 28 / 84 | 1.075 (216) · 788 / 175 / 112 | 1.275 (246) · 902 / 255 / 118 | 542 (163) · 389 / 31 / 122 | 1.193 (230) · 865 / 178 / 150 | 1.393 (260) · 979 / 258 / 156 |
+| usados | 4.496 | 4.828 | 6.783 | 7.813 | 9.324 | 11.279 | 12.309 |
+
+### d · Camino B: Comprar si la TIR con g = 1 % es ≥ 5 % y no hay señal grave
+
+Sin condición de flujo. La señal grave es la de los anexos: CoC severo o sobreprecio comunal con flujo negativo. «Se caen» son los
+Comprar de hoy que el camino B no deja, con el motivo; «entran» son los que hoy no son Comprar y el camino B sube.
+
+**TIR ≥ 5 %**
+
+| universo | Comprar | Comprar de hoy | se caen | por señal grave | por TIR pesimista baja | sin valor base | entran | flujo de los que entran: mediana · p25 · p75 | entran con flujo ≥ 0 | entran con flujo 0 a −$100.000 | entran con flujo −$100.000 a −$200.000 | entran con flujo −$200.000 a −$300.000 | entran con flujo peor que −$300.000 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| nuevos | 357 (117) · 284 / 22 / 51 | 118 (43) · 77 / 3 / 38 | 18 | 0 | 18 | 0 | 257 (95) · 214 / 19 / 24 | $-87.148 · $-120.472 · $-52.275 | 1 | 153 | 79 | 13 | 11 |
+| usados | 5.996 | 4.496 | 24 | 0 | 24 | 0 | 1.524 | $-50.966 · $-119.770 · $-16.834 | 110 | 932 | 337 | 107 | 38 |
+
+**TIR ≥ 4 %**
+
+| universo | Comprar | Comprar de hoy | se caen | por señal grave | por TIR pesimista baja | sin valor base | entran | flujo de los que entran: mediana · p25 · p75 | entran con flujo ≥ 0 | entran con flujo 0 a −$100.000 | entran con flujo −$100.000 a −$200.000 | entran con flujo −$200.000 a −$300.000 | entran con flujo peor que −$300.000 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| nuevos | 509 (140) · 387 / 59 / 63 | 118 (43) · 77 / 3 / 38 | 10 | 0 | 10 | 0 | 401 (121) · 316 / 56 / 29 | $-101.783 · $-147.087 · $-61.119 | 1 | 193 | 156 | 25 | 26 |
+| usados | 7.266 | 4.496 | 11 | 0 | 11 | 0 | 2.781 | $-54.281 · $-131.217 · $-24.041 | 125 | 1.739 | 564 | 238 | 115 |
+
+**TIR ≥ 6 %**
+
+| universo | Comprar | Comprar de hoy | se caen | por señal grave | por TIR pesimista baja | sin valor base | entran | flujo de los que entran: mediana · p25 · p75 | entran con flujo ≥ 0 | entran con flujo 0 a −$100.000 | entran con flujo −$100.000 a −$200.000 | entran con flujo −$200.000 a −$300.000 | entran con flujo peor que −$300.000 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| nuevos | 200 (83) · 155 / 15 / 30 | 118 (43) · 77 / 3 / 38 | 33 | 0 | 33 | 0 | 115 (58) · 94 / 12 / 9 | $-53.364 · $-77.044 · $-34.475 | 1 | 98 | 6 | 6 | 4 |
+| usados | 4.886 | 4.496 | 270 | 0 | 270 | 0 | 660 | $-72.363 · $-126.541 · $-28.790 | 77 | 336 | 193 | 39 | 15 |
+
+### e · Los dos caminos por comuna
+
+**Nuevos.** Celda: unidades (proyectos) · inmediata / futura / sin fecha.
+
+| comuna | avisos | Comprar de hoy | A: + con −$100.000 | A: + con −$200.000 | A: + con −$300.000 | B: TIR ≥ 5 % | B: TIR ≥ 4 % | B: TIR ≥ 6 % |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Gran Santiago | 4.690 | 118 (43) · 77 / 3 / 38 | 424 (146) · 312 / 28 / 84 | 1.075 (216) · 788 / 175 / 112 | 1.275 (246) · 902 / 255 / 118 | 357 (117) · 284 / 22 / 51 | 509 (140) · 387 / 59 / 63 | 200 (83) · 155 / 15 / 30 |
+| Santiago | 1.065 | 1 (1) · 1 / 0 / 0 | 36 (19) · 31 / 2 / 3 | 64 (21) · 56 / 3 / 5 | 64 (21) · 56 / 3 / 5 | 2 (2) · 2 / 0 / 0 | 5 (4) · 5 / 0 / 0 | 0 (0) · 0 / 0 / 0 |
+| Ñuñoa | 746 | 8 (2) · 2 / 0 / 6 | 81 (26) · 70 / 1 / 10 | 418 (53) · 282 / 122 / 14 | 548 (63) · 345 / 188 / 15 | 149 (36) · 127 / 5 / 17 | 230 (40) · 179 / 34 / 17 | 50 (17) · 38 / 1 / 11 |
+| La Florida | 503 | 22 (8) · 21 / 1 / 0 | 86 (28) · 71 / 13 / 2 | 215 (43) · 181 / 24 / 10 | 217 (44) · 182 / 24 / 11 | 50 (15) · 46 / 4 / 0 | 68 (20) · 63 / 5 / 0 | 39 (15) · 35 / 4 / 0 |
+| Macul | 399 | 10 (3) · 7 / 0 / 3 | 19 (12) · 16 / 0 / 3 | 65 (19) · 56 / 6 / 3 | 70 (19) · 60 / 7 / 3 | 16 (6) · 11 / 0 / 5 | 22 (8) · 16 / 0 / 6 | 16 (6) · 11 / 0 / 5 |
+| Providencia | 384 | 0 (0) · 0 / 0 / 0 | 2 (2) · 2 / 0 / 0 | 5 (4) · 4 / 0 / 1 | 17 (9) · 11 / 4 / 2 | 5 (4) · 4 / 1 / 0 | 14 (5) · 9 / 5 / 0 | 2 (2) · 2 / 0 / 0 |
+| Independencia | 295 | 2 (2) · 2 / 0 / 0 | 8 (7) · 6 / 0 / 2 | 13 (8) · 11 / 0 / 2 | 13 (8) · 11 / 0 / 2 | 5 (5) · 4 / 0 / 1 | 5 (5) · 4 / 0 / 1 | 4 (4) · 4 / 0 / 0 |
+| Las Condes | 186 | 4 (2) · 4 / 0 / 0 | 3 (2) · 2 / 1 / 0 | 10 (4) · 3 / 7 / 0 | 22 (10) · 6 / 13 / 3 | 12 (4) · 11 / 1 / 0 | 15 (6) · 12 / 2 / 1 | 10 (3) · 9 / 1 / 0 |
+| Vitacura | 131 | 2 (2) · 1 / 1 / 0 | 0 (0) · 0 / 0 / 0 | 3 (2) · 3 / 0 / 0 | 7 (6) · 6 / 1 / 0 | 8 (5) · 3 / 5 / 0 | 14 (8) · 6 / 6 / 2 | 5 (4) · 2 / 3 / 0 |
+| La Cisterna | 118 | 7 (4) · 6 / 0 / 1 | 48 (12) · 46 / 0 / 2 | 76 (13) · 74 / 0 / 2 | 77 (13) · 75 / 0 / 2 | 26 (9) · 23 / 0 / 3 | 31 (9) · 28 / 0 / 3 | 18 (8) · 17 / 0 / 1 |
+| Recoleta | 116 | 1 (1) · 1 / 0 / 0 | 2 (2) · 2 / 0 / 0 | 22 (5) · 19 / 0 / 3 | 22 (5) · 19 / 0 / 3 | 1 (1) · 1 / 0 / 0 | 1 (1) · 1 / 0 / 0 | 1 (1) · 1 / 0 / 0 |
+| Maipú | 116 | 2 (1) · 2 / 0 / 0 | 21 (4) · 19 / 2 / 0 | 36 (6) · 33 / 3 / 0 | 43 (6) · 40 / 3 / 0 | 2 (1) · 2 / 0 / 0 | 2 (1) · 2 / 0 / 0 | 2 (1) · 2 / 0 / 0 |
+| Puente Alto | 89 | 36 (2) · 18 / 0 / 18 | 52 (4) · 3 / 0 / 49 | 52 (4) · 3 / 0 / 49 | 52 (4) · 3 / 0 / 49 | 26 (2) · 18 / 0 / 8 | 32 (2) · 18 / 0 / 14 | 20 (2) · 18 / 0 / 2 |
+| Pudahuel | 83 | 0 (0) · 0 / 0 / 0 | 0 (0) · 0 / 0 / 0 | 0 (0) · 0 / 0 / 0 | 0 (0) · 0 / 0 / 0 | 0 (0) · 0 / 0 / 0 | 0 (0) · 0 / 0 / 0 | 0 (0) · 0 / 0 / 0 |
+| Lo Barnechea | 73 | 0 (0) · 0 / 0 / 0 | 3 (2) · 3 / 0 / 0 | 9 (3) · 9 / 0 / 0 | 19 (4) · 19 / 0 / 0 | 16 (6) · 16 / 0 / 0 | 22 (7) · 22 / 0 / 0 | 7 (3) · 7 / 0 / 0 |
+| Estación Central | 63 | 4 (3) · 1 / 0 / 3 | 26 (8) · 15 / 8 / 3 | 27 (8) · 15 / 9 / 3 | 27 (8) · 15 / 9 / 3 | 6 (3) · 1 / 0 / 5 | 7 (3) · 2 / 0 / 5 | 3 (2) · 0 / 0 / 3 |
+| Quilicura | 63 | 5 (3) · 5 / 0 / 0 | 0 (0) · 0 / 0 / 0 | 0 (0) · 0 / 0 / 0 | 0 (0) · 0 / 0 / 0 | 1 (1) · 1 / 0 / 0 | 1 (1) · 1 / 0 / 0 | 1 (1) · 1 / 0 / 0 |
+| Cerrillos | 55 | 1 (1) · 0 / 1 / 0 | 23 (8) · 19 / 1 / 3 | 39 (8) · 32 / 1 / 6 | 39 (8) · 32 / 1 / 6 | 11 (5) · 8 / 2 / 1 | 14 (6) · 10 / 2 / 2 | 7 (4) · 4 / 2 / 1 |
+| Peñalolén | 51 | 1 (1) · 1 / 0 / 0 | 0 (0) · 0 / 0 / 0 | 0 (0) · 0 / 0 / 0 | 2 (1) · 0 / 2 / 0 | 5 (2) · 1 / 4 / 0 | 7 (3) · 2 / 5 / 0 | 5 (2) · 1 / 4 / 0 |
+| San Miguel | 29 | 1 (1) · 0 / 0 / 1 | 3 (2) · 0 / 0 / 3 | 5 (3) · 0 / 0 / 5 | 5 (3) · 0 / 0 / 5 | 4 (2) · 0 / 0 / 4 | 4 (2) · 0 / 0 / 4 | 2 (2) · 0 / 0 / 2 |
+| Huechuraba | 28 | 1 (1) · 0 / 0 / 1 | 0 (0) · 0 / 0 / 0 | 1 (1) · 0 / 0 / 1 | 16 (3) · 15 / 0 / 1 | 2 (2) · 0 / 0 / 2 | 2 (2) · 0 / 0 / 2 | 1 (1) · 0 / 0 / 1 |
+| Quinta Normal | 22 | 0 (0) · 0 / 0 / 0 | 3 (2) · 1 / 0 / 2 | 3 (2) · 1 / 0 / 2 | 3 (2) · 1 / 0 / 2 | 0 (0) · 0 / 0 / 0 | 0 (0) · 0 / 0 / 0 | 0 (0) · 0 / 0 / 0 |
+| Conchalí | 20 | 1 (1) · 0 / 0 / 1 | 1 (1) · 1 / 0 / 0 | 2 (2) · 1 / 0 / 1 | 2 (2) · 1 / 0 / 1 | 1 (1) · 0 / 0 / 1 | 2 (2) · 1 / 0 / 1 | 1 (1) · 0 / 0 / 1 |
+| El Bosque | 19 | 2 (1) · 0 / 0 / 2 | 0 (0) · 0 / 0 / 0 | 0 (0) · 0 / 0 / 0 | 0 (0) · 0 / 0 / 0 | 2 (1) · 0 / 0 / 2 | 2 (1) · 0 / 0 / 2 | 2 (1) · 0 / 0 / 2 |
+| San Joaquín | 15 | 0 (0) · 0 / 0 / 0 | 1 (1) · 1 / 0 / 0 | 3 (2) · 1 / 0 / 2 | 3 (2) · 1 / 0 / 2 | 0 (0) · 0 / 0 / 0 | 0 (0) · 0 / 0 / 0 | 0 (0) · 0 / 0 / 0 |
+| Renca | 14 | 7 (3) · 5 / 0 / 2 | 6 (4) · 4 / 0 / 2 | 6 (4) · 4 / 0 / 2 | 6 (4) · 4 / 0 / 2 | 6 (3) · 5 / 0 / 1 | 8 (3) · 6 / 0 / 2 | 4 (3) · 3 / 0 / 1 |
+| La Reina | 7 | 0 (0) · 0 / 0 / 0 | 0 (0) · 0 / 0 / 0 | 1 (1) · 0 / 0 / 1 | 1 (1) · 0 / 0 / 1 | 1 (1) · 0 / 0 / 1 | 1 (1) · 0 / 0 / 1 | 0 (0) · 0 / 0 / 0 |
+
+**Usados**
+
+| comuna | avisos | Comprar de hoy | A: + con −$100.000 | A: + con −$200.000 | A: + con −$300.000 | B: TIR ≥ 5 % | B: TIR ≥ 4 % | B: TIR ≥ 6 % |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Gran Santiago | 19.144 | 4.496 | 4.828 | 6.783 | 7.813 | 5.996 | 7.266 | 4.886 |
+| Santiago | 5.022 | 1.685 | 1.725 | 1.932 | 1.942 | 1.848 | 2.113 | 1.546 |
+| Ñuñoa | 1.925 | 113 | 260 | 793 | 1.173 | 354 | 483 | 279 |
+| La Florida | 861 | 170 | 288 | 421 | 425 | 257 | 320 | 199 |
+| Macul | 567 | 92 | 203 | 316 | 330 | 147 | 207 | 87 |
+| Providencia | 1.136 | 126 | 67 | 233 | 380 | 272 | 347 | 217 |
+| Independencia | 827 | 313 | 285 | 311 | 311 | 365 | 397 | 321 |
+| Las Condes | 2.321 | 312 | 153 | 446 | 694 | 535 | 715 | 403 |
+| Vitacura | 1.060 | 134 | 17 | 78 | 167 | 262 | 344 | 202 |
+| La Cisterna | 509 | 105 | 264 | 306 | 306 | 161 | 218 | 131 |
+| Recoleta | 264 | 88 | 86 | 109 | 111 | 101 | 117 | 90 |
+| Maipú | 175 | 81 | 42 | 50 | 50 | 82 | 93 | 79 |
+| Puente Alto | 54 | 24 | 19 | 21 | 21 | 25 | 27 | 24 |
+| Pudahuel | 26 | 9 | 9 | 9 | 9 | 6 | 7 | 5 |
+| Lo Barnechea | 640 | 85 | 45 | 99 | 152 | 189 | 235 | 144 |
+| Estación Central | 1.443 | 566 | 588 | 590 | 590 | 662 | 717 | 573 |
+| Quilicura | 33 | 22 | 3 | 3 | 3 | 17 | 19 | 16 |
+| Cerrillos | 48 | 8 | 20 | 28 | 28 | 14 | 17 | 13 |
+| Peñalolén | 42 | 23 | 6 | 11 | 14 | 26 | 30 | 24 |
+| San Miguel | 1.145 | 227 | 447 | 644 | 663 | 309 | 431 | 224 |
+| Huechuraba | 165 | 8 | 24 | 70 | 109 | 26 | 44 | 12 |
+| Quinta Normal | 390 | 167 | 145 | 147 | 147 | 179 | 196 | 162 |
+| Conchalí | 47 | 22 | 8 | 10 | 10 | 17 | 20 | 17 |
+| El Bosque | 9 | 4 | 1 | 1 | 1 | 2 | 2 | 2 |
+| San Joaquín | 193 | 50 | 69 | 91 | 91 | 67 | 80 | 54 |
+| Renca | 19 | 11 | 6 | 6 | 6 | 11 | 12 | 11 |
+| La Reina | 123 | 12 | 16 | 25 | 47 | 22 | 31 | 15 |
+| San Bernardo | 88 | 34 | 29 | 30 | 30 | 35 | 39 | 31 |
+| Padre Hurtado | 8 | 4 | 3 | 3 | 3 | 4 | 4 | 4 |
+| Lampa | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| La Granja | 1 | 1 | 0 | 0 | 0 | 1 | 1 | 1 |
+
+### f · Las ocho fichas del anexo 2 con el valor del medio
+
+Las fichas que siguen con fila se recalcularon hoy (también las ya despublicadas, con su fila). La (g) ya no tiene fila: su valor
+base sale de lo guardado (precio, valor por ingreso del anexo 2 y radio del anexo 1) y no tiene TIR. El golden (h) va con su input y
+la UF del día en que se creó; no trae coordenadas, así que le falta el valor del radio.
+
+|  | aviso | precio | valor por ingreso | valor del radio | valor base | quedó al medio | base vs precio | TIR g 1 % (pesimista) | TIR g 3 % (normal) | TIR g 4,5 % | TIR del motor |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| (a) | 51f4958b · Santiago | UF 1.950 | UF 1.900 | UF 1.920 | UF 1.920 | radio | -1,6 % | 4,1 % | 9,6 % | 13,0 % | 8,5 % |
+| (b) | 30535bd9 · Vitacura | UF 17.953 | UF 21.151 | UF 17.271 | UF 17.953 | precio | -0,0 % | 5,9 % | 11,4 % | 14,8 % | 10,1 % |
+| (c) | 31273928 · Puente Alto | UF 3.152 | UF 2.823 | UF 2.401 | UF 2.823 | ingreso | -10,4 % | 5,9 % | 11,8 % | 15,5 % | 12,8 % |
+| (d) | 00e696fb · Santiago | UF 3.388 | UF 2.913 | UF 2.583 | UF 2.913 | ingreso | -14,0 % | 1,0 % | 7,7 % | 11,7 % | 10,2 % |
+| (e) | 92529506 · Las Condes | UF 5.326 | UF 5.128 | UF 4.291 | UF 5.128 | ingreso | -3,7 % | 3,3 % | 10,9 % | 15,4 % | 10,6 % |
+| (f) | 2f395699 · Santiago | UF 3.801 | UF 2.555 | UF 2.504 | UF 2.555 | ingreso | -32,8 % | -35,1 % | -6,6 % | 1,5 % | 8,3 % |
+| (g) | 56b54457 · Ñuñoa (dado de baja: valores guardados) | UF 4.621 | UF 5.698 | UF 5.154 | UF 5.154 | radio | 11,5 % | sin fila | sin fila | sin fila | — |
+| (h) | 17b4e10d · Ñuñoa (golden) | UF 4.000 | UF 5.436 | — | UF 4.000 | menor: precio | 0,0 % | 9,5 % | 14,7 % | 18,1 % | 13,4 % |
+
+### g · Los 20 Ajustar del anexo 3 (casi todos de Lo Barnechea)
+
+Los 20 usados Ajustar con la TIR más alta con g = 0 % del anexo 3. Tres ya no tienen fila (valores guardados, sin TIR) y tres más
+siguen con fila pero hoy no están publicados.
+
+|  | aviso | precio | valor por ingreso | valor del radio | valor base | quedó al medio | base vs precio | TIR g 1 % (pesimista) | TIR g 3 % (normal) | TIR g 4,5 % | TIR del motor |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | edd62bc3 · Lo Barnechea | UF 19.903 | UF 14.135 | UF 19.210 | UF 19.210 | radio | -3,5 % | -1,8 % | 4,7 % | 8,5 % | 1,0 % |
+| 2 | dd3234f1 · Lo Barnechea | UF 19.903 | UF 14.135 | UF 19.079 | UF 19.079 | radio | -4,1 % | -2,1 % | 4,5 % | 8,4 % | 1,0 % |
+| 3 | 9ab1ad1b · Lo Barnechea | UF 15.303 | UF 17.992 | UF 14.591 | UF 15.303 | precio | 0,0 % | 5,6 % | 11,1 % | 14,6 % | 8,2 % |
+| 4 | 6ef9a5a8 · Lo Barnechea (dado de baja: valores guardados) | UF 7.601 | UF 9.799 | UF 7.221 | UF 7.601 | precio | 0,0 % | sin fila | sin fila | sin fila | — |
+| 5 | ceef6675 · Lo Barnechea | UF 19.993 | UF 26.559 | UF 18.509 | UF 19.993 | precio | -0,0 % | 7,2 % | 12,6 % | 16,0 % | 11,2 % |
+| 6 | 1706a9ab · Lo Barnechea | UF 18.003 | UF 23.541 | UF 17.103 | UF 18.003 | precio | -0,0 % | 6,9 % | 12,3 % | 15,7 % | 11,0 % |
+| 7 | de5a61ff · Lo Barnechea (hoy no publicado) | UF 29.205 | UF 23.756 | UF 26.302 | UF 26.302 | radio | -9,9 % | -2,6 % | 4,3 % | 8,4 % | 0,7 % |
+| 8 | 2a7acd3b · Lo Barnechea (dado de baja: valores guardados) | UF 6.951 | UF 8.888 | UF 6.603 | UF 6.951 | precio | 0,0 % | sin fila | sin fila | sin fila | — |
+| 9 | 9f513b17 · Ñuñoa | UF 11.492 | UF 14.110 | UF 10.618 | UF 11.492 | precio | 0,0 % | 5,1 % | 10,7 % | 14,2 % | 7,3 % |
+| 10 | bc7559b6 · Lo Barnechea (hoy no publicado) | UF 15.503 | UF 12.456 | UF 14.637 | UF 14.637 | radio | -5,6 % | -0,9 % | 5,6 % | 9,5 % | 3,6 % |
+| 11 | b3c14193 · Lo Barnechea | UF 13.902 | UF 14.925 | UF 13.653 | UF 13.902 | precio | -0,0 % | 4,1 % | 9,8 % | 13,4 % | 8,7 % |
+| 12 | ba8c032b · Lo Barnechea | UF 14.002 | UF 17.998 | UF 14.776 | UF 14.776 | radio | 5,5 % | 8,3 % | 13,5 % | 16,8 % | 10,8 % |
+| 13 | c1c75839 · Las Condes | UF 11.502 | UF 14.081 | UF 10.195 | UF 11.502 | precio | 0,0 % | 7,6 % | 13,0 % | 16,4 % | 8,1 % |
+| 14 | f477a9d8 · Lo Barnechea | UF 6.251 | UF 7.833 | UF 6.067 | UF 6.251 | precio | 0,0 % | 7,0 % | 12,3 % | 15,7 % | 11,0 % |
+| 15 | c19086f3 · Las Condes (dado de baja: valores guardados) | UF 8.901 | UF 10.922 | UF 8.159 | UF 8.901 | precio | -0,0 % | sin fila | sin fila | sin fila | — |
+| 16 | ad451cef · Lo Barnechea | UF 8.851 | UF 10.949 | UF 8.258 | UF 8.851 | precio | -0,0 % | 7,0 % | 12,4 % | 15,8 % | 10,3 % |
+| 17 | c35fa498 · Lo Barnechea | UF 8.001 | UF 9.942 | UF 6.833 | UF 8.001 | precio | -0,0 % | 6,7 % | 12,2 % | 15,6 % | 10,7 % |
+| 18 | 0401648b · Cerrillos | UF 1.990 | UF 2.399 | UF 1.234 | UF 1.990 | precio | -0,0 % | 7,5 % | 12,7 % | 16,0 % | 11,4 % |
+| 19 | 6be13080 · Lo Barnechea | UF 19.403 | UF 23.771 | UF 19.210 | UF 19.403 | precio | -0,0 % | 6,1 % | 11,6 % | 15,1 % | 7,6 % |
+| 20 | be153739 · Ñuñoa | UF 2.948 | UF 3.834 | UF 2.951 | UF 2.951 | radio | 0,1 % | 5,9 % | 11,4 % | 14,8 % | 10,2 % |
+
+**Lectura.**
+- **El valor del medio les cobra a los nuevos casi todo el escalón.** En el 90 % de ellos los dos testigos están bajo el precio, así
+  que el valor base es el mayor de los dos testigos y queda 24 % bajo el precio. Con g = 3 % la TIR mediana baja de 8,2 % (motor) a
+  2,3 %. En los usados es al revés: los testigos se reparten alrededor del precio y la TIR sube de 6,8 % a 8,7 %.
+- **El camino A con tolerancia de flujo abre mucho, y casi todo en nuevos de flujo muy negativo.** Con −$200.000 se suman 1.075
+  nuevos, y casi 4 de cada 10 son de Ñuñoa (418).
+- **El camino B casi no saca a los Comprar de hoy** (18 nuevos y 24 usados) **y suma los que tienen TIR pesimista alta aunque el flujo
+  sea negativo.** Los 257 nuevos que entran tienen un flujo mediano de −$87.000, y 24 están bajo −$200.000. Con TIR ≥ 6 % el camino B
+  queda cerca del de hoy en usados (4.886 contra 4.496) y da 200 nuevos contra 118: entran 115 y se caen 33.
+- **Las listas del anexo 3 se ordenan solas con esta regla.** Los Ajustar de Lo Barnechea comprados con ingreso alto y radio bajo
+  quedan valorados al precio (ni premio ni castigo), y con su TIR pesimista de 5 % a 8 % entran por el camino B los
+  que no tienen señal grave (9 de 17; los otros 7 la tienen). Los que tienen
+  los dos testigos bajo el precio (edd62bc3, dd3234f1, de5a61ff, bc7559b6) siguen fuera.
