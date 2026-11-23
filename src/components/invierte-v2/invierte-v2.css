@@ -1219,7 +1219,6 @@
 .iv2-4c-et { display: block; font-size: 11px; line-height: 1.3; color: var(--franco-text-secondary); }
 [data-theme="light"] .iv2-4c-et { color: #5A5A5F; }
 .iv2-4c-v { display: block; margin: 0; font-size: 17px; font-weight: 700; line-height: 1.25; white-space: nowrap; color: var(--franco-text); }
-.iv2-4c-v.iv2-pones { color: var(--signal-red, #C8323C); }
 .iv2-4c-pocos { display: block; margin: 0; font-size: 12px; line-height: 1.4; color: var(--franco-text-muted); }
 .iv2-4c-corto { display: none; }
 .iv2-4c-base .iv2-4c-v { font-size: 16px; }
@@ -1230,7 +1229,6 @@
 .iv2-4c-precio-lista dt { font-size: 11px; color: var(--franco-text-secondary); }
 [data-theme="light"] .iv2-4c-precio-lista dt { color: #5A5A5F; }
 .iv2-4c-precio-lista dd { margin: 0; font-size: 17px; font-weight: 700; line-height: 1.25; white-space: nowrap; color: var(--franco-text); }
-.iv2-4c-precio-lista dd.iv2-pones { color: var(--signal-red, #C8323C); }
 .iv2-4c-precio-ref { margin: 0; font-size: 12px; line-height: 1.4; color: var(--franco-text-secondary); }
 [data-theme="light"] .iv2-4c-precio-ref { color: #5A5A5F; }
 .iv2-4c-precio[data-inv2="a-este-precio"] { border: 0; background: rgba(255, 255, 255, 0.06); }

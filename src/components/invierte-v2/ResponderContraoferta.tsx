@@ -94,7 +94,7 @@ export function ResponderContraoferta({ d, volverA }: { d: DatosContraoferta; vo
         <tbody>
           <tr><th scope="row">{B.precio}</th>{cols.map((x) => <td key={x.k} data-destacada={x.dest ? "1" : undefined} data-inv2={`co-precio-${x.k}`}><b>{uf0(x.uf)}</b></td>)}</tr>
           <tr><th scope="row">Cap rate</th>{cols.map((x) => <td key={x.k} data-destacada={x.dest ? "1" : undefined} data-inv2={`co-cap-${x.k}`}>{pctCifra(x.c?.capRatePct)}</td>)}</tr>
-          <tr><th scope="row">{etMes}</th>{cols.map((x) => { const q = cuartaCifra(x.c?.flujoCLP); return <td key={x.k} data-destacada={x.dest ? "1" : undefined} data-inv2={`co-mes-${x.k}`} className={q.pones ? "iv2-pones" : undefined}>{mixto && x.c?.flujoCLP != null ? `${q.pones ? "Pones" : "Sobran"} ${clpCifra(x.c.flujoCLP)}` : clpCifra(x.c?.flujoCLP)}</td>; })}</tr>
+          <tr><th scope="row">{etMes}</th>{cols.map((x) => { const q = cuartaCifra(x.c?.flujoCLP); return <td key={x.k} data-destacada={x.dest ? "1" : undefined} data-inv2={`co-mes-${x.k}`}>{mixto && x.c?.flujoCLP != null ? `${q.pones ? "Pones" : "Sobran"} ${clpCifra(x.c.flujoCLP)}` : clpCifra(x.c?.flujoCLP)}</td>; })}</tr>
         </tbody>
       </table>
       <section className="iv2-co-sugiere" data-inv2="co-sugiere" aria-label={B.francoSugiere}>

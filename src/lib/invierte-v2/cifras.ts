@@ -59,7 +59,8 @@ export const CIFRAS_COPY = {
     `Al precio publicado: ${pctCifra(cap)}${flujo == null ? "" : ` · ${sobra(flujo) ? "te sobran" : "pones"} ${clpCifra(flujo)}`}`,
 } as const;
 
-/** La cuarta cifra: la etiqueta dice si pone o le sobra; el número va solo (y en rojo si pone: regla del rojo, montos negativos). */
+/** La cuarta cifra: la etiqueta dice si pone o le sobra; el número va solo y en negro (24-nov-2026: en Invierte el rojo es solo el
+ *  botón principal). `pones` queda para quien lo necesite, no para el color. */
 export function cuartaCifra(flujo: number | null | undefined): { et: string; v: string; pones: boolean } {
   if (flujo == null || !Number.isFinite(flujo)) return { et: CIFRAS_COPY.pones, v: "—", pones: false };
   return sobra(flujo) ? { et: CIFRAS_COPY.sobran, v: clpCifra(flujo), pones: false } : { et: CIFRAS_COPY.pones, v: clpCifra(flujo), pones: flujo < 0 };
