@@ -5,7 +5,7 @@
 // persona de Franco. Ninguna ficha, ningún crédito.
 // ─────────────────────────────────────────────────────────────────────────────
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { lineaCambio, type TipoCambio, type Vigente } from "./cambios";
+import { filaCambio, lineaCambio, type TipoCambio, type Vigente } from "./cambios";
 import { etapaDe, type Etapa, type PreguntaDepto } from "./depto-flujo";
 import { asegurarPreguntasDeLectura, leerPreguntas, leerUbicaciones, numerosDe, type Ubicacion } from "./depto-servidor";
 import { fichasDe, type FichaDepto } from "./ficha-depto-servidor";
@@ -28,6 +28,8 @@ export interface PaginaDepto {
   direccion: string | null;
   ubicacion: Ubicacion | null;
   cambios: string[];
+  /** Las mismas, como filas del tablero (rediseño del 23-nov-2026). */
+  cambiosFilas: NonNullable<ReturnType<typeof filaCambio>>[];
   preaprobacion: EstadoVisible;
   whatsapp: string | null;
   alternativa: { avisoId: string; datos: DatosDepto; ficha: FichaDepto | null; alcanza: boolean } | null;
@@ -82,8 +84,9 @@ export async function leerPaginaDepto(admin: SupabaseClient, userId: string, avi
     leerPreguntas(admin, avisoId),
     admin.from("inv_documentos").select("id, tipo, created_at").eq("user_id", userId).eq("depto_id", f.id as string).order("created_at", { ascending: false }).limit(20),
   ]);
-  const cambios = ((cs ?? []) as { tipo: TipoCambio; antes: Record<string, unknown>; despues: Record<string, unknown>; fecha: string }[])
-    .map((c) => lineaCambio(c, c.fecha)).filter((x): x is string => !!x);
-  return { avisoId, etapa, noAvanzaMotivo: (f.no_avanza_motivo as string | null) ?? null, datos, ficha, tituloConNumero, direccion, ubicacion: u, cambios, preaprobacion: pre.estado, whatsapp, alternativa, activos: (elegidos ?? []).map((e) => ({ avisoId: e.aviso_id as string, datos: (e.datos ?? {}) as DatosDepto })),
+  const filasCs = (cs ?? []) as { tipo: TipoCambio; antes: Record<string, unknown>; despues: Record<string, unknown>; fecha: string }[];
+  const cambios = filasCs.map((c) => lineaCambio(c, c.fecha)).filter((x): x is string => !!x);
+  const cambiosFilas = filasCs.map((c) => filaCambio(c, c.fecha)).filter((x): x is NonNullable<ReturnType<typeof filaCambio>> => !!x);
+  return { avisoId, etapa, noAvanzaMotivo: (f.no_avanza_motivo as string | null) ?? null, datos, ficha, tituloConNumero, direccion, ubicacion: u, cambios, cambiosFilas, preaprobacion: pre.estado, whatsapp, alternativa, activos: (elegidos ?? []).map((e) => ({ avisoId: e.aviso_id as string, datos: (e.datos ?? {}) as DatosDepto })),
     oferta, preguntas, documentos: ((docs ?? []) as { id: string; tipo: string; created_at: string }[]).map((d) => ({ id: d.id, tipo: d.tipo, creadoAt: d.created_at })) };
 }

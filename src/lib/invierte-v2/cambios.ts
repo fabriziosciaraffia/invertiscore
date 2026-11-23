@@ -138,6 +138,22 @@ export function veredictoEnPrecio(antes: string, despues: string): string {
 }
 
 /** La línea del depto en la base («Bajó UF 150 el 20 de noviembre»). Null para lo que no va en la base. */
+/** La fila del tablero (rediseño del 23-nov-2026): el título y, debajo, la fecha y el detalle. «Bajó UF 80» · «12 nov · de UF 3.170 a
+ *  UF 3.090». */
+export function filaCambio(c: { tipo: TipoCambio; antes: Record<string, unknown>; despues: Record<string, unknown> }, fecha: string): { icono: "↓" | "↑" | "·"; t: string; s: string } | null {
+  const [, m, d] = fecha.split("-").map(Number);
+  const f = `${d} ${MESES[(m ?? 1) - 1].slice(0, 3)}`;
+  if (c.tipo === "precio_baja" || c.tipo === "precio_sube") {
+    const a = num(c.antes, "precioUF"), b = num(c.despues, "precioUF");
+    if (a == null || b == null) return null;
+    return { icono: c.tipo === "precio_baja" ? "↓" : "↑", t: `${c.tipo === "precio_baja" ? "Bajó" : "Subió"} UF ${uf(Math.abs(b - a))}`, s: `${f} · de UF ${uf(a)} a UF ${uf(b)}` };
+  }
+  if (c.tipo === "despublicado") return { icono: "·", t: "Dejó de estar publicado", s: f };
+  if (c.tipo === "republicado") return { icono: "·", t: "Volvió a publicarse", s: f };
+  const l = lineaCambio(c, fecha);
+  return l ? { icono: "·", t: l, s: f } : null;
+}
+
 export function lineaCambio(c: { tipo: TipoCambio; antes: Record<string, unknown>; despues: Record<string, unknown> }, fecha: string): string | null {
   const f = fechaCorta(fecha);
   switch (c.tipo) {

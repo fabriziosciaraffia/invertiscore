@@ -22,6 +22,10 @@ export interface FichaDepto {
   lectura: LecturaFranco | null;
   /** La calle que confirmó Franco con quien vende (etapa 3, B1): manda sobre la que leyó la lectura. */
   calleConfirmada?: string | null;
+  /** El punto de la publicación (del listado; ninguna ficha). Para el mapa chico de la página del depto (rediseño del 23-nov-2026). */
+  punto?: { lat: number; lng: number } | null;
+  /** El arriendo estimado de la evaluación de la noche, en pesos. */
+  arriendoCLP?: number | null;
 }
 
 /** Por depto: la ficha de su tarjeta. `precios`: el precio que muestra la tarjeta (el vigente), para que el cap rate diga lo mismo. */
@@ -53,6 +57,8 @@ export async function fichasDe(admin: SupabaseClient, avisoIds: readonly string[
       titulo: tituloDepto({ calle: confirmada.get(id) ?? lectura?.calle ?? null, metro, comuna: p?.comuna ?? null }), calleConfirmada: confirmada.get(id) ?? null,
       metro, comuna: p?.comuna ?? null, fotos: fotos[id] ?? 0, lectura,
       capRatePct: precio ? capRatePct(e?.arriendo?.monto ?? null, precio, Number.isFinite(uf) && uf > 0 ? uf : null) : null,
+      punto: p?.lat != null && p?.lng != null ? { lat: Number(p.lat), lng: Number(p.lng) } : null,
+      arriendoCLP: e?.arriendo?.monto != null ? Number(e.arriendo.monto) : null,
     };
   }
   return out;

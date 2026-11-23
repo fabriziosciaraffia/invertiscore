@@ -992,3 +992,133 @@
   .iv2-doc.iv2-doc-chica { width: 480px; height: auto; }
   .iv2-doc-chica .iv2-doc-texto { padding: 0; }
 }
+
+/* LA PÁGINA DEL DEPTO COMO TABLERO (rediseño del 23-nov-2026, láminas 4.2, 4.2-pc y 4.2-estados). Celular, en este orden: quién es el
+   depto, «Lo que sigue», el camino, lo averiguado, los cambios, los documentos y «Pregúntale». PC: la cabeza (foto, depto, mapa), el
+   camino en una línea, y debajo «Lo que sigue» con cambios y documentos a la izquierda y lo averiguado a la derecha. Color: ciruela
+   solo para «Te toca a ti»; azul para lo que recomienda Franco y lo resuelto; rojo solo el botón principal. Sin franjas de color:
+   una tarjeta se destaca con sombra y borde oscuro. */
+.iv2-dp-tablero { display: flex; flex-direction: column; gap: 14px; min-width: 0; padding-bottom: 8px; }
+.iv2-dp-tablero > .iv2-dp-izq, .iv2-dp-tablero > .iv2-dp-der, .iv2-dp-tablero .iv2-dp-bajo { display: contents; }
+.iv2-dp-tablero .iv2-dp-cabeza { order: 1; }
+.iv2-dp-tablero .iv2-dp-sigue { order: 2; }
+.iv2-dp-tablero .iv2-dp-camino { order: 3; }
+.iv2-dp-tablero [data-inv2="lo-que-averiguo"] { order: 4; }
+.iv2-dp-tablero [data-inv2="cambios-publicacion"] { order: 5; }
+.iv2-dp-tablero [data-inv2="documentos-depto"] { order: 6; }
+.iv2-dp-tablero .iv2-dp-preguntale { order: 7; }
+.iv2-dp-tablero .iv2-dp-solo-pc, .iv2-dp-tablero .iv2-dp-solo-pc-i { display: none !important; }
+.iv2-dp-tablero .iv2-dp-cabeza { gap: 10px; }
+.iv2-dp-tablero .iv2-dp-fotos { height: 170px; border-radius: 10px; overflow: hidden; }
+.iv2-dp-tablero .iv2-dp-info { gap: 10px; }
+.iv2-dp-id { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.iv2-dp-tablero .iv2-dp-t { font-size: 18px; }
+.iv2-dp-tablero .iv2-dp-sub { margin: 0; font-size: 12px; color: #5A5A5F; }
+.iv2-dp-cifras { margin: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.iv2-dp-cifras > div, .iv2-dp-sigue-cifras > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.iv2-dp-cifras dt, .iv2-dp-sigue-cifras dt { font-size: 11px; color: #5A5A5F; }
+.iv2-dp-cifras dd { margin: 0; font-size: 14px; font-weight: 600; color: #141414; }
+.iv2-dp-mapa-fila { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.iv2-dp-mapa { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.iv2-dp-mapa-img { flex: none; position: relative; width: 94px; height: 62px; padding: 0; border: 0; border-radius: 10px; background: #E9EEF2 center / cover no-repeat; cursor: pointer; }
+.iv2-dp-mapa-img:focus-visible { outline: 2px solid #141414; outline-offset: 2px; }
+.iv2-dp-mapa-vacio { cursor: default; background-image: linear-gradient(#DCE3E9 1px, transparent 1px), linear-gradient(90deg, #DCE3E9 1px, transparent 1px); background-size: 20px 20px; }
+.iv2-dp-mapa-chip { display: none; }
+.iv2-dp-mapa-txt { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.iv2-dp-mapa-t { font-size: 13px; font-weight: 700; color: #141414; }
+.iv2-dp-mapa-s { font-size: 12px; color: #5A5A5F; }
+.iv2-dp-mapa-ver { align-self: flex-start; min-height: 32px; font-size: 13px; font-weight: 600; text-decoration: none; }
+.iv2-dp-mapa-grande { display: block; width: 100%; height: auto; border-radius: 12px; }
+.iv2-dp-tablero .iv2-dp-detalles { flex: none; }
+/* «Lo que sigue»: plana si lo lleva Franco; se levanta (borde oscuro y sombra) solo cuando le toca a la persona. */
+.iv2-dp-tablero .iv2-dp-sigue { border: 1px solid #E2E2E6; border-radius: 16px; background: #FFFFFF; padding: 16px; gap: 12px; }
+.iv2-dp-tablero .iv2-dp-sigue-tuyo { border: 1.5px solid #141414; box-shadow: 0 10px 28px rgba(20, 20, 20, 0.14); }
+.iv2-chip-tuyo, .iv2-chip-franco { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
+.iv2-chip-tuyo { background: #F3EDF1; color: #6E4560; }
+.iv2-chip-tuyo i { width: 8px; height: 8px; border-radius: 999px; background: #6E4560; display: block; animation: iv2-pulso 1.6s ease-out infinite; }
+@keyframes iv2-pulso { 0% { box-shadow: 0 0 0 0 rgba(110, 69, 96, 0.55); } 100% { box-shadow: 0 0 0 9px rgba(110, 69, 96, 0); } }
+@media (prefers-reduced-motion: reduce) { .iv2-chip-tuyo i { animation: none; } }
+.iv2-chip-franco { background: #EDEDF0; color: #3A3A3F; }
+.iv2-dp-tablero .iv2-dp-sigue-t { font-size: 20px; }
+.iv2-dp-sigue-cifras { margin: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.iv2-dp-sigue-cifras dd { margin: 0; font-size: 16px; font-weight: 700; color: #141414; line-height: 1.25; }
+.iv2-dp-sigue-cifras dd.iv2-dp-azul { color: #1E3F6B; }
+.iv2-dp-sigue-nota { margin: 0; font-size: 12px; line-height: 1.45; color: #5A5A5F; text-align: center; }
+.iv2-dp-sigue-enlace .iv2-enlace-azul { min-height: 44px; font-size: 14px; font-weight: 600; text-decoration: none; }
+/* Las tarjetas de cada tema: encabezado gris claro con contador, filas separadas por una línea. */
+.iv2-dp-tj { box-sizing: border-box; border: 1px solid #E2E2E6; border-radius: 14px; background: #FFFFFF; overflow: hidden; min-width: 0; }
+.iv2-dp-th { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 14px; background: #F7F7F9; border-bottom: 1px solid #E2E2E6; }
+.iv2-dp-th-t { margin: 0; font-size: 13px; font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase; color: #141414; }
+.iv2-dp-th-n { font-size: 12px; color: #5A5A5F; white-space: nowrap; }
+.iv2-dp-filas-t { list-style: none; margin: 0; padding: 0; }
+.iv2-dp-tr { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-bottom: 1px solid #EFEFF2; }
+.iv2-dp-tr:last-child { border-bottom: 0; }
+.iv2-dp-tr .iv2-enlace-azul { flex: none; margin-left: auto; min-height: 44px; margin-top: -10px; margin-bottom: -10px; font-size: 14px; font-weight: 600; }
+.iv2-dp-ic { flex: none; width: 24px; height: 24px; border-radius: 999px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; box-sizing: border-box; }
+.iv2-dp-ic-ok { background: #2B558F; color: #FFFFFF; }
+.iv2-dp-ic-es { background: #FFFFFF; color: #8A8A90; border: 1.5px dashed #B9B9BF; }
+.iv2-dp-ic-cambio { background: #EEF2F8; color: #1E3F6B; }
+.iv2-dp-tr-txt { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; min-width: 0; flex: 1; }
+.iv2-dp-q { font-size: 14px; font-weight: 600; line-height: 1.3; color: #141414; }
+.iv2-dp-q.iv2-dp-gris { color: #5A5A5F; }
+.iv2-dp-a { font-size: 14px; line-height: 1.35; color: #141414; }
+.iv2-dp-tr-s { font-size: 12px; line-height: 1.4; color: #5A5A5F; }
+.iv2-dp-esperando { padding: 2px 8px; font-size: 11px; }
+/* El camino: en celular, en columna con una línea que une los pasos. */
+.iv2-dp-pasos { list-style: none; margin: 0; padding: 8px 0; }
+.iv2-dp-paso { position: relative; display: flex; gap: 10px; align-items: flex-start; padding: 6px 14px; }
+.iv2-dp-paso:not(:last-child)::before { content: ""; position: absolute; left: 25px; top: 32px; bottom: -6px; width: 2px; background: #E2E2E6; }
+.iv2-dp-paso-ic { flex: none; position: relative; z-index: 1; width: 24px; height: 24px; border-radius: 999px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; box-sizing: border-box; background: #FFFFFF; color: #8A8A90; border: 1.5px solid #D5D5DA; }
+.iv2-dp-paso-hecho .iv2-dp-paso-ic { background: #2B558F; color: #FFFFFF; border: 0; }
+.iv2-dp-paso-tuyo .iv2-dp-paso-ic { background: #6E4560; color: #FFFFFF; border: 0; }
+.iv2-dp-paso-franco .iv2-dp-paso-ic { background: #141414; color: #FFFFFF; border: 0; }
+.iv2-dp-paso-txt { display: flex; flex-direction: column; gap: 1px; min-width: 0; padding-top: 2px; }
+.iv2-dp-paso-t { font-size: 14px; font-weight: 600; color: #141414; }
+.iv2-dp-paso-pendiente .iv2-dp-paso-t { color: #8A8A90; }
+.iv2-dp-paso-s { font-size: 12px; color: #5A5A5F; }
+.iv2-dp-paso-tuyo .iv2-dp-paso-s { color: #6E4560; font-weight: 600; }
+.iv2-dp-paso-franco .iv2-dp-paso-s { color: #141414; font-weight: 600; }
+.iv2-dp-tablero .iv2-dp-preguntale { min-height: 46px; border-radius: 999px; background: #F4F4F6; color: #141414; }
+@media (min-width: 1024px) {
+  .iv2-dp-tablero .iv2-dp-solo-pc { display: flex !important; }
+  .iv2-dp-tablero .iv2-dp-solo-pc-i { display: inline !important; }
+  .iv2-dp-tablero .iv2-dp-solo-movil, .iv2-dp-tablero .iv2-dp-solo-movil-i { display: none !important; }
+  /* En PC manda la grilla: «Lo que sigue» va primero en su columna (el orden del celular no aplica). */
+  .iv2-dp-tablero .iv2-dp-izq > *, .iv2-dp-tablero .iv2-dp-der > * { order: 0; }
+  /* La acción se ve sin bajar en un notebook: menos aire arriba y la cabeza más baja. */
+  .iv2-dp-tablero { padding-top: 0; gap: 12px 20px; }
+  .iv2-con-pc .iv2-cuerpo:has(> .iv2-dp-tablero) { padding-top: 4px; }
+  .iv2-con-pc .iv2-marco:has(.iv2-dp-tablero) .iv2-mi-inversion { padding-top: 4px; }
+  .iv2-dp-tablero .iv2-dp-sigue { padding: 12px 16px; gap: 8px; }
+  .iv2-dp-tablero .iv2-barra-chica .iv2-barra-chips { height: 22px; }
+  .iv2-dp-tablero .iv2-barra-chica .iv2-barra-rotulos { height: 28px; }
+  .iv2-dp-tablero .iv2-dp-sigue-t { font-size: 18px; }
+  .iv2-dp-tablero { display: grid; grid-template-columns: minmax(0, 1fr) 440px; grid-template-areas: "cab cab" "cam cam" "izq der"; gap: 12px 20px; align-items: start; padding-top: 0; }
+  .iv2-dp-tablero > .iv2-dp-izq, .iv2-dp-tablero > .iv2-dp-der { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .iv2-dp-tablero > .iv2-dp-izq { grid-area: izq; }
+  .iv2-dp-tablero > .iv2-dp-der { grid-area: der; }
+  .iv2-dp-tablero .iv2-dp-bajo { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+  .iv2-dp-tablero .iv2-dp-cabeza { grid-area: cab; display: grid; grid-template-columns: 300px minmax(0, 1fr) 260px; gap: 20px; align-items: stretch; }
+  .iv2-dp-tablero .iv2-dp-cabeza:not(:has(.iv2-fotos)) { grid-template-columns: minmax(0, 1fr) 260px; }
+  .iv2-dp-tablero .iv2-dp-fotos { height: 128px; }
+  .iv2-dp-tablero .iv2-dp-info { justify-content: center; gap: 12px; }
+  .iv2-dp-tablero .iv2-dp-t { font-size: 24px; }
+  .iv2-dp-tablero .iv2-dp-sub { font-size: 13px; }
+  .iv2-dp-cifras { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .iv2-dp-tablero .iv2-dp-detalles { align-self: flex-start; min-height: 32px; text-decoration: none; }
+  .iv2-dp-tablero .iv2-dp-mapa-fila { display: block; }
+  .iv2-dp-tablero .iv2-dp-mapa { display: block; height: 100%; }
+  .iv2-dp-tablero .iv2-dp-mapa-img { width: 100%; height: 100%; min-height: 128px; }
+  .iv2-dp-tablero .iv2-dp-mapa-chip { display: inline-flex; position: absolute; left: 8px; bottom: 8px; padding: 3px 9px; border-radius: 999px; background: #FFFFFF; color: #141414; font-size: 11px; font-weight: 600; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18); }
+  .iv2-dp-tablero .iv2-dp-mapa-txt { display: none; }
+  .iv2-dp-tablero .iv2-dp-camino { grid-area: cam; }
+  .iv2-dp-camino-th { display: none; }
+  .iv2-dp-pasos { display: flex; align-items: center; padding: 8px 16px; gap: 0; }
+  .iv2-dp-paso { flex: 1 1 0; align-items: center; padding: 0; min-width: 0; }
+  .iv2-dp-paso:last-child { flex: none; }
+  .iv2-dp-paso:not(:last-child)::before { display: none; }
+  .iv2-dp-paso:not(:last-child)::after { content: ""; flex: 1; min-width: 12px; height: 1px; background: #D5D5DA; margin: 0 12px; }
+  .iv2-dp-paso-ic { width: 28px; height: 28px; }
+  .iv2-dp-paso-txt { padding-top: 0; flex: none; }
+  .iv2-dp-paso-t, .iv2-dp-paso-s { white-space: nowrap; }
+}

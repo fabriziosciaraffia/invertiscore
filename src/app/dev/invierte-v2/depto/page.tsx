@@ -9,7 +9,7 @@ import { VistaDepto } from "@/components/invierte-v2/VistaDepto";
 import { DEPTO_COPY, type Etapa } from "@/lib/invierte-v2/depto-flujo";
 import type { PaginaDepto } from "@/lib/invierte-v2/depto-pagina-servidor";
 import type { EstadoVisible } from "@/lib/invierte-v2/preaprobacion";
-import { lineaCambio } from "@/lib/invierte-v2/cambios";
+import { filaCambio, lineaCambio } from "@/lib/invierte-v2/cambios";
 import { direccionDepto, tituloDepto } from "@/lib/invierte-v2/titulo-depto";
 
 export const dynamic = "force-dynamic";
@@ -25,11 +25,12 @@ export default function DeptoDemo({ searchParams }: { searchParams: { etapa?: st
   const p: PaginaDepto = {
     avisoId, etapa, noAvanzaMotivo: e === "dejo" ? "dejo_de_convenir" : e === "no_avanza" ? "sin_acuerdo" : null,
     datos: { comuna: "Providencia", dormitorios: 2, banos: 2, m2: 58, precioUF: 3090, veredicto: "COMPRAR", score: 81, flujoCLP: -45000 },
-    ficha: { titulo: tituloDepto({ calle: "Avenida Libertador Bernardo O'Higgins", metro, comuna: "Providencia" }), metro, comuna: "Providencia", fotos: avisoId === "muestra" ? 0 : 3, capRatePct: 5.1, lectura: null },
+    ficha: { titulo: tituloDepto({ calle: "Avenida Libertador Bernardo O'Higgins", metro, comuna: "Providencia" }), metro, comuna: "Providencia", fotos: avisoId === "muestra" ? 0 : 3, capRatePct: 5.1, lectura: null, punto: { lat: -33.4372, lng: -70.6311 }, arriendoCLP: 520000 },
     tituloConNumero: tituloDepto({ calle: "Avenida Libertador Bernardo O'Higgins", numero: confirmada ? "1302" : null, metro, comuna: "Providencia" }),
     direccion: direccionDepto({ calle: "Avenida Libertador Bernardo O'Higgins", numero: confirmada ? "1302" : null, comuna: "Providencia" }),
     ubicacion: confirmada ? { avisoId, direccion: "Avenida Libertador Bernardo O'Higgins", numero: "1302", lat: -33.44, lng: -70.63, distanciaM: 180, analisis: null, precioComprarUF: null, cargadaAt: "2026-11-21T12:00:00Z" } : null,
     cambios: [lineaCambio({ tipo: "precio_baja", antes: { precioUF: 3170 }, despues: { precioUF: 3090 } }, "2026-11-12")!, ...(confirmada ? [lineaCambio({ tipo: "ubicacion", antes: {}, despues: { flujoCLP: -45000 } }, "2026-11-21")!] : [])],
+    cambiosFilas: [filaCambio({ tipo: "precio_baja", antes: { precioUF: 3170 }, despues: { precioUF: 3090 } }, "2026-11-12")!],
     preaprobacion: pre, whatsapp: "+56912345678",
     alternativa: e === "no_avanza" || e === "dejo" ? { avisoId: "alt", datos: { comuna: "Providencia", dormitorios: 2, banos: 2, m2: 60, precioUF: 3180, veredicto: "COMPRAR", score: 77 }, ficha: { titulo: "Av. Irarrázaval · Metro Chile España", metro: null, comuna: "Ñuñoa", fotos: 0, capRatePct: 5.0, lectura: null }, alcanza: true } : null,
     activos: [],
@@ -38,6 +39,7 @@ export default function DeptoDemo({ searchParams }: { searchParams: { etapa?: st
       { id: "q1", pregunta: "¿Incluye estacionamiento?", enviadaAt: "2026-11-18T15:00:00Z", respuesta: etapa === "confirmando" ? null : "Sí, uno, inscrito con el depto", fuente: etapa === "confirmando" ? null : "quien_vende", respondidaAt: etapa === "confirmando" ? null : "2026-11-19T15:00:00Z" },
       { id: "q2", pregunta: "¿Cuánto son los gastos comunes?", enviadaAt: "2026-11-18T15:00:00Z", respuesta: etapa === "confirmando" ? null : "$95.000 al mes", fuente: etapa === "confirmando" ? null : "quien_vende", respondidaAt: etapa === "confirmando" ? null : "2026-11-19T15:00:00Z" },
       { id: "q3", pregunta: "¿De qué año es el edificio?", enviadaAt: "2026-11-18T15:00:00Z", respuesta: null, fuente: null, respondidaAt: null },
+      { id: "q4", pregunta: "¿Cuánto son las contribuciones?", enviadaAt: "2026-11-18T15:00:00Z", respuesta: null, fuente: null, respondidaAt: null },
     ],
     documentos: [],
     // B3: en listo, la oferta borrador con el rango de la regla v1 (?oferta=firmada la muestra firmada).

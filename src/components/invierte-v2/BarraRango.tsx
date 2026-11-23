@@ -22,7 +22,8 @@ export function BarraRango({ pisoUF, altoUF, publicadoUF, fuerteUF, montoUF, eti
   const pista = useRef<HTMLDivElement>(null);
   const rayada = pct(fuerteUF);
   const ini = pct(pisoUF), fin = pct(altoUF), centro = (ini + fin) / 2;
-  const rotuloCentro = entre(centro, 34, 66);
+  // El rótulo del rango no se monta con «Publicado» ni con «Poco probable», también en la barra chica a 360 px.
+  const rotuloCentro = entre(centro, 34, 60);
   const desde = (clientX: number) => {
     const r = pista.current?.getBoundingClientRect();
     if (!r || !onCambio) return;
@@ -38,7 +39,7 @@ export function BarraRango({ pisoUF, altoUF, publicadoUF, fuerteUF, montoUF, eti
   return (
     <div className={`iv2-barra${chica ? " iv2-barra-chica" : ""}`} data-inv2="barra-rango">
       <div className="iv2-barra-chips">
-        <span className={`iv2-barra-chip${dentro ? "" : " iv2-barra-fuera"}`} style={{ left: `${entre(pct(montoUF), 17, 83)}%` }} data-inv2="barra-chip">{etiqueta}</span>
+        <span className={`iv2-barra-chip${dentro ? "" : " iv2-barra-fuera"}`} style={{ left: `clamp(72px, ${pct(montoUF)}%, calc(100% - 72px))` }} data-inv2="barra-chip">{etiqueta}</span>
       </div>
       <div ref={pista} className={`iv2-barra-pista${onCambio ? " iv2-barra-mueve" : ""}`} onPointerDown={abajo} onPointerMove={mueve}>
         <div className="iv2-barra-fondo">
