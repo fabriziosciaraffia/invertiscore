@@ -221,6 +221,7 @@ import { runStrCongeladoTier } from "./str-congelado-catch-test";
 import { runDatosYPlataTier } from "./datos-y-plata-catch-test";
 import { runSuscripcionTier } from "./suscripcion-catch-test";
 import { runAvisoCobroTier } from "./aviso-cobro-catch-test";
+import { runCobroMostradoTier } from "./cobro-mostrado-catch-test";
 import { runTarjetaAnalizadaTier } from "./tarjeta-analizada-catch-test";
 import { runEdadNocheTier } from "./edad-noche-catch-test";
 import { runPromesasTextosTier } from "./promesas-textos-catch-test";
@@ -885,6 +886,10 @@ function printSeed(r: SeedReport) {
   // la ruta de producción, con la sonda), consulta el pago por GET con esperas y concilia si Flow no lo entrega; cada
   // llamada a Flow va con el método de su servicio (el POST a payment/getStatus era la causa del aviso perdido). ──
   totalHard += (await runAvisoCobroTier()).hard;
+  // Tier COBRO-MOSTRADO (23-nov-2026, 0 tokens): no se cobra cuando el informe contradice lo mostrado — el aviso antes de cobrar
+  // (y antes de mandar a pagar), el respaldo que devuelve el crédito con `devolucion_cobro`, lo mostrado reconstruido en el
+  // servidor, la vuelta del pago con el crédito a salvo y la línea del informe. ──
+  totalHard += (await runCobroMostradoTier()).hard;
   // Tier TARJETA-ANALIZADA (05-nov-2026, 0 tokens): la tarjeta de un depto ya analizado dice SU informe —el chip con su
   // veredicto y puntaje y «en tu cuenta desde el 13-oct»—, no la noche; si la noche da distinto, la línea chica «hoy la noche da 82».
   // Dibujadas de verdad: la tarjeta y la lista de Explorar, el compartido, la selección, los guardados y la primera selección. ──
