@@ -15,6 +15,8 @@ import { leerPreaprobacion } from "./preaprobacion-servidor";
 import type { EstadoVisible } from "./preaprobacion";
 import { direccionDepto, tituloDepto } from "./titulo-depto";
 import { asegurarRango, ofertaAbierta, type OfertaVista } from "./rango-servidor";
+import { bloqueOfertaCifras } from "./cifras-motor";
+import type { BloqueCifrasOferta } from "./cifras";
 
 export interface PaginaDepto {
   avisoId: string;
@@ -41,6 +43,8 @@ export interface PaginaDepto {
   documentos: { id: string; tipo: string; creadoAt: string }[];
   /** B3: la oferta del depto —el borrador con el rango de la regla v1, o la firmada—, si hay. */
   oferta: OfertaVista | null;
+  /** La ficha (23-nov-2026): con una oferta viva, sus cifras a ese monto; con precio acordado, a ese precio. Del motor. */
+  bloqueOferta: BloqueCifrasOferta | null;
 }
 
 export async function leerPaginaDepto(admin: SupabaseClient, userId: string, avisoId: string): Promise<PaginaDepto | null> {
@@ -67,9 +71,8 @@ export async function leerPaginaDepto(admin: SupabaseClient, userId: string, avi
       alternativa = { avisoId: alt, datos: { precioUF: o.precioUF, veredicto: o.veredicto, score: o.score, flujoCLP: o.flujoCLP, comuna: o.comuna, m2: o.m2, dormitorios: o.dormitorios, banos: o.banos }, ficha: null, alcanza: o.alcanza };
     }
   }
-  const fichas = await fichasDe(admin, [avisoId, ...(alternativa ? [alternativa.avisoId] : [])], { [avisoId]: datos.precioUF ?? null });
+  const fichas = await fichasDe(admin, [avisoId, ...(alternativa ? [alternativa.avisoId] : [])], { [avisoId]: datos.precioUF ?? null }, { [avisoId]: datos.flujoCLP ?? null });
   const ficha = fichas[avisoId] ?? null;
-  if (ficha && u?.analisis?.capRatePct != null) ficha.capRatePct = u.analisis.capRatePct;
   if (alternativa) alternativa.ficha = fichas[alternativa.avisoId] ?? null;
   // El número de la calle va solo con la ubicación confirmada por Franco (LEEME del rediseño, 23-nov-2026); sin confirmar, solo la calle.
   const calle = u?.direccion ?? ficha?.lectura?.calle ?? null;
@@ -88,5 +91,5 @@ export async function leerPaginaDepto(admin: SupabaseClient, userId: string, avi
   const cambios = filasCs.map((c) => lineaCambio(c, c.fecha)).filter((x): x is string => !!x);
   const cambiosFilas = filasCs.map((c) => filaCambio(c, c.fecha)).filter((x): x is NonNullable<ReturnType<typeof filaCambio>> => !!x);
   return { avisoId, etapa, noAvanzaMotivo: (f.no_avanza_motivo as string | null) ?? null, datos, ficha, tituloConNumero, direccion, ubicacion: u, cambios, cambiosFilas, preaprobacion: pre.estado, whatsapp, alternativa, activos: (elegidos ?? []).map((e) => ({ avisoId: e.aviso_id as string, datos: (e.datos ?? {}) as DatosDepto })),
-    oferta, preguntas, documentos: ((docs ?? []) as { id: string; tipo: string; created_at: string }[]).map((d) => ({ id: d.id, tipo: d.tipo, creadoAt: d.created_at })) };
+    oferta, bloqueOferta: bloqueOfertaCifras(u?.analisis?.motor ?? null, oferta, ficha?.cifras.publicadoUF ?? datos.precioUF ?? null), preguntas, documentos: ((docs ?? []) as { id: string; tipo: string; created_at: string }[]).map((d) => ({ id: d.id, tipo: d.tipo, creadoAt: d.created_at })) };
 }

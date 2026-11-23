@@ -1207,3 +1207,103 @@
   .iv2-visor-puntos { display: flex; order: 3; }
   .iv2-visor-gesto { display: block; order: 4; }
 }
+
+/* LAS CUATRO CIFRAS Y LA FICHA DEL DEPTO (23-nov-2026; láminas 4.2-ficha-del-depto, 4.2-pagina-del-depto, 3.3-base-tarjetas y 5.1-oferta).
+   Cuatro cajas con fondo gris (2 × 2 en celular; en fila en la ficha y el resultado de PC; en la base de PC, una franja con divisiones).
+   El número nunca se parte en dos líneas. La marca gris de pocos arriendos comparables va debajo. El bloque de otro precio: con borde en
+   la ficha, con fondo en la oferta. La ficha es una sola tarjeta: foto, depto, cifras, ubicación y «Ver los detalles del depto» al pie. */
+.iv2-4c { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.iv2-4c-lista { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.iv2-4c-celda { display: flex; flex-direction: column; gap: 3px; min-width: 0; margin: 0; padding: 9px 11px; border-radius: 10px; background: rgba(255, 255, 255, 0.06); }
+[data-theme="light"] .iv2-4c-celda { background: #F3F4F6; }
+.iv2-4c-et { display: block; font-size: 11px; line-height: 1.3; color: var(--franco-text-secondary); }
+[data-theme="light"] .iv2-4c-et { color: #5A5A5F; }
+.iv2-4c-v { display: block; margin: 0; font-size: 17px; font-weight: 700; line-height: 1.25; white-space: nowrap; color: var(--franco-text); }
+.iv2-4c-v.iv2-pones { color: var(--signal-red, #C8323C); }
+.iv2-4c-pocos { display: block; margin: 0; font-size: 12px; line-height: 1.4; color: var(--franco-text-muted); }
+.iv2-4c-corto { display: none; }
+.iv2-4c-base .iv2-4c-v { font-size: 16px; }
+.iv2-4c-precio { display: flex; flex-direction: column; gap: 6px; padding: 11px 12px; border: 1px solid var(--franco-border); border-radius: 12px; min-width: 0; }
+.iv2-4c-precio-t { margin: 0; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--franco-text); }
+.iv2-4c-precio-lista { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.iv2-4c-precio-lista > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.iv2-4c-precio-lista dt { font-size: 11px; color: var(--franco-text-secondary); }
+[data-theme="light"] .iv2-4c-precio-lista dt { color: #5A5A5F; }
+.iv2-4c-precio-lista dd { margin: 0; font-size: 17px; font-weight: 700; line-height: 1.25; white-space: nowrap; color: var(--franco-text); }
+.iv2-4c-precio-lista dd.iv2-pones { color: var(--signal-red, #C8323C); }
+.iv2-4c-precio-ref { margin: 0; font-size: 12px; line-height: 1.4; color: var(--franco-text-secondary); }
+[data-theme="light"] .iv2-4c-precio-ref { color: #5A5A5F; }
+.iv2-4c-precio[data-inv2="a-este-precio"] { border: 0; background: rgba(255, 255, 255, 0.06); }
+[data-theme="light"] .iv2-4c-precio[data-inv2="a-este-precio"] { background: #F3F4F6; }
+/* La ficha: una sola tarjeta. */
+.iv2-dp-tablero .iv2-ficha { gap: 0; border: 1px solid var(--franco-border); border-radius: 16px; background: var(--franco-card, #FFFFFF); overflow: hidden; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04); }
+.iv2-dp-tablero .iv2-ficha .iv2-dp-fotos { height: 190px; border-radius: 0; }
+.iv2-dp-tablero .iv2-ficha .iv2-dp-info { padding: 14px 14px 12px; gap: 10px; }
+.iv2-dp-tablero .iv2-ficha .iv2-dp-mapa-fila { padding: 12px 14px; border-top: 1px solid var(--franco-border); }
+.iv2-ficha-pie { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 48px; padding: 0 14px; border: 0; border-top: 1px solid var(--franco-border); background: none; font-size: 14px; font-weight: 600; text-align: left; text-decoration: none; cursor: pointer; }
+.iv2-ficha-pie::after { content: "\203A"; font-size: 22px; line-height: 1; }
+@media (min-width: 1024px) {
+  .iv2-4c-ficha .iv2-4c-lista, .iv2-4c-resultado .iv2-4c-lista { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  /* En la base de PC: una franja con las cuatro, divididas por una línea, y «Arriendo est.». */
+  .iv2-4c-base .iv2-4c-lista { grid-template-columns: repeat(4, auto); justify-content: start; gap: 0; padding: 8px 0; border-radius: 10px; background: rgba(255, 255, 255, 0.06); }
+  [data-theme="light"] .iv2-4c-base .iv2-4c-lista { background: #F3F4F6; }
+  .iv2-4c-base .iv2-4c-celda { padding: 0 14px 0 10px; border-radius: 0; background: none !important; border-left: 1px solid var(--franco-border); }
+  .iv2-4c-base .iv2-4c-celda:first-child { border-left: 0; }
+  .iv2-4c-base .iv2-4c-largo { display: none; }
+  .iv2-4c-base .iv2-4c-corto { display: inline; }
+  .iv2-4c-base .iv2-4c-v { font-size: 15px; }
+  .iv2-td-principal > .iv2-4c-base { grid-column: -2 / -1; }
+  /* La ficha en PC: foto, depto y mapa en una fila, sin pie (el enlace va bajo las cifras). */
+  .iv2-dp-tablero .iv2-ficha { grid-template-columns: 300px minmax(0, 1fr) 260px; gap: 0; }
+  .iv2-dp-tablero .iv2-ficha .iv2-dp-fotos { height: 100%; min-height: 190px; }
+  .iv2-dp-tablero .iv2-ficha .iv2-dp-info { padding: 14px 20px; gap: 10px; }
+  .iv2-dp-tablero .iv2-ficha .iv2-dp-mapa-fila { padding: 0; border-top: 0; }
+  .iv2-dp-tablero .iv2-ficha .iv2-4c-v { font-size: 16px; }
+  .iv2-dp-tablero .iv2-ficha .iv2-4c-celda { padding: 8px 10px; }
+  /* El bloque de la oferta, en una línea: el título, las dos cifras y la referencia. */
+  .iv2-dp-tablero .iv2-ficha .iv2-4c-precio { display: grid; grid-template-columns: auto auto minmax(0, 1fr); align-items: center; column-gap: 18px; row-gap: 2px; padding: 8px 12px; }
+  .iv2-dp-tablero .iv2-ficha .iv2-4c-precio-t { grid-column: 1 / -1; }
+  .iv2-dp-tablero .iv2-ficha .iv2-4c-precio-lista { grid-column: 1 / 3; grid-template-columns: repeat(2, auto); column-gap: 18px; }
+  .iv2-dp-tablero .iv2-ficha .iv2-4c-precio-lista dd { font-size: 15px; }
+  .iv2-dp-tablero .iv2-ficha .iv2-4c-precio-ref { grid-column: 3; align-self: end; }
+}
+/* La oferta en PC con «A este precio» (23-nov-2026): menos aire arriba y el bloque en dos filas cortas, para que «Revisar y firmar» siga a
+   la vista en un notebook (1280 × 610). La ficha en PC: la foto con alto fijo, como la lámina 4.2-pc. */
+@media (min-width: 1024px) {
+  .iv2-con-pc .iv2-marco:has(.iv2-cuerpo.iv2-formulario .iv2-of) { margin-top: 10px; }
+  .iv2-con-pc .iv2-marco:has(.iv2-cuerpo.iv2-formulario .iv2-of) .iv2-mi-inversion { padding-top: 12px; }
+  .iv2-con-pc .iv2-marco:has(.iv2-of) .iv2-cuerpo.iv2-formulario { padding-top: 8px; }
+  .iv2-of .iv2-4c-precio { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 16px; row-gap: 2px; padding: 9px 12px; }
+  .iv2-of .iv2-4c-precio-t { grid-row: 1 / span 2; }
+  .iv2-of .iv2-4c-precio-lista { grid-template-columns: repeat(2, auto); justify-content: start; column-gap: 20px; }
+  .iv2-of .iv2-4c-precio-lista > div { flex-direction: row; align-items: baseline; gap: 6px; }
+  .iv2-of .iv2-4c-precio-lista dd { font-size: 16px; }
+  .iv2-of .iv2-4c-precio-ref { grid-column: 2; }
+  .iv2-dp-tablero .iv2-ficha .iv2-dp-fotos { height: 190px; min-height: 0; align-self: stretch; }
+}
+@media (min-width: 1024px) {
+  /* Que «Lo que sigue» y su botón queden a la vista en un notebook aunque el nombre ocupe dos líneas. */
+  .iv2-dp-tablero .iv2-ficha .iv2-dp-fotos { height: 168px; }
+  .iv2-dp-tablero .iv2-ficha .iv2-dp-info { padding: 12px 18px; gap: 8px; }
+  .iv2-dp-tablero .iv2-ficha .iv2-dp-t { font-size: 22px; line-height: 1.2; }
+  .iv2-dp-tablero .iv2-ficha .iv2-4c-celda { padding: 6px 10px; gap: 2px; }
+  .iv2-dp-tablero .iv2-ficha .iv2-dp-detalles { min-height: 24px; }
+}
+@media (min-width: 1024px) {
+  /* La marca de pocos comparables, en la misma fila que «Ver los detalles del depto»; el camino y «Lo que sigue», un poco más justos. */
+  .iv2-dp-tablero .iv2-ficha .iv2-dp-info { display: grid; grid-template-columns: auto minmax(0, 1fr); align-content: center; column-gap: 16px; }
+  .iv2-dp-tablero .iv2-ficha .iv2-dp-info > * { grid-column: 1 / -1; }
+  .iv2-dp-tablero .iv2-ficha .iv2-4c-ficha { display: contents; }
+  .iv2-dp-tablero .iv2-ficha .iv2-4c-ficha > .iv2-4c-lista { grid-column: 1 / -1; grid-row: 2; }
+  .iv2-dp-tablero .iv2-ficha .iv2-dp-info > .iv2-4c-precio { grid-row: 3; }
+  .iv2-dp-tablero .iv2-ficha .iv2-dp-info > .iv2-dp-detalles { grid-column: 1; grid-row: 4; }
+  .iv2-dp-tablero .iv2-ficha .iv2-4c-ficha > .iv2-4c-pocos { grid-column: 2; grid-row: 4; align-self: center; justify-self: end; text-align: right; }
+  .iv2-dp-tablero .iv2-ficha .iv2-dp-t { font-size: 21px; }
+  .iv2-dp-tablero .iv2-dp-pasos { padding-top: 4px; padding-bottom: 4px; }
+  .iv2-dp-tablero { row-gap: 10px; }
+  .iv2-dp-tablero .iv2-dp-sigue { padding: 10px 16px; gap: 6px; }
+}
+@media (min-width: 1024px) {
+  /* La foto ocupa todo el alto de la ficha (crece con el bloque de la oferta) sin que su tamaño propio la estire. */
+  .iv2-dp-tablero .iv2-ficha .iv2-dp-fotos { height: auto; min-height: 168px; align-self: stretch; contain: size; }
+}

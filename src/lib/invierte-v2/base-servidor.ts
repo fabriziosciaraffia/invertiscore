@@ -126,8 +126,9 @@ export async function leerBase(admin: SupabaseClient, userId: string): Promise<B
   for (const d of elegidos) { d.oferta = ofPor.get(d.avisoId) ?? null; d.numeroConfirmado = ubic[d.avisoId]?.numero ?? null; }
   // Por nivel (Te toca a ti, En curso, Recién partiendo) y, dentro de cada nivel, el más avanzado primero (segunda vuelta, 23-nov).
   const ordenados = ordenBase(elegidos, pre.estado);
-  const fichas = await fichasDe(admin, todos.map((d) => d.avisoId), Object.fromEntries(todos.map((d) => [d.avisoId, d.datos.precioUF ?? null])));
-  for (const d of todos) { d.ficha = fichas[d.avisoId] ?? null; const cap = ubic[d.avisoId]?.analisis?.capRatePct; if (d.ficha && cap != null) d.ficha.capRatePct = cap; }
+  // Las cuatro cifras de cada tarjeta, de una sola fuente (23-nov-2026): fichasDe las arma con el motor si la ubicación está confirmada.
+  const fichas = await fichasDe(admin, todos.map((d) => d.avisoId), Object.fromEntries(todos.map((d) => [d.avisoId, d.datos.precioUF ?? null])), Object.fromEntries(todos.map((d) => [d.avisoId, d.datos.flujoCLP ?? null])));
+  for (const d of todos) d.ficha = fichas[d.avisoId] ?? null;
   const preDetalle = { motivo: pre.doc?.motivo ?? null, banco: pre.doc?.banco ?? null, vigenteHasta: pre.doc?.vigenteHasta ?? null, mime: pre.doc?.mime ?? null, otra: pre.otra ? { estado: pre.otra.estado, mime: pre.otra.mime } : null };
   return { orden, perfil, elegidos: ordenados, otras, whatsapp, preaprobacion: pre.estado, preDetalle };
 }

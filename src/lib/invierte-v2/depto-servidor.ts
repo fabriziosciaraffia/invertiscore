@@ -13,7 +13,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { avisosEvaluables, type FilaAviso } from "@/lib/avisos/depurar";
 import { evaluarAviso, VERSION_EVALUACION } from "@/lib/avisos/evaluar-aviso";
 import { candidatoDeEvaluacion } from "@/lib/avisos/estandar-deptos";
-import { negociarCandidato } from "@/lib/avisos/negociar";
+import { cuerpoDeCandidato, negociarCandidato } from "@/lib/avisos/negociar";
+import { arriendosDeSuTamano } from "./lectura-franco-servidor";
+import type { MotorFijo } from "./cifras-motor";
 import { capRatePct } from "@/lib/explorar/explorar";
 import { etapaConPreaprobacion, etapaDe, etapaSiguiente, ubicacionConviene, FUENTES_RESPUESTA, type Acuerdo, type Etapa, type FuenteRespuesta, type PreguntaDepto } from "./depto-flujo";
 import { leerPreaprobacion } from "./preaprobacion-servidor";
@@ -33,7 +35,13 @@ export function cambioDeUbicacionRelevante(antes: { veredicto: string | null; fl
   return Math.abs(despues.flujoCLP - antes.flujoCLP) > UMBRAL_MES_CLP;
 }
 
-export interface AnalisisUbicacion { veredicto: string | null; score: number | null; flujoCLP: number | null; arriendoCLP: number | null; capRatePct: number | null; precioUF: number; radio: number | null; n: number | null }
+export interface AnalisisUbicacion {
+  veredicto: string | null; score: number | null; flujoCLP: number | null; arriendoCLP: number | null; capRatePct: number | null; precioUF: number; radio: number | null; n: number | null;
+  /** Los datos fijos del motor (23-nov-2026): con ellos, las cifras a cualquier precio salen de la misma sonda (cifras-motor.ts). */
+  motor?: MotorFijo | null;
+  /** Arriendos activos de su tamaño en el radio del motor, contados hasta MIN_ARRIENDOS_COMPARABLES: con menos, la marca gris. */
+  comparables?: number | null;
+}
 export interface Ubicacion { avisoId: string; direccion: string; numero: string | null; lat: number; lng: number; distanciaM: number | null; analisis: AnalisisUbicacion | null; precioComprarUF: number | null; cargadaAt: string }
 
 const n = (v: unknown): number | null => (v == null ? null : Number.isFinite(Number(v)) ? Number(v) : null);
@@ -91,10 +99,17 @@ export async function reanalizar(admin: SupabaseClient, avisoId: string, punto: 
   const { sug: _sug, ...fila } = await evaluarAviso(admin, aviso, cfg, { segmentar: false });
   void _sug;
   if (!fila.arriendo) return { ok: false, error: "arriendo" };
-  const precioComprarUF = fila.veredicto_20 === "AJUSTA SUPUESTOS" ? negociarCandidato(candidatoDeEvaluacion(aviso, fila), 20, cfg)?.p ?? null : null;
+  const candidato = candidatoDeEvaluacion(aviso, fila);
+  const precioComprarUF = fila.veredicto_20 === "AJUSTA SUPUESTOS" ? negociarCandidato(candidato, 20, cfg)?.p ?? null : null;
+  // Los datos fijos del motor (la misma cuenta que el precio a Comprar) y los arriendos de su tamaño, contados una vez.
+  const cuerpo = cuerpoDeCandidato(candidato, 20, cfg);
+  const motor: MotorFijo | null = cuerpo ? { v: 1, cuerpo, mediana: candidato.medianaComuna ?? null, uf: cfg.uf, asOf: new Date().toISOString(), arriendoCLP: fila.arriendo.monto } : null;
+  const m2 = sp.superficie_m2 == null ? null : Number(sp.superficie_m2);
+  const comparables = m2 ? await arriendosDeSuTamano(admin, { lat: punto.lat, lng: punto.lng, radio: fila.arriendo.radio ?? 1000, m2 }) : null;
   const analisis: AnalisisUbicacion = {
     veredicto: fila.veredicto_20, score: fila.score_20, flujoCLP: fila.flujo_20, arriendoCLP: fila.arriendo.monto,
     capRatePct: capRatePct(fila.arriendo.monto, fila.precio_uf, cfg.uf), precioUF: fila.precio_uf, radio: fila.arriendo.radio, n: fila.arriendo.n,
+    motor, comparables,
   };
   const pin = sp.lat != null && sp.lng != null ? { lat: Number(sp.lat), lng: Number(sp.lng) } : null;
   return { ok: true, analisis, precioComprarUF, pin };

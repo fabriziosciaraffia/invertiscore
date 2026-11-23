@@ -134,6 +134,8 @@ export interface OfertaVista {
   textoVersion: string | null;
   /** Segunda vuelta (23-nov): si quedó en firme sin visitar (el camino deja la visita gris hueco). */
   enFirmeComo?: string | null;
+  /** El precio acordado, si quedó en firme a otro monto (la ficha lo usa en «Con el precio acordado»). */
+  precioFinalUF?: number | null;
 }
 
 function aVista(f: Record<string, unknown>): OfertaVista {
@@ -143,9 +145,10 @@ function aVista(f: Record<string, unknown>): OfertaVista {
     pisoUF: Number(f.piso_uf), recomendadoUF: Number(f.recomendado_uf), altoUF: Number(s.alto ?? f.techo_uf), techoUF: Number(f.techo_uf), comprarUF: num(s.comprarUF), publicadoUF: Number(f.publicado_uf),
     razones: Array.isArray(f.razones) ? (f.razones as string[]) : [], corregida: s.corregido ?? null, montoUF: num(f.monto_uf), firmadaAt: (f.firmada_at as string | null) ?? null,
     texto: (f.texto as string | null) ?? null, textoVersion: (f.texto_version as string | null) ?? null, enFirmeComo: (f.en_firme_como as string | null) ?? null,
+    precioFinalUF: num(f.precio_final_uf),
   };
 }
-const COLS = "id, estado, postura_recomendada, piso_uf, recomendado_uf, techo_uf, publicado_uf, razones, senales, monto_uf, firmada_at, texto, texto_version, rango_fuente, regla_version, en_firme_como";
+const COLS = "id, estado, postura_recomendada, piso_uf, recomendado_uf, techo_uf, publicado_uf, razones, senales, monto_uf, firmada_at, texto, texto_version, rango_fuente, regla_version, en_firme_como, precio_final_uf";
 
 /** La oferta abierta del depto (borrador o ya firmada), sin calcular nada. */
 export async function ofertaAbierta(admin: SupabaseClient, deptoId: string): Promise<OfertaVista | null> {

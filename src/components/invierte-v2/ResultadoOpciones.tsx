@@ -9,6 +9,8 @@
 //   · Caso 2 (no le alcanza ninguno): cuánto le falta (pie, crédito o los dos), «Avísenme cuando algo me alcance» y
 //     «actualizar». El bloque de deptos nuevos con pie en cuotas NO se construye en esta etapa.
 // ─────────────────────────────────────────────────────────────────────────────
+import { CuatroCifras } from "./CuatroCifras";
+import type { CifrasDepto } from "@/lib/invierte-v2/cifras";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { botonOcupado } from "@/lib/carga-global";
@@ -53,6 +55,8 @@ export interface PropsResultado {
   fotos: Record<string, number>;
   /** «Lo que ve Franco» de los que ya la tienen (entrega 4); los demás se completan solos. */
   lecturas: Record<string, LecturaFranco>;
+  /** Las cuatro cifras del depto de entrada (23-nov-2026), de la misma fuente que la ficha y la base. */
+  cifrasEntrada?: CifrasDepto | null;
 }
 
 const nombreDepto = (o: OpcionDepto) => [o.comuna, o.dormitorios != null ? `${o.dormitorios}D${o.banos ?? 1}B` : null, o.m2 ? `${Math.round(o.m2)} m²` : null].filter(Boolean).join(" · "); // «62 m²» no se parte en dos renglones
@@ -273,12 +277,8 @@ export function ResultadoOpciones(p: PropsResultado) {
       <div className="iv2-res-elegido-cuerpo">
         <span className="iv2-res-rotulo">{A.elQueElegiste}</span>
         <div className="iv2-res-fila"><span className="iv2-res-nombre-bloque"><span className="iv2-res-nombre" id="iv2-ele-t" data-inv2="titulo-depto"><TituloCalle avisoId={entrada.avisoId} metro={entrada.metro} comuna={entrada.comuna} inicial={p.lecturas[entrada.avisoId] ?? null} /></span><span className="iv2-res-programa">{nombreDepto(entrada)}</span></span><Chip o={entrada} /></div>
-        <dl className="iv2-res-datos" data-inv2="tres-datos">
-          <div><dt>{A.precio}</dt><dd>UF {fmtUF(entrada.precioUF)}</dd></div>
-          <div><dt>{A.arriendo}</dt><dd>{entrada.arriendoCLP ? fmtCLP(entrada.arriendoCLP) : "—"}</dd></div>
-          <div><dt>{A.alMes}</dt><dd>{(() => { const m = textoAlMes(entrada); return m.pones ? <span className="iv2-pones">{m.t}</span> : m.t; })()}</dd></div>
-          <div data-inv2="cap-rate"><dt>{A.capRate}</dt><dd>{entrada.capRatePct != null ? pctUno(entrada.capRatePct) : "—"}</dd></div>
-        </dl>
+        {/* Las cuatro cifras (23-nov-2026): las mismas de la ficha y de la base, de la misma fuente (ficha-depto-servidor.ts). */}
+        <CuatroCifras variante="resultado" c={p.cifrasEntrada ?? { publicadoUF: entrada.precioUF, arriendoCLP: entrada.arriendoCLP, capRatePct: entrada.capRatePct ?? null, flujoCLP: entrada.flujoCLP, pocosComparables: false }} />
         <LoQueVeFranco avisoId={entrada.avisoId} variante="elegido" inicial={p.lecturas[entrada.avisoId] ?? null} alLlegar={siEsGrave(entrada.avisoId)} alFotos={conFotos(entrada.avisoId)} />
         <div className="iv2-res-acciones">
           <label className="iv2-res-sigo">

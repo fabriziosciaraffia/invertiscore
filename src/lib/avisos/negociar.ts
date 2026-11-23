@@ -49,10 +49,18 @@ export const PLAZO_NEGOCIAR = PLAZO_POR_DEFECTO;
  * tope. `alPublicado`: el veredicto al precio publicado si ya se sabe (la sonda de Explorar lo acaba de calcular con el mismo
  * cuerpo): ahorra esa sonda.
  */
-export function negociarCandidato(c: CandidatoGuia, piePct: number, cfg: { uf: number; tasa: number }, asOf: Date = new Date(), tope: number = TOPE_NEGOCIAR_PCT, combo: { plazo?: number; tasa?: number | null; alPublicado?: string | null } = {}): Negociado | null {
+/** EL CUERPO DEL MOTOR de un aviso con un pie (a PLAZO_NEGOCIAR años, tasa del motor, o la combinación pedida): lo que la sonda recibe.
+ *  Lo usan la búsqueda de abajo y los datos fijos de Invierte con Franco (cifras-motor.ts, 23-nov-2026): la misma cuenta, una sola
+ *  fuente. null si falta lo que la sonda necesita. `precio` va en UF. */
+export function cuerpoDeCandidato(c: CandidatoGuia, piePct: number, cfg: { uf: number; tasa: number }, combo: { plazo?: number; tasa?: number | null } = {}): (Record<string, unknown> & { precio: number }) | null {
   const ctx = contextoDeFila(c, cfg);
   if (!ctx || !c.arriendo || c.medianaComuna == null) return null;
-  const body = payloadDeAviso(respuestasDeAviso(avisoDeCandidato(c), piePct, combo.tasa ?? cfg.tasa, c.arriendo.monto, { plazo: combo.plazo ?? PLAZO_NEGOCIAR, tasaMercado: cfg.tasa }), ctx) as Record<string, unknown> & { precio: number };
+  return payloadDeAviso(respuestasDeAviso(avisoDeCandidato(c), piePct, combo.tasa ?? cfg.tasa, c.arriendo.monto, { plazo: combo.plazo ?? PLAZO_NEGOCIAR, tasaMercado: cfg.tasa }), ctx) as Record<string, unknown> & { precio: number };
+}
+
+export function negociarCandidato(c: CandidatoGuia, piePct: number, cfg: { uf: number; tasa: number }, asOf: Date = new Date(), tope: number = TOPE_NEGOCIAR_PCT, combo: { plazo?: number; tasa?: number | null; alPublicado?: string | null } = {}): Negociado | null {
+  const body = cuerpoDeCandidato(c, piePct, cfg, combo);
+  if (!body) return null;
   const precio = Number(body.precio);
   if (!(precio > 0)) return null;
   const sondaEn = (precioUF: number) => sondaConPatch(body as never, cfg.uf, c.medianaComuna as never, asOf, { precio: precioUF } as never);

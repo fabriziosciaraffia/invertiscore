@@ -16,7 +16,7 @@ import { pctUno } from "@/lib/explorar/explorar";
 import { ALTERNATIVAS_COPY as A } from "@/lib/invierte-v2/alternativas";
 import { urlFoto } from "@/lib/invierte-v2/fotos";
 import { LECTURA_COPY as L, alertaPrimero, lineaAlternativa, type LecturaFranco } from "@/lib/invierte-v2/lectura-franco";
-import { fmtUF, textoAlMes } from "@/lib/invierte-v2/opciones";
+import { fmtUF } from "@/lib/invierte-v2/opciones";
 import { BASE_COPY as B, lineaDepto } from "@/lib/invierte-v2/base";
 import { etiquetaVeredicto, signoVeredicto } from "@/lib/veredicto-etiqueta";
 import { direccionDepto, tituloDepto } from "@/lib/invierte-v2/titulo-depto";
@@ -25,6 +25,8 @@ import type { EstadoBase, PasoCamino } from "@/lib/invierte-v2/depto-flujo";
 import type { FichaDepto } from "@/lib/invierte-v2/ficha-depto-servidor";
 import { useLectura } from "./LoQueVeFranco";
 import { LupaFotos } from "./VisorFotos";
+import { CuatroCifras } from "./CuatroCifras";
+import type { CifrasDepto } from "@/lib/invierte-v2/cifras";
 
 /** La portada: la primera foto que cargue, sin flechas (la tarjeta entera es un botón). Sin fotos, nada. Con `lupa` (segunda vuelta,
  *  23-nov; solo donde la portada NO está dentro de un enlace), la lupa en la esquina abre el visor con todas las fotos del depto. En la
@@ -68,9 +70,8 @@ function Sintesis({ l }: { l: LecturaFranco | null }) {
   );
 }
 
-function Dato({ et, children, clave }: { et: string; children: ReactNode; clave: string }) {
-  return <span className="iv2-td-dato" data-inv2={clave}><span className="iv2-td-dato-et">{et}</span><span className="iv2-td-dato-v">{children}</span></span>;
-}
+/** Sin ficha (no debería pasar: la base siempre la arma), las cifras que trae el depto, sin arriendo. */
+const sinFicha = (d: DatosDepto): CifrasDepto => ({ publicadoUF: d.precioUF ?? null, arriendoCLP: null, capRatePct: null, flujoCLP: d.flujoCLP ?? null, pocosComparables: false });
 
 /** La dirección de la tarjeta: la calle (la confirmada por Franco, o la que leyó la lectura) con el número solo si está confirmada; sin
  *  calle confiable, el título calle·metro de siempre. */
@@ -100,7 +101,6 @@ export function TarjetaBase({ avisoId, datos, ficha, numeroConfirmado = null, al
   const dir = direccionDe(ficha, l, datos, numeroConfirmado);
   const metro = !dir.conMetro && ficha?.metro && ficha.metro.metros <= 1000 ? `Metro ${ficha.metro.estacion.replace(/^(Estación|Metro)\s+/i, "")}` : null;
   const tuyo = estado.tono === "ciruela";
-  const alMes = textoAlMes({ flujoCLP: datos.flujoCLP ?? null });
   return (
     <span className="iv2-td" data-inv2="tarjeta-depto">
       <span className="iv2-td-principal">
@@ -113,11 +113,8 @@ export function TarjetaBase({ avisoId, datos, ficha, numeroConfirmado = null, al
           </span>
         </span>
         <Sintesis l={l} />
-        <span className="iv2-td-datos">
-          <Dato et={A.precio} clave="precio">{datos.precioUF ? `UF ${fmtUF(datos.precioUF)}` : "—"}</Dato>
-          <Dato et={A.capRate} clave="cap-rate">{ficha?.capRatePct != null ? pctUno(ficha.capRatePct) : "—"}</Dato>
-          <Dato et={A.alMes} clave="base-al-mes"><span className={alMes.pones ? "iv2-pones" : undefined}>{alMes.t}</span></Dato>
-        </span>
+        {/* Las cuatro cifras (23-nov-2026), las mismas de la ficha y en el mismo orden; en PC, en una franja. */}
+        <CuatroCifras c={ficha?.cifras ?? sinFicha(datos)} variante="base" />
       </span>
       <span className="iv2-td-estado" data-inv2="estado">
         <span className="iv2-td-estado-txt">

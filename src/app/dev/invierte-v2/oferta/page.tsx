@@ -1,6 +1,7 @@
 // /dev/invierte-v2/oferta (etapa 3, B3, 22-nov-2026; rediseño del 23-nov): las pantallas de la oferta, sin cuentas ni escrituras.
 //   ?pantalla=oferta (por defecto; lámina 5.1) | firmar (lámina 5.1b) · ?monto=UF (en oferta, el monto con que parte; en firmar, el que firma)
 //   ?caso=ajusta | ajusta-normal: un Ajusta supuestos de muestra.
+//   «A este precio» (23-nov-2026) sale del motor con los datos fijos de un depto real de muestra (muestra-motor.ts).
 //   ?aviso=<uuid>: con los números REALES de ese depto (su rango guardado, su dirección y su preaprobación), solo lectura: para revisar la
 //   pantalla de un depto cuya oferta ya está firmada (y que por eso ya no abre la página de verdad). SOLO EN LOCAL (development).
 // Gate en el servidor: dev y previews de Vercel sí; producción, 404.
@@ -15,6 +16,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { lineaDepto } from "@/lib/invierte-v2/base";
 import { direccionDepto } from "@/lib/invierte-v2/titulo-depto";
 import { leerPreaprobacion } from "@/lib/invierte-v2/preaprobacion-servidor";
+import { MOTOR_MUESTRA } from "@/lib/invierte-v2/muestra-motor";
 
 export const dynamic = "force-dynamic";
 
@@ -76,7 +78,7 @@ export default async function OfertaDemo({ searchParams }: { searchParams: { pan
       <div className="iv2-mi-inversion"><Link href="/dev/invierte-v2/depto?etapa=listo&confirmada=1" className="iv2-mi-inversion-a">← {m.direccion}</Link></div>
       <div className="inv-encabezado iv2-sumar-cab"><h1 className="iv2-titulo-res" id="iv2-t">{OFERTA_COPY.titulo}</h1><p className="iv2-depto-s">{m.linea} · publicado en {pub}</p></div>
       <OfertaForm avisoId="muestra" urlFirmar={q("pantalla=firmar")} postura={m.postura} pisoUF={m.pisoUF} recomendadoUF={m.recomendadoUF} altoUF={m.altoUF} publicadoUF={m.publicadoUF}
-        razones={m.razones} avisoFuertePct={5} comprarUF={m.comprarUF} montoInicial={monto > 0 ? monto : null} />
+        razones={m.razones} avisoFuertePct={5} comprarUF={m.comprarUF} montoInicial={monto > 0 ? monto : null} motor={MOTOR_MUESTRA} />
     </MarcoInvierte>
   );
 }

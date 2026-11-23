@@ -10,6 +10,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { findNearestStation } from "@/lib/metro-stations";
+import { fichasDe } from "./ficha-depto-servidor";
+import type { CifrasDepto } from "./cifras";
 import { capRatePct } from "@/lib/explorar/explorar";
 import { VENTANA_SEMANAL_DIAS } from "@/lib/guia/semanal";
 import { hastaCuanto, comunasPrecargadas, ayudaPie, type PedidoPerfil, type Tope, type Objetivo, type Preocupacion, type Donde } from "./perfil";
@@ -212,6 +214,8 @@ export interface ResultadoOpciones {
   /** Los que ya eligió (siguen aunque hoy no le alcancen; quedan marcados). */
   elegidos: string[];
   entrada: OpcionDepto | null;
+  /** Las cuatro cifras del depto de entrada (23-nov-2026), de la misma fuente que la ficha y la base (ficha-depto-servidor.ts). */
+  cifrasEntrada: CifrasDepto | null;
   masBaratoUF: number | null;
   perfil: PerfilInv;
   /** Láminas del 19-nov-2026: de qué nivel salieron las alternativas (el subtítulo dice su verdad) y a qué distancia está cada una. */
@@ -343,7 +347,8 @@ export async function calcularOpciones(admin: SupabaseClient, user: { id: string
   // El cap rate bruto de cada opción (20-nov-2026): el mismo número que la tarjeta del mapa.
   const m = await mercado(admin);
   const conCap = opciones.map((o) => ({ ...o, capRatePct: capRatePct(o.arriendoCLP, o.precioUF, m.uf) }));
-  return { caso, opciones: conCap, etiquetas, elegidos, entrada, masBaratoUF, perfil, nivel, distancias, niveles, lecturas };
+  const cifrasEntrada = entrada ? (await fichasDe(admin, [entrada.avisoId], { [entrada.avisoId]: entrada.precioUF }, { [entrada.avisoId]: entrada.flujoCLP }))[entrada.avisoId]?.cifras ?? null : null;
+  return { caso, opciones: conCap, etiquetas, elegidos, entrada, cifrasEntrada, masBaratoUF, perfil, nivel, distancias, niveles, lecturas };
 }
 
 // ── LA ELECCIÓN ──────────────────────────────────────────────────────────────

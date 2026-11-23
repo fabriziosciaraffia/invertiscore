@@ -14,9 +14,12 @@
 // Sin enlace ni texto sobre lo que gana Franco. Aquí no se firma: el botón lleva a «Revisa y firma tu oferta» (5.1b).
 // ─────────────────────────────────────────────────────────────────────────────
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { OFERTA_COPY as O, POSTURA_COPY, acotarOferta, avisoOferta, fuerteDesde, pctBajoPublicado, rangoPctPublicado, topeOferta, type Postura } from "@/lib/invierte-v2/rango";
 import { BarraRango } from "./BarraRango";
+import { CifrasAOtroPrecio } from "./CuatroCifras";
+import { CIFRAS_COPY } from "@/lib/invierte-v2/cifras";
+import { cifrasAPrecio, type MotorFijo } from "@/lib/invierte-v2/cifras-motor";
 
 export const URL_API_OFERTA = "/api/invierte-v2/oferta";
 const PASO = 10;
@@ -34,10 +37,12 @@ export function llevarAvisoALaVista(aviso: HTMLElement | null, barra: HTMLElemen
 /** La marca de cada razón: la flecha para la bajada de precio; un punto para las demás. */
 const marca = (t: string) => (/^Ya bajó/.test(t) ? "↓" : "·");
 
-export function OfertaForm({ avisoId, urlFirmar, postura, pisoUF, recomendadoUF, altoUF, publicadoUF, razones, avisoFuertePct, montoInicial, comprarUF = null }: {
+export function OfertaForm({ avisoId, urlFirmar, postura, pisoUF, recomendadoUF, altoUF, publicadoUF, razones, avisoFuertePct, montoInicial, comprarUF = null, motor = null }: {
   avisoId: string; urlFirmar: string; postura: Postura; pisoUF: number; recomendadoUF: number; altoUF: number; publicadoUF: number; razones: string[]; avisoFuertePct: number; montoInicial: number | null;
   /** En un Ajusta supuestos, el precio al que vuelve a Comprar; null en un Comprar. */
   comprarUF?: number | null;
+  /** Los datos fijos del motor del depto (23-nov-2026): «A este precio» sale de la misma sonda, en el navegador, al mover el punto. */
+  motor?: MotorFijo | null;
 }) {
   const tope = topeOferta(publicadoUF);
   const [monto, setMonto] = useState<number>(acotarOferta(montoInicial && montoInicial > 0 ? montoInicial : recomendadoUF, publicadoUF));
@@ -46,6 +51,9 @@ export function OfertaForm({ avisoId, urlFirmar, postura, pisoUF, recomendadoUF,
   const [enviando, setEnviando] = useState(false);
   const fijar = (n: number) => { const v = acotarOferta(n, publicadoUF); setMonto(v); setTexto(conPuntos(v)); };
   const aviso = avisoOferta(monto, { pisoUF, altoUF, comprarUF }, publicadoUF, { avisoFuertePct });
+  // «A este precio» (lámina 5.1 del 23-nov): el motor con el precio cambiado, nada más; el publicado, una vez.
+  const alPublicado = useMemo(() => (motor ? cifrasAPrecio(motor, publicadoUF) : null), [motor, publicadoUF]);
+  const aEste = useMemo(() => (motor ? cifrasAPrecio(motor, monto) : null), [motor, monto]);
   const refAviso = useRef<HTMLDivElement>(null);
   const refBarra = useRef<HTMLDivElement>(null);
   useEffect(() => { if (aviso !== "ninguno") llevarAvisoALaVista(refAviso.current, refBarra.current); }, [aviso]);
@@ -84,6 +92,7 @@ export function OfertaForm({ avisoId, urlFirmar, postura, pisoUF, recomendadoUF,
         </div>
         <span className="iv2-of-pct" id="iv2-of-pct" data-inv2="pct">{pctBajoPublicado(monto, publicadoUF)}</span>
       </section>
+      {aEste && alPublicado && <CifrasAOtroPrecio clave="a-este-precio" titulo={CIFRAS_COPY.aEstePrecio} a={aEste} publicado={alPublicado} />}
       {aviso !== "ninguno" && (
         <div ref={refAviso} className="iv2-of-aviso" data-inv2="aviso" data-nivel={aviso} role="status">
           {aviso === "sobre_techo" && comprarUF != null ? <b>{O.sobreTecho(comprarUF)}</b>

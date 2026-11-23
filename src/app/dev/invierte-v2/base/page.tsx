@@ -26,7 +26,8 @@ const HOY = "2026-11-20";
 const lec = (sintesis: string, alerta: string | null = null): LecturaFranco => ({ alerta: alerta ? { nivel: "revisar", motivo: alerta } : { nivel: "ninguna", motivo: null }, larga: [], corta: [sintesis, "Segunda línea.", "Tercera línea."] });
 const fic = (calle: string | null, estacion: string | null, metros: number, comuna: string, cap: number | null, l: LecturaFranco | null, fotos = 0): FichaDepto => {
   const metro = estacion ? { estacion, metros } : null;
-  return { titulo: tituloDepto({ calle, metro, comuna }), metro, comuna, fotos, capRatePct: cap, lectura: l && calle ? { ...l, calle } : l };
+  return { titulo: tituloDepto({ calle, metro, comuna }), metro, comuna, fotos, capRatePct: cap, lectura: l && calle ? { ...l, calle } : l,
+    cifras: { publicadoUF: null, arriendoCLP: null, capRatePct: cap, flujoCLP: null, pocosComparables: false } };
 };
 const L = (tipo: Parameters<typeof lineaCambio>[0]["tipo"], antes: Record<string, unknown>, despues: Record<string, unknown>) => lineaCambio({ tipo, antes, despues }, HOY)!;
 
@@ -51,6 +52,15 @@ const OTRAS: Base["otras"] = [
 // Etapa 3, B1: una etapa distinta por tarjeta, para ver cada línea de estado.
 // Segunda vuelta (23-nov, lámina 3.3): los tres niveles a la vez — «Te toca a ti» (listo, por ofertar), «En curso» (oferta presentada,
 // día 2 de 5) y «Recién partiendo» (confirmando); con ?vista=seis, además en firme sin visita, sin preaprobación y no avanza.
+// Las cuatro cifras de muestra (23-nov-2026): el publicado y el flujo del depto, y el arriendo que da ese cap rate a la UF de muestra.
+// La tercera tarjeta lleva la marca de pocos arriendos comparables.
+const UF_MUESTRA = 40000;
+[...ELEGIDOS, ...OTRAS].forEach((e, i) => {
+  if (!e.ficha) return;
+  const cap = e.ficha.capRatePct;
+  const precio = e.datos.precioUF ?? null;
+  e.ficha.cifras = { publicadoUF: precio, arriendoCLP: cap != null && precio ? Math.round((cap / 100) * precio * UF_MUESTRA / 12 / 1000) * 1000 : null, capRatePct: cap, flujoCLP: e.datos.flujoCLP ?? null, pocosComparables: i === 2 };
+});
 const ETAPAS_MUESTRA: Base["elegidos"][number]["etapa"][] = ["confirmando", "listo", "listo", "en_firme", "sin_preaprobacion", "no_avanza"];
 const AYER = new Date(Date.now() - 864e5 * 1.2).toISOString();
 const OFERTAS_MUESTRA: (Base["elegidos"][number]["oferta"])[] = [null, { estado: "borrador", pisoUF: 3145, altoUF: 3212 }, { estado: "presentada", pisoUF: 3600, altoUF: 3680, montoUF: 3620, presentadaAt: AYER }, { estado: "en_firme", pisoUF: 2950, altoUF: 3010, montoUF: 2990, enFirmeComo: "sin_visitar" }, null, null];

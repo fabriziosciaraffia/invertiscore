@@ -11,7 +11,7 @@
 import Link from "next/link";
 import { ChipVeredicto } from "@/components/analysis/shared/ChipVeredicto";
 import type { Veredicto } from "@/lib/types";
-import { fmtUF, textoAlMes } from "@/lib/invierte-v2/opciones";
+import { fmtUF } from "@/lib/invierte-v2/opciones";
 import { lineaDepto, urlWhatsapp } from "@/lib/invierte-v2/base";
 import { AVERIGUO_COPY as AV, DEPTO_COPY as D, caminoDepto, conDocumentos, cuadrasMetro, diaMes, loQueSigue, metaPregunta, preguntasOrdenadas, urlOferta } from "@/lib/invierte-v2/depto-flujo";
 import { OFERTA_COPY, fuerteDesde } from "@/lib/invierte-v2/rango";
@@ -28,21 +28,21 @@ import { SumarDepto } from "./SumarDepto";
 import { BarraRango } from "./BarraRango";
 import { MapaDepto } from "./MapaDepto";
 import { LoQueVeFrancoDepto } from "./LoQueVeFrancoDepto";
+import { CuatroCifras, CifrasAOtroPrecio } from "./CuatroCifras";
+import { CIFRAS_COPY } from "@/lib/invierte-v2/cifras";
 
-const clp = (n: number) => `$${Math.round(n).toLocaleString("es-CL")}`;
 
 function Cabeza({ p }: { p: PaginaDepto }) {
   const v = p.datos.veredicto as Veredicto | null | undefined;
   const metro = p.ficha?.metro && p.ficha.metro.metros <= 1000 ? `Metro ${p.ficha.metro.estacion.replace(/^(Estación|Metro)\s+/i, "")}` : null;
   const sub = p.direccion ? [metro, lineaDepto(p.datos)].filter(Boolean).join(" · ") : lineaDepto(p.datos);
-  const alMes = textoAlMes({ flujoCLP: p.datos.flujoCLP ?? null });
   const punto = p.ubicacion ? { lat: p.ubicacion.lat, lng: p.ubicacion.lng } : p.ficha?.punto ?? null;
   const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   const ajustar = v === "AJUSTA SUPUESTOS";
   const chico = puntoValido(punto) && key ? urlMapaDepto(punto, key, MAPA_DEPTO.chico, ajustar) : null;
   const grande = puntoValido(punto) && key ? urlMapaDepto(punto, key, MAPA_DEPTO.grande, ajustar) : null;
   return (
-    <div className="iv2-dp-cabeza" data-inv2="depto-cabeza">
+    <div className="iv2-dp-cabeza iv2-ficha" data-inv2="depto-cabeza">
       <FotosDepto avisoId={p.avisoId} n={p.ficha?.fotos ?? 0} clase="iv2-dp-fotos" titulo={[p.direccion ?? p.tituloConNumero, p.datos.comuna].filter(Boolean).join(" · ")} />
       <div className="iv2-dp-info">
         <div className="iv2-dp-fila">
@@ -52,18 +52,17 @@ function Cabeza({ p }: { p: PaginaDepto }) {
           </div>
           {v && <ChipVeredicto v={v} puntaje={v === "COMPRAR" ? p.datos.score ?? null : null} />}
         </div>
-        <dl className="iv2-dp-cifras" data-inv2="cifras-depto">
-          {p.datos.precioUF ? <div><dt>{D.publicadoEt}</dt><dd>UF {fmtUF(p.datos.precioUF)}</dd></div> : null}
-          {p.ficha?.capRatePct != null && <div><dt>{D.capRate}</dt><dd>{p.ficha.capRatePct.toLocaleString("es-CL", { maximumFractionDigits: 1 })} %</dd></div>}
-          {p.datos.flujoCLP != null && <div><dt>{D.alMes}</dt><dd>{alMes.t}</dd></div>}
-          {p.ficha?.arriendoCLP ? <div className="iv2-dp-solo-pc"><dt>{D.arriendo}</dt><dd>{clp(p.ficha.arriendoCLP)}</dd></div> : null}
-        </dl>
+        {p.ficha && <CuatroCifras c={p.ficha.cifras} variante="ficha" />}
+        {p.bloqueOferta && (
+          <CifrasAOtroPrecio clave="cifras-oferta" a={p.bloqueOferta.a} publicado={p.bloqueOferta.publicado}
+            titulo={p.bloqueOferta.tipo === "acordado" ? CIFRAS_COPY.acordado(p.bloqueOferta.a.precioUF) : CIFRAS_COPY.conOferta(p.bloqueOferta.a.precioUF)} />
+        )}
         <BotonDetalles avisoId={p.avisoId} etiqueta={D.verDetallesDepto} clase="iv2-enlace-azul iv2-dp-detalles iv2-dp-solo-pc" />
       </div>
       <div className="iv2-dp-mapa-fila">
         <MapaDepto chico={chico} grande={grande} confirmada={!!p.ubicacion} linea={cuadrasMetro(p.ficha?.metro?.metros)} />
-        <BotonDetalles avisoId={p.avisoId} etiqueta={D.verDetalles} clase="iv2-enlace-azul iv2-dp-detalles iv2-dp-solo-movil" />
       </div>
+      <BotonDetalles avisoId={p.avisoId} etiqueta={D.verDetallesDepto} clase="iv2-enlace-azul iv2-ficha-pie iv2-dp-solo-movil" />
     </div>
   );
 }

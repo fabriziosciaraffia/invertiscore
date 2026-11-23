@@ -10,6 +10,7 @@ import { OFERTA_COPY } from "@/lib/invierte-v2/rango";
 import { puedeOfertar } from "@/lib/invierte-v2/preaprobacion";
 import { METADATA_FLUJO, sesionYAcceso } from "@/lib/invierte-v2/paginas";
 import { MarcoInvierte } from "@/components/invierte-v2/MarcoInvierte";
+import { esMotorFijo } from "@/lib/invierte-v2/cifras-motor";
 import { OfertaForm } from "@/components/invierte-v2/OfertaForm";
 
 // LA OFERTA QUE RECOMIENDA FRANCO (etapa 3, B3; lámina 5.1). Solo con el depto listo, la preaprobación que deja ofertar y la oferta
@@ -36,7 +37,8 @@ export default async function OfertaPage({ params, searchParams }: { params: { a
         <p className="iv2-depto-s" data-inv2="oferta-depto">{lineaDepto(p.datos)} · publicado en UF {fmtUF(o.publicadoUF)}</p>
       </div>
       <OfertaForm avisoId={avisoId} urlFirmar={`${urlOferta(avisoId)}/firmar`} postura={o.postura} pisoUF={o.pisoUF} recomendadoUF={o.recomendadoUF} altoUF={o.altoUF}
-        publicadoUF={o.publicadoUF} razones={o.razones} avisoFuertePct={cfg.avisoFuertePct} comprarUF={o.comprarUF} montoInicial={Number.isFinite(monto) && monto > 0 ? monto : null} />
+        publicadoUF={o.publicadoUF} razones={o.razones} avisoFuertePct={cfg.avisoFuertePct} comprarUF={o.comprarUF} montoInicial={Number.isFinite(monto) && monto > 0 ? monto : null}
+        motor={esMotorFijo(p.ubicacion?.analisis?.motor) ? p.ubicacion.analisis.motor : null} />
     </MarcoInvierte>
   );
 }
