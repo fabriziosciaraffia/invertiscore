@@ -61,7 +61,8 @@ import { MOTOR_MUESTRA } from "../../../src/lib/invierte-v2/muestra-motor";
 import { sondaConPatch } from "../../../src/lib/analysis";
 import { numerosDe as numerosLectura } from "../../../src/lib/invierte-v2/lectura-franco";
 import { B4_COPY, OFERTAS_VIVAS, RETIRABLES, cierreDe, esRetirable, insistirDesde, lineaVence, sugerenciaFranco, sugerenciaValida, venceAlTerminar as venceAlTerminar28 } from "../../../src/lib/invierte-v2/b4";
-import { avisarPersona, pasadaDeUnaOferta, pasadaManualPermitida, rondaDesde, registrarRespuesta } from "../../../src/lib/invierte-v2/b4-servidor";
+import { ACCIONES_OFERTA_ADMIN, accionOfertaAdmin, avisarPersona, pasadaDeUnaOferta, pasadaManualPermitida, rondaDesde, registrarRespuesta } from "../../../src/lib/invierte-v2/b4-servidor";
+import { MOTIVOS_ADMIN_OFERTA, motivoAdminOferta, venceAlTerminarTexto } from "../../../src/lib/invierte-v2/b4";
 import { cuandoNoHayAcuerdo } from "../../../src/lib/invierte-v2/depto-flujo";
 import { puedeRecibirCopia } from "../../../src/lib/invierte-v2/copias-servidor";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -1647,7 +1648,7 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (!/if \(desde\.estado === "sin_acuerdo" && desde\.respuesta_tardia\) await admin\.from\(T_OF\)\.update\(\{ tardia_decision: "reactivar"/.test(b4s)) F("28f · reactivar no queda anotado al firmar la ronda nueva");
       // 28g · LOS CORREOS: mientras el modo sea «lista», solo a las cuentas de la lista; un correo nunca sale a una cuenta fuera de ella.
       let enviados28 = 0;
-      const deps28 = { correo: async () => { enviados28++; return true; }, puedeRecibir: async (e: string) => puedeRecibirCopia("lista", new Set(["lista@x.cl"]), e) };
+      const deps28 = { correo: async () => { enviados28++; return { ok: true }; }, puedeRecibir: async (e: string) => puedeRecibirCopia("lista", new Set(["lista@x.cl"]), e) };
       const fila28 = { id: "of-2", user_id: "u-2", aviso_id: "av-2", monto_uf: 2936, es_prueba: true };
       await avisarPersona(stubB4(null, "fuera@x.cl").sb, deps28, fila28, "presentada");
       if (enviados28 !== 0) F("28g · un correo de la oferta sale a una cuenta fuera de la lista");
@@ -1686,6 +1687,35 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       // 28l · LO QUE VE FRANCO: una versión menor no pisa a una mayor (el trigger de 20261203, para que producción en 13 no pague por rehacer las 14).
       const mig28 = leer("supabase/migrations/20261203_lecturas_franco_sin_bajar_version.sql");
       if (!/if new\.version is not null and old\.version is not null and new\.version < old\.version then\s*raise exception/.test(mig28) || !/before update of version on public\.lecturas_franco/.test(mig28) || !/if \(marca\.error\) return \{ estado: "error" \};/.test(codigo("src/lib/invierte-v2/lectura-franco-servidor.ts"))) F("28l · una lectura de versión menor puede pisar a una mayor (o la marca no corta antes de llamar al modelo)");
+      // ── 29 · LO QUE SE TRABÓ EN EL PREVIEW (24-nov-2026, prueba de Fabrizio sobre 715d5df2) ──────────────────────────────────────────
+      // 29a · EL CASO EXACTO: contraoferta de UF 2.440, fecha y nota vacías, sobre una oferta presentada (oferta 2.361, piso 2.336,
+      // recomendado 2.361, techo 2.485, borde alto 2.386), pedida como la pide el panel. Antes, la ruta la mandaba a la «respuesta» de B2.
+      const fp29 = { id: "715d5df2-62a3-4882-86dc-3e443a2bbd4f", user_id: "u-f", aviso_id: "a67843d8-dae1-4844-aa01-326c9141b8b2", estado: "presentada", monto_uf: 2361, piso_uf: 2336, recomendado_uf: 2361, techo_uf: 2485, publicado_uf: 2485.33, senales: { alto: 2386 }, presentada_at: "2026-11-23T20:04:57Z", vigente_hasta: "2026-11-29T03:00:00Z", es_prueba: true };
+      const st29 = stubB4(fp29, "fuera@x.cl");
+      const cuerpo29 = (codigo("src/app/admin/invierte-v2/controles.tsx").match(/enviar\(\{ accion: "(oferta_respuesta)", tipo, montoUF: Number\(monto\.replace\(\/\\D\/g, ""\)\), nota, vence: vence \|\| null \}\)/) ?? [])[1];
+      const r29 = await accionOfertaAdmin(st29.sb, { id: "admin-1", email: "admin@x.cl" }, { accion: cuerpo29 ?? "respuesta", ofertaId: fp29.id, tipo: "contraoferta", montoUF: Number("2440".replace(/\D/g, "")), nota: "", vence: null }, null, new Date("2026-11-23T20:07:00Z"));
+      const up29 = st29.escrito.find((x) => x.t === "inv_ofertas" && x.op === "update")?.v ?? {};
+      if (!r29.ok || up29.estado !== "contraoferta" || up29.contraoferta_uf !== 2440 || up29.sugerida_uf !== 2386 || up29.contraoferta_nota !== null || up29.contraoferta_vence !== "2026-11-29T03:00:00.000Z") F(`29a · la contraoferta de UF 2.440 con fecha y nota vacías sobre la oferta presentada no se guarda como en el preview (${JSON.stringify(r29)} · ${JSON.stringify(up29)})`);
+      // 29b · NINGUNA ACCIÓN DEL PANEL CHOCA con otra de la ruta del admin: todas con «oferta_», todas despachadas por accionOfertaAdmin.
+      const rutaAdm = codigo("src/app/api/admin/invierte-v2/route.ts");
+      const nombres29 = rutaAdm.split("\n").filter((l) => /^ {2}if \(accion === "/.test(l)) /* solo las de primer nivel: «aprobar» se repite anidada a propósito */.flatMap((l) => Array.from(l.matchAll(/accion === "([a-z_]+)"/g)).map((m) => m[1]));
+      const repetidos29 = nombres29.filter((n, i) => nombres29.indexOf(n) !== i);
+      const delPanel29 = Array.from(codigo("src/app/admin/invierte-v2/controles.tsx").slice(codigo("src/app/admin/invierte-v2/controles.tsx").indexOf("export function OfertaAdmin")).matchAll(/accion: "([a-z_]+)"/g)).map((m) => m[1]);
+      if (repetidos29.length || nombres29.some((n) => (ACCIONES_OFERTA_ADMIN as readonly string[]).includes(n)) || !delPanel29.length || delPanel29.some((n) => !(ACCIONES_OFERTA_ADMIN as readonly string[]).includes(n)) || !/if \(esAccionOfertaAdmin\(accion\)\) \{/.test(rutaAdm)) F(`29b · una acción del panel de la oferta choca con otra de la ruta del admin o no la despacha B4 (${[...repetidos29, ...delPanel29].join(", ")})`);
+      // 29c · EL MOTIVO EN UNA LÍNEA: ningún error del panel dice solo «No se guardó»; cada código que devuelve B4 tiene su texto.
+      const codigos29 = Array.from(new Set(Array.from(codigo("src/lib/invierte-v2/b4-servidor.ts").matchAll(/error: "([a-z_]+)"/g)).map((m) => m[1]))).concat("excepcion", "red");
+      if (codigos29.some((c) => !MOTIVOS_ADMIN_OFERTA[c]) || motivoAdminOferta("raro") === "No se guardó" || !/if \(!x\.ok\) \{ setEstado\(motivoAdminOferta\(x\.error\)\); return; \}/.test(codigo("src/app/admin/invierte-v2/controles.tsx")) || /"No se guardó"/.test(codigo("src/app/admin/invierte-v2/controles.tsx").slice(codigo("src/app/admin/invierte-v2/controles.tsx").indexOf("export function OfertaAdmin")))) F(`29c · un error del panel de la oferta queda sin motivo (${codigos29.filter((c) => !MOTIVOS_ADMIN_OFERTA[c]).join(", ")})`);
+      // 29d · SENTRY: cada error de una acción de la oferta en el admin queda reportado, también una excepción.
+      if (!/if \(!r\.ok\) \{\s*captureApiError\(new Error\(`admin Invierte \$\{accion\}: \$\{r\.error\}`\)/.test(rutaAdm) || !/\} catch \(e\) \{\s*captureApiError\(e, \{ ruta: "POST \/api\/admin\/invierte-v2"/.test(rutaAdm)) F("29d · un error de una acción del admin de Invierte no queda en Sentry");
+      // 29e · UN CORREO QUE NO SALE QUEDA REGISTRADO (con el motivo) y el panel lo muestra.
+      const st29e = stubB4(null, "lista@x.cl");
+      await avisarPersona(st29e.sb, { correo: async () => ({ ok: false, motivo: "sin-llave" }), puedeRecibir: async () => true }, { id: "of-9", user_id: "u-9", aviso_id: "av-9", monto_uf: 2361, es_prueba: true }, "presentada");
+      const bit29 = st29e.escrito.find((x) => x.t === "inv_bitacora" && x.op === "insert")?.v as Record<string, unknown> | undefined;
+      const det29 = (bit29?.detalle ?? {}) as Record<string, unknown>;
+      if (bit29?.accion !== "aviso_oferta" || det29.correo !== "no_salio" || det29.motivo !== "sin-llave" || det29.evento !== "presentada") F(`29e · un correo de B4 que no sale no queda registrado con su motivo (${JSON.stringify(bit29)})`);
+      if (!/data-admin="inv2-avisos-oferta"/.test(codigo("src/app/admin/invierte-v2/controles.tsx")) || !/eq\("accion", "aviso_oferta"\)/.test(codigo("src/app/admin/invierte-v2/[userId]/page.tsx"))) F("29e · el panel de la oferta no muestra los correos que no salieron");
+      // 29f · EL VENCIMIENTO EN EL PANEL: «vence al terminar el sábado 28», no la medianoche del domingo.
+      if (venceAlTerminarTexto(new Date("2026-11-29T03:00:00Z")) !== "vence al terminar el sábado 28" || !/\$\{venceAlTerminarTexto\(new Date\(o\.vigenteHasta\)\)\}/.test(codigo("src/app/admin/invierte-v2/controles.tsx"))) F(`29f · el panel no dice «vence al terminar el sábado 28» (${venceAlTerminarTexto(new Date("2026-11-29T03:00:00Z"))})`);
       // 24l · Los arreglos de la lectura: solo concretos; sin «no se ve» ni «falta información»; en el esquema y la versión.
       if (limpiarArreglos(["la cocina tiene muebles dañados", "no se ve el baño", "falta información del estado", "piso manchado"]).join("|") !== "la cocina tiene muebles dañados|piso manchado" || !(ESQUEMA_LECTURA_FRANCO as unknown as { required: string[] }).required.includes("arreglos") || VERSION_LECTURA15 < 13) F("24l · la lectura no deja solo arreglos concretos (o falta en el esquema o la versión no subió)");
       // 24m · La fecha de publicación: se captura de la ficha que ya se lee, y se guarda aparte (sin romper el guardado si falta la columna).
