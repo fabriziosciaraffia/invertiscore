@@ -12,6 +12,7 @@ import type { DatosDepto } from "@/lib/invierte-v2/base-servidor";
 import { lineaCambio, type TipoCambio } from "@/lib/invierte-v2/cambios";
 import { ETIQUETAS, fmtUF, textoAlMes, type Etiqueta } from "@/lib/invierte-v2/opciones";
 import { GestionDepto, RevisarPreaprobacion, TareaHecha } from "../controles";
+import { COLS_OFERTA, ofertaDeFila, type OfertaVista } from "@/lib/invierte-v2/rango-servidor";
 import { asegurarPreguntasDeLectura, leerPreguntas, leerUbicaciones } from "@/lib/invierte-v2/depto-servidor";
 import { leerLecturas } from "@/lib/invierte-v2/lectura-franco-servidor";
 import { asegurarRango } from "@/lib/invierte-v2/rango-servidor";
@@ -38,6 +39,12 @@ const TIPO_TAREA: Record<string, string> = {
   confirmar_depto_atrasado: "Confirmar el depto: lleva 3 días",
   presentar_oferta: "Presentar la oferta",
   hablar_oferta: "Hablar la oferta con la persona",
+  // B4 (23-nov-2026).
+  insistir_oferta: "Insistir con quien vende (día 3)",
+  avisar_retiro: "Avisarle a quien vende que la retiró",
+  precio_bajo_oferta: "Bajó el precio bajo su oferta",
+  comunicar_aceptacion: "Comunicar que acepta su precio",
+  enviar_whatsapp: "Escribirle por WhatsApp",
 };
 const ESTADO_DEPTO: Record<string, string> = { elegido: "Elegido", opcion: "Opción", descartado: "Descartado" };
 
@@ -74,6 +81,10 @@ export default async function FichaInvierteV2Page({ params }: { params: { userId
   const preguntasDe = Object.fromEntries(await Promise.all(idsEl.map(async (id) => [id, await leerPreguntas(sb, id)] as const)));
   // B3: el rango de cada depto listo (la oferta borrador; firmada, congelada).
   const rangoDe = Object.fromEntries(await Promise.all(idsEl.map(async (id) => [id, await asegurarRango(sb, userId, id)] as const)));
+  // B4: la última ronda de cada depto (sea cual sea su estado), para presentar y registrar la respuesta.
+  const { data: ofs } = idsEl.length ? await sb.from("inv_ofertas").select(COLS_OFERTA + ", aviso_id").eq("user_id", userId).in("aviso_id", idsEl).neq("estado", "borrador").order("ronda", { ascending: false }) : { data: [] };
+  const ofertaDe = new Map<string, OfertaVista>();
+  for (const f of (ofs ?? []) as unknown as Record<string, unknown>[]) if (!ofertaDe.has(f.aviso_id as string)) ofertaDe.set(f.aviso_id as string, ofertaDeFila(f));
   const pinDe = new Map(((pines ?? []) as { id: string; lat: number | null; lng: number | null; comuna: string | null }[]).map((x) => [x.id, x]));
   const pendientes = (tareas ?? []).filter((t) => t.estado === "pendiente");
   const hechas = (tareas ?? []).filter((t) => t.estado !== "pendiente");
@@ -99,6 +110,7 @@ export default async function FichaInvierteV2Page({ params }: { params: { userId
               <span className="font-semibold">{TIPO_TAREA[t.tipo as string] ?? (t.tipo as string)}</span>
               {t.aviso_id && <span>{linea.get(t.aviso_id as string) || (t.aviso_id as string)}</span>}
               {t.detalle && (t.tipo === "cambio_publicacion") && <span className="text-[12px] text-[var(--franco-text-secondary)]">{resumenDetalle(t.detalle as Record<string, unknown>)}</span>}
+              {t.detalle && t.tipo === "enviar_whatsapp" && <span className="text-[12px] text-[var(--franco-text-secondary)]">{String((t.detalle as Record<string, unknown>).texto ?? "")}{(t.detalle as Record<string, unknown>).url ? <> · <a className="underline" href={String((t.detalle as Record<string, unknown>).url)} target="_blank" rel="noopener noreferrer">Abrir WhatsApp</a></> : " · sin número o sin permiso de WhatsApp"}</span>}
               <span className="text-[12px] text-[var(--franco-text-muted)]">{fmtDateShort(t.created_at as string)}</span>
               <TareaHecha id={t.id as string} />
             </li>
@@ -207,6 +219,7 @@ export default async function FichaInvierteV2Page({ params }: { params: { userId
                   comuna={pin?.comuna ?? null} pin={pin?.lat != null && pin?.lng != null ? { lat: Number(pin.lat), lng: Number(pin.lng) } : null}
                   preguntas={preguntasDe[id] ?? []}
                   rango={rangoDe[id] ?? null}
+                  oferta={ofertaDe.get(id) ?? null}
                   ubicacion={u ? { direccion: u.direccion, numero: u.numero, lat: u.lat, lng: u.lng, distanciaM: u.distanciaM, veredicto: u.analisis?.veredicto ?? null, precioComprarUF: u.precioComprarUF, flujoCLP: u.analisis?.flujoCLP ?? null } : null} />
               </div>
             );

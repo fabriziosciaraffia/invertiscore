@@ -3,6 +3,9 @@
 //   · ?aviso=<uuid>: toma las fotos de ese aviso real (la ruta de fotos pide una orden firmada: con la cuenta de QA).
 //   · ?confirmada=1: con la ubicación confirmada (sin la línea de «aproximada», con el número en el título).
 //   · ?pocos=1: las cuatro cifras con la marca «Estimado con pocos arriendos comparables» (23-nov-2026).
+//   · B4 (con ?etapa=listo&confirmada=1): ?oferta=firmada | en_cola | comunicar | presentada | presentada_hoy | contraoferta | aceptada_sujeta
+//     (después de firmar), y ?cierre=rechazada | vencida | contra_vencida | tardia | tardia_contra | retirada | no_gracias (cuando no hubo
+//     acuerdo); ?otra=1 agrega otra oferta viva (la respuesta fuera de plazo pide elegir con cuál se queda).
 //   · Las cuatro cifras y el bloque de la oferta salen del motor, con los datos fijos de un depto real (muestra-motor.ts).
 // Gate en el servidor: dev y previews de Vercel sí; producción, 404.
 import { notFound } from "next/navigation";
@@ -15,10 +18,11 @@ import { filaCambio, lineaCambio } from "@/lib/invierte-v2/cambios";
 import { direccionDepto, tituloDepto } from "@/lib/invierte-v2/titulo-depto";
 import { bloqueOfertaCifras, cifrasDeDepto } from "@/lib/invierte-v2/cifras-motor";
 import { MOTOR_MUESTRA } from "@/lib/invierte-v2/muestra-motor";
+import { venceAlTerminar } from "@/lib/invierte-v2/b4";
 
 export const dynamic = "force-dynamic";
 
-export default function DeptoDemo({ searchParams }: { searchParams: { etapa?: string; aviso?: string; confirmada?: string; preguntas?: string; oferta?: string; lectura?: string; fotos?: string; pocos?: string } }) {
+export default function DeptoDemo({ searchParams }: { searchParams: { etapa?: string; aviso?: string; confirmada?: string; preguntas?: string; oferta?: string; lectura?: string; fotos?: string; pocos?: string; cierre?: string; otra?: string } }) {
   if (process.env.NODE_ENV === "production" && process.env.VERCEL_ENV !== "preview") notFound();
   const e = searchParams.etapa ?? "confirmando";
   const etapa: Etapa = e === "revision" || e === "corregir" ? "sin_preaprobacion" : e === "dejo" ? "no_avanza" : (["confirmando", "sin_preaprobacion", "listo", "no_avanza"].includes(e) ? e : "confirmando") as Etapa;
@@ -28,7 +32,21 @@ export default function DeptoDemo({ searchParams }: { searchParams: { etapa?: st
   const metro = { estacion: "Parque Bustamante", metros: 420 };
   const analisisMuestra = { arriendoCLP: MOTOR_MUESTRA.arriendoCLP, flujoCLP: null, motor: MOTOR_MUESTRA, comparables: searchParams.pocos === "1" ? 4 : 6 };
   const cifras = cifrasDeDepto({ publicadoUF: 3090, arriendoNoche: null, flujoNoche: null, analisis: analisisMuestra, uf: MOTOR_MUESTRA.uf, comparables: null });
-  const estadoOferta = searchParams.oferta === "firmada" || searchParams.oferta === "presentada" || searchParams.oferta === "aceptada_sujeta" ? searchParams.oferta : "borrador";
+  const ESTADOS = ["firmada", "en_cola", "comunicar", "presentada", "presentada_hoy", "contraoferta", "aceptada_sujeta"];
+  const pedido = ESTADOS.includes(searchParams.oferta ?? "") ? (searchParams.oferta as string) : "borrador";
+  const estadoOferta = pedido === "comunicar" ? "firmada" : pedido === "presentada_hoy" ? "presentada" : pedido;
+  const ahora = Date.now(), DIA = 864e5;
+  // Presentada hace un día (o hoy, al quinto día de su plazo, para ver «Vence hoy»); la contraoferta vence en tres días.
+  const presentadaAt = new Date(ahora - (pedido === "presentada_hoy" ? 5 : 1) * DIA).toISOString();
+  const b4 = {
+    presentadaAt: ["presentada", "contraoferta", "aceptada_sujeta"].includes(estadoOferta) ? presentadaAt : null,
+    vigenteHasta: estadoOferta === "presentada" ? venceAlTerminar(new Date(presentadaAt)).toISOString() : null,
+    tipoRonda: pedido === "comunicar" ? "aceptar" : null,
+    contraofertaUF: estadoOferta === "contraoferta" ? 3010 : null, contraofertaVence: estadoOferta === "contraoferta" ? venceAlTerminar(new Date(ahora - 2 * DIA)).toISOString() : null,
+    sugeridaUF: estadoOferta === "contraoferta" ? 2966 : null, respuesta: estadoOferta === "contraoferta" ? "contraoferta" : estadoOferta === "aceptada_sujeta" ? "aceptada_sujeta" : null,
+  };
+  const CIERRES = ["rechazada", "vencida", "contra_vencida", "tardia", "tardia_contra", "retirada", "no_gracias"];
+  const cierrePedido = CIERRES.includes(searchParams.cierre ?? "") ? (searchParams.cierre as string) : null;
   const p: PaginaDepto = {
     avisoId, etapa, noAvanzaMotivo: e === "dejo" ? "dejo_de_convenir" : e === "no_avanza" ? "sin_acuerdo" : null,
     datos: { comuna: "Providencia", dormitorios: 2, banos: 2, m2: 58, precioUF: 3090, veredicto: "COMPRAR", score: 81, flujoCLP: -45000 },
@@ -55,13 +73,26 @@ export default function DeptoDemo({ searchParams }: { searchParams: { etapa?: st
     documentos: [],
     // B3: en listo, la oferta borrador con el rango de la regla v1 (?oferta=firmada la muestra firmada).
     oferta: etapa === "listo" ? {
-      id: "of", estado: estadoOferta, postura: "negocia_poco", descuentoPct: 5, pisoUF: 2905, recomendadoUF: 2936, altoUF: 2967, techoUF: 3090, comprarUF: null, publicadoUF: 3090,
+      id: "of", estado: estadoOferta, ...b4, postura: "negocia_poco", descuentoPct: 5, pisoUF: 2905, recomendadoUF: 2936, altoUF: 2967, techoUF: 3090, comprarUF: null, publicadoUF: 3090,
       razones: ["Ya bajó UF 80 hace tres semanas: quien vende está dispuesto a moverse.", "La cocina tiene muebles dañados y piso manchado: es un argumento concreto para pedir rebaja."],
       corregida: null, montoUF: estadoOferta !== "borrador" ? 2930 : null, firmadaAt: estadoOferta !== "borrador" ? "2026-11-22T15:00:00Z" : null,
       texto: estadoOferta !== "borrador" ? "BORRADOR · TEXTO DE PRUEBA · EN REVISIÓN LEGAL\n\nOFERTA DE COMPRA\n\nTexto de muestra." : null, textoVersion: null,
     } : null,
     bloqueOferta: null,
   };
+  // B4: cuando no hubo acuerdo, sin oferta abierta y con la ronda cerrada (lámina 4.2-cuando-no-hay-acuerdo).
+  if (cierrePedido && etapa === "listo" && p.oferta) {
+    const base = { ...p.oferta, montoUF: 2936, firmadaAt: new Date(ahora - 7 * DIA).toISOString(), presentadaAt: new Date(ahora - 6 * DIA).toISOString(), vigenteHasta: venceAlTerminar(new Date(ahora - 6 * DIA)).toISOString(), texto: "BORRADOR · TEXTO DE PRUEBA · EN REVISIÓN LEGAL\n\nOFERTA DE COMPRA\n\nTexto de muestra." };
+    p.cierre = cierrePedido === "rechazada" ? { ...base, estado: "sin_acuerdo", sinAcuerdoMotivo: "rechazada", respuesta: "rechazada", respuestaAt: new Date(ahora - 3 * DIA).toISOString() }
+      : cierrePedido === "vencida" ? { ...base, estado: "sin_acuerdo", sinAcuerdoMotivo: "vencida" }
+      : cierrePedido === "contra_vencida" ? { ...base, estado: "sin_acuerdo", sinAcuerdoMotivo: "vencida", respuesta: "contraoferta", contraofertaUF: 3010 }
+      : cierrePedido === "tardia" ? { ...base, estado: "sin_acuerdo", sinAcuerdoMotivo: "vencida", respuestaTardia: "aceptada_sujeta", respuestaTardiaUF: 2936 }
+      : cierrePedido === "tardia_contra" ? { ...base, estado: "sin_acuerdo", sinAcuerdoMotivo: "vencida", respuestaTardia: "contraoferta", respuestaTardiaUF: 3010, contraofertaUF: 3010, sugeridaUF: 2966, contraofertaVence: venceAlTerminar(new Date(ahora - DIA)).toISOString() }
+      : cierrePedido === "retirada" ? { ...base, estado: "retirada", retiradaAt: new Date(ahora - 2 * DIA).toISOString(), retiradaDesde: "presentada" }
+      : { ...base, estado: "sin_acuerdo", sinAcuerdoMotivo: "vencida", respuestaTardia: "aceptada_sujeta", respuestaTardiaUF: 2936, tardiaDecision: "no_gracias" };
+    p.oferta = null;
+    p.otraViva = searchParams.otra === "1" ? { avisoId: "otro", titulo: "Av. Irarrázaval 2315", estado: "presentada" } : null;
+  }
   // El bloque de la oferta de la ficha, con el motor (firmada o presentada: «Con tu oferta»; aceptada: «Con el precio acordado»).
   p.bloqueOferta = bloqueOfertaCifras(MOTOR_MUESTRA, p.oferta, 3090);
   return (

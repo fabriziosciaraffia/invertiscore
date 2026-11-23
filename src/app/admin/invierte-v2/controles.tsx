@@ -214,7 +214,7 @@ export function RevisarPreaprobacion({ id, banco, montoUF, vigenteHasta }: { id:
  * pegan las coordenadas—. Al confirmar se rehace el análisis con el punto real y el depto pasa de etapa solo si hay acuerdo y el
  * análisis rehecho da Comprar (o Ajusta supuestos con precio al que vuelve a Comprar). Sin dirección confirmada no pasa a listo.
  */
-export function GestionDepto({ userId, avisoId, etapa, acuerdo, alternativa, comuna, pin, ubicacion, preguntas, rango }: {
+export function GestionDepto({ userId, avisoId, etapa, acuerdo, alternativa, comuna, pin, ubicacion, preguntas, rango, oferta = null }: {
   userId: string; avisoId: string; etapa: string; acuerdo: string | null; alternativa: string | null; comuna: string | null;
   pin: { lat: number; lng: number } | null;
   ubicacion: { direccion: string; numero: string | null; lat: number; lng: number; distanciaM: number | null; veredicto: string | null; precioComprarUF: number | null; flujoCLP: number | null } | null;
@@ -222,6 +222,8 @@ export function GestionDepto({ userId, avisoId, etapa, acuerdo, alternativa, com
   preguntas: PreguntaDepto[];
   /** B3: el rango (la oferta borrador o la firmada). */
   rango: OfertaVista | null;
+  /** B4: la última ronda de la oferta del depto (presentar, la respuesta, la sugerencia, comunicada). */
+  oferta?: OfertaVista | null;
 }) {
   const router = useRouter();
   const [ac, setAc] = useState(acuerdo ?? "pendiente");
@@ -266,6 +268,7 @@ export function GestionDepto({ userId, avisoId, etapa, acuerdo, alternativa, com
       </div>
       <PreguntasDepto avisoId={avisoId} preguntas={preguntas} />
       {rango && <RangoDepto userId={userId} avisoId={avisoId} r={rango} />}
+      {oferta && <OfertaAdmin o={oferta} />}
       {estado && <span className="text-[12px] text-[var(--signal-red)]" role="alert">{estado}</span>}
     </div>
   );
@@ -359,6 +362,71 @@ function RangoDepto({ userId, avisoId, r }: { userId: string; avisoId: string; r
           <textarea value={razones} onChange={(e) => setRazones(e.target.value)} aria-label="Razones (una por línea)" rows={3} className={`${campo} min-w-[320px]`} />
           <span><button type="button" className={CLASE_BTN} disabled={ocupado} onClick={() => void guardar()} data-admin="inv2-corregir-rango">{ocupado ? "Guardando…" : "Guardar corrección"}</button></span>
         </div>
+      )}
+      {estado && <span className="text-[12px] text-[var(--signal-red)]" role="alert">{estado}</span>}
+    </div>
+  );
+}
+
+/** B4 (23-nov-2026): la oferta del depto en el admin. Cada paso lo hace una persona de Franco: presentar (con el PDF que se le entrega a
+ *  quien vende), registrar la respuesta (también fuera de plazo), corregir lo que sugiere Franco y marcar una aceptación como comunicada. */
+export function OfertaAdmin({ o }: { o: OfertaVista }) {
+  const router = useRouter();
+  const [tipo, setTipo] = useState<"aceptada" | "contraoferta" | "rechazada">("contraoferta");
+  const [monto, setMonto] = useState("");
+  const [nota, setNota] = useState("");
+  const [vence, setVence] = useState("");
+  const [sug, setSug] = useState(o.sugeridaUF != null ? String(o.sugeridaUF) : "");
+  const [ocupado, setOcupado] = useState(false);
+  const [estado, setEstado] = useState<string | null>(null);
+  const campo = "rounded-md border border-[var(--franco-border)] bg-[var(--franco-card)] px-2 py-1 font-body text-[13px] text-[var(--franco-text)]";
+  const fecha = (iso: string | null | undefined) => (iso ? new Intl.DateTimeFormat("es-CL", { timeZone: "America/Santiago", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(iso)) : "—");
+  async function enviar(cuerpo: Record<string, unknown>) {
+    setOcupado(true); setEstado(null);
+    const x = await llamar({ ...cuerpo, ofertaId: o.id });
+    setOcupado(false);
+    if (!x.ok) { setEstado(x.error === "monto" ? "Revisa el monto" : x.error === "fecha" ? "Revisa la fecha (de hoy en adelante)" : x.error === "estado" ? "La oferta ya no está en ese estado" : "No se guardó"); return; }
+    router.refresh();
+  }
+  const comunicar = o.estado === "firmada" && (o.tipoRonda === "aceptar" || o.tipoRonda === "reactivar");
+  const vencidaSinTardia = o.estado === "sin_acuerdo" && o.sinAcuerdoMotivo === "vencida" && !o.respuestaTardia;
+  const puedeResponder = o.estado === "presentada" || vencidaSinTardia;
+  const contraAbierta = o.estado === "contraoferta" || (o.estado === "sin_acuerdo" && o.respuestaTardia === "contraoferta" && !o.tardiaDecision);
+  return (
+    <div className="flex flex-col gap-2" data-admin="inv2-oferta-b4">
+      <p className="m-0"><b>Oferta</b> · ronda {o.ronda ?? 1} · {o.estado}{o.tipoRonda ? ` (${o.tipoRonda})` : ""} · UF {o.montoUF ?? "—"} · firmada {fecha(o.firmadaAt)}
+        {o.presentadaAt ? ` · presentada ${fecha(o.presentadaAt)}` : ""}{o.vigenteHasta ? ` · vence ${fecha(o.vigenteHasta)}` : ""}
+        {o.respuesta ? ` · respuesta ${o.respuesta} ${fecha(o.respuestaAt)}` : ""}{o.contraofertaUF ? ` · piden UF ${o.contraofertaUF} (vence ${fecha(o.contraofertaVence)})` : ""}
+        {o.sugeridaUF ? ` · Franco sugiere UF ${o.sugeridaUF}${o.sugeridaFuente === "admin" ? ` (corregida; la regla dio ${o.sugeridaReglaUF})` : " (regla)"}` : ""}
+        {o.respuestaTardia ? ` · fuera de plazo: ${o.respuestaTardia}${o.tardiaDecision ? ` → ${o.tardiaDecision}` : ""}` : ""}{o.retiradaAt ? ` · retirada ${fecha(o.retiradaAt)} desde ${o.retiradaDesde}` : ""}</p>
+      {o.texto && <span><a className={CLASE_BTN} href={`/api/admin/invierte-v2?oferta=${o.id}`} target="_blank" rel="noopener noreferrer" data-admin="inv2-oferta-pdf">Ver el PDF de la oferta firmada</a></span>}
+      {o.estado === "firmada" && !comunicar && (
+        <span><button type="button" className={CLASE_BTN} disabled={ocupado} onClick={() => void enviar({ accion: "presentar" })} data-admin="inv2-presentar">{ocupado ? "Guardando…" : "Presentada hoy a quien vende"}</button></span>
+      )}
+      {comunicar && (
+        <span><button type="button" className={CLASE_BTN} disabled={ocupado} onClick={() => void enviar({ accion: "comunicada" })} data-admin="inv2-comunicada">{ocupado ? "Guardando…" : `Comunicada: acepta UF ${o.montoUF}`}</button></span>
+      )}
+      {puedeResponder && (
+        <div className="flex flex-col gap-2" data-admin="inv2-respuesta">
+          <p className="m-0 text-[12px]">{vencidaSinTardia ? "Respondieron fuera de plazo: la oferta no obliga; la persona decide." : "Registrar la respuesta de quien vende"}</p>
+          <span className="flex flex-wrap items-center gap-2">
+            <select value={tipo} onChange={(e) => setTipo(e.target.value as typeof tipo)} aria-label="Respuesta" className={campo}>
+              <option value="contraoferta">Contraoferta</option>
+              <option value="aceptada">Aceptada (sujeta a visita)</option>
+              {!vencidaSinTardia && <option value="rechazada">No aceptada</option>}
+            </select>
+            {tipo === "contraoferta" && <input value={monto} onChange={(e) => setMonto(e.target.value)} aria-label="Lo que piden (UF)" placeholder="UF que piden" className={`${campo} w-28`} />}
+            {tipo === "contraoferta" && <input type="date" value={vence} onChange={(e) => setVence(e.target.value)} aria-label="Vence (vacío: 5 días)" className={campo} />}
+          </span>
+          {tipo === "contraoferta" && <input value={nota} onChange={(e) => setNota(e.target.value)} aria-label="Nota de quien vende" placeholder="Nota (opcional)" className={`${campo} min-w-[320px]`} />}
+          <span><button type="button" className={CLASE_BTN} disabled={ocupado} onClick={() => void enviar({ accion: "respuesta", tipo, montoUF: Number(monto.replace(/\D/g, "")), nota, vence: vence || null })} data-admin="inv2-registrar-respuesta">{ocupado ? "Guardando…" : "Registrar respuesta"}</button></span>
+        </div>
+      )}
+      {contraAbierta && (
+        <span className="flex flex-wrap items-center gap-2" data-admin="inv2-sugerencia">
+          <input value={sug} onChange={(e) => setSug(e.target.value)} aria-label="Franco sugiere (UF)" className={`${campo} w-28`} />
+          <button type="button" className={CLASE_BTN} disabled={ocupado} onClick={() => void enviar({ accion: "sugerencia", montoUF: Number(sug.replace(/\D/g, "")) })} data-admin="inv2-corregir-sugerencia">Corregir lo que sugiere Franco</button>
+        </span>
       )}
       {estado && <span className="text-[12px] text-[var(--signal-red)]" role="alert">{estado}</span>}
     </div>

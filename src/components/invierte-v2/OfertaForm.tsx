@@ -21,7 +21,8 @@ import { CifrasAOtroPrecio } from "./CuatroCifras";
 import { CIFRAS_COPY } from "@/lib/invierte-v2/cifras";
 import { cifrasAPrecio, type MotorFijo } from "@/lib/invierte-v2/cifras-motor";
 
-export const URL_API_OFERTA = "/api/invierte-v2/oferta";
+import { URL_API_OFERTA } from "@/lib/invierte-v2/oferta-api";
+export { URL_API_OFERTA };
 const PASO = 10;
 const conPuntos = (n: number) => Math.round(n).toLocaleString("es-CL");
 
@@ -37,19 +38,24 @@ export function llevarAvisoALaVista(aviso: HTMLElement | null, barra: HTMLElemen
 /** La marca de cada razón: la flecha para la bajada de precio; un punto para las demás. */
 const marca = (t: string) => (/^Ya bajó/.test(t) ? "↓" : "·");
 
-export function OfertaForm({ avisoId, urlFirmar, postura, pisoUF, recomendadoUF, altoUF, publicadoUF, razones, avisoFuertePct, montoInicial, comprarUF = null, motor = null }: {
+export function OfertaForm({ avisoId, urlFirmar, postura, pisoUF, recomendadoUF, altoUF, publicadoUF, razones, avisoFuertePct, montoInicial, comprarUF = null, motor = null, minUF = null, maxUF = null }: {
   avisoId: string; urlFirmar: string; postura: Postura; pisoUF: number; recomendadoUF: number; altoUF: number; publicadoUF: number; razones: string[]; avisoFuertePct: number; montoInicial: number | null;
   /** En un Ajusta supuestos, el precio al que vuelve a Comprar; null en un Comprar. */
   comprarUF?: number | null;
   /** Los datos fijos del motor del depto (23-nov-2026): «A este precio» sale de la misma sonda, en el navegador, al mover el punto. */
   motor?: MotorFijo | null;
+  /** B4, «Proponer otro monto» (decisión 4): el piso es la oferta anterior y el tope, lo que piden. Sin ellos, de 1 al publicado. */
+  minUF?: number | null;
+  maxUF?: number | null;
 }) {
-  const tope = topeOferta(publicadoUF);
-  const [monto, setMonto] = useState<number>(acotarOferta(montoInicial && montoInicial > 0 ? montoInicial : recomendadoUF, publicadoUF));
+  const tope = Math.min(topeOferta(publicadoUF), maxUF ?? Infinity);
+  const piso = Math.max(1, minUF ?? 1);
+  const acotar = (n: number) => Math.max(piso, Math.min(tope, acotarOferta(n, publicadoUF)));
+  const [monto, setMonto] = useState<number>(acotar(montoInicial && montoInicial > 0 ? montoInicial : recomendadoUF));
   const [texto, setTexto] = useState(conPuntos(monto));
   const [hablado, setHablado] = useState(false);
   const [enviando, setEnviando] = useState(false);
-  const fijar = (n: number) => { const v = acotarOferta(n, publicadoUF); setMonto(v); setTexto(conPuntos(v)); };
+  const fijar = (n: number) => { const v = acotar(n); setMonto(v); setTexto(conPuntos(v)); };
   const aviso = avisoOferta(monto, { pisoUF, altoUF, comprarUF }, publicadoUF, { avisoFuertePct });
   // «A este precio» (lámina 5.1 del 23-nov): el motor con el precio cambiado, nada más; el publicado, una vez.
   const alPublicado = useMemo(() => (motor ? cifrasAPrecio(motor, publicadoUF) : null), [motor, publicadoUF]);
@@ -81,7 +87,7 @@ export function OfertaForm({ avisoId, urlFirmar, postura, pisoUF, recomendadoUF,
       <section className="iv2-of-campo" aria-labelledby="iv2-of-campo-t">
         <label className="iv2-of-rotulo" id="iv2-of-campo-t" htmlFor="iv2-of-monto">{O.campoRotulo}</label>
         <div className="iv2-of-stepper">
-          <button type="button" className="iv2-of-paso" aria-label={O.bajar} onClick={() => fijar(monto - PASO)} data-inv2="bajar">−</button>
+          <button type="button" className="iv2-of-paso" aria-label={O.bajar} onClick={() => fijar(monto - PASO)} disabled={monto <= piso} data-inv2="bajar">−</button>
           <span className="iv2-of-valor">
             <span aria-hidden="true">UF</span>
             <input id="iv2-of-monto" inputMode="numeric" value={texto} data-inv2="monto" aria-describedby="iv2-of-pct"

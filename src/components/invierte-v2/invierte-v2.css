@@ -1307,3 +1307,70 @@
   /* La foto ocupa todo el alto de la ficha (crece con el bloque de la oferta) sin que su tamaño propio la estire. */
   .iv2-dp-tablero .iv2-ficha .iv2-dp-fotos { height: auto; min-height: 168px; align-self: stretch; contain: size; }
 }
+
+/* B4 (23-nov-2026; láminas 4.2-estados y 4.2-cuando-no-hay-acuerdo): la barra de los días de vigencia (cuánto pasó), el aviso de otra
+   oferta viva, los enlaces de la oferta lado a lado («Ver mi oferta» en azul y «Retirarla» en gris) y el error de una acción. */
+.iv2-dp-vigencia { height: 6px; border-radius: 999px; background: #E6E8EC; overflow: hidden; }
+.iv2-dp-vigencia > span { display: block; height: 100%; border-radius: 999px; background: #141414; }
+.iv2-dp-sigue-aviso { margin: 0; padding: 10px 12px; border-radius: 10px; background: #F3EDF1; color: #141414; font-size: 13px; line-height: 1.45; }
+.iv2-dp-sigue-enlace { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; column-gap: 24px; }
+.iv2-enlace-gris { min-height: 44px; padding: 0; border: 0; background: none; color: #5A5A5F; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.iv2-enlace-gris:disabled { opacity: 0.6; cursor: default; }
+.iv2-enlace-gris:focus-visible { outline: 2px solid #141414; outline-offset: 2px; border-radius: 6px; }
+.iv2-error-linea { display: block; margin: 0; font-size: 13px; color: var(--signal-red, #C8323C); }
+
+/* RESPONDER LA CONTRAOFERTA (B4, 23-nov-2026; lámina 5.2). Arriba lo que piden y cuándo vence; la barra con la franja de lo recomendado
+   (azul claro), «Tú» y «Ellos» y, si Franco propone otro monto, su punto azul; la tabla con la columna de Franco destacada; el recuadro
+   «Franco sugiere»; el botón rojo es lo que sugiere Franco y la otra salida va como segundo botón. */
+.iv2-co { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.iv2-co-cab { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.iv2-co-t { margin: 0; font-size: 24px; font-weight: 700; line-height: 1.2; color: var(--franco-text); }
+.iv2-co-vence { margin: 4px 0 0; font-size: 13px; color: #5A5A5F; }
+.iv2-co-cab .iv2-chip-tuyo { flex: none; }
+.iv2-co-fuera { margin: 0; padding: 10px 12px; border-radius: 10px; background: #F3EDF1; color: #141414; font-size: 13px; font-weight: 600; line-height: 1.45; }
+.iv2-co-barra { position: relative; padding: 0 8px; }
+.iv2-co-chips { position: relative; height: 26px; }
+.iv2-co-chip { position: absolute; bottom: 4px; transform: translateX(-50%); padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+.iv2-co-chip-tu { background: #141414; color: #FFFFFF; }
+.iv2-co-chip-ellos { background: #FFFFFF; color: #141414; border: 1px solid #141414; }
+.iv2-co-pista { position: relative; height: 8px; border-radius: 999px; background: #E6E8EC; }
+.iv2-co-franja { position: absolute; top: 0; height: 100%; border-radius: 999px; background: #C9D8EE; }
+.iv2-co-fin { position: absolute; right: -1px; top: -6px; width: 2px; height: 20px; background: #141414; }
+.iv2-co-punto { position: absolute; top: 50%; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 999px; box-sizing: border-box; }
+.iv2-co-punto-tu { background: #141414; }
+.iv2-co-punto-sug { background: #FFFFFF; border: 4px solid #2B558F; }
+.iv2-co-punto-ellos { background: #FFFFFF; border: 3px solid #141414; }
+.iv2-co-rotulos { position: relative; height: 32px; margin-top: 6px; font-size: 11px; line-height: 1.3; color: #141414; }
+.iv2-co-rot { position: absolute; top: 0; display: flex; flex-direction: column; align-items: center; white-space: nowrap; }
+.iv2-co-rot b { font-weight: 700; }
+.iv2-co-rot-sug { transform: translateX(-50%); color: #2B558F; }
+.iv2-co-rot-pub { right: -8px; align-items: flex-end; text-align: right; }
+.iv2-co-tabla { width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid var(--franco-border); border-radius: 14px; overflow: hidden; font-size: 13px; }
+.iv2-co-tabla th, .iv2-co-tabla td { padding: 9px 8px; text-align: center; border-top: 1px solid var(--franco-border); white-space: nowrap; }
+.iv2-co-tabla thead th { border-top: 0; font-size: 12px; font-weight: 700; white-space: normal; }
+.iv2-co-tabla tbody th { text-align: left; font-weight: 400; font-size: 12px; color: #5A5A5F; }
+.iv2-co-tabla [data-destacada="1"] { background: #EEF2F8; }
+.iv2-co-tabla thead [data-destacada="1"] { color: #1E3F6B; }
+.iv2-co-tabla td b { font-weight: 700; }
+.iv2-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.iv2-co-sugiere { display: flex; flex-direction: column; gap: 4px; padding: 12px; border-radius: 12px; background: #EEF2F8; color: #141414; }
+.iv2-co-sugiere-r { font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: #1E3F6B; }
+.iv2-co-sugiere-t { margin: 0; font-size: 15px; font-weight: 700; }
+.iv2-co-sugiere-txt { margin: 0; font-size: 13px; line-height: 1.45; }
+.iv2-co-acciones { display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
+.iv2-co-enlace { align-self: center; min-height: 44px; display: inline-flex; align-items: center; font-size: 14px; font-weight: 600; text-decoration: none; }
+.iv2-co-nota { margin: 0; font-size: 12px; line-height: 1.45; color: #5A5A5F; text-align: center; }
+@media (min-width: 1024px) {
+  .iv2-con-pc .iv2-marco:has(.iv2-cuerpo.iv2-formulario .iv2-co) { max-width: 940px; }
+  .iv2-co { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 32px; row-gap: 14px; align-items: start;
+    grid-template-areas: "cab cab" "fuera fuera" "barra acciones" "tabla acciones" "sugiere acciones" "otra acciones"; }
+  .iv2-co > .iv2-co-cab { grid-area: cab; }
+  .iv2-co > .iv2-co-fuera { grid-area: fuera; }
+  .iv2-co > .iv2-co-barra { grid-area: barra; }
+  .iv2-co > .iv2-co-tabla { grid-area: tabla; }
+  .iv2-co > .iv2-co-sugiere { grid-area: sugiere; }
+  .iv2-co > .iv2-dp-sigue-aviso { grid-area: otra; }
+  .iv2-con-pc .iv2-cuerpo.iv2-formulario .iv2-co > .iv2-co-acciones { grid-area: acciones; position: static; margin: 0; padding: 0; border: 0; background: transparent; }
+}
+/* La contraoferta trae dos botones, dos enlaces y una nota: no van fijos abajo (taparían «Franco sugiere»), van después del recuadro. */
+.iv2-cuerpo.iv2-formulario .iv2-co > .iv2-co-acciones { position: static; padding: 4px 0 calc(12px + env(safe-area-inset-bottom, 0px)); }

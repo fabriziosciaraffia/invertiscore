@@ -11,14 +11,17 @@
 import { useState, type ReactNode } from "react";
 import { FIRMA_COPY as F, pctBajoPublicado } from "@/lib/invierte-v2/rango";
 import { VentanaDocumento } from "./VentanaDocumento";
-import { URL_API_OFERTA } from "./OfertaForm";
+import { URL_API_OFERTA } from "@/lib/invierte-v2/oferta-api";
 
 const fmt = (n: number) => Math.round(n).toLocaleString("es-CL");
 
-export function FirmaOfertaForm({ avisoId, montoUF, publicadoUF, documento, urlVolver, pagas, pagasLinea }: {
+export function FirmaOfertaForm({ avisoId, montoUF, publicadoUF, documento, urlVolver, pagas, pagasLinea, desdeId = null, retirarOtra = false }: {
   avisoId: string; montoUF: number; publicadoUF: number; documento: string[]; urlVolver: string;
   /** «Pie de UF 587 y crédito hipotecario» (o sin crédito) y, debajo, la preaprobación con su «Ver». */
   pagas: string; pagasLinea: ReactNode;
+  /** B4: una ronda nueva desde esta oferta (contraoferta, respuesta fuera de plazo o vencida); y si se queda con esta ante otra viva. */
+  desdeId?: string | null;
+  retirarOtra?: boolean;
 }) {
   const [acepto, setAcepto] = useState(false);
   const [leyo, setLeyo] = useState(false);
@@ -28,7 +31,7 @@ export function FirmaOfertaForm({ avisoId, montoUF, publicadoUF, documento, urlV
   async function firmar() {
     if (!acepto || enviando) return;
     setEnviando(true); setError(false);
-    const r = await fetch(URL_API_OFERTA, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ accion: "firmar", avisoId, montoUF, acepto: true, leyo }) }).catch(() => null);
+    const r = await fetch(URL_API_OFERTA, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(desdeId ? { accion: "firmar_ronda", avisoId, desdeId, montoUF, acepto: true, leyo, retirarOtra } : { accion: "firmar", avisoId, montoUF, acepto: true, leyo }) }).catch(() => null);
     // A la página del depto, recargada (con la oferta firmada).
     if (r?.ok) { window.location.assign(urlVolver); return; }
     setEnviando(false); setError(true);

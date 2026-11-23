@@ -3,6 +3,7 @@
 // dejas?», nombres y montos largos, «Escribirle» con número), sin cuentas ni escrituras.
 //   ?vista=base (por defecto) | seis | actualizado
 // Gate en el servidor: dev y previews de Vercel sí; producción, 404.
+import { venceAlTerminar } from "@/lib/invierte-v2/b4";
 import { notFound } from "next/navigation";
 import { MarcoInvierte } from "@/components/invierte-v2/MarcoInvierte";
 import { VistaBase } from "@/components/invierte-v2/VistaBase";
@@ -63,7 +64,7 @@ const UF_MUESTRA = 40000;
 });
 const ETAPAS_MUESTRA: Base["elegidos"][number]["etapa"][] = ["confirmando", "listo", "listo", "en_firme", "sin_preaprobacion", "no_avanza"];
 const AYER = new Date(Date.now() - 864e5 * 1.2).toISOString();
-const OFERTAS_MUESTRA: (Base["elegidos"][number]["oferta"])[] = [null, { estado: "borrador", pisoUF: 3145, altoUF: 3212 }, { estado: "presentada", pisoUF: 3600, altoUF: 3680, montoUF: 3620, presentadaAt: AYER }, { estado: "en_firme", pisoUF: 2950, altoUF: 3010, montoUF: 2990, enFirmeComo: "sin_visitar" }, null, null];
+const OFERTAS_MUESTRA: (Base["elegidos"][number]["oferta"])[] = [null, { estado: "borrador", pisoUF: 3145, altoUF: 3212 }, { estado: "presentada", pisoUF: 3600, altoUF: 3680, montoUF: 3620, presentadaAt: AYER, vigenteHasta: venceAlTerminar(new Date(AYER)).toISOString() }, { estado: "en_firme", pisoUF: 2950, altoUF: 3010, montoUF: 2990, enFirmeComo: "sin_visitar" }, null, null];
 // El de la etapa «listo» con su rango (rediseño del 23-nov, lámina 3.3): la tarjeta se levanta, dice «Haz tu oferta» y va primera.
 const conAlMes = (e: Omit<Base["elegidos"][number], "alMesEnCambio" | "etapa" | "noAvanzaMotivo" | "oferta" | "numeroConfirmado">, i: number): Base["elegidos"][number] => ({ ...e, alMesEnCambio: e.lineas.some((l) => /al mes$/.test(l)), etapa: ETAPAS_MUESTRA[i] ?? "confirmando", noAvanzaMotivo: null, oferta: OFERTAS_MUESTRA[i] ?? null, numeroConfirmado: OFERTAS_MUESTRA[i] ? "1250" : null });
 

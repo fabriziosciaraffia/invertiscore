@@ -29,6 +29,7 @@ import { BarraRango } from "./BarraRango";
 import { MapaDepto } from "./MapaDepto";
 import { LoQueVeFrancoDepto } from "./LoQueVeFrancoDepto";
 import { CuatroCifras, CifrasAOtroPrecio } from "./CuatroCifras";
+import { AccionOferta } from "./AccionesOferta";
 import { CIFRAS_COPY } from "@/lib/invierte-v2/cifras";
 
 
@@ -69,7 +70,9 @@ function Cabeza({ p }: { p: PaginaDepto }) {
 
 function LoQueSigueBloque({ p }: { p: PaginaDepto }) {
   const o = p.oferta;
-  const s = loQueSigue(p.etapa, p.preaprobacion, URL_PREAPROBACION, o ? { estado: o.estado, postura: o.postura, pisoUF: o.pisoUF, altoUF: o.altoUF, montoUF: o.montoUF, publicadoUF: o.publicadoUF, firmadaAt: o.firmadaAt } : null, urlOferta(p.avisoId));
+  // B4: la oferta entera (después de firmar, su vencimiento, la contraoferta, lo que sugiere Franco) y, sin oferta abierta, cómo terminó.
+  const s = loQueSigue(p.etapa, p.preaprobacion, URL_PREAPROBACION, o, urlOferta(p.avisoId), { avisoId: p.avisoId, cierre: p.cierre ?? null, otraViva: p.otraViva ?? null });
+  const textoFirmado = o?.texto ?? p.cierre?.texto ?? null;
   if (!s) return null;
   const tuyo = s.tono === "ciruela";
   return (
@@ -84,13 +87,24 @@ function LoQueSigueBloque({ p }: { p: PaginaDepto }) {
           {s.cifras.map((c) => <div key={c.et}><dt>{c.et}</dt><dd className={c.azul ? "iv2-dp-azul" : undefined}>{c.v}</dd></div>)}
         </dl>
       )}
+      {s.vigencia != null && (
+        <div className="iv2-dp-vigencia" role="img" aria-label={s.texto ?? "Vigencia de tu oferta"} data-inv2="vigencia"><span style={{ width: `${Math.round(s.vigencia * 100)}%` }} /></div>
+      )}
       {s.texto && <p className="iv2-dp-sigue-txt">{s.texto}</p>}
+      {s.aviso && <p className="iv2-dp-sigue-aviso" data-inv2="sigue-aviso">{s.aviso}</p>}
       {s.barra && o && (
         <BarraRango chica pisoUF={o.pisoUF} altoUF={o.altoUF} publicadoUF={o.publicadoUF} fuerteUF={fuerteDesde(o.pisoUF, o.publicadoUF)} montoUF={o.recomendadoUF} etiqueta={OFERTA_COPY.recomendado(o.recomendadoUF)} />
       )}
       {s.boton && <Link href={s.boton.href} className="inv-principal" data-inv2="sigue-boton">{s.boton.texto}</Link>}
+      {s.secundario && <Link href={s.secundario.href} className="iv2-secundario" data-inv2="sigue-secundario">{s.secundario.texto}</Link>}
+      {s.acciones?.includes("no_gracias") && <AccionOferta avisoId={p.avisoId} accion="no_gracias" clase="iv2-secundario" />}
       {s.nota && <p className="iv2-dp-sigue-nota">{s.nota}</p>}
-      {o?.estado === "firmada" && o.texto && <div className="iv2-dp-sigue-enlace"><VerTexto titulo="Oferta de compra" parrafos={o.texto.split("\n\n")} etiqueta={D.verMiOferta} /></div>}
+      {((s.verOferta && textoFirmado) || s.acciones?.includes("retirar")) && (
+        <div className="iv2-dp-sigue-enlace">
+          {s.verOferta && textoFirmado && <VerTexto titulo="Oferta de compra" parrafos={textoFirmado.split("\n\n")} etiqueta={D.verMiOferta} />}
+          {s.acciones?.includes("retirar") && <AccionOferta avisoId={p.avisoId} accion="retirar" />}
+        </div>
+      )}
     </section>
   );
 }
@@ -98,7 +112,8 @@ function LoQueSigueBloque({ p }: { p: PaginaDepto }) {
 /** El camino de este depto: los seis pasos con el actual marcado (en celular, en columna con su encabezado; en PC, en una línea). */
 function Camino({ p }: { p: PaginaDepto }) {
   // La misma llamada que el camino chico de la base (VistaBase): el estado, el monto y si quedó en firme sin visitar.
-  const c = caminoDepto(p.etapa, p.oferta ? { estado: p.oferta.estado, montoUF: p.oferta.montoUF, enFirmeComo: p.oferta.enFirmeComo ?? null } : null);
+  // B4: sin oferta abierta, el camino dice cómo terminó la última (no la aceptaron, venció, respondieron tarde, la retiró).
+  const c = caminoDepto(p.etapa, p.oferta ?? p.cierre ?? null);
   return (
     <section className="iv2-dp-tj iv2-dp-camino" aria-labelledby="iv2-camino-t" data-inv2="camino-depto">
       <div className="iv2-dp-th iv2-dp-camino-th"><h2 className="iv2-dp-th-t" id="iv2-camino-t">{D.caminoT}</h2><span className="iv2-dp-th-n">{D.pasoDe(c.actual, c.pasos.length)}</span></div>
