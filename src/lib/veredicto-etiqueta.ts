@@ -9,6 +9,8 @@
 //   · "banda": MAYÚSCULAS para la banda de portada, badges y el OG ("BUSCAR OTRO").
 //   · "frase": para leyendas, dials, drawers y prosa de UI ("Buscar otro").
 //   · "corta": para la celda de la matriz y el eje del OG ("Buscar").
+//   · "nombre" (23-nov-2026, decisión de Fabrizio): el nombre de siempre, para el aviso de cambio antes de cobrar y la línea del
+//     informe que dice qué cambió (guia/cobro-mostrado.ts): «Comprar», «Ajusta supuestos», «Buscar otra».
 //
 // Módulo PURO (sin React, sin DB): lo usan componentes, rutas edge (OG) y emails.
 // Ningún literal de etiqueta vive fuera de este archivo: lo caza el catch-test
@@ -18,12 +20,12 @@
 
 import type { Veredicto } from "./types";
 
-export type FormaEtiqueta = "banda" | "frase" | "corta";
+export type FormaEtiqueta = "banda" | "frase" | "corta" | "nombre";
 
 const ETIQUETAS: Record<Veredicto, Record<FormaEtiqueta, string>> = {
-  COMPRAR: { banda: "COMPRAR", frase: "Comprar", corta: "Comprar" },
-  "AJUSTA SUPUESTOS": { banda: "AJUSTAR", frase: "Ajustar", corta: "Ajustar" },
-  "BUSCAR OTRA": { banda: "BUSCAR OTRO", frase: "Buscar otro", corta: "Buscar" },
+  COMPRAR: { banda: "COMPRAR", frase: "Comprar", corta: "Comprar", nombre: "Comprar" },
+  "AJUSTA SUPUESTOS": { banda: "AJUSTAR", frase: "Ajustar", corta: "Ajustar", nombre: "Ajusta supuestos" },
+  "BUSCAR OTRA": { banda: "BUSCAR OTRO", frase: "Buscar otro", corta: "Buscar", nombre: "Buscar otra" },
 };
 
 export const esVeredicto = (v: unknown): v is Veredicto => typeof v === "string" && v in ETIQUETAS;
