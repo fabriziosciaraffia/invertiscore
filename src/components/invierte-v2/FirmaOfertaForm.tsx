@@ -1,20 +1,28 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// REVISA TU OFERTA ANTES DE FIRMAR (etapa 3, B3; lámina 5.1b). El mismo patrón de la orden: el resumen arriba (lo que ofrece, cómo
-// paga —con la preaprobación y «Ver»—, la vigencia y la condición), que es una oferta sujeta a visita, qué pasa después, el documento
-// completo con «Leer» (se abre en ventana, sin salir; texto de PRUEBA marcado BORRADOR) y la casilla sin marcar. El botón rojo se
-// activa al marcar la casilla y no se puede apretar dos veces. Firmar no la presenta: la presenta una persona de Franco (B4).
+// REVISA Y FIRMA TU OFERTA (etapa 3, B3; rediseño del 23-nov-2026, láminas 5.1b celular y PC). Lo primero es la tranquilidad: firmar
+// no obliga a comprar, con el dibujo de los cuatro pasos y «¿Qué significa sujeta a visita?» (abre una ventana chica). Después la
+// firma: el resumen en tres filas (lo que ofrece y cuánto bajo el publicado; cómo paga, con la preaprobación y «Ver»; la vigencia, con
+// que mientras tanto no puede ofertar por otro depto), el documento con «Leer» (ventana, sin salir; texto de PRUEBA marcado BORRADOR)
+// y la casilla sin marcar. El botón rojo se activa al marcar la casilla y no se puede apretar dos veces. En PC, dos columnas: a la
+// izquierda la tranquilidad; a la derecha la firma, en la única tarjeta con sombra. Firmar no la presenta: la presenta Franco (B4).
 // ─────────────────────────────────────────────────────────────────────────────
 import { useState, type ReactNode } from "react";
-import { FIRMA_COPY as F } from "@/lib/invierte-v2/rango";
+import { FIRMA_COPY as F, pctBajoPublicado } from "@/lib/invierte-v2/rango";
 import { VentanaDocumento } from "./VentanaDocumento";
 import { URL_API_OFERTA } from "./OfertaForm";
 
-export function FirmaOfertaForm({ avisoId, montoUF, documento, urlVolver, resumen }: { avisoId: string; montoUF: number; documento: string[]; urlVolver: string; resumen: ReactNode }) {
+const fmt = (n: number) => Math.round(n).toLocaleString("es-CL");
+
+export function FirmaOfertaForm({ avisoId, montoUF, publicadoUF, documento, urlVolver, pagas, pagasLinea }: {
+  avisoId: string; montoUF: number; publicadoUF: number; documento: string[]; urlVolver: string;
+  /** «Pie de UF 587 y crédito hipotecario» (o sin crédito) y, debajo, la preaprobación con su «Ver». */
+  pagas: string; pagasLinea: ReactNode;
+}) {
   const [acepto, setAcepto] = useState(false);
   const [leyo, setLeyo] = useState(false);
-  const [abierto, setAbierto] = useState(false);
+  const [abierto, setAbierto] = useState<"documento" | "sujeta" | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState(false);
   async function firmar() {
@@ -26,29 +34,49 @@ export function FirmaOfertaForm({ avisoId, montoUF, documento, urlVolver, resume
     setEnviando(false); setError(true);
   }
   return (
-    <>
-      {resumen}
-      <div className="iv2-of-doc" data-inv2="documento-oferta">
-        <div className="iv2-of-doc-txt">
-          <span className="iv2-dp-pregunta-t">{F.documentoT}</span>
-          <span className="iv2-dp-pregunta-s">{F.documentoLinea}</span>
+    <div className="iv2-fo" data-inv2="firma-oferta">
+      <section className="iv2-fo-tranqui" aria-labelledby="iv2-fo-t" data-inv2="no-obliga">
+        <div className="iv2-fo-cab">
+          <svg className="iv2-fo-escudo" width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6l7-3z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" /><path d="M8.8 12.2l2.2 2.2 4.2-4.4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          <div><h2 className="iv2-fo-t" id="iv2-fo-t">{F.noObliga}</h2><span className="iv2-fo-s">{F.noObligaS}</span></div>
         </div>
-        <button type="button" className="iv2-enlace-azul" onClick={() => { setAbierto(true); setLeyo(true); }} data-inv2="leer-oferta">{F.leer}</button>
+        <ol className="iv2-fo-pasos" data-inv2="pasos-oferta">
+          {F.pasos.map((t, i) => <li key={t}><i aria-hidden="true">{i + 1}</i><span>{t}</span></li>)}
+        </ol>
+        <p className="iv2-fo-sino">{F.siNo}</p>
+        <button type="button" className="iv2-enlace-azul iv2-fo-que" onClick={() => setAbierto("sujeta")} data-inv2="que-significa">{F.queSignifica}</button>
+      </section>
+      <div className="iv2-fo-firma">
+        <dl className="iv2-fo-resumen" data-inv2="resumen-oferta">
+          <div><dt>{F.ofreces}</dt><dd><span className="iv2-fo-monto">UF {fmt(montoUF)}</span><span className="iv2-fo-dd-s">{pctBajoPublicado(montoUF, publicadoUF)}</span></dd></div>
+          <div><dt>{F.comoPagas}</dt><dd><span>{pagas}</span><span className="iv2-fo-dd-s">{pagasLinea}</span></dd></div>
+          <div><dt>{F.vigencia}</dt><dd><span>{F.vigenciaTexto}</span><span className="iv2-fo-dd-s" data-inv2="vigencia-otro">{F.vigenciaS}</span></dd></div>
+        </dl>
+        <div className="iv2-fo-doc" data-inv2="documento-oferta">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 3h7l4 4v14H7z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" /><path d="M14 3v4h4M9.5 12h5M9.5 15.5h5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" /></svg>
+          <div className="iv2-fo-doc-txt"><span className="iv2-fo-doc-t">{F.documentoT}</span><span className="iv2-fo-doc-s">{F.documentoLinea}</span></div>
+          <button type="button" className="iv2-fo-leer" onClick={() => { setAbierto("documento"); setLeyo(true); }} data-inv2="leer-oferta">{F.leer}</button>
+        </div>
+        <label className="iv2-casilla iv2-of-casilla" data-inv2="casilla-oferta">
+          <input type="checkbox" checked={acepto} onChange={(e) => setAcepto(e.target.checked)} />
+          <span>{F.casilla}</span>
+        </label>
+        {error && <p className="inv-error" role="alert">{F.error}</p>}
+        <div className="iv2-acciones iv2-fo-acciones">
+          <button type="button" className="inv-principal" disabled={!acepto || enviando} aria-busy={enviando || undefined} onClick={() => void firmar()} data-inv2="boton-firmar-oferta">{enviando ? F.firmando : F.firmar(montoUF)}</button>
+          <p className="iv2-fo-nota">{F.nota}</p>
+        </div>
       </div>
-      <label className="iv2-casilla iv2-of-casilla" data-inv2="casilla-oferta">
-        <input type="checkbox" checked={acepto} onChange={(e) => setAcepto(e.target.checked)} />
-        <span>{F.casilla}</span>
-      </label>
-      {error && <p className="inv-error" role="alert">{F.error}</p>}
-      <div className="iv2-acciones">
-        <button type="button" className="inv-principal" disabled={!acepto || enviando} aria-busy={enviando || undefined} onClick={() => void firmar()} data-inv2="boton-firmar-oferta">{enviando ? F.firmando : F.firmar(montoUF)}</button>
-        <p className="iv2-of-linea iv2-of-nota">{F.nota}</p>
-      </div>
-      {abierto && (
-        <VentanaDocumento nombre="oferta" titulo={F.documentoT} alCerrar={() => setAbierto(false)} accion="Cerrar">
+      {abierto === "documento" && (
+        <VentanaDocumento nombre="oferta" titulo={F.documentoT} alCerrar={() => setAbierto(null)} accion="Cerrar">
           <div className="iv2-of-texto" data-inv2="texto-oferta">{documento.map((p, i) => <p key={i} className={i === 0 || i === documento.length - 1 ? "iv2-of-borrador" : undefined}>{p}</p>)}</div>
         </VentanaDocumento>
       )}
-    </>
+      {abierto === "sujeta" && (
+        <VentanaDocumento nombre="sujeta" variante="chica" titulo={F.queSignifica} alCerrar={() => setAbierto(null)} accion={F.entendido}>
+          <ul className="iv2-fo-sujeta" data-inv2="texto-sujeta">{F.sujetaVentana.map((t) => <li key={t}>{t}</li>)}</ul>
+        </VentanaDocumento>
+      )}
+    </div>
   );
 }

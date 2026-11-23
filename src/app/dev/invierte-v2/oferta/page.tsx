@@ -26,26 +26,12 @@ export default function OfertaDemo({ searchParams }: { searchParams: { pantalla?
     const m = monto > 0 ? monto : 2936;
     const conPre = F.conPreaprobacion("Santander", 5000, "20 de marzo");
     const documento = textoOferta({ nombre: "María José Fernández Valdivieso", rut: "12.345.678-5", depto: DEPTO, montoUF: m, publicadoUF: 3090, pagas: `${F.pieYCredito(Math.round(m * 0.2))}, ${conPre.replace(/^Con/, "con")}`, sujetaAVisita: true, vigenciaDias: 5 });
-    const resumen = (
-      <>
-        <dl className="iv2-of-resumen" data-inv2="resumen-oferta">
-          <div><dt>{F.ofreces}</dt><dd className="iv2-of-ofreces">UF {m.toLocaleString("es-CL")}</dd></div>
-          <div><dt>{F.comoPagas}</dt><dd>{F.pieYCredito(Math.round(m * 0.2))}<span className="iv2-of-pre">{conPre} · <span className="iv2-enlace-azul">{F.ver}</span></span></dd></div>
-          <div><dt>{F.vigencia}</dt><dd>{F.vigenciaTexto}</dd></div>
-          <div><dt>{F.condicion}</dt><dd>{F.sujeta}</dd></div>
-        </dl>
-        <div className="iv2-msj-franco"><span className="iv2-msj-franco-de">{F.sujetaT}</span>{F.sujetaTexto}</div>
-        <section className="iv2-dp-sec" aria-labelledby="iv2-despues-t">
-          <h2 className="iv2-dp-h2" id="iv2-despues-t">{F.despuesT}</h2>
-          <ol className="iv2-of-pasos">{F.despues.map((t, i) => <li key={i}><span className="iv2-of-num" aria-hidden="true">{i + 1}</span><span>{t}</span></li>)}</ol>
-        </section>
-      </>
-    );
     return (
       <MarcoInvierte volver={null} pantalla="firmar-oferta" layout="formulario" cabecera="Tu oferta" pc={{ sesionEmail: "muestra@ejemplo.cl", invierte: "inversion" }}>
         <div className="iv2-mi-inversion"><Link href={`/dev/invierte-v2/oferta?monto=${m}`} className="iv2-mi-inversion-a">← {F.volver}</Link></div>
-        <div className="inv-encabezado iv2-sumar-cab"><h1 className="iv2-titulo-res" id="iv2-t">{F.titulo}</h1><p className="iv2-depto-s">{DEPTO}</p></div>
-        <FirmaOfertaForm avisoId="muestra" montoUF={m} documento={documento} urlVolver="/dev/invierte-v2/depto?etapa=listo&oferta=firmada" resumen={resumen} />
+        <div className="inv-encabezado iv2-sumar-cab"><h1 className="iv2-titulo-res" id="iv2-t">{F.titulo}</h1><p className="iv2-depto-s">{"Avenida Libertador Bernardo O'Higgins 1302"} · Providencia · 2D2B · 58 m²<span className="iv2-fo-pub"> · publicado en UF 3.090</span></p></div>
+        <FirmaOfertaForm avisoId="muestra" montoUF={m} publicadoUF={3090} documento={documento} urlVolver="/dev/invierte-v2/depto?etapa=listo&oferta=firmada"
+          pagas={F.pieYCredito(Math.round(m * 0.2))} pagasLinea={<>{F.preaprobacion("Santander", 5000)} · <span className="iv2-enlace-azul">{F.ver}</span></>} />
       </MarcoInvierte>
     );
   }

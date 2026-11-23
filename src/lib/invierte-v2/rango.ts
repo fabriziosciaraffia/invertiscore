@@ -228,30 +228,41 @@ export const OFERTA_COPY = {
   tope: "No puedes ofrecer más que el precio publicado.",
 } as const;
 
+/** La firma (rediseño del 23-nov-2026, láminas 5.1b): lo primero es que firmar no obliga a comprar, con los cuatro pasos; el resumen en
+ *  tres filas; que mientras tanto no puede ofertar por otro depto va junto a la vigencia. */
 export const FIRMA_COPY = {
   volver: "Cambiar el precio",
-  titulo: "Revisa tu oferta antes de firmar",
+  titulo: "Revisa y firma tu oferta",
+  noObliga: "Firmar no te obliga a comprar",
+  noObligaS: "Tu oferta queda sujeta a tu visita",
+  pasos: ["Firmas", "Responden", "Visitas el depto", "Confirmas o la retiras"],
+  siNo: "Si después de ver el depto no te convence, la retiras o la ajustas. Sin costo.",
+  queSignifica: "¿Qué significa «sujeta a visita»?",
+  sujetaVentana: [
+    "Tu oferta vale solo si, después de visitar el depto, tú la confirmas.",
+    "Si quien vende la acepta, Franco coordina la visita contigo.",
+    "Si lo que ves no te convence, la retiras o la ajustas, sin costo.",
+    "Si prefieres no visitarlo, puedes confirmarla igual.",
+  ],
+  entendido: "Entendido",
   ofreces: "Ofreces",
   comoPagas: "Cómo pagas",
   pieYCredito: (pie: number) => `Pie de UF ${fmt(pie)} y crédito hipotecario`,
   sinCredito: "Sin crédito hipotecario",
   conPreaprobacion: (banco: string | null, monto: number | null, hasta: string | null) =>
     `Con tu preaprobación${banco ? ` de ${/^banco/i.test(banco) ? banco : `Banco ${banco}`}` : ""}${monto ? ` por UF ${fmt(monto)}` : ""}${hasta ? `, vigente hasta el ${hasta}` : ""}`,
+  preaprobacion: (banco: string | null, monto: number | null) =>
+    `Preaprobación${banco ? ` de ${/^banco/i.test(banco) ? banco : `Banco ${banco}`}` : ""}${monto ? ` por UF ${fmt(monto)}` : ""}`,
   ver: "Ver",
   vigencia: "Vigencia",
   vigenciaTexto: "5 días desde que Franco la presenta",
-  condicion: "Condición",
-  sujeta: "Sujeta a tu visita",
-  sujetaT: "Es una oferta sujeta a visita",
-  sujetaTexto: "Todavía no te compromete a comprar. Si el vendedor la acepta, se formaliza después de la visita, cuando tú la confirmas. Si lo que ves no te convence, la retiras o la ajustas sin costo.",
-  despuesT: "Qué pasa después",
-  despues: ["Franco la presenta por escrito a quien vende.", "Te avisamos la respuesta: aceptan, contraofertan o no.", "Se visita el depto y confirmas tu oferta. Ahí queda formalizada.", "Promesa de compraventa."],
+  vigenciaS: "Mientras tanto no puedes ofertar por otro depto",
   documentoT: "Oferta de compra",
-  documentoLinea: "El documento completo que vas a firmar",
+  documentoLinea: "El documento que vas a firmar",
   leer: "Leer",
   casilla: "Leí la oferta y estoy de acuerdo",
   firmar: (uf: number) => `Firmar mi oferta por UF ${fmt(uf)}`,
   firmando: "Firmando…",
-  nota: "Firma electrónica simple. Queda en tus documentos y la puedes ver cuando quieras.",
+  nota: "Firma electrónica simple. Queda en tus documentos.",
   error: "No pudimos firmar tu oferta. Inténtalo de nuevo.",
 } as const;

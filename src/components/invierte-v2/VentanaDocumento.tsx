@@ -28,7 +28,7 @@ export function VentanaDocumento({ estado = null, titulo, meta = null, children,
   pdf?: { href: string; etiqueta?: string } | null;
   /** El botón oscuro con este texto, también en el celular. Sin él, «Cerrar» solo en el PC. */
   accion?: string | null;
-  variante?: "documento" | "lista";
+  variante?: "documento" | "lista" | "chica";
   alCerrar: () => void;
   /** Para medir y para las pruebas: `data-inv2="ventana-<nombre>"`. */
   nombre: string;

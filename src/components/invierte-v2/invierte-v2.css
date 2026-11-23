@@ -934,3 +934,61 @@
   .iv2-of > .iv2-of-aviso { grid-area: aviso; }
   .iv2-con-pc .iv2-cuerpo.iv2-formulario .iv2-of > .iv2-acciones { grid-area: acciones; position: static; margin: 0; padding: 12px 0 0; border-radius: 0; background: transparent; }
 }
+
+/* La firma (rediseño del 23-nov-2026, láminas 5.1b): arriba, que firmar no obliga a comprar, con los cuatro pasos; después el resumen
+   en tres filas, el documento y la casilla. En PC, dos columnas: la firma en la única tarjeta con sombra y borde oscuro. */
+.iv2-fo { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.iv2-fo-pub { display: none; }
+.iv2-fo-tranqui { display: flex; flex-direction: column; gap: 12px; padding: 16px; border-radius: 14px; background: #EEF2F8; color: #141414; }
+.iv2-fo-cab { display: flex; align-items: flex-start; gap: 12px; }
+.iv2-fo-escudo { flex: none; margin-top: 2px; color: #1E3F6B; }
+.iv2-fo-t { margin: 0; font-size: 18px; font-weight: 700; line-height: 1.25; }
+.iv2-fo-s { display: block; font-size: 13px; font-weight: 600; color: #1E3F6B; }
+.iv2-fo-pasos { list-style: none; margin: 0; padding: 0; display: flex; align-items: flex-start; }
+.iv2-fo-pasos li { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; font-size: 11px; font-weight: 600; line-height: 1.25; position: relative; }
+.iv2-fo-pasos li + li::before { content: ""; position: absolute; top: 15px; right: calc(50% + 22px); width: calc(100% - 44px); height: 2px; background: #9DB2D0; }
+.iv2-fo-pasos i { width: 30px; height: 30px; border-radius: 999px; background: #FFFFFF; border: 1.5px solid #2B558F; color: #1E3F6B; display: flex; align-items: center; justify-content: center; font-style: normal; font-size: 13px; font-weight: 700; }
+.iv2-fo-sino { margin: 0; font-size: 13px; line-height: 1.45; color: #26262A; }
+.iv2-fo-que { align-self: flex-start; min-height: 44px; display: inline-flex; align-items: center; font-size: 13px; font-weight: 600; text-decoration: none; }
+.iv2-fo-firma { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.iv2-fo-resumen { margin: 0; display: flex; flex-direction: column; border: 1px solid #E2E2E6; border-radius: 14px; padding: 2px 14px; background: #FFFFFF; }
+.iv2-fo-resumen > div { display: flex; justify-content: space-between; gap: 16px; padding: 12px 0; border-bottom: 1px solid #EFEFF2; }
+.iv2-fo-resumen > div:last-child { border-bottom: 0; }
+.iv2-fo-resumen dt { flex: none; font-size: 12px; color: #5A5A5F; padding-top: 2px; }
+.iv2-fo-resumen dd { margin: 0; min-width: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; text-align: right; font-size: 14px; font-weight: 600; line-height: 1.3; color: #141414; }
+.iv2-fo-monto { font-size: 20px; font-weight: 700; }
+.iv2-fo-dd-s { font-size: 12px; font-weight: 400; color: #5A5A5F; line-height: 1.4; }
+.iv2-fo-dd-s .iv2-enlace-azul { display: inline; min-height: 0; font-size: 12px; font-weight: 600; }
+.iv2-fo-doc { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 14px; background: #F4F4F6; color: #141414; }
+.iv2-fo-doc > svg { flex: none; }
+.iv2-fo-doc-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.iv2-fo-doc-t { font-size: 14px; font-weight: 700; }
+.iv2-fo-doc-s { font-size: 12px; color: #5A5A5F; }
+.iv2-fo-leer { flex: none; min-height: 44px; padding: 0 18px; border-radius: 999px; border: 1.5px solid #141414; background: #FFFFFF; color: #141414; font: 600 14px var(--font-ui, var(--font-body)), "Inter", system-ui, sans-serif; cursor: pointer; }
+.iv2-fo-leer:focus-visible { outline: 2px solid #141414; outline-offset: 2px; }
+.iv2-fo-nota { margin: 0; font-size: 12px; line-height: 1.45; color: #5A5A5F; text-align: center; }
+.iv2-fo-sujeta { margin: 0; padding: 0 0 0 18px; display: flex; flex-direction: column; gap: 8px; font-size: 14px; line-height: 1.5; color: var(--franco-text); }
+@media (min-width: 1024px) {
+  .iv2-fo-pub { display: inline; }
+  .iv2-con-pc .iv2-marco:has(.iv2-cuerpo.iv2-formulario .iv2-fo) { max-width: 1080px; margin: 0 auto; border: 0; border-radius: 0; background: transparent; padding: 0 28px 24px; }
+  .iv2-fo { display: grid; grid-template-columns: minmax(0, 1fr) 450px; column-gap: 24px; align-items: start; }
+  /* Para que la firma quepa entera en un notebook (≈610 px útiles): menos aire arriba y filas más bajas. */
+  .iv2-con-pc .iv2-cuerpo.iv2-formulario:has(.iv2-fo) { padding-top: 4px; gap: 10px; }
+  .iv2-con-pc .iv2-cuerpo.iv2-formulario:has(.iv2-fo) .iv2-mi-inversion { margin: 0; }
+  .iv2-fo-resumen > div { padding: 8px 0; }
+  .iv2-fo-monto { font-size: 18px; }
+  .iv2-fo-doc { padding: 8px 12px; }
+  .iv2-fo-firma .iv2-of-casilla { min-height: 36px; }
+  .iv2-fo-firma { border: 1.5px solid #141414; border-radius: 16px; background: #FFFFFF; box-shadow: 0 10px 28px rgba(20, 20, 20, 0.14); padding: 12px 14px; gap: 8px; }
+  .iv2-fo-pasos li { font-size: 12px; }
+  .iv2-con-pc .iv2-cuerpo.iv2-formulario .iv2-fo .iv2-acciones { position: static; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; }
+}
+
+/* La ventana chica (rediseño del 23-nov-2026: «¿Qué significa sujeta a visita?»): del alto de su contenido, sin caja de texto. */
+.iv2-doc.iv2-doc-chica { height: auto; max-height: calc(100dvh - 70px); }
+.iv2-doc-chica .iv2-doc-texto { flex: none; border: 0; border-radius: 0; background: transparent; padding: 0; overflow: visible; }
+.iv2-fo-sujeta { list-style: disc; }
+@media (min-width: 1024px) {
+  .iv2-doc.iv2-doc-chica { width: 480px; height: auto; }
+  .iv2-doc-chica .iv2-doc-texto { padding: 0; }
+}
