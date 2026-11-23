@@ -67,7 +67,7 @@ async function main() {
   const siguen = new Set<string>();
   for (let i = 0; i < candidatas.length; i += LOTE) {
     const ids = candidatas.slice(i, i + LOTE).map((f) => f.id);
-    const { data, error } = await sb.from("scraped_properties").select("id").in("id", ids).eq("is_active", true).order("id").limit(LOTE);
+    const { data, error } = await sb.from("scraped_properties").select("id").in("id", ids).eq("is_active", true).order("id").limit(300);
     if (error) throw new Error(`is_active: ${error.message}`);
     for (const r of data ?? []) siguen.add(String((r as { id: string }).id));
     await new Promise((res) => setTimeout(res, PAUSA_MS));
