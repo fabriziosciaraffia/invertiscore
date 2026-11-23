@@ -9,6 +9,7 @@ import { VistaBase } from "@/components/invierte-v2/VistaBase";
 import { VistaActualizado } from "@/components/invierte-v2/VistaActualizado";
 import { ACTUALIZADO_COPY, BASE_COPY } from "@/lib/invierte-v2/base";
 import { lineaCambio } from "@/lib/invierte-v2/cambios";
+import { primeroLosTuyos } from "@/lib/invierte-v2/depto-flujo";
 import type { Base, DatosDepto, PerfilActualizado } from "@/lib/invierte-v2/base-servidor";
 import type { OrdenInv } from "@/lib/invierte-v2/servidor";
 import type { PerfilInv } from "@/lib/invierte-v2/perfil-servidor";
@@ -25,11 +26,11 @@ const HOY = "2026-11-20";
 const lec = (sintesis: string, alerta: string | null = null): LecturaFranco => ({ alerta: alerta ? { nivel: "revisar", motivo: alerta } : { nivel: "ninguna", motivo: null }, larga: [], corta: [sintesis, "Segunda línea.", "Tercera línea."] });
 const fic = (calle: string | null, estacion: string | null, metros: number, comuna: string, cap: number | null, l: LecturaFranco | null, fotos = 0): FichaDepto => {
   const metro = estacion ? { estacion, metros } : null;
-  return { titulo: tituloDepto({ calle, metro, comuna }), metro, comuna, fotos, capRatePct: cap, lectura: l };
+  return { titulo: tituloDepto({ calle, metro, comuna }), metro, comuna, fotos, capRatePct: cap, lectura: l && calle ? { ...l, calle } : l };
 };
 const L = (tipo: Parameters<typeof lineaCambio>[0]["tipo"], antes: Record<string, unknown>, despues: Record<string, unknown>) => lineaCambio({ tipo, antes, despues }, HOY)!;
 
-const ELEGIDOS: Omit<Base["elegidos"][number], "alMesEnCambio" | "etapa" | "noAvanzaMotivo">[] = [
+const ELEGIDOS: Omit<Base["elegidos"][number], "alMesEnCambio" | "etapa" | "noAvanzaMotivo" | "oferta" | "numeroConfirmado">[] = [
   // m1 y o1 con fotos de deptos reales (solo se ven con la sesión de quien firmó la orden, como la cuenta de QA).
   { avisoId: "50abb999-65ed-4148-b907-ec7601db8083", alcanza: true, preparado: true, datos: dep("Pedro Aguirre Cerda", { m2: 61, precioUF: 2850, flujoCLP: 52000 }),
     lineas: [L("precio_baja", { precioUF: 3000 }, { precioUF: 2850 }), L("veredicto", { veredicto: "AJUSTA SUPUESTOS" }, { veredicto: "COMPRAR" }), L("al_mes", {}, { flujoCLP: 52000 })],
@@ -49,7 +50,8 @@ const OTRAS: Base["otras"] = [
 
 // Etapa 3, B1: una etapa distinta por tarjeta, para ver cada línea de estado.
 const ETAPAS_MUESTRA: Base["elegidos"][number]["etapa"][] = ["confirmando", "listo", "no_avanza", "sin_preaprobacion", "confirmando", "confirmando"];
-const conAlMes = (e: Omit<Base["elegidos"][number], "alMesEnCambio" | "etapa" | "noAvanzaMotivo">, i: number): Base["elegidos"][number] => ({ ...e, alMesEnCambio: e.lineas.some((l) => /al mes$/.test(l)), etapa: ETAPAS_MUESTRA[i] ?? "confirmando", noAvanzaMotivo: null });
+// El de la etapa «listo» con su rango (rediseño del 23-nov, lámina 3.3): la tarjeta se levanta, dice «Haz tu oferta» y va primera.
+const conAlMes = (e: Omit<Base["elegidos"][number], "alMesEnCambio" | "etapa" | "noAvanzaMotivo" | "oferta" | "numeroConfirmado">, i: number): Base["elegidos"][number] => ({ ...e, alMesEnCambio: e.lineas.some((l) => /al mes$/.test(l)), etapa: ETAPAS_MUESTRA[i] ?? "confirmando", noAvanzaMotivo: null, oferta: ETAPAS_MUESTRA[i] === "listo" ? { estado: "borrador", pisoUF: 3145, altoUF: 3212 } : null, numeroConfirmado: ETAPAS_MUESTRA[i] === "listo" ? "1250" : null });
 
 export default function BaseDemo({ searchParams }: { searchParams: { vista?: string; pre?: string } }) {
   if (process.env.NODE_ENV === "production" && process.env.VERCEL_ENV !== "preview") notFound();
@@ -67,11 +69,12 @@ export default function BaseDemo({ searchParams }: { searchParams: { vista?: str
     );
   }
   const seis = searchParams.vista === "seis";
+  const pre: Base["preaprobacion"] = searchParams.pre === "corregir" ? "por_corregir" : searchParams.pre === "aprobada" || searchParams.pre === "aprobada-revision" ? "aprobada" : searchParams.pre === "revision" ? "en_revision" : "subir";
   const base: Base = {
     orden: { id: "o", nombre: "María José Fernández Valdivieso", firmadoAt: "2026-11-15T15:00:00Z" } as OrdenInv,
     perfil: { topeUF: 3500, comunas: ["Pedro Aguirre Cerda", "Estación Central", "Independencia"] } as PerfilInv,
-    elegidos: (seis ? ELEGIDOS : ELEGIDOS.slice(0, 4)).map(conAlMes), otras: OTRAS, whatsapp: "+56912345678",
-    preaprobacion: searchParams.pre === "corregir" ? "por_corregir" : searchParams.pre === "aprobada" || searchParams.pre === "aprobada-revision" ? "aprobada" : searchParams.pre === "revision" ? "en_revision" : "subir",
+    elegidos: primeroLosTuyos((seis ? ELEGIDOS : ELEGIDOS.slice(0, 4)).map(conAlMes), pre), otras: OTRAS, whatsapp: "+56912345678",
+    preaprobacion: pre,
     // ?pre=subir|revision|corregir|aprobada|aprobada-revision (20-nov-2026): las formas de «Lo que te toca hoy» y la línea de capacidad.
     preDetalle: {
       motivo: searchParams.pre === "corregir" ? "La imagen está cortada y no se ve el monto aprobado. Súbela completa, por favor." : null,

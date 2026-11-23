@@ -83,16 +83,20 @@ export function VistaBase({ base }: { base: Base }) {
             <ul className="iv2-deptos">
               {/* Una tarjeta por fila (etapa 3, parte A; lámina 3.3-base). La tarjeta entera se toca: hoy abre los detalles; cuando exista la
                   página de cada depto (parte B), esa página. Lo que cambió en la publicación pasa a esa página (lámina 4.2). */}
-              {base.elegidos.map((d) => (
-                <li key={d.avisoId} className="iv2-depto-li" data-inv2="depto-base">
-                  {/* La tarjeta entera abre la página del depto (etapa 3, B1; lámina 3.3-base) y dice en qué va. */}
-                  <Link href={urlDepto(d.avisoId)} className="iv2-depto iv2-depto-tocable" aria-label={B.abrirDepto(d.ficha?.titulo ?? lineaDepto(d.datos))} data-inv2="abrir-depto">
-                    <span className="iv2-depto-cuerpo">
-                      <TarjetaBase avisoId={d.avisoId} datos={d.datos} ficha={d.ficha} origen={d.origen} alcanza={d.alcanza} estado={estadoEnBase(d.etapa, base.preaprobacion, d.noAvanzaMotivo)} />
-                    </span>
-                  </Link>
-                </li>
-              ))}
+              {base.elegidos.map((d) => {
+                const estado = estadoEnBase(d.etapa, base.preaprobacion, d.noAvanzaMotivo, d.oferta);
+                // El depto que espera por la persona se levanta (sombra y borde oscuro) y va primero (rediseño del 23-nov, lámina 3.3).
+                return (
+                  <li key={d.avisoId} className="iv2-depto-li" data-inv2="depto-base" data-tuyo={estado.tono === "ciruela" ? "si" : undefined}>
+                    {/* La tarjeta entera abre la página del depto (etapa 3, B1; lámina 3.3-base) y dice en qué va. */}
+                    <Link href={urlDepto(d.avisoId)} className={`iv2-depto iv2-depto-tocable${estado.tono === "ciruela" ? " iv2-depto-tuyo" : ""}`} aria-label={B.abrirDepto(d.ficha?.titulo ?? lineaDepto(d.datos))} data-inv2="abrir-depto">
+                      <span className="iv2-depto-cuerpo">
+                        <TarjetaBase avisoId={d.avisoId} datos={d.datos} ficha={d.ficha} numeroConfirmado={d.numeroConfirmado} alcanza={d.alcanza} estado={estado} />
+                      </span>
+                    </Link>
+                  </li>
+                );
+              })}
             </ul>
           </section>
           <div className="iv2-acompana iv2-solo-movil-base" data-inv2="acompana">

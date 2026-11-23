@@ -1122,3 +1122,12 @@
   .iv2-dp-paso-txt { padding-top: 0; flex: none; }
   .iv2-dp-paso-t, .iv2-dp-paso-s { white-space: nowrap; }
 }
+
+/* LA TARJETA DE LA BASE (rediseño del 23-nov-2026, lámina 3.3): la del depto que espera por la persona se levanta (sombra y borde
+   oscuro) con el chip «Te toca a ti» y su pulso, dice qué le toca y el rango si existe, y va primera; las demás quedan planas. En
+   celular, «Lo que ve Franco» sale de la tarjeta (queda en la página del depto). */
+.iv2-depto-tocable.iv2-depto-tuyo { border: 1.5px solid #141414; box-shadow: 0 10px 28px rgba(20, 20, 20, 0.14); }
+.iv2-depto-tocable.iv2-depto-tuyo:hover { border-color: #141414; }
+.iv2-td-estado-t { font-size: 14px; font-weight: 700; line-height: 1.3; color: #141414; }
+.iv2-td-estado .iv2-chip-tuyo, .iv2-td-estado .iv2-chip-franco { margin-top: 0; }
+@media (max-width: 1023px) { .iv2-td .iv2-td-sintesis { display: none; } }

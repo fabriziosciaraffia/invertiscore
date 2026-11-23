@@ -1,11 +1,12 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// LA TARJETA DE UN DEPTO EN LA BASE (etapa 3, parte A, 20-nov-2026; láminas 3.3-base y 3.3-base-pc). Una por fila: la foto, de dónde
-// salió («El que elegiste» / «Te lo recomendamos»), el título calle·metro (sin número), comuna y programa, el veredicto, la síntesis de
-// «Lo que ve Franco» en el recuadro azul, precio, cap rate y lo que deja al mes, y su estado con una línea de qué pasa ahora. Las otras
-// opciones van con lo mismo en chico (TarjetaOtra). El título lleva la calle que leyó «Lo que ve Franco»: si la lectura llega después,
-// el título se completa solo.
+// LA TARJETA DE UN DEPTO EN LA BASE (etapa 3; rediseño del 23-nov-2026, lámina 3.3). Una por fila: la foto, la dirección (con número
+// solo con la ubicación confirmada; mayúsculas bien puestas), metro, comuna y programa, el veredicto, la síntesis de «Lo que ve Franco»
+// en el recuadro azul (solo en PC: en celular queda en la página del depto), precio, cap rate y lo que deja al mes, y su estado: el chip
+// y, cuando le toca a la persona, qué le toca y el rango si existe (la tarjeta se levanta; VistaBase). Sale la etiqueta «El que
+// elegiste / Te lo recomendamos». Las otras opciones van con lo mismo en chico (TarjetaOtra). Si la lectura llega después, la calle se
+// completa sola.
 // Todo en `span`: la tarjeta de «Tus deptos» va dentro de un botón (solo admite contenido en línea).
 // ─────────────────────────────────────────────────────────────────────────────
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -18,8 +19,9 @@ import { LECTURA_COPY as L, alertaPrimero, lineaAlternativa, type LecturaFranco 
 import { fmtUF, textoAlMes } from "@/lib/invierte-v2/opciones";
 import { BASE_COPY as B, lineaDepto } from "@/lib/invierte-v2/base";
 import { etiquetaVeredicto, signoVeredicto } from "@/lib/veredicto-etiqueta";
-import { tituloDepto } from "@/lib/invierte-v2/titulo-depto";
-import type { DatosDepto, OrigenDepto } from "@/lib/invierte-v2/base-servidor";
+import { direccionDepto, tituloDepto } from "@/lib/invierte-v2/titulo-depto";
+import type { DatosDepto } from "@/lib/invierte-v2/base-servidor";
+import type { EstadoBase } from "@/lib/invierte-v2/depto-flujo";
 import type { FichaDepto } from "@/lib/invierte-v2/ficha-depto-servidor";
 import { useLectura } from "./LoQueVeFranco";
 
@@ -66,10 +68,19 @@ function Dato({ et, children, clave }: { et: string; children: ReactNode; clave:
   return <span className="iv2-td-dato" data-inv2={clave}><span className="iv2-td-dato-et">{et}</span><span className="iv2-td-dato-v">{children}</span></span>;
 }
 
+/** La dirección de la tarjeta: la calle (la confirmada por Franco, o la que leyó la lectura) con el número solo si está confirmada; sin
+ *  calle confiable, el título calle·metro de siempre. */
+function direccionDe(f: FichaDepto | null, l: LecturaFranco | null, datos: DatosDepto, numero: string | null): { t: string; conMetro: boolean } {
+  const d = f ? direccionDepto({ calle: f.calleConfirmada ?? l?.calle ?? null, numero: f.calleConfirmada ? numero : null, comuna: f.comuna }) : null;
+  return d ? { t: d, conMetro: false } : { t: tituloDe(f, l, datos), conMetro: true };
+}
+
 /** «Tus deptos»: la tarjeta de un depto elegido (va dentro de TarjetaDetalles, que la vuelve tocable). */
-export function TarjetaBase({ avisoId, datos, ficha, origen, alcanza, estado }: { avisoId: string; datos: DatosDepto; ficha: FichaDepto | null; origen: OrigenDepto; alcanza: boolean; estado: { chip: string; linea: string; tono?: "gris" | "ciruela" } }) {
+export function TarjetaBase({ avisoId, datos, ficha, numeroConfirmado = null, alcanza, estado }: { avisoId: string; datos: DatosDepto; ficha: FichaDepto | null; numeroConfirmado?: string | null; alcanza: boolean; estado: EstadoBase }) {
   const l = useLectura(avisoId, ficha?.lectura ?? null);
-  const titulo = tituloDe(ficha, l, datos);
+  const dir = direccionDe(ficha, l, datos, numeroConfirmado);
+  const metro = !dir.conMetro && ficha?.metro && ficha.metro.metros <= 1000 ? `Metro ${ficha.metro.estacion.replace(/^(Estación|Metro)\s+/i, "")}` : null;
+  const tuyo = estado.tono === "ciruela";
   const alMes = textoAlMes({ flujoCLP: datos.flujoCLP ?? null });
   return (
     <span className="iv2-td" data-inv2="tarjeta-depto">
@@ -77,9 +88,8 @@ export function TarjetaBase({ avisoId, datos, ficha, origen, alcanza, estado }: 
         <span className="iv2-td-cab">
           <FotoPortada avisoId={avisoId} n={ficha?.fotos ?? 0} clase="iv2-td-foto" />
           <span className="iv2-td-id">
-            <span className="iv2-td-origen" data-inv2="origen">{B.origen[origen]}</span>
-            <span className="iv2-td-t" data-inv2="titulo-depto">{titulo}</span>
-            <span className="iv2-depto-s">{lineaDepto(datos)}{alcanza ? "" : ` · ${B.fueraDeAlcance}`}</span>
+            <span className="iv2-td-t" data-inv2="titulo-depto">{dir.t}</span>
+            <span className="iv2-depto-s">{[metro, lineaDepto(datos)].filter(Boolean).join(" · ")}{alcanza ? "" : ` · ${B.fueraDeAlcance}`}</span>
             {datos.veredicto && <span className="iv2-td-chip"><ChipVeredicto v={datos.veredicto as Veredicto} puntaje={datos.veredicto === "COMPRAR" ? datos.score ?? null : null} /></span>}
           </span>
         </span>
@@ -92,7 +102,8 @@ export function TarjetaBase({ avisoId, datos, ficha, origen, alcanza, estado }: 
       </span>
       <span className="iv2-td-estado" data-inv2="estado">
         <span className="iv2-td-estado-txt">
-          <span className={estado.tono === "ciruela" ? "iv2-estado-ciruela" : "iv2-estado-gris"} data-inv2="estado-depto">{estado.chip}</span>
+          <span className={tuyo ? "iv2-chip-tuyo" : "iv2-chip-franco"} data-inv2="estado-depto">{tuyo && <i aria-hidden="true" />}{estado.chip}</span>
+          {estado.titulo && <span className="iv2-td-estado-t" data-inv2="estado-titulo">{estado.titulo}</span>}
           <span className="iv2-td-estado-linea">{estado.linea}</span>
           <span className="iv2-td-abrir" aria-hidden="true">{B.abrirEsteDepto} ›</span>
         </span>

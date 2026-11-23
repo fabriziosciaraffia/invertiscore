@@ -19,7 +19,7 @@ import { puedeInvertir } from "@/lib/invierte/invierte";
 import { leerPreaprobacion } from "./preaprobacion-servidor";
 import type { EstadoVisible } from "./preaprobacion";
 import { fichasDe, type FichaDepto } from "./ficha-depto-servidor";
-import { etapaDe, type Etapa } from "./depto-flujo";
+import { etapaDe, primeroLosTuyos, type Etapa } from "./depto-flujo";
 import { leerUbicaciones, numerosDe } from "./depto-servidor";
 
 const T_DEPTOS = "inv_deptos";
@@ -27,7 +27,9 @@ const T_DEPTOS = "inv_deptos";
 export interface DatosDepto { precioUF?: number; veredicto?: string | null; score?: number | null; comuna?: string; m2?: number | null; dormitorios?: number | null; banos?: number | null; flujoCLP?: number | null }
 /** De dónde salió (lámina 3.3-base, etapa 3): «El que elegiste» (entrada o mapa) o «Te lo recomendamos» (Franco). */
 export type OrigenDepto = "entrada" | "franco" | "mapa";
-export interface DeptoDeBase { avisoId: string; alcanza: boolean; datos: DatosDepto; lineas: string[]; preparado: boolean; alMesEnCambio: boolean; origen: OrigenDepto; ficha: FichaDepto | null; /** Etapa 3, B1: en qué va (la línea de estado de la tarjeta). */ etapa: Etapa; noAvanzaMotivo: string | null }
+export interface DeptoDeBase { avisoId: string; alcanza: boolean; datos: DatosDepto; lineas: string[]; preparado: boolean; alMesEnCambio: boolean; origen: OrigenDepto; ficha: FichaDepto | null; /** Etapa 3, B1: en qué va (la línea de estado de la tarjeta). */ etapa: Etapa; noAvanzaMotivo: string | null;
+  /** Rediseño del 23-nov (lámina 3.3): la oferta abierta (para decir el rango o que Franco la presenta) y el número confirmado de la calle. */
+  oferta: { estado: string; pisoUF: number | null; altoUF: number | null } | null; numeroConfirmado: string | null }
 
 interface FilaCambio { aviso_id: string; tipo: TipoCambio; antes: Record<string, unknown>; despues: Record<string, unknown>; fecha: string }
 const PRINCIPALES: TipoCambio[] = ["precio_baja", "precio_sube", "despublicado", "republicado"];
@@ -98,6 +100,7 @@ export async function leerBase(admin: SupabaseClient, userId: string): Promise<B
       preparado: listos.has(id), alMesEnCambio: conCambioAlMes.has(`${id}|${ultimaFecha.get(id) ?? ""}`),
       origen: ((f.origen as string | null) ?? "mapa") as OrigenDepto, ficha: null as FichaDepto | null,
       etapa: etapaDe({ estado: "elegido", etapa: (f.etapa as string | null) ?? null }) ?? "confirmando", noAvanzaMotivo: (f.no_avanza_motivo as string | null) ?? null,
+      oferta: null as DeptoDeBase["oferta"], numeroConfirmado: null as string | null,
     };
   });
   // «Otras opciones que convienen»: las recomendaciones de Franco que no eligió, nunca más del cupo de tres en todo el flujo
@@ -113,10 +116,16 @@ export async function leerBase(admin: SupabaseClient, userId: string): Promise<B
   // Una sola fuente de números (B1): con la ubicación confirmada, los del análisis rehecho.
   const ubic = await leerUbicaciones(admin, todos.map((d) => d.avisoId));
   for (const d of todos) d.datos = numerosDe(d.datos, ubic[d.avisoId]);
+  // La oferta abierta de cada elegido (lámina 3.3 del 23-nov): el rango si está en borrador; si no, que Franco la presenta.
+  const { data: ofs } = ids.length ? await admin.from("inv_ofertas").select("aviso_id, estado, piso_uf, senales").eq("user_id", userId).in("aviso_id", ids).in("estado", ["borrador", "firmada", "en_cola", "presentada", "contraoferta", "aceptada_sujeta"]) : { data: [] };
+  const ofPor = new Map(((ofs ?? []) as { aviso_id: string; estado: string; piso_uf: number | null; senales: { alto?: number } | null }[]).map((o) => [o.aviso_id, { estado: o.estado, pisoUF: o.piso_uf != null ? Number(o.piso_uf) : null, altoUF: o.senales?.alto != null ? Number(o.senales.alto) : null }]));
+  for (const d of elegidos) { d.oferta = ofPor.get(d.avisoId) ?? null; d.numeroConfirmado = ubic[d.avisoId]?.numero ?? null; }
+  // El depto que espera por la persona va primero (lámina 3.3 del 23-nov); los demás, en el orden en que los eligió.
+  const ordenados = primeroLosTuyos(elegidos, pre.estado);
   const fichas = await fichasDe(admin, todos.map((d) => d.avisoId), Object.fromEntries(todos.map((d) => [d.avisoId, d.datos.precioUF ?? null])));
   for (const d of todos) { d.ficha = fichas[d.avisoId] ?? null; const cap = ubic[d.avisoId]?.analisis?.capRatePct; if (d.ficha && cap != null) d.ficha.capRatePct = cap; }
   const preDetalle = { motivo: pre.doc?.motivo ?? null, banco: pre.doc?.banco ?? null, vigenteHasta: pre.doc?.vigenteHasta ?? null, mime: pre.doc?.mime ?? null, otra: pre.otra ? { estado: pre.otra.estado, mime: pre.otra.mime } : null };
-  return { orden, perfil, elegidos, otras, whatsapp, preaprobacion: pre.estado, preDetalle };
+  return { orden, perfil, elegidos: ordenados, otras, whatsapp, preaprobacion: pre.estado, preDetalle };
 }
 
 // ── SUMAR UN DEPTO ───────────────────────────────────────────────────────────

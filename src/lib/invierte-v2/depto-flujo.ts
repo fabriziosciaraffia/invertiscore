@@ -134,14 +134,27 @@ export function loQueSigue(etapa: Etapa, pre: EstadoVisible, urlPreaprobacion: s
   return null;
 }
 
-/** La línea de estado de la tarjeta en la base (lámina 3.3-base): el chip y qué pasa ahora. */
-export function estadoEnBase(etapa: Etapa, pre: EstadoVisible, motivo: string | null): { chip: string; tono: Tono; linea: string } {
+/** El estado de la tarjeta en la base (lámina 3.3 del 23-nov): el chip y qué pasa ahora. Cuando le toca a la persona, además QUÉ le toca
+ *  (`titulo`, en negrita) y, si existe, el rango; la tarjeta se levanta y va primera. */
+export interface EstadoBase { chip: string; tono: Tono; linea: string; titulo?: string }
+export function estadoEnBase(etapa: Etapa, pre: EstadoVisible, motivo: string | null, oferta: { estado: string; pisoUF: number | null; altoUF: number | null } | null = null): EstadoBase {
   if (etapa === "no_avanza") return { chip: "No avanzó", tono: "gris", linea: motivo === "dejo_de_convenir" ? "Al confirmar dónde está, dejó de convenir" : "Te mostramos el más parecido que sí podemos gestionar" };
   if (etapa === "sin_preaprobacion") return pre === "en_revision"
     ? { chip: "Franco está en eso", tono: "gris", linea: "Revisando tu preaprobación" }
-    : { chip: "Te toca a ti", tono: "ciruela", linea: "Sube tu preaprobación para ofertar o visitar" };
-  if (etapa === "listo") return { chip: "Te toca a ti", tono: "ciruela", linea: "Listo para ofertar o visitar" };
+    : { chip: "Te toca a ti", tono: "ciruela", titulo: "Sube tu preaprobación", linea: "Para ofertar o visitar" };
+  if (etapa === "listo") {
+    if (oferta?.estado === "firmada") return { chip: "Franco está en eso", tono: "gris", linea: "Franco presenta tu oferta" };
+    if (oferta?.estado === "en_cola") return { chip: "Franco está en eso", tono: "gris", linea: "Tu oferta quedó preparada" };
+    if (oferta && oferta.estado !== "borrador") return { chip: "Franco está en eso", tono: "gris", linea: "Tu oferta está presentada" };
+    const rango = oferta?.pisoUF && oferta.altoUF ? `Franco recomienda ${uf0(oferta.pisoUF)} a ${Math.round(oferta.altoUF).toLocaleString("es-CL")}` : "Franco ya lo dejó listo con quien lo vende";
+    return { chip: "Te toca a ti", tono: "ciruela", titulo: "Haz tu oferta", linea: rango };
+  }
   return { chip: "Franco está en eso", tono: "gris", linea: "Confirmando con quien lo vende que sigue disponible" };
+}
+/** El depto que espera por la persona va primero en la base (lámina 3.3 del 23-nov); los demás quedan en su orden. */
+export function primeroLosTuyos<T extends { etapa: Etapa; noAvanzaMotivo: string | null; oferta: { estado: string; pisoUF: number | null; altoUF: number | null } | null }>(xs: T[], pre: EstadoVisible): T[] {
+  const tuyo = (d: T) => (estadoEnBase(d.etapa, pre, d.noAvanzaMotivo, d.oferta).tono === "ciruela" ? 1 : 0);
+  return [...xs].sort((a, b) => tuyo(b) - tuyo(a));
 }
 
 // ── LO QUE FRANCO AVERIGUÓ (B2, 22-nov-2026; láminas 4.1 y 4.2) ──────────────
