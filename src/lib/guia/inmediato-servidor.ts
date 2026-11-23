@@ -71,6 +71,8 @@ export interface PreparacionInmediato {
   evaluar: (c: Candidato) => Promise<Evaluado | null>;
   /** Los avisos NUEVOS de las comunas vecinas, con la misma ventana (el respaldo de la preparación). */
   vecinas?: () => Promise<Candidato[]>;
+  /** La confirmación en vivo con la función del informe (23-nov-2026, vivo.ts). Solo renta larga. */
+  confirmar?: (c: Candidato, ev: Evaluado) => Promise<Evaluado | null>;
 }
 
 /**
@@ -103,8 +105,8 @@ export async function seleccionDelDia(
   const prep = ltr ?? str;
   if (!prep) return null;
   const fuera = new Set([...Array.from(await deps.avisados()), ...Array.from(await deps.vistos())]);
-  const propios = await elegirInmediato(prep.candidatos, fuera, prep.evaluar, deps.publicado);
-  const vecinos = propios.length === 0 && prep.vecinas ? await elegirInmediato(await prep.vecinas(), fuera, prep.evaluar, deps.publicado) : [];
+  const propios = await elegirInmediato(prep.candidatos, fuera, prep.evaluar, deps.publicado, prep.confirmar);
+  const vecinos = propios.length === 0 && prep.vecinas ? await elegirInmediato(await prep.vecinas(), fuera, prep.evaluar, deps.publicado, prep.confirmar) : [];
   const deVecinas = propios.length === 0 && vecinos.length > 0;
   return { modalidad: ltr ? "ltr" : "str", prep, elegidos: deVecinas ? vecinos : propios, deVecinas, nuevosDesde };
 }

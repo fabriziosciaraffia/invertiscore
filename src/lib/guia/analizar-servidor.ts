@@ -108,9 +108,12 @@ export async function cuerpoDelAviso(
   combo: Combinacion,
   antiguedad: AntiguedadAviso,
   cfg: { uf: number; tasa: number },
+  /** Las sugerencias ya leídas de ESTE aviso (23-nov-2026, guia/vivo.ts): el semanal y el inmediato las comparten entre las personas
+   *  de una corrida. Son las mismas que se leerían acá: dependen del aviso, no de la persona. */
+  sugLeidas?: Awaited<ReturnType<typeof sugerenciasDeAviso>>,
 ): Promise<AnalisisInput | null> {
   const a = avisoDeCandidato(c, antiguedad.anios);
-  const { arr, vta } = await sugerenciasDeAviso(a);
+  const { arr, vta } = sugLeidas ?? await sugerenciasDeAviso(a);
   const arriendo = arriendoParaEvaluar(a, arr, vta, cfg.uf, false);
   if (!arriendo) return null;
   const body = payloadDeAviso(

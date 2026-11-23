@@ -91,6 +91,8 @@ export async function elegirInmediato<T extends CandidatoSemanal>(
   yaAvisados: ReadonlySet<string>,
   evaluar: (c: T) => Promise<Evaluado | null>,
   publicado: (c: T) => Promise<EstadoPublicacion>,
+  /** Antes de tomarlo, la confirmación en vivo con la función del informe (23-nov-2026, vivo.ts): null = no entra. */
+  confirmar?: (c: T, ev: Evaluado) => Promise<Evaluado | null>,
 ): Promise<Array<{ c: T; ev: Evaluado }>> {
   const pool = candidatos.filter((c) => !yaAvisados.has(c.avisoId))
     .sort((a, b) => (b.scoreCron ?? -1) - (a.scoreCron ?? -1)).slice(0, MAX_CANDIDATOS_INMEDIATO);
@@ -101,7 +103,9 @@ export async function elegirInmediato<T extends CandidatoSemanal>(
   const items: Array<{ c: T; ev: Evaluado }> = [];
   for (const it of comprar) {
     if (items.length >= TOPE_INMEDIATO) break;
-    if ((await publicado(it.c).catch((): EstadoPublicacion => "sin-chequeo")) === "publicado") items.push(it);
+    if ((await publicado(it.c).catch((): EstadoPublicacion => "sin-chequeo")) !== "publicado") continue;
+    const ev = confirmar ? await confirmar(it.c, it.ev).catch(() => null) : it.ev;
+    if (ev) items.push({ ...it, ev });
   }
   return items;
 }

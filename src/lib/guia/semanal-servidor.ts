@@ -41,9 +41,10 @@ import type { Combinacion, Evaluado } from "./seleccion";
 import { condicionDe, type CondicionDepto } from "./linea-depto";
 import { convienenEnSeleccion } from "@/lib/explorar/puerta-correos";
 import { puertaExplorarCorreo } from "@/lib/explorar/puerta-correos-servidor";
+import { evaluadorVivoCompartido } from "./vivo";
 import {
   DESCUENTO_NEGOCIABLE, DIAS_VIGENCIA_REGALO, LECTURAS_POR_CORRIDA_SEMANAL, filasDePagina, rechequearAvisos, siguienteReemplazo, type FilaPaginaSemanal, MAX_CANDIDATOS_SEMANAL, MEMORIA_SEMANAL_MS, correspondeReactivacion, DIAS_ENTRE_REACTIVACIONES, queEnviarSemanal, VENTANA_SEMANAL_DIAS, elegirSemanal, esPrimerSemanal, rangoSemanal, prechequearConPresupuesto, siguienteYEstado, varianteDe, REGLA_CORTA, REGLA_LARGA, semanaDelEnvio,
-  MINIMO_SEMANAL, TOPE_SIN_CONFIRMAR, parametroDeAjuste, ordenFijo,
+  MINIMO_SEMANAL, TOPE_SIN_CONFIRMAR, parametroDeAjuste, ordenFijo, verificadaEnVivo,
   type ProgresoPrechequeo, type RespaldoSemanal, type Visto,
 } from "./semanal";
 
@@ -107,6 +108,9 @@ export interface PreparacionSemanal {
   visto: (c: Candidato) => Visto | null;
   /** El informe de renta larga de un depto ya analizado: «Ya lo analizaste · Ver informe». */
   informeVisto: (avisoId: string) => string | undefined;
+  /** EL CORREO CON LOS NÚMEROS DEL INFORME (23-nov-2026, vivo.ts): la confirmación en vivo con la función del informe y los
+   *  supuestos de la persona, antes de tomar un depto. null = cambió de veredicto: no entra. */
+  confirmar: (c: Candidato, ev: Evaluado) => Promise<Evaluado | null>;
 }
 
 export type Preparada = { tipo: "baja" } | { tipo: "sin-perfil"; perfil: PerfilBusqueda } | { tipo: "lista"; p: PreparacionSemanal };
@@ -197,6 +201,8 @@ export async function prepararSeleccion(
       evaluar: (c) => evaluarA(c, 1),
       visto: (c) => vistos.get(c.avisoId)?.visto ?? null,
       informeVisto: (id) => vistos.get(id)?.informeLargo,
+      // La tasa de la persona en el origen, como «Analizar este» (`conTasa`).
+      confirmar: (c, ev) => evaluadorVivoCompartido(admin, cfg).confirmar(c, ev, { origen: { ...o, tasa }, combo }),
       respaldo: {
         vecinas: () => (vecinas ??= leerCandidatos(comunasVecinas(propias))),
         evaluarConDescuento: (c) => evaluarA(c, 1 - DESCUENTO_NEGOCIABLE),
@@ -247,9 +253,13 @@ export async function armarSeleccion(
   presupuesto: PresupuestoFichas,
   /** Las comunas cuya zona de renta corta falló en esta corrida (02-nov-2026; la usa el reintento de la renta corta atrasada). */
   salida?: { zonasFallidas: string[] },
+  /** LA RECOMPROBACIÓN DEL LUNES (23-nov-2026, semanal.ts › verificadaEnVivo): `forzar` vuelve a armar también una selección ya
+   *  «armada» que todavía no salió, para confirmar sus deptos en vivo con los datos del lunes. */
+  opts: { forzar?: boolean } = {},
 ): Promise<"ya" | "pendiente" | "armada" | "sin_match"> {
-  const { data: previa } = await admin.from("semanal_selecciones").select("estado, tipo, items, items_str").eq("user_id", userId).eq("semana", semana).maybeSingle();
-  if (previa && (previa.estado !== "pendiente" || previa.tipo === "del_dia")) return "ya";
+  const { data: previa } = await admin.from("semanal_selecciones").select("estado, tipo, items, items_str, enviada_at").eq("user_id", userId).eq("semana", semana).maybeSingle();
+  const rearmable = !!previa && previa.tipo !== "del_dia" && !previa.enviada_at && (previa.estado === "pendiente" || (opts.forzar === true && previa.estado === "armada"));
+  if (previa && !rearmable) return "ya";
   // El orden fijo (23-oct-2026, semanal.ts › ordenFijo): si la fila ya tenía deptos (volvió a pendiente por un caído), los
   // que siguen conservan su posición y los nuevos van después.
   const previos = { largo: (previa?.items ?? null) as ItemSemanal[] | null, corto: (previa?.items_str ?? null) as ItemSemanal[] | null };
@@ -279,7 +289,7 @@ export async function armarSeleccion(
   let largo: EstadoBloque | null = null;
   if (prep.tipo === "lista") {
     const { perfil, origen: o, combo, candidatos, evaluar, respaldo, visto, informeVisto } = prep.p;
-    const g = await elegirSemanal(candidatos, evaluar, publicado, respaldo, REGLA_LARGA, visto);
+    const g = await elegirSemanal(candidatos, evaluar, publicado, respaldo, REGLA_LARGA, visto, prep.p.confirmar);
     largo = g.estado;
     // El relleno (20-oct-2026): lo visto anoche sin confirmar, por si al mandar siguen faltando confirmados.
     Object.assign(fila, { items: aItems(g, informeVisto, previos.largo), relleno: aItems({ items: g.relleno ?? [] }), combinacion: combo, perfil, origen_analysis_id: o.analysisId, variante: varianteDe(userId) });
@@ -816,10 +826,12 @@ export interface FilaSeleccion {
   perfil_str?: PerfilBusqueda | null;
   /** El relleno (20-oct-2026): Comprar de anoche sin ficha leída, en orden, para completar hasta tres al mandar. */
   relleno?: ItemSemanal[] | null;
+  /** Cuándo se armó por última vez (23-nov-2026): antes de las 05:00 UTC del lunes, se recomprueba en vivo antes de salir. */
+  armada_at?: string | null;
 }
 
 /** Las columnas que el envío lee de cada fila (semanal-enviar). */
-export const COLUMNAS_ENVIO = "id, user_id, semana, estado, items, combinacion, perfil, variante, token, items_str, estado_str, combinacion_str, perfil_str, relleno";
+export const COLUMNAS_ENVIO = "id, user_id, semana, estado, items, combinacion, perfil, variante, token, items_str, estado_str, combinacion_str, perfil_str, relleno, armada_at";
 
 /** Los enlaces del correo: todos pasan por /api/semanal (miden el clic y releen la ficha). */
 export function enlacesSemanal(sitio: string, token: string) {
@@ -856,7 +868,16 @@ export async function descartarSeleccion(admin: SupabaseClient, id: string): Pro
   return "descartada";
 }
 
-export async function enviarSeleccion(admin: SupabaseClient, fila: FilaSeleccion, sitio: string): Promise<"enviada" | "descartada" | "ya" | "fallida" | "esperar"> {
+export async function enviarSeleccion(admin: SupabaseClient, filaLeida: FilaSeleccion, sitio: string): Promise<"enviada" | "descartada" | "ya" | "fallida" | "esperar"> {
+  // LA RED DE LA RECOMPROBACIÓN (23-nov-2026): la armada que el reintento de la mañana no alcanzó a confirmar con los datos del lunes
+  // se vuelve a armar acá, antes de mandar —confirmando en vivo cada depto—, SIN leer fichas (solo la memoria de la semana).
+  let fila = filaLeida;
+  if (fila.estado === "armada" && fila.perfil && fila.combinacion && !verificadaEnVivo(fila.armada_at, fila.semana)) {
+    await armarSeleccion(admin, fila.user_id, fila.semana, await leerConfigGuia(admin), { lecturas: 0, bloqueada: true }, undefined, { forzar: true });
+    const { data: nueva } = await admin.from("semanal_selecciones").select(COLUMNAS_ENVIO).eq("id", fila.id).maybeSingle();
+    if (!nueva) return "ya";
+    fila = nueva as unknown as FilaSeleccion;
+  }
   const descartar = () => descartarSeleccion(admin, fila.id);
   // Los dos bloques (14-oct-2026): cada uno con sus deptos vigentes. El de renta larga existe si la fila tiene su perfil
   // y su combinación; el de renta corta, si tiene perfil de renta corta.

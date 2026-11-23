@@ -103,7 +103,7 @@ export async function procesarDelDia(
   const elegir = async (soloMemoria: boolean): Promise<{ largo: Elegidos | null; corto: Elegidos | null }> => {
     const publicado = publicadoDelDia(admin, presupuesto, soloMemoria);
     const largo = prep.tipo === "lista"
-      ? await elegirSemanal(prep.p.candidatos, prep.p.evaluar, publicado, prep.p.respaldo, REGLA_DEL_DIA)
+      ? await elegirSemanal(prep.p.candidatos, prep.p.evaluar, publicado, prep.p.respaldo, REGLA_DEL_DIA, undefined, prep.p.confirmar)
       : null;
     const corto = prepStr?.tipo === "lista"
       ? await elegirSemanal(prepStr.p.candidatos, prepStr.p.evaluar, publicado, prepStr.p.respaldo, REGLA_CORTA)

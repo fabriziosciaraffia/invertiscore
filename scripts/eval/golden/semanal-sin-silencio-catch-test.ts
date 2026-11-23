@@ -68,10 +68,13 @@ export async function runSemanalSinSilencioTier(): Promise<{ hard: number }> {
   if (!/if \(Date\.now\(\) - t0 > PRESUPUESTO_ENVIO_MS\) \{ quedan\+\+; continue; \}/.test(rutaEnviar)) F("2 · el envío no tiene presupuesto (con 150 filas pasa del corte de 300 s)");
   const vj = JSON.parse(leer("vercel.json")) as { crons: Array<{ path: string; schedule: string }> };
   if (vj.crons.find((c) => c.path === "/api/cron/semanal-enviar")?.schedule !== "0,30 12 * * 1") F("2 · el envío no tiene la segunda corrida de las 12:30 para lo que no alcanzó");
-  if (vj.crons.find((c) => c.path === "/api/cron/semanal-reintento")?.schedule !== `5 ${HORAS_REINTENTO_LUNES[0]}-${HORAS_REINTENTO_LUNES[HORAS_REINTENTO_LUNES.length - 1]} * * 1`) F("2 · no hay reintento de las pendientes el lunes antes del envío");
+  // ⚠ ACTA (23-nov-2026, goal «el correo con los números del informe», guia/vivo.ts) · el reintento corre cada media hora (5 y 35):
+  // además de las pendientes, rearma las armadas antes de las 05:00 UTC del lunes para confirmar cada depto en vivo, y eso pide
+  // más corridas antes de las 12. Las pendientes se siguen rearmando igual, en la misma consulta.
+  if (vj.crons.find((c) => c.path === "/api/cron/semanal-reintento")?.schedule !== `5,35 ${HORAS_REINTENTO_LUNES[0]}-${HORAS_REINTENTO_LUNES[HORAS_REINTENTO_LUNES.length - 1]} * * 1`) F("2 · no hay reintento de las pendientes el lunes antes del envío");
   if (!CRONS_VIGILADOS.some((c) => c.nombre === "semanal-reintento")) F("2 · el reintento del lunes no está vigilado");
   const reintento = sinComentarios(leer("src/app/api/cron/semanal-reintento/route.ts"));
-  if (!/\.eq\("estado", "pendiente"\)\.is\("enviada_at", null\)/.test(reintento) || !/await armarSeleccion\(admin, userId, semana, cfg, presupuesto\)/.test(reintento) || !/await latirCron\(admin, "semanal-reintento"\)/.test(reintento)) F("2 · el reintento no vuelve a armar las pendientes de la semana");
+  if (!/\.in\("estado", \["pendiente", "armada"\]\)\.is\("enviada_at", null\)/.test(reintento) || !/r\.estado === "pendiente" \|\| !verificadaEnVivo\(r\.armada_at as string \| null, semana\)/.test(reintento) || !/await armarSeleccion\(admin, userId, semana, cfg, presupuesto, undefined, \{ forzar: forzar\.has\(userId\) \}\)/.test(reintento) || !/await latirCron\(admin, "semanal-reintento"\)/.test(reintento)) F("2 · el reintento no vuelve a armar las pendientes de la semana");
 
   // ── 3 · sin selección, un correo igual ──────────────────────────────────────
   const enl = enlacesSemanal("https://refranco.ai", "abc123");

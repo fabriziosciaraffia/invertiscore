@@ -66,7 +66,7 @@ export async function runInmediatoTier(): Promise<{ hard: number }> {
     // el chequeo de la ficha con el presupuesto de siempre.
     // ⚠ ACTA (27-oct-2026, decisión de Fabrizio: vecinas sin repetir el semanal) · lo que queda fuera es lo avisado MÁS lo ya
     // visto en el semanal o analizado; con eso se eligen los propios y, si no hay, las vecinas (tier PAUTA-ARREGLOS §5).
-    if (!/const fuera = new Set\(\[\.\.\.Array\.from\(await deps\.avisados\(\)\), \.\.\.Array\.from\(await deps\.vistos\(\)\)\]\);\s*const propios = await elegirInmediato\(prep\.candidatos, fuera, prep\.evaluar, deps\.publicado\);/.test(srv) || !/avisados: \(\) => avisadosAlMomento\(admin, userId\)/.test(srv) || !/publicado: publicadoConPresupuesto\(admin, presupuesto\)/.test(srv)) F("1 · el aviso no elige con su evaluación y el chequeo de la ficha");
+    if (!/const fuera = new Set\(\[\.\.\.Array\.from\(await deps\.avisados\(\)\), \.\.\.Array\.from\(await deps\.vistos\(\)\)\]\);\s*const propios = await elegirInmediato\(prep\.candidatos, fuera, prep\.evaluar, deps\.publicado, prep\.confirmar\);/.test(srv) || !/avisados: \(\) => avisadosAlMomento\(admin, userId\)/.test(srv) || !/publicado: publicadoConPresupuesto\(admin, presupuesto\)/.test(srv)) F("1 · el aviso no elige con su evaluación y el chequeo de la ficha");
     const cron = vj.match(/"path": "\/api\/cron\/aviso-inmediato",\s*"schedule": "(\d+) (\d+) \* \* \*"/);
     const ev2 = vj.match(/"path": "\/api\/cron\/evaluar-avisos[^"]*",\s*"schedule": "(\d+) ([\d,]+) \* \* \*"/);
     const ultimaEval = ev2 ? Math.max(...ev2[2].split(",").map(Number)) * 60 + Number(ev2[1]) : NaN;

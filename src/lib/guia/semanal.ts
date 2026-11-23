@@ -202,6 +202,10 @@ export async function elegirSemanal<T extends CandidatoSemanal>(
   respaldo?: RespaldoSemanal<T>,
   regla: ReglaSemanal = REGLA_LARGA,
   visto: (c: T) => Visto | null = () => null,
+  /** EL CORREO CON LOS NÚMEROS DEL INFORME (23-nov-2026, vivo.ts): antes de tomar un depto publicado, se confirma en vivo con la
+   *  función del informe. null = cambió de veredicto (o no se pudo confirmar): no entra y sigue el siguiente; si no, entra con los
+   *  números de hoy. Sin él, como siempre (renta corta). */
+  confirmar?: (c: T, ev: Evaluado) => Promise<Evaluado | null>,
 ): Promise<ResultadoSemanal<T>> {
   const items: Array<ElegidoSemanal<T>> = [];
   let sinChequeo = 0;
@@ -214,7 +218,10 @@ export async function elegirSemanal<T extends CandidatoSemanal>(
       if (!!v !== vistos) continue;
       if (items.some((x) => x.c.avisoId === it.c.avisoId)) continue;
       const e = await publicado(it.c).catch((): EstadoPublicacion => "sin-chequeo");
-      if (e === "publicado") items.push({ ...it, tramo, ...(v ? { visto: v } : {}) });
+      if (e === "publicado") {
+        const ev = confirmar ? await confirmar(it.c, it.ev).catch(() => null) : it.ev;
+        if (ev) items.push({ ...it, ev, tramo, ...(v ? { visto: v } : {}) });
+      }
       else if (e === "sin-chequeo") {
         sinChequeo++;
         if (!v && tramo !== "negociar" && !sinConfirmar.some((x) => x.c.avisoId === it.c.avisoId)) sinConfirmar.push({ ...it, tramo });
@@ -244,7 +251,17 @@ export async function elegirSemanal<T extends CandidatoSemanal>(
 
   if (items.length >= MINIMO_SEMANAL) return { estado: "armada", items };
   // Con menos de tres confirmados, el relleno hasta tres con lo visto anoche sin confirmar (solo renta larga).
-  const relleno = regla.completarSinConfirmar ? sinConfirmar.slice(0, Math.min(TOPE_SIN_CONFIRMAR, MINIMO_SEMANAL - items.length)) : undefined;
+  // El relleno también sale con los números de hoy (23-nov-2026): el que cambió de veredicto no entra y lo reemplaza el siguiente.
+  const cupoRelleno = Math.min(TOPE_SIN_CONFIRMAR, MINIMO_SEMANAL - items.length);
+  let relleno: Array<ElegidoSemanal<T>> | undefined;
+  if (regla.completarSinConfirmar) {
+    relleno = [];
+    for (const it of sinConfirmar) {
+      if (relleno.length >= cupoRelleno) break;
+      const ev = confirmar ? await confirmar(it.c, it.ev).catch(() => null) : it.ev;
+      if (ev) relleno.push({ ...it, ev });
+    }
+  }
   // Faltó cupo para chequear: puede que sí haya; lo toma la corrida siguiente (y si al mandar siguen sin chequeo, el relleno).
   if (sinChequeo > 0) return { estado: "pendiente", items, ...(relleno?.length ? { relleno } : {}) };
   // Con menos de tres y nada más por chequear, los que haya (renta corta desde el 14-oct-2026; renta larga desde el 20-oct).
@@ -690,3 +707,17 @@ export const SEMANAL_PAGINA = {
   bajaVolver: "Si cambias de idea, escríbenos a hola@refranco.ai.",
   bajaError: "No pudimos darte de baja con ese enlace. Escríbenos a hola@refranco.ai y lo hacemos.",
 } as const;
+
+/**
+ * LA RECOMPROBACIÓN DEL LUNES (23-nov-2026, guia/vivo.ts). El domingo la selección se arma confirmando en vivo cada depto, pero el
+ * lunes a las 03:00 UTC entra el scraping de la noche y cambian los comparables. Una selección armada antes de las
+ * HORA_VERIFICACION_LUNES_UTC del lunes de su semana se vuelve a armar (el reintento de la mañana y, si no alcanzó, el envío mismo)
+ * antes de salir. Puro.
+ */
+export const HORA_VERIFICACION_LUNES_UTC = 5;
+export function verificadaEnVivo(armadaAt: string | null | undefined, semana: string): boolean {
+  const t = armadaAt ? Date.parse(armadaAt) : NaN;
+  const [a, m, d] = semana.split("-").map(Number);
+  if (!Number.isFinite(t) || !a || !m || !d) return false;
+  return t >= Date.UTC(a, m - 1, d, HORA_VERIFICACION_LUNES_UTC);
+}

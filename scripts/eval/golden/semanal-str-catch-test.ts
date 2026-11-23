@@ -192,7 +192,9 @@ export async function runSemanalStrTier(): Promise<{ hard: number }> {
     const ramaCorta = armar.slice(armar.indexOf('if (prepStr?.tipo === "lista") {'), armar.indexOf("} else if (prepStr) {"));
     // ⚠ ACTA (19-oct-2026) · los dos bloques reciben lo ya visto, leído una vez, y cada uno elige con él (SEMANAL §15).
     if (!/const prepStr = await prepararSeleccionStr\(admin, userId, cfg, pp, vistos\);/.test(armar)
-      || !/const g = await elegirSemanal\(candidatos, evaluar, publicado, respaldo, REGLA_LARGA, visto\);/.test(ramaLarga)
+      // ⚠ ACTA (23-nov-2026, goal «el correo con los números del informe», guia/vivo.ts) · la renta larga elige con `confirmar` (la
+      // confirmación en vivo con la función del informe: el que cambió de veredicto no entra y entra el siguiente); la renta corta, sin él.
+      || !/const g = await elegirSemanal\(candidatos, evaluar, publicado, respaldo, REGLA_LARGA, visto, prep\.p\.confirmar\);/.test(ramaLarga)
       || !/const g = await elegirSemanal\(candidatos, evaluar, publicado, respaldo, REGLA_CORTA, visto\);/.test(ramaCorta)
       // ⚠ ACTA (23-oct-2026, el orden fijo, tier PUERTA-B-MOCKUPS §4) · los ítems respetan el orden de lo que la fila ya tenía.
       || !/items_str: aItems\(g, undefined, previos\.corto\), estado_str: g\.estado, combinacion_str: combo, perfil_str: perfil, origen_str_analysis_id: o\.analysisId,/.test(armar)

@@ -75,7 +75,7 @@
     },
     {
       "path": "/api/cron/semanal-reintento",
-      "schedule": "5 8-11 * * 1"
+      "schedule": "5,35 8-11 * * 1"
     },
     {
       "path": "/api/cron/semanal-enviar",

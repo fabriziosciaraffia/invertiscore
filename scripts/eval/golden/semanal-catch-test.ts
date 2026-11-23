@@ -349,7 +349,9 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
     if (hechos2.join("") !== "abaa") F(`12 · quien ya no necesita no sale de la fila (o se para antes) (${hechos2.join("")})`);
     // el servidor, el cron y la vigilancia
     if (!/sinLeer: presupuesto\.bloqueada \|\| presupuesto\.lecturas >= LECTURAS_POR_CORRIDA_SEMANAL,\s*memoriaMs: MEMORIA_SEMANAL_MS,/.test(srv)) F("12 · el armado no usa la memoria de la semana");
-    if (!/const publicado = publicadoConPresupuesto\(admin, presupuesto\);/.test(srv) || (srv.match(/const g = await elegirSemanal\(candidatos, evaluar, publicado, respaldo, REGLA_(LARGA|CORTA), visto\);/g) ?? []).length !== 2) F("12 · el armado no elige con la preparación compartida");
+    // ⚠ ACTA (23-nov-2026, goal «el correo con los números del informe», guia/vivo.ts) · la renta larga elige con `confirmar` (la
+    // confirmación en vivo con la función del informe: el que cambió de veredicto no entra y entra el siguiente); la renta corta, sin él.
+    if (!/const publicado = publicadoConPresupuesto\(admin, presupuesto\);/.test(srv) || !/const g = await elegirSemanal\(candidatos, evaluar, publicado, respaldo, REGLA_LARGA, visto, prep\.p\.confirmar\);/.test(srv) || !/const g = await elegirSemanal\(candidatos, evaluar, publicado, respaldo, REGLA_CORTA, visto\);/.test(srv)) F("12 · el armado no elige con la preparación compartida");
     // ⚠ ACTA (09-oct-2026) · el prechequeo elige con `siguienteYEstado` (lo mismo que el `siguienteAChequear` retirado, y
     // además si la selección se arma: el cierre ya no vuelve a recorrer a nadie) y el cron le pasa DÓNDE QUEDÓ
     // la corrida anterior en vez de un turno por hora. La regla y el presupuesto, en el tier PRECHEQUEO-PRESUPUESTO.
@@ -492,7 +494,9 @@ export async function runSemanalTier(): Promise<{ hard: number }> {
     if (iMarca < 0 || !(iNuevo < iVisto && iVisto < iMarca) || (cv.html.match(/data-marca="visto"/g) ?? []).length !== 1) F("15 · el correo no marca «Ya te lo mandamos» en el depto ya mandado (o lo marca en otro)");
     // El cableado: el armado, el prechequeo, la página viva y el envío usan lo visto.
     const srv = sinComentarios(leer("src/lib/guia/semanal-servidor.ts"));
-    if (!/const g = await elegirSemanal\(candidatos, evaluar, publicado, respaldo, REGLA_LARGA, visto\);/.test(srv) || !/const g = await elegirSemanal\(candidatos, evaluar, publicado, respaldo, REGLA_CORTA, visto\);/.test(srv)) F("15 · el armado elige sin lo ya visto");
+    // ⚠ ACTA (23-nov-2026, goal «el correo con los números del informe», guia/vivo.ts) · la renta larga elige con `confirmar` (la
+    // confirmación en vivo con la función del informe: el que cambió de veredicto no entra y entra el siguiente); la renta corta, sin él.
+    if (!/const g = await elegirSemanal\(candidatos, evaluar, publicado, respaldo, REGLA_LARGA, visto, prep\.p\.confirmar\);/.test(srv) || !/const g = await elegirSemanal\(candidatos, evaluar, publicado, respaldo, REGLA_CORTA, visto\);/.test(srv)) F("15 · el armado elige sin lo ya visto");
     if (!/const vistos = await vistosDePersona\(admin, userId\);\s*const prep = await prepararSeleccion\(admin, userId, cfg, \{ perfilLeido: pp, vistos \}\);/.test(srv) || !/prepararSeleccionStr\(admin, userId, cfg, pp, vistos\)/.test(srv)) F("15 · el armado no lee lo visto para los dos bloques");
     if (!/siguienteYEstado\(p\.ltr\.candidatos, p\.ltr\.evaluar, enMemoria, p\.ltr\.respaldo, REGLA_LARGA, p\.ltr\.visto\)/.test(srv) || !/siguienteYEstado\(p\.str\.candidatos, p\.str\.evaluar, enMemoria, p\.str\.respaldo, REGLA_CORTA, p\.str\.visto\)/.test(srv)) F("15 · el prechequeo elige sin lo ya visto");
     if (!/\.filter\(\(c\) => !prep\.p\.visto\(c\)\);/.test(srv)) F("15 · en la página viva, un depto ya visto puede tomar el lugar de uno caído");
