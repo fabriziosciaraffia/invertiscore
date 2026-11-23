@@ -188,9 +188,8 @@ export function conHoyCongelado<T>(instante: Date, fn: () => T): T {
  * El motor real sobre una fila, con sus insumos guardados: la misma cadena que la pasada nocturna.
  * Devuelve null si la fila no tiene arriendo (la pasada tampoco evalúa esas).
  */
-export function evaluarConMotor(f: FilaUniverso, cfg: Config, pie: number, opts: OpcionesMotor = {}): ResultadoMotor | null {
-  const asOf = opts.asOf ?? new Date(f.evaluado_at);
-  if (opts.congelarHoy) return conHoyCongelado(asOf, () => evaluarConMotor(f, cfg, pie, { ...opts, congelarHoy: false, asOf }));
+/** El body que la cadena de la noche le pasa al motor, sin correr el motor (para saber, por ejemplo, si la superficie se leyó). */
+export function cuerpoDeFila(f: FilaUniverso, cfg: Config, pie: number, opts: OpcionesMotor = {}): Record<string, unknown> | null {
   const c = candidatoDeFila(f);
   const ctx = contextoDeFila(c, cfg);
   if (!ctx || !f.arriendo) return null;
@@ -199,6 +198,14 @@ export function evaluarConMotor(f: FilaUniverso, cfg: Config, pie: number, opts:
   const respuestas = respuestasDeAviso(avisoDeFila(f), pie, opts.tasaCredito ?? cfg.tasa, arriendo, extra);
   const body = payloadDeAviso(respuestas, { ...ctx, ...(opts.ctxPatch ?? {}) } as typeof ctx);
   Object.assign(body, opts.bodyPatch ?? {});
+  return body;
+}
+
+export function evaluarConMotor(f: FilaUniverso, cfg: Config, pie: number, opts: OpcionesMotor = {}): ResultadoMotor | null {
+  const asOf = opts.asOf ?? new Date(f.evaluado_at);
+  if (opts.congelarHoy) return conHoyCongelado(asOf, () => evaluarConMotor(f, cfg, pie, { ...opts, congelarHoy: false, asOf }));
+  const body = cuerpoDeFila(f, cfg, pie, opts);
+  if (!body) return null;
   const mediana = opts.medianaComuna !== undefined ? opts.medianaComuna : f.mediana_comuna;
   const r = runAnalysis(body as never, cfg.uf, (mediana ?? undefined) as never, asOf) as ReturnType<typeof runAnalysis> & { score?: number; metrics?: { flujoNetoMensual?: number } };
   return {
