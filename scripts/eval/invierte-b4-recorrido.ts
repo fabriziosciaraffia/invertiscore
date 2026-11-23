@@ -11,7 +11,7 @@
 //   · la oferta 715d5df2 y el depto a67843d8 no se tocan (se verifica que no cambiaron).
 // Uso: node --env-file=.env.local --import tsx scripts/eval/invierte-b4-recorrido.ts   (npm run gate:invierte-b4)
 // ─────────────────────────────────────────────────────────────────────────────
-import { createClient } from "@supabase/supabase-js";
+import { createServiceClient } from "../../src/lib/supabase/service";
 import { accionOfertaAdmin, firmarRonda, noGracias, retirarOferta } from "../../src/lib/invierte-v2/b4-servidor";
 import { asegurarRango, firmarOferta } from "../../src/lib/invierte-v2/rango-servidor";
 
@@ -22,7 +22,7 @@ const INTOCABLE_AVISO = "a67843d8-dae1-4844-aa01-326c9141b8b2";
 const ADMIN = { id: QA, email: "recorrido-b4@qa" }; // quien firma los pasos del admin en la prueba (un usuario real de auth: la cuenta de QA)
 const USER = { id: QA, email: null };
 
-const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
+const admin = createServiceClient();
 const fallas: string[] = [];
 const F = (m: string) => { fallas.push(m); console.log(`  ✗ ${m}`); };
 const ok = (m: string) => console.log(`  ✓ ${m}`);
