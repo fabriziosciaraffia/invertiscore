@@ -222,6 +222,8 @@ import { runDatosYPlataTier } from "./datos-y-plata-catch-test";
 import { runSuscripcionTier } from "./suscripcion-catch-test";
 import { runAvisoCobroTier } from "./aviso-cobro-catch-test";
 import { runCobroMostradoTier } from "./cobro-mostrado-catch-test";
+import { runCorreoVivoTier } from "./correo-vivo-catch-test";
+import { runNocheInformeTier } from "./noche-informe-catch-test";
 import { runTarjetaAnalizadaTier } from "./tarjeta-analizada-catch-test";
 import { runEdadNocheTier } from "./edad-noche-catch-test";
 import { runPromesasTextosTier } from "./promesas-textos-catch-test";
@@ -890,6 +892,12 @@ function printSeed(r: SeedReport) {
   // (y antes de mandar a pagar), el respaldo que devuelve el crédito con `devolucion_cobro`, lo mostrado reconstruido en el
   // servidor, la vuelta del pago con el crédito a salvo y la línea del informe. ──
   totalHard += (await runCobroMostradoTier()).hard;
+  // Tier CORREO-VIVO (23-nov-2026, 0 tokens): cada depto del semanal, el inmediato y el correo del día se confirma en vivo con la
+  // función del informe antes de salir (el que cambió no entra y entra el siguiente) y el lunes se recomprueba con los datos del día. ──
+  totalHard += (await runCorreoVivoTier()).hard;
+  // Tier NOCHE-INFORME (23-nov-2026, 0 tokens, lee la base): la noche, el informe y el correo dan el mismo veredicto y puntaje para el
+  // mismo depto con los mismos supuestos (el aviso del caso e828d352 y cinco Comprar usados). ──
+  totalHard += (await runNocheInformeTier()).hard;
   // Tier TARJETA-ANALIZADA (05-nov-2026, 0 tokens): la tarjeta de un depto ya analizado dice SU informe —el chip con su
   // veredicto y puntaje y «en tu cuenta desde el 13-oct»—, no la noche; si la noche da distinto, la línea chica «hoy la noche da 82».
   // Dibujadas de verdad: la tarjeta y la lista de Explorar, el compartido, la selección, los guardados y la primera selección. ──
