@@ -12,7 +12,7 @@ import { estadoInterruptor } from "@/lib/invierte-v2/acceso-servidor";
 import { puedeRecibirCopia } from "@/lib/invierte-v2/copias-servidor";
 import { agregarPregunta, ajustarPorPreaprobacion, confirmarUbicacion, marcarPreguntasEnviadas, registrarAcuerdo, responderPregunta } from "@/lib/invierte-v2/depto-servidor";
 import { corregirRango } from "@/lib/invierte-v2/rango-servidor";
-import { corregirSugerencia, marcarComunicada, presentarOferta, registrarRespuesta } from "@/lib/invierte-v2/b4-servidor";
+import { corregirSugerencia, marcarComunicada, pasadaDeUnaOferta, presentarOferta, registrarRespuesta } from "@/lib/invierte-v2/b4-servidor";
 import { DEPS_AVISO_B4 } from "@/lib/invierte-v2/b4-avisos";
 import { pdfOrden } from "@/lib/invierte-v2/orden-pdf";
 
@@ -145,6 +145,14 @@ export async function POST(request: Request) {
       : accion === "sugerencia" ? await corregirSugerencia(adm, quien, b.ofertaId, b.montoUF)
       : await marcarComunicada(adm, quien, b.ofertaId);
     if (!r.ok) return NextResponse.json({ error: r.error }, { status: r.error === "guardar" ? 500 : 400 });
+    return NextResponse.json(r);
+  }
+  // B4, solo fuera de producción y solo con ofertas de prueba: la pasada de la noche para una oferta (para probar antes del merge).
+  if (accion === "prueba_pasada") {
+    if (typeof b?.ofertaId !== "string" || !UUID.test(b.ofertaId)) return NextResponse.json({ error: "datos" }, { status: 400 });
+    const modo = b?.modo === "vencer" || b?.modo === "insistir" ? b.modo : "pasada";
+    const r = await pasadaDeUnaOferta(createAdminServiceClient(), DEPS_AVISO_B4, b.ofertaId, modo);
+    if (!r.ok) return NextResponse.json({ error: r.error }, { status: r.error === "produccion" ? 404 : r.error === "guardar" ? 500 : 400 });
     return NextResponse.json(r);
   }
   if (accion === "tarea") {

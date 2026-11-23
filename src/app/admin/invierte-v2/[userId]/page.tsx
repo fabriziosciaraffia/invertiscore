@@ -219,7 +219,7 @@ export default async function FichaInvierteV2Page({ params }: { params: { userId
                   comuna={pin?.comuna ?? null} pin={pin?.lat != null && pin?.lng != null ? { lat: Number(pin.lat), lng: Number(pin.lng) } : null}
                   preguntas={preguntasDe[id] ?? []}
                   rango={rangoDe[id] ?? null}
-                  oferta={ofertaDe.get(id) ?? null}
+                  oferta={ofertaDe.get(id) ?? null} pruebas={process.env.VERCEL_ENV !== "production"} esPrueba={d.es_prueba === true}
                   ubicacion={u ? { direccion: u.direccion, numero: u.numero, lat: u.lat, lng: u.lng, distanciaM: u.distanciaM, veredicto: u.analisis?.veredicto ?? null, precioComprarUF: u.precioComprarUF, flujoCLP: u.analisis?.flujoCLP ?? null } : null} />
               </div>
             );

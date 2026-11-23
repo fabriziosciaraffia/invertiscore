@@ -374,3 +374,38 @@ export async function noche(admin: SupabaseClient, deps: DepsAviso | null, ahora
   }
   return { vencidas, insistir, preciosBajos, tardiasCerradas };
 }
+
+/** ¿Se puede correr la pasada a mano? Solo fuera de producción (el cron de B4 corre en producción recién con el merge). */
+export const pasadaManualPermitida = (vercelEnv: string | undefined = process.env.VERCEL_ENV) => vercelEnv !== "production";
+
+/** LA PASADA DE LA NOCHE PARA UNA OFERTA, A MANO (24-nov-2026, para probar B4 en el preview antes del merge). Solo fuera de producción y
+ *  solo sobre ofertas de prueba. `modo`: «pasada» corre lo que la noche haría hoy (vence si ya pasó su plazo; deja la tarea de insistir si
+ *  ya es el tercer día); «vencer» adelanta el vencimiento a ahora y corre la pasada; «insistir» deja la tarea del día 3 aunque no toque. */
+export async function pasadaDeUnaOferta(admin: SupabaseClient, deps: DepsAviso | null, ofertaId: string, modo: "pasada" | "vencer" | "insistir", ahora: Date = new Date(), vercelEnv: string | undefined = process.env.VERCEL_ENV): Promise<{ ok: true; hizo: string } | { ok: false; error: ErrorB4 | "produccion" | "no_es_prueba" }> {
+  if (!pasadaManualPermitida(vercelEnv)) return { ok: false, error: "produccion" };
+  let f = await fila(admin, ofertaId);
+  if (!f) return { ok: false, error: "oferta" };
+  if (f.es_prueba !== true) return { ok: false, error: "no_es_prueba" };
+  const iso = ahora.toISOString();
+  if (modo === "vencer") {
+    const antes = new Date(ahora.getTime() - 1000).toISOString();
+    if (f.estado === "presentada") await admin.from(T_OF).update({ vigente_hasta: antes, updated_at: iso }).eq("id", ofertaId).eq("estado", "presentada");
+    else if (f.estado === "contraoferta") await admin.from(T_OF).update({ contraoferta_vence: antes, updated_at: iso }).eq("id", ofertaId).eq("estado", "contraoferta");
+    else return { ok: false, error: "estado" };
+    f = (await fila(admin, ofertaId)) ?? f;
+  }
+  if (modo === "insistir") {
+    if (f.estado !== "presentada") return { ok: false, error: "estado" };
+    await admin.from("inv_tareas").insert({ user_id: f.user_id, tipo: "insistir_oferta", aviso_id: f.aviso_id, estado: "pendiente", detalle: { oferta_id: f.id, monto_uf: n(f.monto_uf), prueba: true }, es_prueba: true });
+    await admin.from(T_OF).update({ insistir_tarea_at: iso }).eq("id", ofertaId);
+    return { ok: true, hizo: "insistir" };
+  }
+  const vence = f.estado === "presentada" ? f.vigente_hasta : f.estado === "contraoferta" ? f.contraoferta_vence : null;
+  if (vence && new Date(vence as string).getTime() <= ahora.getTime()) return (await vencerUna(admin, f, deps, ahora)) ? { ok: true, hizo: "vencida" } : { ok: false, error: "guardar" };
+  if (f.estado === "presentada" && !f.insistir_tarea_at && f.presentada_at && insistirDesde(new Date(f.presentada_at as string)).getTime() <= ahora.getTime()) {
+    await admin.from("inv_tareas").insert({ user_id: f.user_id, tipo: "insistir_oferta", aviso_id: f.aviso_id, estado: "pendiente", detalle: { oferta_id: f.id, monto_uf: n(f.monto_uf) }, es_prueba: true });
+    await admin.from(T_OF).update({ insistir_tarea_at: iso }).eq("id", ofertaId);
+    return { ok: true, hizo: "insistir" };
+  }
+  return { ok: true, hizo: "nada" };
+}

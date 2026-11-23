@@ -214,7 +214,7 @@ export function RevisarPreaprobacion({ id, banco, montoUF, vigenteHasta }: { id:
  * pegan las coordenadas—. Al confirmar se rehace el análisis con el punto real y el depto pasa de etapa solo si hay acuerdo y el
  * análisis rehecho da Comprar (o Ajusta supuestos con precio al que vuelve a Comprar). Sin dirección confirmada no pasa a listo.
  */
-export function GestionDepto({ userId, avisoId, etapa, acuerdo, alternativa, comuna, pin, ubicacion, preguntas, rango, oferta = null }: {
+export function GestionDepto({ userId, avisoId, etapa, acuerdo, alternativa, comuna, pin, ubicacion, preguntas, rango, oferta = null, pruebas = false, esPrueba = false }: {
   userId: string; avisoId: string; etapa: string; acuerdo: string | null; alternativa: string | null; comuna: string | null;
   pin: { lat: number; lng: number } | null;
   ubicacion: { direccion: string; numero: string | null; lat: number; lng: number; distanciaM: number | null; veredicto: string | null; precioComprarUF: number | null; flujoCLP: number | null } | null;
@@ -224,6 +224,9 @@ export function GestionDepto({ userId, avisoId, etapa, acuerdo, alternativa, com
   rango: OfertaVista | null;
   /** B4: la última ronda de la oferta del depto (presentar, la respuesta, la sugerencia, comunicada). */
   oferta?: OfertaVista | null;
+  /** Fuera de producción: las acciones de prueba de la oferta (la pasada de la noche a mano). */
+  pruebas?: boolean;
+  esPrueba?: boolean;
 }) {
   const router = useRouter();
   const [ac, setAc] = useState(acuerdo ?? "pendiente");
@@ -268,7 +271,7 @@ export function GestionDepto({ userId, avisoId, etapa, acuerdo, alternativa, com
       </div>
       <PreguntasDepto avisoId={avisoId} preguntas={preguntas} />
       {rango && <RangoDepto userId={userId} avisoId={avisoId} r={rango} />}
-      {oferta && <OfertaAdmin o={oferta} />}
+      {oferta && <OfertaAdmin o={oferta} pruebas={pruebas} esPrueba={esPrueba} />}
       {estado && <span className="text-[12px] text-[var(--signal-red)]" role="alert">{estado}</span>}
     </div>
   );
@@ -370,7 +373,7 @@ function RangoDepto({ userId, avisoId, r }: { userId: string; avisoId: string; r
 
 /** B4 (23-nov-2026): la oferta del depto en el admin. Cada paso lo hace una persona de Franco: presentar (con el PDF que se le entrega a
  *  quien vende), registrar la respuesta (también fuera de plazo), corregir lo que sugiere Franco y marcar una aceptación como comunicada. */
-export function OfertaAdmin({ o }: { o: OfertaVista }) {
+export function OfertaAdmin({ o, pruebas = false, esPrueba = false }: { o: OfertaVista; pruebas?: boolean; esPrueba?: boolean }) {
   const router = useRouter();
   const [tipo, setTipo] = useState<"aceptada" | "contraoferta" | "rechazada">("contraoferta");
   const [monto, setMonto] = useState("");
@@ -426,6 +429,15 @@ export function OfertaAdmin({ o }: { o: OfertaVista }) {
         <span className="flex flex-wrap items-center gap-2" data-admin="inv2-sugerencia">
           <input value={sug} onChange={(e) => setSug(e.target.value)} aria-label="Franco sugiere (UF)" className={`${campo} w-28`} />
           <button type="button" className={CLASE_BTN} disabled={ocupado} onClick={() => void enviar({ accion: "sugerencia", montoUF: Number(sug.replace(/\D/g, "")) })} data-admin="inv2-corregir-sugerencia">Corregir lo que sugiere Franco</button>
+        </span>
+      )}
+      {/* Solo fuera de producción y con ofertas de prueba: la pasada de la noche a mano (el cron de B4 corre en producción tras el merge). */}
+      {pruebas && esPrueba && (o.estado === "presentada" || o.estado === "contraoferta") && (
+        <span className="flex flex-wrap items-center gap-2" data-admin="inv2-prueba-pasada">
+          <span className="text-[12px] text-[var(--franco-text-muted)]">Solo pruebas:</span>
+          <button type="button" className={CLASE_BTN} disabled={ocupado} onClick={() => void enviar({ accion: "prueba_pasada", modo: "pasada" })}>Correr la pasada de la noche</button>
+          <button type="button" className={CLASE_BTN} disabled={ocupado} onClick={() => void enviar({ accion: "prueba_pasada", modo: "vencer" })}>Vencerla ahora y correr la pasada</button>
+          {o.estado === "presentada" && <button type="button" className={CLASE_BTN} disabled={ocupado} onClick={() => void enviar({ accion: "prueba_pasada", modo: "insistir" })}>Dejar la tarea del día 3</button>}
         </span>
       )}
       {estado && <span className="text-[12px] text-[var(--signal-red)]" role="alert">{estado}</span>}
