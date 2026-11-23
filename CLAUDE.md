@@ -144,7 +144,17 @@ Antes del push final, en el worktree:
    producción quedó en el commit anterior). **Si el build local falla por env faltante, eso se
    arregla —copiando la variable al `.env.local` del árbol limpio, desde VS Code o el dashboard—,
    no se usa como permiso para saltearlo.**
-4. `git push --force-with-lease origin <rama>` (solo la rama, nunca master)
+   **Si la rama toca Invierte con Franco (`src/lib/invierte-v2`, sus pantallas, su admin o sus rutas), también
+   `npm run gate:invierte-b4`** (24-nov-2026, decisión de Fabrizio): recorre B4 de punta a punta contra la base con la
+   cuenta de QA y su depto de prueba —firmar, presentar, contraoferta, otro monto, aceptar, comunicada, retirar, vencer,
+   la respuesta fuera de plazo—, sin correos y nunca en producción; borra todo lo que creó y verifica que no quedó nada.
+   Se niega si encuentra restos de una corrida anterior (`npm run gate:invierte-b4 -- --limpiar` los borra).
+   Motivo: el 23-nov-2026 la respuesta de quien vende no llegaba a B4 (la ruta del admin ya tenía otra acción
+   «respuesta») y ninguna prueba entraba por el mismo camino que el panel.
+4. **Primero los gates, se mira el resultado, y recién después el push** (decisión de Fabrizio, 24-nov-2026): nunca
+   el push en el mismo comando que los gates. El 24-nov-2026 un QUICK rojo (CONFIG-PUBLICA) llegó a la rama porque el
+   push iba encadenado detrás de los gates y salió antes de leerlos.
+   `git push --force-with-lease origin <rama>` (solo la rama, nunca master)
 
    **⛔ EL CANDADO DEL PUSH (decisión de Fabrizio, 24-nov-2026): git rechaza el push a master o a una rama `claude/*` de
    un commit sin un QUICK verde sobre ESE commit.** El runner del golden deja la marca (`<git-common-dir>/quick-verde/<sha>`,
