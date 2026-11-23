@@ -207,8 +207,9 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       const res = codigo("src/components/invierte-v2/ResultadoOpciones.tsx");
       // ⚠ ACTA (19-nov-2026, láminas del 19-nov, entregas 2 y 3): la lista se reemplazó por las tarjetas cortas: cada alternativa dice UN indicador contra el
       // suyo (indicadorAlternativa), no la etiqueta. «Al mes» en rojo sigue en la tabla a pedido y en el elegido.
-      if (!/const m = textoAlMes\(o\); return \{ t: m\.pones \? <span className="iv2-pones"/.test(res) /* ⚠ ACTA (23-nov-2026, ficha): el elegido dice «Al mes» con las cuatro cifras (§27b) */ || !/indicadorAlternativa\(o, entrada, grupo,/.test(res) || /ETIQUETAS\[/.test(res)) F("3 · la tabla o el elegido no usan «Al mes» en rojo, o la alternativa no dice su indicador");
-      if (!/\.iv2-pones \{ color: var\(--signal-red/.test(leer("src/components/invierte-v2/invierte-v2.css"))) F("3 · «Pones» no va en rojo");
+      // ⚠ ACTA (24-nov-2026, Fabrizio): «Al mes» de la tabla va en negro (la excepción de Invierte, abajo); la fila y su dato siguen.
+      if (!/const m = textoAlMes\(o\); return \{ t: m\.pones \? <span data-inv2="pones">\{m\.t\}<\/span> : m\.t, c: cls\(o\.flujoCLP, mejorPones\) \};/.test(res) || !/indicadorAlternativa\(o, entrada, grupo,/.test(res) || /ETIQUETAS\[/.test(res)) F("3 · la tabla no dice «Al mes», o la alternativa no dice su indicador");
+      // ⚠ ACTA (24-nov-2026): «Pones» ya no va en rojo en ningún lugar de Invierte; la clase se retiró (prueba de la excepción, abajo).
       const base = codigo("src/components/invierte-v2/VistaBase.tsx"); // ⚠ ACTA (19-nov-2026): lo que dibuja la base vive en VistaBase (la usan la página y /dev/invierte-v2/base)
       // ⚠ ACTA (19-nov-2026, base completa): los datos del depto vienen en `d.datos` (base-servidor › leerBase).
       // ⚠ ACTA (20-nov-2026, etapa 3 A1, lámina 3.3-base): la tarjeta de la base vive en TarjetaDepto (TarjetaBase); «Al mes» es su tercer dato.
@@ -221,7 +222,7 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       const neg3 = { publicadoUF: 3090, arriendoCLP: 540000, capRatePct: 5.1, flujoCLP: -30000, pocosComparables: false };
       const htmlNeg3 = ["ficha", "base", "resultado"].map((v) => renderToStaticMarkup(createElement(CuatroCifras, { c: neg3, variante: v as "ficha" })))
         .concat(renderToStaticMarkup(createElement(OfertaForm, { avisoId: "x", urlFirmar: "/f", postura: "negocia_poco", pisoUF: 2905, recomendadoUF: 2936, altoUF: 2966, publicadoUF: 3090, razones: [], avisoFuertePct: 10, montoInicial: 3090, motor: { ...MOTOR_MUESTRA, arriendoCLP: 100000, cuerpo: { ...MOTOR_MUESTRA.cuerpo, arriendo: 100000 } } })));
-      if (htmlNeg3.some((h) => /iv2-pones|signal-red/.test(h)) || !htmlNeg3[0].includes("Pones al mes") || /iv2-pones/.test(codigo("src/components/invierte-v2/CuatroCifras.tsx") + codigo("src/components/invierte-v2/ResponderContraoferta.tsx")) || /\.iv2-4c-v\.iv2-pones|\.iv2-4c-precio-lista dd\.iv2-pones/.test(leer("src/components/invierte-v2/invierte-v2.css"))) F("3 · en Invierte «Pones al mes» va en rojo en las cifras, la oferta o la contraoferta (la excepción dice negro)");
+      if (htmlNeg3.some((h) => /iv2-pones|signal-red/.test(h)) || !htmlNeg3[0].includes("Pones al mes") || /iv2-pones/.test(["CuatroCifras", "ResponderContraoferta", "ResultadoOpciones", "VistaBase", "TarjetaDepto", "VistaDepto"].map((x) => codigo(`src/components/invierte-v2/${x}.tsx`)).join("")) || /\.iv2-pones\s*\{/.test(leer("src/components/invierte-v2/invierte-v2.css")) || /\.iv2-4c-v\.iv2-pones|\.iv2-4c-precio-lista dd\.iv2-pones/.test(leer("src/components/invierte-v2/invierte-v2.css"))) F("3 · en Invierte «Pones» va en rojo en las cifras, la oferta, la contraoferta, la tabla del resultado o la línea de lo que cambió (la excepción dice negro)");
       // «Estás cerca» solo si lo que falta es poco (el más barato, a lo más un 10 % sobre lo que puede comprar), igual con pie y renta.
       if (UMBRAL_CERCA_PCT !== 10 || !estaCerca(1000, 1100) || estaCerca(1000, 1101) || estaCerca(1000, null) || estaCerca(0, 900)) F("3 · el umbral de «Estás cerca» no es el 10 %");
       if (RESULTADO_COPY.caso2.tituloCredito(false) !== "Hoy tu renta limita el crédito" || RESULTADO_COPY.caso2.tituloCredito(true) !== "Estás cerca: tu renta limita el crédito" || RESULTADO_COPY.caso2.tituloPie("97", false) !== "Hoy te faltan UF 97 de pie" || RESULTADO_COPY.caso2.tituloPie("97", true) !== "Estás cerca: te faltan UF 97 de pie") F("3 · los títulos del caso 2 no son «Hoy…» / «Estás cerca: …»");
@@ -467,7 +468,8 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (!lineaDepto({ comuna: "X", m2: 58 }).includes("58 m²")) F("9 · «58 m²» puede quedar partido en dos renglones");
       const vb = codigo("src/components/invierte-v2/VistaBase.tsx");
       // ⚠ ACTA (20-nov-2026, etapa 3 A1): la línea de lo que cambió ya no va en la tarjeta; ConMontoNegativo queda para la página del depto.
-      if (!vb.includes("texto.split(/(pones \\$[\\d.]+)/)") || !vb.includes('<span key={i} className="iv2-pones iv2-nowrap">')) F("9 · «pones $X» de la línea de lo que cambió no va en rojo");
+      // ⚠ ACTA (24-nov-2026, Fabrizio): «pones $X» de la línea de lo que cambió va en negro; sigue sin partirse.
+      if (!vb.includes("texto.split(/(pones \\$[\\d.]+)/)") || !vb.includes('<span key={i} className="iv2-nowrap">')) F("9 · «pones $X» de la línea de lo que cambió se parte");
       // Sumar: solo lo que le alcanza, hasta seis; con seis, deja uno elegido por ella; cada sumado deja su tarea interna.
       const ORDEN = { id: "o-1", user_id: USER.id, email: USER.email, nombre: "Camila Rojas", rut: "12345678-5", aviso_id: "a0", depto_linea: "x", texto_version: 1, texto_sha256: "h", texto: "t", es_prueba: true, firmado_at: "2026-11-15T15:00:00Z" };
       const PERFIL = { user_id: USER.id, objetivo: "arriendo", comunas: ["Macul"], preaprobado: "no", tope_uf: 3000, tope_fuente: "renta", es_prueba: true, updated_at: "x" };

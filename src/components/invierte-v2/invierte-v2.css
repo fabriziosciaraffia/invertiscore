@@ -283,7 +283,7 @@
 .iv2-tabla td.iv2-mejor { color: #8DB0E3; font-weight: 700; }
 [data-theme="light"] .iv2-tabla td.iv2-mejor { color: #2B558F; }
 /* «Pones $Y» en rojo: un monto negativo (regla del rojo, 18-nov-2026), también en la celda que es la mejor de la fila. */
-.iv2-pones { color: var(--signal-red, #C8323C); }
+/* «Pones» ya no va en rojo en Invierte (24-nov-2026): la clase iv2-pones no existe más. */
 .iv2-nowrap { white-space: nowrap; }
 /* Lo que cambió en la publicación de un depto elegido (entrega 2): la línea con la fecha y, debajo, lo que cambió por ella. */
 .iv2-cambio { margin: 4px 0 0; font-size: 13px; font-weight: 600; color: var(--franco-text, #0F0F0F); }

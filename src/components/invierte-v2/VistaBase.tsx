@@ -25,10 +25,11 @@ import { VerPreaprobacion } from "./Preaprobacion";
 
 const B = BASE_COPY;
 
-/** «pones $120.500» es un monto negativo: va en rojo (regla del rojo, 18-nov-2026), también dentro de la línea de lo que cambió. */
+/** «pones $120.500» dentro de la línea de lo que cambió: sin partirse y en negro (24-nov-2026, Fabrizio: en Invierte el rojo es solo el
+ *  botón principal; la palabra ya dice «pones»). */
 export function ConMontoNegativo({ texto }: { texto: string }) {
   const partes = texto.split(/(pones \$[\d.]+)/);
-  return <>{partes.map((x, i) => (i % 2 ? <span key={i} className="iv2-pones iv2-nowrap">{x}</span> : x))}</>;
+  return <>{partes.map((x, i) => (i % 2 ? <span key={i} className="iv2-nowrap">{x}</span> : x))}</>;
 }
 
 export function VistaBase({ base }: { base: Base }) {

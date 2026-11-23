@@ -223,7 +223,7 @@ export function ResultadoOpciones(p: PropsResultado) {
     { clave: "precio", rotulo: R.filas.precio, celda: (o) => ({ t: `UF ${fmtUF(o.precioUF)}`, c: cls(o.precioUF, mejorPrecio) }) },
     { clave: "pie", rotulo: R.filas.pie, celda: (o) => ({ t: `UF ${fmtUF(pieDe(o.precioUF))}` }) },
     { clave: "alcanza", rotulo: R.filas.alcanza, celda: (o) => ({ t: o.alcanza ? R.si : R.no }) },
-    { clave: "pones", rotulo: R.filas.pones, importa: porPlata, celda: (o) => { const m = textoAlMes(o); return { t: m.pones ? <span className="iv2-pones" data-inv2="pones">{m.t}</span> : m.t, c: cls(o.flujoCLP, mejorPones) }; } },
+    { clave: "pones", rotulo: R.filas.pones, importa: porPlata, celda: (o) => { const m = textoAlMes(o); return { t: m.pones ? <span data-inv2="pones">{m.t}</span> : m.t, c: cls(o.flujoCLP, mejorPones) }; } },
     { clave: "arriendo", rotulo: R.filas.arriendo, celda: (o) => ({ t: o.arriendoCLP ? fmtCLP(o.arriendoCLP) : "—", c: cls(o.arriendoCLP, mejorArriendo) }) },
     { clave: "parecidos", rotulo: R.filas.parecidos, importa: p.objetivo === "plusvalia", celda: (o) => ({ t: textoVsParecidos(o.vsParecidosPct), c: cls(o.vsParecidosPct, mejorPar) }) },
     { clave: "metro", rotulo: R.filas.metro, celda: (o) => ({ t: textoMetro(o.metro), c: cls(o.metro?.metros ?? null, mejorMetro) }) },
