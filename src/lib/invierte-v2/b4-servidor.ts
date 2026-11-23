@@ -19,6 +19,7 @@ import { puedeOfertar } from "./preaprobacion";
 import { VERSION_TEXTO_OFERTA } from "./oferta-documento";
 import { lineaDepto, urlWhatsapp } from "./base";
 import type { DatosDepto } from "./base-servidor";
+import { captureApiWarning } from "@/lib/observabilidad";
 
 const T_OF = "inv_ofertas";
 const COLS_FILA = `${COLS_OFERTA}, user_id, depto_id, aviso_id, es_prueba, postura, rango_fuente, aviso_nivel, insistir_tarea_at`;
@@ -27,7 +28,8 @@ const n = (x: unknown) => (x == null ? null : Number.isFinite(Number(x)) ? Numbe
 
 // ── LOS AVISOS A LA PERSONA ──────────────────────────────────────────────────
 export interface DepsAviso {
-  correo: (p: { to: string; userId: string; ofertaId: string; nombre: string | null; evento: EventoOferta; avisoId: string; depto: string; montoUF: number; otroUF: number | null; vence: string | null }) => Promise<boolean>;
+  /** Manda el correo y dice si salió y, si no, por qué (24-nov-2026: un correo que no sale queda registrado y el admin lo ve). */
+  correo: (p: { to: string; userId: string; ofertaId: string; nombre: string | null; evento: EventoOferta; avisoId: string; depto: string; montoUF: number; otroUF: number | null; vence: string | null }) => Promise<{ ok: boolean; motivo?: string | null }>;
   /** ¿Puede recibir el correo? Mientras el modo sea «lista», solo las cuentas de la lista (decisión de Fabrizio, punto 14). */
   puedeRecibir: (email: string) => Promise<boolean>;
 }
@@ -49,14 +51,28 @@ export async function avisarPersona(admin: SupabaseClient, deps: DepsAviso | nul
   const depto = await nombreDepto(admin, userId, avisoId);
   const vence = x.venceAt ? lineaVence(x.venceAt).vence : null;
   let correo = false, whatsapp = false;
+  // Por qué no salió, si no salió (queda en la bitácora y el admin lo ve en el panel de la oferta).
+  let motivo: string | null = null;
   try {
     const { data: u } = await admin.auth.admin.getUserById(userId);
     const email = u?.user?.email ?? null;
-    if (deps && email && (await deps.puedeRecibir(email))) {
+    if (!deps) motivo = "sin-envio";
+    else if (!email) motivo = "sin-correo";
+    else if (!(await deps.puedeRecibir(email))) motivo = "fuera-de-la-lista";
+    else {
       const orden = await ultimaOrdenDe(admin, userId);
-      correo = await deps.correo({ to: email, userId, ofertaId: f.id as string, nombre: orden?.nombre ?? null, evento, avisoId, depto, montoUF, otroUF: x.otroUF ?? null, vence });
+      const r = await deps.correo({ to: email, userId, ofertaId: f.id as string, nombre: orden?.nombre ?? null, evento, avisoId, depto, montoUF, otroUF: x.otroUF ?? null, vence });
+      correo = r.ok;
+      motivo = r.ok ? null : r.motivo ?? "error";
     }
-  } catch (e) { console.error("[inv2] aviso de oferta:", e instanceof Error ? e.message : e); }
+  } catch (e) { motivo = `error: ${e instanceof Error ? e.message : String(e)}`.slice(0, 200); }
+  if (deps) {
+    await anotar(admin, { userId, email: null, actor: "sistema", accion: "aviso_oferta", detalle: { oferta_id: f.id, evento, correo: correo ? "enviado" : "no_salio", motivo }, esPrueba: f.es_prueba === true });
+    // Un correo que falla de verdad (sin la llave de Resend o un error al enviar) queda también en Sentry.
+    if (!correo && motivo && (motivo === "sin-llave" || motivo.startsWith("error"))) {
+      captureApiWarning(new Error(`aviso de oferta no salió: ${motivo}`), { ruta: "B4 · avisos", operacion: `correo-${evento}`, tags: { evento }, extra: { ofertaId: f.id, motivo } });
+    }
+  }
   const texto = WHATSAPP_OFERTA[evento]?.({ depto, montoUF, otroUF: x.otroUF ?? null, vence });
   if (texto) {
     // Mientras el modo sea «lista», el WhatsApp es solo una tarea del admin con el enlace (sin número o sin permiso, sin enlace).
@@ -408,4 +424,24 @@ export async function pasadaDeUnaOferta(admin: SupabaseClient, deps: DepsAviso |
     return { ok: true, hizo: "insistir" };
   }
   return { ok: true, hizo: "nada" };
+}
+
+// ── LAS ACCIONES DEL PANEL DE LA OFERTA (24-nov-2026) ────────────────────────
+/** Cada acción del panel lleva el prefijo «oferta_»: la ruta del admin ya tenía «respuesta» (la de «Lo que Franco averiguó», B2), que
+ *  atrapaba la respuesta de quien vende antes de llegar a B4 y la rechazaba con «datos» sin escribir nada (Fabrizio, 23-nov-2026). */
+export const ACCIONES_OFERTA_ADMIN = ["oferta_presentar", "oferta_respuesta", "oferta_sugerencia", "oferta_comunicada", "oferta_prueba_pasada"] as const;
+export type AccionOfertaAdmin = (typeof ACCIONES_OFERTA_ADMIN)[number];
+export const esAccionOfertaAdmin = (x: unknown): x is AccionOfertaAdmin => typeof x === "string" && (ACCIONES_OFERTA_ADMIN as readonly string[]).includes(x);
+
+/** Despacha una acción del panel de la oferta. La ruta solo valida el administrador y reporta el error. */
+export async function accionOfertaAdmin(admin: SupabaseClient, quien: Quien, b: Record<string, unknown>, deps: DepsAviso | null, ahora: Date = new Date()): Promise<{ ok: true } & Record<string, unknown> | { ok: false; error: string }> {
+  const accion = b.accion;
+  if (!esAccionOfertaAdmin(accion)) return { ok: false, error: "accion" };
+  const ofertaId = typeof b.ofertaId === "string" && /^[0-9a-f-]{36}$/i.test(b.ofertaId) ? b.ofertaId : null;
+  if (!ofertaId) return { ok: false, error: "datos" };
+  if (accion === "oferta_presentar") return presentarOferta(admin, quien, ofertaId, deps, ahora);
+  if (accion === "oferta_respuesta") return registrarRespuesta(admin, quien, ofertaId, { tipo: b.tipo, montoUF: b.montoUF, nota: b.nota, vence: b.vence }, deps, ahora);
+  if (accion === "oferta_sugerencia") return corregirSugerencia(admin, quien, ofertaId, b.montoUF);
+  if (accion === "oferta_comunicada") return marcarComunicada(admin, quien, ofertaId);
+  return pasadaDeUnaOferta(admin, deps, ofertaId, b.modo === "vencer" || b.modo === "insistir" ? b.modo : "pasada", ahora);
 }

@@ -85,6 +85,14 @@ export default async function FichaInvierteV2Page({ params }: { params: { userId
   const { data: ofs } = idsEl.length ? await sb.from("inv_ofertas").select(COLS_OFERTA + ", aviso_id").eq("user_id", userId).in("aviso_id", idsEl).neq("estado", "borrador").order("ronda", { ascending: false }) : { data: [] };
   const ofertaDe = new Map<string, OfertaVista>();
   for (const f of (ofs ?? []) as unknown as Record<string, unknown>[]) if (!ofertaDe.has(f.aviso_id as string)) ofertaDe.set(f.aviso_id as string, ofertaDeFila(f));
+  // Los correos de B4 de cada oferta (24-nov-2026): si salieron o por qué no, de la bitácora.
+  const { data: avs } = await sb.from("inv_bitacora").select("detalle, created_at").eq("user_id", userId).eq("accion", "aviso_oferta").order("created_at", { ascending: false }).limit(50);
+  const avisosDe = new Map<string, { evento: string; correo: string; motivo: string | null; at: string }[]>();
+  for (const a of (avs ?? []) as { detalle: Record<string, unknown> | null; created_at: string }[]) {
+    const id = String(a.detalle?.oferta_id ?? "");
+    if (!id) continue;
+    avisosDe.set(id, [...(avisosDe.get(id) ?? []), { evento: String(a.detalle?.evento ?? ""), correo: String(a.detalle?.correo ?? ""), motivo: (a.detalle?.motivo as string | null) ?? null, at: a.created_at }]);
+  }
   const pinDe = new Map(((pines ?? []) as { id: string; lat: number | null; lng: number | null; comuna: string | null }[]).map((x) => [x.id, x]));
   const pendientes = (tareas ?? []).filter((t) => t.estado === "pendiente");
   const hechas = (tareas ?? []).filter((t) => t.estado !== "pendiente");
@@ -219,7 +227,7 @@ export default async function FichaInvierteV2Page({ params }: { params: { userId
                   comuna={pin?.comuna ?? null} pin={pin?.lat != null && pin?.lng != null ? { lat: Number(pin.lat), lng: Number(pin.lng) } : null}
                   preguntas={preguntasDe[id] ?? []}
                   rango={rangoDe[id] ?? null}
-                  oferta={ofertaDe.get(id) ?? null} pruebas={process.env.VERCEL_ENV !== "production"} esPrueba={d.es_prueba === true}
+                  oferta={ofertaDe.get(id) ?? null} pruebas={process.env.VERCEL_ENV !== "production"} esPrueba={d.es_prueba === true} avisos={avisosDe.get(ofertaDe.get(id)?.id ?? "") ?? []}
                   ubicacion={u ? { direccion: u.direccion, numero: u.numero, lat: u.lat, lng: u.lng, distanciaM: u.distanciaM, veredicto: u.analisis?.veredicto ?? null, precioComprarUF: u.precioComprarUF, flujoCLP: u.analisis?.flujoCLP ?? null } : null} />
               </div>
             );

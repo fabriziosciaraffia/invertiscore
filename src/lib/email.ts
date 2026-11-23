@@ -550,15 +550,16 @@ export async function sendCambiosInvierte(p: { to: string; userId: string; nombr
 /** Invierte con Franco: la preaprobación revisada (aprobada o por corregir). Una por documento y resultado (idempotente). */
 /** Invierte con Franco, B4: un aviso de la oferta a la persona. Uno por oferta y evento (idempotente). Quien llama decide si la persona
  *  puede recibirlo (mientras el modo sea «lista», solo las cuentas de la lista). */
-export async function sendOfertaInvierte(p: { to: string; userId: string; ofertaId: string } & Parameters<typeof correoOfertaInvierte>[0]): Promise<boolean> {
+export async function sendOfertaInvierte(p: { to: string; userId: string; ofertaId: string } & Parameters<typeof correoOfertaInvierte>[0]): Promise<{ ok: boolean; motivo: string | null }> {
   const { subject, html } = correoOfertaInvierte({ ...p, sitio: SITE_URL });
+  let omitidoPor: string | null = null;
   try {
-    const res = await enviarCorreo("invierte_oferta", p.userId, { from: FROM_EMAIL, to: p.to, subject, html }, { idempotencyKey: `invierte-oferta-${p.ofertaId}-${p.evento}` });
-    if (res.error) console.error("[invierte_oferta] no salió:", res.error.message);
-    return !res.error && !!res.data;
+    const res = await enviarCorreo("invierte_oferta", p.userId, { from: FROM_EMAIL, to: p.to, subject, html }, { idempotencyKey: `invierte-oferta-${p.ofertaId}-${p.evento}`, alOmitir: (m) => { omitidoPor = m; } });
+    if (res.error) { console.error("[invierte_oferta] no salió:", res.error.message); return { ok: false, motivo: `error: ${res.error.message ?? "Resend"}` }; }
+    return res.data ? { ok: true, motivo: null } : { ok: false, motivo: omitidoPor ?? "sin respuesta de Resend" };
   } catch (error) {
     console.error("[invierte_oferta] no salió:", error);
-    return false;
+    return { ok: false, motivo: `error: ${error instanceof Error ? error.message : String(error)}` };
   }
 }
 

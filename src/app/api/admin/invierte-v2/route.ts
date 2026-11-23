@@ -12,7 +12,8 @@ import { estadoInterruptor } from "@/lib/invierte-v2/acceso-servidor";
 import { puedeRecibirCopia } from "@/lib/invierte-v2/copias-servidor";
 import { agregarPregunta, ajustarPorPreaprobacion, confirmarUbicacion, marcarPreguntasEnviadas, registrarAcuerdo, responderPregunta } from "@/lib/invierte-v2/depto-servidor";
 import { corregirRango } from "@/lib/invierte-v2/rango-servidor";
-import { corregirSugerencia, marcarComunicada, pasadaDeUnaOferta, presentarOferta, registrarRespuesta } from "@/lib/invierte-v2/b4-servidor";
+import { accionOfertaAdmin, esAccionOfertaAdmin } from "@/lib/invierte-v2/b4-servidor";
+import { captureApiError } from "@/lib/observabilidad";
 import { DEPS_AVISO_B4 } from "@/lib/invierte-v2/b4-avisos";
 import { pdfOrden } from "@/lib/invierte-v2/orden-pdf";
 
@@ -136,24 +137,20 @@ export async function POST(request: Request) {
     if (!r.ok) return NextResponse.json({ error: r.error }, { status: r.error === "guardar" ? 500 : 400 });
     return NextResponse.json(r);
   }
-  if (accion === "presentar" || accion === "respuesta" || accion === "sugerencia" || accion === "comunicada") {
-    if (typeof b?.ofertaId !== "string" || !UUID.test(b.ofertaId)) return NextResponse.json({ error: "datos" }, { status: 400 });
-    const quien = { id: adminUser.id, email: adminUser.email ?? null };
-    const adm = createAdminServiceClient();
-    const r = accion === "presentar" ? await presentarOferta(adm, quien, b.ofertaId, DEPS_AVISO_B4)
-      : accion === "respuesta" ? await registrarRespuesta(adm, quien, b.ofertaId, b, DEPS_AVISO_B4)
-      : accion === "sugerencia" ? await corregirSugerencia(adm, quien, b.ofertaId, b.montoUF)
-      : await marcarComunicada(adm, quien, b.ofertaId);
-    if (!r.ok) return NextResponse.json({ error: r.error }, { status: r.error === "guardar" ? 500 : 400 });
-    return NextResponse.json(r);
-  }
-  // B4, solo fuera de producción y solo con ofertas de prueba: la pasada de la noche para una oferta (para probar antes del merge).
-  if (accion === "prueba_pasada") {
-    if (typeof b?.ofertaId !== "string" || !UUID.test(b.ofertaId)) return NextResponse.json({ error: "datos" }, { status: 400 });
-    const modo = b?.modo === "vencer" || b?.modo === "insistir" ? b.modo : "pasada";
-    const r = await pasadaDeUnaOferta(createAdminServiceClient(), DEPS_AVISO_B4, b.ofertaId, modo);
-    if (!r.ok) return NextResponse.json({ error: r.error }, { status: r.error === "produccion" ? 404 : r.error === "guardar" ? 500 : 400 });
-    return NextResponse.json(r);
+  // B4 (24-nov-2026): las acciones del panel de la oferta, todas con el prefijo «oferta_» (la «respuesta» de B2 atrapaba la de B4).
+  // Cada error queda en Sentry con la acción, la oferta y el motivo; la pantalla muestra el motivo en una línea.
+  if (esAccionOfertaAdmin(accion)) {
+    try {
+      const r = await accionOfertaAdmin(createAdminServiceClient(), { id: adminUser.id, email: adminUser.email ?? null }, b ?? {}, DEPS_AVISO_B4);
+      if (!r.ok) {
+        captureApiError(new Error(`admin Invierte ${accion}: ${r.error}`), { ruta: "POST /api/admin/invierte-v2", operacion: accion, tags: { accion, motivo: r.error }, extra: { ofertaId: b?.ofertaId ?? null } });
+        return NextResponse.json({ error: r.error }, { status: r.error === "produccion" ? 404 : r.error === "guardar" ? 500 : 400 });
+      }
+      return NextResponse.json(r);
+    } catch (e) {
+      captureApiError(e, { ruta: "POST /api/admin/invierte-v2", operacion: String(accion), tags: { accion: String(accion) }, extra: { ofertaId: b?.ofertaId ?? null } });
+      return NextResponse.json({ error: "excepcion" }, { status: 500 });
+    }
   }
   if (accion === "tarea") {
     if (typeof b?.id !== "string" || !UUID.test(b.id)) return NextResponse.json({ error: "datos" }, { status: 400 });

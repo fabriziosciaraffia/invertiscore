@@ -8,6 +8,7 @@ import { MODOS_INVIERTE_V2, type ModoInvierteV2 } from "@/lib/invierte-v2/acceso
 import { MapaPinAjustable } from "@/components/formulario-v4/MapaPinAjustable";
 import { FUENTES_RESPUESTA, lineaPregunta, type PreguntaDepto } from "@/lib/invierte-v2/depto-flujo";
 import { POSTURA_COPY, type Postura } from "@/lib/invierte-v2/rango";
+import { motivoAdminOferta, motivoCorreoOferta, venceAlTerminarTexto } from "@/lib/invierte-v2/b4";
 import type { OfertaVista } from "@/lib/invierte-v2/rango-servidor";
 
 const ROTULO_MODO: Record<ModoInvierteV2, string> = { apagado: "Apagado (todos ven Pronto)", lista: "Solo la lista", todos: "Todos" };
@@ -214,7 +215,7 @@ export function RevisarPreaprobacion({ id, banco, montoUF, vigenteHasta }: { id:
  * pegan las coordenadas—. Al confirmar se rehace el análisis con el punto real y el depto pasa de etapa solo si hay acuerdo y el
  * análisis rehecho da Comprar (o Ajusta supuestos con precio al que vuelve a Comprar). Sin dirección confirmada no pasa a listo.
  */
-export function GestionDepto({ userId, avisoId, etapa, acuerdo, alternativa, comuna, pin, ubicacion, preguntas, rango, oferta = null, pruebas = false, esPrueba = false }: {
+export function GestionDepto({ userId, avisoId, etapa, acuerdo, alternativa, comuna, pin, ubicacion, preguntas, rango, oferta = null, pruebas = false, esPrueba = false, avisos = [] }: {
   userId: string; avisoId: string; etapa: string; acuerdo: string | null; alternativa: string | null; comuna: string | null;
   pin: { lat: number; lng: number } | null;
   ubicacion: { direccion: string; numero: string | null; lat: number; lng: number; distanciaM: number | null; veredicto: string | null; precioComprarUF: number | null; flujoCLP: number | null } | null;
@@ -227,6 +228,8 @@ export function GestionDepto({ userId, avisoId, etapa, acuerdo, alternativa, com
   /** Fuera de producción: las acciones de prueba de la oferta (la pasada de la noche a mano). */
   pruebas?: boolean;
   esPrueba?: boolean;
+  /** Los correos de B4 de esta oferta: si salieron o por qué no. */
+  avisos?: AvisoOfertaAdmin[];
 }) {
   const router = useRouter();
   const [ac, setAc] = useState(acuerdo ?? "pendiente");
@@ -271,7 +274,7 @@ export function GestionDepto({ userId, avisoId, etapa, acuerdo, alternativa, com
       </div>
       <PreguntasDepto avisoId={avisoId} preguntas={preguntas} />
       {rango && <RangoDepto userId={userId} avisoId={avisoId} r={rango} />}
-      {oferta && <OfertaAdmin o={oferta} pruebas={pruebas} esPrueba={esPrueba} />}
+      {oferta && <OfertaAdmin o={oferta} pruebas={pruebas} esPrueba={esPrueba} avisos={avisos} />}
       {estado && <span className="text-[12px] text-[var(--signal-red)]" role="alert">{estado}</span>}
     </div>
   );
@@ -373,7 +376,10 @@ function RangoDepto({ userId, avisoId, r }: { userId: string; avisoId: string; r
 
 /** B4 (23-nov-2026): la oferta del depto en el admin. Cada paso lo hace una persona de Franco: presentar (con el PDF que se le entrega a
  *  quien vende), registrar la respuesta (también fuera de plazo), corregir lo que sugiere Franco y marcar una aceptación como comunicada. */
-export function OfertaAdmin({ o, pruebas = false, esPrueba = false }: { o: OfertaVista; pruebas?: boolean; esPrueba?: boolean }) {
+/** Un aviso de B4 a la persona, de la bitácora: qué evento y si el correo salió (y si no, por qué). */
+export interface AvisoOfertaAdmin { evento: string; correo: string; motivo: string | null; at: string }
+
+export function OfertaAdmin({ o, pruebas = false, esPrueba = false, avisos = [] }: { o: OfertaVista; pruebas?: boolean; esPrueba?: boolean; avisos?: AvisoOfertaAdmin[] }) {
   const router = useRouter();
   const [tipo, setTipo] = useState<"aceptada" | "contraoferta" | "rechazada">("contraoferta");
   const [monto, setMonto] = useState("");
@@ -388,7 +394,8 @@ export function OfertaAdmin({ o, pruebas = false, esPrueba = false }: { o: Ofert
     setOcupado(true); setEstado(null);
     const x = await llamar({ ...cuerpo, ofertaId: o.id });
     setOcupado(false);
-    if (!x.ok) { setEstado(x.error === "monto" ? "Revisa el monto" : x.error === "fecha" ? "Revisa la fecha (de hoy en adelante)" : x.error === "estado" ? "La oferta ya no está en ese estado" : "No se guardó"); return; }
+    // El motivo en una línea, nunca «No se guardó» a secas (24-nov-2026).
+    if (!x.ok) { setEstado(motivoAdminOferta(x.error)); return; }
     router.refresh();
   }
   const comunicar = o.estado === "firmada" && (o.tipoRonda === "aceptar" || o.tipoRonda === "reactivar");
@@ -398,16 +405,21 @@ export function OfertaAdmin({ o, pruebas = false, esPrueba = false }: { o: Ofert
   return (
     <div className="flex flex-col gap-2" data-admin="inv2-oferta-b4">
       <p className="m-0"><b>Oferta</b> · ronda {o.ronda ?? 1} · {o.estado}{o.tipoRonda ? ` (${o.tipoRonda})` : ""} · UF {o.montoUF ?? "—"} · firmada {fecha(o.firmadaAt)}
-        {o.presentadaAt ? ` · presentada ${fecha(o.presentadaAt)}` : ""}{o.vigenteHasta ? ` · vence ${fecha(o.vigenteHasta)}` : ""}
-        {o.respuesta ? ` · respuesta ${o.respuesta} ${fecha(o.respuestaAt)}` : ""}{o.contraofertaUF ? ` · piden UF ${o.contraofertaUF} (vence ${fecha(o.contraofertaVence)})` : ""}
+        {o.presentadaAt ? ` · presentada ${fecha(o.presentadaAt)}` : ""}{o.vigenteHasta ? ` · ${venceAlTerminarTexto(new Date(o.vigenteHasta))}` : ""}
+        {o.respuesta ? ` · respuesta ${o.respuesta} ${fecha(o.respuestaAt)}` : ""}{o.contraofertaUF ? ` · piden UF ${o.contraofertaUF}${o.contraofertaVence ? ` (${venceAlTerminarTexto(new Date(o.contraofertaVence))})` : ""}` : ""}
         {o.sugeridaUF ? ` · Franco sugiere UF ${o.sugeridaUF}${o.sugeridaFuente === "admin" ? ` (corregida; la regla dio ${o.sugeridaReglaUF})` : " (regla)"}` : ""}
         {o.respuestaTardia ? ` · fuera de plazo: ${o.respuestaTardia}${o.tardiaDecision ? ` → ${o.tardiaDecision}` : ""}` : ""}{o.retiradaAt ? ` · retirada ${fecha(o.retiradaAt)} desde ${o.retiradaDesde}` : ""}</p>
+      {avisos.length > 0 && (
+        <ul className="m-0 pl-5 text-[12px]" data-admin="inv2-avisos-oferta">
+          {avisos.map((a, i) => <li key={i} className={a.correo === "enviado" ? undefined : "text-[var(--signal-red)]"}>Correo «{a.evento}» · {fecha(a.at)} · {a.correo === "enviado" ? "salió" : motivoCorreoOferta(a.motivo)}</li>)}
+        </ul>
+      )}
       {o.texto && <span><a className={CLASE_BTN} href={`/api/admin/invierte-v2?oferta=${o.id}`} target="_blank" rel="noopener noreferrer" data-admin="inv2-oferta-pdf">Ver el PDF de la oferta firmada</a></span>}
       {o.estado === "firmada" && !comunicar && (
-        <span><button type="button" className={CLASE_BTN} disabled={ocupado} onClick={() => void enviar({ accion: "presentar" })} data-admin="inv2-presentar">{ocupado ? "Guardando…" : "Presentada hoy a quien vende"}</button></span>
+        <span><button type="button" className={CLASE_BTN} disabled={ocupado} onClick={() => void enviar({ accion: "oferta_presentar" })} data-admin="inv2-presentar">{ocupado ? "Guardando…" : "Presentada hoy a quien vende"}</button></span>
       )}
       {comunicar && (
-        <span><button type="button" className={CLASE_BTN} disabled={ocupado} onClick={() => void enviar({ accion: "comunicada" })} data-admin="inv2-comunicada">{ocupado ? "Guardando…" : `Comunicada: acepta UF ${o.montoUF}`}</button></span>
+        <span><button type="button" className={CLASE_BTN} disabled={ocupado} onClick={() => void enviar({ accion: "oferta_comunicada" })} data-admin="inv2-comunicada">{ocupado ? "Guardando…" : `Comunicada: acepta UF ${o.montoUF}`}</button></span>
       )}
       {puedeResponder && (
         <div className="flex flex-col gap-2" data-admin="inv2-respuesta">
@@ -422,22 +434,22 @@ export function OfertaAdmin({ o, pruebas = false, esPrueba = false }: { o: Ofert
             {tipo === "contraoferta" && <input type="date" value={vence} onChange={(e) => setVence(e.target.value)} aria-label="Vence (vacío: 5 días)" className={campo} />}
           </span>
           {tipo === "contraoferta" && <input value={nota} onChange={(e) => setNota(e.target.value)} aria-label="Nota de quien vende" placeholder="Nota (opcional)" className={`${campo} min-w-[320px]`} />}
-          <span><button type="button" className={CLASE_BTN} disabled={ocupado} onClick={() => void enviar({ accion: "respuesta", tipo, montoUF: Number(monto.replace(/\D/g, "")), nota, vence: vence || null })} data-admin="inv2-registrar-respuesta">{ocupado ? "Guardando…" : "Registrar respuesta"}</button></span>
+          <span><button type="button" className={CLASE_BTN} disabled={ocupado} onClick={() => void enviar({ accion: "oferta_respuesta", tipo, montoUF: Number(monto.replace(/\D/g, "")), nota, vence: vence || null })} data-admin="inv2-registrar-respuesta">{ocupado ? "Guardando…" : "Registrar respuesta"}</button></span>
         </div>
       )}
       {contraAbierta && (
         <span className="flex flex-wrap items-center gap-2" data-admin="inv2-sugerencia">
           <input value={sug} onChange={(e) => setSug(e.target.value)} aria-label="Franco sugiere (UF)" className={`${campo} w-28`} />
-          <button type="button" className={CLASE_BTN} disabled={ocupado} onClick={() => void enviar({ accion: "sugerencia", montoUF: Number(sug.replace(/\D/g, "")) })} data-admin="inv2-corregir-sugerencia">Corregir lo que sugiere Franco</button>
+          <button type="button" className={CLASE_BTN} disabled={ocupado} onClick={() => void enviar({ accion: "oferta_sugerencia", montoUF: Number(sug.replace(/\D/g, "")) })} data-admin="inv2-corregir-sugerencia">Corregir lo que sugiere Franco</button>
         </span>
       )}
       {/* Solo fuera de producción y con ofertas de prueba: la pasada de la noche a mano (el cron de B4 corre en producción tras el merge). */}
       {pruebas && esPrueba && (o.estado === "presentada" || o.estado === "contraoferta") && (
         <span className="flex flex-wrap items-center gap-2" data-admin="inv2-prueba-pasada">
           <span className="text-[12px] text-[var(--franco-text-muted)]">Solo pruebas:</span>
-          <button type="button" className={CLASE_BTN} disabled={ocupado} onClick={() => void enviar({ accion: "prueba_pasada", modo: "pasada" })}>Correr la pasada de la noche</button>
-          <button type="button" className={CLASE_BTN} disabled={ocupado} onClick={() => void enviar({ accion: "prueba_pasada", modo: "vencer" })}>Vencerla ahora y correr la pasada</button>
-          {o.estado === "presentada" && <button type="button" className={CLASE_BTN} disabled={ocupado} onClick={() => void enviar({ accion: "prueba_pasada", modo: "insistir" })}>Dejar la tarea del día 3</button>}
+          <button type="button" className={CLASE_BTN} disabled={ocupado} onClick={() => void enviar({ accion: "oferta_prueba_pasada", modo: "pasada" })}>Correr la pasada de la noche</button>
+          <button type="button" className={CLASE_BTN} disabled={ocupado} onClick={() => void enviar({ accion: "oferta_prueba_pasada", modo: "vencer" })}>Vencerla ahora y correr la pasada</button>
+          {o.estado === "presentada" && <button type="button" className={CLASE_BTN} disabled={ocupado} onClick={() => void enviar({ accion: "oferta_prueba_pasada", modo: "insistir" })}>Dejar la tarea del día 3</button>}
         </span>
       )}
       {estado && <span className="text-[12px] text-[var(--signal-red)]" role="alert">{estado}</span>}

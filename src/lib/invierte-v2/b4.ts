@@ -82,6 +82,49 @@ export function lineaVence(venceAt: Date, ahora: Date = new Date()): { vence: st
   return { vence: `Vence el ${diaSemana(ultimo)} ${fechaChile(ultimo).d}`, quedan: n === 1 ? "queda 1 día" : `quedan ${n} días`, vencida: false };
 }
 
+/** «vence al terminar el sábado 28» (el panel del admin, 24-nov-2026: no «29 nov 12:00 a. m.»). */
+export function venceAlTerminarTexto(venceAt: Date): string {
+  const ultimo = ultimoDia(venceAt);
+  return `vence al terminar el ${diaSemana(ultimo)} ${fechaChile(ultimo).d}`;
+}
+
+/** EL MOTIVO DE UN ERROR DEL PANEL DE LA OFERTA, EN UNA LÍNEA (24-nov-2026): nunca «No se guardó» a secas. */
+export const MOTIVOS_ADMIN_OFERTA: Record<string, string> = {
+  datos: "Falta la oferta o un dato del pedido.",
+  accion: "Esa acción no existe para la oferta.",
+  oferta: "No se encontró la oferta.",
+  estado: "La oferta ya no está en el estado que permite esto (recarga la página).",
+  monto: "Revisa el monto: una contraoferta va sobre la oferta de la persona; Franco sugiere entre su oferta y lo que piden.",
+  fecha: "Revisa la fecha de vencimiento: de hoy en adelante, o vacía para 5 días.",
+  guardar: "La base no guardó el cambio (quedó en Sentry).",
+  vencida: "Lo que se responde ya venció.",
+  produccion: "Esto solo se puede en el preview, no en producción.",
+  no_es_prueba: "Esto solo se puede con ofertas de prueba.",
+  excepcion: "Falló algo inesperado en el servidor (quedó en Sentry).",
+  red: "No hubo respuesta del servidor: revisa la conexión y vuelve a intentar.",
+  // Los de la persona (no llegan al panel, pero ningún código queda sin texto).
+  depto: "No se encontró el depto de la persona.",
+  casilla: "Falta la casilla de la firma.",
+  etapa: "El depto no está listo para ofertar.",
+  preaprobacion: "La preaprobación no deja ofertar.",
+  orden: "La persona no tiene la orden firmada.",
+  otra_viva: "La persona tiene otra oferta viva: tiene que elegir con cuál se queda.",
+};
+export const motivoAdminOferta = (codigo: string | null | undefined) => MOTIVOS_ADMIN_OFERTA[codigo ?? ""] ?? `No se guardó: ${codigo ?? "motivo desconocido"} (quedó en Sentry).`;
+
+/** Por qué no salió un correo de B4, en palabras para el panel. */
+export function motivoCorreoOferta(m: string | null | undefined): string {
+  if (!m) return "salió";
+  if (m === "sin-llave") return "no salió: este entorno no tiene la llave de Resend";
+  if (m === "bloqueo:cuenta-de-prueba") return "no salió: es una cuenta de prueba sin «recibe correos»";
+  if (m === "bloqueo:dominio-propio") return "no salió: es una dirección de @refranco.ai que no es un buzón";
+  if (m === "fuera-de-la-lista") return "no salió: la cuenta no está en la lista";
+  if (m === "baja") return "no salió: la persona se dio de baja";
+  if (m === "eliminacion") return "no salió: la cuenta pidió eliminarse";
+  if (m === "sin-correo") return "no salió: la cuenta no tiene correo";
+  return `no salió: ${m}`;
+}
+
 /** «sáb 28 nov» (la fecha corta de la lámina). */
 export function fechaCorta(d: Date): string {
   const f = fechaChile(d);
