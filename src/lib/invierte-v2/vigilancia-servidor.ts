@@ -47,6 +47,10 @@ export async function vigilarElegidos(admin: SupabaseClient, opts: { ahora?: Dat
   const fecha = diaChile(ahora);
   // 1. El historial en UF.
   const precios = await admin.rpc("registrar_precios_uf").then((r) => (r.error ? { error: r.error.message } : r.data), (e) => ({ error: String(e) }));
+  // 1b. Los republicados (23-nov-2026): los gemelos de lo que apareció los últimos 3 días, para heredar días y rebajas. Sin la
+  // migración 20261201 aplicada, falla en silencio (queda en el registro).
+  const gemelos = await admin.rpc("registrar_gemelos").then((r) => (r.error ? { error: r.error.message } : r.data), (e) => ({ error: String(e) }));
+  if (gemelos && typeof gemelos === "object" && "error" in gemelos) console.warn("[inv2] gemelos:", (gemelos as { error: string }).error);
 
   // 2. Los elegidos.
   const { data, error } = await admin.from("inv_deptos").select("id, user_id, aviso_id, alcanza, datos, vigente, publicacion_leida_at, es_prueba").eq("estado", "elegido");

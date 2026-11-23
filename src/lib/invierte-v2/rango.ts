@@ -50,6 +50,10 @@ export interface SenalesRango {
   pinSospechoso: boolean;
   estadoArriendo: string | null;
   arreglos: string[];
+  /** Republicados (23-nov-2026): desde cuándo está publicado contando la cadena de gemelos, y cuántos eslabones anteriores tiene.
+   *  Se guardan con las señales para calibrar; la regla v1.1 no los usa. */
+  publicadoDesde?: string | null;
+  eslabones?: number;
 }
 
 export interface Rango {

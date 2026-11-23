@@ -1,6 +1,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // EL RANGO DE OFERTA Y LA OFERTA, EN EL SERVIDOR (etapa 3, B3, 22-nov-2026; regla v1 en rango.ts).
-//   · Las señales del depto (solo lectura): la última bajada (precios_uf), sus vecinos del edificio (desde la ubicación confirmada o el
+//   · Las señales del depto (solo lectura): la última bajada (precios_uf) de toda la cadena de republicaciones (avisos_gemelos,
+//     23-nov-2026: un republicado hereda las rebajas del aviso anterior, y volver más barato cuenta como bajada), sus vecinos del edificio (desde la ubicación confirmada o el
 //     pin; ninguna ficha), si el pin es sospechoso, y el estado y los arreglos de la lectura vigente.
 //   · El rango se guarda en la oferta BORRADOR del depto (inv_ofertas, una abierta por depto): se calcula cuando el depto está listo y
 //     se recalcula si cambia el precio publicado, mientras la oferta no esté firmada; al firmar se congela. El admin puede corregir
@@ -21,6 +22,7 @@ import { puedeOfertar } from "./preaprobacion";
 import { VERSION_TEXTO_OFERTA, textoPlanoOferta } from "./oferta-documento";
 import { FIRMA_COPY } from "./rango";
 import { lineaDepto } from "./base";
+import { publicadoDesde, ultimaBajadaCadena } from "./gemelos";
 import { leerPaginaDepto } from "./depto-pagina-servidor";
 
 const T_OF = "inv_ofertas";
@@ -50,16 +52,29 @@ export const fechaLarga = (iso: string | null) => (iso ? new Intl.DateTimeFormat
 const num = (x: unknown) => (x == null ? null : Number.isFinite(Number(x)) ? Number(x) : null);
 
 /** LAS SEÑALES del depto. Solo lectura. `punto`: la ubicación confirmada si existe (entonces el pin no es sospechoso). */
+/** La cadena de republicaciones del aviso (él mismo y sus gemelos anteriores). Sin la migración aplicada, solo él. */
+export async function cadenaDe(admin: SupabaseClient, avisoId: string): Promise<{ avisoId: string; vistoDesde: string }[]> {
+  const { data, error } = await admin.rpc("cadena_gemelos", { p_aviso: avisoId });
+  if (error || !Array.isArray(data) || !data.length) return [{ avisoId, vistoDesde: "" }];
+  return (data as { aviso_id: string; visto_desde: string }[]).map((x) => ({ avisoId: x.aviso_id, vistoDesde: String(x.visto_desde ?? "") }));
+}
+
 export async function senalesDe(admin: SupabaseClient, avisoId: string, publicadoUF: number, confirmada: { lat: number; lng: number } | null): Promise<SenalesRango> {
-  const [{ data: sp }, { data: baja }, lecturas, { data: cfg }] = await Promise.all([
+  const cadena = await cadenaDe(admin, avisoId);
+  const ids = cadena.map((c) => c.avisoId);
+  const [{ data: sp }, { data: bajas }, { data: saltos }, lecturas, { data: cfg }] = await Promise.all([
     admin.from("scraped_properties").select("id, comuna, lat, lng, superficie_m2, dormitorios, banos").eq("id", avisoId).order("id").limit(1).maybeSingle(),
-    admin.from("precios_uf").select("fecha, precio_uf, precio_uf_antes, delta_pct").eq("property_id", avisoId).lt("delta_pct", -0.5).order("fecha", { ascending: false }).limit(1).maybeSingle(),
+    admin.from("precios_uf").select("fecha, precio_uf, precio_uf_antes, delta_pct").in("property_id", ids).lt("delta_pct", -0.5).order("fecha", { ascending: false }).limit(20),
+    ids.length > 1 ? admin.from("avisos_gemelos").select("nuevo_visto_desde, precio_viejo_uf, precio_nuevo_uf").in("nuevo_id", ids) : Promise.resolve({ data: [] }),
     leerLecturas(admin, [avisoId]),
     admin.from("config").select("value").eq("key", "uf_value").maybeSingle(),
   ]);
   const l = lecturas[avisoId] ?? null;
-  const bajada = baja && num(baja.precio_uf_antes) != null && num(baja.precio_uf) != null ? { uf: Math.round((num(baja.precio_uf_antes)! - num(baja.precio_uf)!) * 10) / 10, fecha: String(baja.fecha) } : null;
-  const base: SenalesRango = { bajada, vecinos: null, pinSospechoso: false, estadoArriendo: l?.estadoArriendo ?? null, arreglos: l?.arreglos ?? [] };
+  const bajada = ultimaBajadaCadena(
+    ((bajas ?? []) as { fecha: string; precio_uf: number; precio_uf_antes: number | null }[]).filter((b) => num(b.precio_uf_antes) != null).map((b) => ({ fecha: String(b.fecha), precioAntes: Number(b.precio_uf_antes), precio: Number(b.precio_uf) })),
+    ((saltos ?? []) as { nuevo_visto_desde: string; precio_viejo_uf: number; precio_nuevo_uf: number }[]).map((x) => ({ fecha: String(x.nuevo_visto_desde).slice(0, 10), precioViejoUF: Number(x.precio_viejo_uf), precioNuevoUF: Number(x.precio_nuevo_uf) })),
+  );
+  const base: SenalesRango = { bajada, vecinos: null, pinSospechoso: false, estadoArriendo: l?.estadoArriendo ?? null, arreglos: l?.arreglos ?? [], publicadoDesde: publicadoDesde(cadena.filter((c) => c.vistoDesde)), eslabones: cadena.length - 1 };
   const pin = sp?.lat != null && sp?.lng != null ? { lat: Number(sp.lat), lng: Number(sp.lng) } : null;
   const punto = confirmada ?? pin;
   const m2 = num(sp?.superficie_m2), d = num(sp?.dormitorios), uf = Number(cfg?.value);
@@ -155,7 +170,7 @@ export async function asegurarRango(admin: SupabaseClient, userId: string, aviso
   const fila = {
     postura_recomendada: r.postura, postura: r.postura, publicado_uf: publicadoUF, piso_uf: r.pisoUF, recomendado_uf: r.recomendadoUF, techo_uf: r.techoUF,
     rango_fuente: "regla", regla_version: r.regla, razones: r.razones,
-    senales: { alto: r.altoUF, descuentoPct: r.descuentoPct, comprarUF: r.comprarUF, aplicado: r.aplicado, bajada: s.bajada, vecinos: s.vecinos ? { n: s.vecinos.ufm2.length } : null, pinSospechoso: s.pinSospechoso, estadoArriendo: s.estadoArriendo, arreglos: s.arreglos, calculadoAt: ahora.toISOString() },
+    senales: { alto: r.altoUF, descuentoPct: r.descuentoPct, comprarUF: r.comprarUF, aplicado: r.aplicado, bajada: s.bajada, vecinos: s.vecinos ? { n: s.vecinos.ufm2.length } : null, pinSospechoso: s.pinSospechoso, estadoArriendo: s.estadoArriendo, arreglos: s.arreglos, publicadoDesde: s.publicadoDesde ?? null, eslabones: s.eslabones ?? 0, calculadoAt: ahora.toISOString() },
     updated_at: ahora.toISOString(),
   };
   const q = abierta
