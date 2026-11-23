@@ -1455,6 +1455,9 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
         { k: "firm", etapa: "listo" as const, noAvanzaMotivo: null, oferta: { estado: "firmada", pisoUF: 1, altoUF: 2 } },
       ], "aprobada").map((x) => x.k).join(",");
       if (o26 !== "acep,ofer,firme,pres,firm,conf") F(`26b · el orden de la base no es por nivel y por avance (${o26})`);
+      // En pausa y no avanzó van al final de «Recién partiendo» (Fabrizio, 23-nov), aunque hayan llegado antes que el que confirma.
+      const o26b = ordenBase([{ k: "noav", etapa: "no_avanza" as const, noAvanzaMotivo: null, oferta: null }, { k: "pausa", etapa: "en_pausa" as const, noAvanzaMotivo: null, oferta: null }, { k: "conf", etapa: "confirmando" as const, noAvanzaMotivo: null, oferta: null }, { k: "ofer", etapa: "listo" as const, noAvanzaMotivo: null, oferta: null }], "aprobada").map((x) => x.k).join(",");
+      if (o26b !== "ofer,conf,noav,pausa") F(`26b · en pausa y no avanzó no van al final de «Recién partiendo» (${o26b})`);
       // 26c · EL CAMINO CHICO sale de la misma fuente que el de la página: las dos llaman a caminoDepto con la misma oferta.
       const vb26 = codigo("src/components/invierte-v2/VistaBase.tsx"), vd26 = codigo("src/components/invierte-v2/VistaDepto.tsx");
       if (!/camino=\{caminoDepto\(d\.etapa, d\.oferta\)\}/.test(vb26) || !/const c = caminoDepto\(p\.etapa, p\.oferta \? \{ estado: p\.oferta\.estado, montoUF: p\.oferta\.montoUF, enFirmeComo: p\.oferta\.enFirmeComo \?\? null \} : null\);/.test(vd26) || /function caminoChico|const PASOS\b/.test(codigo("src/components/invierte-v2/TarjetaDepto.tsx"))) F("26c · el camino chico de la base no sale de caminoDepto, como el de la página del depto");

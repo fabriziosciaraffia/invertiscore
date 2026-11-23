@@ -173,10 +173,12 @@ export function estadoEnBase(etapa: Etapa, pre: EstadoVisible, motivo: string | 
 }
 const RANGO_NIVEL: Record<NivelBase, number> = { tuyo: 0, curso: 1, partiendo: 2 };
 /** El orden de la base: primero «Te toca a ti», después «En curso», después «Recién partiendo»; dentro de cada nivel, primero el depto
- *  más avanzado en el camino (el mismo camino de la página del depto); a igual paso, en el orden en que llegaron. */
+ *  más avanzado en el camino (el mismo camino de la página del depto); a igual paso, en el orden en que llegaron. Dentro de «Recién
+ *  partiendo», en pausa y no avanzó van al final (decisión de Fabrizio, 23-nov-2026). */
+const AL_FINAL: readonly Etapa[] = ["en_pausa", "no_avanza"];
 export function ordenBase<T extends { etapa: Etapa; noAvanzaMotivo: string | null; oferta: OfertaBase | null }>(xs: T[], pre: EstadoVisible): T[] {
-  const clave = (d: T) => ({ n: RANGO_NIVEL[estadoEnBase(d.etapa, pre, d.noAvanzaMotivo, d.oferta).nivel], paso: caminoDepto(d.etapa, d.oferta).actual });
-  return xs.map((d, i) => ({ d, i, k: clave(d) })).sort((a, b) => a.k.n - b.k.n || b.k.paso - a.k.paso || a.i - b.i).map((x) => x.d);
+  const clave = (d: T) => ({ n: RANGO_NIVEL[estadoEnBase(d.etapa, pre, d.noAvanzaMotivo, d.oferta).nivel], fin: AL_FINAL.includes(d.etapa) ? 1 : 0, paso: caminoDepto(d.etapa, d.oferta).actual });
+  return xs.map((d, i) => ({ d, i, k: clave(d) })).sort((a, b) => a.k.n - b.k.n || a.k.fin - b.k.fin || b.k.paso - a.k.paso || a.i - b.i).map((x) => x.d);
 }
 
 // ── LO QUE FRANCO AVERIGUÓ (B2, 22-nov-2026; láminas 4.1 y 4.2) ──────────────
