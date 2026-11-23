@@ -6,7 +6,8 @@
 //   · bajo el piso, aviso suave («Es tu decisión: Franco la presenta igual»);
 //   · si el piso menos la oferta pasa de 5 % del publicado, aviso fuerte: el botón principal pasa a «Hablarlo con Franco» y revisar y
 //     firmar queda como enlace;
-//   · sobre el borde alto, que puede partir más abajo.
+//   · sobre el borde alto, que puede partir más abajo;
+//   · en un Ajusta supuestos, sobre el precio al que vuelve a Comprar, que ahí deja de convenir (22-nov-2026; tampoco bloquea).
 // Cada vez que el aviso aparece o cambia de nivel se lleva a la vista, por encima de la barra fija de los botones (llevarAvisoALaVista):
 // meterlo en la zona fija la haría crecer a media pantalla en un celular con el aviso fuerte y sus tres botones.
 // Sin enlace ni texto sobre lo que gana Franco. Aquí no se firma: el botón lleva a «Revisa tu oferta antes de firmar» (5.1b).
@@ -28,15 +29,17 @@ export function llevarAvisoALaVista(aviso: HTMLElement | null, barra: HTMLElemen
   aviso.scrollIntoView({ block: "nearest", behavior: quieto ? "auto" : "smooth" });
 }
 
-export function OfertaForm({ avisoId, urlFirmar, postura, pisoUF, recomendadoUF, altoUF, publicadoUF, razones, avisoFuertePct, montoInicial }: {
+export function OfertaForm({ avisoId, urlFirmar, postura, pisoUF, recomendadoUF, altoUF, publicadoUF, razones, avisoFuertePct, montoInicial, comprarUF = null }: {
   avisoId: string; urlFirmar: string; postura: Postura; pisoUF: number; recomendadoUF: number; altoUF: number; publicadoUF: number; razones: string[]; avisoFuertePct: number; montoInicial: number | null;
+  /** En un Ajusta supuestos, el precio al que vuelve a Comprar; null en un Comprar. */
+  comprarUF?: number | null;
 }) {
   const [monto, setMonto] = useState<number>(montoInicial && montoInicial > 0 ? montoInicial : recomendadoUF);
   const [texto, setTexto] = useState(String(monto));
   const [hablado, setHablado] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const fijar = (n: number) => { const v = Math.max(1, Math.round(n)); setMonto(v); setTexto(String(v)); };
-  const aviso = avisoOferta(monto, { pisoUF, altoUF }, publicadoUF, { avisoFuertePct });
+  const aviso = avisoOferta(monto, { pisoUF, altoUF, comprarUF }, publicadoUF, { avisoFuertePct });
   const refAviso = useRef<HTMLDivElement>(null);
   const refBarra = useRef<HTMLDivElement>(null);
   useEffect(() => { if (aviso !== "ninguno") llevarAvisoALaVista(refAviso.current, refBarra.current); }, [aviso]);
@@ -77,7 +80,11 @@ export function OfertaForm({ avisoId, urlFirmar, postura, pisoUF, recomendadoUF,
           <span>{O.esTuDecision}</span>
         </div>
       )}
-      {aviso === "sobre_recomendado" && <div ref={refAviso} className="iv2-of-aviso" data-inv2="aviso" data-nivel={aviso} role="status"><span>{O.sobre(monto - altoUF)}</span></div>}
+      {(aviso === "sobre_recomendado" || aviso === "sobre_techo") && (
+        <div ref={refAviso} className="iv2-of-aviso" data-inv2="aviso" data-nivel={aviso} role="status">
+          {aviso === "sobre_techo" && comprarUF != null ? <b>{O.sobreTecho(comprarUF)}</b> : <span>{O.sobre(monto - altoUF)}</span>}
+        </div>
+      )}
       <div className="iv2-msj-franco iv2-of-sujeta"><span className="iv2-msj-franco-de">{O.sujetaT}</span>{O.sujeta}</div>
       <div ref={refBarra} className="iv2-acciones iv2-of-acciones">
         {aviso === "bajo_piso_fuerte" ? (

@@ -8,24 +8,31 @@
 //     Vecinos del edificio: venta activa a < 30 m, mismos dormitorios, ±20 % m², sin duplicados ni el propio; al menos 2; sin pin
 //     sospechoso; y si la diferencia contra su mediana pasa de 25 % (arriba o abajo), la señal no se usa: es otro edificio.
 //     El punto por arreglos suma solo si la lectura nombra un arreglo CONCRETO (visto o dicho), no si la publicación no lo describe.
-//   · Descuento final entre MIN y MAX. Recomendado = techo × (1 − descuento); la persona ve un punto arriba y uno abajo del recomendado
-//     (sin pasar el techo). Techo: el publicado; en un Ajusta supuestos, el precio al que vuelve a Comprar.
+//   · Descuento final entre MIN y MAX. Recomendado = publicado × (1 − descuento); la persona ve un punto arriba y uno abajo del
+//     recomendado (sin pasar el techo).
+//   · AJUSTA SUPUESTOS (v1.1, 22-nov-2026, Fabrizio): el recomendado normal se calcula igual sobre el publicado. Si queda en o bajo el
+//     precio al que vuelve a Comprar, el rango es el normal y su borde alto no pasa de ese precio (el techo). Si queda sobre ese precio,
+//     el recomendado ES ese precio, el rango baja dos puntos desde ahí, la postura es «Negocia con argumentos» y la primera razón dice
+//     que es más rebaja de la que suelen dar. Ofrecer sobre ese precio trae su aviso («deja de convenir»), que no bloquea. La entrada
+//     no cambia: un Ajusta entra a Invierte si la rebaja para volver a Comprar es de 10 % o menos (TOPE_NEGOCIAR_PCT).
 //   · Postura: hasta 4 %, Asegúralo; 5 a 6 %, Negocia un poco; 7 % o más, Negocia con argumentos.
 //   · Razones en fácil (sin UF por m² ni «mediana»): una por señal; sin señales, una sola.
 // Todos los valores van en `config` (rango-servidor › leerConfigRango); estos son los de la versión 1.
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const REGLA_VERSION = "v1";
+export const REGLA_VERSION = "v1.1";
 
 export interface ConfigRango {
   base: number; min: number; max: number; banda: number;
+  /** En un Ajusta cuyo recomendado normal queda sobre el precio a Comprar: cuántos puntos baja el rango desde ese precio. */
+  bandaAjusta: number;
   yaBajo: number; vecinosSobre: number; vecinosBajo: number; arreglos: number; remodelacion: number;
   sobreVecinosPct: number; bajoVecinosPct: number; corteVecinosPct: number; minVecinos: number;
   posturaAsegura: number; posturaNegocia: number;
   avisoFuertePct: number;
 }
 export const CONFIG_RANGO_V1: ConfigRango = {
-  base: 5, min: 2, max: 9, banda: 1,
+  base: 5, min: 2, max: 9, banda: 1, bandaAjusta: 2,
   yaBajo: 1, vecinosSobre: 2, vecinosBajo: -1, arreglos: 1, remodelacion: 3,
   sobreVecinosPct: 5, bajoVecinosPct: 10, corteVecinosPct: 25, minVecinos: 2,
   posturaAsegura: 4, posturaNegocia: 6,
@@ -50,6 +57,8 @@ export interface Rango {
   descuentoPct: number;
   postura: Postura;
   techoUF: number;
+  /** En un Ajusta supuestos, el precio al que vuelve a Comprar (sobre él, deja de convenir); null en un Comprar. */
+  comprarUF: number | null;
   recomendadoUF: number;
   pisoUF: number;
   altoUF: number;
@@ -101,8 +110,9 @@ export function arreglosEnUnaFrase(xs: readonly string[]): string {
   return b && a.length <= 45 && !/\by\b/.test(a) && a.length + b.length <= 85 ? `${a} y ${b}` : a;
 }
 
-/** LA REGLA v1. `techoUF`: el publicado, o en un Ajusta supuestos el precio al que vuelve a Comprar. */
-export function calcularRango(techoUF: number, s: SenalesRango, ahora: Date = new Date(), c: ConfigRango = CONFIG_RANGO_V1): Rango {
+/** LA REGLA v1.1. `publicadoUF`: el precio publicado; `comprarUF`: en un Ajusta supuestos, el precio al que vuelve a Comprar (null en un
+ *  Comprar). */
+export function calcularRango(publicadoUF: number, s: SenalesRango, ahora: Date = new Date(), c: ConfigRango = CONFIG_RANGO_V1, comprarUF: number | null = null): Rango {
   const aplicado: Rango["aplicado"] = [];
   const razones: string[] = [];
   let pts = c.base;
@@ -131,19 +141,33 @@ export function calcularRango(techoUF: number, s: SenalesRango, ahora: Date = ne
   }
   if (!razones.length) razones.push(`No vimos nada en este depto que mueva el precio. Estimamos que los vendedores de deptos usados que ajustan su precio ceden cerca de ${fmt(c.base)} %.`);
   const descuentoPct = Math.min(c.max, Math.max(c.min, pts));
-  const recomendadoUF = Math.round(techoUF * (1 - descuentoPct / 100));
-  const pisoUF = Math.round(techoUF * (1 - (descuentoPct + c.banda) / 100));
-  const altoUF = Math.min(Math.round(techoUF), Math.round(techoUF * (1 - (descuentoPct - c.banda) / 100)));
-  return { regla: REGLA_VERSION, descuentoPct, postura: postura(descuentoPct, c), techoUF: Math.round(techoUF), recomendadoUF, pisoUF, altoUF, razones, aplicado };
+  const pub = publicadoUF;
+  const recomendadoUF = Math.round(pub * (1 - descuentoPct / 100));
+  const comprar = comprarUF != null && comprarUF > 0 && comprarUF < pub ? Math.round(comprarUF) : null;
+  if (comprar == null || recomendadoUF <= comprar) {
+    // Comprar, o un Ajusta cuyo recomendado normal ya queda en o bajo el precio a Comprar: el rango normal, con el techo como tope.
+    const techoUF = comprar ?? Math.round(pub);
+    const pisoUF = Math.round(pub * (1 - (descuentoPct + c.banda) / 100));
+    const altoUF = Math.min(techoUF, Math.round(pub * (1 - (descuentoPct - c.banda) / 100)));
+    return { regla: REGLA_VERSION, descuentoPct, postura: postura(descuentoPct, c), techoUF, comprarUF: comprar, recomendadoUF, pisoUF, altoUF, razones, aplicado };
+  }
+  // Ajusta con el recomendado normal sobre el precio a Comprar: se recomienda ese precio y el rango baja desde ahí.
+  const dComprar = Math.round((1 - comprar / pub) * 1000) / 10;
+  aplicado.push({ senal: "ajusta_sobre_comprar", puntos: Math.round((dComprar - descuentoPct) * 10) / 10, dato: { comprarUF: comprar, descuentoNormalPct: descuentoPct } });
+  razones.unshift(`Al precio publicado no conviene. Conviene desde UF ${fmt(comprar)} hacia abajo. Es más rebaja de la que suelen dar los vendedores: puede que no la acepten.`);
+  const pisoUF = Math.round(pub * (1 - (dComprar + c.bandaAjusta) / 100));
+  return { regla: REGLA_VERSION, descuentoPct: dComprar, postura: "negocia_argumentos", techoUF: comprar, comprarUF: comprar, recomendadoUF: comprar, pisoUF, altoUF: comprar, razones, aplicado };
 }
 
 // ── LOS AVISOS DE LA OFERTA (decididos el 21-nov-2026) ───────────────────────
-export type AvisoOferta = "ninguno" | "bajo_piso" | "bajo_piso_fuerte" | "sobre_recomendado";
+export type AvisoOferta = "ninguno" | "bajo_piso" | "bajo_piso_fuerte" | "sobre_recomendado" | "sobre_techo";
 
-/** Bajo el piso, aviso suave; si el piso menos la oferta pasa de 5 % del publicado, aviso fuerte. Sobre el borde alto, que puede partir
- *  más abajo. Nunca bloquea: Franco la presenta igual si la persona insiste. */
-export function avisoOferta(montoUF: number, r: Pick<Rango, "pisoUF" | "altoUF">, publicadoUF: number, c: Pick<ConfigRango, "avisoFuertePct"> = CONFIG_RANGO_V1): AvisoOferta {
+/** Bajo el piso, aviso suave; si el piso menos la oferta pasa de 5 % del publicado, aviso fuerte. En un Ajusta supuestos, sobre el precio
+ *  a Comprar, que ahí deja de convenir (22-nov-2026). Sobre el borde alto, que puede partir más abajo. Nunca bloquea: Franco la presenta
+ *  igual si la persona insiste. */
+export function avisoOferta(montoUF: number, r: Pick<Rango, "pisoUF" | "altoUF"> & { comprarUF?: number | null }, publicadoUF: number, c: Pick<ConfigRango, "avisoFuertePct"> = CONFIG_RANGO_V1): AvisoOferta {
   if (montoUF < r.pisoUF) return r.pisoUF - montoUF > publicadoUF * c.avisoFuertePct / 100 ? "bajo_piso_fuerte" : "bajo_piso";
+  if (r.comprarUF != null && montoUF > r.comprarUF) return "sobre_techo";
   if (montoUF > r.altoUF) return "sobre_recomendado";
   return "ninguno";
 }
@@ -170,6 +194,7 @@ export const OFERTA_COPY = {
   bajoFuerte: "Con lo que sabemos de este depto, estimamos poco probable que la respondan. Mientras esté vigente (5 días), no puedes ofertar por tus otros deptos.",
   esTuDecision: "Es tu decisión: Franco la presenta igual.",
   sobre: (uf: number) => `Estás ofreciendo UF ${fmt(uf)} más de lo que recomendamos. Puedes partir más abajo.`,
+  sobreTecho: (uf: number) => `Sobre UF ${fmt(uf)} este depto deja de convenir.`,
 } as const;
 
 export const FIRMA_COPY = {

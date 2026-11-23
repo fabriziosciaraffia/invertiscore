@@ -344,7 +344,7 @@ function RangoDepto({ userId, avisoId, r }: { userId: string; avisoId: string; r
   const firmada = r.estado !== "borrador";
   return (
     <div className="flex flex-col gap-2" data-admin="inv2-rango">
-      <p className="m-0"><b>Rango de oferta</b> · {POSTURA_COPY[r.postura]} · {r.descuentoPct} % · UF {r.pisoUF}–{r.recomendadoUF}–{r.altoUF} (techo {r.techoUF}) · {firmada ? `oferta ${r.estado}${r.montoUF ? ` por UF ${r.montoUF}` : ""}` : r.corregida ? `corregido por ${r.corregida.por ?? "admin"}` : "de la regla v1"}</p>
+      <p className="m-0"><b>Rango de oferta</b> · {POSTURA_COPY[r.postura]} · {r.descuentoPct} % · UF {r.pisoUF}–{r.recomendadoUF}–{r.altoUF} (techo {r.techoUF}){r.comprarUF != null ? " · Ajusta: deja de convenir sobre el techo" : ""} · {firmada ? `oferta ${r.estado}${r.montoUF ? ` por UF ${r.montoUF}` : ""}` : r.corregida ? `corregido por ${r.corregida.por ?? "admin"}` : "de la regla v1.1"}</p>
       <ul className="m-0 pl-5 text-[12px]">{r.razones.map((t, i) => <li key={i}>{t}</li>)}</ul>
       {!firmada && (
         <div className="flex flex-col gap-2">

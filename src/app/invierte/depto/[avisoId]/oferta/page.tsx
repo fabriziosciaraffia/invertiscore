@@ -36,7 +36,7 @@ export default async function OfertaPage({ params, searchParams }: { params: { a
         <p className="iv2-depto-s" data-inv2="oferta-depto">{p.tituloConNumero} · {lineaDepto(p.datos)} · publicado en UF {fmtUF(o.publicadoUF)}</p>
       </div>
       <OfertaForm avisoId={avisoId} urlFirmar={`${urlOferta(avisoId)}/firmar`} postura={o.postura} pisoUF={o.pisoUF} recomendadoUF={o.recomendadoUF} altoUF={o.altoUF}
-        publicadoUF={o.publicadoUF} razones={o.razones} avisoFuertePct={cfg.avisoFuertePct} montoInicial={Number.isFinite(monto) && monto > 0 ? monto : null} />
+        publicadoUF={o.publicadoUF} razones={o.razones} avisoFuertePct={cfg.avisoFuertePct} comprarUF={o.comprarUF} montoInicial={Number.isFinite(monto) && monto > 0 ? monto : null} />
     </MarcoInvierte>
   );
 }

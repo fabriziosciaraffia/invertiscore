@@ -35,6 +35,7 @@ export async function leerConfigRango(admin: SupabaseClient): Promise<ConfigRang
   const c = CONFIG_RANGO_V1;
   return {
     base: v("invierte_rango_base", c.base), min: v("invierte_rango_min", c.min), max: v("invierte_rango_max", c.max), banda: v("invierte_rango_banda", c.banda),
+    bandaAjusta: v("invierte_rango_banda_ajusta", c.bandaAjusta),
     yaBajo: v("invierte_rango_ya_bajo", c.yaBajo), vecinosSobre: v("invierte_rango_vecinos_sobre", c.vecinosSobre), vecinosBajo: v("invierte_rango_vecinos_bajo", c.vecinosBajo),
     arreglos: v("invierte_rango_arreglos", c.arreglos), remodelacion: v("invierte_rango_remodelacion", c.remodelacion),
     sobreVecinosPct: v("invierte_rango_sobre_vecinos_pct", c.sobreVecinosPct), bajoVecinosPct: v("invierte_rango_bajo_vecinos_pct", c.bajoVecinosPct),
@@ -106,6 +107,8 @@ export interface OfertaVista {
   recomendadoUF: number;
   altoUF: number;
   techoUF: number;
+  /** En un Ajusta supuestos, el precio al que vuelve a Comprar (sobre él, el aviso «deja de convenir»); null en un Comprar. */
+  comprarUF: number | null;
   publicadoUF: number;
   razones: string[];
   corregida: { por: string | null; at: string } | null;
@@ -116,10 +119,10 @@ export interface OfertaVista {
 }
 
 function aVista(f: Record<string, unknown>): OfertaVista {
-  const s = (f.senales ?? {}) as { alto?: number; descuentoPct?: number; corregido?: { por: string | null; at: string } };
+  const s = (f.senales ?? {}) as { alto?: number; descuentoPct?: number; comprarUF?: number | null; corregido?: { por: string | null; at: string } };
   return {
     id: f.id as string, estado: f.estado as string, postura: (f.postura_recomendada as Rango["postura"]) ?? "negocia_poco", descuentoPct: Number(s.descuentoPct ?? 0),
-    pisoUF: Number(f.piso_uf), recomendadoUF: Number(f.recomendado_uf), altoUF: Number(s.alto ?? f.techo_uf), techoUF: Number(f.techo_uf), publicadoUF: Number(f.publicado_uf),
+    pisoUF: Number(f.piso_uf), recomendadoUF: Number(f.recomendado_uf), altoUF: Number(s.alto ?? f.techo_uf), techoUF: Number(f.techo_uf), comprarUF: num(s.comprarUF), publicadoUF: Number(f.publicado_uf),
     razones: Array.isArray(f.razones) ? (f.razones as string[]) : [], corregida: s.corregido ?? null, montoUF: num(f.monto_uf), firmadaAt: (f.firmada_at as string | null) ?? null,
     texto: (f.texto as string | null) ?? null, textoVersion: (f.texto_version as string | null) ?? null,
   };
@@ -146,13 +149,13 @@ export async function asegurarRango(admin: SupabaseClient, userId: string, aviso
   if (!(publicadoUF > 0)) return abierta;
   const { data: filaAbierta } = abierta ? await admin.from(T_OF).select("publicado_uf, regla_version").eq("id", abierta.id).maybeSingle() : { data: null };
   if (abierta && filaAbierta && Math.abs(Number(filaAbierta.publicado_uf) - publicadoUF) <= 0.5 && filaAbierta.regla_version === REGLA_VERSION) return abierta;
-  const techoUF = ubic?.precioComprarUF ?? publicadoUF;
   const [cfg, s] = await Promise.all([leerConfigRango(admin), senalesDe(admin, avisoId, publicadoUF, ubic ? { lat: ubic.lat, lng: ubic.lng } : null)]);
-  const r = calcularRango(techoUF, s, ahora, cfg);
+  // En un Ajusta supuestos, el precio al que vuelve a Comprar entra a la regla (v1.1): techo del rango y, si hace falta, el recomendado.
+  const r = calcularRango(publicadoUF, s, ahora, cfg, ubic?.precioComprarUF ?? null);
   const fila = {
     postura_recomendada: r.postura, postura: r.postura, publicado_uf: publicadoUF, piso_uf: r.pisoUF, recomendado_uf: r.recomendadoUF, techo_uf: r.techoUF,
     rango_fuente: "regla", regla_version: r.regla, razones: r.razones,
-    senales: { alto: r.altoUF, descuentoPct: r.descuentoPct, aplicado: r.aplicado, bajada: s.bajada, vecinos: s.vecinos ? { n: s.vecinos.ufm2.length } : null, pinSospechoso: s.pinSospechoso, estadoArriendo: s.estadoArriendo, arreglos: s.arreglos, calculadoAt: ahora.toISOString() },
+    senales: { alto: r.altoUF, descuentoPct: r.descuentoPct, comprarUF: r.comprarUF, aplicado: r.aplicado, bajada: s.bajada, vecinos: s.vecinos ? { n: s.vecinos.ufm2.length } : null, pinSospechoso: s.pinSospechoso, estadoArriendo: s.estadoArriendo, arreglos: s.arreglos, calculadoAt: ahora.toISOString() },
     updated_at: ahora.toISOString(),
   };
   const q = abierta

@@ -6,7 +6,7 @@ import { notFound } from "next/navigation";
 import { MarcoInvierte } from "@/components/invierte-v2/MarcoInvierte";
 import { OfertaForm } from "@/components/invierte-v2/OfertaForm";
 import { FirmaOfertaForm } from "@/components/invierte-v2/FirmaOfertaForm";
-import { FIRMA_COPY as F, OFERTA_COPY } from "@/lib/invierte-v2/rango";
+import { CONFIG_RANGO_V1, FIRMA_COPY as F, OFERTA_COPY, calcularRango } from "@/lib/invierte-v2/rango";
 import { textoOferta } from "@/lib/invierte-v2/oferta-documento";
 
 export const dynamic = "force-dynamic";
@@ -15,9 +15,13 @@ const R = { postura: "negocia_poco" as const, pisoUF: 2905, recomendadoUF: 2936,
 const RAZONES = ["Ya bajó UF 80 hace tres semanas: quien vende está dispuesto a moverse.", "En su mismo edificio se venden dos deptos parecidos más baratos: es un argumento para pedir rebaja.", "La cocina tiene muebles dañados y piso manchado: es un argumento concreto para pedir rebaja."];
 const DEPTO = "Avenida Libertador Bernardo O'Higgins · Metro Parque Bustamante · Providencia · 2D2B · 58 m² · publicado en UF 3.090";
 
-export default function OfertaDemo({ searchParams }: { searchParams: { pantalla?: string; monto?: string } }) {
+export default function OfertaDemo({ searchParams }: { searchParams: { pantalla?: string; monto?: string; caso?: string } }) {
   if (process.env.NODE_ENV === "production" && process.env.VERCEL_ENV !== "preview") notFound();
   const monto = Number(searchParams.monto);
+  // ?caso=ajusta: un Ajusta supuestos que vuelve a Comprar en UF 2.840 (8,1 % bajo el publicado); ?caso=ajusta-normal: en UF 2.960 (4,2 %).
+  const sinSenales = { bajada: null, vecinos: null, pinSospechoso: false, estadoArriendo: "listo", arreglos: [] as string[] };
+  const aj = searchParams.caso === "ajusta" ? calcularRango(3090, sinSenales, new Date(), CONFIG_RANGO_V1, 2840)
+    : searchParams.caso === "ajusta-normal" ? calcularRango(3090, sinSenales, new Date(), CONFIG_RANGO_V1, 2960) : null;
   if (searchParams.pantalla === "firmar") {
     const m = monto > 0 ? monto : 2936;
     const conPre = F.conPreaprobacion("Santander", 5000, "20 de marzo");
@@ -49,7 +53,9 @@ export default function OfertaDemo({ searchParams }: { searchParams: { pantalla?
     <MarcoInvierte volver={null} pantalla="oferta" layout="formulario" cabecera={OFERTA_COPY.cabecera} pc={{ sesionEmail: "muestra@ejemplo.cl", invierte: "inversion" }}>
       <div className="iv2-mi-inversion"><Link href="/dev/invierte-v2/depto?etapa=listo" className="iv2-mi-inversion-a">← Depto de Providencia</Link></div>
       <div className="inv-encabezado iv2-sumar-cab"><h1 className="iv2-titulo-res" id="iv2-t">{OFERTA_COPY.titulo}</h1><p className="iv2-depto-s">{DEPTO}</p></div>
-      <OfertaForm avisoId="muestra" urlFirmar="/dev/invierte-v2/oferta?pantalla=firmar" {...R} razones={RAZONES} avisoFuertePct={5} montoInicial={monto > 0 ? monto : null} />
+      {aj
+        ? <OfertaForm avisoId="muestra" urlFirmar="/dev/invierte-v2/oferta?pantalla=firmar" postura={aj.postura} pisoUF={aj.pisoUF} recomendadoUF={aj.recomendadoUF} altoUF={aj.altoUF} publicadoUF={3090} razones={aj.razones} avisoFuertePct={5} comprarUF={aj.comprarUF} montoInicial={monto > 0 ? monto : null} />
+        : <OfertaForm avisoId="muestra" urlFirmar="/dev/invierte-v2/oferta?pantalla=firmar" {...R} razones={RAZONES} avisoFuertePct={5} montoInicial={monto > 0 ? monto : null} />}
     </MarcoInvierte>
   );
 }

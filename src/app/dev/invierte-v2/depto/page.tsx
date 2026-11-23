@@ -41,7 +41,7 @@ export default function DeptoDemo({ searchParams }: { searchParams: { etapa?: st
     documentos: [],
     // B3: en listo, la oferta borrador con el rango de la regla v1 (?oferta=firmada la muestra firmada).
     oferta: etapa === "listo" ? {
-      id: "of", estado: searchParams.oferta === "firmada" ? "firmada" : "borrador", postura: "negocia_poco", descuentoPct: 5, pisoUF: 2905, recomendadoUF: 2936, altoUF: 2967, techoUF: 3090, publicadoUF: 3090,
+      id: "of", estado: searchParams.oferta === "firmada" ? "firmada" : "borrador", postura: "negocia_poco", descuentoPct: 5, pisoUF: 2905, recomendadoUF: 2936, altoUF: 2967, techoUF: 3090, comprarUF: null, publicadoUF: 3090,
       razones: ["Ya bajó UF 80 hace tres semanas: quien vende está dispuesto a moverse.", "La cocina tiene muebles dañados y piso manchado: es un argumento concreto para pedir rebaja."],
       corregida: null, montoUF: searchParams.oferta === "firmada" ? 2930 : null, firmadaAt: searchParams.oferta === "firmada" ? "2026-11-22T15:00:00Z" : null,
       texto: searchParams.oferta === "firmada" ? "BORRADOR · TEXTO DE PRUEBA · EN REVISIÓN LEGAL\n\nOFERTA DE COMPRA\n\nTexto de muestra." : null, textoVersion: null,
