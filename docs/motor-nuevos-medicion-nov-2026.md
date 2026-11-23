@@ -4,8 +4,8 @@ Goal de solo lectura, pegado por Fabrizio el 05-nov-2026. Nada de este documento
 prompts, el informe ni la base: todo recálculo corre en memoria con los scripts de `scripts/analisis/motor-nuevos/`,
 que llaman al motor real (`runAnalysis`) con los insumos guardados en `avisos_evaluados`.
 
-> **Estado: las cuatro fases y los anexos 1 a 3 en master (5839f71e, 18-nov-2026); el anexo 4 «salida al mayor cap»
-> (18-nov-2026) en la rama, a la espera del OK para el push.** Orden del documento: resumen, FASE 0, FASE 1, punto 0, FASE 2, punto 2, FASE 3, defectos,
+> **Estado: las cuatro fases y los anexos 1 a 3 en master (5839f71e, 18-nov-2026); los anexos 4 «salida al mayor cap»
+> (18-nov-2026) y 5 «nuevos con subsidio por defecto» (23-nov-2026) en la rama, a la espera del OK para el push.** Orden del documento: resumen, FASE 0, FASE 1, punto 0, FASE 2, punto 2, FASE 3, defectos,
 > punto 1 (edad), FASE 4 (supuestos y resultados), lo que la base no puede responder, preguntas.
 
 ## Resumen (10 líneas): qué parte del 1,8 % explica cada cosa
@@ -2876,3 +2876,190 @@ Los usados que dependen del respaldo con TIR ≥ 5 % y la vara, por comuna: Puen
   entrada bajo el de su celda, no cambian: siguen negativos con g = 0 % y pasan de 5 % solo con g = 3 %.
 - **Usados que se caen con g = 0 %**: Santiago 1.601, Estación Central 367, Las Condes 289, San Miguel 245 e Independencia 185,
   todos de la tabla c por comuna (cifras sin corregir).
+
+## Anexo 5: nuevos con subsidio por defecto (23-nov-2026)
+
+**Resumen (5 líneas)**
+1. **El motor no le carga corretaje del comprador a un nuevo**: solo los gastos de cierre (notaría, CBR, timbres y tasación, 2 %). Al usado le carga además 2 % de corretaje, **sin IVA**, igual que la comisión de venta.
+2. **El subsidio por defecto duplica los Comprar de los nuevos**: de 61 unidades en 24 proyectos (1,3 %) a 118 en 43 (2,5 %). Equivale a un descuento de 5 % sin subsidio (133 en 42). Sumado a un descuento de 5 % llega a 256 en 78, y a uno de 10 %, a 403 en 129 (8,6 %). Dos de cada tres nuevos son elegibles (3.124 de 4.690).
+3. **Lo que se abre es entrega inmediata o sin fecha, casi nunca futura** (de 1 a 18 unidades), y casi todo fuera del centro: La Florida, Ñuñoa, Puente Alto, La Cisterna, Maipú y Macul. Santiago pasa de 0 a 1 con subsidio y a 16 con subsidio más 10 %. Providencia, Las Condes y Vitacura casi no son elegibles (precio sobre UF 6.000).
+4. **La puerta personal** (TIR ≥ 5 % con g = 3 % y salida al mayor cap) deja pasar sin subsidio 322 unidades en 103 proyectos con flujo ≥ −$100.000, y 851 en 188 con −$200.000. Con subsidio, 534 en 158 y 1.140 en 222. Con −$200.000, el 58 % son de Ñuñoa y La Florida.
+5. **El bono pie de 10 % baja lo que pones hoy cerca de 45 %, pero no es un descuento.** El crédito es mayor, el dividendo sube entre $68.000 y $86.000 y el flujo empeora en lo mismo. El puntaje baja en las tres unidades (en Ñuñoa pasa de Ajustar a Buscar otra) y lo que recibes al vender es menos. El descuento real de 10 % gana en flujo y puntaje en las tres; con g = 3 % el bono pie solo le gana al caso sin nada en la de Ñuñoa, por el apalancamiento.
+
+**El método.** `25-anexo5-subsidio.ts` (22 minutos, solo lectura). El universo son los nuevos de hoy: 1.622 activos con
+evaluación en `avisos_evaluados` y 3.068 unidades reactivadas de la medición que siguen publicadas (chequeado hoy contra
+`scraped_properties.is_active`; 524 ya no lo están). Quedan **4.690 nuevos limpios en 496 proyectos**: se sacan 178 con arriendo
+sospechoso o radio degradado y 3 sin arriendo. Corre el motor real (`runAnalysis` por la cadena de la noche) con la UF y la tasa
+de hoy (UF 41.392, tasa 4,10 %; con subsidio, 3,50 %), pie 20 % y 30 años, y el veredicto es el del motor de hoy. La superficie
+de dos decimales va corregida en memoria, como en toda la medición: **el error sigue en master** (`DEC.superficie = 1`) y hoy
+toca a 3.557 de los 4.690 nuevos. A esos se les resolvió la mediana comunal en vivo (919 celdas nuevas, con caché).
+- **Elegibilidad:** precio efectivo ≤ UF 6.000 y entrega inmediata, sin fecha o hasta el 31-may-2028. Los sin fecha se cuentan
+  elegibles, como en la FASE 4. Con descuento, la elegibilidad se mira con el precio rebajado.
+- **Rebaja:** 0,6 puntos (`REBAJA_SUBSIDIO`).
+- **Descuento:** precio × 0,95 o × 0,90; el arriendo no cambia.
+- **Puerta personal:** la salida al mayor cap del anexo 4, con el cap de celda del anexo 2. 102 nuevos sin cap de celda quedan
+  fuera.
+- **Proyectos:** se cuentan por el id del proyecto en la URL de la ficha y, si falta, por el prefijo del `source_id`.
+
+### 2 · Comprar con la regla de veredicto de hoy
+
+Celda: unidades · proyectos distintos.
+
+| caso | Comprar | inmediata | futura | sin fecha | % de los nuevos |
+| --- | --- | --- | --- | --- | --- |
+| a) sin subsidio | 61 · 24 | 41 · 14 | 1 · 1 | 19 · 9 | 1,3 % |
+| b) con subsidio | 118 · 43 | 77 · 28 | 3 · 3 | 38 · 12 | 2,5 % |
+| c) subsidio + 5 % | 256 · 78 | 155 · 57 | 9 · 5 | 92 · 16 | 5,5 % |
+| d) subsidio + 10 % | 403 · 129 | 269 · 94 | 18 · 10 | 116 · 25 | 8,6 % |
+| e) 5 % sin subsidio | 133 · 42 | 74 · 28 | 4 · 3 | 55 · 11 | 2,8 % |
+| e) 10 % sin subsidio | 273 · 80 | 162 · 57 | 11 · 5 | 100 · 18 | 5,8 % |
+
+**Por comuna.** Celda: Comprar en unidades (proyectos) · inmediata / futura / sin fecha. «Elegibles» = elegibles al subsidio sin
+descuento.
+
+| comuna | nuevos (proyectos) | elegibles | a) sin subsidio | b) con subsidio | c) subsidio + 5 % | d) subsidio + 10 % | e) 5 % sin subsidio | e) 10 % sin subsidio |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Gran Santiago | 4.690 (496) | 3.124 | 61 (24) · 41 / 1 / 19 | 118 (43) · 77 / 3 / 38 | 256 (78) · 155 / 9 / 92 | 403 (129) · 269 / 18 / 116 | 133 (42) · 74 / 4 / 55 | 273 (80) · 162 / 11 / 100 |
+| Santiago | 1.065 (78) | 791 | 0 (0) · 0 / 0 / 0 | 1 (1) · 1 / 0 / 0 | 4 (3) · 4 / 0 / 0 | 16 (10) · 15 / 0 / 1 | 0 (0) · 0 / 0 / 0 | 3 (2) · 3 / 0 / 0 |
+| Ñuñoa | 746 (79) | 527 | 5 (2) · 2 / 0 / 3 | 8 (2) · 2 / 0 / 6 | 20 (10) · 12 / 0 / 8 | 61 (20) · 47 / 1 / 13 | 8 (2) · 2 / 0 / 6 | 17 (10) · 9 / 0 / 8 |
+| La Florida | 503 (58) | 459 | 4 (1) · 4 / 0 / 0 | 22 (8) · 21 / 1 / 0 | 42 (10) · 38 / 4 / 0 | 61 (19) · 55 / 5 / 1 | 13 (5) · 13 / 0 / 0 | 40 (8) · 36 / 4 / 0 |
+| Macul | 399 (27) | 353 | 2 (1) · 2 / 0 / 0 | 10 (3) · 7 / 0 / 3 | 16 (6) · 11 / 0 / 5 | 21 (8) · 15 / 0 / 6 | 8 (3) · 6 / 0 / 2 | 16 (6) · 11 / 0 / 5 |
+| Providencia | 384 (47) | 20 | 0 (0) · 0 / 0 / 0 | 0 (0) · 0 / 0 / 0 | 2 (2) · 2 / 0 / 0 | 4 (2) · 4 / 0 / 0 | 1 (1) · 1 / 0 / 0 | 3 (2) · 3 / 0 / 0 |
+| Independencia | 295 (19) | 201 | 0 (0) · 0 / 0 / 0 | 2 (2) · 2 / 0 / 0 | 7 (7) · 6 / 0 / 1 | 8 (7) · 7 / 0 / 1 | 2 (2) · 2 / 0 / 0 | 6 (6) · 5 / 0 / 1 |
+| Las Condes | 186 (38) | 15 | 1 (1) · 1 / 0 / 0 | 4 (2) · 4 / 0 / 0 | 8 (2) · 8 / 0 / 0 | 13 (5) · 11 / 1 / 1 | 7 (2) · 7 / 0 / 0 | 12 (4) · 11 / 0 / 1 |
+| Vitacura | 131 (27) | 3 | 2 (2) · 1 / 1 / 0 | 2 (2) · 1 / 1 / 0 | 2 (2) · 1 / 1 / 0 | 5 (4) · 2 / 3 / 0 | 2 (2) · 1 / 1 / 0 | 5 (4) · 2 / 3 / 0 |
+| La Cisterna | 118 (17) | 118 | 4 (2) · 3 / 0 / 1 | 7 (4) · 6 / 0 / 1 | 13 (7) · 12 / 0 / 1 | 26 (9) · 23 / 0 / 3 | 6 (4) · 5 / 0 / 1 | 11 (6) · 10 / 0 / 1 |
+| Recoleta | 116 (8) | 116 | 1 (1) · 1 / 0 / 0 | 1 (1) · 1 / 0 / 0 | 1 (1) · 1 / 0 / 0 | 2 (1) · 2 / 0 / 0 | 1 (1) · 1 / 0 / 0 | 1 (1) · 1 / 0 / 0 |
+| Maipú | 116 (8) | 116 | 2 (1) · 2 / 0 / 0 | 2 (1) · 2 / 0 / 0 | 18 (4) · 17 / 1 / 0 | 24 (4) · 22 / 2 / 0 | 4 (2) · 4 / 0 / 0 | 20 (3) · 20 / 0 / 0 |
+| Puente Alto | 89 (4) | 89 | 26 (2) · 18 / 0 / 8 | 36 (2) · 18 / 0 / 18 | 83 (2) · 19 / 0 / 64 | 88 (4) · 21 / 0 / 67 | 55 (2) · 18 / 0 / 37 | 86 (2) · 19 / 0 / 67 |
+| Pudahuel | 83 (3) | 83 | 0 (0) · 0 / 0 / 0 | 0 (0) · 0 / 0 / 0 | 0 (0) · 0 / 0 / 0 | 2 (1) · 2 / 0 / 0 | 0 (0) · 0 / 0 / 0 | 0 (0) · 0 / 0 / 0 |
+| Lo Barnechea | 73 (11) | 1 | 0 (0) · 0 / 0 / 0 | 0 (0) · 0 / 0 / 0 | 3 (2) · 3 / 0 / 0 | 10 (5) · 10 / 0 / 0 | 3 (2) · 3 / 0 / 0 | 10 (5) · 10 / 0 / 0 |
+| Estación Central | 63 (15) | 63 | 2 (2) · 0 / 0 / 2 | 4 (3) · 1 / 0 / 3 | 9 (4) · 3 / 0 / 6 | 16 (7) · 9 / 1 / 6 | 3 (2) · 0 / 0 / 3 | 9 (4) · 3 / 0 / 6 |
+| Quilicura | 63 (4) | 5 | 2 (2) · 2 / 0 / 0 | 5 (3) · 5 / 0 / 0 | 5 (3) · 5 / 0 / 0 | 5 (3) · 5 / 0 / 0 | 4 (3) · 4 / 0 / 0 | 5 (3) · 5 / 0 / 0 |
+| Cerrillos | 55 (10) | 55 | 0 (0) · 0 / 0 / 0 | 1 (1) · 0 / 1 / 0 | 4 (3) · 3 / 1 / 0 | 10 (5) · 7 / 2 / 1 | 1 (1) · 0 / 1 / 0 | 5 (3) · 4 / 1 / 0 |
+| Peñalolén | 51 (5) | 0 | 1 (1) · 1 / 0 / 0 | 1 (1) · 1 / 0 / 0 | 3 (2) · 1 / 2 / 0 | 4 (2) · 1 / 3 / 0 | 3 (2) · 1 / 2 / 0 | 4 (2) · 1 / 3 / 0 |
+| San Miguel | 29 (7) | 29 | 0 (0) · 0 / 0 / 0 | 1 (1) · 0 / 0 / 1 | 1 (1) · 0 / 0 / 1 | 2 (2) · 0 / 0 / 2 | 0 (0) · 0 / 0 / 0 | 2 (2) · 0 / 0 / 2 |
+| Huechuraba | 28 (9) | 2 | 1 (1) · 0 / 0 / 1 | 1 (1) · 0 / 0 / 1 | 1 (1) · 0 / 0 / 1 | 2 (2) · 0 / 0 / 2 | 1 (1) · 0 / 0 / 1 | 1 (1) · 0 / 0 / 1 |
+| Quinta Normal | 22 (5) | 20 | 0 (0) · 0 / 0 / 0 | 0 (0) · 0 / 0 / 0 | 0 (0) · 0 / 0 / 0 | 2 (1) · 0 / 0 / 2 | 0 (0) · 0 / 0 / 0 | 0 (0) · 0 / 0 / 0 |
+| Conchalí | 20 (5) | 11 | 1 (1) · 0 / 0 / 1 | 1 (1) · 0 / 0 / 1 | 1 (1) · 0 / 0 / 1 | 2 (2) · 1 / 0 / 1 | 1 (1) · 0 / 0 / 1 | 1 (1) · 0 / 0 / 1 |
+| El Bosque | 19 (1) | 19 | 2 (1) · 0 / 0 / 2 | 2 (1) · 0 / 0 / 2 | 2 (1) · 0 / 0 / 2 | 5 (1) · 0 / 0 / 5 | 2 (1) · 0 / 0 / 2 | 4 (1) · 0 / 0 / 4 |
+| San Joaquín | 15 (4) | 12 | 0 (0) · 0 / 0 / 0 | 0 (0) · 0 / 0 / 0 | 0 (0) · 0 / 0 / 0 | 1 (1) · 1 / 0 / 0 | 0 (0) · 0 / 0 / 0 | 0 (0) · 0 / 0 / 0 |
+| Renca | 14 (4) | 14 | 5 (3) · 4 / 0 / 1 | 7 (3) · 5 / 0 / 2 | 11 (4) · 9 / 0 / 2 | 13 (4) · 9 / 0 / 4 | 8 (3) · 6 / 0 / 2 | 12 (4) · 9 / 0 / 3 |
+| La Reina | 7 (3) | 2 | 0 (0) · 0 / 0 / 0 | 0 (0) · 0 / 0 / 0 | 0 (0) · 0 / 0 / 0 | 0 (0) · 0 / 0 / 0 | 0 (0) · 0 / 0 / 0 | 0 (0) · 0 / 0 / 0 |
+
+### 3 · Puerta personal: TIR ≥ 5 % con g = 3 % y salida al mayor cap
+
+Con flujo ≥ −$100.000 y ≥ −$200.000, sin y con subsidio. Celda: unidades · proyectos distintos. La última columna dice cuántos de
+los que pasan son hoy Comprar del motor (con el subsidio, si la puerta es con subsidio).
+
+| puerta | pasan | inmediata | futura | sin fecha | % de los nuevos | de ellos Comprar hoy (motor) |
+| --- | --- | --- | --- | --- | --- | --- |
+| sin subsidio, flujo ≥ −$100.000 | 322 · 103 | 206 · 76 | 15 · 7 | 101 · 20 | 6,9 % | 59 |
+| sin subsidio, flujo ≥ −$200.000 | 851 · 188 | 598 · 134 | 126 · 23 | 127 · 31 | 18,1 % | 59 |
+| con subsidio, flujo ≥ −$100.000 | 534 · 158 | 384 · 120 | 31 · 11 | 119 · 27 | 11,4 % | 115 |
+| con subsidio, flujo ≥ −$200.000 | 1.140 · 222 | 820 · 159 | 175 · 25 | 145 · 38 | 24,3 % | 115 |
+
+**Por comuna.** Celda: pasan en unidades (proyectos) · inmediata / futura / sin fecha.
+
+| comuna | nuevos | sin subsidio, flujo ≥ −$100.000 | sin subsidio, flujo ≥ −$200.000 | con subsidio, flujo ≥ −$100.000 | con subsidio, flujo ≥ −$200.000 |
+| --- | --- | --- | --- | --- | --- |
+| Gran Santiago | 4.690 | 322 (103) · 206 / 15 / 101 | 851 (188) · 598 / 126 / 127 | 534 (158) · 384 / 31 / 119 | 1.140 (222) · 820 / 175 / 145 |
+| Santiago | 1.065 | 16 (11) · 13 / 2 / 1 | 33 (16) · 29 / 2 / 2 | 36 (19) · 32 / 2 / 2 | 63 (22) · 56 / 3 / 4 |
+| Ñuñoa | 746 | 29 (14) · 19 / 1 / 9 | 301 (49) · 197 / 86 / 18 | 89 (28) · 72 / 1 / 16 | 426 (54) · 284 / 122 / 20 |
+| La Florida | 503 | 52 (16) · 48 / 4 / 0 | 189 (39) · 158 / 23 / 8 | 108 (28) · 92 / 14 / 2 | 236 (43) · 201 / 25 / 10 |
+| Macul | 399 | 17 (6) · 12 / 0 / 5 | 48 (15) · 41 / 1 / 6 | 29 (13) · 23 / 0 / 6 | 72 (20) · 62 / 4 / 6 |
+| Providencia | 384 | 1 (1) · 1 / 0 / 0 | 3 (2) · 3 / 0 / 0 | 2 (2) · 2 / 0 / 0 | 5 (4) · 4 / 0 / 1 |
+| Independencia | 295 | 7 (7) · 6 / 0 / 1 | 7 (7) · 6 / 0 / 1 | 10 (9) · 8 / 0 / 2 | 10 (9) · 8 / 0 / 2 |
+| Las Condes | 186 | 6 (2) · 6 / 0 / 0 | 11 (4) · 7 / 4 / 0 | 7 (3) · 6 / 1 / 0 | 14 (4) · 7 / 7 / 0 |
+| Vitacura | 131 | 2 (2) · 1 / 1 / 0 | 2 (2) · 1 / 1 / 0 | 2 (2) · 1 / 1 / 0 | 5 (4) · 4 / 1 / 0 |
+| La Cisterna | 118 | 39 (10) · 36 / 0 / 3 | 69 (13) · 66 / 0 / 3 | 55 (12) · 52 / 0 / 3 | 83 (13) · 80 / 0 / 3 |
+| Recoleta | 116 | 1 (1) · 1 / 0 / 0 | 2 (1) · 2 / 0 / 0 | 3 (2) · 3 / 0 / 0 | 8 (4) · 5 / 0 / 3 |
+| Maipú | 116 | 13 (4) · 11 / 2 / 0 | 13 (4) · 11 / 2 / 0 | 23 (4) · 21 / 2 / 0 | 23 (4) · 21 / 2 / 0 |
+| Puente Alto | 89 | 85 (2) · 18 / 0 / 67 | 85 (2) · 18 / 0 / 67 | 85 (2) · 18 / 0 / 67 | 85 (2) · 18 / 0 / 67 |
+| Pudahuel | 83 | 0 (0) · 0 / 0 / 0 | 0 (0) · 0 / 0 / 0 | 0 (0) · 0 / 0 / 0 | 0 (0) · 0 / 0 / 0 |
+| Lo Barnechea | 73 | 2 (2) · 2 / 0 / 0 | 9 (3) · 9 / 0 / 0 | 3 (2) · 3 / 0 / 0 | 9 (3) · 9 / 0 / 0 |
+| Estación Central | 63 | 20 (8) · 11 / 3 / 6 | 24 (9) · 13 / 5 / 6 | 30 (9) · 16 / 8 / 6 | 31 (9) · 16 / 9 / 6 |
+| Quilicura | 63 | 3 (2) · 3 / 0 / 0 | 3 (2) · 3 / 0 / 0 | 4 (3) · 4 / 0 / 0 | 4 (3) · 4 / 0 / 0 |
+| Cerrillos | 55 | 11 (5) · 8 / 2 / 1 | 30 (8) · 24 / 2 / 4 | 24 (8) · 19 / 2 / 3 | 36 (8) · 29 / 2 / 5 |
+| Peñalolén | 51 | 1 (1) · 1 / 0 / 0 | 1 (1) · 1 / 0 / 0 | 1 (1) · 1 / 0 / 0 | 1 (1) · 1 / 0 / 0 |
+| San Miguel | 29 | 2 (2) · 0 / 0 / 2 | 4 (2) · 0 / 0 / 4 | 4 (2) · 0 / 0 / 4 | 6 (3) · 0 / 0 / 6 |
+| Huechuraba | 28 | 1 (1) · 0 / 0 / 1 | 2 (2) · 0 / 0 / 2 | 1 (1) · 0 / 0 / 1 | 2 (2) · 0 / 0 / 2 |
+| Quinta Normal | 22 | 2 (1) · 0 / 0 / 2 | 2 (1) · 0 / 0 / 2 | 3 (2) · 1 / 0 / 2 | 3 (2) · 1 / 0 / 2 |
+| Conchalí | 20 | 1 (1) · 0 / 0 / 1 | 1 (1) · 0 / 0 / 1 | 1 (1) · 0 / 0 / 1 | 1 (1) · 0 / 0 / 1 |
+| El Bosque | 19 | 0 (0) · 0 / 0 / 0 | 0 (0) · 0 / 0 / 0 | 0 (0) · 0 / 0 / 0 | 0 (0) · 0 / 0 / 0 |
+| San Joaquín | 15 | 1 (1) · 1 / 0 / 0 | 1 (1) · 1 / 0 / 0 | 1 (1) · 1 / 0 / 0 | 3 (2) · 1 / 0 / 2 |
+| Renca | 14 | 10 (3) · 8 / 0 / 2 | 10 (3) · 8 / 0 / 2 | 13 (4) · 9 / 0 / 4 | 13 (4) · 9 / 0 / 4 |
+| La Reina | 7 | 0 (0) · 0 / 0 / 0 | 1 (1) · 0 / 0 / 1 | 0 (0) · 0 / 0 / 0 | 1 (1) · 0 / 0 / 1 |
+
+### 4 · Bono pie en tres unidades reales
+
+Para cada comuna, la unidad de entrega inmediata más cercana a la mediana de precio de los nuevos de esa comuna. Los tres casos:
+sin nada (pie 20 %), descuento real de 10 % sobre el precio (pie 20 % del precio rebajado) y bono pie de 10 % (precio igual, la
+persona pone 10 % y el crédito es por el 90 %). Lo que recibes al vender y las TIR son con salida al mayor cap; la TIR del motor
+(con su propia salida) va como referencia.
+
+**Santiago** — 102d0fba (proyecto 1116626), 1D · 33,6 m², UF 3.384. Se compra a un cap de entrada de 2,98 % y se vende al 5,02 % de su celda: con g = 0 % la venta
+no devuelve lo puesto en ninguno de los tres casos.
+
+|  | sin nada (pie 20 %) | descuento real de 10 % (pie 20 %) | bono pie de 10 % (precio igual, pie 10 %) |
+| --- | --- | --- | --- |
+| precio | UF 3.384 | UF 3.046 | UF 3.384 |
+| lo que pones hoy (pie + costos) | $30.815.517 · UF 744 | $27.733.965 · UF 670 | $16.808.464 · UF 406 |
+| crédito | $112.056.422 · UF 2.707 | $100.850.780 · UF 2.436 | $126.063.475 · UF 3.046 |
+| dividendo mensual | $541.455 · UF 13,1 | $487.309 · UF 11,8 | $609.137 · UF 14,7 |
+| flujo mensual | $-257.587 · UF -6,2 | $-196.145 · UF -4,7 | $-325.269 · UF -7,9 |
+| veredicto de hoy | BUSCAR OTRA · score 43 | BUSCAR OTRA · score 50 | BUSCAR OTRA · score 35 |
+| saldo del crédito al año 10 | $88.579.737 · UF 2.140 | $79.721.763 · UF 1.926 | $99.652.204 · UF 2.408 |
+| lo que recibes al vender (g 3 %, mayor cap) | $21.025.103 · UF 508 | $29.883.077 · UF 722 | $9.952.636 · UF 240 |
+| TIR con g 3 % (mayor cap) | -13,6 % | -5,5 % | -31,8 % |
+| TIR con g 0 % (mayor cap) | no calculable | no calculable | no calculable |
+| TIR del motor (su salida) | 4,9 % | 7,0 % | 5,2 % |
+
+**Ñuñoa** — 0889ce1b (proyecto 2190195), 2D · 47,7 m², UF 4.304. Cap de entrada 3,85 %, celda 4,05 %.
+
+|  | sin nada (pie 20 %) | descuento real de 10 % (pie 20 %) | bono pie de 10 % (precio igual, pie 10 %) |
+| --- | --- | --- | --- |
+| precio | UF 4.304 | UF 3.874 | UF 4.304 |
+| lo que pones hoy (pie + costos) | $39.193.257 · UF 947 | $35.273.931 · UF 852 | $21.378.140 · UF 516 |
+| crédito | $142.520.934 · UF 3.443 | $128.268.841 · UF 3.099 | $160.336.051 · UF 3.874 |
+| dividendo mensual | $688.659 · UF 16,6 | $619.793 · UF 15,0 | $774.741 · UF 18,7 |
+| flujo mensual | $-223.399 · UF -5,4 | $-145.730 · UF -3,5 | $-309.481 · UF -7,5 |
+| veredicto de hoy | AJUSTA SUPUESTOS · score 51 | AJUSTA SUPUESTOS · score 59 | BUSCAR OTRA · score 44 |
+| saldo del crédito al año 10 | $112.661.699 · UF 2.722 | $101.395.529 · UF 2.450 | $126.744.411 · UF 3.062 |
+| lo que recibes al vender (g 3 %, mayor cap) | $110.415.338 · UF 2.668 | $109.773.207 · UF 2.652 | $96.332.626 · UF 2.327 |
+| TIR con g 3 % (mayor cap) | 7,7 % | 10,1 % | 9,0 % |
+| TIR con g 0 % (mayor cap) | -2,9 % | 0,6 % | -6,5 % |
+| TIR del motor (su salida) | 8,0 % | 9,1 % | 9,3 % |
+
+**Puente Alto** — da95da85 (proyecto 1440496), 2D · 64,0 m², UF 3.424. Cap de entrada 4,59 %; la celda de 2D en Puente Alto no tiene muestra y su cap de salida
+(6,51 %) es el **respaldo de la comuna**, lo que castiga la venta. Por eso la TIR al mayor cap (1,9 %) queda tan lejos de la del
+motor (9,9 %).
+
+|  | sin nada (pie 20 %) | descuento real de 10 % (pie 20 %) | bono pie de 10 % (precio igual, pie 10 %) |
+| --- | --- | --- | --- |
+| precio | UF 3.424 | UF 3.082 | UF 3.424 |
+| lo que pones hoy (pie + costos) | $31.179.766 · UF 753 | $28.061.789 · UF 678 | $17.007.145 · UF 411 |
+| crédito | $113.380.966 · UF 2.739 | $102.042.870 · UF 2.465 | $127.553.587 · UF 3.082 |
+| dividendo mensual | $547.855 · UF 13,2 | $493.069 · UF 11,9 | $616.337 · UF 14,9 |
+| flujo mensual | $-92.559 · UF -2,2 | $-30.390 · UF -0,7 | $-161.041 · UF -3,9 |
+| veredicto de hoy | AJUSTA SUPUESTOS · score 60 | AJUSTA SUPUESTOS · score 69 | AJUSTA SUPUESTOS · score 53 |
+| saldo del crédito al año 10 | $89.626.779 · UF 2.165 | $80.664.101 · UF 1.949 | $100.830.126 · UF 2.436 |
+| lo que recibes al vender (g 3 %, mayor cap) | $41.902.228 · UF 1.012 | $50.864.906 · UF 1.229 | $30.698.881 · UF 742 |
+| TIR con g 3 % (mayor cap) | 1,9 % | 7,0 % | 0,8 % |
+| TIR con g 0 % (mayor cap) | -20,9 % | -6,8 % | no calculable |
+| TIR del motor (su salida) | 9,9 % | 11,3 % | 12,0 % |
+
+**Lectura.**
+- **El subsidio vale lo que un descuento de 5 %.** 118 Comprar con subsidio contra 133 con 5 % sin subsidio, y 256 cuando se
+  suman. Con subsidio más 10 % se llega a 403 unidades: el subsidio solo no alcanza para que obra nueva dé Comprar en forma
+  masiva, pero combinado con una negociación de 10 % abre 129 proyectos.
+- **Contar unidades exagera donde hay proyectos grandes.** Puente Alto aporta 26 a 88 Comprar según el caso, pero son 2 a 4
+  proyectos: 86 de sus 89 nuevos son de dos proyectos de 3D. Contando proyectos, las comunas que más abren con subsidio más 10 %
+  son Ñuñoa (20), La Florida (19), Santiago (10), La Cisterna (9) y Macul (8).
+- **La entrega futura sigue cerrada.** Con subsidio más 10 % hay 18 Comprar de entrega futura entre 1.350. La regla del motor la
+  frena por el flujo, y además más de dos tercios de la futura quedan fuera del subsidio, por precio o por entregar después de
+  mayo de 2028 (elegibles, 415 de 1.350).
+- **El bono pie compra liquidez, no rentabilidad.** Pone la mitad del pie, pero el crédito por el 90 % sube el dividendo y el saldo,
+  y el flujo de un depto que ya era negativo empeora. Con g = 0 % el bono pie es el peor de los tres casos en Ñuñoa y Puente Alto
+  (en Santiago los tres son no calculables). El descuento real de 10 %, en cambio, mejora flujo, puntaje, saldo y la TIR con
+  g = 3 % en las tres.
