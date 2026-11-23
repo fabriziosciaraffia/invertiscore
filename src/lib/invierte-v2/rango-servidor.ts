@@ -9,7 +9,7 @@
 //     oferta viva, queda en cola. Presentarla es de una persona de Franco (B4): firmar deja la tarea.
 // ─────────────────────────────────────────────────────────────────────────────
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { CONFIG_RANGO_V1, REGLA_VERSION, avisoOferta, calcularRango, type ConfigRango, type Rango, type SenalesRango } from "./rango";
+import { CONFIG_RANGO_V1, REGLA_VERSION, avisoOferta, calcularRango, topeOferta, type ConfigRango, type Rango, type SenalesRango } from "./rango";
 import { leerUbicaciones, metros, numerosDe } from "./depto-servidor";
 import { vigenteSobre, type DatosDepto } from "./base-servidor";
 import type { Vigente } from "./cambios";
@@ -178,7 +178,8 @@ export async function firmarOferta(admin: SupabaseClient, user: { id: string; em
   if (!p.ubicacion) return { ok: false, error: "ubicacion" };
   const of = await asegurarRango(admin, user.id, avisoId);
   if (!of || of.estado !== "borrador") return { ok: false, error: "rango" };
-  if (!(monto > 0) || monto > of.techoUF * 1.5) return { ok: false, error: "monto" };
+  // El tope duro es el precio publicado (23-nov-2026): nunca se firma una oferta sobre lo publicado, venga de donde venga el monto.
+  if (!(monto > 0) || monto > topeOferta(of.publicadoUF)) return { ok: false, error: "monto" };
   const [orden, pre, { data: d }, { data: viva }, cfg] = await Promise.all([
     ultimaOrdenDe(admin, user.id), leerPreaprobacion(admin, user.id),
     admin.from("inv_deptos").select("id, es_prueba").eq("user_id", user.id).eq("aviso_id", avisoId).maybeSingle(),

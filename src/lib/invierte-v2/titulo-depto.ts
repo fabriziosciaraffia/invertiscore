@@ -24,6 +24,14 @@ export function tituloDepto(p: PartesTitulo): string {
   return partes.length ? partes.join(" · ") : (p.comuna ?? "").trim() || "Depto";
 }
 
+/** La dirección sola, sin metro: «Nataniel Cox 1250» con el número si salió limpio, o la calle; null sin calle confiable. Para el volver
+ *  de la oferta, el encabezado de la oferta y la firma, y la tarjeta (rediseño del 23-nov-2026). */
+export function direccionDepto(p: Pick<PartesTitulo, "calle" | "numero" | "comuna">): string | null {
+  const limpia = limpiarCalle(p.calle ?? null, p.comuna ?? null);
+  const numero = limpia ? limpiarNumero(p.numero ?? null) : null;
+  return limpia && numero ? `${limpia} ${numero}` : limpia;
+}
+
 /** Palabras que dicen que lo que vino no es una calle (marketing o estado del depto, no una dirección). */
 const NO_ES_CALLE = /\b(remodelad|impecable|oportunidad|(?:venta|vendo|arriendo|depto|metro|cerca|sector|lindo|amplio|nuevo|usado)\b|departamento|dormitorio|ba[nñ]o|estaci[oó]n|excelente|precios)/i;
 const MINUSCULAS = new Set(["de", "del", "la", "las", "los", "el", "y", "e"]);
@@ -38,7 +46,8 @@ export function limpiarCalle(x: string | null | undefined, comuna: string | null
   t = t.replace(/\s*(?:#|n[°º]\.?|nro\.?|n[uú]mero)?\s*\d.*$/i, "").replace(/[,;·\-–]+$/, "").trim();
   if (t.length < 3 || t.length > 48 || /\d/.test(t) || NO_ES_CALLE.test(t)) return null;
   if (comuna && t.localeCompare(comuna.trim(), "es", { sensitivity: "base" }) === 0) return null;
-  if (t === t.toUpperCase()) t = t.toLowerCase().split(" ").map((w, i) => (i > 0 && MINUSCULAS.has(w) ? w : w.charAt(0).toUpperCase() + w.slice(1))).join(" ");
+  // Todo en mayúsculas o todo en minúsculas (como la escribe a veces el admin: «nataniel cox»): mayúsculas bien puestas (23-nov-2026).
+  if (t === t.toUpperCase() || t === t.toLowerCase()) t = t.toLowerCase().split(" ").map((w, i) => (i > 0 && MINUSCULAS.has(w) ? w : w.charAt(0).toUpperCase() + w.slice(1))).join(" ");
   return t;
 }
 

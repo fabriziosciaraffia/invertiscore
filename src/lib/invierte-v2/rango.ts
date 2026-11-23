@@ -159,7 +159,34 @@ export function calcularRango(publicadoUF: number, s: SenalesRango, ahora: Date 
   return { regla: REGLA_VERSION, descuentoPct: dComprar, postura: "negocia_argumentos", techoUF: comprar, comprarUF: comprar, recomendadoUF: comprar, pisoUF, altoUF: comprar, razones, aplicado };
 }
 
-// ── LOS AVISOS DE LA OFERTA (decididos el 21-nov-2026) ───────────────────────
+// ── EL TOPE Y LA BARRA DEL RANGO (rediseño del 23-nov-2026) ─────────────────
+/** El tope duro de la oferta: el precio publicado. Nunca se oferta sobre lo publicado: el + se detiene ahí, el campo no acepta más
+ *  (tampoco escrito ni por la dirección) y el servidor lo rechaza al firmar. */
+export const topeOferta = (publicadoUF: number) => Math.max(1, Math.floor(publicadoUF));
+export const acotarOferta = (montoUF: number, publicadoUF: number) => Math.min(topeOferta(publicadoUF), Math.max(1, Math.round(montoUF)));
+
+const pct1 = (x: number) => `${(Math.round(x * 10) / 10).toLocaleString("es-CL", { maximumFractionDigits: 1 })} %`;
+/** «5 % bajo el precio publicado», «7,8 %…». */
+export const pctBajoPublicado = (montoUF: number, publicadoUF: number) => `${pct1((1 - montoUF / publicadoUF) * 100)} bajo el precio publicado`;
+/** «4 % a 6 % bajo el precio publicado» (el rango, en puntos enteros). */
+export function rangoPctPublicado(pisoUF: number, altoUF: number, publicadoUF: number): string {
+  const a = Math.round((1 - altoUF / publicadoUF) * 100), b = Math.round((1 - pisoUF / publicadoUF) * 100);
+  return `${a === b ? `${a} %` : `${a} % a ${b} %`} bajo el precio publicado`;
+}
+/** Bajo este monto sale el aviso fuerte (la zona rayada de la barra): el piso menos 5 % del publicado. */
+export const fuerteDesde = (pisoUF: number, publicadoUF: number, c: Pick<ConfigRango, "avisoFuertePct"> = CONFIG_RANGO_V1) => pisoUF - publicadoUF * c.avisoFuertePct / 100;
+/** LA ESCALA DE LA BARRA: va hasta el publicado (el tope). Parte un poco antes de la zona rayada para que se vea; si el rango queda muy
+ *  angosto o pegado a un extremo, la escala se acorta hasta que la franja ocupe al menos 10 % del ancho. */
+export const FRANJA_MIN_PCT = 10;
+export function escalaBarra(pisoUF: number, altoUF: number, publicadoUF: number, fuerteUF: number): { minUF: number; maxUF: number } {
+  const maxUF = publicadoUF;
+  let minUF = Math.max(0, fuerteUF - 0.3 * (maxUF - fuerteUF));
+  const ancho = Math.max(altoUF - pisoUF, 1);
+  if ((ancho / (maxUF - minUF)) * 100 < FRANJA_MIN_PCT) minUF = Math.max(0, maxUF - ancho / (FRANJA_MIN_PCT / 100));
+  return { minUF: Math.min(minUF, pisoUF - ancho * 0.5), maxUF };
+}
+
+// ── LOS AVISOS DE LA OFERTA (decididos el 21-nov-2026; de una línea desde el 23-nov) ──
 export type AvisoOferta = "ninguno" | "bajo_piso" | "bajo_piso_fuerte" | "sobre_recomendado" | "sobre_techo";
 
 /** Bajo el piso, aviso suave; si el piso menos la oferta pasa de 5 % del publicado, aviso fuerte. En un Ajusta supuestos, sobre el precio
@@ -177,24 +204,28 @@ export const OFERTA_COPY = {
   titulo: "La oferta que recomienda Franco",
   rotulo: "Franco recomienda",
   entre: (a: number, b: number) => `Entre UF ${fmt(a)} y UF ${fmt(b)}`,
+  entreCorto: (a: number, b: number) => `UF ${fmt(a)} a ${fmt(b)}`,
   campoRotulo: "Tu oferta",
-  campoLinea: "Puedes cambiarla: la decisión es tuya.",
   bajar: "Bajar UF 10",
   subir: "Subir UF 10",
-  sujetaT: "Sujeta a tu visita · vigente por 5 días",
-  sujeta: "Si después de ver el depto no te convence, la retiras o la ajustas sin costo. Va con tu preaprobación.",
+  barra: "Tu oferta en el rango",
+  poco: "Poco probable",
+  publicado: "Publicado",
+  tuOferta: (uf: number) => `Tu oferta UF ${fmt(uf)}`,
+  recomendado: (uf: number) => `Recomendado UF ${fmt(uf)}`,
   revisar: "Revisar y firmar mi oferta",
   revisarPor: (uf: number) => `Revisar y firmar por UF ${fmt(uf)}`,
-  revisarIgual: (uf: number) => `Revisar y firmar igual por UF ${fmt(uf)}`,
+  firmarIgual: (uf: number) => `Firmar igual por UF ${fmt(uf)}`,
   volverRecomendada: "Volver a la recomendada",
   hablar: "Hablarlo con Franco",
   hablarListo: "Le avisamos a Franco: te escribe para conversarlo.",
-  bajoT: (uf: number) => `Estás UF ${fmt(uf)} bajo lo que recomendamos.`,
-  bajoSuave: "Es posible que quien vende contraoferte.",
-  bajoFuerte: "Con lo que sabemos de este depto, estimamos poco probable que la respondan. Mientras esté vigente (5 días), no puedes ofertar por tus otros deptos.",
-  esTuDecision: "Es tu decisión: Franco la presenta igual.",
-  sobre: (uf: number) => `Estás ofreciendo UF ${fmt(uf)} más de lo que recomendamos. Puedes partir más abajo.`,
+  bajoT: (uf: number) => `Estás UF ${fmt(uf)} bajo lo recomendado.`,
+  bajoSuave: "Puedes ofertar igual.",
+  bajoFuerte: "Es probable que no la acepten. Puedes ofertar igual.",
+  sobreT: (uf: number) => `Estás UF ${fmt(uf)} sobre lo recomendado.`,
+  sobre: "Puedes partir más abajo.",
   sobreTecho: (uf: number) => `Sobre UF ${fmt(uf)} este depto deja de convenir.`,
+  tope: "No puedes ofrecer más que el precio publicado.",
 } as const;
 
 export const FIRMA_COPY = {

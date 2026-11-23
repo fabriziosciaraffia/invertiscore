@@ -10,7 +10,7 @@ import { DEPTO_COPY, type Etapa } from "@/lib/invierte-v2/depto-flujo";
 import type { PaginaDepto } from "@/lib/invierte-v2/depto-pagina-servidor";
 import type { EstadoVisible } from "@/lib/invierte-v2/preaprobacion";
 import { lineaCambio } from "@/lib/invierte-v2/cambios";
-import { tituloDepto } from "@/lib/invierte-v2/titulo-depto";
+import { direccionDepto, tituloDepto } from "@/lib/invierte-v2/titulo-depto";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +27,7 @@ export default function DeptoDemo({ searchParams }: { searchParams: { etapa?: st
     datos: { comuna: "Providencia", dormitorios: 2, banos: 2, m2: 58, precioUF: 3090, veredicto: "COMPRAR", score: 81, flujoCLP: -45000 },
     ficha: { titulo: tituloDepto({ calle: "Avenida Libertador Bernardo O'Higgins", metro, comuna: "Providencia" }), metro, comuna: "Providencia", fotos: avisoId === "muestra" ? 0 : 3, capRatePct: 5.1, lectura: null },
     tituloConNumero: tituloDepto({ calle: "Avenida Libertador Bernardo O'Higgins", numero: confirmada ? "1302" : null, metro, comuna: "Providencia" }),
+    direccion: direccionDepto({ calle: "Avenida Libertador Bernardo O'Higgins", numero: confirmada ? "1302" : null, comuna: "Providencia" }),
     ubicacion: confirmada ? { avisoId, direccion: "Avenida Libertador Bernardo O'Higgins", numero: "1302", lat: -33.44, lng: -70.63, distanciaM: 180, analisis: null, precioComprarUF: null, cargadaAt: "2026-11-21T12:00:00Z" } : null,
     cambios: [lineaCambio({ tipo: "precio_baja", antes: { precioUF: 3170 }, despues: { precioUF: 3090 } }, "2026-11-12")!, ...(confirmada ? [lineaCambio({ tipo: "ubicacion", antes: {}, despues: { flujoCLP: -45000 } }, "2026-11-21")!] : [])],
     preaprobacion: pre, whatsapp: "+56912345678",

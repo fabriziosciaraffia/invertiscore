@@ -30,10 +30,10 @@ export default async function OfertaPage({ params, searchParams }: { params: { a
   const monto = Number(searchParams.monto);
   return (
     <MarcoInvierte volver={null} pantalla="oferta" layout="formulario" cabecera={OFERTA_COPY.cabecera} pc={{ sesionEmail: user.email ?? null, invierte: "inversion" }}>
-      <div className="iv2-mi-inversion"><Link href={urlDepto(avisoId)} className="iv2-mi-inversion-a" data-inv2="volver-depto">← Depto de {p.datos.comuna ?? "tu lista"}</Link></div>
+      <div className="iv2-mi-inversion"><Link href={urlDepto(avisoId)} className="iv2-mi-inversion-a" data-inv2="volver-depto">← {p.direccion ?? p.tituloConNumero}</Link></div>
       <div className="inv-encabezado iv2-sumar-cab">
         <h1 className="iv2-titulo-res" id="iv2-t">{OFERTA_COPY.titulo}</h1>
-        <p className="iv2-depto-s" data-inv2="oferta-depto">{p.tituloConNumero} · {lineaDepto(p.datos)} · publicado en UF {fmtUF(o.publicadoUF)}</p>
+        <p className="iv2-depto-s" data-inv2="oferta-depto">{lineaDepto(p.datos)} · publicado en UF {fmtUF(o.publicadoUF)}</p>
       </div>
       <OfertaForm avisoId={avisoId} urlFirmar={`${urlOferta(avisoId)}/firmar`} postura={o.postura} pisoUF={o.pisoUF} recomendadoUF={o.recomendadoUF} altoUF={o.altoUF}
         publicadoUF={o.publicadoUF} razones={o.razones} avisoFuertePct={cfg.avisoFuertePct} comprarUF={o.comprarUF} montoInicial={Number.isFinite(monto) && monto > 0 ? monto : null} />

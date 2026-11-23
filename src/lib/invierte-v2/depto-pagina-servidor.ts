@@ -13,7 +13,7 @@ import { numeroFranco, vigenteSobre, type DatosDepto } from "./base-servidor";
 import { aOpcion, filaEntrada, leerPerfilInv } from "./perfil-servidor";
 import { leerPreaprobacion } from "./preaprobacion-servidor";
 import type { EstadoVisible } from "./preaprobacion";
-import { tituloDepto } from "./titulo-depto";
+import { direccionDepto, tituloDepto } from "./titulo-depto";
 import { asegurarRango, ofertaAbierta, type OfertaVista } from "./rango-servidor";
 
 export interface PaginaDepto {
@@ -24,6 +24,8 @@ export interface PaginaDepto {
   ficha: FichaDepto | null;
   /** El título con el número: el confirmado, o el que la lectura sacó limpio de la publicación. */
   tituloConNumero: string;
+  /** La dirección sola (calle y número si la ubicación está confirmada o la lectura lo sacó limpio), sin metro; null sin calle. */
+  direccion: string | null;
   ubicacion: Ubicacion | null;
   cambios: string[];
   preaprobacion: EstadoVisible;
@@ -67,10 +69,11 @@ export async function leerPaginaDepto(admin: SupabaseClient, userId: string, avi
   const ficha = fichas[avisoId] ?? null;
   if (ficha && u?.analisis?.capRatePct != null) ficha.capRatePct = u.analisis.capRatePct;
   if (alternativa) alternativa.ficha = fichas[alternativa.avisoId] ?? null;
-  // El número de la calle va recién aquí (LEEME de la etapa 3): el confirmado por Franco, o el que la lectura sacó limpio.
+  // El número de la calle va solo con la ubicación confirmada por Franco (LEEME del rediseño, 23-nov-2026); sin confirmar, solo la calle.
   const calle = u?.direccion ?? ficha?.lectura?.calle ?? null;
-  const numero = u ? u.numero : ficha?.lectura?.numero ?? null;
+  const numero = u ? u.numero : null;
   const tituloConNumero = tituloDepto({ calle, numero, metro: ficha?.metro ?? null, comuna: ficha?.comuna ?? datos.comuna ?? null });
+  const direccion = direccionDepto({ calle, numero, comuna: ficha?.comuna ?? datos.comuna ?? null });
   // Las preguntas que dejó la lectura se copian una vez al depto (B2); después las responde Franco desde el admin.
   await asegurarPreguntasDeLectura(admin, avisoId, ficha?.lectura?.preguntas ?? [], f.es_prueba === true);
   // B3: con el depto listo, el rango se calcula (o se recalcula si cambió el precio) en la oferta borrador; firmada, queda como está.
@@ -81,6 +84,6 @@ export async function leerPaginaDepto(admin: SupabaseClient, userId: string, avi
   ]);
   const cambios = ((cs ?? []) as { tipo: TipoCambio; antes: Record<string, unknown>; despues: Record<string, unknown>; fecha: string }[])
     .map((c) => lineaCambio(c, c.fecha)).filter((x): x is string => !!x);
-  return { avisoId, etapa, noAvanzaMotivo: (f.no_avanza_motivo as string | null) ?? null, datos, ficha, tituloConNumero, ubicacion: u, cambios, preaprobacion: pre.estado, whatsapp, alternativa, activos: (elegidos ?? []).map((e) => ({ avisoId: e.aviso_id as string, datos: (e.datos ?? {}) as DatosDepto })),
+  return { avisoId, etapa, noAvanzaMotivo: (f.no_avanza_motivo as string | null) ?? null, datos, ficha, tituloConNumero, direccion, ubicacion: u, cambios, preaprobacion: pre.estado, whatsapp, alternativa, activos: (elegidos ?? []).map((e) => ({ avisoId: e.aviso_id as string, datos: (e.datos ?? {}) as DatosDepto })),
     oferta, preguntas, documentos: ((docs ?? []) as { id: string; tipo: string; created_at: string }[]).map((d) => ({ id: d.id, tipo: d.tipo, creadoAt: d.created_at })) };
 }

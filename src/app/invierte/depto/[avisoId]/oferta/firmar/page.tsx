@@ -5,7 +5,7 @@ import { lineaDepto } from "@/lib/invierte-v2/base";
 import { fmtUF } from "@/lib/invierte-v2/opciones";
 import { urlDepto, urlOferta } from "@/lib/invierte-v2/depto-flujo";
 import { leerPaginaDepto } from "@/lib/invierte-v2/depto-pagina-servidor";
-import { FIRMA_COPY as F } from "@/lib/invierte-v2/rango";
+import { FIRMA_COPY as F, topeOferta } from "@/lib/invierte-v2/rango";
 import { textoOferta } from "@/lib/invierte-v2/oferta-documento";
 import { PREAPROB_COPY, puedeOfertar } from "@/lib/invierte-v2/preaprobacion";
 import { leerPreaprobacion } from "@/lib/invierte-v2/preaprobacion-servidor";
@@ -32,6 +32,8 @@ export default async function FirmarOfertaPage({ params, searchParams }: { param
   if (!p) redirect("/invierte");
   const o = p.oferta;
   if (p.etapa !== "listo" || !puedeOfertar(p.preaprobacion) || !o || o.estado !== "borrador" || !orden) redirect(urlDepto(avisoId));
+  // El tope duro: un monto sobre lo publicado (escrito en la dirección) vuelve a la oferta con el publicado como monto.
+  if (monto > topeOferta(o.publicadoUF)) redirect(`${urlOferta(avisoId)}?monto=${topeOferta(o.publicadoUF)}`);
   const sinCredito = pre.estado === "sin_credito";
   const conPre = F.conPreaprobacion(pre.doc?.banco ?? null, pre.doc?.montoAprobadoUF ?? null, fechaLarga(pre.doc?.vigenteHasta ?? null));
   const pagas = sinCredito ? F.sinCredito : `${F.pieYCredito(Math.round(monto * 0.2))}, ${conPre.replace(/^Con/, "con")}`;

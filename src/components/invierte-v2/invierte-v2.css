@@ -852,23 +852,51 @@
    − y + de a UF 10, el aviso en ciruela claro (nunca rojo: no es un error), «Sujeta a tu visita» y los botones; en la firma, el resumen,
    qué pasa después, el documento con «Leer» y la casilla. En la página del depto, la tarjeta de la oferta y el documento firmado. */
 .iv2-of { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
-.iv2-of-recomienda { display: flex; flex-direction: column; gap: 6px; padding: 14px; border-radius: 14px; background: var(--franco-elevated, #EEF2F8); }
-[data-theme="light"] .iv2-of-recomienda { background: #EEF2F8; }
-.iv2-of-postura { font-size: 20px; font-weight: 700; line-height: 1.2; }
-.iv2-of-entre { font-size: 15px; font-weight: 600; }
-.iv2-of-razones { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: 13px; line-height: 1.45; color: var(--franco-text); }
-.iv2-of-razones b { font-weight: 600; }
-.iv2-of-campo { display: flex; flex-direction: column; gap: 8px; }
+/* La oferta (rediseño del 23-nov-2026, láminas 5.1): el azul es lo que recomienda Franco; la ciruela, una oferta fuera del rango. */
+.iv2-of-recomienda { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: 12px; background: #EEF2F8; color: #141414; }
+.iv2-of-rec-cab { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.iv2-of-rec-e { font-size: 10px; font-weight: 700; letter-spacing: 0.05em; color: #1E3F6B; text-transform: uppercase; }
+.iv2-chip-li { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; white-space: nowrap; background: #E4ECF7; color: #1E3F6B; }
+.iv2-of-entre { font-size: 22px; font-weight: 700; line-height: 1.15; }
+.iv2-of-rec-pct { font-size: 13px; font-weight: 600; color: #1E3F6B; }
+.iv2-of-razones { list-style: none; margin: 0; padding: 8px 0 0; border-top: 1px solid #D8E0EC; display: flex; flex-direction: column; gap: 6px; font-size: 13px; line-height: 1.4; color: #26262A; }
+.iv2-of-razones li { display: flex; gap: 6px; }
+.iv2-of-marca { flex: none; width: 10px; text-align: center; }
+.iv2-of-rotulo { font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: #5A5A5F; }
+.iv2-of-campo { display: flex; flex-direction: column; gap: 6px; }
 .iv2-of-stepper { display: flex; align-items: center; gap: 10px; }
-.iv2-of-paso { flex: none; width: 48px; height: 48px; border-radius: 999px; border: 1.5px solid var(--franco-border); background: var(--franco-card); color: var(--franco-text); font: 600 22px var(--font-ui, var(--font-body)), "Inter", system-ui, sans-serif; cursor: pointer; }
-.iv2-of-valor { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 6px; height: 52px; border: 1.5px solid var(--franco-text); border-radius: 12px; font-size: 20px; font-weight: 700; }
-.iv2-of-valor input { width: 100%; max-width: 140px; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; outline: none; }
-.iv2-of-linea { margin: 0; font-size: 12px; line-height: 1.45; color: var(--franco-text-secondary); }
-.iv2-of-aviso { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border-radius: 12px; background: rgba(216, 174, 202, 0.14); font-size: 13px; line-height: 1.45; color: var(--franco-text); }
-[data-theme="light"] .iv2-of-aviso { background: #F3EDF1; color: #26262A; }
-.iv2-of-sujeta { margin: 0; }
-.iv2-of-acciones { display: flex; flex-direction: column; gap: 8px; }
-.iv2-of-enlace { align-self: center; justify-content: center; min-height: 44px; font-size: 14px; font-weight: 600; }
+.iv2-of-paso { flex: none; width: 52px; height: 52px; border-radius: 999px; border: 1px solid #C9C9CE; background: #FFFFFF; color: #141414; font: 400 22px var(--font-ui, var(--font-body)), "Inter", system-ui, sans-serif; cursor: pointer; }
+.iv2-of-paso:disabled { opacity: 0.35; cursor: not-allowed; }
+.iv2-of-paso:focus-visible { outline: 2px solid #141414; outline-offset: 2px; }
+.iv2-of-valor { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 6px; height: 56px; border: 1.5px solid #141414; border-radius: 12px; font-size: 22px; font-weight: 700; }
+.iv2-of-valor input { width: 5.2ch; min-width: 0; border: 0; padding: 0; background: transparent; color: inherit; font: inherit; text-align: left; outline: none; }
+/* globals.css fuerza 16 px en los campos del celular (zoom de iOS); este es de 22 px, así que no hace zoom igual. */
+.iv2-of-valor input { font-size: 22px !important; }
+.iv2-of-pct { font-size: 12px; line-height: 1.45; color: #5A5A5F; text-align: center; }
+.iv2-of-aviso { padding: 12px 14px; border-radius: 12px; background: #F3EDF1; font-size: 13px; line-height: 1.45; color: #26262A; }
+.iv2-of-aviso b { font-weight: 600; color: #141414; }
+.iv2-of-acciones { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid #EFEFF2; }
+.iv2-of-sec { min-height: 46px; border: 0; background: #F4F4F6; color: #141414; }
+.iv2-of-enlace { align-self: center; justify-content: center; min-height: 44px; font-size: 13px; font-weight: 600; }
+/* La barra del rango: va hasta el publicado (la raya negra); la franja azul, el rango; la rayada gris, el aviso fuerte. */
+.iv2-barra { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.iv2-barra-chips { position: relative; height: 26px; }
+.iv2-barra-chip { position: absolute; bottom: 2px; transform: translateX(-50%); background: #141414; color: #FFFFFF; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; white-space: nowrap; }
+.iv2-barra-chip.iv2-barra-fuera { background: #6E4560; }
+.iv2-barra-pista { padding: 11px 0; margin: -11px 0; }
+.iv2-barra-mueve { touch-action: none; cursor: pointer; }
+.iv2-barra-fondo { position: relative; height: 14px; border-radius: 999px; background: #EDEDF0; }
+.iv2-barra-rayada { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px 0 0 999px; background: repeating-linear-gradient(135deg, #DADADF 0 5px, #EDEDF0 5px 10px); }
+.iv2-barra-franja { position: absolute; top: 0; bottom: 0; background: #2B558F; border-radius: 4px; }
+.iv2-barra-tope { position: absolute; right: 0; top: -4px; bottom: -4px; width: 2px; background: #141414; }
+.iv2-barra-punto { position: absolute; top: 50%; width: 20px; height: 20px; margin: -10px 0 0 -10px; border-radius: 999px; background: #FFFFFF; border: 4px solid #141414; box-sizing: border-box; }
+.iv2-barra-punto.iv2-barra-fuera { border-color: #6E4560; }
+.iv2-barra-mueve .iv2-barra-punto { cursor: grab; }
+.iv2-barra-punto:focus-visible { outline: 2px solid #141414; outline-offset: 3px; }
+.iv2-barra-rotulos { position: relative; height: 30px; font-size: 11px; line-height: 1.25; color: #5A5A5F; }
+.iv2-barra-poco { position: absolute; left: 0; }
+.iv2-barra-rec { position: absolute; transform: translateX(-50%); color: #1E3F6B; font-weight: 700; white-space: nowrap; text-align: center; }
+.iv2-barra-pub { position: absolute; right: 0; text-align: right; color: #141414; font-weight: 600; }
 .iv2-of-resumen { margin: 0; display: flex; flex-direction: column; border: 1px solid var(--franco-border); border-radius: 14px; padding: 2px 14px; }
 .iv2-of-resumen > div { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--franco-border); }
 .iv2-of-resumen > div:last-child { border-bottom: 0; }
@@ -893,3 +921,16 @@
 .iv2-dp-tarjetas { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
 .iv2-dp-mini { box-sizing: border-box; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 12px 14px; border: 1px solid var(--franco-border); border-radius: 14px; background: var(--franco-card); }
 .iv2-dp-mini-t { font-size: 15px; font-weight: 700; }
+
+/* La oferta en PC (rediseño del 23-nov-2026): dos columnas para que quepa sin bajar en un notebook. A la izquierda lo que recomienda
+   Franco; a la derecha la barra, el campo, el aviso y los botones (sin barra fija: ya caben). */
+@media (min-width: 1024px) {
+  .iv2-con-pc .iv2-marco:has(.iv2-cuerpo.iv2-formulario .iv2-of) { max-width: 940px; }
+  .iv2-of { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 32px; row-gap: 14px; align-items: start;
+    grid-template-areas: "rec barra" "rec campo" "rec aviso" "rec acciones"; grid-template-rows: auto auto auto 1fr; }
+  .iv2-of > .iv2-of-recomienda { grid-area: rec; }
+  .iv2-of > .iv2-barra { grid-area: barra; }
+  .iv2-of > .iv2-of-campo { grid-area: campo; }
+  .iv2-of > .iv2-of-aviso { grid-area: aviso; }
+  .iv2-con-pc .iv2-cuerpo.iv2-formulario .iv2-of > .iv2-acciones { grid-area: acciones; position: static; margin: 0; padding: 12px 0 0; border-radius: 0; background: transparent; }
+}

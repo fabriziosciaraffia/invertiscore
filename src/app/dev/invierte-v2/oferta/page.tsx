@@ -51,8 +51,8 @@ export default function OfertaDemo({ searchParams }: { searchParams: { pantalla?
   }
   return (
     <MarcoInvierte volver={null} pantalla="oferta" layout="formulario" cabecera={OFERTA_COPY.cabecera} pc={{ sesionEmail: "muestra@ejemplo.cl", invierte: "inversion" }}>
-      <div className="iv2-mi-inversion"><Link href="/dev/invierte-v2/depto?etapa=listo" className="iv2-mi-inversion-a">← Depto de Providencia</Link></div>
-      <div className="inv-encabezado iv2-sumar-cab"><h1 className="iv2-titulo-res" id="iv2-t">{OFERTA_COPY.titulo}</h1><p className="iv2-depto-s">{DEPTO}</p></div>
+      <div className="iv2-mi-inversion"><Link href="/dev/invierte-v2/depto?etapa=listo&confirmada=1" className="iv2-mi-inversion-a">← {"Avenida Libertador Bernardo O'Higgins 1302"}</Link></div>
+      <div className="inv-encabezado iv2-sumar-cab"><h1 className="iv2-titulo-res" id="iv2-t">{OFERTA_COPY.titulo}</h1><p className="iv2-depto-s">Providencia · 2D2B · 58 m² · publicado en UF 3.090</p></div>
       {aj
         ? <OfertaForm avisoId="muestra" urlFirmar="/dev/invierte-v2/oferta?pantalla=firmar" postura={aj.postura} pisoUF={aj.pisoUF} recomendadoUF={aj.recomendadoUF} altoUF={aj.altoUF} publicadoUF={3090} razones={aj.razones} avisoFuertePct={5} comprarUF={aj.comprarUF} montoInicial={monto > 0 ? monto : null} />
         : <OfertaForm avisoId="muestra" urlFirmar="/dev/invierte-v2/oferta?pantalla=firmar" {...R} razones={RAZONES} avisoFuertePct={5} montoInicial={monto > 0 ? monto : null} />}

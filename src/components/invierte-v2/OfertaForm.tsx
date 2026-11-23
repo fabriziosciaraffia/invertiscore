@@ -1,24 +1,26 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// LA OFERTA QUE RECOMIENDA FRANCO (etapa 3, B3; lámina 5.1). La postura, el rango y sus razones (regla v1); el campo parte en el
-// recomendado y la persona lo mueve sin límite, de a UF 10. Fuera del rango hay aviso, nunca bloqueo:
-//   · bajo el piso, aviso suave («Es tu decisión: Franco la presenta igual»);
-//   · si el piso menos la oferta pasa de 5 % del publicado, aviso fuerte: el botón principal pasa a «Hablarlo con Franco» y revisar y
-//     firmar queda como enlace;
-//   · sobre el borde alto, que puede partir más abajo;
-//   · en un Ajusta supuestos, sobre el precio al que vuelve a Comprar, que ahí deja de convenir (22-nov-2026; tampoco bloquea).
-// Cada vez que el aviso aparece o cambia de nivel se lleva a la vista, por encima de la barra fija de los botones (llevarAvisoALaVista):
-// meterlo en la zona fija la haría crecer a media pantalla en un celular con el aviso fuerte y sus tres botones.
-// Sin enlace ni texto sobre lo que gana Franco. Aquí no se firma: el botón lleva a «Revisa tu oferta antes de firmar» (5.1b).
+// LA OFERTA QUE RECOMIENDA FRANCO (etapa 3, B3; rediseño del 23-nov-2026, láminas 5.1 y 5.1-avisos). El rango en su tarjeta azul
+// (postura en chip, «UF a b», cuánto bajo el publicado y una razón por línea), la barra del rango con el punto de la oferta, y el campo
+// con − y + de a UF 10 (con punto de miles). El TOPE DURO es el precio publicado: el +, el campo, la barra y la dirección se detienen
+// ahí (acotarOferta), y el servidor lo valida al firmar. Fuera del rango hay aviso de una línea, nunca bloqueo:
+//   · bajo el piso, suave: el rojo es «Revisar y firmar por UF X» y «Volver a la recomendada» queda como enlace;
+//   · bajo la zona rayada (el piso menos 5 % del publicado), fuerte: el rojo pasa a «Hablarlo con Franco», «Volver a la recomendada»
+//     es el secundario y firmar ese monto queda como enlace;
+//   · sobre el borde alto, o en un Ajusta supuestos sobre el precio al que vuelve a convenir: el rojo es «Volver a la recomendada» y
+//     firmar ese monto queda como enlace.
+// Cada vez que el aviso aparece o cambia de nivel se lleva a la vista, por encima de la barra fija de los botones (llevarAvisoALaVista).
+// Sin enlace ni texto sobre lo que gana Franco. Aquí no se firma: el botón lleva a «Revisa y firma tu oferta» (5.1b).
 // ─────────────────────────────────────────────────────────────────────────────
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { OFERTA_COPY as O, POSTURA_COPY, avisoOferta, type Postura } from "@/lib/invierte-v2/rango";
-import { partirLinea } from "@/lib/invierte-v2/lectura-franco";
+import { OFERTA_COPY as O, POSTURA_COPY, acotarOferta, avisoOferta, fuerteDesde, pctBajoPublicado, rangoPctPublicado, topeOferta, type Postura } from "@/lib/invierte-v2/rango";
+import { BarraRango } from "./BarraRango";
 
 export const URL_API_OFERTA = "/api/invierte-v2/oferta";
 const PASO = 10;
+const conPuntos = (n: number) => Math.round(n).toLocaleString("es-CL");
 
 /** Lleva el aviso a la vista sin que la barra fija de los botones lo tape: el margen inferior del desplazamiento es el alto de la barra. */
 export function llevarAvisoALaVista(aviso: HTMLElement | null, barra: HTMLElement | null) {
@@ -29,16 +31,20 @@ export function llevarAvisoALaVista(aviso: HTMLElement | null, barra: HTMLElemen
   aviso.scrollIntoView({ block: "nearest", behavior: quieto ? "auto" : "smooth" });
 }
 
+/** La marca de cada razón: la flecha para la bajada de precio; un punto para las demás. */
+const marca = (t: string) => (/^Ya bajó/.test(t) ? "↓" : "·");
+
 export function OfertaForm({ avisoId, urlFirmar, postura, pisoUF, recomendadoUF, altoUF, publicadoUF, razones, avisoFuertePct, montoInicial, comprarUF = null }: {
   avisoId: string; urlFirmar: string; postura: Postura; pisoUF: number; recomendadoUF: number; altoUF: number; publicadoUF: number; razones: string[]; avisoFuertePct: number; montoInicial: number | null;
   /** En un Ajusta supuestos, el precio al que vuelve a Comprar; null en un Comprar. */
   comprarUF?: number | null;
 }) {
-  const [monto, setMonto] = useState<number>(montoInicial && montoInicial > 0 ? montoInicial : recomendadoUF);
-  const [texto, setTexto] = useState(String(monto));
+  const tope = topeOferta(publicadoUF);
+  const [monto, setMonto] = useState<number>(acotarOferta(montoInicial && montoInicial > 0 ? montoInicial : recomendadoUF, publicadoUF));
+  const [texto, setTexto] = useState(conPuntos(monto));
   const [hablado, setHablado] = useState(false);
   const [enviando, setEnviando] = useState(false);
-  const fijar = (n: number) => { const v = Math.max(1, Math.round(n)); setMonto(v); setTexto(String(v)); };
+  const fijar = (n: number) => { const v = acotarOferta(n, publicadoUF); setMonto(v); setTexto(conPuntos(v)); };
   const aviso = avisoOferta(monto, { pisoUF, altoUF, comprarUF }, publicadoUF, { avisoFuertePct });
   const refAviso = useRef<HTMLDivElement>(null);
   const refBarra = useRef<HTMLDivElement>(null);
@@ -51,53 +57,61 @@ export function OfertaForm({ avisoId, urlFirmar, postura, pisoUF, recomendadoUF,
     if (r?.ok) setHablado(true);
   }
   const firmar = `${urlFirmar}${urlFirmar.includes("?") ? "&" : "?"}monto=${monto}`;
+  const sobre = aviso === "sobre_recomendado" || aviso === "sobre_techo";
+  const enlaceHablar = <button type="button" className="iv2-enlace-azul iv2-of-enlace" onClick={() => void hablar()} disabled={enviando || hablado} data-inv2="hablar">{hablado ? O.hablarListo : O.hablar}</button>;
   return (
     <div className="iv2-of" data-inv2="oferta-form">
       <section className="iv2-of-recomienda" aria-labelledby="iv2-of-rec" data-inv2="recomienda">
-        <span className="iv2-dp-rotulo" id="iv2-of-rec">{O.rotulo}</span>
-        <span className="iv2-of-postura" data-inv2="postura">{POSTURA_COPY[postura]}</span>
-        <span className="iv2-of-entre" data-inv2="rango">{O.entre(pisoUF, altoUF)}</span>
+        <div className="iv2-of-rec-cab"><span className="iv2-of-rec-e" id="iv2-of-rec">{O.rotulo}</span><span className="iv2-chip-li" data-inv2="postura">{POSTURA_COPY[postura]}</span></div>
+        <span className="iv2-of-entre" data-inv2="rango">{O.entreCorto(pisoUF, altoUF)}</span>
+        <span className="iv2-of-rec-pct">{rangoPctPublicado(pisoUF, altoUF, publicadoUF)}</span>
         <ul className="iv2-of-razones" data-inv2="razones">
-          {razones.map((t, i) => { const p = partirLinea(t); return <li key={i}>{p.fuerte ? <b>{p.fuerte}</b> : null}{p.resto}</li>; })}
+          {razones.map((t, i) => <li key={i}><span className="iv2-of-marca" aria-hidden="true">{marca(t)}</span><span>{t}</span></li>)}
         </ul>
       </section>
+      <BarraRango pisoUF={pisoUF} altoUF={altoUF} publicadoUF={publicadoUF} fuerteUF={fuerteDesde(pisoUF, publicadoUF, { avisoFuertePct })} montoUF={monto} etiqueta={O.tuOferta(monto)} onCambio={fijar} />
       <section className="iv2-of-campo" aria-labelledby="iv2-of-campo-t">
-        <label className="iv2-dp-rotulo" id="iv2-of-campo-t" htmlFor="iv2-of-monto">{O.campoRotulo}</label>
+        <label className="iv2-of-rotulo" id="iv2-of-campo-t" htmlFor="iv2-of-monto">{O.campoRotulo}</label>
         <div className="iv2-of-stepper">
           <button type="button" className="iv2-of-paso" aria-label={O.bajar} onClick={() => fijar(monto - PASO)} data-inv2="bajar">−</button>
           <span className="iv2-of-valor">
             <span aria-hidden="true">UF</span>
-            <input id="iv2-of-monto" inputMode="numeric" value={texto} onChange={(e) => { const t = e.target.value.replace(/\D/g, "").slice(0, 6); setTexto(t); if (Number(t) > 0) setMonto(Number(t)); }} onBlur={() => fijar(monto)} data-inv2="monto" />
+            <input id="iv2-of-monto" inputMode="numeric" value={texto} data-inv2="monto" aria-describedby="iv2-of-pct"
+              onChange={(e) => { const n = Number(e.target.value.replace(/\D/g, "").slice(0, 6)); if (!(n > 0)) { setTexto(""); return; } const v = Math.min(n, tope); setMonto(v); setTexto(conPuntos(v)); }}
+              onBlur={() => fijar(monto)} />
           </span>
-          <button type="button" className="iv2-of-paso" aria-label={O.subir} onClick={() => fijar(monto + PASO)} data-inv2="subir">+</button>
+          <button type="button" className="iv2-of-paso" aria-label={O.subir} onClick={() => fijar(monto + PASO)} disabled={monto >= tope} title={monto >= tope ? O.tope : undefined} data-inv2="subir">+</button>
         </div>
-        <p className="iv2-of-linea">{O.campoLinea}</p>
+        <span className="iv2-of-pct" id="iv2-of-pct" data-inv2="pct">{pctBajoPublicado(monto, publicadoUF)}</span>
       </section>
-      {(aviso === "bajo_piso" || aviso === "bajo_piso_fuerte") && (
+      {aviso !== "ninguno" && (
         <div ref={refAviso} className="iv2-of-aviso" data-inv2="aviso" data-nivel={aviso} role="status">
-          <b>{O.bajoT(pisoUF - monto)}</b>
-          <span>{aviso === "bajo_piso_fuerte" ? O.bajoFuerte : O.bajoSuave}</span>
-          <span>{O.esTuDecision}</span>
+          {aviso === "sobre_techo" && comprarUF != null ? <b>{O.sobreTecho(comprarUF)}</b>
+            : aviso === "sobre_recomendado" ? <><b>{O.sobreT(monto - altoUF)}</b> {O.sobre}</>
+            : <><b>{O.bajoT(pisoUF - monto)}</b> {aviso === "bajo_piso_fuerte" ? O.bajoFuerte : O.bajoSuave}</>}
         </div>
       )}
-      {(aviso === "sobre_recomendado" || aviso === "sobre_techo") && (
-        <div ref={refAviso} className="iv2-of-aviso" data-inv2="aviso" data-nivel={aviso} role="status">
-          {aviso === "sobre_techo" && comprarUF != null ? <b>{O.sobreTecho(comprarUF)}</b> : <span>{O.sobre(monto - altoUF)}</span>}
-        </div>
-      )}
-      <div className="iv2-msj-franco iv2-of-sujeta"><span className="iv2-msj-franco-de">{O.sujetaT}</span>{O.sujeta}</div>
       <div ref={refBarra} className="iv2-acciones iv2-of-acciones">
         {aviso === "bajo_piso_fuerte" ? (
           <>
             <button type="button" className="inv-principal" onClick={() => void hablar()} disabled={enviando || hablado} aria-busy={enviando || undefined} data-inv2="hablar">{hablado ? O.hablarListo : O.hablar}</button>
-            <button type="button" className="iv2-secundario" onClick={() => fijar(recomendadoUF)} data-inv2="volver-recomendada">{O.volverRecomendada}</button>
-            <Link href={firmar} className="iv2-enlace-azul iv2-of-enlace" data-inv2="revisar">{O.revisarIgual(monto)}</Link>
+            <button type="button" className="iv2-secundario iv2-of-sec" onClick={() => fijar(recomendadoUF)} data-inv2="volver-recomendada">{O.volverRecomendada}</button>
+            <Link href={firmar} className="iv2-enlace-azul iv2-of-enlace" data-inv2="revisar">{O.firmarIgual(monto)}</Link>
+          </>
+        ) : sobre ? (
+          <>
+            <button type="button" className="inv-principal" onClick={() => fijar(recomendadoUF)} data-inv2="volver-recomendada">{O.volverRecomendada}</button>
+            <Link href={firmar} className="iv2-enlace-azul iv2-of-enlace" data-inv2="revisar">{O.firmarIgual(monto)}</Link>
+          </>
+        ) : aviso === "bajo_piso" ? (
+          <>
+            <Link href={firmar} className="inv-principal" data-inv2="revisar">{O.revisarPor(monto)}</Link>
+            <button type="button" className="iv2-enlace-azul iv2-of-enlace" onClick={() => fijar(recomendadoUF)} data-inv2="volver-recomendada">{O.volverRecomendada}</button>
           </>
         ) : (
           <>
-            <Link href={firmar} className="inv-principal" data-inv2="revisar">{aviso === "ninguno" ? O.revisar : O.revisarPor(monto)}</Link>
-            {aviso !== "ninguno" && <button type="button" className="iv2-secundario" onClick={() => fijar(recomendadoUF)} data-inv2="volver-recomendada">{O.volverRecomendada}</button>}
-            <button type="button" className="iv2-enlace-azul iv2-of-enlace" onClick={() => void hablar()} disabled={enviando || hablado} data-inv2="hablar">{hablado ? O.hablarListo : O.hablar}</button>
+            <Link href={firmar} className="inv-principal" data-inv2="revisar">{O.revisar}</Link>
+            {enlaceHablar}
           </>
         )}
       </div>
