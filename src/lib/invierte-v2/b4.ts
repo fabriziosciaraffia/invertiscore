@@ -167,15 +167,16 @@ export function cierreDe(o: { estado: string; sinAcuerdoMotivo?: string | null; 
 
 /** Los textos de B4 (las láminas, tal como están escritas). */
 export const B4_COPY = {
-  presentadaT: "Tu oferta está presentada",
+  // Títulos de «Lo que sigue» en frase completa: qué está pasando y quién lo hace (LEEME del 23-nov, visita antes del precio).
+  presentadaT: "Franco presentó tu oferta. Esperamos la respuesta",
   presentadaTxt: "te avisamos apenas respondan",
-  firmadaT: "Franco presenta tu oferta",
-  firmadaTxt: "Va por escrito a quien vende. Te avisamos la respuesta.",
+  firmadaT: "Franco va a presentar tu oferta a quien vende",
+  firmadaTxt: "Va por escrito. Te avisamos apenas esté presentada.",
+  rondaNuevaT: "Franco va a presentar tu nueva oferta a quien vende",
   enColaT: "Tu oferta quedó preparada",
   enColaTxt: "Franco la presenta cuando termine la oferta que tienes vigente. Nunca se presenta sola.",
-  comunicarT: "Franco le comunica que aceptas",
+  comunicarT: "Franco le está avisando a quien vende que aceptaste",
   comunicarTxt: "Le avisamos a quien vende que aceptas su precio. Sigue sujeta a tu visita.",
-  contraofertaT: (uf: string) => `Contraofertaron: ${uf}`,
   tardiaContraT: (uf: string) => `Contraofertaron ${uf}, fuera de plazo`,
   aceptadaT: (uf: string) => `Aceptaron tu oferta: ${uf}`,
   aceptadaTxt: "Franco coordina la visita contigo. Tu oferta queda en firme después de la visita.",

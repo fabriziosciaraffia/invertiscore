@@ -64,6 +64,7 @@ import { B4_COPY, OFERTAS_VIVAS, RETIRABLES, cierreDe, esRetirable, insistirDesd
 import { ACCIONES_OFERTA_ADMIN, accionOfertaAdmin, avisarPersona, pasadaDeUnaOferta, pasadaManualPermitida, rondaDesde, registrarRespuesta } from "../../../src/lib/invierte-v2/b4-servidor";
 import { MOTIVOS_ADMIN_OFERTA, motivoAdminOferta, venceAlTerminarTexto } from "../../../src/lib/invierte-v2/b4";
 import { cuandoNoHayAcuerdo } from "../../../src/lib/invierte-v2/depto-flujo";
+import { CORREO_OFERTA, WHATSAPP_OFERTA } from "../../../src/lib/invierte-v2/b4-correo";
 import { puedeRecibirCopia } from "../../../src/lib/invierte-v2/copias-servidor";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -1417,12 +1418,12 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       const hc = renderToStaticMarkup(createElement(VistaDepto, { p: P24("confirmando", { direccion: "Nataniel Cox", ubicacion: null }) as never }));
       // La acción que toca va en la única tarjeta que se levanta, con el chip «Te toca a ti» (con pulso); si la lleva Franco, plana y sin botón.
       if (!/class="iv2-dp-sigue iv2-dp-sigue-tuyo"/.test(hb) || !/class="iv2-chip-tuyo" data-inv2="sigue-chip"><i aria-hidden="true"><\/i>Te toca a ti/.test(hb) || (hb.match(/class="inv-principal"/g) ?? []).length !== 1 || !/data-inv2="barra-rango"/.test(hb)) F("24r · «Haz tu oferta» no se levanta con el chip «Te toca a ti», o no trae la barra y un solo botón rojo");
-      if (/iv2-dp-sigue-tuyo/.test(hf) || /class="inv-principal"/.test(hf) || !/class="iv2-chip-franco" data-inv2="sigue-chip">Franco está en eso/.test(hf) || !/Franco presenta tu oferta/.test(hf) || !/<dt>Tu oferta<\/dt><dd>UF 2\.361<\/dd>/.test(hf) || !/<dt>Firmada<\/dt><dd>23 nov<\/dd>/.test(hf) || !/data-inv2="ver-documento">Ver mi oferta</.test(hf)) F("24r · con la oferta firmada «Lo que sigue» no queda plano, con el chip gris, la oferta, la fecha y «Ver mi oferta» (lámina de estados)");
+      if (/iv2-dp-sigue-tuyo/.test(hf) || /class="inv-principal"/.test(hf) || !/class="iv2-chip-franco" data-inv2="sigue-chip">Franco está en eso/.test(hf) || !/Franco va a presentar tu oferta a quien vende/.test(hf) || !/<dt>Tu oferta<\/dt><dd>UF 2\.361<\/dd>/.test(hf) || !/<dt>Firmada<\/dt><dd>23 nov<\/dd>/.test(hf) || !/data-inv2="ver-documento">Ver mi oferta</.test(hf)) F("24r · con la oferta firmada «Lo que sigue» no queda plano, con el chip gris, la oferta, la fecha y «Ver mi oferta» (lámina de estados)");
       // Sale la tarjeta «Oferta · Sin presentar»: la oferta es un paso del camino, marcado en ciruela (tuyo) o en negro (Franco).
       if (/Sin presentar|data-inv2="tarjeta-oferta"/.test(hb + hf)) F("24r · sigue la tarjeta «Oferta · Sin presentar»");
       const cb = caminoDepto("listo", { estado: "borrador" }), cf = caminoDepto("listo", { estado: "firmada" }), cc = caminoDepto("confirmando", null);
-      if (cb.actual !== 2 || cb.pasos.map((x) => x.estado).join() !== "hecho,tuyo,pendiente,pendiente,pendiente,pendiente" || cb.pasos.map((x) => x.t).join("|") !== "Depto confirmado|Oferta|Visita|Oferta en firme|Promesa|Escritura" || cb.pasos[1].s !== "Te toca a ti: haz tu oferta" || cb.pasos[2].s !== "Opcional") F(`24r · el camino de un depto listo no marca la oferta como su paso (${JSON.stringify(cb)})`);
-      if (cf.pasos[1].estado !== "franco" || cf.pasos[1].s !== "Firmada · Franco la presenta" || cc.actual !== 1 || cc.pasos[0].estado !== "franco") F("24r · firmada (o confirmando) el paso actual no queda en negro, de Franco");
+      if (cb.actual !== 2 || cb.pasos.map((x) => x.estado).join() !== "hecho,tuyo,pendiente,pendiente,pendiente,pendiente" || cb.pasos.map((x) => x.t).join("|") !== "Depto confirmado|Oferta|Visita|Oferta en firme|Promesa|Escritura" || cb.pasos[1].s !== "Te toca a ti: haz tu oferta" || cb.pasos[2].s !== "Después de la respuesta") F(`24r · el camino de un depto listo no marca la oferta como su paso (${JSON.stringify(cb)})`);
+      if (cf.pasos[1].estado !== "franco" || cf.pasos[1].s !== "Firmada · Franco la va a presentar" || cc.actual !== 1 || cc.pasos[0].estado !== "franco") F("24r · firmada (o confirmando) el paso actual no queda en negro, de Franco");
       if (!/data-inv2="camino-depto"/.test(hb) || !/Paso 2 de 6/.test(hb) || !/class="iv2-dp-paso iv2-dp-paso-tuyo" data-estado="tuyo" aria-current="step"/.test(hb)) F("24r · la página no dibuja el camino con el paso actual");
       // Lo averiguado: lo respondido primero, con la respuesta; lo pendiente con «Esperando respuesta»; el contador dice cuántas de cuántas.
       const iR = hb.indexOf("¿Respondida?"), iP = hb.indexOf("¿Pendiente?");
@@ -1716,6 +1717,56 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (!/data-admin="inv2-avisos-oferta"/.test(codigo("src/app/admin/invierte-v2/controles.tsx")) || !/eq\("accion", "aviso_oferta"\)/.test(codigo("src/app/admin/invierte-v2/[userId]/page.tsx"))) F("29e · el panel de la oferta no muestra los correos que no salieron");
       // 29f · EL VENCIMIENTO EN EL PANEL: «vence al terminar el sábado 28», no la medianoche del domingo.
       if (venceAlTerminarTexto(new Date("2026-11-29T03:00:00Z")) !== "vence al terminar el sábado 28" || !/\$\{venceAlTerminarTexto\(new Date\(o\.vigenteHasta\)\)\}/.test(codigo("src/app/admin/invierte-v2/controles.tsx"))) F(`29f · el panel no dice «vence al terminar el sábado 28» (${venceAlTerminarTexto(new Date("2026-11-29T03:00:00Z"))})`);
+      // ── 30 · LOS TÍTULOS EN FRASE COMPLETA Y A QUIEN VENDE NUNCA «VENDEDOR» NI «CORREDOR» (24-nov-2026, LEEME visita antes del precio) ──
+      {
+        const ah30 = new Date("2026-11-24T15:00:00Z");
+        const o30 = (x: Record<string, unknown>) => ({ postura: "asegura" as const, pisoUF: 2800, altoUF: 2950, montoUF: 2936, id: "o30", firmadaAt: "2026-11-23T15:00:00Z", ...x }) as Parameters<typeof cuandoNoHayAcuerdo>[0];
+        const s30 = (x: Record<string, unknown>) => loQueSigue("listo", "aprobada", "/pre", o30(x), "/oferta", { avisoId: "a30", ahora: ah30 });
+        // 30a · Los títulos del LEEME, tal como están escritos.
+        const esperados30: [Record<string, unknown>, string][] = [
+          [{ estado: "firmada" }, "Franco va a presentar tu oferta a quien vende"],
+          [{ estado: "firmada", tipoRonda: "proponer" }, "Franco va a presentar tu nueva oferta a quien vende"],
+          [{ estado: "presentada", presentadaAt: "2026-11-23T15:00:00Z", vigenteHasta: "2026-11-29T03:00:00Z" }, "Franco presentó tu oferta. Esperamos la respuesta"],
+          [{ estado: "firmada", tipoRonda: "aceptar" }, "Franco le está avisando a quien vende que aceptaste"],
+          [{ estado: "contraoferta", contraofertaUF: 3010, sugeridaUF: 2966 }, "Piden UF 3.010"],
+        ];
+        for (const [x, t] of esperados30) if (s30(x)?.titulo !== t) F(`30a · «Lo que sigue» en ${JSON.stringify(x)} no dice «${t}» (dice «${s30(x)?.titulo}»)`);
+        if (s30({ estado: "firmada" })?.texto !== "Va por escrito. Te avisamos apenas esté presentada.") F("30a · la oferta firmada no dice el texto de la lámina");
+        // 30b · El camino: la visita deja de decir «Opcional»; antes de la respuesta, «Después de la respuesta».
+        const cam30 = (x: Record<string, unknown> | null, etapa: Parameters<typeof caminoDepto>[0] = "listo") => caminoDepto(etapa, x ? (o30(x) as unknown as Parameters<typeof caminoDepto>[1]) : null);
+        if (cam30({ estado: "firmada" }).pasos[1].s !== "Firmada · Franco la va a presentar" || cam30({ estado: "firmada", tipoRonda: "proponer" }).pasos[1].s !== "Nueva oferta · Franco la va a presentar" || cam30({ estado: "contraoferta", contraofertaUF: 3010 }).pasos[1].s !== "Contraoferta · te toca a ti") F("30b · el camino de la oferta no dice el subtítulo de la lámina");
+        const pre30 = cam30({ estado: "presentada" }).pasos[2];
+        if (pre30.s !== "Después de la respuesta" || pre30.corto !== "Después de la respuesta") F(`30b · antes de la respuesta la visita no dice «Después de la respuesta» (${JSON.stringify(pre30)})`);
+        // 30c · Ningún texto que ve la persona le dice «vendedor» ni «corredor» a quien vende: «Lo que sigue», el camino, la tarjeta de la
+        // base, los textos de B4, los correos y los WhatsApp de la oferta, en todos los estados.
+        const estados30: Record<string, unknown>[] = [
+          { estado: "borrador", publicadoUF: 3090 }, ...esperados30.map(([x]) => x), { estado: "en_cola" }, { estado: "aceptada_sujeta" }, { estado: "firmada", tipoRonda: "reactivar" },
+          { estado: "sin_acuerdo", sinAcuerdoMotivo: "rechazada", respuestaAt: "2026-11-24T12:00:00Z" }, { estado: "sin_acuerdo", sinAcuerdoMotivo: "vencida", vigenteHasta: "2026-11-24T03:00:00Z" },
+          { estado: "sin_acuerdo", sinAcuerdoMotivo: "vencida", respuesta: "contraoferta", contraofertaUF: 3010 }, { estado: "sin_acuerdo", sinAcuerdoMotivo: "vencida", respuestaTardia: "aceptada", respuestaTardiaUF: 2936 },
+          { estado: "sin_acuerdo", sinAcuerdoMotivo: "vencida", respuestaTardia: "contraoferta", contraofertaUF: 3010 }, { estado: "sin_acuerdo", sinAcuerdoMotivo: "vencida", respuestaTardia: "aceptada", tardiaDecision: "no_gracias" },
+          { estado: "retirada", retiradaAt: "2026-11-24T12:00:00Z" },
+        ];
+        const textos30: string[] = [];
+        const juntar = (v: unknown) => { if (v != null) textos30.push(typeof v === "string" ? v : JSON.stringify(v)); };
+        for (const x of estados30) {
+          juntar(s30(x)); juntar(cuandoNoHayAcuerdo(o30(x), "a30", { titulo: "otro depto" }, ah30)); juntar(cam30(x));
+          juntar(estadoEnBase("listo", "aprobada", null, o30(x) as unknown as Parameters<typeof estadoEnBase>[3], ah30));
+        }
+        for (const etapa of ["confirmando", "sin_preaprobacion", "en_firme", "promesa", "escritura", "inscrito", "en_pausa", "no_avanza"] as const) {
+          for (const pre of ["aprobada", "en_revision", "por_corregir", "sin_documento"] as const) {
+            juntar(loQueSigue(etapa, pre as Parameters<typeof loQueSigue>[1], "/pre", null, "/oferta", { avisoId: "a30", ahora: ah30 }));
+            juntar(estadoEnBase(etapa, pre as Parameters<typeof estadoEnBase>[1], null, null, ah30));
+          }
+          juntar(cam30(null, etapa));
+        }
+        for (const v of Object.values(B4_COPY)) juntar(typeof v === "function" ? (v as (a: string) => string)("UF 1") : v);
+        const d30 = { depto: "Av. Grecia 1250", montoUF: 2936, otroUF: 3010, vence: "Vence el sábado 28" };
+        for (const c of Object.values(CORREO_OFERTA)) { juntar(c.asunto); juntar(c.boton); juntar(c.parrafo(d30)); }
+        for (const w of Object.values(WHATSAPP_OFERTA)) if (w) juntar(w(d30));
+        const malos30 = textos30.filter((t) => /vendedor|corredor/i.test(t));
+        if (textos30.length < 60) F(`30c · el censo de textos quedó corto (${textos30.length}): no mide lo que dice`);
+        if (malos30.length) F(`30c · un texto que ve la persona dice «vendedor» o «corredor»: ${malos30[0].slice(0, 160)}`);
+      }
       // 24l · Los arreglos de la lectura: solo concretos; sin «no se ve» ni «falta información»; en el esquema y la versión.
       if (limpiarArreglos(["la cocina tiene muebles dañados", "no se ve el baño", "falta información del estado", "piso manchado"]).join("|") !== "la cocina tiene muebles dañados|piso manchado" || !(ESQUEMA_LECTURA_FRANCO as unknown as { required: string[] }).required.includes("arreglos") || VERSION_LECTURA15 < 13) F("24l · la lectura no deja solo arreglos concretos (o falta en el esquema o la versión no subió)");
       // 24m · La fecha de publicación: se captura de la ficha que ya se lee, y se guarda aparte (sin romper el guardado si falta la columna).

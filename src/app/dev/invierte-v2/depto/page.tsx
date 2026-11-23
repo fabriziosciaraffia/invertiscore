@@ -32,16 +32,16 @@ export default function DeptoDemo({ searchParams }: { searchParams: { etapa?: st
   const metro = { estacion: "Parque Bustamante", metros: 420 };
   const analisisMuestra = { arriendoCLP: MOTOR_MUESTRA.arriendoCLP, flujoCLP: null, motor: MOTOR_MUESTRA, comparables: searchParams.pocos === "1" ? 4 : 6 };
   const cifras = cifrasDeDepto({ publicadoUF: 3090, arriendoNoche: null, flujoNoche: null, analisis: analisisMuestra, uf: MOTOR_MUESTRA.uf, comparables: null });
-  const ESTADOS = ["firmada", "en_cola", "comunicar", "presentada", "presentada_hoy", "contraoferta", "aceptada_sujeta"];
+  const ESTADOS = ["firmada", "ronda_nueva", "en_cola", "comunicar", "presentada", "presentada_hoy", "contraoferta", "aceptada_sujeta"];
   const pedido = ESTADOS.includes(searchParams.oferta ?? "") ? (searchParams.oferta as string) : "borrador";
-  const estadoOferta = pedido === "comunicar" ? "firmada" : pedido === "presentada_hoy" ? "presentada" : pedido;
+  const estadoOferta = pedido === "comunicar" || pedido === "ronda_nueva" ? "firmada" : pedido === "presentada_hoy" ? "presentada" : pedido;
   const ahora = Date.now(), DIA = 864e5;
   // Presentada hace un día (o hoy, al quinto día de su plazo, para ver «Vence hoy»); la contraoferta vence en tres días.
   const presentadaAt = new Date(ahora - (pedido === "presentada_hoy" ? 5 : 1) * DIA).toISOString();
   const b4 = {
     presentadaAt: ["presentada", "contraoferta", "aceptada_sujeta"].includes(estadoOferta) ? presentadaAt : null,
     vigenteHasta: estadoOferta === "presentada" ? venceAlTerminar(new Date(presentadaAt)).toISOString() : null,
-    tipoRonda: pedido === "comunicar" ? "aceptar" : null,
+    tipoRonda: pedido === "comunicar" ? "aceptar" : pedido === "ronda_nueva" ? "proponer" : null,
     contraofertaUF: estadoOferta === "contraoferta" ? 3010 : null, contraofertaVence: estadoOferta === "contraoferta" ? venceAlTerminar(new Date(ahora - 2 * DIA)).toISOString() : null,
     sugeridaUF: estadoOferta === "contraoferta" ? 2966 : null, respuesta: estadoOferta === "contraoferta" ? "contraoferta" : estadoOferta === "aceptada_sujeta" ? "aceptada_sujeta" : null,
   };
