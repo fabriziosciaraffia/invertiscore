@@ -80,7 +80,10 @@ export function decidirTrasCrear(p: { mostrado: Mostrado | null; informe: string
 
 export const COBRO_MOSTRADO_COPY = {
   /** «Este depto cambió desde que te lo mostramos: ahora sale Ajustar. ¿Quieres analizarlo igual?» */
-  cambio: (hoy: string) => `Este depto cambió desde que te lo mostramos: ahora sale ${etiquetaVeredicto(hoy, "nombre")}. ¿Quieres analizarlo igual?`,
+  cambio: (hoy: string) => `Este depto cambió desde que te lo mostramos: ahora sale ${etiquetaVeredicto(hoy, "frase")}. ¿Quieres analizarlo igual?`,
+  /** Las dos mitades del aviso, para dibujar el veredicto con el chip de la casa en el medio (23-nov-2026, Fabrizio). */
+  cambioAntes: "Este depto cambió desde que te lo mostramos: ahora sale",
+  cambioDespues: "¿Quieres analizarlo igual?",
   /** Con el pago ya hecho (la vuelta del pago): el análisis comprado queda en la cuenta. */
   pagadoQueda: "Tu análisis queda en tu cuenta: úsalo en este depto o en otro.",
   analizarIgual: "Analizarlo igual",
@@ -99,7 +102,7 @@ export interface MarcaCambio {
 
 /** «Este depto cambió desde que te lo mostramos: salía Comprar, ahora sale Ajustar.» */
 export const lineaCambioAvisado = (m: MarcaCambio) =>
-  `Este depto cambió desde que te lo mostramos: salía ${etiquetaVeredicto(m.mostrado.veredicto, "nombre")}, ahora sale ${etiquetaVeredicto(m.hoy.veredicto, "nombre")}.`;
+  `Este depto cambió desde que te lo mostramos: salía ${etiquetaVeredicto(m.mostrado.veredicto, "frase")}, ahora sale ${etiquetaVeredicto(m.hoy.veredicto, "frase")}.`;
 
 /**
  * La línea de arriba del informe: si el cobro se devolvió, «No te cobramos este análisis…»; si la persona siguió tras el aviso (o

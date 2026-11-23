@@ -23,6 +23,20 @@ import {
 import { RETORNO } from "@/lib/compra/compra";
 import { PLANO } from "@/components/plano/plano";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
+import { ChipVeredicto, ChipVeredictoTokens } from "@/components/analysis/shared/ChipVeredicto";
+import { COBRO_MOSTRADO_COPY } from "@/lib/guia/cobro-mostrado";
+import { esVeredicto } from "@/lib/veredicto-etiqueta";
+
+/** «Este depto cambió desde que te lo mostramos: ahora sale [− Ajustar]. ¿Quieres analizarlo igual?» — el veredicto con el chip de
+ *  la casa (el color de la tríada), 23-nov-2026. El texto entero queda en `aria-label`. */
+function AvisoCambio({ v }: { v: string }) {
+  return (
+    <span aria-label={COBRO_MOSTRADO_COPY.cambio(v)}>
+      <ChipVeredictoTokens />
+      <span aria-hidden="true">{COBRO_MOSTRADO_COPY.cambioAntes} {esVeredicto(v) ? <ChipVeredicto v={v} /> : v}. {COBRO_MOSTRADO_COPY.cambioDespues}</span>
+    </span>
+  );
+}
 import "@/components/formulario-v4/wizard-v4.css";
 import "./informe-en-camino.css";
 
@@ -152,7 +166,7 @@ export function PopupInforme({ paso, ahora, saldo = null, lugar = "mapa", alCerr
           {/* CAMBIÓ DESDE QUE SE MOSTRÓ (23-nov-2026): no se cobró nada; la persona decide. */}
           {paso.paso === "cambio" && (
             <>
-              <h2 id="informe-en-camino-titulo" className="ie-titulo" role="alert" data-informe="cambio">{INFORME_COPY.cambio(paso.ahora)}</h2>
+              <h2 id="informe-en-camino-titulo" className="ie-titulo" role="alert" data-informe="cambio"><AvisoCambio v={paso.ahora.veredicto} /></h2>
               {/* Recién pagado (punto 7): el crédito comprado no se gastó, queda en la cuenta. */}
               {paso.pagado && <p className="ie-texto" data-informe="cambio-queda">{INFORME_COPY.cambioPagado}</p>}
             </>
@@ -252,7 +266,7 @@ export function VueltaInforme({ paso, ahora, saldo = null, alReintentar = null, 
           se gastó; queda en la cuenta y la persona decide si lo usa en este depto o en otro. */}
       {paso.paso === "cambio" && (
         <>
-          <p className="mt-2 text-[15px] font-semibold leading-[1.45] text-[var(--franco-text)]" role="alert" data-informe="cambio">{INFORME_COPY.cambio(paso.ahora)}</p>
+          <p className="mt-2 text-[15px] font-semibold leading-[1.45] text-[var(--franco-text)]" role="alert" data-informe="cambio"><AvisoCambio v={paso.ahora.veredicto} /></p>
           <p className={PLANO.bajada} data-informe="cambio-queda">{INFORME_COPY.cambioPagado}</p>
           <div className={`${PLANO.seccion} flex flex-col gap-3`}>
             {alAnalizarIgual && <button type="button" className={PLANO.principal} onClick={alAnalizarIgual} data-informe="analizar-igual">{INFORME_COPY.usarAca}</button>}

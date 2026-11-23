@@ -41,7 +41,7 @@ const sinComentarios = (s: string) =>
   s.replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "").replace(/([^:"'`])\/\/[^\n]*$/gm, "$1");
 const codigo = (p: string) => sinComentarios(leer(p));
 const ENTIDADES: Record<string, string> = { "&amp;": "&", "&#x27;": "'", "&quot;": '"', "&lt;": "<", "&gt;": ">", "&nbsp;": " " };
-const texto = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/&[#\w]+;/g, (e) => ENTIDADES[e] ?? e).replace(/\s+/g, " ").trim();
+const texto = (html: string) => html.replace(/<style[^>]*>[^<]*<\/style>/g, "").replace(/<[^>]+>/g, " ").replace(/&[#\w]+;/g, (e) => ENTIDADES[e] ?? e).replace(/\s+/g, " ").replace(/ ([.,])/g, "$1").trim();
 function cuerpo(src: string, firma: string): string {
   const i = src.indexOf(firma);
   if (i < 0) return "";
@@ -101,17 +101,17 @@ export async function runCobroMostradoTier(): Promise<{ hard: number }> {
     if (tras("COMPRAR", false, true) !== "cobrado") F("1 · el respaldo devuelve un informe con el mismo veredicto");
     if (tras("AJUSTA SUPUESTOS", false, false) !== "nada") F("1 · el respaldo «devuelve» un cobro que no gastó nada (Invierte, ilimitado)");
     if (tras("AJUSTA SUPUESTOS", false, true, M("COMPRAR", 20)) !== "cobrado") F("1 · el respaldo devuelve por algo mostrado hace más de 14 días");
-    if (cm.COBRO_MOSTRADO_COPY.cambio("AJUSTA SUPUESTOS") !== "Este depto cambió desde que te lo mostramos: ahora sale Ajusta supuestos. ¿Quieres analizarlo igual?") F(`1 · el aviso no dice el texto de Fabrizio: «${cm.COBRO_MOSTRADO_COPY.cambio("AJUSTA SUPUESTOS")}»`);
+    if (cm.COBRO_MOSTRADO_COPY.cambio("AJUSTA SUPUESTOS") !== "Este depto cambió desde que te lo mostramos: ahora sale Ajustar. ¿Quieres analizarlo igual?") F(`1 · el aviso no dice el texto de Fabrizio: «${cm.COBRO_MOSTRADO_COPY.cambio("AJUSTA SUPUESTOS")}»`);
     if (cm.COBRO_MOSTRADO_COPY.devuelto !== "No te cobramos este análisis: salió distinto a lo que te mostramos.") F("1 · la línea del respaldo no dice el texto de Fabrizio");
-    // ⚠ ACTA (23-nov-2026, Fabrizio: «el aviso tiene que nombrar el veredicto con su nombre de siempre») · los textos nuevos dicen
-    // Comprar, Ajusta supuestos o Buscar otra (veredicto-etiqueta.ts › forma «nombre»), nunca «Ajustar» ni «Buscar otro».
-    const NOMBRES: Array<[string, string]> = [["COMPRAR", "Comprar"], ["AJUSTA SUPUESTOS", "Ajusta supuestos"], ["BUSCAR OTRA", "Buscar otra"]];
+    // ⚠ ACTA (23-nov-2026, Fabrizio corrige: «el veredicto es Ajustar, no Ajusta supuestos; ideal el chip de Ajustar con el color de
+    // la tríada») · los textos nuevos usan la etiqueta de la casa (Comprar · Ajustar · Buscar otro) y el aviso dibuja el chip.
+    const NOMBRES: Array<[string, string]> = [["COMPRAR", "Comprar"], ["AJUSTA SUPUESTOS", "Ajustar"], ["BUSCAR OTRA", "Buscar otro"]];
     for (const [v, nombre] of NOMBRES) {
       const t = cm.COBRO_MOSTRADO_COPY.cambio(v);
-      if (!t.includes(`ahora sale ${nombre}.`) || /Ajustar\b|Buscar otro\b/.test(t)) F(`1 · el aviso no nombra ${v} con su nombre de siempre: «${t}»`);
+      if (!t.includes(`ahora sale ${nombre}.`) || /Ajusta supuestos|Buscar otra/.test(t)) F(`1 · el aviso no nombra ${v} con su nombre de siempre: «${t}»`);
       for (const [w, otro] of NOMBRES) {
         const l = cm.lineaCambioAvisado({ mostrado: { veredicto: w, score: 80, at: AHORA.toISOString(), fuente: "correo" }, hoy: { veredicto: v, score: 60 } });
-        if (!l.includes(`salía ${otro}, ahora sale ${nombre}.`) || /Ajustar\b|Buscar otro\b/.test(l)) F(`1 · la línea del informe no nombra los veredictos con su nombre de siempre: «${l}»`);
+        if (!l.includes(`salía ${otro}, ahora sale ${nombre}.`) || /Ajusta supuestos|Buscar otra/.test(l)) F(`1 · la línea del informe no nombra los veredictos con su nombre de siempre: «${l}»`);
       }
     }
   }
@@ -211,11 +211,12 @@ export async function runCobroMostradoTier(): Promise<{ hard: number }> {
     if (cam.paso !== "cambio" || !ie.cerrable(cam) || ie.alCerrarQueda(cam)) F("4 · el paso «cambio» no se puede cerrar o deja un informe que no existe");
     if (modPop) {
       const h = dibujar(createElement(modPop.PopupInforme, { paso: cam, ahora: Date.now(), alCerrar: () => {}, alAnalizarIgual: () => {} }));
-      if (!texto(h).includes("Este depto cambió desde que te lo mostramos: ahora sale Ajusta supuestos. ¿Quieres analizarlo igual?") || !/data-informe="analizar-igual"[^>]*>Analizarlo igual</.test(h) || !/data-informe="cambio-volver"[^>]*>Volver</.test(h)) F(`4 · el pop-up no dice el aviso con «Analizarlo igual» y «Volver»: «${texto(h)}»`);
+      if (!/data-informe="cambio"[\s\S]*?class="chip-v a"[^>]*data-veredicto="AJUSTA SUPUESTOS"[^>]*>− Ajustar<\/span>/.test(h)) F(`4 · el aviso no dibuja el veredicto con el chip de la casa (− Ajustar, ciruela): «${texto(h)}»`);
+      if (!texto(h).includes("Este depto cambió desde que te lo mostramos: ahora sale − Ajustar. ¿Quieres analizarlo igual?") || !h.includes('aria-label="Este depto cambió desde que te lo mostramos: ahora sale Ajustar. ¿Quieres analizarlo igual?"') || !/data-informe="analizar-igual"[^>]*>Analizarlo igual</.test(h) || !/data-informe="cambio-volver"[^>]*>Volver</.test(h)) F(`4 · el pop-up no dice el aviso con «Analizarlo igual» y «Volver»: «${texto(h)}»`);
       const pag = dibujar(createElement(modPop.PopupInforme, { paso: ie.informeCambio(gen, { veredicto: "AJUSTA SUPUESTOS", score: 63 }, true), ahora: Date.now(), alCerrar: () => {}, alAnalizarIgual: () => {} }));
       if (!texto(pag).includes(cm.COBRO_MOSTRADO_COPY.pagadoQueda)) F("4 · recién pagado, el pop-up no dice que el análisis queda en la cuenta");
       const v = dibujar(createElement(modPop.VueltaInforme, { paso: ie.informeCambio(gen, { veredicto: "AJUSTA SUPUESTOS", score: 63 }, true), ahora: Date.now(), saldo: 1, alAnalizarIgual: () => {} }));
-      if (!texto(v).includes("ahora sale Ajusta supuestos") || !texto(v).includes(cm.COBRO_MOSTRADO_COPY.pagadoQueda) || !/data-informe="analizar-igual"[^>]*>Usarlo en este depto</.test(v) || !/<a [^>]*href="\/dashboard"[^>]*>Elegir otro depto<\/a>/.test(v)) F(`4 · la vuelta del pago no dice el aviso con «Usarlo en este depto» y «Elegir otro depto»: «${texto(v)}»`);
+      if (!texto(v).includes("ahora sale − Ajustar") || !texto(v).includes(cm.COBRO_MOSTRADO_COPY.pagadoQueda) || !/data-informe="analizar-igual"[^>]*>Usarlo en este depto</.test(v) || !/<a [^>]*href="\/dashboard"[^>]*>Elegir otro depto<\/a>/.test(v)) F(`4 · la vuelta del pago no dice el aviso con «Usarlo en este depto» y «Elegir otro depto»: «${texto(v)}»`);
     }
     // Las cinco superficies que llaman a «Analizar este» manejan el 412 «cambio» y mandan `aceptoCambio` al seguir.
     const SUPERFICIES: Array<[string, string]> = [
@@ -238,7 +239,7 @@ export async function runCobroMostradoTier(): Promise<{ hard: number }> {
   {
     const marca: cm.MarcaCambio = { mostrado: { veredicto: "COMPRAR", score: 80, at: AHORA.toISOString(), fuente: "correo" }, hoy: { veredicto: "AJUSTA SUPUESTOS", score: 63 } };
     if (cm.lineaCambioPortada({ origenAviso: { cobroDevuelto: { ...marca, grantId: "g", at: "x" } } }) !== cm.COBRO_MOSTRADO_COPY.devuelto) F("5 · el informe del respaldo no dice «No te cobramos este análisis…»");
-    if (cm.lineaCambioPortada({ origenAviso: { cambioAvisado: marca } }) !== "Este depto cambió desde que te lo mostramos: salía Comprar, ahora sale Ajusta supuestos.") F("5 · el informe avisado no dice qué cambió");
+    if (cm.lineaCambioPortada({ origenAviso: { cambioAvisado: marca } }) !== "Este depto cambió desde que te lo mostramos: salía Comprar, ahora sale Ajustar.") F("5 · el informe avisado no dice qué cambió");
     if (cm.lineaCambioPortada({ origenAviso: { avisoId: "a" } }) !== null || cm.lineaCambioPortada(null) !== null) F("5 · un informe sin marca dice algo");
     if (!/lineaCambio=\{lineaCambioPortada\(inputData\)\}/.test(codigo("src/components/analysis/SubjectCardGrid.tsx")) || !/\{lineaCambio && <p className="doc-hero-tasa" data-portada="cambio-mostrado"/.test(codigo("src/components/analysis/portada/PortadaInforme.tsx"))) F("5 · la portada no dibuja la línea del cambio");
   }
@@ -313,4 +314,6 @@ if (require.main === module) {
 //   M14 (23-nov) desde la guía, la sonda en vez de la guía guardada ............ §3 / §6
 //   M15 la guía guardada con otra combinación cuenta como mostrada ................ §6
 //   M16 renta corta sin respaldo (aceptoCambio siempre true) ....................... §7
+//   M17 (23-nov, Fabrizio: «el veredicto es Ajustar … el chip de Ajustar») el aviso sin el chip ........ §4 «no dibuja el veredicto con el chip»
+//   (M13 queda superado: la forma «nombre» se retiró y los textos usan la etiqueta de la casa.)
 // ============================================================================
