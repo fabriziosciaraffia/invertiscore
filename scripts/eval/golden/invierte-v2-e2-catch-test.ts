@@ -60,6 +60,35 @@ import { bloqueOfertaCifras, cifrasAPrecio, cifrasDeDepto } from "../../../src/l
 import { MOTOR_MUESTRA } from "../../../src/lib/invierte-v2/muestra-motor";
 import { sondaConPatch } from "../../../src/lib/analysis";
 import { numerosDe as numerosLectura } from "../../../src/lib/invierte-v2/lectura-franco";
+import { B4_COPY, OFERTAS_VIVAS, RETIRABLES, cierreDe, esRetirable, insistirDesde, lineaVence, sugerenciaFranco, sugerenciaValida, venceAlTerminar as venceAlTerminar28 } from "../../../src/lib/invierte-v2/b4";
+import { avisarPersona, rondaDesde, registrarRespuesta } from "../../../src/lib/invierte-v2/b4-servidor";
+import { cuandoNoHayAcuerdo } from "../../../src/lib/invierte-v2/depto-flujo";
+import { puedeRecibirCopia } from "../../../src/lib/invierte-v2/copias-servidor";
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+/** B4 (§28): un Supabase de mentira que anota lo que se escribe; las lecturas de inv_ofertas devuelven `fila`, el resto vacío. */
+function stubB4(fila: Record<string, unknown> | null, email: string) {
+  const escrito: { t: string; op: "update" | "insert"; v: Record<string, unknown> }[] = [];
+  const cadena = (t: string, op: "select" | "escribe"): unknown => {
+    const c: unknown = new Proxy({}, { get(_o, k) {
+      if (k === "then") return (ok: (x: unknown) => void) => ok({ data: op === "select" ? [] : null, error: null });
+      if (k === "maybeSingle" || k === "single") return async () => ({ data: op === "select" && t === "inv_ofertas" ? fila : null, error: null });
+      return () => c;
+    } });
+    return c;
+  };
+  const sb = {
+    auth: { admin: { getUserById: async () => ({ data: { user: { email } } }) } },
+    from: (t: string) => ({
+      select: () => cadena(t, "select"),
+      update: (v: Record<string, unknown>) => { escrito.push({ t, op: "update", v }); return cadena(t, "escribe"); },
+      insert: (v: Record<string, unknown>) => { escrito.push({ t, op: "insert", v }); return cadena(t, "escribe"); },
+      delete: () => cadena(t, "escribe"),
+    }),
+    rpc: async () => ({ data: null, error: null }),
+  };
+  return { sb: sb as unknown as SupabaseClient, escrito };
+}
 
 const RAIZ = join(__dirname, "..", "..", "..");
 const leer = (p: string) => readFileSync(join(RAIZ, p), "utf8").replace(/\r\n/g, "\n");
@@ -1336,7 +1365,8 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       const ot = OF(3500), ot2 = OF(3080);
       if (!/value="3\.090"/.test(ot) || !/disabled=""[^>]*data-inv2="subir"/.test(ot) || /disabled=""[^>]*data-inv2="subir"/.test(ot2)) F("24p · la oferta acepta un monto sobre lo publicado (desde la dirección) o el + no se detiene en el publicado");
       const fOFp = leer("src/components/invierte-v2/OfertaForm.tsx");
-      if (!/const v = Math\.min\(n, tope\);/.test(fOFp) || !/const fijar = \(n: number\) => \{ const v = acotarOferta\(n, publicadoUF\);/.test(fOFp) || !/useState<number>\(acotarOferta\(/.test(fOFp)) F("24p · el campo escrito a mano, el − / + o el monto inicial no se acotan al publicado");
+      // ⚠ ACTA (23-nov-2026, B4): «Proponer otro monto» acota además entre la oferta anterior y lo que piden (§28d); el tope sigue siendo el publicado.
+      if (!/const v = Math\.min\(n, tope\);/.test(fOFp) || !/const tope = Math\.min\(topeOferta\(publicadoUF\), maxUF \?\? Infinity\);/.test(fOFp) || !/const acotar = \(n: number\) => Math\.max\(piso, Math\.min\(tope, acotarOferta\(n, publicadoUF\)\)\);/.test(fOFp) || !/const fijar = \(n: number\) => \{ const v = acotar\(n\);/.test(fOFp) || !/useState<number>\(acotar\(/.test(fOFp)) F("24p · el campo escrito a mano, el − / + o el monto inicial no se acotan al publicado");
       if (!/onCambio\(acotarOferta\(minUF \+ entre/.test(leer("src/components/invierte-v2/BarraRango.tsx"))) F("24p · arrastrar el punto de la barra puede pasar el publicado");
       if (!/if \(!\(monto > 0\) \|\| monto > topeOferta\(of\.publicadoUF\)\) return \{ ok: false, error: "monto" \};/.test(rg24)) F("24p · el servidor firma una oferta sobre lo publicado");
       if (!/if \(monto > topeOferta\(o\.publicadoUF\)\) redirect\(/.test(codigo("src/app/invierte/depto/[avisoId]/oferta/firmar/page.tsx"))) F("24p · la pantalla de firma acepta un monto sobre lo publicado desde la dirección");
@@ -1454,8 +1484,9 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       ];
       const malos26 = casos26.map(([a, b], k) => (a === b ? null : `${k}:${a}≠${b}`)).filter(Boolean);
       if (malos26.length) F(`26a · una tarjeta queda en el nivel equivocado (${malos26.join(", ")})`);
-      const pres26 = estadoEnBase("listo", "aprobada", null, { estado: "presentada", pisoUF: 1, altoUF: 2, montoUF: 3020, presentadaAt: "2026-11-22T12:00:00Z" }, new Date("2026-11-23T15:00:00Z"));
-      if (pres26.titulo !== "Oferta presentada" || pres26.linea !== "UF 3.020 · día 2 de 5" || diaVigencia("2026-11-15T12:00:00Z", new Date("2026-11-30T12:00:00Z")) !== 5) F(`26a · la línea de estado en curso no dice el dato que importa (${pres26.linea})`);
+      // ⚠ ACTA (23-nov-2026, B4, punto 7 de Fabrizio): sin «día n de 5»: la línea dice cuándo vence (§28a).
+      const pres26 = estadoEnBase("listo", "aprobada", null, { estado: "presentada", pisoUF: 1, altoUF: 2, montoUF: 3020, presentadaAt: "2026-11-23T15:00:00Z", vigenteHasta: venceAlTerminar28(new Date("2026-11-23T15:00:00Z")).toISOString() }, new Date("2026-11-24T15:00:00Z"));
+      if (pres26.titulo !== "Oferta presentada" || pres26.linea !== "UF 3.020 · vence el sábado 28" || diaVigencia("2026-11-15T12:00:00Z", new Date("2026-11-30T12:00:00Z")) !== 5) F(`26a · la línea de estado en curso no dice el dato que importa (${pres26.linea})`);
       if (estadoEnBase("listo", "aprobada", null, { estado: "aceptada_sujeta", pisoUF: 1, altoUF: 2, montoUF: 2900 }).titulo === "Haz tu oferta") F("26a · una oferta aceptada cae en «Haz tu oferta»");
       // 26b · EL ORDEN: por nivel y, dentro de cada nivel, el más avanzado en el camino primero; a igual paso, en el orden de llegada.
       const o26 = ordenBase([
@@ -1472,7 +1503,7 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (o26b !== "ofer,conf,noav,pausa") F(`26b · en pausa y no avanzó no van al final de «Recién partiendo» (${o26b})`);
       // 26c · EL CAMINO CHICO sale de la misma fuente que el de la página: las dos llaman a caminoDepto con la misma oferta.
       const vb26 = codigo("src/components/invierte-v2/VistaBase.tsx"), vd26 = codigo("src/components/invierte-v2/VistaDepto.tsx");
-      if (!/camino=\{caminoDepto\(d\.etapa, d\.oferta\)\}/.test(vb26) || !/const c = caminoDepto\(p\.etapa, p\.oferta \? \{ estado: p\.oferta\.estado, montoUF: p\.oferta\.montoUF, enFirmeComo: p\.oferta\.enFirmeComo \?\? null \} : null\);/.test(vd26) || /function caminoChico|const PASOS\b/.test(codigo("src/components/invierte-v2/TarjetaDepto.tsx"))) F("26c · el camino chico de la base no sale de caminoDepto, como el de la página del depto");
+      if (!/camino=\{caminoDepto\(d\.etapa, d\.oferta\)\}/.test(vb26) || !/const c = caminoDepto\(p\.etapa, p\.oferta \?\? p\.cierre \?\? null\);/.test(vd26) /* ⚠ ACTA (23-nov-2026, B4): la oferta entera, o su cierre (la base ya trae la última ronda) */ || /function caminoChico|const PASOS\b/.test(codigo("src/components/invierte-v2/TarjetaDepto.tsx"))) F("26c · el camino chico de la base no sale de caminoDepto, como el de la página del depto");
       const cam26 = caminoDepto("listo", { estado: "presentada" });
       const cc26 = renderToStaticMarkup(createElement(CaminoChico, { camino: cam26 }));
       if ((cc26.match(/class="iv2-cc-p /g) ?? []).length !== 6 || !/Paso 2 de 6 · Oferta/.test(cc26) || cam26.pasos.map((x) => x.estado).join() !== (cc26.match(/data-estado="(\w+)"/g) ?? []).map((x) => x.slice(13, -1)).join()) F("26c · el camino chico no dibuja los seis puntos del camino de la página con su paso");
@@ -1562,6 +1593,77 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       const lf27 = codigo("src/lib/invierte-v2/lectura-franco-servidor.ts") + codigo("src/lib/invierte-v2/lectura-franco-ia.ts");
       if (/cap_rate_bruto|capRatePct\(|NÚMEROS DE LA TARJETA|flujo_20 as number/.test(lf27) || !/const numeros = numerosDe\(`\$\{JSON\.stringify\(publicacion\)\} \$\{JSON\.stringify\(datos\)\}`\);/.test(lf27) || !/sanearConRegistro\(JSON\.parse\(txt\), \{ fotosCompletas: completas, numeros: e\.numeros \}\)/.test(lf27)) F("27g · la lectura todavía recibe las cifras de la ficha, o el saneado no recibe los números de la publicación y nuestros datos");
       if (!/No las repitas ni las estimes, y no hables de cap rate, rentabilidad ni de lo que deja al mes\. Los únicos números que puedes citar son los que vienen en la publicación o en nuestros datos \(metros, piso, año, gastos comunes publicados, minutos al metro\)/.test(INSTRUCCION_LECTURA_FRANCO) || !/La primera línea es la SÍNTESIS/.test(INSTRUCCION_LECTURA_FRANCO) || /cap rate bruto, lo que deja o pide al mes y el veredicto\), tal cual/.test(INSTRUCCION_LECTURA_FRANCO)) F("27g · la instrucción no prohíbe las cifras de la ficha o no limita los números a la publicación y nuestros datos");
+      // ── 28 · B4, PRESENTAR Y RESPONDER (23-nov-2026; láminas 4.2-estados, 5.2 y 4.2-cuando-no-hay-acuerdo; LEEME y respuesta de Fabrizio)
+      // 28a · LA VIGENCIA: días de calendario en Santiago; presentada el lunes 23 (a cualquier hora) vence al terminar el sábado 28; el
+      // último día dice «Vence hoy»; la tarea de insistir sale al empezar el tercer día.
+      const lun10 = new Date("2026-11-23T13:00:00Z"), lun2359 = new Date("2026-11-24T02:59:00Z"), mar0001 = new Date("2026-11-24T03:01:00Z");
+      const fin28 = new Date("2026-11-29T03:00:00Z");
+      if (venceAlTerminar28(lun10).getTime() !== fin28.getTime() || venceAlTerminar28(lun2359).getTime() !== fin28.getTime()) F(`28a · presentada el lunes 23 no vence al terminar el sábado 28 (${venceAlTerminar28(lun10).toISOString()})`);
+      if (venceAlTerminar28(mar0001).getTime() !== new Date("2026-11-30T03:00:00Z").getTime()) F("28a · presentada el martes 24 a las 00:01 no vence al terminar el domingo 29");
+      if (lineaVence(fin28, new Date("2026-11-28T20:00:00Z")).vence !== "Vence hoy" || lineaVence(fin28, new Date("2026-11-27T20:00:00Z")).vence !== "Vence el sábado 28" || lineaVence(fin28, new Date("2026-11-27T20:00:00Z")).quedan !== "queda 1 día" || lineaVence(fin28, new Date("2026-11-24T12:00:00Z")).quedan !== "quedan 4 días" || !lineaVence(fin28, new Date("2026-11-29T03:00:01Z")).vencida) F("28a · la línea de la vigencia no dice «Vence el sábado 28 · quedan n días» o «Vence hoy» el último día");
+      if (insistirDesde(lun10).getTime() !== new Date("2026-11-26T03:00:00Z").getTime()) F(`28a · la tarea de insistir no sale al empezar el tercer día (${insistirDesde(lun10).toISOString()})`);
+      const base28 = estadoEnBase("listo", "aprobada", null, { estado: "presentada", pisoUF: 1, altoUF: 2, montoUF: 3020, presentadaAt: lun10.toISOString(), vigenteHasta: fin28.toISOString() }, new Date("2026-11-28T15:00:00Z"));
+      if (base28.linea !== "UF 3.020 · vence hoy" || /día \d de 5/.test(base28.linea)) F(`28a · la línea de la base no dice cuándo vence (${base28.linea})`);
+      // 28b · LO QUE SUGIERE FRANCO: dentro o bajo el borde alto, aceptar; encima, el punto medio con tope en el borde alto (en un Ajusta,
+      // el precio a Comprar); nunca menos que la oferta anterior de la persona. El admin lo corrige solo entre la oferta y lo que piden.
+      const sg = (o: number, c: number, a: number, comprar: number | null = null) => sugerenciaFranco({ ofertaUF: o, contraofertaUF: c, altoUF: a, comprarUF: comprar });
+      if (JSON.stringify(sg(2936, 2960, 2966)) !== JSON.stringify({ montoUF: 2960, accion: "aceptar" }) || JSON.stringify(sg(2936, 2966, 2966)) !== JSON.stringify({ montoUF: 2966, accion: "aceptar" })) F("28b · con la contraoferta dentro del rango, Franco no sugiere aceptar");
+      if (JSON.stringify(sg(2936, 3010, 2966)) !== JSON.stringify({ montoUF: 2966, accion: "proponer" }) || JSON.stringify(sg(2936, 2980, 2966)) !== JSON.stringify({ montoUF: 2958, accion: "proponer" })) F(`28b · sobre el rango, Franco no sugiere el punto medio con tope en el borde alto (${JSON.stringify(sg(2936, 3010, 2966))})`);
+      if (sg(2980, 3100, 2966).montoUF !== 2980) F(`28b · Franco sugiere menos que la oferta anterior de la persona (${sg(2980, 3100, 2966).montoUF})`);
+      if (sg(2936, 3100, 2966, 3000).montoUF !== 3000 || sg(2936, 3010, 2966, 3100).montoUF !== 2973) F("28b · en un Ajusta supuestos el tope no es el precio al que vuelve a Comprar");
+      if (!sugerenciaValida(2950, 2936, 3010) || sugerenciaValida(2930, 2936, 3010) || sugerenciaValida(3011, 2936, 3010)) F("28b · la corrección del admin acepta un monto bajo la oferta o sobre lo que piden");
+      if (!/sugerida_uf: sugerida!\.montoUF, sugerida_regla_uf: sugerida!\.montoUF, sugerida_fuente: "regla"/.test(codigo("src/lib/invierte-v2/b4-servidor.ts")) || !/sugerida_fuente: "admin", sugerida_por: quien\.id/.test(codigo("src/lib/invierte-v2/b4-servidor.ts"))) F("28b · la sugerencia no guarda lo que dio la regla, o la corrección no deja quién la hizo");
+      // 28c · NINGÚN MONTO NUEVO SE SALTA «REVISA Y FIRMA»: aceptar, proponer, otro monto y reactivar llevan a la firma; firmar exige la casilla.
+      const rc28 = codigo("src/components/invierte-v2/ResponderContraoferta.tsx");
+      if (!/const firmaSug = urlFirmaRonda\(/.test(rc28) || !/const firmaEllos = urlFirmaRonda\(/.test(rc28) || /fetch\(|accion: "firmar/.test(rc28) || !/\$\{urlOferta\(d\.avisoId\)\}\?desde=/.test(rc28)) F("28c · responder la contraoferta firma sin pasar por «Revisa y firma»");
+      const b4s = codigo("src/lib/invierte-v2/b4-servidor.ts");
+      if (!/export async function firmarRonda\([^]*?\{\s*if \(pedido\.acepto !== true\) return \{ ok: false, error: "casilla" \};/.test(b4s) || !/texto_sha256: sha256\(texto\), acepto_casilla: true/.test(b4s)) F("28c · una ronda nueva se firma sin la casilla o sin guardar el texto firmado");
+      if (!/body: JSON\.stringify\(desdeId \? \{ accion: "firmar_ronda", avisoId, desdeId, montoUF, acepto: true, leyo, retirarOtra \}/.test(codigo("src/components/invierte-v2/FirmaOfertaForm.tsx"))) F("28c · la firma de una ronda no sale de «Revisa y firma»");
+      const r28 = { estado: "contraoferta", montoUF: 2936, contraofertaUF: 3010, contraofertaVence: "2026-11-27T03:00:00Z", sinAcuerdoMotivo: null, respuestaTardia: null, respuestaTardiaUF: null, tardiaDecision: null };
+      const rd28 = rondaDesde(r28, new Date("2026-11-25T12:00:00Z"));
+      if (!rd28 || rd28.minUF !== 2936 || rd28.maxUF !== 3010 || rondaDesde(r28, new Date("2026-11-27T03:00:01Z")) !== null) F("28c · proponer otro monto no va entre la oferta anterior y lo que piden, o deja responder una contraoferta vencida");
+      // 28d · UNA A LA VEZ: firmada, en cola, presentada, contraoferta y aceptada cuentan como vivas; con otra viva, la nueva queda en cola y
+      // aceptar exige elegir con cuál se queda.
+      if (OFERTAS_VIVAS.join("|") !== "firmada|en_cola|presentada|contraoferta|aceptada_sujeta" || !/const VIVAS: readonly string\[\] = OFERTAS_VIVAS;/.test(codigo("src/lib/invierte-v2/rango-servidor.ts")) || !/const estado = \(viva \?\? \[\]\)\.length \? "en_cola" : "firmada";/.test(codigo("src/lib/invierte-v2/rango-servidor.ts"))) F("28d · dos ofertas pueden quedar vivas a la vez (firmada no cuenta, o la nueva no queda en cola)");
+      if (!/if \(\(tipo === "aceptar" \|\| tipo === "reactivar"\) && otrasVivas\.length\) \{\s*if \(pedido\.retirarOtra !== true\) return \{ ok: false, error: "otra_viva" \};/.test(b4s) || !/const quedaEnCola = \(tipo === "proponer" \|\| tipo === "volver"\) && otrasVivas\.length > 0/.test(b4s)) F("28d · aceptar con otra oferta viva no pide elegir, o un monto nuevo no queda en cola");
+      if (!/in\("estado", \["firmada", "presentada", "contraoferta", "aceptada_sujeta"\]\)\.limit\(1\);\s*if \(\(vivas \?\? \[\]\)\.length\) return null;/.test(b4s)) F("28d · la cola pasa a «por presentar» con otra oferta viva");
+      // 28e · RETIRARLA: hasta antes de «Oferta en firme»; desde en firme no hay botón (y la base lo impide).
+      if (esRetirable("en_firme") || !RETIRABLES.includes("aceptada_sujeta") || !RETIRABLES.includes("contraoferta") || RETIRABLES.join("|") !== "firmada|en_cola|presentada|contraoferta|aceptada_sujeta") F("28e · se puede retirar una oferta en firme (o no se puede retirar antes)");
+      if (!/if \(!esRetirable\(desde\)\) return \{ ok: false, error: "estado" \};/.test(b4s) || !/retirada_desde in \('firmada', 'en_cola', 'presentada', 'contraoferta', 'aceptada_sujeta'\)/.test(leer("supabase/migrations/20261202_invierte_b4.sql"))) F("28e · retirar no exige un estado retirable, o la migración deja retirar desde en firme");
+      // 28f · FUERA DE PLAZO: la respuesta se carga, pero la oferta no se reactiva sin la confirmación de la persona (su firma).
+      const st28 = stubB4({ id: "of-1", user_id: "u-1", aviso_id: "av-1", estado: "sin_acuerdo", sin_acuerdo_motivo: "vencida", respuesta_tardia: null, monto_uf: 2936, senales: { alto: 2966 }, techo_uf: 3090, es_prueba: true }, "persona@x.cl");
+      const rr28 = await registrarRespuesta(st28.sb, { id: "admin-1", email: "admin@x.cl" }, "of-1", { tipo: "aceptada" }, null, new Date("2026-11-30T12:00:00Z"));
+      const up28 = st28.escrito.filter((x) => x.t === "inv_ofertas" && x.op === "update");
+      if (!rr28.ok || !rr28.fueraDePlazo || up28.length !== 1 || "estado" in up28[0].v || up28[0].v.respuesta_tardia !== "aceptada_sujeta" || "tardia_decision" in up28[0].v) F(`28f · una respuesta fuera de plazo reactiva la oferta sin la confirmación de la persona (${JSON.stringify(up28.map((x) => x.v))})`);
+      if (!/if \(desde\.estado === "sin_acuerdo" && desde\.respuesta_tardia\) await admin\.from\(T_OF\)\.update\(\{ tardia_decision: "reactivar"/.test(b4s)) F("28f · reactivar no queda anotado al firmar la ronda nueva");
+      // 28g · LOS CORREOS: mientras el modo sea «lista», solo a las cuentas de la lista; un correo nunca sale a una cuenta fuera de ella.
+      let enviados28 = 0;
+      const deps28 = { correo: async () => { enviados28++; return true; }, puedeRecibir: async (e: string) => puedeRecibirCopia("lista", new Set(["lista@x.cl"]), e) };
+      const fila28 = { id: "of-2", user_id: "u-2", aviso_id: "av-2", monto_uf: 2936, es_prueba: true };
+      await avisarPersona(stubB4(null, "fuera@x.cl").sb, deps28, fila28, "presentada");
+      if (enviados28 !== 0) F("28g · un correo de la oferta sale a una cuenta fuera de la lista");
+      await avisarPersona(stubB4(null, "lista@x.cl").sb, deps28, fila28, "presentada");
+      if (enviados28 !== 1) F("28g · el correo de la oferta no sale a una cuenta de la lista");
+      if (!/puedeRecibir: async \(email\) => \{ const \{ modo, lista \} = await estadoInterruptor\(\); return puedeRecibirCopia\(modo, lista, email\); \}/.test(codigo("src/lib/invierte-v2/b4-avisos.ts"))) F("28g · los avisos de B4 no usan el interruptor (modo y lista)");
+      // 28h · EL WHATSAPP: solo cuando le toca actuar, como tarea del admin con enlace wa.me (sin enviar nada).
+      const stw = stubB4(null, "lista@x.cl");
+      await avisarPersona(stw.sb, null, fila28, "contraoferta", { otroUF: 3010 });
+      const tw = stw.escrito.filter((x) => x.t === "inv_tareas" && x.op === "insert");
+      const stp = stubB4(null, "lista@x.cl");
+      await avisarPersona(stp.sb, null, fila28, "presentada");
+      if (tw.length !== 1 || tw[0].v.tipo !== "enviar_whatsapp" || stp.escrito.some((x) => x.t === "inv_tareas")) F("28h · el WhatsApp no queda como tarea cuando le toca actuar, o queda cuando no");
+      // 28i · LOS ESTADOS DE LA PERSONA: aceptada sin los botones de B5; la contraoferta con «Responder»; los cuatro cierres sin «No seguir».
+      const ac28 = loQueSigue("listo", "aprobada", "/p", { estado: "aceptada_sujeta", postura: "negocia_poco", pisoUF: 2905, altoUF: 2966, montoUF: 2966 }, "/o", { avisoId: "x" });
+      if (!ac28 || ac28.boton || /Pedir la visita|Confirmar sin visitar/.test(JSON.stringify(ac28)) || ac28.chip !== "Te toca a ti" || !ac28.acciones?.includes("retirar")) F("28i · la aceptada trae los botones de B5, no dice que le toca o no se puede retirar");
+      const co28 = loQueSigue("listo", "aprobada", "/p", { estado: "contraoferta", postura: "negocia_poco", pisoUF: 2905, altoUF: 2966, montoUF: 2936, contraofertaUF: 3010, sugeridaUF: 2966 }, "/o", { avisoId: "x" });
+      if (co28?.boton?.texto !== B4_COPY.responder || co28.boton.href !== "/invierte/depto/x/contraoferta" || co28.cifras?.map((c) => c.et).join("|") !== "Tú|Ellos|Franco sugiere") F("28i · la contraoferta no trae sus tres cifras y «Responder»");
+      const cierres28 = [{ estado: "sin_acuerdo", sinAcuerdoMotivo: "rechazada" }, { estado: "sin_acuerdo", sinAcuerdoMotivo: "vencida" }, { estado: "sin_acuerdo", sinAcuerdoMotivo: "vencida", respuestaTardia: "aceptada_sujeta" }, { estado: "retirada" }].map((x) => cuandoNoHayAcuerdo({ postura: "negocia_poco", pisoUF: 1, altoUF: 2, montoUF: 2936, id: "c", ...x }, "x", null));
+      if (cierres28.some((c) => !c) || /No seguir/.test(JSON.stringify(cierres28)) || cierres28.map((c) => c?.titulo).join("|") !== [B4_COPY.rechazadaT, B4_COPY.vencidaT, B4_COPY.tardiaT("UF 2.936"), B4_COPY.retiradaT].join("|")) F("28i · los cuatro cierres no son los de la lámina, o traen «No seguir»");
+      if (cierres28[3]?.boton || cierres28[3]?.chip !== "Sin oferta" || cierres28[0]?.boton?.href !== "/invierte/depto/x/oferta") F("28i · la retirada lleva botón rojo, o «Hacer otra oferta» no abre la oferta");
+      if (cierreDe({ estado: "sin_acuerdo", sinAcuerdoMotivo: "vencida", respuestaTardia: "aceptada_sujeta", tardiaDecision: "no_gracias" }) !== "no_gracias") F("28i · «No, gracias» no cierra la respuesta fuera de plazo");
+      if (B4_COPY.noAceptar !== "No aceptar la contraoferta" || !/accion=\{d\.fueraDePlazo \? "no_aceptar_tardia" : "no_aceptar"\}/.test(rc28)) F("28i · responder la contraoferta no trae «No aceptar la contraoferta»");
+      // 28j · LA NOCHE: vence lo presentado y las contraofertas que pasaron su plazo, deja la tarea de insistir y pasa la cola; corre en el cron.
+      if (!/eq\("estado", "presentada"\)\.lte\("vigente_hasta", iso\)/.test(b4s) || !/eq\("estado", "contraoferta"\)\.lte\("contraoferta_vence", iso\)/.test(b4s) || !/insistirDesde\(new Date\(f\.presentada_at as string\)\)\.getTime\(\) > ahora\.getTime\(\)/.test(b4s) || !/await promoverCola\(admin, f\.user_id as string\);/.test(b4s) || !/const ofertas = await nocheB4\(admin, DEPS_AVISO_B4, ahora\)/.test(codigo("src/app/api/cron/invierte-vigilar/route.ts"))) F("28j · la noche no vence, no deja la tarea de insistir, no pasa la cola o no corre en el cron");
       // 24l · Los arreglos de la lectura: solo concretos; sin «no se ve» ni «falta información»; en el esquema y la versión.
       if (limpiarArreglos(["la cocina tiene muebles dañados", "no se ve el baño", "falta información del estado", "piso manchado"]).join("|") !== "la cocina tiene muebles dañados|piso manchado" || !(ESQUEMA_LECTURA_FRANCO as unknown as { required: string[] }).required.includes("arreglos") || VERSION_LECTURA15 < 13) F("24l · la lectura no deja solo arreglos concretos (o falta en el esquema o la versión no subió)");
       // 24m · La fecha de publicación: se captura de la ficha que ya se lee, y se guarda aparte (sin romper el guardado si falta la columna).
