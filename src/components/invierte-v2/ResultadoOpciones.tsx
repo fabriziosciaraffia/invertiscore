@@ -269,7 +269,7 @@ export function ResultadoOpciones(p: PropsResultado) {
   // con su chip; 20-nov-2026) y su casilla.
   const elegidoCard = entrada ? (
     <section className="iv2-res-elegido" data-marcado={marcados.has(entrada.avisoId) ? "1" : undefined} aria-labelledby="iv2-ele-t" data-inv2="elegido">
-      <FotosDepto avisoId={entrada.avisoId} n={fotos[entrada.avisoId] ?? 0} clase="iv2-res-elegido-foto" />
+      <FotosDepto avisoId={entrada.avisoId} n={fotos[entrada.avisoId] ?? 0} clase="iv2-res-elegido-foto" titulo={nombreDepto(entrada)} />
       <div className="iv2-res-elegido-cuerpo">
         <span className="iv2-res-rotulo">{A.elQueElegiste}</span>
         <div className="iv2-res-fila"><span className="iv2-res-nombre-bloque"><span className="iv2-res-nombre" id="iv2-ele-t" data-inv2="titulo-depto"><TituloCalle avisoId={entrada.avisoId} metro={entrada.metro} comuna={entrada.comuna} inicial={p.lecturas[entrada.avisoId] ?? null} /></span><span className="iv2-res-programa">{nombreDepto(entrada)}</span></span><Chip o={entrada} /></div>
@@ -297,7 +297,7 @@ export function ResultadoOpciones(p: PropsResultado) {
     return (
       <li key={o.avisoId} className="iv2-res-alt" data-marcado={marcados.has(o.avisoId) ? "1" : undefined} data-inv2="alternativa">
         <div className="iv2-res-alt-arriba">
-          <FotosDepto avisoId={o.avisoId} n={fotos[o.avisoId] ?? 0} chica clase="iv2-res-alt-foto" etiqueta={o.capRatePct != null ? `${A.capRate} ${pctUno(o.capRatePct)}` : null} />
+          <FotosDepto avisoId={o.avisoId} n={fotos[o.avisoId] ?? 0} chica clase="iv2-res-alt-foto" titulo={nombreDepto(o)} etiqueta={o.capRatePct != null ? `${A.capRate} ${pctUno(o.capRatePct)}` : null} />
           <div className="iv2-res-alt-texto">
             <div className="iv2-res-fila"><span className="iv2-res-nombre-bloque"><span className="iv2-res-alt-nombre" data-inv2="titulo-depto"><TituloCalle avisoId={o.avisoId} metro={o.metro} comuna={o.comuna} inicial={p.lecturas[o.avisoId] ?? null} /></span><span className="iv2-res-programa">{nombreDepto(o)}</span></span><Chip o={o} /></div>
             <span className="iv2-linea-chica" data-inv2="precio-distancia">{lineaPrecioDistancia(o.precioUF, p.distancias[o.avisoId] ?? null, o.comuna, p.donde, entrada?.comuna ?? null)}{o.capRatePct != null && <span className={(fotos[o.avisoId] ?? 0) ? "iv2-cap-linea iv2-cap-solo-movil" : "iv2-cap-linea"} data-inv2="cap-rate-linea"> · {A.capRate} {pctUno(o.capRatePct)}</span>}</span>

@@ -19,7 +19,7 @@ import { puedeInvertir } from "@/lib/invierte/invierte";
 import { leerPreaprobacion } from "./preaprobacion-servidor";
 import type { EstadoVisible } from "./preaprobacion";
 import { fichasDe, type FichaDepto } from "./ficha-depto-servidor";
-import { etapaDe, primeroLosTuyos, type Etapa } from "./depto-flujo";
+import { etapaDe, ordenBase, type Etapa, type OfertaBase } from "./depto-flujo";
 import { leerUbicaciones, numerosDe } from "./depto-servidor";
 
 const T_DEPTOS = "inv_deptos";
@@ -29,7 +29,7 @@ export interface DatosDepto { precioUF?: number; veredicto?: string | null; scor
 export type OrigenDepto = "entrada" | "franco" | "mapa";
 export interface DeptoDeBase { avisoId: string; alcanza: boolean; datos: DatosDepto; lineas: string[]; preparado: boolean; alMesEnCambio: boolean; origen: OrigenDepto; ficha: FichaDepto | null; /** Etapa 3, B1: en qué va (la línea de estado de la tarjeta). */ etapa: Etapa; noAvanzaMotivo: string | null;
   /** Rediseño del 23-nov (lámina 3.3): la oferta abierta (para decir el rango o que Franco la presenta) y el número confirmado de la calle. */
-  oferta: { estado: string; pisoUF: number | null; altoUF: number | null } | null; numeroConfirmado: string | null }
+  oferta: OfertaBase | null; numeroConfirmado: string | null }
 
 interface FilaCambio { aviso_id: string; tipo: TipoCambio; antes: Record<string, unknown>; despues: Record<string, unknown>; fecha: string }
 const PRINCIPALES: TipoCambio[] = ["precio_baja", "precio_sube", "despublicado", "republicado"];
@@ -117,11 +117,15 @@ export async function leerBase(admin: SupabaseClient, userId: string): Promise<B
   const ubic = await leerUbicaciones(admin, todos.map((d) => d.avisoId));
   for (const d of todos) d.datos = numerosDe(d.datos, ubic[d.avisoId]);
   // La oferta abierta de cada elegido (lámina 3.3 del 23-nov): el rango si está en borrador; si no, que Franco la presenta.
-  const { data: ofs } = ids.length ? await admin.from("inv_ofertas").select("aviso_id, estado, piso_uf, senales").eq("user_id", userId).in("aviso_id", ids).in("estado", ["borrador", "firmada", "en_cola", "presentada", "contraoferta", "aceptada_sujeta"]) : { data: [] };
-  const ofPor = new Map(((ofs ?? []) as { aviso_id: string; estado: string; piso_uf: number | null; senales: { alto?: number } | null }[]).map((o) => [o.aviso_id, { estado: o.estado, pisoUF: o.piso_uf != null ? Number(o.piso_uf) : null, altoUF: o.senales?.alto != null ? Number(o.senales.alto) : null }]));
+  // Segunda vuelta (23-nov): en la MISMA consulta, el monto, cuándo se presentó, la contraoferta y si quedó en firme sin visitar, para
+  // la línea de estado y el camino chico de cada tarjeta. La más reciente por depto (una oferta en firme también cuenta).
+  const { data: ofs } = ids.length ? await admin.from("inv_ofertas").select("aviso_id, estado, piso_uf, senales, monto_uf, presentada_at, contraoferta_uf, en_firme_como, created_at").eq("user_id", userId).in("aviso_id", ids).in("estado", ["borrador", "firmada", "en_cola", "presentada", "contraoferta", "aceptada_sujeta", "en_firme"]).order("created_at", { ascending: false }) : { data: [] };
+  type FilaOf = { aviso_id: string; estado: string; piso_uf: number | null; senales: { alto?: number } | null; monto_uf: number | null; presentada_at: string | null; contraoferta_uf: number | null; en_firme_como: string | null };
+  const ofPor = new Map<string, OfertaBase>();
+  for (const o of (ofs ?? []) as FilaOf[]) if (!ofPor.has(o.aviso_id)) ofPor.set(o.aviso_id, { estado: o.estado, pisoUF: o.piso_uf != null ? Number(o.piso_uf) : null, altoUF: o.senales?.alto != null ? Number(o.senales.alto) : null, montoUF: o.monto_uf != null ? Number(o.monto_uf) : null, presentadaAt: o.presentada_at, contraofertaUF: o.contraoferta_uf != null ? Number(o.contraoferta_uf) : null, enFirmeComo: o.en_firme_como });
   for (const d of elegidos) { d.oferta = ofPor.get(d.avisoId) ?? null; d.numeroConfirmado = ubic[d.avisoId]?.numero ?? null; }
-  // El depto que espera por la persona va primero (lámina 3.3 del 23-nov); los demás, en el orden en que los eligió.
-  const ordenados = primeroLosTuyos(elegidos, pre.estado);
+  // Por nivel (Te toca a ti, En curso, Recién partiendo) y, dentro de cada nivel, el más avanzado primero (segunda vuelta, 23-nov).
+  const ordenados = ordenBase(elegidos, pre.estado);
   const fichas = await fichasDe(admin, todos.map((d) => d.avisoId), Object.fromEntries(todos.map((d) => [d.avisoId, d.datos.precioUF ?? null])));
   for (const d of todos) { d.ficha = fichas[d.avisoId] ?? null; const cap = ubic[d.avisoId]?.analisis?.capRatePct; if (d.ficha && cap != null) d.ficha.capRatePct = cap; }
   const preDetalle = { motivo: pre.doc?.motivo ?? null, banco: pre.doc?.banco ?? null, vigenteHasta: pre.doc?.vigenteHasta ?? null, mime: pre.doc?.mime ?? null, otra: pre.otra ? { estado: pre.otra.estado, mime: pre.otra.mime } : null };

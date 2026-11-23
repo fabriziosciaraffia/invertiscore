@@ -61,7 +61,7 @@ export default async function SumarPage({ params, searchParams }: { params: { av
         </div>
         {/* El depto en su tarjeta (lámina 3.x): foto, título calle·metro, comuna y programa, precio y veredicto. */}
         <div className="iv2-sumar-depto" data-inv2="sumar-depto">
-          <FotoPortada avisoId={depto.avisoId} n={fd?.fotos ?? 0} clase="iv2-sumar-depto-foto" />
+          <FotoPortada avisoId={depto.avisoId} n={fd?.fotos ?? 0} clase="iv2-sumar-depto-foto" lupa titulo={fd?.titulo ?? null} />
           <div className="iv2-sumar-depto-id">
             <p className="iv2-sumar-depto-t" data-inv2="titulo-depto">{fd?.titulo ?? depto.linea}</p>
             <p className="iv2-depto-s">{depto.linea}</p>
@@ -75,7 +75,7 @@ export default async function SumarPage({ params, searchParams }: { params: { av
             <ul className="iv2-otras">
               {parecidos.map((o) => (
                 <li key={o.avisoId} className="iv2-sumar-parecido" data-inv2="parecido">
-                  <FotoPortada avisoId={o.avisoId} n={fichas[o.avisoId]?.fotos ?? 0} clase="iv2-sumar-parecido-foto" />
+                  <FotoPortada avisoId={o.avisoId} n={fichas[o.avisoId]?.fotos ?? 0} clase="iv2-sumar-parecido-foto" lupa titulo={fichas[o.avisoId]?.titulo ?? null} />
                   <div className="iv2-sumar-parecido-id">
                     <p className="iv2-sumar-parecido-t" data-inv2="titulo-depto">{fichas[o.avisoId]?.titulo ?? lineaDepto({ comuna: o.comuna, dormitorios: o.dormitorios, banos: o.banos, m2: o.m2 })}</p>
                     <p className="iv2-depto-s">{[lineaDepto({ dormitorios: o.dormitorios, banos: o.banos, m2: o.m2 }), `UF ${fmtUF(o.precioUF)}`].filter(Boolean).join(" · ")}</p>

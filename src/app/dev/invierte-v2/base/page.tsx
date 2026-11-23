@@ -9,7 +9,7 @@ import { VistaBase } from "@/components/invierte-v2/VistaBase";
 import { VistaActualizado } from "@/components/invierte-v2/VistaActualizado";
 import { ACTUALIZADO_COPY, BASE_COPY } from "@/lib/invierte-v2/base";
 import { lineaCambio } from "@/lib/invierte-v2/cambios";
-import { primeroLosTuyos } from "@/lib/invierte-v2/depto-flujo";
+import { ordenBase } from "@/lib/invierte-v2/depto-flujo";
 import type { Base, DatosDepto, PerfilActualizado } from "@/lib/invierte-v2/base-servidor";
 import type { OrdenInv } from "@/lib/invierte-v2/servidor";
 import type { PerfilInv } from "@/lib/invierte-v2/perfil-servidor";
@@ -49,9 +49,13 @@ const OTRAS: Base["otras"] = [
 ];
 
 // Etapa 3, B1: una etapa distinta por tarjeta, para ver cada línea de estado.
-const ETAPAS_MUESTRA: Base["elegidos"][number]["etapa"][] = ["confirmando", "listo", "no_avanza", "sin_preaprobacion", "confirmando", "confirmando"];
+// Segunda vuelta (23-nov, lámina 3.3): los tres niveles a la vez — «Te toca a ti» (listo, por ofertar), «En curso» (oferta presentada,
+// día 2 de 5) y «Recién partiendo» (confirmando); con ?vista=seis, además en firme sin visita, sin preaprobación y no avanza.
+const ETAPAS_MUESTRA: Base["elegidos"][number]["etapa"][] = ["confirmando", "listo", "listo", "en_firme", "sin_preaprobacion", "no_avanza"];
+const AYER = new Date(Date.now() - 864e5 * 1.2).toISOString();
+const OFERTAS_MUESTRA: (Base["elegidos"][number]["oferta"])[] = [null, { estado: "borrador", pisoUF: 3145, altoUF: 3212 }, { estado: "presentada", pisoUF: 3600, altoUF: 3680, montoUF: 3620, presentadaAt: AYER }, { estado: "en_firme", pisoUF: 2950, altoUF: 3010, montoUF: 2990, enFirmeComo: "sin_visitar" }, null, null];
 // El de la etapa «listo» con su rango (rediseño del 23-nov, lámina 3.3): la tarjeta se levanta, dice «Haz tu oferta» y va primera.
-const conAlMes = (e: Omit<Base["elegidos"][number], "alMesEnCambio" | "etapa" | "noAvanzaMotivo" | "oferta" | "numeroConfirmado">, i: number): Base["elegidos"][number] => ({ ...e, alMesEnCambio: e.lineas.some((l) => /al mes$/.test(l)), etapa: ETAPAS_MUESTRA[i] ?? "confirmando", noAvanzaMotivo: null, oferta: ETAPAS_MUESTRA[i] === "listo" ? { estado: "borrador", pisoUF: 3145, altoUF: 3212 } : null, numeroConfirmado: ETAPAS_MUESTRA[i] === "listo" ? "1250" : null });
+const conAlMes = (e: Omit<Base["elegidos"][number], "alMesEnCambio" | "etapa" | "noAvanzaMotivo" | "oferta" | "numeroConfirmado">, i: number): Base["elegidos"][number] => ({ ...e, alMesEnCambio: e.lineas.some((l) => /al mes$/.test(l)), etapa: ETAPAS_MUESTRA[i] ?? "confirmando", noAvanzaMotivo: null, oferta: OFERTAS_MUESTRA[i] ?? null, numeroConfirmado: OFERTAS_MUESTRA[i] ? "1250" : null });
 
 export default function BaseDemo({ searchParams }: { searchParams: { vista?: string; pre?: string } }) {
   if (process.env.NODE_ENV === "production" && process.env.VERCEL_ENV !== "preview") notFound();
@@ -73,7 +77,7 @@ export default function BaseDemo({ searchParams }: { searchParams: { vista?: str
   const base: Base = {
     orden: { id: "o", nombre: "María José Fernández Valdivieso", firmadoAt: "2026-11-15T15:00:00Z" } as OrdenInv,
     perfil: { topeUF: 3500, comunas: ["Pedro Aguirre Cerda", "Estación Central", "Independencia"] } as PerfilInv,
-    elegidos: primeroLosTuyos((seis ? ELEGIDOS : ELEGIDOS.slice(0, 4)).map(conAlMes), pre), otras: OTRAS, whatsapp: "+56912345678",
+    elegidos: ordenBase((seis ? ELEGIDOS : ELEGIDOS.slice(0, 4)).map(conAlMes), pre), otras: OTRAS, whatsapp: "+56912345678",
     preaprobacion: pre,
     // ?pre=subir|revision|corregir|aprobada|aprobada-revision (20-nov-2026): las formas de «Lo que te toca hoy» y la línea de capacidad.
     preDetalle: {

@@ -14,7 +14,7 @@ import { direccionDepto, tituloDepto } from "@/lib/invierte-v2/titulo-depto";
 
 export const dynamic = "force-dynamic";
 
-export default function DeptoDemo({ searchParams }: { searchParams: { etapa?: string; aviso?: string; confirmada?: string; preguntas?: string; oferta?: string } }) {
+export default function DeptoDemo({ searchParams }: { searchParams: { etapa?: string; aviso?: string; confirmada?: string; preguntas?: string; oferta?: string; lectura?: string; fotos?: string } }) {
   if (process.env.NODE_ENV === "production" && process.env.VERCEL_ENV !== "preview") notFound();
   const e = searchParams.etapa ?? "confirmando";
   const etapa: Etapa = e === "revision" || e === "corregir" ? "sin_preaprobacion" : e === "dejo" ? "no_avanza" : (["confirmando", "sin_preaprobacion", "listo", "no_avanza"].includes(e) ? e : "confirmando") as Etapa;
@@ -25,7 +25,11 @@ export default function DeptoDemo({ searchParams }: { searchParams: { etapa?: st
   const p: PaginaDepto = {
     avisoId, etapa, noAvanzaMotivo: e === "dejo" ? "dejo_de_convenir" : e === "no_avanza" ? "sin_acuerdo" : null,
     datos: { comuna: "Providencia", dormitorios: 2, banos: 2, m2: 58, precioUF: 3090, veredicto: "COMPRAR", score: 81, flujoCLP: -45000 },
-    ficha: { titulo: tituloDepto({ calle: "Avenida Libertador Bernardo O'Higgins", metro, comuna: "Providencia" }), metro, comuna: "Providencia", fotos: avisoId === "muestra" ? 0 : 3, capRatePct: 5.1, lectura: null, punto: { lat: -33.4372, lng: -70.6311 }, arriendoCLP: 520000 },
+    ficha: { titulo: tituloDepto({ calle: "Avenida Libertador Bernardo O'Higgins", metro, comuna: "Providencia" }), metro, comuna: "Providencia", fotos: avisoId === "muestra" ? 0 : Math.min(24, Number(searchParams.fotos) || 3), capRatePct: 5.1, punto: { lat: -33.4372, lng: -70.6311 }, arriendoCLP: 520000,
+      // «Lo que ve Franco» (segunda vuelta, 23-nov): una lectura de muestra; ?lectura=0 la saca (la tarjeta no se dibuja).
+      lectura: searchParams.lectura === "0" ? null : { alerta: { nivel: "ninguna", motivo: null }, calle: "Avenida Libertador Bernardo O'Higgins",
+        corta: ["Cap rate de 5,1 %, amoblado y en buen estado: listo para arrendar.", "A 4 cuadras del metro Parque Bustamante.", "Ya bajó UF 80: quien vende está dispuesto a moverse."],
+        larga: [{ etiqueta: "Estado", texto: "Amoblado y en buen estado según las fotos." }, { etiqueta: "Para arrendar", texto: "Listo para arrendar tal como está." }, { etiqueta: "Ubicación", texto: "A 4 cuadras del metro Parque Bustamante." }, { etiqueta: "Ojo", texto: "La publicación no dice los gastos comunes." }] } as never },
     tituloConNumero: tituloDepto({ calle: "Avenida Libertador Bernardo O'Higgins", numero: confirmada ? "1302" : null, metro, comuna: "Providencia" }),
     direccion: direccionDepto({ calle: "Avenida Libertador Bernardo O'Higgins", numero: confirmada ? "1302" : null, comuna: "Providencia" }),
     ubicacion: confirmada ? { avisoId, direccion: "Avenida Libertador Bernardo O'Higgins", numero: "1302", lat: -33.44, lng: -70.63, distanciaM: 180, analisis: null, precioComprarUF: null, cargadaAt: "2026-11-21T12:00:00Z" } : null,

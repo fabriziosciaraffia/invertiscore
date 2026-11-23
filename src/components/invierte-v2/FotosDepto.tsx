@@ -5,14 +5,17 @@
 // pasarlas ahí mismo, sin abrir nada, con el contador y los puntos; en el celular también se deslizan con el dedo. Las sirve la
 // ruta propia (solo a quien firmó). Sin fotos, no dibuja nada; si la foto no carga, la tarjeta queda sin foto, sin hueco.
 // `chica`: la foto de una alternativa, más baja y con las mismas flechas, contador y puntos, más chicos (20-nov-2026, Fabrizio).
-// La foto siempre se recorta para llenar el recuadro, sin deformarse (object-fit: cover).
+// La foto siempre se recorta para llenar el recuadro, sin deformarse (object-fit: cover). Segunda vuelta (23-nov): tocar la foto o su lupa
+// abre el visor (VisorFotos) en la foto que se estaba viendo, con todas, completas y sin recortar; nunca se sale de la página.
 // ─────────────────────────────────────────────────────────────────────────────
 import { useEffect, useRef, useState } from "react";
 import { ALTERNATIVAS_COPY as A } from "@/lib/invierte-v2/alternativas";
 import { urlFoto } from "@/lib/invierte-v2/fotos";
+import { VISOR_COPY, VisorFotos } from "./VisorFotos";
 
-export function FotosDepto({ avisoId, n, chica = false, clase = "", etiqueta = null }: { avisoId: string; n: number; chica?: boolean; clase?: string; /** Sobre la foto, arriba a la izquierda (el cap rate de una alternativa, 20-nov-2026). */ etiqueta?: string | null }) {
+export function FotosDepto({ avisoId, n, chica = false, clase = "", etiqueta = null, titulo = null }: { avisoId: string; n: number; chica?: boolean; clase?: string; /** Sobre la foto, arriba a la izquierda (el cap rate de una alternativa, 20-nov-2026). */ etiqueta?: string | null; /** El encabezado del visor. */ titulo?: string | null }) {
   const [i, setI] = useState(0);
+  const [visor, setVisor] = useState(false);
   // Las fotos que la fuente ya borró (404) se saltan, también la primera (20-nov-2026: una alternativa quedaba sin fotos porque su
   // primera foto estaba rota y las otras doce no); solo si no carga ninguna, la tarjeta va sin el bloque.
   const [rotas, setRotas] = useState<Set<number>>(() => new Set());
@@ -31,8 +34,12 @@ export function FotosDepto({ avisoId, n, chica = false, clase = "", etiqueta = n
       onTouchStart={(e) => { toque.current = e.touches[0]?.clientX ?? null; }}
       onTouchEnd={(e) => { const x0 = toque.current; toque.current = null; const x1 = e.changedTouches[0]?.clientX; if (x0 == null || x1 == null || Math.abs(x1 - x0) < 40) return; ir(x1 < x0 ? 1 : -1); }}>
       {/* eslint-disable-next-line @next/next/no-img-element -- la sirve la ruta propia, con su caché; no pasa por el optimizador */}
-      <img ref={img} src={urlFoto(avisoId, i)} alt={A.foto(i + 1, n)} loading={chica && i === 0 ? "lazy" : "eager"} decoding="async" onError={romper} onLoad={(e) => { if (e.currentTarget.naturalWidth <= 1) romper(); else setBuena(true); }} />
+      <img ref={img} src={urlFoto(avisoId, i)} alt={A.foto(i + 1, n)} loading={chica && i === 0 ? "lazy" : "eager"} decoding="async" onClick={() => setVisor(true)} onError={romper} onLoad={(e) => { if (e.currentTarget.naturalWidth <= 1) romper(); else setBuena(true); }} />
       {etiqueta && <span className="iv2-foto-etiqueta" data-inv2="foto-etiqueta">{etiqueta}</span>}
+      <button type="button" className="iv2-lupa iv2-lupa-foto" aria-label={VISOR_COPY.abrir} onClick={() => setVisor(true)} data-inv2="lupa">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" stroke="currentColor" strokeWidth="2" /><path d="M15.5 15.5L21 21M10.5 7.5v6M7.5 10.5h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
+      </button>
+      {visor && <VisorFotos avisoId={avisoId} n={n} inicio={i} titulo={titulo} alCerrar={() => setVisor(false)} />}
       {n > 1 && (
         <>
           <button type="button" className="iv2-foto-flecha iv2-foto-ant" aria-label={A.fotoAnterior} onClick={() => ir(-1)} data-inv2="foto-anterior">‹</button>

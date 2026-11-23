@@ -134,27 +134,49 @@ export function loQueSigue(etapa: Etapa, pre: EstadoVisible, urlPreaprobacion: s
   return null;
 }
 
-/** El estado de la tarjeta en la base (lámina 3.3 del 23-nov): el chip y qué pasa ahora. Cuando le toca a la persona, además QUÉ le toca
- *  (`titulo`, en negrita) y, si existe, el rango; la tarjeta se levanta y va primera. */
-export interface EstadoBase { chip: string; tono: Tono; linea: string; titulo?: string }
-export function estadoEnBase(etapa: Etapa, pre: EstadoVisible, motivo: string | null, oferta: { estado: string; pisoUF: number | null; altoUF: number | null } | null = null): EstadoBase {
-  if (etapa === "no_avanza") return { chip: "No avanzó", tono: "gris", linea: motivo === "dejo_de_convenir" ? "Al confirmar dónde está, dejó de convenir" : "Te mostramos el más parecido que sí podemos gestionar" };
-  if (etapa === "sin_preaprobacion") return pre === "en_revision"
-    ? { chip: "Franco está en eso", tono: "gris", linea: "Revisando tu preaprobación" }
-    : { chip: "Te toca a ti", tono: "ciruela", titulo: "Sube tu preaprobación", linea: "Para ofertar o visitar" };
-  if (etapa === "listo") {
-    if (oferta?.estado === "firmada") return { chip: "Franco está en eso", tono: "gris", linea: "Franco presenta tu oferta" };
-    if (oferta?.estado === "en_cola") return { chip: "Franco está en eso", tono: "gris", linea: "Tu oferta quedó preparada" };
-    if (oferta && oferta.estado !== "borrador") return { chip: "Franco está en eso", tono: "gris", linea: "Tu oferta está presentada" };
-    const rango = oferta?.pisoUF && oferta.altoUF ? `Franco recomienda ${uf0(oferta.pisoUF)} a ${Math.round(oferta.altoUF).toLocaleString("es-CL")}` : "Franco ya lo dejó listo con quien lo vende";
-    return { chip: "Te toca a ti", tono: "ciruela", titulo: "Haz tu oferta", linea: rango };
-  }
-  return { chip: "Franco está en eso", tono: "gris", linea: "Confirmando con quien lo vende que sigue disponible" };
+/** La oferta del depto que la base y el camino necesitan (una sola consulta para toda la base: base-servidor.ts). */
+export interface OfertaBase { estado: string; pisoUF: number | null; altoUF: number | null; montoUF?: number | null; presentadaAt?: string | null; contraofertaUF?: number | null; enFirmeComo?: string | null }
+
+/** Los tres niveles de la base (segunda vuelta del rediseño, 23-nov-2026; regla de Fabrizio): si la persona tiene un botón principal
+ *  que apretar, «Te toca a ti»; si el depto ya avanzó y el siguiente movimiento es de Franco o de quien vende, «En curso con Franco»;
+ *  si no ha pasado nada todavía, «Recién partiendo». */
+export type NivelBase = "tuyo" | "curso" | "partiendo";
+export interface EstadoBase { chip: string; tono: Tono; linea: string; titulo?: string; nivel: NivelBase }
+const FRANCO = "Franco está en eso", TUYO = "Te toca a ti";
+/** «día 2 de 5» de una oferta presentada (vigente por 5 días). */
+export function diaVigencia(presentadaAt: string, ahora: Date = new Date()): number {
+  return Math.min(5, Math.max(1, Math.floor((ahora.getTime() - new Date(presentadaAt).getTime()) / 864e5) + 1));
 }
-/** El depto que espera por la persona va primero en la base (lámina 3.3 del 23-nov); los demás quedan en su orden. */
-export function primeroLosTuyos<T extends { etapa: Etapa; noAvanzaMotivo: string | null; oferta: { estado: string; pisoUF: number | null; altoUF: number | null } | null }>(xs: T[], pre: EstadoVisible): T[] {
-  const tuyo = (d: T) => (estadoEnBase(d.etapa, pre, d.noAvanzaMotivo, d.oferta).tono === "ciruela" ? 1 : 0);
-  return [...xs].sort((a, b) => tuyo(b) - tuyo(a));
+/** El estado de la tarjeta en la base: el chip, qué pasa (`titulo`), el dato que importa (`linea`) y su nivel. */
+export function estadoEnBase(etapa: Etapa, pre: EstadoVisible, motivo: string | null, oferta: OfertaBase | null = null, ahora: Date = new Date()): EstadoBase {
+  const monto = oferta?.montoUF ? uf0(oferta.montoUF) : null;
+  if (etapa === "no_avanza") return { chip: "No avanzó", tono: "gris", nivel: "partiendo", linea: motivo === "dejo_de_convenir" ? "Al confirmar dónde está, dejó de convenir" : "Te mostramos el más parecido que sí podemos gestionar" };
+  if (etapa === "sin_preaprobacion") return pre === "en_revision"
+    ? { chip: FRANCO, tono: "gris", nivel: "partiendo", titulo: "Revisando tu preaprobación", linea: "Te avisamos apenas esté" }
+    : { chip: TUYO, tono: "ciruela", nivel: "tuyo", titulo: "Sube tu preaprobación", linea: "Para ofertar o visitar" };
+  if (etapa === "listo") {
+    const e = oferta?.estado ?? "borrador";
+    if (e === "firmada") return { chip: FRANCO, tono: "gris", nivel: "curso", titulo: "Oferta firmada", linea: [monto, "Franco la presenta"].filter(Boolean).join(" · ") };
+    if (e === "en_cola") return { chip: FRANCO, tono: "gris", nivel: "curso", titulo: "Oferta preparada", linea: [monto, "se presenta después de la vigente"].filter(Boolean).join(" · ") };
+    if (e === "presentada") return { chip: FRANCO, tono: "gris", nivel: "curso", titulo: "Oferta presentada", linea: [monto, oferta?.presentadaAt ? `día ${diaVigencia(oferta.presentadaAt, ahora)} de 5` : null].filter(Boolean).join(" · ") };
+    if (e === "contraoferta") return { chip: TUYO, tono: "ciruela", nivel: "tuyo", titulo: "Responde la contraoferta", linea: oferta?.contraofertaUF ? `Ellos: ${uf0(oferta.contraofertaUF)}` : "Quien vende te respondió con otro precio" };
+    if (e === "aceptada_sujeta") return { chip: TUYO, tono: "ciruela", nivel: "tuyo", titulo: "Pide la visita", linea: monto ? `Aceptaron tu oferta: ${monto}` : "Aceptaron tu oferta" };
+    const rango = oferta?.pisoUF && oferta.altoUF ? `Franco recomienda ${uf0(oferta.pisoUF)} a ${Math.round(oferta.altoUF).toLocaleString("es-CL")}` : "Franco ya lo dejó listo con quien lo vende";
+    return { chip: TUYO, tono: "ciruela", nivel: "tuyo", titulo: "Haz tu oferta", linea: rango };
+  }
+  if (etapa === "en_firme") return { chip: FRANCO, tono: "gris", nivel: "curso", titulo: "Oferta en firme", linea: monto ?? "Franco prepara la promesa" };
+  if (etapa === "promesa") return { chip: FRANCO, tono: "gris", nivel: "curso", titulo: "Promesa", linea: monto ?? "Franco coordina la promesa" };
+  if (etapa === "escritura") return { chip: FRANCO, tono: "gris", nivel: "curso", titulo: "Escritura", linea: monto ?? "Franco coordina la escritura" };
+  if (etapa === "inscrito") return { chip: "Listo", tono: "gris", nivel: "curso", titulo: "Inscrito a tu nombre", linea: monto ?? "El depto ya es tuyo" };
+  if (etapa === "en_pausa") return { chip: FRANCO, tono: "gris", nivel: "partiendo", titulo: "En pausa", linea: "Franco te escribe para retomarlo" };
+  return { chip: FRANCO, tono: "gris", nivel: "partiendo", titulo: "Confirmando el depto", linea: "Con quien lo vende" };
+}
+const RANGO_NIVEL: Record<NivelBase, number> = { tuyo: 0, curso: 1, partiendo: 2 };
+/** El orden de la base: primero «Te toca a ti», después «En curso», después «Recién partiendo»; dentro de cada nivel, primero el depto
+ *  más avanzado en el camino (el mismo camino de la página del depto); a igual paso, en el orden en que llegaron. */
+export function ordenBase<T extends { etapa: Etapa; noAvanzaMotivo: string | null; oferta: OfertaBase | null }>(xs: T[], pre: EstadoVisible): T[] {
+  const clave = (d: T) => ({ n: RANGO_NIVEL[estadoEnBase(d.etapa, pre, d.noAvanzaMotivo, d.oferta).nivel], paso: caminoDepto(d.etapa, d.oferta).actual });
+  return xs.map((d, i) => ({ d, i, k: clave(d) })).sort((a, b) => a.k.n - b.k.n || b.k.paso - a.k.paso || a.i - b.i).map((x) => x.d);
 }
 
 // ── LO QUE FRANCO AVERIGUÓ (B2, 22-nov-2026; láminas 4.1 y 4.2) ──────────────
@@ -202,12 +224,14 @@ export function metaPregunta(p: PreguntaDepto): string | null {
 }
 
 // ── EL CAMINO DE ESTE DEPTO (rediseño del 23-nov-2026, láminas 4.2 y 4.2-estados) ──
-export type EstadoPaso = "hecho" | "tuyo" | "franco" | "pendiente";
+export type EstadoPaso = "hecho" | "tuyo" | "franco" | "pendiente" | "omitido";
 export interface PasoCamino { n: number; t: string; s: string | null; /** El de la línea de PC: «Listo», «Te toca a ti», «Opcional». */ corto: string | null; estado: EstadoPaso }
-const PASOS = ["Depto confirmado", "Oferta", "Visita", "Oferta en firme", "Promesa", "Escritura"] as const;
+export const PASOS_CAMINO = ["Depto confirmado", "Oferta", "Visita", "Oferta en firme", "Promesa", "Escritura"] as const;
 /** Los seis pasos con el actual marcado: ciruela si le toca a la persona, negro si lo lleva Franco. La oferta y la visita son pasos del
- *  camino (sale la tarjeta «Oferta · Sin presentar»). */
-export function caminoDepto(etapa: Etapa, oferta: Pick<OfertaResumen, "estado"> | null): { actual: number; pasos: PasoCamino[] } {
+ *  camino (sale la tarjeta «Oferta · Sin presentar»). Es LA fuente del camino: la página del depto y el camino chico de la base lo
+ *  dibujan desde aquí. Segunda vuelta (23-nov): el paso 1 se llama «Confirmar el depto» mientras está en curso; la visita que no hubo
+ *  queda «omitida» (gris hueco) cuando el depto ya pasó de ahí; la oferta aceptada pasa a la visita, nunca a «Haz tu oferta». */
+export function caminoDepto(etapa: Etapa, oferta: Pick<OfertaBase, "estado" | "enFirmeComo" | "montoUF"> | null): { actual: number; pasos: PasoCamino[] } {
   const subs: (string | null)[] = [null, null, "Opcional", null, null, null];
   let actual = 1, estado: EstadoPaso = "franco";
   if (etapa === "confirmando" || etapa === "en_pausa") { subs[0] = "Franco lo está confirmando con quien lo vende"; }
@@ -219,6 +243,7 @@ export function caminoDepto(etapa: Etapa, oferta: Pick<OfertaResumen, "estado"> 
     else if (e === "en_cola") { estado = "franco"; subs[1] = "Preparada · Franco la presenta después de la vigente"; }
     else if (e === "presentada") { estado = "franco"; subs[1] = "Presentada · esperando respuesta"; }
     else if (e === "contraoferta") { estado = "tuyo"; subs[1] = "Te toca a ti: responder"; }
+    else if (e === "aceptada_sujeta") { actual = 3; estado = "tuyo"; subs[1] = oferta?.montoUF ? `Aceptada en ${uf0(oferta.montoUF)}` : "Aceptada"; subs[2] = "Te toca a ti: pedirla o confirmar sin visitar"; }
     else { estado = "tuyo"; subs[1] = "Te toca a ti: haz tu oferta"; }
   }
   else if (etapa === "en_firme") actual = 4;
@@ -226,13 +251,16 @@ export function caminoDepto(etapa: Etapa, oferta: Pick<OfertaResumen, "estado"> 
   else if (etapa === "escritura") actual = 6;
   else if (etapa === "inscrito") actual = 7;
   if (actual > 1) subs[0] = "Dirección y disponibilidad confirmadas";
-  const pasos = PASOS.map((t, i): PasoCamino => {
+  const sinVisita = actual > 3 && oferta?.enFirmeComo === "sin_visitar";
+  if (sinVisita) subs[2] = "No hubo visita";
+  const pasos = PASOS_CAMINO.map((t0, i): PasoCamino => {
     const n = i + 1;
-    const e: EstadoPaso = n < actual ? "hecho" : n === actual ? estado : "pendiente";
-    const corto = e === "hecho" ? "Listo" : e === "tuyo" ? "Te toca a ti" : e === "franco" ? "Franco está en eso" : n === 3 ? "Opcional" : null;
-    return { n, t, s: n === actual || n === 1 || n === 3 ? subs[i] : null, corto, estado: e };
+    const e: EstadoPaso = n === 3 && sinVisita ? "omitido" : n < actual ? "hecho" : n === actual ? estado : "pendiente";
+    const t = n === 1 && actual === 1 ? "Confirmar el depto" : t0;
+    const corto = e === "omitido" ? "Sin visita" : e === "hecho" ? "Listo" : e === "tuyo" ? "Te toca a ti" : e === "franco" ? "Franco está en eso" : n === 3 ? "Opcional" : null;
+    return { n, t, s: n === actual || n === 1 || n === 3 || (n === 2 && !!subs[1]) ? subs[i] : null, corto, estado: e };
   });
-  return { actual: Math.min(actual, PASOS.length), pasos };
+  return { actual: Math.min(actual, PASOS_CAMINO.length), pasos };
 }
 
 /** «A 4 cuadras del metro» (una cuadra ≈ 100 m), hasta 12 cuadras; más lejos, nada. */

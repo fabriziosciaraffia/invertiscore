@@ -27,6 +27,7 @@ import { IconoWhatsapp } from "./IconoWhatsapp";
 import { SumarDepto } from "./SumarDepto";
 import { BarraRango } from "./BarraRango";
 import { MapaDepto } from "./MapaDepto";
+import { LoQueVeFrancoDepto } from "./LoQueVeFrancoDepto";
 
 const clp = (n: number) => `$${Math.round(n).toLocaleString("es-CL")}`;
 
@@ -42,7 +43,7 @@ function Cabeza({ p }: { p: PaginaDepto }) {
   const grande = puntoValido(punto) && key ? urlMapaDepto(punto, key, MAPA_DEPTO.grande, ajustar) : null;
   return (
     <div className="iv2-dp-cabeza" data-inv2="depto-cabeza">
-      <FotosDepto avisoId={p.avisoId} n={p.ficha?.fotos ?? 0} clase="iv2-dp-fotos" />
+      <FotosDepto avisoId={p.avisoId} n={p.ficha?.fotos ?? 0} clase="iv2-dp-fotos" titulo={[p.direccion ?? p.tituloConNumero, p.datos.comuna].filter(Boolean).join(" · ")} />
       <div className="iv2-dp-info">
         <div className="iv2-dp-fila">
           <div className="iv2-dp-id">
@@ -97,7 +98,8 @@ function LoQueSigueBloque({ p }: { p: PaginaDepto }) {
 
 /** El camino de este depto: los seis pasos con el actual marcado (en celular, en columna con su encabezado; en PC, en una línea). */
 function Camino({ p }: { p: PaginaDepto }) {
-  const c = caminoDepto(p.etapa, p.oferta ? { estado: p.oferta.estado } : null);
+  // La misma llamada que el camino chico de la base (VistaBase): el estado, el monto y si quedó en firme sin visitar.
+  const c = caminoDepto(p.etapa, p.oferta ? { estado: p.oferta.estado, montoUF: p.oferta.montoUF, enFirmeComo: p.oferta.enFirmeComo ?? null } : null);
   return (
     <section className="iv2-dp-tj iv2-dp-camino" aria-labelledby="iv2-camino-t" data-inv2="camino-depto">
       <div className="iv2-dp-th iv2-dp-camino-th"><h2 className="iv2-dp-th-t" id="iv2-camino-t">{D.caminoT}</h2><span className="iv2-dp-th-n">{D.pasoDe(c.actual, c.pasos.length)}</span></div>
@@ -199,7 +201,7 @@ function NoAvanza({ p }: { p: PaginaDepto }) {
         <section className="iv2-dp-alt" aria-labelledby="iv2-alt-t" data-inv2="alternativa-no-avanza">
           <span className="iv2-dp-rotulo" id="iv2-alt-t">{D.alternativaRotulo}</span>
           <div className="iv2-dp-alt-cab">
-            <FotoPortada avisoId={a.avisoId} n={a.ficha?.fotos ?? 0} clase="iv2-dp-alt-foto" />
+            <FotoPortada avisoId={a.avisoId} n={a.ficha?.fotos ?? 0} clase="iv2-dp-alt-foto" lupa titulo={a.ficha?.titulo ?? null} />
             <div className="iv2-dp-alt-id">
               <p className="iv2-dp-alt-t" data-inv2="titulo-depto">{a.ficha?.titulo ?? lineaDepto(a.datos)}</p>
               <p className="iv2-depto-s">{lineaDepto(a.datos)}</p>
@@ -235,6 +237,8 @@ export function VistaDepto({ p }: { p: PaginaDepto }) {
         </div>
       </div>
       <div className="iv2-dp-der">
+        {/* Segunda vuelta (23-nov): en PC arriba de la columna derecha; en celular, después de la acción y antes del camino (CSS). */}
+        <LoQueVeFrancoDepto avisoId={p.avisoId} lectura={p.ficha?.lectura ?? null} />
         <Averiguo p={p} />
         <Preguntale p={p} />
       </div>

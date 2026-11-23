@@ -11,8 +11,11 @@ import { URL_OPCIONES } from "@/lib/invierte-v2/destino";
 import { BASE_COPY, MENU_COPY, lineaDepto, urlWhatsapp } from "@/lib/invierte-v2/base";
 import type { Base } from "@/lib/invierte-v2/base-servidor";
 import { BotonDetalles, PrepararDetalles } from "./BotonDetalles";
-import { estadoEnBase, urlDepto } from "@/lib/invierte-v2/depto-flujo";
+import { caminoDepto, estadoEnBase, urlDepto, type NivelBase } from "@/lib/invierte-v2/depto-flujo";
+
+const NIVEL_CLASE: Record<NivelBase, string> = { tuyo: " iv2-depto-tuyo", curso: " iv2-depto-curso", partiendo: "" };
 import { TarjetaBase, TarjetaOtra } from "./TarjetaDepto";
+import { LupaFotos } from "./VisorFotos";
 import { EnlacesBase, MenuBase } from "./MenuBase";
 import { SumarDepto } from "./SumarDepto";
 import { IconoWhatsapp } from "./IconoWhatsapp";
@@ -85,15 +88,18 @@ export function VistaBase({ base }: { base: Base }) {
                   página de cada depto (parte B), esa página. Lo que cambió en la publicación pasa a esa página (lámina 4.2). */}
               {base.elegidos.map((d) => {
                 const estado = estadoEnBase(d.etapa, base.preaprobacion, d.noAvanzaMotivo, d.oferta);
-                // El depto que espera por la persona se levanta (sombra y borde oscuro) y va primero (rediseño del 23-nov, lámina 3.3).
+                // Tres niveles (segunda vuelta, 23-nov, lámina 3.3): «Te toca a ti» se levanta (sombra fuerte, borde oscuro, pulso); «En curso
+                // con Franco», borde oscuro y sombra suave; «Recién partiendo», plana. El camino chico sale de caminoDepto, como la página.
                 return (
-                  <li key={d.avisoId} className="iv2-depto-li" data-inv2="depto-base" data-tuyo={estado.tono === "ciruela" ? "si" : undefined}>
+                  <li key={d.avisoId} className="iv2-depto-li" data-inv2="depto-base" data-nivel={estado.nivel} data-tuyo={estado.nivel === "tuyo" ? "si" : undefined}>
                     {/* La tarjeta entera abre la página del depto (etapa 3, B1; lámina 3.3-base) y dice en qué va. */}
-                    <Link href={urlDepto(d.avisoId)} className={`iv2-depto iv2-depto-tocable${estado.tono === "ciruela" ? " iv2-depto-tuyo" : ""}`} aria-label={B.abrirDepto(d.ficha?.titulo ?? lineaDepto(d.datos))} data-inv2="abrir-depto">
+                    <Link href={urlDepto(d.avisoId)} className={`iv2-depto iv2-depto-tocable${NIVEL_CLASE[estado.nivel]}`} aria-label={B.abrirDepto(d.ficha?.titulo ?? lineaDepto(d.datos))} data-inv2="abrir-depto">
                       <span className="iv2-depto-cuerpo">
-                        <TarjetaBase avisoId={d.avisoId} datos={d.datos} ficha={d.ficha} numeroConfirmado={d.numeroConfirmado} alcanza={d.alcanza} estado={estado} />
+                        <TarjetaBase avisoId={d.avisoId} datos={d.datos} ficha={d.ficha} numeroConfirmado={d.numeroConfirmado} alcanza={d.alcanza} estado={estado} camino={caminoDepto(d.etapa, d.oferta)} />
                       </span>
                     </Link>
+                    {/* La lupa abre el visor; va AL LADO del enlace (no adentro), sobre la esquina de la foto: tocarla no navega al depto. */}
+                    <LupaFotos avisoId={d.avisoId} n={d.ficha?.fotos ?? 0} titulo={d.ficha?.titulo ?? null} clase="iv2-lupa-base" />
                   </li>
                 );
               })}

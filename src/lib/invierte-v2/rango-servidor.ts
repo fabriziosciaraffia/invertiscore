@@ -26,7 +26,8 @@ import { publicadoDesde, ultimaBajadaCadena } from "./gemelos";
 import { leerPaginaDepto } from "./depto-pagina-servidor";
 
 const T_OF = "inv_ofertas";
-const ABIERTAS = ["borrador", "firmada", "en_cola", "presentada", "contraoferta", "aceptada_sujeta"];
+// En firme también: la página del depto la lee para el camino (si quedó en firme sin visitar). Firmar exige borrador (asegurarRango).
+const ABIERTAS = ["borrador", "firmada", "en_cola", "presentada", "contraoferta", "aceptada_sujeta", "en_firme"];
 const VIVAS = ["presentada", "contraoferta", "aceptada_sujeta"];
 
 /** Los valores de la regla, de `config` (invierte_rango_*), con los de la versión 1 por defecto. */
@@ -131,6 +132,8 @@ export interface OfertaVista {
   firmadaAt: string | null;
   texto: string | null;
   textoVersion: string | null;
+  /** Segunda vuelta (23-nov): si quedó en firme sin visitar (el camino deja la visita gris hueco). */
+  enFirmeComo?: string | null;
 }
 
 function aVista(f: Record<string, unknown>): OfertaVista {
@@ -139,10 +142,10 @@ function aVista(f: Record<string, unknown>): OfertaVista {
     id: f.id as string, estado: f.estado as string, postura: (f.postura_recomendada as Rango["postura"]) ?? "negocia_poco", descuentoPct: Number(s.descuentoPct ?? 0),
     pisoUF: Number(f.piso_uf), recomendadoUF: Number(f.recomendado_uf), altoUF: Number(s.alto ?? f.techo_uf), techoUF: Number(f.techo_uf), comprarUF: num(s.comprarUF), publicadoUF: Number(f.publicado_uf),
     razones: Array.isArray(f.razones) ? (f.razones as string[]) : [], corregida: s.corregido ?? null, montoUF: num(f.monto_uf), firmadaAt: (f.firmada_at as string | null) ?? null,
-    texto: (f.texto as string | null) ?? null, textoVersion: (f.texto_version as string | null) ?? null,
+    texto: (f.texto as string | null) ?? null, textoVersion: (f.texto_version as string | null) ?? null, enFirmeComo: (f.en_firme_como as string | null) ?? null,
   };
 }
-const COLS = "id, estado, postura_recomendada, piso_uf, recomendado_uf, techo_uf, publicado_uf, razones, senales, monto_uf, firmada_at, texto, texto_version, rango_fuente, regla_version";
+const COLS = "id, estado, postura_recomendada, piso_uf, recomendado_uf, techo_uf, publicado_uf, razones, senales, monto_uf, firmada_at, texto, texto_version, rango_fuente, regla_version, en_firme_como";
 
 /** La oferta abierta del depto (borrador o ya firmada), sin calcular nada. */
 export async function ofertaAbierta(admin: SupabaseClient, deptoId: string): Promise<OfertaVista | null> {

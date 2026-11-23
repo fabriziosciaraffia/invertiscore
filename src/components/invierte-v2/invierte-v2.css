@@ -1002,11 +1002,12 @@
 .iv2-dp-tablero > .iv2-dp-izq, .iv2-dp-tablero > .iv2-dp-der, .iv2-dp-tablero .iv2-dp-bajo { display: contents; }
 .iv2-dp-tablero .iv2-dp-cabeza { order: 1; }
 .iv2-dp-tablero .iv2-dp-sigue { order: 2; }
-.iv2-dp-tablero .iv2-dp-camino { order: 3; }
-.iv2-dp-tablero [data-inv2="lo-que-averiguo"] { order: 4; }
-.iv2-dp-tablero [data-inv2="cambios-publicacion"] { order: 5; }
-.iv2-dp-tablero [data-inv2="documentos-depto"] { order: 6; }
-.iv2-dp-tablero .iv2-dp-preguntale { order: 7; }
+.iv2-dp-tablero [data-inv2="lo-que-ve-franco"] { order: 3; }
+.iv2-dp-tablero .iv2-dp-camino { order: 4; }
+.iv2-dp-tablero [data-inv2="lo-que-averiguo"] { order: 5; }
+.iv2-dp-tablero [data-inv2="cambios-publicacion"] { order: 6; }
+.iv2-dp-tablero [data-inv2="documentos-depto"] { order: 7; }
+.iv2-dp-tablero .iv2-dp-preguntale { order: 8; }
 .iv2-dp-tablero .iv2-dp-solo-pc, .iv2-dp-tablero .iv2-dp-solo-pc-i { display: none !important; }
 .iv2-dp-tablero .iv2-dp-cabeza { gap: 10px; }
 .iv2-dp-tablero .iv2-dp-fotos { height: 170px; border-radius: 10px; overflow: hidden; }
@@ -1131,3 +1132,78 @@
 .iv2-td-estado-t { font-size: 14px; font-weight: 700; line-height: 1.3; color: #141414; }
 .iv2-td-estado .iv2-chip-tuyo, .iv2-td-estado .iv2-chip-franco { margin-top: 0; }
 @media (max-width: 1023px) { .iv2-td .iv2-td-sintesis { display: none; } }
+
+/* LA BASE EN TRES NIVELES (segunda vuelta del rediseño, 23-nov-2026, lámina 3.3): «Te toca a ti» con sombra fuerte, borde oscuro y
+   pulso (arriba); «En curso con Franco», borde oscuro y sombra suave, sin pulso; «Recién partiendo», plana. Sin fondos de color. */
+.iv2-depto-tocable.iv2-depto-curso { border: 1.5px solid #141414; box-shadow: 0 2px 10px rgba(20, 20, 20, 0.07); }
+.iv2-depto-tocable.iv2-depto-curso:hover { border-color: #141414; }
+/* El camino en chico: seis puntos, los mismos pasos de la página del depto. */
+.iv2-cc { display: flex; align-items: center; gap: 10px; margin-top: 4px; min-width: 0; }
+.iv2-cc-puntos { display: inline-flex; align-items: center; flex: none; }
+.iv2-cc-p { position: relative; width: 8px; height: 8px; border-radius: 999px; box-sizing: border-box; background: #FFFFFF; border: 1.5px solid #C9C9CE; }
+.iv2-cc-p + .iv2-cc-p { margin-left: 12px; }
+.iv2-cc-p + .iv2-cc-p::before { content: ""; position: absolute; right: calc(100% + 2px); top: 50%; width: 8px; height: 1px; background: #D5D5DA; }
+.iv2-cc-hecho { background: #2B558F; border-color: #2B558F; }
+.iv2-cc-tuyo, .iv2-cc-franco { width: 14px; height: 14px; }
+.iv2-cc-tuyo { background: #6E4560; border-color: #6E4560; }
+.iv2-cc-franco { background: #141414; border-color: #141414; }
+.iv2-cc-omitido { background: #FFFFFF; border: 1.5px dashed #B9B9BF; }
+.iv2-cc-txt { font-size: 12px; color: #5A5A5F; white-space: nowrap; }
+.iv2-cc-pc { display: none; }
+@media (min-width: 1024px) { .iv2-cc-pc { display: inline; } .iv2-cc-movil { display: none; } .iv2-cc { flex-direction: column; align-items: flex-start; gap: 6px; } }
+/* La visita que no hubo, en el camino de la página: gris hueco. */
+.iv2-dp-paso-omitido .iv2-dp-paso-ic { background: #FFFFFF; color: #B9B9BF; border: 1.5px dashed #B9B9BF; }
+.iv2-dp-paso-omitido .iv2-dp-paso-t { color: #8A8A90; }
+
+/* «Lo que ve Franco» en la página del depto (segunda vuelta, 23-nov, láminas 4.2): la única tarjeta con fondo azul de la página. */
+.iv2-dp-vf { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border-radius: 14px; background: #EEF2F8; color: #141414; }
+.iv2-dp-vf-cab { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.iv2-dp-vf-t { margin: 0; font-size: 10px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: #1E3F6B; }
+.iv2-dp-vf-lineas { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: 13px; line-height: 1.45; color: #26262A; }
+.iv2-dp-vf-lineas li:first-child { font-weight: 600; color: #141414; }
+.iv2-dp-vf-ver { align-self: flex-start; min-height: 32px; font-size: 13px; font-weight: 600; text-decoration: none; }
+
+/* EL VISOR DE FOTOS (segunda vuelta, 23-nov-2026, lámina fotos-visor) y la lupa. La foto va completa (contain), sin recortar ni tapar. */
+.iv2-portada { position: relative; }
+.iv2-fotos img, .iv2-portada img { cursor: zoom-in; }
+.iv2-lupa { position: absolute; right: 6px; bottom: 6px; z-index: 2; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 999px; background: #FFFFFF; color: #141414; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.iv2-lupa:focus-visible { outline: 2px solid #141414; outline-offset: 2px; }
+/* La foto con flechas (FotosDepto) ya tiene contador y puntos abajo: la lupa sube un poco para no taparlos. */
+.iv2-fotos .iv2-lupa-foto { bottom: 26px; }
+.iv2-fotos-chica .iv2-lupa-foto { width: 28px; height: 28px; bottom: 22px; }
+/* En la base la lupa va AL LADO del enlace de la tarjeta, sobre la esquina de la portada (92 px en celular, 170 × 150 en PC). */
+.iv2-depto-li { position: relative; }
+.iv2-lupa-base { right: auto; bottom: auto; left: 71px; top: 71px; width: 30px; height: 30px; }
+.iv2-depto-li:not(:has(.iv2-portada)) .iv2-lupa-base { display: none; }
+@media (min-width: 1024px) { .iv2-lupa-base { left: 149px; top: 129px; } }
+@media (max-width: 767px) { .iv2-lupa-base, .iv2-lupa { width: 36px; height: 36px; } .iv2-lupa-base { left: 67px; top: 67px; } }
+
+.iv2-visor { position: fixed; inset: 0; z-index: 90; background: #18181B; color: #FFFFFF; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 56px 80px 24px; box-sizing: border-box; font-family: var(--font-ui, var(--font-body)), "Inter", system-ui, sans-serif; }
+.iv2-visor-x { position: absolute; top: 14px; right: 14px; width: 44px; height: 44px; border: 0; border-radius: 999px; background: rgba(255, 255, 255, 0.14); color: #FFFFFF; font-size: 18px; cursor: pointer; }
+.iv2-visor-x:focus-visible, .iv2-visor-flecha:focus-visible, .iv2-visor-mini:focus-visible { outline: 2px solid #FFFFFF; outline-offset: 2px; }
+.iv2-visor-cab { width: 100%; max-width: 980px; display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 13px; font-weight: 600; }
+.iv2-visor-t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.iv2-visor-cuenta { flex: none; margin-left: auto; }
+.iv2-visor-escena { position: relative; width: 100%; max-width: 980px; flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; touch-action: none; }
+.iv2-visor-img { display: block; max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; border-radius: 10px; user-select: none; transition: transform 0.05s linear; }
+.iv2-visor-ninguna { margin: 0; font-size: 14px; color: #D4D4D8; }
+.iv2-visor-flecha { position: absolute; top: 50%; margin-top: -22px; width: 44px; height: 44px; border: 0; border-radius: 999px; background: #FFFFFF; color: #141414; font-size: 22px; line-height: 1; cursor: pointer; box-shadow: 0 1px 6px rgba(0, 0, 0, 0.3); }
+.iv2-visor-ant { left: 16px; }
+.iv2-visor-sig { right: 16px; }
+.iv2-visor-minis { display: flex; gap: 8px; max-width: 980px; overflow-x: auto; padding: 2px; flex: none; }
+.iv2-visor-mini { flex: none; width: 76px; height: 54px; padding: 0; border: 2px solid transparent; border-radius: 8px; overflow: hidden; background: #3F3F46; cursor: pointer; opacity: 0.6; }
+.iv2-visor-mini[aria-current="true"] { border-color: #FFFFFF; opacity: 1; }
+.iv2-visor-mini img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.iv2-visor-puntos { display: none; gap: 6px; }
+.iv2-visor-gesto { display: none; margin: 0; font-size: 12px; color: #D4D4D8; }
+.iv2-visor-puntos span { width: 6px; height: 6px; border-radius: 999px; background: #71717A; }
+.iv2-visor-puntos span[data-activo] { background: #FFFFFF; }
+@media (max-width: 767px) {
+  .iv2-visor { padding: 64px 0 24px; justify-content: center; }
+  .iv2-visor-cab { padding: 0 16px; box-sizing: border-box; }
+  .iv2-visor-escena { flex: none; height: auto; max-height: calc(100dvh - 160px); }
+  .iv2-visor-img { width: 100%; max-height: calc(100dvh - 160px); border-radius: 0; }
+  .iv2-visor-flecha, .iv2-visor-minis { display: none; }
+  .iv2-visor-puntos { display: flex; order: 3; }
+  .iv2-visor-gesto { display: block; order: 4; }
+}

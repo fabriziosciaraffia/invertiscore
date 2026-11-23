@@ -21,12 +21,15 @@ import { BASE_COPY as B, lineaDepto } from "@/lib/invierte-v2/base";
 import { etiquetaVeredicto, signoVeredicto } from "@/lib/veredicto-etiqueta";
 import { direccionDepto, tituloDepto } from "@/lib/invierte-v2/titulo-depto";
 import type { DatosDepto } from "@/lib/invierte-v2/base-servidor";
-import type { EstadoBase } from "@/lib/invierte-v2/depto-flujo";
+import type { EstadoBase, PasoCamino } from "@/lib/invierte-v2/depto-flujo";
 import type { FichaDepto } from "@/lib/invierte-v2/ficha-depto-servidor";
 import { useLectura } from "./LoQueVeFranco";
+import { LupaFotos } from "./VisorFotos";
 
-/** La portada: la primera foto que cargue, sin flechas (la tarjeta entera es un botón). Sin fotos, nada. */
-export function FotoPortada({ avisoId, n, clase }: { avisoId: string; n: number; clase: string }) {
+/** La portada: la primera foto que cargue, sin flechas (la tarjeta entera es un botón). Sin fotos, nada. Con `lupa` (segunda vuelta,
+ *  23-nov; solo donde la portada NO está dentro de un enlace), la lupa en la esquina abre el visor con todas las fotos del depto. En la
+ *  base, que es un enlace, la lupa va al lado de la tarjeta (VistaBase). */
+export function FotoPortada({ avisoId, n, clase, lupa = false, titulo = null }: { avisoId: string; n: number; clase: string; lupa?: boolean; titulo?: string | null }) {
   const [i, setI] = useState(0);
   const img = useRef<HTMLImageElement>(null);
   // Una foto que terminó de cargar antes de que la página despertara (sin `onLoad`) también se revisa: si es el pixel de una foto
@@ -37,6 +40,7 @@ export function FotoPortada({ avisoId, n, clase }: { avisoId: string; n: number;
     <span className={`iv2-portada ${clase}`} data-inv2="portada">
       {/* eslint-disable-next-line @next/next/no-img-element -- la sirve la ruta propia, con su caché; no pasa por el optimizador */}
       <img ref={img} src={urlFoto(avisoId, i)} alt={A.foto(i + 1, n)} decoding="async" onError={() => setI((x) => x + 1)} onLoad={(e) => { if (e.currentTarget.naturalWidth <= 1) setI((x) => x + 1); }} />
+      {lupa && <LupaFotos avisoId={avisoId} n={n} inicio={i} titulo={titulo} clase="iv2-lupa-foto" />}
     </span>
   );
 }
@@ -75,8 +79,23 @@ function direccionDe(f: FichaDepto | null, l: LecturaFranco | null, datos: Datos
   return d ? { t: d, conMetro: false } : { t: tituloDe(f, l, datos), conMetro: true };
 }
 
+/** EL CAMINO EN CHICO (segunda vuelta del rediseño, 23-nov-2026, lámina 3.3): los seis puntos del camino de la página del depto
+ *  (`caminoDepto`, la misma fuente). Hechos en azul; el actual más grande, ciruela si le toca a la persona, negro si lo lleva Franco;
+ *  los que faltan en gris; la visita que no hubo, gris hueco. Al lado, «Paso n de 6 · Nombre» (en celular, «n de 6»). */
+export function CaminoChico({ camino }: { camino: { actual: number; pasos: PasoCamino[] } }) {
+  const actual = camino.pasos[camino.actual - 1];
+  return (
+    <span className="iv2-cc" data-inv2="camino-chico" data-actual={camino.actual}>
+      <span className="iv2-cc-puntos" aria-hidden="true">
+        {camino.pasos.map((x) => <span key={x.n} className={`iv2-cc-p iv2-cc-${x.estado}`} data-estado={x.estado} />)}
+      </span>
+      <span className="iv2-cc-txt"><span className="iv2-cc-pc">Paso {camino.actual} de {camino.pasos.length} · {actual?.t}</span><span className="iv2-cc-movil">{camino.actual} de {camino.pasos.length}</span></span>
+    </span>
+  );
+}
+
 /** «Tus deptos»: la tarjeta de un depto elegido (va dentro de TarjetaDetalles, que la vuelve tocable). */
-export function TarjetaBase({ avisoId, datos, ficha, numeroConfirmado = null, alcanza, estado }: { avisoId: string; datos: DatosDepto; ficha: FichaDepto | null; numeroConfirmado?: string | null; alcanza: boolean; estado: EstadoBase }) {
+export function TarjetaBase({ avisoId, datos, ficha, numeroConfirmado = null, alcanza, estado, camino = null }: { avisoId: string; datos: DatosDepto; ficha: FichaDepto | null; numeroConfirmado?: string | null; alcanza: boolean; estado: EstadoBase; camino?: { actual: number; pasos: PasoCamino[] } | null }) {
   const l = useLectura(avisoId, ficha?.lectura ?? null);
   const dir = direccionDe(ficha, l, datos, numeroConfirmado);
   const metro = !dir.conMetro && ficha?.metro && ficha.metro.metros <= 1000 ? `Metro ${ficha.metro.estacion.replace(/^(Estación|Metro)\s+/i, "")}` : null;
@@ -105,6 +124,7 @@ export function TarjetaBase({ avisoId, datos, ficha, numeroConfirmado = null, al
           <span className={tuyo ? "iv2-chip-tuyo" : "iv2-chip-franco"} data-inv2="estado-depto">{tuyo && <i aria-hidden="true" />}{estado.chip}</span>
           {estado.titulo && <span className="iv2-td-estado-t" data-inv2="estado-titulo">{estado.titulo}</span>}
           <span className="iv2-td-estado-linea">{estado.linea}</span>
+          {camino && <CaminoChico camino={camino} />}
           <span className="iv2-td-abrir" aria-hidden="true">{B.abrirEsteDepto} ›</span>
         </span>
         <span className="iv2-td-flecha" aria-hidden="true">›</span>
@@ -122,7 +142,7 @@ export function TarjetaOtra({ avisoId, datos, ficha, acciones }: { avisoId: stri
   return (
     <div className="iv2-otra-mini" data-inv2="otra">
       <div className="iv2-otra-mini-cab">
-        <FotoPortada avisoId={avisoId} n={ficha?.fotos ?? 0} clase="iv2-otra-mini-foto" />
+        <FotoPortada avisoId={avisoId} n={ficha?.fotos ?? 0} clase="iv2-otra-mini-foto" lupa titulo={titulo} />
         <div className="iv2-otra-mini-id">
           <p className="iv2-otra-mini-t" data-inv2="titulo-depto">{titulo}</p>
           <p className="iv2-depto-s">{lineaDepto(datos)}</p>
