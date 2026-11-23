@@ -16,7 +16,8 @@ export interface OrdenParaPdf {
   rut: string;
   email: string;
   texto: string;
-  textoVersion: number;
+  /** La versión del texto: número en la orden, «borrador-20261122» en la oferta (B4). */
+  textoVersion: number | string;
   textoSha256: string;
   firmadoAt: string;
   ip: string | null;

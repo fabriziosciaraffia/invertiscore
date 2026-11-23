@@ -16,6 +16,7 @@ import { AUMENTO_COPY } from "@/lib/planes";
 import { URL_INVIERTE } from "@/lib/invierte-v2/destino";
 import { BOTON_CAMBIOS, asuntoCambios, parrafoDepto, type DeptoConCambios } from "@/lib/invierte-v2/cambios";
 import { CORREO_PREAPROB, URL_PREAPROBACION } from "@/lib/invierte-v2/preaprobacion";
+import { CORREO_OFERTA, urlCorreoOferta, type EventoOferta } from "@/lib/invierte-v2/b4-correo";
 
 /** La tríada que el dashboard dibuja después de «te dice si conviene:»; en el correo, en palabras. */
 const TRIADA = "Comprar, Ajustar o Buscar otro";
@@ -646,6 +647,23 @@ export function correoPreaprobacionInvierte(p: { nombre: string | null; sitio?: 
       titular: C.asunto,
       parrafos: [`${hola} ${escaparHtml(parrafo)}`],
       boton: { texto: C.boton, url: `${sitio}${p.tipo === "aprobada" ? URL_INVIERTE : URL_PREAPROBACION}` },
+    }),
+  };
+}
+
+/** Invierte con Franco, B4 (23-nov-2026): los avisos de la oferta a la persona (cuando se presenta, cuando responden y cuando vence; y si
+ *  el precio publicado baja de su oferta). El botón: a /invierte si no le toca hacer nada; al depto o a responder si le toca. */
+export function correoOfertaInvierte(p: { nombre: string | null; evento: EventoOferta; avisoId: string; depto: string; montoUF: number; otroUF?: number | null; vence?: string | null; sitio?: string }) {
+  const sitio = p.sitio ?? SITIO;
+  const primero = (p.nombre ?? "").trim().split(/\s+/)[0] ?? "";
+  const hola = primero ? `Hola, ${escaparHtml(primero)}.` : "Hola.";
+  const C = CORREO_OFERTA[p.evento];
+  return {
+    subject: C.asunto,
+    html: plantillaClara({
+      titulo: C.asunto, preencabezado: C.asunto, titular: C.asunto,
+      parrafos: [`${hola} ${escaparHtml(C.parrafo({ depto: p.depto, montoUF: p.montoUF, otroUF: p.otroUF ?? null, vence: p.vence ?? null }))}`],
+      boton: { texto: C.boton, url: `${sitio}${urlCorreoOferta(p.evento, p.avisoId)}` },
     }),
   };
 }

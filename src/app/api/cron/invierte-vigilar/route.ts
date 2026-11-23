@@ -4,6 +4,8 @@ import { cerrarCron, CORRIDA_FALLIDA } from "@/lib/cron-resultado";
 import { latirCron } from "@/lib/cron-heartbeat";
 import { capturarFallaDeCron } from "@/lib/observabilidad";
 import { correosDeCambios, vigilarElegidos } from "@/lib/invierte-v2/vigilancia-servidor";
+import { noche as nocheB4 } from "@/lib/invierte-v2/b4-servidor";
+import { DEPS_AVISO_B4 } from "@/lib/invierte-v2/b4-avisos";
 import { reanalizarVencidas, tareasConfirmacionAtrasada } from "@/lib/invierte-v2/depto-servidor";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -32,9 +34,12 @@ export async function GET(request: Request) {
     const reanalisis = await reanalizarVencidas(admin, ahora).catch((e) => ({ error: e instanceof Error ? e.message : String(e) }));
     // B2: un depto que sigue confirmando a los 3 días deja una tarea interna (lámina 4.1-confirmando).
     const atrasados = await tareasConfirmacionAtrasada(admin, ahora).catch(() => null);
+    // B4 (23-nov-2026): vence lo que pasó su plazo, deja la tarea de insistir al tercer día, pasa la siguiente en cola y avisa si el
+    // precio publicado bajó de la oferta viva. Una oferta vence al terminar su día (medianoche de Santiago) y esta pasada de la mañana la cierra.
+    const ofertas = await nocheB4(admin, DEPS_AVISO_B4, ahora).catch((e) => ({ error: e instanceof Error ? e.message : String(e) }));
     const c = ahora.getUTCHours() === HORA_CORREOS_UTC ? await correosDeCambios(admin, ahora) : null;
     if (v.error) return cerrarCron(admin, NOMBRE, CORRIDA_FALLIDA, { ...v, correos: c, reanalisis });
-    return cerrarCron(admin, NOMBRE, { procesados: Math.max(1, v.deptos), exitosos: Math.max(1, v.deptos), fallidos: 0 }, { ...v, correos: c, reanalisis, atrasados });
+    return cerrarCron(admin, NOMBRE, { procesados: Math.max(1, v.deptos), exitosos: Math.max(1, v.deptos), fallidos: 0 }, { ...v, correos: c, reanalisis, atrasados, ofertas });
   } catch (e) {
     capturarFallaDeCron(e, { ruta: `GET /api/cron/${NOMBRE}`, operacion: "corrida" });
     return cerrarCron(admin, NOMBRE, CORRIDA_FALLIDA, { error: e instanceof Error ? e.message : String(e) });

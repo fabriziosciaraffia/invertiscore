@@ -14,7 +14,8 @@ import { aOpcion, filaEntrada, leerPerfilInv } from "./perfil-servidor";
 import { leerPreaprobacion } from "./preaprobacion-servidor";
 import type { EstadoVisible } from "./preaprobacion";
 import { direccionDepto, tituloDepto } from "./titulo-depto";
-import { asegurarRango, ofertaAbierta, type OfertaVista } from "./rango-servidor";
+import { CERRADAS, asegurarRango, ofertaAbierta, ultimaOferta, type OfertaVista } from "./rango-servidor";
+import { OFERTAS_VIVAS } from "./b4";
 import { bloqueOfertaCifras } from "./cifras-motor";
 import type { BloqueCifrasOferta } from "./cifras";
 
@@ -45,9 +46,13 @@ export interface PaginaDepto {
   oferta: OfertaVista | null;
   /** La ficha (23-nov-2026): con una oferta viva, sus cifras a ese monto; con precio acordado, a ese precio. Del motor. */
   bloqueOferta: BloqueCifrasOferta | null;
+  /** B4: sin oferta abierta, la última ronda si cerró sin acuerdo (no la aceptaron, venció, respondieron fuera de plazo, la retiró). */
+  cierre?: OfertaVista | null;
+  /** B4: otra oferta viva de la persona, en otro depto (para elegir con cuál se queda ante una respuesta fuera de plazo). */
+  otraViva?: { avisoId: string; titulo: string; estado: string } | null;
 }
 
-export async function leerPaginaDepto(admin: SupabaseClient, userId: string, avisoId: string): Promise<PaginaDepto | null> {
+export async function leerPaginaDepto(admin: SupabaseClient, userId: string, avisoId: string, opts: { nuevaRonda?: boolean } = {}): Promise<PaginaDepto | null> {
   const { data: f } = await admin.from("inv_deptos").select("aviso_id, estado, etapa, no_avanza_motivo, alternativa_aviso_id, datos, vigente, es_prueba, id").eq("user_id", userId).eq("aviso_id", avisoId).maybeSingle();
   if (!f) return null;
   const etapa = etapaDe({ estado: f.estado as string, etapa: (f.etapa as string | null) ?? null });
@@ -82,7 +87,12 @@ export async function leerPaginaDepto(admin: SupabaseClient, userId: string, avi
   // Las preguntas que dejó la lectura se copian una vez al depto (B2); después las responde Franco desde el admin.
   await asegurarPreguntasDeLectura(admin, avisoId, ficha?.lectura?.preguntas ?? [], f.es_prueba === true);
   // B3: con el depto listo, el rango se calcula (o se recalcula si cambió el precio) en la oferta borrador; firmada, queda como está.
-  const oferta = etapa === "listo" ? await asegurarRango(admin, userId, avisoId) : await ofertaAbierta(admin, f.id as string);
+  const oferta = etapa === "listo" ? await asegurarRango(admin, userId, avisoId, new Date(), { nueva: opts.nuevaRonda }) : await ofertaAbierta(admin, f.id as string);
+  // B4: sin oferta abierta, la última ronda cerrada (su tarjeta de cierre) y, si hay, otra oferta viva en otro depto.
+  const ultima = !oferta ? await ultimaOferta(admin, f.id as string) : null;
+  const cierre = ultima && (CERRADAS as readonly string[]).includes(ultima.estado) ? ultima : null;
+  const { data: otra } = cierre ? await admin.from("inv_ofertas").select("aviso_id, estado").eq("user_id", userId).neq("depto_id", f.id as string).in("estado", OFERTAS_VIVAS as unknown as string[]).limit(1).maybeSingle() : { data: null };
+  const otraFicha = otra ? (await fichasDe(admin, [otra.aviso_id as string]))[otra.aviso_id as string] ?? null : null;
   const [preguntas, { data: docs }] = await Promise.all([
     leerPreguntas(admin, avisoId),
     admin.from("inv_documentos").select("id, tipo, created_at").eq("user_id", userId).eq("depto_id", f.id as string).order("created_at", { ascending: false }).limit(20),
@@ -91,5 +101,5 @@ export async function leerPaginaDepto(admin: SupabaseClient, userId: string, avi
   const cambios = filasCs.map((c) => lineaCambio(c, c.fecha)).filter((x): x is string => !!x);
   const cambiosFilas = filasCs.map((c) => filaCambio(c, c.fecha)).filter((x): x is NonNullable<ReturnType<typeof filaCambio>> => !!x);
   return { avisoId, etapa, noAvanzaMotivo: (f.no_avanza_motivo as string | null) ?? null, datos, ficha, tituloConNumero, direccion, ubicacion: u, cambios, cambiosFilas, preaprobacion: pre.estado, whatsapp, alternativa, activos: (elegidos ?? []).map((e) => ({ avisoId: e.aviso_id as string, datos: (e.datos ?? {}) as DatosDepto })),
-    oferta, bloqueOferta: bloqueOfertaCifras(u?.analisis?.motor ?? null, oferta, ficha?.cifras.publicadoUF ?? datos.precioUF ?? null), preguntas, documentos: ((docs ?? []) as { id: string; tipo: string; created_at: string }[]).map((d) => ({ id: d.id, tipo: d.tipo, creadoAt: d.created_at })) };
+    oferta, cierre, otraViva: otra ? { avisoId: otra.aviso_id as string, titulo: otraFicha?.titulo ?? "otro depto", estado: otra.estado as string } : null, bloqueOferta: bloqueOfertaCifras(u?.analisis?.motor ?? null, oferta, ficha?.cifras.publicadoUF ?? datos.precioUF ?? null), preguntas, documentos: ((docs ?? []) as { id: string; tipo: string; created_at: string }[]).map((d) => ({ id: d.id, tipo: d.tipo, creadoAt: d.created_at })) };
 }

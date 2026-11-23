@@ -12,6 +12,9 @@ import { estadoInterruptor } from "@/lib/invierte-v2/acceso-servidor";
 import { puedeRecibirCopia } from "@/lib/invierte-v2/copias-servidor";
 import { agregarPregunta, ajustarPorPreaprobacion, confirmarUbicacion, marcarPreguntasEnviadas, registrarAcuerdo, responderPregunta } from "@/lib/invierte-v2/depto-servidor";
 import { corregirRango } from "@/lib/invierte-v2/rango-servidor";
+import { corregirSugerencia, marcarComunicada, presentarOferta, registrarRespuesta } from "@/lib/invierte-v2/b4-servidor";
+import { DEPS_AVISO_B4 } from "@/lib/invierte-v2/b4-avisos";
+import { pdfOrden } from "@/lib/invierte-v2/orden-pdf";
 
 /** El correo de la revisión: solo a quien el interruptor deja (mientras el modo no sea «todos», la lista). */
 const DEPS_REVISION: DepsRevision = {
@@ -31,6 +34,9 @@ const DEPS_REVISION: DepsRevision = {
 //   POST { accion: "corregir", id, motivo }        → pide subirla de nuevo, con el motivo que ve la persona, y le avisa.
 //   POST { accion: "acuerdo", userId, avisoId, acuerdo, alternativa } → el acuerdo con quien vende (etapa 3, B1).
 //   POST { accion: "ubicacion", avisoId, direccion, numero, lat, lng } → la ubicación confirmada y el análisis rehecho (B1).
+//   B4 (23-nov-2026): POST { accion: "presentar", ofertaId } · { accion: "respuesta", ofertaId, tipo, montoUF, nota, vence } (también fuera
+//   de plazo) · { accion: "sugerencia", ofertaId, montoUF } (corrige lo que sugiere Franco) · { accion: "comunicada", ofertaId } (la
+//   aceptación ya se comunicó: queda aceptada sujeta a visita). GET ?oferta=<id> → el PDF de la oferta firmada, para presentarla.
 //   GET  ?documento=<id>                            → «Ver» la preaprobación (URL firmada de 60 s), anotado en la bitácora.
 //   GET  ?orden=<id>                                → «Ver»: la orden firmada (URL firmada de 60 s), anotada en la bitácora.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -130,6 +136,17 @@ export async function POST(request: Request) {
     if (!r.ok) return NextResponse.json({ error: r.error }, { status: r.error === "guardar" ? 500 : 400 });
     return NextResponse.json(r);
   }
+  if (accion === "presentar" || accion === "respuesta" || accion === "sugerencia" || accion === "comunicada") {
+    if (typeof b?.ofertaId !== "string" || !UUID.test(b.ofertaId)) return NextResponse.json({ error: "datos" }, { status: 400 });
+    const quien = { id: adminUser.id, email: adminUser.email ?? null };
+    const adm = createAdminServiceClient();
+    const r = accion === "presentar" ? await presentarOferta(adm, quien, b.ofertaId, DEPS_AVISO_B4)
+      : accion === "respuesta" ? await registrarRespuesta(adm, quien, b.ofertaId, b, DEPS_AVISO_B4)
+      : accion === "sugerencia" ? await corregirSugerencia(adm, quien, b.ofertaId, b.montoUF)
+      : await marcarComunicada(adm, quien, b.ofertaId);
+    if (!r.ok) return NextResponse.json({ error: r.error }, { status: r.error === "guardar" ? 500 : 400 });
+    return NextResponse.json(r);
+  }
   if (accion === "tarea") {
     if (typeof b?.id !== "string" || !UUID.test(b.id)) return NextResponse.json({ error: "datos" }, { status: 400 });
     const { error } = await sb.from("inv_tareas").update({ estado: "hecha", hecha_por: adminUser.email ?? null, hecha_at: new Date().toISOString() }).eq("id", b.id).eq("estado", "pendiente");
@@ -160,6 +177,16 @@ export async function GET(request: Request) {
     if (!doc || !url) return NextResponse.json({ error: "no-existe" }, { status: 404 });
     await gate.sb.from("inv_bitacora").insert({ user_id: doc.userId, actor: "admin", actor_email: gate.adminUser.email ?? null, accion: "preaprobacion_vista", detalle: { documento: doc.id }, es_prueba: doc.esPrueba });
     return NextResponse.redirect(url, { status: 303, headers: { "Cache-Control": "no-store" } });
+  }
+  const ofertaId = new URL(request.url).searchParams.get("oferta");
+  if (ofertaId) {
+    if (!UUID.test(ofertaId)) return NextResponse.json({ error: "datos" }, { status: 400 });
+    const { data: o } = await gate.sb.from("inv_ofertas").select("id, user_id, nombre, rut, texto, texto_version, texto_sha256, firmada_at, ip, user_agent, es_prueba").eq("id", ofertaId).maybeSingle();
+    if (!o?.texto || !o.firmada_at) return NextResponse.json({ error: "no-existe" }, { status: 404 });
+    const { data: u } = await gate.sb.auth.admin.getUserById(o.user_id as string);
+    const pdf = await pdfOrden({ id: o.id as string, nombre: o.nombre as string, rut: o.rut as string, email: u?.user?.email ?? "", texto: o.texto as string, textoVersion: (o.texto_version as string | null) ?? "", textoSha256: o.texto_sha256 as string, firmadoAt: o.firmada_at as string, ip: (o.ip as string | null) ?? null, userAgent: (o.user_agent as string | null) ?? null });
+    await gate.sb.from("inv_bitacora").insert({ user_id: o.user_id, actor: "admin", actor_email: gate.adminUser.email ?? null, accion: "oferta_pdf_visto", detalle: { oferta_id: o.id }, es_prueba: o.es_prueba === true });
+    return new NextResponse(Buffer.from(pdf), { status: 200, headers: { "Content-Type": "application/pdf", "Content-Disposition": `inline; filename="oferta-${(o.id as string).slice(0, 8)}.pdf"`, "Cache-Control": "no-store" } });
   }
   const id = new URL(request.url).searchParams.get("orden");
   if (!id || !UUID.test(id)) return NextResponse.json({ error: "datos" }, { status: 400 });
