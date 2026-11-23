@@ -45,6 +45,7 @@ import { etapaDe, etapaSiguiente, etapaConPreaprobacion, loQueSigue, estadoEnBas
 import { numerosDe, validarUbicacion, reanalisisVencido, cambioDeUbicacionRelevante, CONFIRMAR_DIAS_TAREA } from "../../../src/lib/invierte-v2/depto-servidor";
 import { lineaPregunta, preguntasVisibles, conDocumentos, caminoDepto, cuadrasMetro } from "../../../src/lib/invierte-v2/depto-flujo";
 import { urlMapaDepto, MAPA_DEPTO } from "../../../src/lib/invierte-v2/mapa-depto";
+import { CRITERIO_GEMELO, ultimaBajadaCadena, publicadoDesde } from "../../../src/lib/invierte-v2/gemelos";
 import { limpiarPreguntas, MAX_PREGUNTAS, limpiarArreglos } from "../../../src/lib/invierte-v2/lectura-franco";
 import { calcularRango, avisoOferta, postura as posturaDe, CONFIG_RANGO_V1, REGLA_VERSION, OFERTA_COPY, FIRMA_COPY, topeOferta, acotarOferta, escalaBarra, fuerteDesde, pctBajoPublicado, rangoPctPublicado, FRANJA_MIN_PCT } from "../../../src/lib/invierte-v2/rango";
 import { textoOferta, VERSION_TEXTO_OFERTA, MARCA_BORRADOR } from "../../../src/lib/invierte-v2/oferta-documento";
@@ -1403,6 +1404,28 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (!/data-inv2="titulo-depto">Nataniel Cox 185</.test(tb24) || !/class="iv2-chip-tuyo" data-inv2="estado-depto"><i aria-hidden="true"><\/i>Te toca a ti/.test(tb24) || !/data-inv2="estado-titulo">Haz tu oferta</.test(tb24) || !/Franco recomienda UF 2\.905 a 2\.966/.test(tb24)) F("24s · la tarjeta no dice la dirección con su número confirmado, el chip con pulso, qué le toca y el rango");
       const cssS = leer("src/components/invierte-v2/invierte-v2.css");
       if (!/\.iv2-depto-tocable\.iv2-depto-tuyo \{ border: 1\.5px solid #141414; box-shadow:/.test(cssS) || !/@media \(max-width: 1023px\) \{ \.iv2-td \.iv2-td-sintesis \{ display: none; \} \}/.test(cssS)) F("24s · la tarjeta no se levanta con sombra y borde oscuro, o «Lo que ve Franco» sigue en la tarjeta del celular");
+      // 25 · (23-nov-2026) LOS REPUBLICADOS: el gemelo con otro id hereda los días y las rebajas del aviso anterior.
+      // 25a · La última bajada de la cadena: un cambio de precio de cualquier eslabón o volver más barato; la más reciente gana.
+      const b25 = ultimaBajadaCadena([{ fecha: "2026-10-02", precioAntes: 3100, precio: 3050 }], [{ fecha: "2026-11-10", precioViejoUF: 3050, precioNuevoUF: 3000 }]);
+      if (b25?.uf !== 50 || b25?.fecha !== "2026-11-10") F(`25a · la republicación más barata no cuenta como la última bajada (${JSON.stringify(b25)})`);
+      const b25b = ultimaBajadaCadena([{ fecha: "2026-10-02", precioAntes: 3100, precio: 3050 }], [{ fecha: "2026-11-10", precioViejoUF: 3050, precioNuevoUF: 3130 }]);
+      if (b25b?.uf !== 50 || b25b?.fecha !== "2026-10-02") F("25a · la rebaja del aviso anterior no se hereda (o una republicación más cara cuenta como bajada)");
+      if (ultimaBajadaCadena([{ fecha: "2026-10-02", precioAntes: 3000, precio: 2990 }], []) !== null) F("25a · una baja de 0,3 % cuenta como bajada (la vara es 0,5 %)");
+      if (publicadoDesde([{ vistoDesde: "2026-11-01T00:00:00" }, { vistoDesde: "2026-09-12T00:00:00" }]) !== "2026-09-12T00:00:00" || publicadoDesde([]) !== null) F("25a · los días no cuentan desde el primer eslabón de la cadena");
+      // 25b · El criterio aprobado vive en SQL y coincide con el de las constantes: 30 m, mismos dormitorios y baños, m² ±1, precio ±3 %,
+      // visto por última vez entre 10 días antes y 1 después; un viejo, un nuevo; plpgsql con plan a medida; el relleno en tramos.
+      const sq25 = leer("supabase/migrations/20261201_avisos_gemelos.sql");
+      const cuerpo25 = sq25.slice(sq25.indexOf("create or replace function public.registrar_gemelos"), sq25.indexOf("revoke all on function public.registrar_gemelos"));
+      if (CRITERIO_GEMELO.radioM !== 30 || CRITERIO_GEMELO.m2 !== 1 || CRITERIO_GEMELO.precioPct !== 3 || CRITERIO_GEMELO.diasAntes !== 10 || CRITERIO_GEMELO.diasDespues !== 1
+        || !/st_dwithin\(v\.location::geography, n\.location::geography, 30\)/.test(cuerpo25) || !/v\.dormitorios = n\.dormitorios and abs\(v\.superficie_m2 - n\.superficie_m2\) <= 1/.test(cuerpo25)
+        || !/v\.banos is not distinct from n\.banos/.test(cuerpo25) || !/v\.scraped_at between n\.created_at - interval '10 days' and n\.created_at \+ interval '1 day'/.test(cuerpo25)
+        || !/\/ n\.precio_uf - 1\) <= 0\.03/.test(cuerpo25) || !/v\.is_active = false/.test(cuerpo25)) F("25b · la función de la noche no aplica el criterio aprobado de los republicados");
+      if (!/language plpgsql/.test(cuerpo25) || !/set plan_cache_mode = force_custom_plan/.test(cuerpo25) || !/set search_path = public, pg_temp/.test(cuerpo25) || !/viejo_id\s+uuid not null unique/.test(sq25) || !/select distinct on \(viejo_id\)/.test(cuerpo25)) F("25b · la función no va en plpgsql con plan a medida, o un viejo puede quedar con dos nuevos");
+      if (!/registrar_gemelos\('2026-03-01'::timestamp, '2026-06-01'::timestamp\)/.test(sq25) || !/registrar_gemelos\('2026-09-01'::timestamp, null\)/.test(sq25) || /scraped_properties_precios/.test(sq25.replace(/^--.*$/gm, ""))) F("25b · el relleno no va en tramos, o la migración toca scraped_properties_precios");
+      // 25c · El cableado: la noche registra los gemelos; las señales del rango leen la cadena entera y guardan sus días.
+      const rg25 = codigo("src/lib/invierte-v2/rango-servidor.ts");
+      if (!/await admin\.rpc\("registrar_gemelos"\)/.test(codigo("src/lib/invierte-v2/vigilancia-servidor.ts"))) F("25c · la vigilancia de la noche no registra los gemelos");
+      if (!/const cadena = await cadenaDe\(admin, avisoId\);/.test(rg25) || !/\.in\("property_id", ids\)\.lt\("delta_pct", -0\.5\)/.test(rg25) || !/const bajada = ultimaBajadaCadena\(/.test(rg25) || !/publicadoDesde: s\.publicadoDesde \?\? null, eslabones: s\.eslabones \?\? 0/.test(rg25)) F("25c · las señales del rango no leen la cadena de republicaciones o no guardan sus días");
       // 24l · Los arreglos de la lectura: solo concretos; sin «no se ve» ni «falta información»; en el esquema y la versión.
       if (limpiarArreglos(["la cocina tiene muebles dañados", "no se ve el baño", "falta información del estado", "piso manchado"]).join("|") !== "la cocina tiene muebles dañados|piso manchado" || !(ESQUEMA_LECTURA_FRANCO as unknown as { required: string[] }).required.includes("arreglos") || VERSION_LECTURA15 < 13) F("24l · la lectura no deja solo arreglos concretos (o falta en el esquema o la versión no subió)");
       // 24m · La fecha de publicación: se captura de la ficha que ya se lee, y se guarda aparte (sin romper el guardado si falta la columna).
