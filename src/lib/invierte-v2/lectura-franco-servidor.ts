@@ -10,10 +10,8 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { findNearestStation } from "@/lib/metro-stations";
-import { ESPERA_REINTENTO_MS, GENERANDO_VENCE_MS, MIN_ARRIENDOS_COMPARABLES, TOPE_INTENTOS_LECTURA, TOPE_LECTURAS_POR_HORA, VERSION_LECTURA, sanearLectura, type LecturaFranco } from "./lectura-franco";
-import { capRatePct, pctUno } from "@/lib/explorar/explorar";
-import { textoAlMes } from "./opciones";
-import { etiquetaVeredicto, signoVeredicto } from "@/lib/veredicto-etiqueta";
+import { ESPERA_REINTENTO_MS, GENERANDO_VENCE_MS, MIN_ARRIENDOS_COMPARABLES, TOPE_INTENTOS_LECTURA, TOPE_LECTURAS_POR_HORA, VERSION_LECTURA, numerosDe, sanearLectura, type LecturaFranco } from "./lectura-franco";
+import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 import { generarLecturaFranco, type EntradaLectura } from "./lectura-franco-ia";
 
 const T = "lecturas_franco";
@@ -62,43 +60,36 @@ export async function arriendosDeSuTamano(admin: SupabaseClient, p: { lat: numbe
 }
 
 async function entradaDe(admin: SupabaseClient, avisoId: string): Promise<{ entrada: EntradaLectura; leidoAt: string } | null> {
-  const [{ data: d }, { data: sp }, { data: ae0 }, { data: cfg }, { data: ub }] = await Promise.all([
+  const [{ data: d }, { data: sp }, { data: ae0 }, { data: ub }] = await Promise.all([
     admin.from("publicacion_detalle").select("fotos, descripcion, direccion, leido_at").eq("aviso_id", avisoId).maybeSingle(),
     admin.from("scraped_properties").select("titulo, comuna, dormitorios, banos, superficie_m2, lat, lng").eq("id", avisoId).order("id").limit(1).maybeSingle(),
     admin.from("avisos_evaluados").select("antiguedad_anios, antiguedad_origen, precio_uf, arriendo, flujo_20, veredicto_20, score_20").eq("aviso_id", avisoId).maybeSingle(),
-    admin.from("config").select("value").eq("key", "uf_value").maybeSingle(),
     admin.from("inv_ubicaciones").select("lat, lng, analisis").eq("aviso_id", avisoId).maybeSingle(),
   ]);
-  // Una sola fuente de números (etapa 3, B1): con la ubicación confirmada, la lectura cita los del análisis rehecho, medidos en el punto real.
+  // Una sola fuente (etapa 3, B1): con la ubicación confirmada, el veredicto es el del análisis rehecho.
   const an = (ub?.analisis ?? null) as { veredicto?: string | null; score?: number | null; flujoCLP?: number | null; arriendoCLP?: number | null; radio?: number | null; precioUF?: number } | null;
   const ae = an && ae0 ? { ...ae0, veredicto_20: an.veredicto ?? ae0.veredicto_20, score_20: an.score ?? ae0.score_20, flujo_20: an.flujoCLP ?? ae0.flujo_20, arriendo: { monto: an.arriendoCLP ?? undefined, radio: an.radio ?? undefined } } : ae0;
-  const punto = ub && an ? { lat: Number(ub.lat), lng: Number(ub.lng) } : sp?.lat != null && sp?.lng != null ? { lat: Number(sp.lat), lng: Number(sp.lng) } : null;
   const fotos = ((d?.fotos as string[] | null) ?? []).filter((u) => /^https:\/\//.test(u));
   if (!d || (!fotos.length && !d.descripcion)) return null;
   const est = sp?.lat != null && sp?.lng != null ? findNearestStation(Number(sp.lat), Number(sp.lng), "active") : null;
   // La antigüedad, solo si viene informada (de la ficha o de otro aviso del edificio); la supuesta no se presenta como dato.
   const informada = ae?.antiguedad_origen === "ficha" || ae?.antiguedad_origen === "edificio";
   const anio = informada && typeof ae?.antiguedad_anios === "number" ? new Date().getFullYear() - (ae.antiguedad_anios as number) : null;
-  // Lo que muestra la tarjeta (20-nov-2026): el veredicto siempre; el cap rate y lo que deja al mes, solo si el arriendo es confiable.
-  const veredicto = typeof ae?.veredicto_20 === "string" ? `${signoVeredicto(ae.veredicto_20 as never)} ${etiquetaVeredicto(ae.veredicto_20 as never, "frase")}${ae.veredicto_20 === "COMPRAR" && typeof ae.score_20 === "number" ? ` · ${ae.score_20}` : ""}` : null;
-  const arr = (ae?.arriendo ?? null) as { monto?: number; radio?: number } | null;
-  const m2 = sp?.superficie_m2 == null ? null : Number(sp.superficie_m2);
-  const n = punto && m2 ? await arriendosDeSuTamano(admin, { ...punto, radio: arr?.radio ?? 1000, m2 }) : 0;
-  const confiable = n >= MIN_ARRIENDOS_COMPARABLES;
-  const uf = Number(cfg?.value);
-  const cap = confiable ? capRatePct(arr?.monto ?? null, Number(ae?.precio_uf ?? 0), Number.isFinite(uf) && uf > 0 ? uf : null) : null;
-  const flujo = confiable && typeof ae?.flujo_20 === "number" ? (ae.flujo_20 as number) : null;
+  // v14 (23-nov-2026, decisión de Fabrizio): la lectura no recibe las cifras de la ficha (publicado, arriendo, cap rate, al mes), que
+  // no repite; solo el veredicto en palabras, sin el puntaje. Los números que puede citar son los de la publicación y los de estos datos.
+  const veredicto = typeof ae?.veredicto_20 === "string" ? etiquetaVeredicto(ae.veredicto_20 as never, "frase") : null;
+  const publicacion = { titulo: (sp?.titulo as string | null) ?? null, descripcion: (d.descripcion as string | null) ?? null, direccion: (d.direccion as string | null) ?? null };
+  const datos = {
+    comuna: (sp?.comuna as string | null) ?? null, dormitorios: (sp?.dormitorios as number | null) ?? null, banos: (sp?.banos as number | null) ?? null,
+    superficie_m2: sp?.superficie_m2 == null ? null : Number(sp.superficie_m2), antiguedad: anio ? { anio } : ("no informada" as const),
+    // Los minutos a pie hasta el metro (a unos 80 m por minuto), solo si queda a pie.
+    metro: est ? { estacion: est.station.name, a_pie: est.distance <= 1000, minutos_a_pie: est.distance <= 1000 ? Math.max(1, Math.round(est.distance / 80)) : null } : null,
+  };
+  const numeros = numerosDe(`${JSON.stringify(publicacion)} ${JSON.stringify(datos)}`);
   return {
     leidoAt: d.leido_at as string,
     entrada: {
-      fotos, titulo: (sp?.titulo as string | null) ?? null, descripcion: (d.descripcion as string | null) ?? null, direccion: (d.direccion as string | null) ?? null,
-      datos: {
-        comuna: (sp?.comuna as string | null) ?? null, dormitorios: (sp?.dormitorios as number | null) ?? null, banos: (sp?.banos as number | null) ?? null,
-        superficie_m2: sp?.superficie_m2 == null ? null : Number(sp.superficie_m2), antiguedad: anio ? { anio } : "no informada",
-        metro: est ? { estacion: est.station.name, a_pie: est.distance <= 1000 } : null,
-      },
-      tarjeta: { veredicto, cap_rate_bruto: cap != null ? pctUno(cap) : null, al_mes: flujo != null ? textoAlMes({ flujoCLP: flujo }).t : null },
-      cifras: confiable ? { capRatePct: cap, flujoCLP: flujo } : null,
+      fotos, ...publicacion, datos, veredicto, numeros,
     },
   };
 }

@@ -23,7 +23,7 @@ import { limpiarCalle, limpiarNumero } from "./titulo-depto";
 /** Sube con cada cambio de la instrucción: una lectura de otra versión se vuelve a generar. 11 (etapa 3, 20-nov-2026): la calle y el
  *  número, internos, para el título del depto. 12 (etapa 3, B2, 22-nov-2026): las preguntas para quien vende (internas). 13 (B3, 22-nov-2026): los arreglos concretos
  *  (internos), para la regla del rango de oferta. */
-export const VERSION_LECTURA = 13;
+export const VERSION_LECTURA = 14;
 /** Todas las fotos de la publicación, hasta este tope (20-nov-2026; antes 8, y la lectura decía que faltaban fotos que sí estaban). */
 export const MAX_FOTOS_LECTURA = 24;
 /** Lecturas nuevas por hora, entre todas las personas (resguardo de costo). */
@@ -56,8 +56,9 @@ export interface LecturaFranco {
   corta: string[];
   /** Interno (no se muestra): listo, arreglos menores o remodelación. */
   estadoArriendo?: EstadoArriendo | null;
-  /** Las cifras de la tarjeta con que se escribió (se guardan con la lectura: al releerla, el saneado las sigue permitiendo). */
-  cifras?: CifrasTarjeta | null;
+  /** Los números que la lectura podía citar (v14, 23-nov-2026): los de la publicación y de nuestros datos. Se guardan con la lectura:
+   *  al releerla, el saneado los sigue permitiendo. */
+  numeros?: string[] | null;
   /** Interno (etapa 3, 20-nov-2026): la calle según la publicación, sin número, para el título del depto (titulo-depto.ts). Null si la
    *  publicación no la dice con claridad. */
   calle?: string | null;
@@ -70,10 +71,26 @@ export interface LecturaFranco {
   arreglos?: string[];
 }
 
-/** Las cifras del motor que la lectura PUEDE citar, tal como las muestra la tarjeta (20-nov-2026, Fabrizio): el cap rate bruto y lo que
- *  deja o pide al mes. Sin al menos MIN_ARRIENDOS_COMPARABLES arriendos de su tamaño, el arriendo del motor no es confiable y no van. */
-export interface CifrasTarjeta { capRatePct: number | null; flujoCLP: number | null }
+/** Bajo esta cantidad de arriendos de su tamaño, las cuatro cifras van con la marca gris (cifras.ts, 23-nov-2026). */
 export const MIN_ARRIENDOS_COMPARABLES = 6;
+
+/** LOS NÚMEROS QUE LA LECTURA PUEDE CITAR (v14, 23-nov-2026, decisión de Fabrizio): solo los que vienen en la publicación o en nuestros
+ *  datos (metros, piso, año, gastos comunes publicados, minutos al metro), normalizados («95.000» → «95000», «6,6» → «6.6»). Nunca las
+ *  cuatro cifras de la ficha (publicado, arriendo estimado, cap rate y lo que pone o le sobra al mes): el modelo ya no las recibe. */
+export function numerosDe(texto: string | null | undefined): string[] {
+  if (!texto) return [];
+  const out = new Set<string>();
+  for (const m of texto.match(/\d+(?:[.,]\d+)*/g) ?? []) { const n = normalizarNumero(m); if (n) out.add(n); }
+  return Array.from(out);
+}
+/** «95.000» y «95000» → «95000»; «6,6» y «6.6» → «6.6»; «1.250,5» → «1250.5». */
+export function normalizarNumero(t: string): string | null {
+  let x = t.trim();
+  if (/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(x)) x = x.replace(/\./g, "").replace(",", ".");
+  else x = x.replace(",", ".");
+  const n = Number(x);
+  return Number.isFinite(n) ? String(n) : null;
+}
 
 export const LECTURA_COPY = {
   rotulo: "Lo que ve Franco",
@@ -84,9 +101,9 @@ export const LECTURA_COPY = {
 
 export const INSTRUCCION_LECTURA_FRANCO = `Eres Franco, un analista de inversión inmobiliaria en Santiago de Chile. Escribes «Lo que ve Franco»: una lectura breve de un departamento usado en venta para alguien que lo evalúa como inversión para arrendar. Va junto a un informe que ya muestra todas las cifras y que juzga el precio; tu trabajo es decir lo que esas cifras no dicen, mirando las fotos y el texto de la publicación.
 
-Recibes las fotos de la publicación —todas, o las primeras 24 si tiene más; el mensaje te dice cuál es el caso—, el texto que escribió quien publica (título y descripción), algunos datos nuestros (comuna, dormitorios, baños, superficie, si la antigüedad viene informada y el metro más cercano) y, cuando el arriendo del motor es confiable, los números que muestra la tarjeta del depto: el cap rate bruto, lo que deja o pide al mes y el veredicto.
+Recibes las fotos de la publicación —todas, o las primeras 24 si tiene más; el mensaje te dice cuál es el caso—, el texto que escribió quien publica (título y descripción), algunos datos nuestros (comuna, dormitorios, baños, superficie, la antigüedad si viene informada, el metro más cercano y cuántos minutos a pie queda) y el veredicto del depto.
 
-Los números de la tarjeta puedes citarlos tal cual vienen, en el mismo formato. No los recalcules, no los corrijas, no los redondees de otra forma ni propongas otro número. Si no vienen, no hables de cap rate ni de lo que deja al mes.
+La ficha del depto ya muestra cuatro cifras: el precio publicado, el arriendo estimado, el cap rate y lo que la persona pone o le sobra al mes. No las repitas ni las estimes, y no hables de cap rate, rentabilidad ni de lo que deja al mes. Los únicos números que puedes citar son los que vienen en la publicación o en nuestros datos (metros, piso, año, gastos comunes publicados, minutos al metro), tal cual vienen. No inventes ni calcules ningún otro.
 
 Entregas tres cosas:
 
@@ -101,13 +118,13 @@ Entregas tres cosas:
    - Estado: cómo está el depto por dentro (terminaciones, cocina, baños, pisos) y si pide inversión antes de arrendar.
    - Para arrendar: qué tan fácil se arrienda. Tamaño de los dormitorios, baños para los dormitorios que tiene, distribución, si conviene arrendarlo amoblado. Nunca hables de precio ni de arriendo.
    - Edificio: lo que afecta costos o riesgos del edificio: ascensor, estacionamiento, bodega, estado de las áreas comunes; la antigüedad solo si viene informada.
-   - Ubicación: hechos concretos que afecten el arriendo (que tiene metro cerca, que está sobre una avenida de alto tráfico), sin distancias.
+   - Ubicación: hechos concretos que afecten el arriendo (que tiene metro cerca, que está sobre una avenida de alto tráfico). Si das la distancia al metro, en minutos a pie y solo los de nuestros datos.
    - Ojo: lo que falta saber antes de ofertar, como pregunta o acción («Pregunta si…», «Confirma…»). Si la antigüedad no viene informada, va aquí como pregunta. Si recibiste todas las fotos y falta alguna parte clave (el baño, la cocina, los dormitorios), va como pedido: «Pide fotos del baño antes de ofertar.» Si la publicación no da ninguna razón para su precio, puedes escribir «La publicación no explica su precio: pregúntalo», sin números.
 
 3. La versión corta: EXACTAMENTE tres líneas para la tarjeta del resultado, sin etiqueta. Cada línea es UNA sola frase de unos 110 caracteres (nunca más de 120; no dos frases, no punto seguido).
-   - La primera línea es la SÍNTESIS: una frase que dice qué significa este depto como inversión, a partir de lo que MÁS pesa en él. Decide tú qué pesa más en este depto en particular: algo que se ve en las fotos, algo que dice la publicación o un número de la tarjeta, y cómo se cruzan.
-     · Empieza por lo que más pesa. Si lo que más pesa es lo que se ve o lo que dice la publicación, la frase parte por eso y el número, si va, la cierra; si lo que más pesa es el número, parte por él. El número no va siempre al inicio.
-     · Usa el número que más dice de este depto por sí solo: el cap rate o lo que deja o pide al mes. No lo compares con otros deptos.
+   - La primera línea es la SÍNTESIS: una frase que dice qué significa este depto como inversión, a partir de lo que MÁS pesa en él. Decide tú qué pesa más en este depto en particular: algo que se ve en las fotos, algo que dice la publicación o uno de nuestros datos, y cómo se cruzan.
+     · Empieza por lo que más pesa en este depto, sin una frase de partida fija.
+     · Sin las cifras de la ficha: si usas un número, que venga de la publicación o de nuestros datos y diga algo de este depto en particular. No lo compares con otros deptos.
      · Si ningún número agrega algo a lo que se ve, la síntesis va sin número.
      · Tiene que notarse que alguien miró este depto. No uses una frase de partida fija ni una estructura que sirva para cualquier depto.
    - Cada línea termina con punto. No nombres «la tarjeta» ni «el informe»: quien lee los está mirando.
@@ -124,7 +141,7 @@ Entregas tres cosas:
 
 Reglas:
 - Nunca cites ni juzgues el precio: nada de precios, precio por m², «bajo su zona», «más barato», «buen precio» ni comparaciones con la zona o con otros deptos. Eso lo dice el informe, con otra referencia.
-- De las cifras del motor, solo las de la tarjeta (cap rate bruto, lo que deja o pide al mes y el veredicto), tal cual. Ninguna otra: ni precio, ni arriendo, ni gastos comunes en pesos, ni distancia al metro. Sí puedes usar medidas que vengan de la publicación y sirvan para arrendar (por ejemplo, un dormitorio de 6,6 m²), pisos, cantidades de dormitorios y años de construcción informados.
+- Ninguna cifra de la ficha (precio publicado, arriendo estimado, cap rate, lo que pone o le sobra al mes) y ningún número que no venga en la publicación o en nuestros datos. Sí puedes usar los que vienen: medidas que sirvan para arrendar (por ejemplo, un dormitorio de 6,6 m²), pisos, cantidades de dormitorios, años de construcción informados, gastos comunes si la publicación los dice y los minutos a pie al metro.
 - No repitas el marketing de quien publica: supermercados, colegios, clínicas, «excelente conectividad», «sector consolidado». No describas lo que no cambia la inversión: luz, vista, colores, decoración, juegos infantiles, quinchos.
 - La antigüedad solo se afirma si viene informada. Nunca presentes una antigüedad supuesta como dato.
 - Solo puedes decir que no hay fotos de algo, o pedir fotos, si recibiste todas las fotos de la publicación. Si recibiste solo las primeras, nunca digas que falta una foto ni pidas fotos: puede estar entre las que no viste. Si el mensaje dice que no se pudo ver ninguna foto, no digas nada de las fotos.
@@ -186,26 +203,32 @@ export const ESQUEMA_LECTURA_FRANCO = {
  * Años, pisos, cantidades de dormitorios o baños, m² y distancias SE QUEDAN. La pregunta sin número de «Ojo» («La publicación no
  * explica su precio: pregúntalo») también pasa.
  */
-export type ReglaDescarte = "precio_uf" | "pesos" | "precio_m2" | "comparacion" | "porcentaje" | "faltan_fotos";
-/** Las formas en que la lectura puede escribir una cifra de la tarjeta: «5,8 %», «5,8%»; «$88.864», «$88 mil», «88 mil». */
-export function formasPermitidas(c: CifrasTarjeta | null | undefined): string[] {
-  if (!c) return [];
-  const out: string[] = [];
-  if (c.capRatePct != null) { const n = (Math.round(c.capRatePct * 10) / 10).toLocaleString("es-CL", { minimumFractionDigits: 1, maximumFractionDigits: 1 }); out.push(`${n} %`, `${n}%`); }
-  if (c.flujoCLP != null) { const v = Math.abs(c.flujoCLP); const miles = Math.round(v).toLocaleString("es-CL"); const k = Math.round(v / 1000); out.push(`$${miles}`, `$ ${miles}`, `$${k} mil`, `$ ${k} mil`, `${k} mil`); }
-  return out;
-}
+export type ReglaDescarte = "precio_uf" | "pesos" | "precio_m2" | "comparacion" | "porcentaje" | "cifra_ficha" | "inventado" | "faltan_fotos";
 
-export function reglaDescarte(texto: string, cifras: CifrasTarjeta | null = null): Exclude<ReglaDescarte, "faltan_fotos"> | null {
-  // Las cifras de la tarjeta, tal cual, se permiten (20-nov-2026): se quitan antes de mirar; cualquier otra cifra de plata o de
-  // rentabilidad sigue cayendo.
-  let t = texto.toLowerCase();
-  for (const f of formasPermitidas(cifras).sort((a, b) => b.length - a.length)) t = t.split(f.toLowerCase()).join(" ");
+/**
+ * v14 (23-nov-2026, decisión de Fabrizio): la lectura no repite las cifras de la ficha y puede citar SOLO números que vienen en la
+ * publicación o en nuestros datos. `permitidos`: esos números (numerosDe), cuando se conocen. Además de lo de arriba:
+ *   · cifra_ficha    habla de cap rate, rentabilidad, lo que pone o le sobra al mes o el arriendo estimado, con un número;
+ *   · inventado      un número que no está en la publicación ni en nuestros datos (solo si se conocen los permitidos);
+ *   · pesos y porcentaje dejan pasar el número que sí está en la publicación («gastos comunes de $95.000», si lo publica).
+ */
+export function reglaDescarte(texto: string, permitidos: readonly string[] | null = null): Exclude<ReglaDescarte, "faltan_fotos"> | null {
+  const t = texto.toLowerCase();
+  const ok = new Set(permitidos ?? []);
+  const conocidos = permitidos != null;
+  const esta = (m: string) => { const n = normalizarNumero(m); return !!n && ok.has(n); };
   if (/\buf\s*\d|\d[\d.,]*\s*uf\b/.test(t)) return "precio_uf";
-  if (/\$\s?\d|\d\s*(?:mil|millones|mm)\b/.test(t)) return "pesos";
+  if (/\d/.test(t) && /cap\s*rate|rentab|\bbruto\b|te\s+sobran|\bsobran\b|\bpones\b|\bdeja\s+\$|\bpide\s+\$|arriendo\s+estimado|\brinde\b|\brenta\s+(?:de|bruta|neta)/.test(t)) return "cifra_ficha";
+  const pesos = t.match(/\$\s?\d[\d.,]*/g) ?? [];
+  if (pesos.some((p) => !(conocidos && esta(p.replace(/^\$\s?/, "").replace(/[.,]$/, "")))) || /\d\s*(?:mil|millones|mm)\b/.test(t)) return "pesos";
   if (/(?:uf|\$|pesos)\s*(?:por|\/)\s*m²|\bpor\s+m²|\/\s*m²/.test(t)) return "precio_m2";
   if (/(bajo|sobre|que)\s+(su|la)\s+zona|m[aá]s\s+barat|m[aá]s\s+car[oa]|buen\s+precio|precio\s+(bajo|alto|atractivo|conveniente|de\s+oportunidad)|bajo\s+(el\s+)?mercado|que\s+(los|sus)\s+parecidos|descuento/.test(t)) return "comparacion";
-  if (/\d\s*%|%/.test(t) && /precio|zona|mercado|parecid|barat|car[oa]\b|descuento|tasaci|aval[uú]o|subi[oó]|baj[oó]|rebaj|cuesta|vale|valor|cap\s*rate|rentab|retorno|rinde/.test(t)) return "porcentaje";
+  if (/%/.test(t)) {
+    const pct = t.match(/\d[\d.,]*\s*%/g) ?? [];
+    const precioso = /precio|zona|mercado|parecid|barat|car[oa]\b|descuento|tasaci|aval[uú]o|subi[oó]|baj[oó]|rebaj|cuesta|vale|valor|retorno/.test(t);
+    if (precioso || (conocidos && pct.some((p) => !esta(p.replace(/\s*%$/, ""))))) return "porcentaje";
+  }
+  if (conocidos && (t.match(/\d+(?:[.,]\d+)*/g) ?? []).some((m) => !esta(m.replace(/[.,]$/, "")))) return "inventado";
   return null;
 }
 
@@ -225,18 +248,18 @@ export function afirmaFaltanFotos(texto: string): boolean {
 /** De la salida del modelo a la lectura que se guarda: solo lo permitido, en orden, sin repetir etiquetas. `fotosCompletas`
  *  (20-nov-2026): si la lectura no recibió todas las fotos, se cae toda línea que diga que falta una foto o que pida fotos, y una
  *  alerta por eso no queda como alerta. */
-export function sanearLectura(j: unknown, opts: { fotosCompletas?: boolean; cifras?: CifrasTarjeta | null } = {}): LecturaFranco | null {
+export function sanearLectura(j: unknown, opts: { fotosCompletas?: boolean; numeros?: readonly string[] | null } = {}): LecturaFranco | null {
   return sanearConRegistro(j, opts).lectura;
 }
 
 /** Lo mismo, y además qué líneas borró y por qué regla (20-nov-2026, Fabrizio: «deja registro cada vez que el saneado borra una
  *  línea»). Quien genera la lectura lo guarda (`lecturas_franco.descartes`) y lo anota en el log. */
-export function sanearConRegistro(j: unknown, opts: { fotosCompletas?: boolean; cifras?: CifrasTarjeta | null } = {}): { lectura: LecturaFranco | null; descartes: Descarte[] } {
+export function sanearConRegistro(j: unknown, opts: { fotosCompletas?: boolean; numeros?: readonly string[] | null } = {}): { lectura: LecturaFranco | null; descartes: Descarte[] } {
   const descartes: Descarte[] = [];
-  // Las cifras permitidas: las de quien genera, o las guardadas con la lectura (al releerla).
-  const guardadas = j && typeof j === "object" ? ((j as { cifras?: unknown }).cifras as CifrasTarjeta | null | undefined) : null;
-  const cifras: CifrasTarjeta | null = opts.cifras ?? (guardadas && typeof guardadas === "object" ? { capRatePct: typeof guardadas.capRatePct === "number" ? guardadas.capRatePct : null, flujoCLP: typeof guardadas.flujoCLP === "number" ? guardadas.flujoCLP : null } : null);
-  const motivoDe = (t: string): ReglaDescarte | null => reglaDescarte(t, cifras) ?? (opts.fotosCompletas === false && afirmaFaltanFotos(t) ? "faltan_fotos" : null);
+  // Los números permitidos: los de quien genera, o los guardados con la lectura (al releerla).
+  const guardados = j && typeof j === "object" ? (j as { numeros?: unknown }).numeros : null;
+  const numeros: string[] | null = opts.numeros ? Array.from(opts.numeros) : Array.isArray(guardados) ? guardados.filter((x): x is string => typeof x === "string") : null;
+  const motivoDe = (t: string): ReglaDescarte | null => reglaDescarte(t, numeros) ?? (opts.fotosCompletas === false && afirmaFaltanFotos(t) ? "faltan_fotos" : null);
   const filtro = (campo: Descarte["campo"]) => (t: string) => { const r = motivoDe(t); if (r) descartes.push({ campo, texto: t, regla: r }); return !r; };
   const permitida = filtro("larga");
   if (!j || typeof j !== "object") return { lectura: null, descartes };
@@ -244,8 +267,8 @@ export function sanearConRegistro(j: unknown, opts: { fotosCompletas?: boolean; 
   // La calle y el número pasan por la misma limpieza que el título (etapa 3): lo que no es una calle confiable queda en null.
   const calle = limpiarCalle(typeof o.calle === "string" ? o.calle : null);
   const numero = calle ? limpiarNumero(typeof o.numero === "string" ? o.numero : null) : null;
-  const preguntas = limpiarPreguntas((o as { preguntas?: unknown }).preguntas, cifras);
-  const arreglos = limpiarArreglos((o as { arreglos?: unknown }).arreglos, cifras);
+  const preguntas = limpiarPreguntas((o as { preguntas?: unknown }).preguntas, numeros);
+  const arreglos = limpiarArreglos((o as { arreglos?: unknown }).arreglos, numeros);
   const estadoCrudo = o.estado_arriendo ?? o.estadoArriendo;
   const estadoArriendo: EstadoArriendo | null = (ESTADOS_ARRIENDO as readonly unknown[]).includes(estadoCrudo) ? (estadoCrudo as EstadoArriendo) : null;
   const motivoCrudo = limpio(o.alerta?.motivo);
@@ -264,7 +287,7 @@ export function sanearConRegistro(j: unknown, opts: { fotosCompletas?: boolean; 
   const corta = (Array.isArray(o.corta) ? o.corta : []).map((l) => limpio(typeof l === "string" ? l : (l as { texto?: unknown } | null)?.texto)).filter((t): t is string => !!t && filtro("corta")(t)).slice(0, 3);
   if (!larga.length && !corta.length) return { lectura: null, descartes };
   // Una alerta sin motivo legible no se muestra como alerta (queda el nivel para decidir si se recomienda).
-  return { lectura: { alerta: { nivel, motivo }, larga, corta, estadoArriendo, cifras, calle, numero, preguntas, arreglos }, descartes };
+  return { lectura: { alerta: { nivel, motivo }, larga, corta, estadoArriendo, numeros, calle, numero, preguntas, arreglos }, descartes };
 }
 
 /** ¿Esta línea es UNA frase? Un punto, signo de cierre o exclamación seguido de otra frase la parte en dos. */
@@ -324,13 +347,13 @@ export function partirLinea(t: string): { fuerte: string | null; resto: string }
 /** Las preguntas para quien vende (etapa 3, B2): hasta MAX_PREGUNTAS, cada una UNA pregunta entre signos «¿…?», de 120 caracteres o
  *  menos, sin precio (la misma red del saneado), sin pedir fotos y sin repetir. Lo que no cumple se cae: nunca se recorta. */
 export const MAX_PREGUNTAS = 4;
-export function limpiarPreguntas(x: unknown, cifras: CifrasTarjeta | null = null): string[] {
+export function limpiarPreguntas(x: unknown, numeros: readonly string[] | null = null): string[] {
   if (!Array.isArray(x)) return [];
   const vistas = new Set<string>();
   const out: string[] = [];
   for (const raw of x) {
     const t = typeof raw === "string" ? raw.replace(/\s+/g, " ").trim() : "";
-    if (!/^¿[^¿?]+\?$/.test(t) || t.length > MAX_CARACTERES_CORTA || reglaDescarte(t, cifras) || /\bfotos?\b/i.test(t)) continue;
+    if (!/^¿[^¿?]+\?$/.test(t) || t.length > MAX_CARACTERES_CORTA || reglaDescarte(t, numeros) || /\bfotos?\b/i.test(t)) continue;
     const k = t.toLowerCase();
     if (vistas.has(k)) continue;
     vistas.add(k);
@@ -344,12 +367,12 @@ export function limpiarPreguntas(x: unknown, cifras: CifrasTarjeta | null = null
  *  (eso no es un arreglo: es falta de información, y no mueve el rango). */
 export const MAX_ARREGLOS = 4;
 const NO_ES_ARREGLO = /\b(no se ve|no se ven|no muestra|no describe|no informa|falta informaci|sin informaci|no hay fotos|confirmar|pregunt)/i;
-export function limpiarArreglos(x: unknown, cifras: CifrasTarjeta | null = null): string[] {
+export function limpiarArreglos(x: unknown, numeros: readonly string[] | null = null): string[] {
   if (!Array.isArray(x)) return [];
   const out: string[] = [];
   for (const raw of x) {
     const t = typeof raw === "string" ? raw.replace(/\s+/g, " ").trim().replace(/[.;,]+$/, "") : "";
-    if (t.length < 6 || t.length > 90 || NO_ES_ARREGLO.test(t) || reglaDescarte(t, cifras)) continue;
+    if (t.length < 6 || t.length > 90 || NO_ES_ARREGLO.test(t) || reglaDescarte(t, numeros)) continue;
     if (out.some((y) => y.toLowerCase() === t.toLowerCase())) continue;
     out.push(t.charAt(0).toLowerCase() + t.slice(1));
     if (out.length >= MAX_ARREGLOS) break;
