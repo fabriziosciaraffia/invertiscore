@@ -41,7 +41,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { VERSION_EVALUACION as VERSION_EVALUACION22 } from "../../../src/lib/avisos/evaluar-aviso";
 import { DIST_METRO_TITULO, limpiarCalle, limpiarNumero, tituloDepto, direccionDepto } from "../../../src/lib/invierte-v2/titulo-depto";
 import { TarjetaBase, TarjetaOtra, TituloCalle } from "../../../src/components/invierte-v2/TarjetaDepto";
-import { etapaDe, etapaSiguiente, etapaConPreaprobacion, loQueSigue, estadoEnBase, ubicacionConviene, urlDepto } from "../../../src/lib/invierte-v2/depto-flujo";
+import { etapaDe, etapaSiguiente, etapaConPreaprobacion, loQueSigue, estadoEnBase, ubicacionConviene, urlDepto, primeroLosTuyos } from "../../../src/lib/invierte-v2/depto-flujo";
 import { numerosDe, validarUbicacion, reanalisisVencido, cambioDeUbicacionRelevante, CONFIRMAR_DIAS_TAREA } from "../../../src/lib/invierte-v2/depto-servidor";
 import { lineaPregunta, preguntasVisibles, conDocumentos, caminoDepto, cuadrasMetro } from "../../../src/lib/invierte-v2/depto-flujo";
 import { urlMapaDepto, MAPA_DEPTO } from "../../../src/lib/invierte-v2/mapa-depto";
@@ -973,7 +973,7 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       const tarjeta = bd.slice(bd.indexOf("export function TarjetaDetalles"), bd.indexOf("export function PrepararDetalles"));
       // ⚠ ACTA (21-nov-2026, etapa 3 B1): la tarjeta de «Tus deptos» abre la página del depto (un enlace), ya no los detalles.
       const dentro = vb.slice(vb.indexOf('data-inv2="abrir-depto">'), vb.indexOf("</Link>", vb.indexOf('data-inv2="abrir-depto">')));
-      if (!/<Link href=\{urlDepto\(d\.avisoId\)\} className="iv2-depto iv2-depto-tocable" aria-label=\{B\.abrirDepto\(d\.ficha\?\.titulo \?\? lineaDepto\(d\.datos\)\)\} data-inv2="abrir-depto">/.test(vb) || /<BotonDetalles/.test(dentro) /* ⚠ ACTA (20-nov-2026, etapa 3 A1): «Ver detalles» vuelve, solo en las otras opciones */ || /B\.abrir\}/.test(vb)) F("14f · la tarjeta de «Tus deptos» no se toca entera (o sigue el enlace «Abrir»)");
+      if (!/<Link href=\{urlDepto\(d\.avisoId\)\} className=\{`iv2-depto iv2-depto-tocable\$\{estado\.tono === "ciruela" \? " iv2-depto-tuyo" : ""\}`\} aria-label=\{B\.abrirDepto\(d\.ficha\?\.titulo \?\? lineaDepto\(d\.datos\)\)\} data-inv2="abrir-depto">/.test(vb) || /<BotonDetalles/.test(dentro) /* ⚠ ACTA (20-nov-2026, etapa 3 A1): «Ver detalles» vuelve, solo en las otras opciones */ || /B\.abrir\}/.test(vb)) F("14f · la tarjeta de «Tus deptos» no se toca entera (o sigue el enlace «Abrir»)");
       if (!dentro || /<(p|div|a|button|Link|BotonDetalles|SumarDepto)[\s>]/.test(dentro)) F("14f · dentro de la tarjeta hay un bloque o un control (un enlace no admite otro control adentro)");
       if (!/<button type="button" className="iv2-depto iv2-depto-tocable" onClick=\{abrir\} disabled=\{estado === "abriendo"\} aria-label=\{etiqueta\}/.test(tarjeta)
         // ⚠ ACTA (20-nov-2026, etapa 3 A1): la tarjeta de la base lleva su flecha en la fila del estado (TarjetaBase, iv2-td-flecha): `sinFlecha`.
@@ -1095,10 +1095,12 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       const lec20 = { alerta: { nivel: "ninguna" as const, motivo: null }, larga: [], corta: ["Cocina y baños renovados: se arrienda tal como está.", "Dos.", "Tres."], calle: "Dublé Almeyda" };
       const ficha20 = { titulo: "Metro Ñuñoa", metro: m(400), comuna: "Ñuñoa", fotos: 0, capRatePct: 4.7, lectura: lec20 };
       const datos20 = { comuna: "Ñuñoa", dormitorios: 2, banos: 2, m2: 58, precioUF: 3250, veredicto: "COMPRAR", score: 78, flujoCLP: -85000 };
-      const h20 = renderToStaticMarkup(createElement(TarjetaBase, { avisoId: "x", datos: datos20, ficha: ficha20, origen: "franco", alcanza: true, estado: { chip: BASE_COPY.francoEnEso, linea: BASE_COPY.confirmandoLinea } }));
+      const h20 = renderToStaticMarkup(createElement(TarjetaBase, { avisoId: "x", datos: datos20, ficha: ficha20, alcanza: true, estado: { chip: BASE_COPY.francoEnEso, tono: "gris", linea: BASE_COPY.confirmandoLinea } }));
       const t20 = h20.replace(/<[^>]+>/g, "|");
-      if (!t20.includes("|Te lo recomendamos|")) F("20d · la tarjeta no dice de dónde salió");
-      if (!t20.includes("|Dublé Almeyda · Metro Ñuñoa|")) F("20d · el título de la tarjeta no lleva la calle que leyó la lectura");
+      // ⚠ ACTA (23-nov-2026, rediseño, lámina 3.3): sale la etiqueta «El que elegiste / Te lo recomendamos» y el título pasa a ser la
+      // dirección (sin número si no está confirmada), con el metro en la línea de abajo.
+      if (/Te lo recomendamos|El que elegiste/.test(t20)) F("20d · la tarjeta sigue diciendo de dónde salió (la lámina 3.3 la saca)");
+      if (!t20.includes("|Dublé Almeyda|") || !/\|Metro Ñuñoa · Ñuñoa · 2D2B · 58\sm²\|/.test(t20)) F("20d · el título de la tarjeta no es la calle que leyó la lectura, con el metro debajo");
       if (!t20.includes("|Cocina y baños renovados: se arrienda tal como está.|")) F("20d · la tarjeta no muestra la síntesis de «Lo que ve Franco»");
       if (!t20.includes("|UF 3.250|") || !t20.includes("|4,7 %|") || !t20.includes("|Pones $85.000|")) F("20d · la tarjeta no muestra precio, cap rate y al mes");
       if (!t20.includes(`|${BASE_COPY.francoEnEso}|`) || !t20.includes(`|${BASE_COPY.confirmandoLinea}|`)) F("20d · la tarjeta no dice su estado con su línea");
@@ -1108,7 +1110,7 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       // 20e · Cableado: la base lee la ficha de cada tarjeta y la dibuja una por fila.
       const bs20 = codigo("src/lib/invierte-v2/base-servidor.ts"), vb20 = codigo("src/components/invierte-v2/VistaBase.tsx");
       if (!/const fichas = await fichasDe\(admin, todos\.map\(\(d\) => d\.avisoId\)/.test(bs20) || !/for \(const d of todos\) \{ d\.ficha = fichas\[d\.avisoId\] \?\? null;/.test(bs20)) F("20e · la base no lee la ficha de sus tarjetas"); /* ⚠ ACTA (21-nov-2026, B1): con el cap rate del análisis rehecho encima */
-      if (!/<TarjetaBase avisoId=\{d\.avisoId\} datos=\{d\.datos\} ficha=\{d\.ficha\} origen=\{d\.origen\}/.test(vb20) || !/<TarjetaOtra avisoId=\{o\.avisoId\} datos=\{o\.datos\} ficha=\{o\.ficha\}/.test(vb20)) F("20e · la base no dibuja la tarjeta nueva");
+      if (!/<TarjetaBase avisoId=\{d\.avisoId\} datos=\{d\.datos\} ficha=\{d\.ficha\} numeroConfirmado=\{d\.numeroConfirmado\}/.test(vb20) || !/<TarjetaOtra avisoId=\{o\.avisoId\} datos=\{o\.datos\} ficha=\{o\.ficha\}/.test(vb20)) F("20e · la base no dibuja la tarjeta nueva");
       const css20 = leer("src/components/invierte-v2/invierte-v2.css");
       const pc20 = css20.slice(css20.indexOf("/* LA TARJETA DE UN DEPTO EN LA BASE (etapa 3"));
       if (!/@media \(min-width: 1024px\) \{\n  \.iv2-deptos \{ display: flex; flex-direction: column; gap: 14px; \}/.test(pc20)) F("20e · en el PC las tarjetas no van una por fila");
@@ -1176,7 +1178,7 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       // 22h · La base: la tarjeta abre la página del depto y su estado sale de la etapa.
       if (urlDepto("abc") !== "/invierte/depto/abc") F("22h · la página del depto cambió de dirección");
       if (estadoEnBase("listo", "aprobada", null).chip !== "Te toca a ti" || estadoEnBase("confirmando", "subir", null).linea !== "Confirmando con quien lo vende que sigue disponible" || estadoEnBase("no_avanza", "subir", "dejo_de_convenir").linea !== "Al confirmar dónde está, dejó de convenir") F("22h · la línea de estado de la tarjeta de la base no sale de la etapa");
-      if (!/estado=\{estadoEnBase\(d\.etapa, base\.preaprobacion, d\.noAvanzaMotivo\)\}/.test(codigo("src/components/invierte-v2/VistaBase.tsx"))) F("22h · la base no dibuja el estado de cada depto");
+      if (!/const estado = estadoEnBase\(d\.etapa, base\.preaprobacion, d\.noAvanzaMotivo, d\.oferta\);/.test(codigo("src/components/invierte-v2/VistaBase.tsx")) || !/estado=\{estado\} \/>/.test(codigo("src/components/invierte-v2/VistaBase.tsx"))) F("22h · la base no dibuja el estado de cada depto (con su oferta)");
       // 22i · «Lo que sigue»: a lo más un botón, rojo solo cuando le toca a la persona; la página entera cambia en «no avanza».
       const ls = (e: Parameters<typeof loQueSigue>[0], pr: Parameters<typeof loQueSigue>[1]) => loQueSigue(e, pr, "/invierte/preaprobacion");
       if (ls("confirmando", "subir")?.boton !== null || ls("sin_preaprobacion", "en_revision")?.boton !== null || ls("sin_preaprobacion", "subir")?.boton?.href !== "/invierte/preaprobacion" || ls("no_avanza", "subir") !== null) F("22i · «Lo que sigue» pone un botón cuando no le toca a la persona (o no lo pone cuando sí)");
@@ -1386,6 +1388,21 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (!/@media \(prefers-reduced-motion: reduce\) \{ \.iv2-chip-tuyo i \{ animation: none; \} \}/.test(cssR) || !/\.iv2-dp-tablero \.iv2-dp-sigue-tuyo \{ border: 1\.5px solid #141414; box-shadow:/.test(cssR) || !/grid-template-areas: "cab cab" "cam cam" "izq der";/.test(cssR) || !/\.iv2-dp-tablero \.iv2-dp-sigue \{ order: 2; \}/.test(cssR) || !/\.iv2-dp-tablero \.iv2-dp-camino \{ order: 3; \}/.test(cssR) || !/\.iv2-dp-tablero \.iv2-dp-izq > \*, \.iv2-dp-tablero \.iv2-dp-der > \* \{ order: 0; \}/.test(cssR)) F("24r · el pulso no se apaga con menos movimiento, la acción no se levanta, o el orden del celular y la grilla de PC no son los de la lámina");
       const fc = filaCambio({ tipo: "precio_baja", antes: { precioUF: 3170 }, despues: { precioUF: 3090 } }, "2026-11-12");
       if (fc?.t !== "Bajó UF 80" || fc?.s !== "12 nov · de UF 3.170 a UF 3.090" || fc?.icono !== "↓") F(`24r · los cambios no van como filas del tablero (${JSON.stringify(fc)})`);
+      // 24s · (rediseño del 23-nov-2026, lámina 3.3) LA TARJETA DE LA BASE: la del depto que espera por la persona se levanta, dice qué le
+      // toca y el rango si existe, y va primera; las demás quedan planas; en celular «Lo que ve Franco» sale de la tarjeta.
+      const eb24 = estadoEnBase("listo", "aprobada", null, { estado: "borrador", pisoUF: 2905, altoUF: 2966 });
+      if (eb24.tono !== "ciruela" || eb24.titulo !== "Haz tu oferta" || eb24.linea !== "Franco recomienda UF 2.905 a 2.966") F(`24s · el depto listo no dice «Haz tu oferta» con el rango (${JSON.stringify(eb24)})`);
+      if (estadoEnBase("listo", "aprobada", null, { estado: "firmada", pisoUF: 1, altoUF: 2 }).tono !== "gris" || estadoEnBase("listo", "aprobada", null, { estado: "firmada", pisoUF: 1, altoUF: 2 }).linea !== "Franco presenta tu oferta" || estadoEnBase("listo", "aprobada", null, null).titulo !== "Haz tu oferta") F("24s · con la oferta firmada la tarjeta no queda en «Franco presenta tu oferta» (o sin rango no dice qué le toca)");
+      const ord24 = primeroLosTuyos([{ k: "a", etapa: "confirmando" as const, noAvanzaMotivo: null, oferta: null }, { k: "b", etapa: "listo" as const, noAvanzaMotivo: null, oferta: { estado: "borrador", pisoUF: 1, altoUF: 2 } }, { k: "c", etapa: "confirmando" as const, noAvanzaMotivo: null, oferta: null }], "aprobada");
+      if (ord24.map((x) => x.k).join("") !== "bac") F("24s · el depto que espera por la persona no va primero (o se pierde el orden de los demás)");
+      if (!/const ordenados = primeroLosTuyos\(elegidos, pre\.estado\);/.test(codigo("src/lib/invierte-v2/base-servidor.ts")) || !/elegidos: ordenados,/.test(codigo("src/lib/invierte-v2/base-servidor.ts"))) F("24s · la base no ordena primero los deptos que esperan por la persona");
+      const vbS = leer("src/components/invierte-v2/VistaBase.tsx");
+      if (!/className=\{`iv2-depto iv2-depto-tocable\$\{estado\.tono === "ciruela" \? " iv2-depto-tuyo" : ""\}`\}/.test(vbS)) F("24s · la tarjeta del depto que espera por la persona no se levanta");
+      const f24s = { titulo: "Nataniel Cox · Metro Parque Almagro", metro: { estacion: "Parque Almagro", metros: 420 }, comuna: "Santiago", fotos: 0, capRatePct: 5.8, lectura: null, calleConfirmada: "nataniel cox" };
+      const tb24 = renderToStaticMarkup(createElement(TarjetaBase, { avisoId: "x", datos: { comuna: "Santiago", dormitorios: 2, banos: 2, m2: 55, precioUF: 2485, veredicto: "COMPRAR", score: 78, flujoCLP: 33931 }, ficha: f24s, numeroConfirmado: "185", alcanza: true, estado: eb24 }));
+      if (!/data-inv2="titulo-depto">Nataniel Cox 185</.test(tb24) || !/class="iv2-chip-tuyo" data-inv2="estado-depto"><i aria-hidden="true"><\/i>Te toca a ti/.test(tb24) || !/data-inv2="estado-titulo">Haz tu oferta</.test(tb24) || !/Franco recomienda UF 2\.905 a 2\.966/.test(tb24)) F("24s · la tarjeta no dice la dirección con su número confirmado, el chip con pulso, qué le toca y el rango");
+      const cssS = leer("src/components/invierte-v2/invierte-v2.css");
+      if (!/\.iv2-depto-tocable\.iv2-depto-tuyo \{ border: 1\.5px solid #141414; box-shadow:/.test(cssS) || !/@media \(max-width: 1023px\) \{ \.iv2-td \.iv2-td-sintesis \{ display: none; \} \}/.test(cssS)) F("24s · la tarjeta no se levanta con sombra y borde oscuro, o «Lo que ve Franco» sigue en la tarjeta del celular");
       // 24l · Los arreglos de la lectura: solo concretos; sin «no se ve» ni «falta información»; en el esquema y la versión.
       if (limpiarArreglos(["la cocina tiene muebles dañados", "no se ve el baño", "falta información del estado", "piso manchado"]).join("|") !== "la cocina tiene muebles dañados|piso manchado" || !(ESQUEMA_LECTURA_FRANCO as unknown as { required: string[] }).required.includes("arreglos") || VERSION_LECTURA15 < 13) F("24l · la lectura no deja solo arreglos concretos (o falta en el esquema o la versión no subió)");
       // 24m · La fecha de publicación: se captura de la ficha que ya se lee, y se guarda aparte (sin romper el guardado si falta la columna).
