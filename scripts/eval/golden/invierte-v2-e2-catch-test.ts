@@ -61,7 +61,7 @@ import { MOTOR_MUESTRA } from "../../../src/lib/invierte-v2/muestra-motor";
 import { sondaConPatch } from "../../../src/lib/analysis";
 import { numerosDe as numerosLectura } from "../../../src/lib/invierte-v2/lectura-franco";
 import { B4_COPY, OFERTAS_VIVAS, RETIRABLES, cierreDe, esRetirable, insistirDesde, lineaVence, sugerenciaFranco, sugerenciaValida, venceAlTerminar as venceAlTerminar28 } from "../../../src/lib/invierte-v2/b4";
-import { avisarPersona, rondaDesde, registrarRespuesta } from "../../../src/lib/invierte-v2/b4-servidor";
+import { avisarPersona, pasadaDeUnaOferta, pasadaManualPermitida, rondaDesde, registrarRespuesta } from "../../../src/lib/invierte-v2/b4-servidor";
 import { cuandoNoHayAcuerdo } from "../../../src/lib/invierte-v2/depto-flujo";
 import { puedeRecibirCopia } from "../../../src/lib/invierte-v2/copias-servidor";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -214,7 +214,14 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       // ⚠ ACTA (20-nov-2026, etapa 3 A1, lámina 3.3-base): la tarjeta de la base vive en TarjetaDepto (TarjetaBase); «Al mes» es su tercer dato.
       const td3 = codigo("src/components/invierte-v2/TarjetaDepto.tsx");
       // ⚠ ACTA (23-nov-2026, ficha): «Al mes» de cada depto va como cuarta cifra (CuatroCifras, en rojo si pone: §27a).
-      if (!/<TarjetaBase /.test(base) || !/<CuatroCifras c=\{ficha\?\.cifras \?\? sinFicha\(datos\)\} variante="base" \/>/.test(td3) || !/className=\{`iv2-4c-v\$\{x\.pones \? " iv2-pones" : ""\}`\}/.test(codigo("src/components/invierte-v2/CuatroCifras.tsx"))) F("3 · la base no dice «Al mes» de cada depto");
+      if (!/<TarjetaBase /.test(base) || !/<CuatroCifras c=\{ficha\?\.cifras \?\? sinFicha\(datos\)\} variante="base" \/>/.test(td3) ) F("3 · la base no dice «Al mes» de cada depto");
+      // ⚠ EXCEPCIÓN DE INVIERTE (24-nov-2026, decisión de Fabrizio): la regla general pone en rojo los montos negativos; en Invierte el rojo
+      // es solo el botón principal cuando le toca a la persona. «Pones al mes» va en NEGRO en la ficha, la base, el resultado, el bloque de
+      // la oferta, «A este precio» y la tabla de la contraoferta: la etiqueta ya dice «Pones».
+      const neg3 = { publicadoUF: 3090, arriendoCLP: 540000, capRatePct: 5.1, flujoCLP: -30000, pocosComparables: false };
+      const htmlNeg3 = ["ficha", "base", "resultado"].map((v) => renderToStaticMarkup(createElement(CuatroCifras, { c: neg3, variante: v as "ficha" })))
+        .concat(renderToStaticMarkup(createElement(OfertaForm, { avisoId: "x", urlFirmar: "/f", postura: "negocia_poco", pisoUF: 2905, recomendadoUF: 2936, altoUF: 2966, publicadoUF: 3090, razones: [], avisoFuertePct: 10, montoInicial: 3090, motor: { ...MOTOR_MUESTRA, arriendoCLP: 100000, cuerpo: { ...MOTOR_MUESTRA.cuerpo, arriendo: 100000 } } })));
+      if (htmlNeg3.some((h) => /iv2-pones|signal-red/.test(h)) || !htmlNeg3[0].includes("Pones al mes") || /iv2-pones/.test(codigo("src/components/invierte-v2/CuatroCifras.tsx") + codigo("src/components/invierte-v2/ResponderContraoferta.tsx")) || /\.iv2-4c-v\.iv2-pones|\.iv2-4c-precio-lista dd\.iv2-pones/.test(leer("src/components/invierte-v2/invierte-v2.css"))) F("3 · en Invierte «Pones al mes» va en rojo en las cifras, la oferta o la contraoferta (la excepción dice negro)");
       // «Estás cerca» solo si lo que falta es poco (el más barato, a lo más un 10 % sobre lo que puede comprar), igual con pie y renta.
       if (UMBRAL_CERCA_PCT !== 10 || !estaCerca(1000, 1100) || estaCerca(1000, 1101) || estaCerca(1000, null) || estaCerca(0, 900)) F("3 · el umbral de «Estás cerca» no es el 10 %");
       if (RESULTADO_COPY.caso2.tituloCredito(false) !== "Hoy tu renta limita el crédito" || RESULTADO_COPY.caso2.tituloCredito(true) !== "Estás cerca: tu renta limita el crédito" || RESULTADO_COPY.caso2.tituloPie("97", false) !== "Hoy te faltan UF 97 de pie" || RESULTADO_COPY.caso2.tituloPie("97", true) !== "Estás cerca: te faltan UF 97 de pie") F("3 · los títulos del caso 2 no son «Hoy…» / «Estás cerca: …»");
@@ -1664,6 +1671,19 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (B4_COPY.noAceptar !== "No aceptar la contraoferta" || !/accion=\{d\.fueraDePlazo \? "no_aceptar_tardia" : "no_aceptar"\}/.test(rc28)) F("28i · responder la contraoferta no trae «No aceptar la contraoferta»");
       // 28j · LA NOCHE: vence lo presentado y las contraofertas que pasaron su plazo, deja la tarea de insistir y pasa la cola; corre en el cron.
       if (!/eq\("estado", "presentada"\)\.lte\("vigente_hasta", iso\)/.test(b4s) || !/eq\("estado", "contraoferta"\)\.lte\("contraoferta_vence", iso\)/.test(b4s) || !/insistirDesde\(new Date\(f\.presentada_at as string\)\)\.getTime\(\) > ahora\.getTime\(\)/.test(b4s) || !/await promoverCola\(admin, f\.user_id as string\);/.test(b4s) || !/const ofertas = await nocheB4\(admin, DEPS_AVISO_B4, ahora\)/.test(codigo("src/app/api/cron/invierte-vigilar/route.ts"))) F("28j · la noche no vence, no deja la tarea de insistir, no pasa la cola o no corre en el cron");
+      // 28k · LA PASADA A MANO (24-nov-2026, para probar B4 en el preview antes del merge): nunca en producción, solo con ofertas de prueba.
+      const filaP = { id: "of-3", user_id: "u-3", aviso_id: "av-3", estado: "presentada", vigente_hasta: "2026-11-20T03:00:00Z", presentada_at: "2026-11-14T12:00:00Z", monto_uf: 2936, es_prueba: true };
+      if (pasadaManualPermitida("production") || !pasadaManualPermitida("preview") || !pasadaManualPermitida(undefined)) F("28k · la pasada a mano se permite en producción (o no en el preview)");
+      const pr28 = await pasadaDeUnaOferta(stubB4(filaP, "x@x.cl").sb, null, "of-3", "pasada", new Date("2026-11-24T12:00:00Z"), "production");
+      const np28 = await pasadaDeUnaOferta(stubB4({ ...filaP, es_prueba: false }, "x@x.cl").sb, null, "of-3", "pasada", new Date("2026-11-24T12:00:00Z"), "preview");
+      if (pr28.ok || (!pr28.ok && pr28.error !== "produccion") || np28.ok || (!np28.ok && np28.error !== "no_es_prueba")) F("28k · la pasada a mano corre en producción o sobre una oferta real");
+      const stP = stubB4(filaP, "x@x.cl");
+      const ok28 = await pasadaDeUnaOferta(stP.sb, null, "of-3", "pasada", new Date("2026-11-24T12:00:00Z"), "preview");
+      if (!ok28.ok || ok28.hizo !== "vencida" || !stP.escrito.some((x) => x.t === "inv_ofertas" && x.v.estado === "sin_acuerdo" && x.v.sin_acuerdo_motivo === "vencida")) F("28k · la pasada a mano no vence una presentada que pasó su plazo");
+      if (!/pruebas=\{process\.env\.VERCEL_ENV !== "production"\} esPrueba=\{d\.es_prueba === true\}/.test(codigo("src/app/admin/invierte-v2/[userId]/page.tsx")) || !/\{pruebas && esPrueba && \(o\.estado === "presentada" \|\| o\.estado === "contraoferta"\) && \(/.test(codigo("src/app/admin/invierte-v2/controles.tsx")) || !/status: r\.error === "produccion" \? 404/.test(codigo("src/app/api/admin/invierte-v2/route.ts"))) F("28k · los botones de la pasada a mano se ven en producción, o la ruta no la rechaza ahí");
+      // 28l · LO QUE VE FRANCO: una versión menor no pisa a una mayor (el trigger de 20261203, para que producción en 13 no pague por rehacer las 14).
+      const mig28 = leer("supabase/migrations/20261203_lecturas_franco_sin_bajar_version.sql");
+      if (!/if new\.version is not null and old\.version is not null and new\.version < old\.version then\s*raise exception/.test(mig28) || !/before update of version on public\.lecturas_franco/.test(mig28) || !/if \(marca\.error\) return \{ estado: "error" \};/.test(codigo("src/lib/invierte-v2/lectura-franco-servidor.ts"))) F("28l · una lectura de versión menor puede pisar a una mayor (o la marca no corta antes de llamar al modelo)");
       // 24l · Los arreglos de la lectura: solo concretos; sin «no se ve» ni «falta información»; en el esquema y la versión.
       if (limpiarArreglos(["la cocina tiene muebles dañados", "no se ve el baño", "falta información del estado", "piso manchado"]).join("|") !== "la cocina tiene muebles dañados|piso manchado" || !(ESQUEMA_LECTURA_FRANCO as unknown as { required: string[] }).required.includes("arreglos") || VERSION_LECTURA15 < 13) F("24l · la lectura no deja solo arreglos concretos (o falta en el esquema o la versión no subió)");
       // 24m · La fecha de publicación: se captura de la ficha que ya se lee, y se guarda aparte (sin romper el guardado si falta la columna).
