@@ -72,8 +72,10 @@ export function useInformeEnCamino(paso: PasoInforme, { desde, reemplazar = fals
   return { ahora, anotar };
 }
 
-export function InformeEnCamino({ paso, alCerrar, alReintentar = null, saldo = null }: {
+export function InformeEnCamino({ paso, alCerrar, alReintentar = null, alAnalizarIgual = null, saldo = null }: {
   paso: PasoInforme;
+  /** CAMBIÓ DESDE QUE SE MOSTRÓ (23-nov-2026): «Analizarlo igual» vuelve a pedirlo con `aceptoCambio` (se cobra normal). */
+  alAnalizarIgual?: (() => void) | null;
   /** Los análisis de la cuenta (05-nov-2026): si el informe no sale, quedan a la vista. null = no se sabe. */
   saldo?: number | null;
   /** Cerrar: solo cuando se puede (cerrable); con el informe listo, quien lo monta deja el aviso de arriba. */
@@ -97,15 +99,16 @@ export function InformeEnCamino({ paso, alCerrar, alReintentar = null, saldo = n
 
   if (typeof document === "undefined") return null;
   return createPortal(
-    <PopupInforme paso={paso} ahora={ahora} saldo={saldo} lugar={lugarDeDesde(desdeDeRuta(window.location.pathname))} alCerrar={alCerrar} alReintentar={alReintentar} alAbrir={() => anotar("boton")} refPrimario={(el) => { primario.current = el; }} />,
+    <PopupInforme paso={paso} ahora={ahora} saldo={saldo} lugar={lugarDeDesde(desdeDeRuta(window.location.pathname))} alCerrar={alCerrar} alReintentar={alReintentar} alAnalizarIgual={alAnalizarIgual} alAbrir={() => anotar("boton")} refPrimario={(el) => { primario.current = el; }} />,
     document.body,
   );
 }
 
 /** LO QUE SE VE (sin portal ni reloj propio: el tier INFORME-EN-CAMINO lo dibuja con la hora que quiere). */
-export function PopupInforme({ paso, ahora, saldo = null, lugar = "mapa", alCerrar, alReintentar = null, alAbrir, refPrimario }: {
+export function PopupInforme({ paso, ahora, saldo = null, lugar = "mapa", alCerrar, alReintentar = null, alAnalizarIgual = null, alAbrir, refPrimario }: {
   paso: PasoInforme;
   ahora: number;
+  alAnalizarIgual?: (() => void) | null;
   /** Los análisis de la cuenta: si no salió, quedan a la vista (05-nov-2026). */
   saldo?: number | null;
   /** Dónde se analizó: el que se dio de baja dice de dónde se saca (el mapa, la selección o la lista de la guía). */
@@ -143,7 +146,15 @@ export function PopupInforme({ paso, ahora, saldo = null, lugar = "mapa", alCerr
           {paso.paso === "distinto" && (
             <>
               <h2 id="informe-en-camino-titulo" className="ie-titulo">{INFORME_COPY.listo(paso.depto)}</h2>
-              <p className="ie-texto" role="status" data-informe="distinto">{INFORME_COPY.distinto(paso.hoy, paso.esperado)}</p>
+              <p className="ie-texto" role="status" data-informe="distinto">{INFORME_COPY.distinto}</p>
+            </>
+          )}
+          {/* CAMBIÓ DESDE QUE SE MOSTRÓ (23-nov-2026): no se cobró nada; la persona decide. */}
+          {paso.paso === "cambio" && (
+            <>
+              <h2 id="informe-en-camino-titulo" className="ie-titulo" role="alert" data-informe="cambio">{INFORME_COPY.cambio(paso.ahora)}</h2>
+              {/* Recién pagado (punto 7): el crédito comprado no se gastó, queda en la cuenta. */}
+              {paso.pagado && <p className="ie-texto" data-informe="cambio-queda">{INFORME_COPY.cambioPagado}</p>}
             </>
           )}
           {fallo && (
@@ -155,6 +166,13 @@ export function PopupInforme({ paso, ahora, saldo = null, lugar = "mapa", alCerr
             </>
           )}
         </div>
+        {paso.paso === "cambio" && (
+          <div className="wz-modal-mb">
+            {/* La acción que cobra es la principal (el rojo es para la acción principal); «Volver» no gasta nada. */}
+            {alAnalizarIgual && <button ref={refPrimario} type="button" className="wz-cta wz-cta-modal" onClick={alAnalizarIgual} data-informe="analizar-igual">{INFORME_COPY.analizarIgual}</button>}
+            <button ref={alAnalizarIgual ? undefined : refPrimario} type="button" className="wz-modal-cancelar" style={{ minHeight: 44 }} onClick={alCerrar} data-informe="cambio-volver">{INFORME_COPY.volver}</button>
+          </div>
+        )}
         {(conAbrir || fallo) && (
           <div className="wz-modal-mb">
             {/* En tinta, no en rojo: abrir el informe no compra nada (el rojo es para comprar, la oferta y el regalo). */}
@@ -191,15 +209,17 @@ export function InformeListoAviso({ depto, ruta, id, t0, alCerrar }: { depto: st
  *  4-ticket-y-popups.html): «Franco está analizando [depto]. En unos segundos se abre el informe.» con la barra de avance y
  *  cuántos le quedan; listo, lo abre en su lugar; a los 10 s, «Abrir informe»; si salió otro veredicto, lo dice antes; si no
  *  salió, lo dice con palabras y qué hacer, ahí mismo: ya no manda al dashboard a intentarlo de nuevo. */
-export function InformeEnLaVuelta({ paso, saldo, alReintentar }: { paso: PasoInforme; saldo: number | null; alReintentar: () => void }) {
+export function InformeEnLaVuelta({ paso, saldo, alReintentar, alAnalizarIgual = null }: { paso: PasoInforme; saldo: number | null; alReintentar: () => void; alAnalizarIgual?: (() => void) | null }) {
   const { ahora, anotar } = useInformeEnCamino(paso, { desde: "pago", reemplazar: true });
-  return <VueltaInforme paso={paso} ahora={ahora} saldo={saldo} alReintentar={alReintentar} alAbrir={() => anotar("boton")} />;
+  return <VueltaInforme paso={paso} ahora={ahora} saldo={saldo} alReintentar={alReintentar} alAnalizarIgual={alAnalizarIgual} alAbrir={() => anotar("boton")} />;
 }
 
 /** LO QUE SE VE EN LA VUELTA (sin reloj propio: el tier INFORME-EN-CAMINO lo dibuja con la hora que quiere). */
-export function VueltaInforme({ paso, ahora, saldo = null, alReintentar = null, alAbrir }: {
+export function VueltaInforme({ paso, ahora, saldo = null, alReintentar = null, alAnalizarIgual = null, alAbrir }: {
   paso: PasoInforme;
   ahora: number;
+  /** «Usarlo en este depto» tras el aviso de cambio (23-nov-2026): lo pide de nuevo con `aceptoCambio`. */
+  alAnalizarIgual?: (() => void) | null;
   /** Los análisis de la cuenta contando este (`null` = no se sabe): «Te quedan N para cualquier otro depto». */
   saldo?: number | null;
   alReintentar?: (() => void) | null;
@@ -225,7 +245,19 @@ export function VueltaInforme({ paso, ahora, saldo = null, alReintentar = null, 
       {paso.paso === "distinto" && (
         <>
           <p className={PLANO.bajada}>{INFORME_COPY.listo(paso.depto)}.</p>
-          <p className="mt-2 text-[15px] leading-[1.5] text-[var(--franco-text)]" role="status" data-informe="distinto">{INFORME_COPY.distinto(paso.hoy, paso.esperado)}</p>
+          <p className="mt-2 text-[15px] leading-[1.5] text-[var(--franco-text)]" role="status" data-informe="distinto">{INFORME_COPY.distinto}</p>
+        </>
+      )}
+      {/* LA VUELTA DEL PAGO CON EL VEREDICTO CAMBIADO (23-nov-2026, punto 7 de Fabrizio): el pago está hecho y el crédito comprado no
+          se gastó; queda en la cuenta y la persona decide si lo usa en este depto o en otro. */}
+      {paso.paso === "cambio" && (
+        <>
+          <p className="mt-2 text-[15px] font-semibold leading-[1.45] text-[var(--franco-text)]" role="alert" data-informe="cambio">{INFORME_COPY.cambio(paso.ahora)}</p>
+          <p className={PLANO.bajada} data-informe="cambio-queda">{INFORME_COPY.cambioPagado}</p>
+          <div className={`${PLANO.seccion} flex flex-col gap-3`}>
+            {alAnalizarIgual && <button type="button" className={PLANO.principal} onClick={alAnalizarIgual} data-informe="analizar-igual">{INFORME_COPY.usarAca}</button>}
+            <EnlaceCarga href="/dashboard" className={alAnalizarIgual ? PLANO.secundario : PLANO.principal} data-informe="cambio-otro">{INFORME_COPY.elegirOtro}</EnlaceCarga>
+          </div>
         </>
       )}
       {fallo && (

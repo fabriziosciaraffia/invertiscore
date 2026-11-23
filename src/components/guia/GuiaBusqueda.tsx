@@ -39,7 +39,7 @@ import { usoDesdeSaldo } from "@/lib/guia/aviso-analizar";
 import { rutaTres } from "@/lib/tres-analisis";
 import { YA_ANALIZADO } from "@/lib/guia/semanal-str";
 import { nombreDelDepto } from "@/lib/guia/compra-desde-depto";
-import { alCerrarQueda, informeFallo, informeGenerando, informeListo, type MotivoFallo, type PasoInforme } from "@/lib/guia/informe-en-camino";
+import { alCerrarQueda, informeCambio, informeFallo, informeGenerando, informeListo, type MotivoFallo, type PasoInforme } from "@/lib/guia/informe-en-camino";
 import { InformeListoAviso } from "./InformeEnCamino";
 import type { EstadoSaldo } from "@/lib/casa-saldo";
 import { ChipInformePropio } from "./ChipInformePropio";
@@ -119,7 +119,7 @@ export function GuiaBusqueda({ analysisId, veredicto, conSesion: conSesionInicia
     }
   }
 
-  async function analizar(it: Item, sesion = conSesion) {
+  async function analizar(it: Item, sesion = conSesion, aceptoCambio = false) {
     if (generando || !r || !r.disponible || !r.combinacion) return;
     if (!muestra) capturarLqs(posthog, EVENTOS_LQS.guiaAnalizarClick, ctx, { aviso_id: it.avisoId, score: it.score, estado: r.estado, con_sesion: sesion });
     // Sin cuenta: el código se pide en la misma tarjeta; al entrar, sale el aviso antes de analizar.
@@ -144,7 +144,7 @@ export function GuiaBusqueda({ analysisId, veredicto, conSesion: conSesionInicia
         const res = await fetch("/api/lo-que-sigue/guia/analizar", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ origenId: analysisId, avisoId: it.avisoId, piePct: r.combinacion.piePct, plazoAnios: r.combinacion.plazoAnios }),
+          body: JSON.stringify({ origenId: analysisId, avisoId: it.avisoId, piePct: r.combinacion.piePct, plazoAnios: r.combinacion.plazoAnios, ...(aceptoCambio ? { aceptoCambio: true } : {}) }),
         });
         if (res.status === 409) {
           // Ocho vueltas «en curso» sin informe: se dice que falló, sin volver a cobrar (el candado lo impide).
@@ -152,19 +152,21 @@ export function GuiaBusqueda({ analysisId, veredicto, conSesion: conSesionInicia
           await new Promise((ok) => setTimeout(ok, 4000));
           continue;
         }
-        const d = (await res.json().catch(() => ({}))) as { id?: string; estado?: string; error?: string; veredicto?: string | null; score?: number | null };
+        const d = (await res.json().catch(() => ({}))) as { id?: string; estado?: string; error?: string; veredicto?: string | null; score?: number | null; devuelto?: boolean; ahora?: { veredicto: string | null; score: number | null } };
         if (res.ok && d.id) {
           const nuevo = d.id;
           setResumenesAqui((m) => ({ ...m, [nuevo]: { veredicto: d.veredicto ?? null, score: d.score ?? null, fecha: new Date().toISOString() } }));
           capturarLqs(posthog, EVENTOS_LQS.guiaInformeCreado, ctx, { aviso_id: it.avisoId, nuevo_id: d.id, ya: d.estado === "ya-creado" });
           // Listo: el pop-up lo abre solo; si con los datos de hoy salió otro veredicto, lo dice primero.
-          const listo = informeListo(paso0, { id: d.id, ruta: `/analisis/${d.id}`, veredicto: d.veredicto ?? null, score: d.score ?? null });
+          const listo = informeListo(paso0, { id: d.id, ruta: `/analisis/${d.id}`, veredicto: d.veredicto ?? null, score: d.score ?? null, devuelto: d.devuelto ?? null });
           setInforme(listo);
           if (listo.paso === "distinto") { soltar(); setGenerando(null); }
           return;
         }
         // La sesión se fue: el código en la tarjeta, y al entrar vuelve el aviso.
         if (res.status === 401) { setInforme(null); setConfirmar(null); setConSesion(false); setGenerando(null); setRegistrando(it.avisoId); break; }
+        // CAMBIÓ DESDE QUE SE MOSTRÓ (23-nov-2026, guia/cobro-mostrado.ts): no se cobró; el pop-up pregunta si lo analiza igual.
+        if (res.status === 412 && d.error === "cambio" && d.ahora?.veredicto) { setConfirmar({ it, sin: false }); setInforme(informeCambio(paso0, { veredicto: d.ahora.veredicto, score: d.ahora.score ?? null })); break; }
         // Se dio de baja recién: el pop-up lo dice y, al cerrarlo, la guía se arma de nuevo sin él.
         if (res.status === 410 && d.error === "despublicado") { fallar("despublicado"); break; }
         // Sin análisis: el aviso con el pack, no el callejón (13-oct-2026).
@@ -201,6 +203,11 @@ export function GuiaBusqueda({ analysisId, veredicto, conSesion: conSesionInicia
     const it = ultimoAnalisis.current;
     setInforme(null);
     if (it) void analizar(it, true);
+  }
+  // «Analizarlo igual» tras el aviso de cambio (23-nov-2026): lo mismo, con `aceptoCambio` (se cobra normal).
+  function analizarIgualInforme() {
+    const it = ultimoAnalisis.current;
+    if (it) void analizar(it, true, true);
   }
 
   // El regalo se dice (16-oct-2026): si el que se gasta es un regalo, «usa tu análisis de regalo».
@@ -316,6 +323,7 @@ export function GuiaBusqueda({ analysisId, veredicto, conSesion: conSesionInicia
           informe={informe}
           alCerrarInforme={cerrarInforme}
           alReintentarInforme={reintentarInforme}
+          alAnalizarIgualInforme={analizarIgualInforme}
           avisoId={confirmar.it.avisoId}
         />
       )}

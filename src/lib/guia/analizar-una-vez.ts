@@ -18,6 +18,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import type { EstadoPublicacion } from "./publicacion";
 import { devolucionDesdeModo, type Devolucion } from "@/lib/access-devolucion";
+import { avisadoDelCambio, decidirAntesDeCobrar, decidirTrasCrear, type MarcaCambio, type Mostrado, type VeredictoHoy } from "./cobro-mostrado";
 
 export const RECLAMO_VIGENTE_MS = 120_000;
 
@@ -33,13 +34,22 @@ export interface PiezasAnalizar {
   /** Devuelve el crédito de un cobro cuyo informe no se creó (access.ts › devolverCobro). */
   devolver(d: Devolucion): Promise<void>;
   marcarCobrado(mode: string): Promise<void>;
-  crear(mode: string): Promise<{ id: string }>;
+  /** Crea el informe; `veredicto` es el que salió (para el respaldo del cobro, cobro-mostrado.ts). */
+  crear(mode: string): Promise<{ id: string; veredicto?: string | null }>;
   marcarCreado(id: string): Promise<void>;
   soltar(): Promise<void>;
+  /** LO MOSTRADO CONTRA HOY (23-nov-2026, cobro-mostrado.ts): lo que la persona vio, reconstruido en el servidor, el veredicto de
+   *  hoy con el mismo cuerpo que se va a crear, y si ya dijo que sigue tras el aviso. Sin cotejo, nada cambia. */
+  cotejo?: { mostrado: Mostrado | null; hoy: VeredictoHoy | null; aceptoCambio: boolean } | null;
+  /** EL RESPALDO: el informe salió distinto a lo mostrado sin aviso. Devuelve el crédito (`devolucion_cobro`), marca el informe y
+   *  deja la fila del admin. true si lo devolvió. */
+  devolverPorCambio?(id: string, d: Devolucion, marca: MarcaCambio): Promise<boolean>;
 }
 
 export type ResultadoAnalizar =
-  | { estado: "creado" | "ya-creado"; id: string }
+  | { estado: "creado" | "ya-creado"; id: string; devuelto?: boolean }
+  /** Antes de cobrar, el veredicto de hoy es otro que el mostrado: no se reclamó ni se cobró (cobro-mostrado.ts). */
+  | { estado: "cambio"; mostrado: Mostrado; hoy: VeredictoHoy }
   | { estado: "en-curso" }
   | { estado: "sin-cobro"; status: number; error: string }
   /** La creación falló: el crédito volvió y la fila quedó suelta. `error` va a Sentry. */
@@ -77,6 +87,13 @@ export async function analizarUnaVez(p: PiezasAnalizar): Promise<ResultadoAnaliz
     // Cobrado en otra solicitud: de ese cobro solo quedó el modo.
     if (cobrado) devolucion = devolucionDesdeModo(mode);
   }
+  // ANTES DE COBRAR (23-nov-2026): si lo mostrado vigente tiene otro veredicto que el de hoy y la persona no dijo que sigue, se
+  // suelta la fila y se avisa. Sin cobrar y sin mandar a pagar: «sin-creditos» recién lo dice `cobrar`. Una fila ya cobrada en otra
+  // solicitud no se frena acá (ya se gastó): la cubre el respaldo de abajo.
+  if (!cobrado && p.cotejo && p.cotejo.mostrado && decidirAntesDeCobrar(p.cotejo) === "avisar") {
+    await p.soltar();
+    return { estado: "cambio", mostrado: p.cotejo.mostrado, hoy: p.cotejo.hoy ?? { veredicto: null, score: null } };
+  }
   if (!cobrado) {
     const c = await p.cobrar();
     if (!c.ok) {
@@ -88,8 +105,9 @@ export async function analizarUnaVez(p: PiezasAnalizar): Promise<ResultadoAnaliz
     await p.marcarCobrado(mode);
   }
   let id: string;
+  let veredicto: string | null = null;
   try {
-    ({ id } = await p.crear(mode ?? "paid"));
+    ({ id, veredicto = null } = await p.crear(mode ?? "paid"));
   } catch (error) {
     // Sin informe no queda crédito gastado: vuelve, y la fila se suelta para que el reintento empiece de cero.
     if (devolucion) await p.devolver(devolucion);
@@ -97,5 +115,16 @@ export async function analizarUnaVez(p: PiezasAnalizar): Promise<ResultadoAnaliz
     return { estado: "fallo", error };
   }
   await p.marcarCreado(id);
+  // EL RESPALDO (23-nov-2026): el informe salió con otro veredicto que lo mostrado y nadie le avisó → el crédito vuelve solo.
+  const cot = p.cotejo;
+  if (cot && cot.mostrado && p.devolverPorCambio && devolucion) {
+    const avisado = avisadoDelCambio(cot);
+    const cobroGasto = devolucion.tipo !== "nada";
+    if (decidirTrasCrear({ mostrado: cot.mostrado, informe: veredicto, avisado, cobroGasto }) === "devolver") {
+      const m = cot.mostrado;
+      const devuelto = await p.devolverPorCambio(id, devolucion, { mostrado: { veredicto: m.veredicto, score: m.score, at: m.at, fuente: m.fuente }, hoy: { veredicto, score: null } });
+      return { estado: "creado", id, devuelto };
+    }
+  }
   return { estado: "creado", id };
 }

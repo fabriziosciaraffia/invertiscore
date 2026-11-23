@@ -37,6 +37,9 @@ import { verificarNegociado } from "@/lib/avisos/negociar";
 import { devolverCobro } from "@/lib/access";
 import { EVENTO_DETALLE_ABIERTO, MODO_INVIERTE, verGratisInvierte } from "@/lib/invierte-v2/detalles";
 import { chequearPublicacionInvierte, detallesPreparados } from "@/lib/invierte-v2/carril-servidor";
+import { avisadoDelCambio, type MarcaCambio, type Mostrado, type VeredictoHoy } from "@/lib/guia/cobro-mostrado";
+import { mostradoDePantalla, mostradoDelCorreo } from "@/lib/guia/mostrado-servidor";
+import { devolverCobroPorCambio } from "@/lib/guia/cobro-mostrado-servidor";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // «Analizar este» (30-sep-2026): el informe de un aviso de la guía, sin wizard, con un crédito del
@@ -62,6 +65,11 @@ import { chequearPublicacionInvierte, detallesPreparados } from "@/lib/invierte-
 // elegido (5 % o 10 %). El precio tiene que estar entre el publicado menos el tope y el publicado; el informe se hace a ese precio
 // (todo lo que deriva del precio, como en el re-análisis) y queda marcado con los dos precios (`origenAviso.precioNegociado`),
 // que la portada dice. `analisis_creado` lleva la marca. El crédito, el de siempre: una vez por persona y aviso.
+// LO MOSTRADO CONTRA HOY (23-nov-2026, decisión de Fabrizio, cobro-mostrado.ts): con el cuerpo de hoy ya armado y antes de reclamar
+// o cobrar, se corre el motor. Si su veredicto es otro que el que la persona vio (reconstruido acá: el ítem del correo por su token,
+// o la sonda de la pantalla con la misma combinación), la ruta responde 412 «cambio» sin cobrar ni mandar a pagar; con
+// `aceptoCambio: true` sigue, cobra y el informe queda marcado (`origenAviso.cambioAvisado`). Si igual se crea distinto sin aviso, el
+// crédito vuelve solo (`origenAviso.cobroDevuelto`, `devuelto: true` en la respuesta). El precio negociado tiene su propia verificación.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const maxDuration = 60;
@@ -73,7 +81,7 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "sin-sesion" }, { status: 401 });
 
-  const b = (await request.json().catch(() => ({}))) as { origenId?: string | null; avisoId?: string; piePct?: number; plazoAnios?: number; tasaPct?: unknown; semanal?: string; explorar?: boolean; respaldo?: boolean; precioNegociadoUF?: unknown; topeNegociar?: unknown; invierte?: boolean; origenInvierte?: string };
+  const b = (await request.json().catch(() => ({}))) as { origenId?: string | null; avisoId?: string; piePct?: number; plazoAnios?: number; tasaPct?: unknown; semanal?: string; explorar?: boolean; respaldo?: boolean; precioNegociadoUF?: unknown; topeNegociar?: unknown; invierte?: boolean; origenInvierte?: string; aceptoCambio?: boolean };
   // LA TASA ELEGIDA (30-oct-2026): la del pop-up (null = la de hoy); una que no es de la lista no se acepta.
   if (b.tasaPct != null && tasaElegidaDe(b.tasaPct) == null) return NextResponse.json({ error: "tasa" }, { status: 400 });
   const sinOrigen = typeof b.semanal === "string" && b.origenId == null;
@@ -123,6 +131,10 @@ export async function POST(request: Request) {
     if (!combo || !o) return NextResponse.json({ error: "combinacion" }, { status: 400 });
     const origen: OrigenGuia = o;
     const combinacion: Combinacion = combo;
+    // LO MOSTRADO DESDE UN CORREO (23-nov-2026): con la combinación del correo, el ítem tal como salió (por el token). Con otra
+    // combinación elegida en el pop-up, lo mostrado es la sonda de la pantalla (abajo, en `preparar`).
+    const desdeCorreo = typeof b.semanal === "string" && !elegida && negociadoUF == null;
+    const mostradoCorreo: Mostrado | null = desdeCorreo ? await mostradoDelCorreo(admin, b.semanal!, user.id, b.avisoId).catch(() => null) : null;
     // El piso del precio negociado, ANTES del evento de Meta y de leer la ficha (dos GETs del tope por hora): un precio fuera del
     // tope no gasta nada. `preparar` lo vuelve a mirar con el aviso que usa.
     if (negociadoUF != null) {
@@ -232,6 +244,23 @@ export async function POST(request: Request) {
           }
         }
 
+        // LO MOSTRADO CONTRA HOY (23-nov-2026, cobro-mostrado.ts): el veredicto de hoy sale del MISMO cuerpo y la MISMA mediana con
+        // que `crear` hará el informe; lo mostrado, del correo o de la sonda de la pantalla con esta combinación y esta tasa.
+        let cotejo: { mostrado: Mostrado | null; hoy: VeredictoHoy | null; aceptoCambio: boolean } | null = null;
+        if (negociadoUF == null) {
+          const mostrado = desdeCorreo
+            ? mostradoCorreo
+            : mostradoDePantalla(aviso, { piePct: combinacion.piePct, plazoAnios: combinacion.plazoAnios, tasa: tasaElegida ?? (desde === "guia" ? origen.tasa : null) }, { uf: ufValue, tasa: cfg.tasa });
+          if (mostrado) {
+            medianaDeHoy = medianaDeHoy ?? await prefetchMedianaComunaVenta(admin, body, ufValue);
+            const r0 = runAnalysis(body, ufValue, medianaDeHoy);
+            const hoy: VeredictoHoy = { veredicto: readVeredicto(r0) ?? null, score: typeof r0.score === "number" ? r0.score : null };
+            cotejo = { mostrado, hoy, aceptoCambio: b.aceptoCambio === true || modoInvierte };
+            // Siguió tras el aviso: el informe lo guarda (se cobra normal).
+            if (avisadoDelCambio(cotejo) && body.origenAviso) body.origenAviso.cambioAvisado = { mostrado: { veredicto: mostrado.veredicto, score: mostrado.score, at: mostrado.at, fuente: mostrado.fuente }, hoy };
+          }
+        }
+
         const clave = { user_id: user.id, aviso_id: aviso.avisoId };
         return { ok: true, piezas: {
           async reclamar() {
@@ -291,6 +320,7 @@ export async function POST(request: Request) {
             } catch (e) {
               console.error("[guia/analizar] perfil de inversión:", e);
             }
+            const veredictoInforme = readVeredicto(result) ?? null;
             if (user.email) {
               const email = user.email;
               waitUntil(sendAnalysisReadyEmail(
@@ -298,7 +328,7 @@ export async function POST(request: Request) {
                 result.score, readVeredicto(result) || "AJUSTA SUPUESTOS", id, undefined, { userId: user.id },
               ).catch((e) => console.error("[guia/analizar] correo listo:", e)));
             }
-            return { id };
+            return { id, veredicto: veredictoInforme };
           },
           async marcarCreado(id) {
             await admin.from("guia_analisis").update({ analysis_id: id, creado_at: new Date().toISOString() }).match(clave);
@@ -310,6 +340,18 @@ export async function POST(request: Request) {
           async soltar() {
             await admin.from("guia_analisis").delete().match(clave).is("analysis_id", null);
           },
+          // LO MOSTRADO CONTRA HOY (23-nov-2026, cobro-mostrado.ts): el cotejo que el orquestador mira antes de cobrar.
+          cotejo,
+          // EL RESPALDO (23-nov-2026): el informe salió distinto a lo mostrado sin aviso → crédito nuevo `devolucion_cobro`, la marca
+          // en el informe (la portada la dice) y la fila del admin.
+          async devolverPorCambio(id: string, _d, marca: MarcaCambio) {
+            const grantId = await devolverCobroPorCambio(admin, { userId: user.id, userEmail: user.email ?? null, analysisId: id, avisoId: aviso.avisoId, marca, desde });
+            if (!grantId) { captureApiError(new Error("No se pudo devolver el cobro por cambio de veredicto"), { ruta: RUTA, operacion: "devolver-por-cambio", userId: user.id, extra: { analysisId: id } }); return false; }
+            if (body.origenAviso) body.origenAviso.cobroDevuelto = { ...marca, grantId, at: new Date().toISOString() };
+            const { error } = await admin.from("analisis").update({ input_data: body }).eq("id", id);
+            if (error) captureApiError(error, { ruta: RUTA, operacion: "marcar-cobro-devuelto", userId: user.id, extra: { analysisId: id, grantId } });
+            return true;
+          },
         } };
       },
     });
@@ -318,6 +360,9 @@ export async function POST(request: Request) {
     if (r.estado === "sin-preparar") return salir(plausibleFallo ?? negociadoFallo ?? NextResponse.json({ error: r.error }, { status: r.status }));
     if (r.estado === "sin-cobro") return salir(NextResponse.json({ error: r.error }, { status: r.status }));
     if (r.estado === "en-curso") return salir(NextResponse.json({ error: "en-curso" }, { status: 409 }));
+    // CAMBIÓ DESDE QUE SE MOSTRÓ (23-nov-2026): no se reclamó ni se cobró; el pop-up pregunta si lo analiza igual. 412 y no 409: los
+    // clientes reintentan el 409 («en curso») solos.
+    if (r.estado === "cambio") return salir(NextResponse.json({ error: "cambio", mostrado: { veredicto: r.mostrado.veredicto, score: r.mostrado.score }, ahora: r.hoy }, { status: 412 }));
     // No salió y el crédito volvió (04-nov-2026): el pop-up dice que falló, sin cobro.
     if (r.estado === "fallo") {
       captureApiError(r.error, { ruta: RUTA, operacion: "analizar-aviso-crear", userId: user.id, tags: { credito: "devuelto" } });
@@ -329,7 +374,7 @@ export async function POST(request: Request) {
       const res = (fila?.results ?? null) as Parameters<typeof readVeredicto>[0] | null;
       delInforme = res ? { veredicto: readVeredicto(res) ?? null, score: (res as { score?: number | null }).score ?? null } : null;
     }
-    return salir(NextResponse.json({ id: r.id, estado: r.estado, veredicto: delInforme?.veredicto ?? null, score: delInforme?.score ?? null }));
+    return salir(NextResponse.json({ id: r.id, estado: r.estado, veredicto: delInforme?.veredicto ?? null, score: delInforme?.score ?? null, devuelto: r.estado === "creado" && r.devuelto === true }));
   } catch (e) {
     captureApiError(e, { ruta: RUTA, operacion: "analizar-aviso", userId: user.id, extra: { avisoId: b.avisoId } });
     return salir(NextResponse.json({ error: "interno" }, { status: 500 }));

@@ -126,7 +126,11 @@ export interface AnalisisInput {
     precioNegociado?: { publicadoUF: number; negociadoUF: number; descuentoPct: number };
     /** LA EDAD DEL EDIFICIO (03-nov-2026): el año y de dónde salió —la ficha de este aviso u otro aviso del edificio—, que el
      *  informe dice; o, con 25 supuestos, por qué: la ficha leída no lo trae o no se pudo leer (guia/edad-edificio.ts). */
-    edad?: { anio: number; fuente: "ficha" | "edificio" }; supuestaPor?: "no-dice" | "no-leida" };
+    edad?: { anio: number; fuente: "ficha" | "edificio" }; supuestaPor?: "no-dice" | "no-leida";
+    /** LO MOSTRADO CONTRA HOY (23-nov-2026, guia/cobro-mostrado.ts): la persona vio otro veredicto, se le avisó antes de cobrar y
+     *  siguió (`cambioAvisado`); o salió distinto sin aviso y el crédito volvió solo (`cobroDevuelto`, la portada lo dice). */
+    cambioAvisado?: import("./guia/cobro-mostrado").MarcaCambio;
+    cobroDevuelto?: import("./guia/cobro-mostrado").MarcaCambio & { grantId: string; at: string } };
 }
 
 // ─── Métricas sobre capital propio (pie cero · fase 1-2) ─────────────────────

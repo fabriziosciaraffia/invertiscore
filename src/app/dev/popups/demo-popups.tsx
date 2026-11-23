@@ -11,8 +11,8 @@
 // un ancla de esta página: no navega a ningún informe.
 import { useEffect, useState } from "react";
 import { AvisoAntesDeAnalizar } from "@/components/guia/AvisoAntesDeAnalizar";
-import { InformeListoAviso } from "@/components/guia/InformeEnCamino";
-import { informeFallo, informeGenerando, informeListo, type PasoInforme } from "@/lib/guia/informe-en-camino";
+import { InformeListoAviso, VueltaInforme } from "@/components/guia/InformeEnCamino";
+import { informeCambio, informeFallo, informeGenerando, informeListo, type PasoInforme } from "@/lib/guia/informe-en-camino";
 import { nombreDelDepto } from "@/lib/guia/compra-desde-depto";
 import { PopupNoDa } from "@/components/guia/PopupNoDa";
 import { porQueNoDa, textoAnalizarIgual } from "@/lib/guia/semanal-str";
@@ -22,7 +22,7 @@ import { comprasDeExplorar, ticketConSaldoDelDepto } from "@/lib/guia/compra-des
 import { lineaPlan } from "@/lib/explorar/portal";
 import { PLAZO_POR_DEFECTO } from "@/lib/deptos/estandar";
 
-export type EstadoDemoPopups = "a" | "a0" | "d1" | "d1t" | "d2" | "p" | "p0" | "c1" | "c0" | "nd" | "nd2" | "ig" | "il" | "iv" | "ie" | "ip" | "if" | "ia";
+export type EstadoDemoPopups = "a" | "a0" | "d1" | "d1t" | "d2" | "p" | "p0" | "c1" | "c0" | "nd" | "nd2" | "ig" | "il" | "iv" | "ie" | "ip" | "if" | "ia" | "ic" | "icp" | "vc";
 
 const DEPTO = { comuna: "Providencia", tipologia: "2D1B", m2: 46, precioUF: 3275 };
 const FINANZAS = { tasa: 4.2, uf: 39_600, arriendo: 720_000 };
@@ -35,7 +35,9 @@ function pasoDemo(estado: EstadoDemoPopups): PasoInforme | null {
   const r = { id: "demo", ruta: "#informe-demo" };
   if (estado === "ig") return g;
   if (estado === "il") return informeListo(g, { ...r, veredicto: "COMPRAR", score: 80 }, Date.now() - 1_000);
-  if (estado === "iv") return informeListo(g, { ...r, veredicto: "AJUSTA SUPUESTOS", score: 68 });
+  if (estado === "iv") return informeListo(g, { ...r, veredicto: "AJUSTA SUPUESTOS", score: 68, devuelto: true });
+  if (estado === "ic" || estado === "vc") return informeCambio(g, { veredicto: "AJUSTA SUPUESTOS", score: 63 }, estado === "vc");
+  if (estado === "icp") return informeCambio(g, { veredicto: "AJUSTA SUPUESTOS", score: 63 }, true);
   if (estado === "ie") return informeFallo(g, "error");
   if (estado === "ip") return informeFallo(g, "despublicado");
   if (estado === "if") return informeFallo(g, "fuera");
@@ -58,7 +60,9 @@ export function DemoPopups({ estado }: { estado: EstadoDemoPopups }) {
   return (
     <main style={{ minHeight: "100dvh", padding: 16 }} data-demo-popups={estado}>
       <p style={{ fontSize: 13, opacity: 0.6 }}>/dev/popups · {estado}</p>
-      {!montado ? null : estado === "ia" ? (
+      {!montado ? null : estado === "vc" ? (
+        <section style={{ maxWidth: 560, margin: "24px auto" }}><p style={{ fontWeight: 600 }}>Pago confirmado.</p><VueltaInforme paso={pasoDemo(estado)!} ahora={Date.now()} saldo={1} alAnalizarIgual={nada} /></section>
+      ) : estado === "ia" ? (
         <InformeListoAviso depto={nombreDelDepto(DEPTO)} ruta="#informe-demo" id="demo" t0={Date.now() - 60_000} alCerrar={nada} />
       ) : estado === "nd" || estado === "nd2" ? (
         <PopupNoDa
@@ -92,6 +96,7 @@ export function DemoPopups({ estado }: { estado: EstadoDemoPopups }) {
           informe={pasoDemo(estado)}
           alCerrarInforme={nada}
           alReintentarInforme={estado === "ie" ? nada : null}
+          alAnalizarIgualInforme={estado === "ic" || estado === "icp" ? nada : null}
           // La imagen del depto a la izquierda de la tarjeta (30-oct-2026), como en todas partes: la sonda mide con ella.
           avisoId="demo"
         />

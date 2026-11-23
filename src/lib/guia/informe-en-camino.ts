@@ -16,8 +16,12 @@
 // sessionStorage), y `analisis_apertura_fallida` cuando el informe estaba listo y la página seguía acá 10 s después.
 // Puro: sin React ni Next, para que el tier INFORME-EN-CAMINO lo pruebe entero.
 // ─────────────────────────────────────────────────────────────────────────────
-import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
-import type { Veredicto } from "@/lib/types";
+// LO MOSTRADO CONTRA HOY (23-nov-2026, decisión de Fabrizio, cobro-mostrado.ts): el aviso «con los datos de hoy dio otro veredicto»,
+// que llegaba con el informe ya cobrado, se retira. Ahora, si el veredicto cambió desde que se mostró, la ruta lo dice ANTES de cobrar
+// (paso «cambio»: «Este depto cambió desde que te lo mostramos: ahora sale X. ¿Quieres analizarlo igual?», sin cobrar ni mandar a
+// pagar); y si igual se creó distinto sin aviso, el crédito volvió solo y el paso «distinto» dice «No te cobramos este análisis…».
+// Lo decide el servidor (`devuelto` en la respuesta), no la comparación del navegador.
+import { COBRO_MOSTRADO_COPY } from "./cobro-mostrado";
 
 /** Desde «Analizar», cuánto hasta que aparece «Abrir informe» (con el informe listo). */
 export const ABRIR_INFORME_TRAS_MS = 10_000;
@@ -34,7 +38,11 @@ interface Base { depto: string; t0: number; esperado: VeredictoVisto | null }
 export type PasoInforme =
   | (Base & { paso: "generando" })
   | (Base & { paso: "listo"; id: string; ruta: string; listoEn: number })
-  | (Base & { paso: "distinto"; id: string; ruta: string; listoEn: number; hoy: VeredictoVisto; esperado: VeredictoVisto })
+  /** El informe salió distinto a lo mostrado sin aviso y el crédito volvió solo (el servidor lo dice con `devuelto`). */
+  | (Base & { paso: "distinto"; id: string; ruta: string; listoEn: number })
+  /** Antes de cobrar, el veredicto de hoy es otro que el mostrado: no se cobró. `pagado`: la vuelta del pago (el crédito comprado
+   *  queda en la cuenta). */
+  | (Base & { paso: "cambio"; ahora: VeredictoVisto; pagado: boolean })
   | (Base & { paso: "fallo"; motivo: MotivoFallo });
 /** Dónde se analizó, para decir de dónde se saca el que se dio de baja: el mapa de Explorar, la selección (el dashboard, «Estás
  *  dentro», el semanal y la vuelta del pago de un depto) o la lista de la guía. */
@@ -71,14 +79,18 @@ export const INFORME_COPY = {
   medicionQue: "Prueba de nuevo en unos minutos.",
   fueraQue: "La armamos de nuevo con lo de hoy. Elige otro.",
   otraCuentaQue: "Esa cuenta no es la del pago. Entra con el correo con que pagaste.",
-  /** «Con los datos de hoy dio Ajustar 68, no Comprar 82. Igual puedes verlo completo.» */
-  distinto: (hoy: VeredictoVisto, antes: VeredictoVisto) =>
-    `Con los datos de hoy dio ${conPuntaje(hoy)}, no ${conPuntaje(antes)}. Igual puedes verlo completo.`,
+  /** El respaldo (23-nov-2026): salió distinto a lo mostrado sin aviso y el crédito volvió solo. */
+  distinto: COBRO_MOSTRADO_COPY.devuelto,
+  /** Antes de cobrar (23-nov-2026): «Este depto cambió desde que te lo mostramos: ahora sale Ajustar. ¿Quieres analizarlo igual?» */
+  cambio: (ahora: VeredictoVisto) => COBRO_MOSTRADO_COPY.cambio(ahora.veredicto),
+  cambioPagado: COBRO_MOSTRADO_COPY.pagadoQueda,
+  analizarIgual: COBRO_MOSTRADO_COPY.analizarIgual,
+  usarAca: COBRO_MOSTRADO_COPY.usarAca,
+  volver: COBRO_MOSTRADO_COPY.volver,
+  elegirOtro: COBRO_MOSTRADO_COPY.elegirOtro,
   listo: (depto: string) => `Los detalles de ${depto} están listos`,
   abrirlo: "Abrirlo",
 } as const;
-
-const conPuntaje = (v: VeredictoVisto) => `${etiquetaVeredicto(v.veredicto as Veredicto, "frase")}${v.score != null ? ` ${Math.round(v.score)}` : ""}`;
 
 /** Al tocar «Analizar». */
 export function informeGenerando(depto: string, esperado: VeredictoVisto | null, t0: number = Date.now()): PasoInforme {
@@ -90,11 +102,16 @@ export function veredictoDistinto(esperado: VeredictoVisto | null, hoy: Veredict
   return !!esperado && !!hoy && !!hoy.veredicto && hoy.veredicto !== esperado.veredicto;
 }
 
-/** El informe está: se abre solo, salvo que el veredicto haya salido distinto (entonces se dice primero). */
-export function informeListo(p: PasoInforme, r: { id: string; ruta: string; veredicto?: string | null; score?: number | null }, ahora: number = Date.now()): PasoInforme {
-  const hoy = r.veredicto ? { veredicto: r.veredicto, score: r.score ?? null } : null;
+/** El informe está: se abre solo, salvo que el servidor diga que salió distinto a lo mostrado y devolvió el crédito (`devuelto`):
+ *  entonces se dice primero. La comparación del navegador ya no decide nada (23-nov-2026). */
+export function informeListo(p: PasoInforme, r: { id: string; ruta: string; veredicto?: string | null; score?: number | null; devuelto?: boolean | null }, ahora: number = Date.now()): PasoInforme {
   const base = { depto: p.depto, t0: p.t0, esperado: p.esperado, id: r.id, ruta: r.ruta, listoEn: ahora };
-  return hoy && p.esperado && veredictoDistinto(p.esperado, hoy) ? { ...base, paso: "distinto", hoy, esperado: p.esperado } : { ...base, paso: "listo" };
+  return r.devuelto === true ? { ...base, paso: "distinto" } : { ...base, paso: "listo" };
+}
+
+/** Antes de cobrar, cambió el veredicto (412 «cambio»): no se cobró; la persona decide si lo analiza igual. */
+export function informeCambio(p: PasoInforme, ahora: VeredictoVisto, pagado = false): PasoInforme {
+  return { paso: "cambio", depto: p.depto, t0: p.t0, esperado: p.esperado, ahora, pagado };
 }
 
 /** El análisis no salió (no se cobró): con el motivo, para decirlo con palabras. */

@@ -23,7 +23,7 @@ import { PRODUCTO_TRES, TRES_COPY, volverSeguro } from "@/lib/tres-analisis";
 import { PLANO, UI_PLANO } from "@/components/plano/plano";
 import { RETORNO, botonTrasPagar, rutaReintentar, vueltaAnalizaSola } from "@/lib/compra/compra";
 import { CONFIRMANDO_TOPE_MS, DEMORA_PAGO, PAGO_SIN_CONFIRMAR, RETORNO_SUSCRIPCION, estadoRetornoSuscripcion } from "@/lib/subscriptions/suscripcion";
-import { ABRIR_INFORME_TRAS_MS, INFORME_COPY, informeFallo, informeGenerando, informeListo, type MotivoFallo, type PasoInforme } from "@/lib/guia/informe-en-camino";
+import { ABRIR_INFORME_TRAS_MS, INFORME_COPY, informeCambio, informeFallo, informeGenerando, informeListo, type MotivoFallo, type PasoInforme } from "@/lib/guia/informe-en-camino";
 import { InformeEnLaVuelta } from "@/components/guia/InformeEnCamino";
 
 /** Generando el informe del depto pagado: cuánto se espera entre intentos y cuántas veces se espera el crédito. */
@@ -94,7 +94,7 @@ function PaymentReturnContent() {
   }, [destino]);
   const abrirDestino = (href: string) => { setDestino(href); router.push(href); };
 
-  async function generarDepto(depto: DeptoDelPago) {
+  async function generarDepto(depto: DeptoDelPago, aceptoCambio = false) {
     const esperar = (ms: number) => new Promise((ok) => setTimeout(ok, ms));
     const paso0 = informeGenerando(depto.nombre, depto.esperado);
     setInforme(paso0);
@@ -108,12 +108,15 @@ function PaymentReturnContent() {
         const res = await fetch("/api/lo-que-sigue/guia/analizar", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ origenId: depto.origenId, avisoId: depto.avisoId, semanal: depto.token }),
+          body: JSON.stringify({ origenId: depto.origenId, avisoId: depto.avisoId, semanal: depto.token, ...(aceptoCambio ? { aceptoCambio: true } : {}) }),
         });
         if (res.status === 409) { await esperar(ESPERA_GENERAR_MS); continue; }
-        const d = (await res.json().catch(() => ({}))) as { id?: string; error?: string; veredicto?: string | null; score?: number | null };
+        const d = (await res.json().catch(() => ({}))) as { id?: string; error?: string; veredicto?: string | null; score?: number | null; devuelto?: boolean; ahora?: { veredicto: string | null; score: number | null } };
         // Listo: InformeEnLaVuelta lo abre en su lugar; si con los datos de hoy salió otro veredicto, lo dice primero.
-        if (res.ok && d.id) { setInforme(informeListo(paso0, { id: d.id, ruta: `/analisis/${d.id}`, veredicto: d.veredicto ?? null, score: d.score ?? null })); return; }
+        if (res.ok && d.id) { setInforme(informeListo(paso0, { id: d.id, ruta: `/analisis/${d.id}`, veredicto: d.veredicto ?? null, score: d.score ?? null, devuelto: d.devuelto ?? null })); return; }
+        // EL VEREDICTO CAMBIÓ CON EL PAGO YA HECHO (23-nov-2026, punto 7 de Fabrizio): el crédito comprado no se gastó; queda en la
+        // cuenta y la persona decide si lo usa en este depto o en otro.
+        if (res.status === 412 && d.error === "cambio" && d.ahora?.veredicto) { setInforme(informeCambio(paso0, { veredicto: d.ahora.veredicto, score: d.ahora.score ?? null }, true)); return; }
         if (d.error === "sin-creditos" && sinCredito++ < REINTENTOS_CREDITO_RETORNO) { await esperar(ESPERA_GENERAR_MS); continue; }
         if (res.status === 410 && d.error === "despublicado") { fallar("despublicado"); return; }
         if (d.error === "combinacion") { fallar("fuera"); return; }
@@ -373,7 +376,7 @@ function PaymentReturnContent() {
             {alDepto && informe ? (
               // PAGO CONFIRMADO DESDE UN DEPTO (24-oct-2026, mockup C; 03-nov-2026, el informe en camino): el depto en negrita, la
               // barra y cuántos le quedan; y lo que pase con el informe, acá mismo.
-              <InformeEnLaVuelta paso={informe} saldo={saldo} alReintentar={() => void generarDepto(alDepto)} />
+              <InformeEnLaVuelta paso={informe} saldo={saldo} alReintentar={() => void generarDepto(alDepto)} alAnalizarIgual={() => void generarDepto(alDepto, true)} />
             ) : (
               <>
                 <p className={PLANO.bajada} data-retorno={volviendo ? "volviendo-al-depto" : undefined}>{volviendo ? RETORNO.volviendoAlDepto : RETORNO.abriendo.cuerpo}</p>

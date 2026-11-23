@@ -112,12 +112,14 @@ export async function runInformeEnCaminoTier(): Promise<{ hard: number }> {
     const aviso = codigo("src/components/guia/AvisoAntesDeAnalizar.tsx");
     // ⚠ ACTA (05-nov-2026, goal de Fabrizio, auditoría de promesas parte 3: «si no se pudo analizar, lo dice y los créditos quedan
     // a la vista») · el pop-up le pasa el saldo de lo que mostraba (con N, el regalo = 1, sin = 0; el plan, sin cifra).
-    if (!/if \(informe\) return <InformeEnCamino paso=\{informe\} alCerrar=\{alCerrarInforme \?\? alCancelar\} alReintentar=\{alReintentarInforme\} saldo=\{uso\.tipo === "con" \? uso\.n : uso\.tipo === "regalo" \? 1 : uso\.tipo === "sin" \? 0 : null\} \/>;/.test(aviso)) F("1 · el pop-up de «Ver este depto» no pasa a «Generando el informe…»: se cierra o se reemplaza por otro");
+    // ⚠ ACTA (23-nov-2026, goal de Fabrizio «no cobrar cuando el informe contradice lo mostrado», cobro-mostrado.ts) · el pop-up
+    // también recibe «Analizarlo igual» (alAnalizarIgual) para el aviso de cambio antes de cobrar. Lo demás, igual.
+    if (!/if \(informe\) return <InformeEnCamino paso=\{informe\} alCerrar=\{alCerrarInforme \?\? alCancelar\} alReintentar=\{alReintentarInforme\} alAnalizarIgual=\{alAnalizarIgualInforme\} saldo=\{uso\.tipo === "con" \? uso\.n : uso\.tipo === "regalo" \? 1 : uso\.tipo === "sin" \? 0 : null\} \/>;/.test(aviso)) F("1 · el pop-up de «Ver este depto» no pasa a «Generando el informe…»: se cierra o se reemplaza por otro");
     for (const s of pantallas) {
       const analizar = cuerpo(s.src, "async function analizar(");
       const exito = bloque(analizar, "if (res.ok && d.id) {");
       if (!analizar || !exito) { F(`1 · ${s.nombre}: no se encontró su «Analizar» o la rama del informe listo`); continue; }
-      if (/setConfirmar\(null\)|setInforme\(null\)|router\.push\(/.test(exito) || !exito.includes(`informeListo(paso0, { id: d.id, ruta: ${s.ruta}, veredicto: d.veredicto ?? null, score: d.score ?? null })`) || !/setInforme\(listo\);/.test(exito)) F(`1 · ${s.nombre}: al llegar el informe se cierra el pop-up o navega por su cuenta (en vez de pasarle el informe al pop-up)`);
+      if (/setConfirmar\(null\)|setInforme\(null\)|router\.push\(/.test(exito) || !exito.includes(`informeListo(paso0, { id: d.id, ruta: ${s.ruta}, veredicto: d.veredicto ?? null, score: d.score ?? null, devuelto: d.devuelto ?? null })`) || !/setInforme\(listo\);/.test(exito)) F(`1 · ${s.nombre}: al llegar el informe se cierra el pop-up o navega por su cuenta (en vez de pasarle el informe al pop-up)`);
       if (!/setInforme\(paso0\);/.test(analizar)) F(`1 · ${s.nombre}: al tocar «Analizar» el pop-up no pasa a «Generando el informe…»`);
       const monta = s.src.slice(s.src.indexOf("<AvisoAntesDeAnalizar"), s.src.indexOf("/>", s.src.indexOf("<AvisoAntesDeAnalizar")));
       if (!/informe=\{informe\}/.test(monta) || !/alCerrarInforme=\{cerrarInforme\}/.test(monta) || !/alReintentarInforme=\{reintentarInforme\}/.test(monta)) F(`1 · ${s.nombre}: el pop-up no recibe el informe en camino`);
@@ -160,20 +162,25 @@ export async function runInformeEnCaminoTier(): Promise<{ hard: number }> {
   }
 
   // ══ §3 · EL VEREDICTO DISTINTO SE DICE ═════════════════════════════════════
+  // ⚠ ACTA (23-nov-2026, goal de Fabrizio «no cobrar cuando el informe contradice lo mostrado», guia/cobro-mostrado.ts) · el aviso
+  // «Con los datos de hoy dio Ajustar 68, no Comprar 82», que llegaba con el crédito ya gastado, se RETIRA por decisión (no se
+  // afloja): el cambio se dice ANTES de cobrar (paso «cambio», lo prueba el tier COBRO-MOSTRADO) y el paso «distinto» queda para el
+  // respaldo — salió distinto sin aviso y el crédito volvió solo: «No te cobramos este análisis: salió distinto a lo que te
+  // mostramos.». Lo decide el servidor (`devuelto`), no la comparación del navegador.
   {
-    const d = ie.informeListo(gen, { id: "inf-2", ruta: "/analisis/inf-2", veredicto: "AJUSTA SUPUESTOS", score: 68 }, T0 + 6_000);
-    if (d.paso !== "distinto") F("3 · un informe con otro veredicto que la tarjeta se abre sin decirlo");
+    const d = ie.informeListo(gen, { id: "inf-2", ruta: "/analisis/inf-2", veredicto: "AJUSTA SUPUESTOS", score: 68, devuelto: true }, T0 + 6_000);
+    if (d.paso !== "distinto") F("3 · un informe cuyo cobro se devolvió se abre sin decirlo");
     else {
       const h = pop(d, T0 + 6_500);
-      const dice = "Con los datos de hoy dio Ajustar 68, no Comprar 82. Igual puedes verlo completo.";
+      const dice = "No te cobramos este análisis: salió distinto a lo que te mostramos.";
       if (!texto(h).includes(dice) || !/<a [^>]*href="\/analisis\/inf-2"[^>]*data-informe="abrir"[^>]*>Ver los detalles<\/a>/.test(h)) F(`3 · el pop-up no dice «${dice}» con «Ver los detalles»: «${texto(h)}»`);
     }
-    if (ie.informeListo(gen, { id: "x", ruta: "/x", veredicto: "COMPRAR", score: 79 }).paso !== "listo") F("3 · el mismo veredicto con otro puntaje frena la apertura");
-    if (ie.informeListo(ie.informeGenerando(DEPTO, null), { id: "x", ruta: "/x", veredicto: "AJUSTA SUPUESTOS", score: 60 }).paso !== "listo") F("3 · sin un veredicto visto, el pop-up inventa una comparación");
+    if (ie.informeListo(gen, { id: "x", ruta: "/x", veredicto: "AJUSTA SUPUESTOS", score: 68 }).paso !== "listo") F("3 · sin `devuelto` del servidor, el navegador decide por su cuenta que salió distinto");
+    if (ie.informeListo(gen, { id: "x", ruta: "/x", veredicto: "COMPRAR", score: 79, devuelto: false }).paso !== "listo") F("3 · un informe cobrado normal frena la apertura");
     // La ruta devuelve el veredicto y el puntaje del informe, el nuevo y el que ya estaba.
     const ruta = codigo("src/app/api/lo-que-sigue/guia/analizar/route.ts");
     if (!/delInforme = \{ veredicto: readVeredicto\(result\) \?\? null, score: result\.score \?\? null \};/.test(ruta) || !/if \(!delInforme\) \{\s*const \{ data: fila \} = await admin\.from\("analisis"\)\.select\("results"\)\.eq\("id", r\.id\)\.maybeSingle\(\);/.test(ruta)
-      || !/return salir\(NextResponse\.json\(\{ id: r\.id, estado: r\.estado, veredicto: delInforme\?\.veredicto \?\? null, score: delInforme\?\.score \?\? null \}\)\);/.test(ruta)) F("3 · la ruta de analizar no devuelve el veredicto y el puntaje del informe");
+      || !/return salir\(NextResponse\.json\(\{ id: r\.id, estado: r\.estado, veredicto: delInforme\?\.veredicto \?\? null, score: delInforme\?\.score \?\? null, devuelto: r\.estado === "creado" && r\.devuelto === true \}\)\);/.test(ruta)) F("3 · la ruta de analizar no devuelve el veredicto, el puntaje y si devolvió el cobro");
     // Lo que vio: lo recalculado en el pop-up si cambió el pie o el plazo; si no, la tarjeta.
     const aviso = codigo("src/components/guia/AvisoAntesDeAnalizar.tsx");
     if (!/const vista: VeredictoVisto \| null = cambio \? \(cambiada && recal \? \{ veredicto: recal\.veredicto, score: recal\.score \} : \{ veredicto: cambio\.base\.veredicto, score: cambio\.base\.score \}\) : null;/.test(aviso) || !/alAnalizar\(cambio \? \{ combinacion: combo, guardarPerfil: cambiada && guardar, vista \} : undefined\)/.test(aviso)) F("3 · el pop-up no cuenta qué veredicto vio la persona al tocar «Analizar»");
@@ -256,9 +263,10 @@ export async function runInformeEnCaminoTier(): Promise<{ hard: number }> {
     const dice = texto(g.replace(/<\/?b\b[^>]*>/g, ""));
     if (dice !== `Franco está analizando ${DEPTO}. En unos segundos se abren los detalles. Te quedan 2 créditos para cualquier otro depto.` || !/role="progressbar"[^>]*aria-valuenow="30"/.test(g) || /<a |<button/.test(g)) F(`7 · generando, la vuelta no dice qué depto con la barra que avanza y cuántos le quedan (o trae una salida): «${dice}»`);
     if (/data-informe="abrir"/.test(vu(listo, T0 + 9_000)) || !/<a href="\/analisis\/inf-1"[^>]*data-informe="abrir"[^>]*>Ver los detalles<\/a>/.test(vu(listo, T0 + 10_000))) F("7 · la vuelta no ofrece «Ver los detalles» a los 10 s (o lo ofrece antes)");
-    const dist = ie.informeListo(gen, { id: "inf-2", ruta: "/analisis/inf-2", veredicto: "AJUSTA SUPUESTOS", score: 68 }, T0 + 6_000);
+    // ⚠ ACTA (23-nov-2026, cobro-mostrado.ts) · «distinto» es el respaldo con el crédito devuelto (ver el acta de §3).
+    const dist = ie.informeListo(gen, { id: "inf-2", ruta: "/analisis/inf-2", veredicto: "AJUSTA SUPUESTOS", score: 68, devuelto: true }, T0 + 6_000);
     const dv = vu(dist, T0 + 6_500);
-    if (!texto(dv).includes("Con los datos de hoy dio Ajustar 68, no Comprar 82. Igual puedes verlo completo.") || !/<a href="\/analisis\/inf-2"[^>]*data-informe="abrir"[^>]*>Ver los detalles<\/a>/.test(dv)) F(`7 · la vuelta no dice el veredicto distinto antes de abrir: «${texto(dv)}»`);
+    if (!texto(dv).includes("No te cobramos este análisis: salió distinto a lo que te mostramos.") || !/<a href="\/analisis\/inf-2"[^>]*data-informe="abrir"[^>]*>Ver los detalles<\/a>/.test(dv)) F(`7 · la vuelta no dice el veredicto distinto antes de abrir: «${texto(dv)}»`);
     const e = vu(ie.informeFallo(gen, "error"), T0 + 3_000, true);
     // ⚠ ACTA (05-nov-2026, auditoría de promesas parte 3) · después del fallo, el saldo real (no se usó ninguno): «Te quedan 3
     // análisis para otro depto.» (la prueba dibuja con saldo 3).
@@ -270,10 +278,10 @@ export async function runInformeEnCaminoTier(): Promise<{ hard: number }> {
     const iG = ret.indexOf("async function generarDepto("), fG = iG < 0 ? -1 : ret.indexOf("\n  useEffect(() => {", iG);
     const genera = iG < 0 || fG < 0 ? "" : ret.slice(iG, fG);
     if (!/const paso0 = informeGenerando\(depto\.nombre, depto\.esperado\);\s*setInforme\(paso0\);/.test(genera)) F("7 · la vuelta no pasa a «generando» con el veredicto de la tarjeta");
-    if (!/if \(res\.ok && d\.id\) \{ setInforme\(informeListo\(paso0, \{ id: d\.id, ruta: `\/analisis\/\$\{d\.id\}`, veredicto: d\.veredicto \?\? null, score: d\.score \?\? null \}\)\); return; \}/.test(genera)) F("7 · la vuelta no le pasa el informe listo (ni su veredicto) a quien lo abre");
+    if (!/if \(res\.ok && d\.id\) \{ setInforme\(informeListo\(paso0, \{ id: d\.id, ruta: `\/analisis\/\$\{d\.id\}`, veredicto: d\.veredicto \?\? null, score: d\.score \?\? null, devuelto: d\.devuelto \?\? null \}\)\); return; \}/.test(genera)) F("7 · la vuelta no le pasa el informe listo (ni su veredicto) a quien lo abre");
     if (!genera || /router\.(?:push|replace)\(|window\.location/.test(genera)) F("7 · la vuelta se va sola a otra página en vez de decir qué pasó");
     if (!/if \(res\.status === 410 && d\.error === "despublicado"\) \{ fallar\("despublicado"\); return; \}/.test(genera) || !/\} catch \{\s*fallar\("error"\);\s*return;\s*\}/.test(genera) || !/\}\s*fallar\("error"\);\s*\}\s*$/.test(genera)) F("7 · la vuelta no dice el despublicado, el error o las vueltas agotadas");
-    if (!/\{alDepto && informe \? \(\s*<InformeEnLaVuelta paso=\{informe\} saldo=\{saldo\} alReintentar=\{\(\) => void generarDepto\(alDepto\)\} \/>/.test(ret)) F("7 · la página de la vuelta no muestra lo que pasa con el informe del depto");
+    if (!/\{alDepto && informe \? \(\s*<InformeEnLaVuelta paso=\{informe\} saldo=\{saldo\} alReintentar=\{\(\) => void generarDepto\(alDepto\)\} alAnalizarIgual=\{\(\) => void generarDepto\(alDepto, true\)\} \/>/.test(ret)) F("7 · la página de la vuelta no muestra lo que pasa con el informe del depto");
     const comp = codigo("src/components/guia/InformeEnCamino.tsx");
     if (!/const \{ ahora, anotar \} = useInformeEnCamino\(paso, \{ desde: "pago", reemplazar: true \}\);/.test(cuerpo(comp, "export function InformeEnLaVuelta("))) F("7 · la vuelta no abre el informe en su lugar (atrás lo pediría otra vez) o no se mide como «pago»");
     // El veredicto de la tarjeta viaja con el estado del pago, saneado.

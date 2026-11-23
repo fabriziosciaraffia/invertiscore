@@ -55,13 +55,15 @@ export interface EleccionAnalizar {
 
 // DESPUÉS DE «ANALIZAR» (03-nov-2026, InformeEnCamino): con `informe`, el mismo pop-up pasa a «Generando el informe de
 // [depto]…» con su barra, abre el informe solo, a los 10 s ofrece «Abrir informe» y, si falló o salió otro veredicto, lo dice.
-export function AvisoAntesDeAnalizar({ avisoId = null, depto, combinacion, finanzas, uso, rutaCompra, alAnalizar, alCancelar, modalidad = "ltr", analizando = false, compras = null, ticketConSaldo = null, cambio = null, ticketVence = null, planLinea = null, negociado = null, movido = null, informe = null, alCerrarInforme, alReintentarInforme = null }: {
+export function AvisoAntesDeAnalizar({ avisoId = null, depto, combinacion, finanzas, uso, rutaCompra, alAnalizar, alCancelar, modalidad = "ltr", analizando = false, compras = null, ticketConSaldo = null, cambio = null, ticketVence = null, planLinea = null, negociado = null, movido = null, informe = null, alCerrarInforme, alReintentarInforme = null, alAnalizarIgualInforme = null }: {
   /** Lo que pasa después de «Analizar» (03-nov-2026): generando, listo, distinto o el fallo. Sin él, el aviso de siempre. */
   informe?: PasoInforme | null;
   /** Cerrar el pop-up del informe (solo cuando se puede): con el informe listo, quien lo monta deja el aviso de arriba. */
   alCerrarInforme?: () => void;
   /** Tras un fallo, volver a intentar con lo mismo. */
   alReintentarInforme?: (() => void) | null;
+  /** CAMBIÓ DESDE QUE SE MOSTRÓ (23-nov-2026, guia/cobro-mostrado.ts): «Analizarlo igual», con `aceptoCambio` (se cobra normal). */
+  alAnalizarIgualInforme?: (() => void) | null;
   /** UN NEGOCIADO DE EXPLORAR (02-nov-2026, mockup 8): el precio que hay que conseguir, el descuento y el puntaje a ese precio. La
    *  tarjeta dice los dos veredictos («Al precio publicado [Ajustar]» y «Si consigues UF 2.950 (−4,2 %) [✓ Comprar · 71]»), el
    *  dividendo y el retorno son a ese precio y el botón dice «Analizar a UF 2.950». Sin «Cambiar»: la noche lo calculó con este
@@ -247,7 +249,7 @@ export function AvisoAntesDeAnalizar({ avisoId = null, depto, combinacion, finan
   );
 
   // Después de «Analizar»: el mismo pop-up, con lo que pasa con el informe. No se cierra mientras genera.
-  if (informe) return <InformeEnCamino paso={informe} alCerrar={alCerrarInforme ?? alCancelar} alReintentar={alReintentarInforme} saldo={uso.tipo === "con" ? uso.n : uso.tipo === "regalo" ? 1 : uso.tipo === "sin" ? 0 : null} />;
+  if (informe) return <InformeEnCamino paso={informe} alCerrar={alCerrarInforme ?? alCancelar} alReintentar={alReintentarInforme} alAnalizarIgual={alAnalizarIgualInforme} saldo={uso.tipo === "con" ? uso.n : uso.tipo === "regalo" ? 1 : uso.tipo === "sin" ? 0 : null} />;
 
   // Lo que vio al tocar «Analizar»: lo recalculado si cambió el pie o el plazo, si no la tarjeta.
   const vista: VeredictoVisto | null = cambio ? (cambiada && recal ? { veredicto: recal.veredicto, score: recal.score } : { veredicto: cambio.base.veredicto, score: cambio.base.score }) : null;

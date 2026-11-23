@@ -292,6 +292,8 @@ export async function POST(request: Request) {
     if (r.estado === "no-da") {
       return salir(NextResponse.json({ estado: "no-da", alternativas: r.alternativas, publicacion, porQue: porQueNoDa(r.zona, r.fino), saldo: saldoAlMedir }));
     }
+    // La renta corta no coteja lo mostrado (guia/cobro-mostrado.ts cubre la renta larga): sin cotejo, «cambio» no ocurre.
+    if (r.estado === "cambio") return salir(NextResponse.json({ error: "interno" }, { status: 500 }));
     return salir(NextResponse.json({ id: r.id, estado: r.estado }));
   } catch (e) {
     captureApiError(e, { ruta: RUTA, operacion: "analizar-aviso-str", userId: user.id, extra: { avisoId } });

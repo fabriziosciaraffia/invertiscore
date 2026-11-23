@@ -32,7 +32,7 @@ import { lineaDepto } from "@/lib/guia/linea-depto";
 import { botonOcupado, claveActual, iniciarCarga } from "@/lib/carga-global";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { comprasDeExplorar, comprasDelDepto, lineaTicketConSaldo, nombreDelDepto, ticketConSaldoDelDepto } from "@/lib/guia/compra-desde-depto";
-import { alCerrarQueda, informeFallo, informeGenerando, informeListo, type MotivoFallo, type PasoInforme } from "@/lib/guia/informe-en-camino";
+import { alCerrarQueda, informeCambio, informeFallo, informeGenerando, informeListo, type MotivoFallo, type PasoInforme } from "@/lib/guia/informe-en-camino";
 import { InformeListoAviso } from "@/components/guia/InformeEnCamino";
 import { cuandoVenceCorto } from "@/lib/lo-que-sigue/oferta-pack";
 import { recalcularAviso } from "@/lib/explorar/recalcular-cliente";
@@ -135,7 +135,7 @@ export function PrimeraSeleccion({ encabezado = "dentro", inicial = null }: {
   }
 
   // `eleccion` (23-oct-2026, mockup D2): el pie y el plazo que cambió en el pop-up, y si quedan como su perfil.
-  async function analizar(it: PrimerDepto, eleccion?: EleccionAnalizar) {
+  async function analizar(it: PrimerDepto, eleccion?: EleccionAnalizar, aceptoCambio = false) {
     // Con su fila del día, por el token; sin ella, como respaldo (28-oct-2026, comoAnalizarPrimero).
     const como = datos ? comoAnalizarPrimero(datos, it) : null;
     if (!datos?.combinacion || !como || generando) return;
@@ -162,24 +162,26 @@ export function PrimeraSeleccion({ encabezado = "dentro", inicial = null }: {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(como === "seleccion"
-            ? { origenId: datos.origenId, avisoId: it.avisoId, piePct: combo.piePct, plazoAnios: combo.plazoAnios, tasaPct: combo.tasaPct ?? null, semanal: datos.token }
-            : { origenId: null, avisoId: it.avisoId, piePct: combo.piePct, plazoAnios: combo.plazoAnios, tasaPct: combo.tasaPct ?? null, respaldo: true }),
+            ? { origenId: datos.origenId, avisoId: it.avisoId, piePct: combo.piePct, plazoAnios: combo.plazoAnios, tasaPct: combo.tasaPct ?? null, semanal: datos.token, ...(aceptoCambio ? { aceptoCambio: true } : {}) }
+            : { origenId: null, avisoId: it.avisoId, piePct: combo.piePct, plazoAnios: combo.plazoAnios, tasaPct: combo.tasaPct ?? null, respaldo: true, ...(aceptoCambio ? { aceptoCambio: true } : {}) }),
         });
         if (res.status === 409) {
           if (intento === 7) { fallar("error"); break; }
           await new Promise((ok) => setTimeout(ok, ESPERA_EN_CURSO_MS));
           continue;
         }
-        const d = (await res.json().catch(() => ({}))) as { id?: string; error?: string; veredicto?: string | null; score?: number | null };
+        const d = (await res.json().catch(() => ({}))) as { id?: string; error?: string; veredicto?: string | null; score?: number | null; devuelto?: boolean; ahora?: { veredicto: string | null; score: number | null } };
         if (res.ok && d.id) {
           const nuevo = d.id;
           setResumenesAqui((m) => ({ ...m, [nuevo]: { veredicto: d.veredicto ?? null, score: d.score ?? null, fecha: new Date().toISOString() } }));
           // Listo: el pop-up lo abre solo; si con los datos de hoy salió otro veredicto, lo dice primero.
-          const listo = informeListo(paso0, { id: d.id, ruta: `/analisis/${d.id}`, veredicto: d.veredicto ?? null, score: d.score ?? null });
+          const listo = informeListo(paso0, { id: d.id, ruta: `/analisis/${d.id}`, veredicto: d.veredicto ?? null, score: d.score ?? null, devuelto: d.devuelto ?? null });
           setInforme(listo);
           if (listo.paso === "distinto") { soltar(); setGenerando(null); }
           return;
         }
+        // CAMBIÓ DESDE QUE SE MOSTRÓ (23-nov-2026, guia/cobro-mostrado.ts): no se cobró; el pop-up pregunta si lo analiza igual.
+        if (res.status === 412 && d.error === "cambio" && d.ahora?.veredicto) { setConfirmar({ it, sin: false }); setInforme(informeCambio(paso0, { veredicto: d.ahora.veredicto, score: d.ahora.score ?? null })); break; }
         // Se dio de baja recién, o la cola ya rearmó la selección sin este: el pop-up lo dice y, al cerrarlo, se relee la lista.
         if (res.status === 410 && d.error === "despublicado") { fallar("despublicado"); break; }
         if (d.error === "combinacion") { fallar("fuera"); break; }
@@ -215,6 +217,11 @@ export function PrimeraSeleccion({ encabezado = "dentro", inicial = null }: {
     const u = ultimoAnalisis.current;
     setInforme(null);
     if (u) void analizar(u.it, u.eleccion);
+  }
+  // «Analizarlo igual» tras el aviso de cambio (23-nov-2026): lo mismo, con `aceptoCambio` (se cobra normal).
+  function analizarIgualInforme() {
+    const u = ultimoAnalisis.current;
+    if (u) void analizar(u.it, u.eleccion, true);
   }
 
   // Sin saldo, la compra vuelve al depto y lo analiza: desde la selección, al dashboard con el token; desde el respaldo (sin
@@ -346,6 +353,7 @@ export function PrimeraSeleccion({ encabezado = "dentro", inicial = null }: {
           informe={informe}
           alCerrarInforme={cerrarInforme}
           alReintentarInforme={reintentarInforme}
+          alAnalizarIgualInforme={analizarIgualInforme}
           avisoId={confirmar.it.avisoId}
         />
       )}

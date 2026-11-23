@@ -84,6 +84,7 @@ export function PortadaInforme({
   publicacion,
   tasaElegida = null,
   precioNegociado = null,
+  lineaCambio = null,
   currency,
   onCurrencyChange,
   mapa,
@@ -112,6 +113,9 @@ export function PortadaInforme({
   /** El precio negociado (02-nov-2026, precio-negociado-portada.ts): el informe de «Analizar a UF 2.950» lo dice bajo el
    *  veredicto, con los dos precios; sin él, nada. */
   precioNegociado?: NegociadoPortada;
+  /** LO MOSTRADO CONTRA HOY (23-nov-2026, guia/cobro-mostrado.ts › lineaCambioPortada): «No te cobramos este análisis: salió distinto
+   *  a lo que te mostramos», o qué cambió desde que se mostró. Arriba, bajo el veredicto; sin marca, nada. */
+  lineaCambio?: string | null;
   currency: "CLP" | "UF";
   onCurrencyChange: (c: "CLP" | "UF") => void;
   /** Mapa de comparables (solo desktop). null = sin coords → columna no se renderiza.
@@ -175,6 +179,7 @@ export function PortadaInforme({
           <GlosaIndicador glosa="francoScore" aca={score != null ? `${score} · ${etiquetaVeredicto(veredicto)}` : undefined} />
         </p>
       )}
+      {lineaCambio && <p className="doc-hero-tasa" data-portada="cambio-mostrado" role="status"><b>{lineaCambio}</b></p>}
       {precioNegociado && <p className="doc-hero-tasa" data-portada="precio-negociado" title={`Precio publicado: UF ${Math.round(precioNegociado.publicadoUF).toLocaleString("es-CL")}`}>{lineaNegociadoPortada(precioNegociado)}</p>}
       {tasaElegida && <p className="doc-hero-tasa" data-portada="tasa-elegida">{lineaTasaPortada(tasaElegida)}</p>}
 

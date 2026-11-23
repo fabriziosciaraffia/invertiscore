@@ -4,13 +4,15 @@
 // · d2 (con saldo; «Cambiar» y el pie a 10 % lo hace quien mide) · p y p0 (la línea del plan, con y sin saldo; 28-oct-2026,
 // reemplazan al aviso E de Explorar, retirado) · ig, il, iv, ie, ip, if, ia (03-nov-2026): el informe en camino después de
 // «Analizar» (generando, listo con «Abrir informe», veredicto distinto, los tres fallos y el aviso de arriba).
+// ic, icp, vc (23-nov-2026, guia/cobro-mostrado.ts): el aviso de cambio antes de cobrar en el pop-up, recién pagado, y en la
+// vuelta del pago. iv pasó a ser el respaldo (el crédito devuelto).
 // No escribe nada: los botones no navegan. Gate en el servidor: dev y previews de Vercel sí; producción, 404. Lo mide la
 // sonda scripts/eval/golden/popups-alto-webkit-sonda.ts.
 import { notFound } from "next/navigation";
 import { DemoPopups, type EstadoDemoPopups } from "./demo-popups";
 
 /** Acá y no en demo-popups.tsx: una constante de un módulo "use client" llega al servidor como referencia, no como lista. */
-const ESTADOS: readonly EstadoDemoPopups[] = ["a", "a0", "d1", "d1t", "d2", "p", "p0", "c1", "c0", "nd", "nd2", "ig", "il", "iv", "ie", "ip", "if", "ia"];
+const ESTADOS: readonly EstadoDemoPopups[] = ["a", "a0", "d1", "d1t", "d2", "p", "p0", "c1", "c0", "nd", "nd2", "ig", "il", "iv", "ie", "ip", "if", "ia", "ic", "icp", "vc"];
 
 export const dynamic = "force-dynamic";
 

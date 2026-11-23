@@ -44,7 +44,7 @@ import { claveActual, iniciarCarga } from "@/lib/carga-global";
 import { cuandoLaPaginaEsteQuieta } from "@/lib/pagina-quieta";
 import { usePostHog } from "@/lib/posthog-react";
 import { comprasDeExplorar, lineaTicketConSaldo, nombreDelDepto } from "@/lib/guia/compra-desde-depto";
-import { alCerrarQueda, informeFallo, informeGenerando, informeListo, type PasoInforme, type VeredictoVisto } from "@/lib/guia/informe-en-camino";
+import { alCerrarQueda, informeCambio, informeFallo, informeGenerando, informeListo, type PasoInforme, type VeredictoVisto } from "@/lib/guia/informe-en-camino";
 import { InformeListoAviso } from "@/components/guia/InformeEnCamino";
 import { cuandoVenceCorto } from "@/lib/lo-que-sigue/oferta-pack";
 import type { EleccionAnalizar } from "@/components/guia/AvisoAntesDeAnalizar";
@@ -659,7 +659,7 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
     if (plan) posthog?.capture(EVENTOS_PORTAL.planVisto, { hechos: cuenta.explorarEnMes, aviso_id: it.avisoId, sin_saldo: cuenta.saldo.tipo === "sin" });
   }
 
-  async function analizar(it: PinMapa, eleccion?: EleccionAnalizar, igual = false) {
+  async function analizar(it: PinMapa, eleccion?: EleccionAnalizar, igual = false, aceptoCambio = false) {
     if (generando) return;
     const combinacion = eleccion?.combinacion ?? { piePct: filtros.pie, plazoAnios: filtros.plazo, tasaPct: filtros.tasa };
     // La tasa (30-oct-2026): la del pop-up si la tocó; si no, la de Filtros. null = la de hoy.
@@ -688,21 +688,21 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
           method: "POST",
           headers: { "Content-Type": "application/json" },
           // Un negociado (02-nov-2026): el precio negociado y el tope elegido; la ruta lo acepta con el piso del tope.
-          body: JSON.stringify({ avisoId: it.avisoId, piePct: combinacion.piePct, plazoAnios: combinacion.plazoAnios, tasaPct, explorar: true, ...(esNegociado(it) && conCifrasNegociado(it) && filtros.negociar != null ? { precioNegociadoUF: it.neg.p, topeNegociar: filtros.negociar } : {}), ...(igual ? { igual: true } : {}) }),
+          body: JSON.stringify({ avisoId: it.avisoId, piePct: combinacion.piePct, plazoAnios: combinacion.plazoAnios, tasaPct, explorar: true, ...(esNegociado(it) && conCifrasNegociado(it) && filtros.negociar != null ? { precioNegociadoUF: it.neg.p, topeNegociar: filtros.negociar } : {}), ...(igual ? { igual: true } : {}), ...(aceptoCambio ? { aceptoCambio: true } : {}) }),
         });
         if (res.status === 409) {
           if (intento === 7) { fallar("error"); break; }
           await new Promise((ok) => setTimeout(ok, ESPERA_EN_CURSO_MS));
           continue;
         }
-        const d = (await res.json().catch(() => ({}))) as { id?: string; error?: string; estado?: string; porQue?: string | null; publicacion?: string | null; negociado?: Negociacion & { p: number }; tope?: number; veredicto?: string | null; score?: number | null };
+        const d = (await res.json().catch(() => ({}))) as { id?: string; error?: string; estado?: string; porQue?: string | null; publicacion?: string | null; negociado?: Negociacion & { p: number }; tope?: number; veredicto?: string | null; score?: number | null; devuelto?: boolean; ahora?: { veredicto: string | null; score: number | null } };
         if (res.ok && d.id) {
           const nuevo = d.id;
           setResumenesAqui((m) => ({ ...m, [nuevo]: { veredicto: d.veredicto ?? null, score: d.score ?? null, fecha: new Date().toISOString() } }));
           // El embudo de la puerta E: «regalo usado» (el análisis salió con el regalo de alta).
           if (usaRegalo(cuenta.saldo)) posthog?.capture(EVENTOS_ABIERTO.regaloUsado, { aviso_id: it.avisoId, analysis_id: d.id, modalidad: filtros.modalidad });
           // Listo: el pop-up lo abre solo (InformeEnCamino); si con los datos de hoy salió otro veredicto, lo dice primero.
-          const listo = informeListo(paso0, { id: d.id, ruta: `/analisis/${d.id}`, veredicto: d.veredicto ?? null, score: d.score ?? null });
+          const listo = informeListo(paso0, { id: d.id, ruta: `/analisis/${d.id}`, veredicto: d.veredicto ?? null, score: d.score ?? null, devuelto: d.devuelto ?? null });
           // Antes de ir al informe: «atrás» y «← Volver al mapa» vuelven a este mapa, a este pin y a su tarjeta (04-nov-2026).
           recordarVuelta(it.avisoId, d.id);
           setNoDa(null);
@@ -711,6 +711,8 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
           if (listo.paso === "distinto") { soltar(); setGenerando(null); }
           return;
         }
+        // CAMBIÓ DESDE QUE SE MOSTRÓ (23-nov-2026, guia/cobro-mostrado.ts): no se cobró; el pop-up pregunta si lo analiza igual.
+        if (res.status === 412 && d.error === "cambio" && d.ahora?.veredicto) { setNoDa(null); setConfirmar({ it, sin: false, analizando: true }); setInforme(informeCambio(paso0, { veredicto: d.ahora.veredicto, score: d.ahora.score ?? null })); break; }
         // Renta corta medida fina que no da: no se cobró; se ofrece analizar igual.
         if (res.ok && d.estado === "no-da") { setInforme(null); setConfirmar(null); setNoDa({ it, porQue: d.porQue ?? null, publicacion: d.publicacion ?? null }); break; }
         // EL PRECIO NEGOCIADO, VERIFICADO CON LOS DATOS DE HOY (02-nov-2026): no se cobró nada. Si se movió, el pop-up muestra el
@@ -762,6 +764,11 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
     const u = ultimoAnalisis.current;
     setInforme(null);
     if (u) void analizar(u.it, u.eleccion);
+  }
+  // «Analizarlo igual» tras el aviso de cambio (23-nov-2026): lo mismo, con `aceptoCambio` (se cobra normal).
+  function analizarIgualInforme() {
+    const u = ultimoAnalisis.current;
+    if (u) void analizar(u.it, u.eleccion, false, true);
   }
 
   const recalcular = useCallback(async (avisoId: string, combo: { piePct: number; plazoAnios: number; tasaPct?: number | null }): Promise<Recalculo | null> => {
@@ -1266,6 +1273,7 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
           informe={informe}
           alCerrarInforme={cerrarInforme}
           alReintentarInforme={reintentarInforme}
+          alAnalizarIgualInforme={analizarIgualInforme}
           avisoId={confirmar.it.avisoId}
         />
       )}

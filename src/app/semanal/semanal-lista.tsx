@@ -34,7 +34,7 @@ import { Loader2 } from "lucide-react";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { botonOcupado, claveActual, iniciarCarga } from "@/lib/carga-global";
 import { compraDeLaSeleccion, comprasDelDepto, nombreDelDepto, ticketConSaldoDelDepto, type AutoAnalizar } from "@/lib/guia/compra-desde-depto";
-import { alCerrarQueda, informeFallo, informeGenerando, informeListo, type MotivoFallo, type PasoInforme } from "@/lib/guia/informe-en-camino";
+import { alCerrarQueda, informeCambio, informeFallo, informeGenerando, informeListo, type MotivoFallo, type PasoInforme } from "@/lib/guia/informe-en-camino";
 import { InformeListoAviso } from "@/components/guia/InformeEnCamino";
 import { cuandoVenceCorto } from "@/lib/lo-que-sigue/oferta-pack";
 import { RETORNO } from "@/lib/compra/compra";
@@ -170,7 +170,7 @@ export function SemanalLista({
 
   // `eleccion` (23-oct-2026, mockup D2): el pie y el plazo que cambió en el pop-up, y si quedan como su perfil.
   // `igual` (27-oct-2026): «Analizar igual» desde el pop-up «no da» de renta corta; el pop-up queda abierto, girando.
-  async function analizar(it: ItemSemanal, recienPagado = false, eleccion?: EleccionAnalizar, igual = false) {
+  async function analizar(it: ItemSemanal, recienPagado = false, eleccion?: EleccionAnalizar, igual = false, aceptoCambio = false) {
     // Sin informe de origen (16-oct-2026, la puerta B) se analiza igual: la ruta valida la selección por el token.
     if (generando || !combinacion) return;
     const conCombo = eleccion?.combinacion ?? combinacion;
@@ -211,7 +211,7 @@ export function SemanalLista({
           : await fetch("/api/lo-que-sigue/guia/analizar", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ origenId, avisoId: it.avisoId, piePct: conCombo.piePct, plazoAnios: conCombo.plazoAnios, tasaPct: conCombo.tasaPct ?? null, semanal: token }),
+              body: JSON.stringify({ origenId, avisoId: it.avisoId, piePct: conCombo.piePct, plazoAnios: conCombo.plazoAnios, tasaPct: conCombo.tasaPct ?? null, semanal: token, ...(aceptoCambio ? { aceptoCambio: true } : {}) }),
             });
         if (res.status === 409) {
           if (corta && Date.now() - t0 + ESPERA_EN_CURSO_MS >= MIDIENDO_TOPE_MS) { setTardo(it.avisoId); break; }
@@ -219,12 +219,12 @@ export function SemanalLista({
           await new Promise((ok) => setTimeout(ok, ESPERA_EN_CURSO_MS));
           continue;
         }
-        const d = (await res.json().catch(() => ({}))) as { id?: string; error?: string; estado?: string; alternativas?: string[]; publicacion?: string | null; porQue?: string | null; saldo?: EstadoSaldo | null; veredicto?: string | null; score?: number | null };
+        const d = (await res.json().catch(() => ({}))) as { id?: string; error?: string; estado?: string; alternativas?: string[]; publicacion?: string | null; porQue?: string | null; saldo?: EstadoSaldo | null; veredicto?: string | null; score?: number | null; devuelto?: boolean; ahora?: { veredicto: string | null; score: number | null } };
         if (res.ok && d.id) {
           const nuevo = d.id;
           setResumenesAqui((m) => ({ ...m, [nuevo]: { veredicto: d.veredicto ?? null, score: d.score ?? null, fecha: new Date().toISOString() } }));
           // Listo: el pop-up lo abre solo (también en renta corta, que mide con la tarjeta); si salió otro veredicto, lo dice primero.
-          const listo = informeListo(paso0, { id: d.id, ruta: corta ? `/analisis/renta-corta/${d.id}` : `/analisis/${d.id}`, veredicto: d.veredicto ?? null, score: d.score ?? null });
+          const listo = informeListo(paso0, { id: d.id, ruta: corta ? `/analisis/renta-corta/${d.id}` : `/analisis/${d.id}`, veredicto: d.veredicto ?? null, score: d.score ?? null, devuelto: d.devuelto ?? null });
           setPopup(null);
           setConfirmar({ it, sin: false, analizando: true });
           setInforme(listo);
@@ -242,6 +242,8 @@ export function SemanalLista({
         }
         // Lo que sigue cierra el pop-up de «Analizar igual» si estaba abierto: el informe no salió.
         setPopup(null);
+        // CAMBIÓ DESDE QUE SE MOSTRÓ (23-nov-2026, guia/cobro-mostrado.ts): no se cobró (recién pagado, el crédito queda en la cuenta).
+        if (res.status === 412 && d.error === "cambio" && d.ahora?.veredicto) { setConfirmar({ it, sin: false, analizando: true }); setInforme(informeCambio(paso0, { veredicto: d.ahora.veredicto, score: d.ahora.score ?? null }, recienPagado)); break; }
         // Se dio de baja recién: el servidor lo marca y trae el siguiente.
         if (res.status === 410 && d.error === "despublicado") { fallar("despublicado"); break; }
         // Sin análisis: el mismo aviso, con el pack (ya no el callejón «Ya usaste tus análisis.»). Recién pagado, primero se
@@ -292,6 +294,11 @@ export function SemanalLista({
     const u = ultimoAnalisis.current;
     setInforme(null);
     if (u) void analizar(u.it, u.recienPagado, u.eleccion, u.igual);
+  }
+  // «Analizarlo igual» tras el aviso de cambio (23-nov-2026): lo mismo, con `aceptoCambio` (se cobra normal).
+  function analizarIgualInforme() {
+    const u = ultimoAnalisis.current;
+    if (u) void analizar(u.it, u.recienPagado, u.eleccion, u.igual, true);
   }
 
   // Volvió pagado desde este depto (21-oct-2026): se analiza solo, una vez. El `analizar=1` sale de la dirección antes, así
@@ -496,6 +503,7 @@ export function SemanalLista({
           informe={informe}
           alCerrarInforme={cerrarInforme}
           alReintentarInforme={reintentarInforme}
+          alAnalizarIgualInforme={analizarIgualInforme}
           avisoId={confirmar.it.avisoId}
         />
       )}
