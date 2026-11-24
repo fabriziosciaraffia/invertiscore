@@ -485,6 +485,7 @@ export function SemanalLista({
       {confirmar && combinacion && (
         <AvisoAntesDeAnalizar
           modalidad={modalidad}
+          inmediato={inmediato}
           depto={confirmar.it}
           combinacion={combinacion}
           finanzas={{ tasa: finanzas.tasa, uf: finanzas.uf, arriendo: finanzas.arriendos[confirmar.it.avisoId] ?? null }}

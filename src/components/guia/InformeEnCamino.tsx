@@ -12,13 +12,14 @@
 // tiempo hasta el informe lo cuenta el informe (lib/informe-visto.ts › registrarInformeVisto, con el viaje anotado acá).
 // Abrirlo solo y medir viven en useInformeEnCamino, el mismo para el pop-up y para la vuelta.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { usePostHog } from "@/lib/posthog-react";
 import {
-  APERTURA_FALLIDA_TRAS_MS, EVENTO_APERTURA_FALLIDA, INFORME_COPY, anotarViaje, avance, cerrable, desdeDeRuta, lugarDeDesde, muestraAbrir, textoFallo,
-  type DesdeInforme, type LugarInforme, type PasoInforme, type ViaInforme,
+  APERTURA_FALLIDA_TRAS_MS, EVENTO_APERTURA_FALLIDA, EVENTO_AVISO_CAMBIO_ELECCION, EVENTO_AVISO_CAMBIO_VISTO, INFORME_COPY, anotarViaje, avance, cerrable,
+  desdeDeRuta, lugarDeDesde, muestraAbrir, origenAvisoCambio, propsAvisoCambio, textoFallo,
+  type DesdeInforme, type EleccionAvisoCambio, type LugarInforme, type OrigenAvisoCambio, type PasoInforme, type ViaInforme,
 } from "@/lib/guia/informe-en-camino";
 import { RETORNO } from "@/lib/compra/compra";
 import { PLANO } from "@/components/plano/plano";
@@ -87,7 +88,20 @@ export function useInformeEnCamino(paso: PasoInforme, { desde, reemplazar = fals
   return { ahora, anotar };
 }
 
-export function InformeEnCamino({ paso, alCerrar, alReintentar = null, alAnalizarIgual = null, saldo = null }: {
+/** EL AVISO DE CAMBIO, CONTADO (24-nov-2026): `aviso_cambio_visto` una vez por aviso dibujado, y la elección con su origen. */
+function useAvisoCambioMedido(paso: PasoInforme, origen: OrigenAvisoCambio) {
+  const posthog = usePostHog();
+  useEffect(() => {
+    const props = propsAvisoCambio(paso, origen);
+    if (props) { try { posthog?.capture(EVENTO_AVISO_CAMBIO_VISTO, props); } catch { /* sin PostHog */ } }
+  }, [paso, origen, posthog]);
+  return useCallback((eleccion: EleccionAvisoCambio) => {
+    const props = propsAvisoCambio(paso, origen, eleccion);
+    if (props) { try { posthog?.capture(EVENTO_AVISO_CAMBIO_ELECCION, props); } catch { /* sin PostHog */ } }
+  }, [paso, origen, posthog]);
+}
+
+export function InformeEnCamino({ paso, alCerrar: alCerrarFuera, alReintentar = null, alAnalizarIgual: alAnalizarIgualFuera = null, saldo = null, inmediato = false }: {
   paso: PasoInforme;
   /** CAMBIÓ DESDE QUE SE MOSTRÓ (23-nov-2026): «Analizarlo igual» vuelve a pedirlo con `aceptoCambio` (se cobra normal). */
   alAnalizarIgual?: (() => void) | null;
@@ -97,8 +111,14 @@ export function InformeEnCamino({ paso, alCerrar, alReintentar = null, alAnaliza
   alCerrar: () => void;
   /** Tras un fallo: volver a intentar con lo mismo. */
   alReintentar?: (() => void) | null;
+  /** El /semanal venido del aviso inmediato: el aviso de cambio se cuenta como «inmediato». */
+  inmediato?: boolean;
 }) {
   const { ahora, anotar } = useInformeEnCamino(paso);
+  const elegir = useAvisoCambioMedido(paso, origenAvisoCambio(desdeDeRuta(window.location.pathname), inmediato));
+  // Volver (y la ✕, Escape o tocar afuera) y «Analizarlo igual», contados cuando el aviso de cambio está a la vista.
+  const alCerrar = useCallback(() => { elegir("volver"); alCerrarFuera(); }, [elegir, alCerrarFuera]);
+  const alAnalizarIgual = alAnalizarIgualFuera ? () => { elegir("analizar_igual"); alAnalizarIgualFuera(); } : null;
   const primario = useRef<HTMLElement | null>(null);
   const puedeCerrar = cerrable(paso, ahora);
 
@@ -229,11 +249,12 @@ export function InformeListoAviso({ depto, ruta, id, t0, alCerrar }: { depto: st
  *  salió, lo dice con palabras y qué hacer, ahí mismo: ya no manda al dashboard a intentarlo de nuevo. */
 export function InformeEnLaVuelta({ paso, saldo, alReintentar, alAnalizarIgual = null }: { paso: PasoInforme; saldo: number | null; alReintentar: () => void; alAnalizarIgual?: (() => void) | null }) {
   const { ahora, anotar } = useInformeEnCamino(paso, { desde: "pago", reemplazar: true });
-  return <VueltaInforme paso={paso} ahora={ahora} saldo={saldo} alReintentar={alReintentar} alAnalizarIgual={alAnalizarIgual} alAbrir={() => anotar("boton")} />;
+  const elegir = useAvisoCambioMedido(paso, origenAvisoCambio("pago"));
+  return <VueltaInforme paso={paso} ahora={ahora} saldo={saldo} alReintentar={alReintentar} alAnalizarIgual={alAnalizarIgual ? () => { elegir("analizar_igual"); alAnalizarIgual(); } : null} alElegirOtro={() => elegir("volver")} alAbrir={() => anotar("boton")} />;
 }
 
 /** LO QUE SE VE EN LA VUELTA (sin reloj propio: el tier INFORME-EN-CAMINO lo dibuja con la hora que quiere). */
-export function VueltaInforme({ paso, ahora, saldo = null, alReintentar = null, alAnalizarIgual = null, alAbrir }: {
+export function VueltaInforme({ paso, ahora, saldo = null, alReintentar = null, alAnalizarIgual = null, alElegirOtro, alAbrir }: {
   paso: PasoInforme;
   ahora: number;
   /** «Usarlo en este depto» tras el aviso de cambio (23-nov-2026): lo pide de nuevo con `aceptoCambio`. */
@@ -241,6 +262,8 @@ export function VueltaInforme({ paso, ahora, saldo = null, alReintentar = null, 
   /** Los análisis de la cuenta contando este (`null` = no se sabe): «Te quedan N para cualquier otro depto». */
   saldo?: number | null;
   alReintentar?: (() => void) | null;
+  /** «Elegir otro depto» tras el aviso de cambio: se cuenta como «volver» (24-nov-2026). */
+  alElegirOtro?: () => void;
   alAbrir?: () => void;
 }) {
   const conAbrir = muestraAbrir(paso, ahora);
@@ -275,7 +298,7 @@ export function VueltaInforme({ paso, ahora, saldo = null, alReintentar = null, 
           <p className={PLANO.bajada} data-informe="cambio-queda">{INFORME_COPY.cambioPagado}</p>
           <div className={`${PLANO.seccion} flex flex-col gap-3`}>
             {alAnalizarIgual && <button type="button" className={PLANO.principal} onClick={igual} disabled={enviando} {...botonOcupado(enviando)} data-informe="analizar-igual">{INFORME_COPY.usarAca}</button>}
-            <EnlaceCarga href="/dashboard" className={alAnalizarIgual ? PLANO.secundario : PLANO.principal} data-informe="cambio-otro">{INFORME_COPY.elegirOtro}</EnlaceCarga>
+            <EnlaceCarga href="/dashboard" className={alAnalizarIgual ? PLANO.secundario : PLANO.principal} onClick={alElegirOtro} data-informe="cambio-otro">{INFORME_COPY.elegirOtro}</EnlaceCarga>
           </div>
         </>
       )}

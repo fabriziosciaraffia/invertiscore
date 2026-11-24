@@ -163,6 +163,41 @@ export function desdeDeRuta(pathname: string): DesdeInforme {
   return "guia";
 }
 
+// ── EL AVISO DE CAMBIO, CONTADO (24-nov-2026, Fabrizio) ──────────────────────
+// Cada vez que se dibuja «Este depto cambió desde que te lo mostramos», `aviso_cambio_visto`; y lo que eligió la persona,
+// `aviso_cambio_eleccion` con `eleccion`: «volver» (Volver, la ✕, Escape, tocar afuera o, en la vuelta del pago, «Elegir otro
+// depto») o «analizar_igual» («Analizarlo igual» / «Usarlo en este depto»). Los dos con el origen: el mapa, el semanal, el
+// inmediato (el mismo /semanal, venido del aviso inmediato), la guía, la vuelta del pago, el dashboard o «Estás dentro».
+export const EVENTO_AVISO_CAMBIO_VISTO = "aviso_cambio_visto";
+export const EVENTO_AVISO_CAMBIO_ELECCION = "aviso_cambio_eleccion";
+export type OrigenAvisoCambio = "mapa" | "semanal" | "inmediato" | "guia" | "vuelta_pago" | "dashboard" | "seleccion";
+export type EleccionAvisoCambio = "volver" | "analizar_igual";
+
+export function origenAvisoCambio(desde: DesdeInforme, inmediato = false): OrigenAvisoCambio {
+  switch (desde) {
+    case "explorar": return "mapa";
+    case "semanal": return inmediato ? "inmediato" : "semanal";
+    case "pago": return "vuelta_pago";
+    case "dashboard": return "dashboard";
+    case "seleccion": return "seleccion";
+    case "guia": return "guia";
+  }
+}
+
+/** Las propiedades del evento: solo con el aviso de cambio a la vista (null en cualquier otro paso). */
+export function propsAvisoCambio(p: PasoInforme, origen: OrigenAvisoCambio, eleccion?: EleccionAvisoCambio): Record<string, string | number | boolean | null> | null {
+  if (p.paso !== "cambio") return null;
+  return {
+    origen,
+    mostrado: p.esperado?.veredicto ?? null,
+    mostrado_score: p.esperado?.score ?? null,
+    ahora: p.ahora.veredicto,
+    ahora_score: p.ahora.score,
+    pagado: p.pagado === true,
+    ...(eleccion ? { eleccion } : {}),
+  };
+}
+
 /** Antes de abrir el informe: quién, cuándo se tocó «Analizar», desde dónde y cómo se abrió. */
 export function anotarViaje(almacen: Almacen | null, v: Viaje): void {
   try { almacen?.setItem(CLAVE_EN_CAMINO, JSON.stringify(v)); } catch { /* sin almacenamiento, sin medición */ }
