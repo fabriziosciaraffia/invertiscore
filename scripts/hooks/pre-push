@@ -1,0 +1,28 @@
+#!/bin/sh
+# ─────────────────────────────────────────────────────────────────────────────
+# EL CANDADO DEL PUSH (24-nov-2026, decisión de Fabrizio). Rechaza el push a master o a una rama claude/* de un commit que no
+# tiene su marca de QUICK verde: el archivo <git-common-dir>/quick-verde/<sha>, que deja el runner del golden solo con el QUICK
+# completo (`--quick`), 0 fallas duras y el árbol limpio (scripts/eval/golden/marca-quick.ts), y que adentro dice ese mismo
+# commit. Las demás ramas y el borrado de una rama remota pasan.
+# Se instala con `node scripts/hooks/instalar.mjs` (lo copia a .git/hooks/pre-push, común a todos los worktrees).
+# Fabrizio puede saltarlo con `git push --no-verify` en una urgencia. Los agentes, nunca.
+# QUICK_VERDE_DIR cambia la carpeta de las marcas (solo para el tier PUSH-CANDADO).
+# ─────────────────────────────────────────────────────────────────────────────
+dir="${QUICK_VERDE_DIR:-$(git rev-parse --git-common-dir)/quick-verde}"
+cero=0000000000000000000000000000000000000000
+falla=0
+while read -r ref_local sha_local ref_remota sha_remota; do
+  case "$ref_remota" in
+    refs/heads/master|refs/heads/claude/*) ;;
+    *) continue ;;
+  esac
+  [ "$sha_local" = "$cero" ] && continue
+  marca="$dir/$sha_local"
+  if [ ! -f "$marca" ] || ! grep -qx "sha=$sha_local" "$marca"; then
+    echo "✗ candado del push: $sha_local no tiene un QUICK verde (${ref_remota#refs/heads/})." >&2
+    echo "  Corre el QUICK completo sobre ese commit, con el árbol limpio:" >&2
+    echo "  node --env-file=.env.local --import tsx scripts/eval/golden/runner.ts --quick" >&2
+    falla=1
+  fi
+done
+exit $falla

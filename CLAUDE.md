@@ -145,6 +145,20 @@ Antes del push final, en el worktree:
    arregla —copiando la variable al `.env.local` del árbol limpio, desde VS Code o el dashboard—,
    no se usa como permiso para saltearlo.**
 4. `git push --force-with-lease origin <rama>` (solo la rama, nunca master)
+
+   **⛔ EL CANDADO DEL PUSH (decisión de Fabrizio, 24-nov-2026): git rechaza el push a master o a una rama `claude/*` de
+   un commit sin un QUICK verde sobre ESE commit.** El runner del golden deja la marca (`<git-common-dir>/quick-verde/<sha>`,
+   común a todos los worktrees) solo si corrió el QUICK completo —exactamente `--quick`, sin `--seed` ni otra opción—,
+   terminó en 0 fallas duras y el árbol no tenía cambios en archivos versionados (`scripts/eval/golden/marca-quick.ts`). El
+   hook `scripts/hooks/pre-push` mira el commit que se sube (la punta de la rama): sin su marca, o con la marca de otro
+   commit, el push no sale. Las demás ramas y el borrado de una rama remota pasan. Se instala con
+   `node scripts/hooks/instalar.mjs` (copia el hook a `.git/hooks/pre-push`, en LF). El QUICK completo tarda hoy unos
+   **2,5 minutos** (144 s medidos el 24-nov-2026 en un árbol limpio): eso suma cada push. Lo fija el tier PUSH-CANDADO,
+   que lo prueba con `git push` de verdad contra un remoto temporal.
+   **Fabrizio puede saltarlo con `git push --no-verify` en una urgencia. Un agente, nunca**: ni con `--no-verify`, ni
+   escribiendo la marca a mano, ni copiándola de otro commit. Si el QUICK sale rojo, se arregla el rojo.
+   Motivo: el 23 y el 24-nov-2026 se subió una rama antes del QUICK completo el mismo día en que eso se había anotado
+   como regla; una nota en la memoria no lo impidió.
 5. **Mirar el deploy después de CADA push hasta que quede READY** (decisión de Fabrizio,
    23-sep-2026): el preview de la rama, y cuando Fabrizio mergea, el de producción. Vercel MCP
    `list_deployments` por `sha` o `get_deployment` → `state: READY`. Si queda en ERROR, los logs

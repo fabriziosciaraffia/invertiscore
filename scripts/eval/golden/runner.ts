@@ -227,6 +227,8 @@ import { runNocheInformeTier } from "./noche-informe-catch-test";
 import { runTarjetaAnalizadaTier } from "./tarjeta-analizada-catch-test";
 import { runEdadNocheTier } from "./edad-noche-catch-test";
 import { runPromesasTextosTier } from "./promesas-textos-catch-test";
+import { runPushCandadoTier } from "./push-candado-catch-test";
+import { marcarSiCorresponde } from "./marca-quick";
 
 const argv = process.argv.slice(2);
 const has = (f: string) => argv.includes(f);
@@ -910,6 +912,9 @@ function printSeed(r: SeedReport) {
   // el regalo (cupo 500, reintento, el motivo con «Ver planes»), el referido (el primer análisis, 5 y 60 días), los avisos
   // («hoy» solo si fue hoy), las cifras, los datos, después de pagar, las fechas y CLAUDE.md. ──
   totalHard += (await runPromesasTextosTier()).hard;
+  // Tier PUSH-CANDADO (24-nov-2026, 0 tokens): ningún commit sube a master ni a claude/* sin un QUICK verde sobre él (el
+  // hook scripts/hooks/pre-push, probado con git push de verdad contra un remoto temporal) y la marca que deja este runner.
+  totalHard += (await runPushCandadoTier()).hard;
   // Tier CIERRE-INFORME (01-oct-2026, 0 tokens): el final del informe tiene UNA acción —el ticket, la banda de
   // bienvenida o «Te quedan N créditos.» con «Analizar otro depto»—. ──
   totalHard += runCierreInformeTier().hard;
@@ -942,5 +947,9 @@ function printSeed(r: SeedReport) {
   console.log(`  drift clase (a):     ${totalDrift} (candidatos a re-baseline)`);
   console.log(totalHard === 0 ? "  ✓ VERDE — sin regresiones estructurales" : "  ✗ ROJO — hay regresiones");
   lineaTandaAcotada();
+  // LA MARCA DEL QUICK VERDE (24-nov-2026, marca-quick.ts): solo con el QUICK completo (`--quick`), 0 fallas duras y el árbol
+  // limpio. Sin ella, el hook pre-push rechaza el push de este commit a master o a una rama claude/*.
+  const marca = marcarSiCorresponde(argv, totalHard);
+  console.log(marca.ruta ? `  · marca del QUICK verde: ${marca.ruta}` : `  · sin marca del QUICK verde: ${marca.motivo}`);
   process.exit(totalHard === 0 ? 0 : 1);
 })();
