@@ -111,12 +111,12 @@ function PaymentReturnContent() {
           body: JSON.stringify({ origenId: depto.origenId, avisoId: depto.avisoId, semanal: depto.token, ...(aceptoCambio ? { aceptoCambio: true } : {}) }),
         });
         if (res.status === 409) { await esperar(ESPERA_GENERAR_MS); continue; }
-        const d = (await res.json().catch(() => ({}))) as { id?: string; error?: string; veredicto?: string | null; score?: number | null; devuelto?: boolean; ahora?: { veredicto: string | null; score: number | null } };
+        const d = (await res.json().catch(() => ({}))) as { id?: string; error?: string; estado?: string; veredicto?: string | null; score?: number | null; devuelto?: boolean; ahora?: { veredicto: string | null; score: number | null } };
         // Listo: InformeEnLaVuelta lo abre en su lugar; si con los datos de hoy salió otro veredicto, lo dice primero.
         if (res.ok && d.id) { setInforme(informeListo(paso0, { id: d.id, ruta: `/analisis/${d.id}`, veredicto: d.veredicto ?? null, score: d.score ?? null, devuelto: d.devuelto ?? null })); return; }
         // EL VEREDICTO CAMBIÓ CON EL PAGO YA HECHO (23-nov-2026, punto 7 de Fabrizio): el crédito comprado no se gastó; queda en la
         // cuenta y la persona decide si lo usa en este depto o en otro.
-        if (res.status === 412 && d.error === "cambio" && d.ahora?.veredicto) { setInforme(informeCambio(paso0, { veredicto: d.ahora.veredicto, score: d.ahora.score ?? null }, true)); return; }
+        if (res.ok && d.estado === "cambio" && d.ahora?.veredicto) { setInforme(informeCambio(paso0, { veredicto: d.ahora.veredicto, score: d.ahora.score ?? null }, true)); return; }
         if (d.error === "sin-creditos" && sinCredito++ < REINTENTOS_CREDITO_RETORNO) { await esperar(ESPERA_GENERAR_MS); continue; }
         if (res.status === 410 && d.error === "despublicado") { fallar("despublicado"); return; }
         if (d.error === "combinacion") { fallar("fuera"); return; }

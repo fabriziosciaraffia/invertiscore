@@ -170,7 +170,7 @@ export function PrimeraSeleccion({ encabezado = "dentro", inicial = null }: {
           await new Promise((ok) => setTimeout(ok, ESPERA_EN_CURSO_MS));
           continue;
         }
-        const d = (await res.json().catch(() => ({}))) as { id?: string; error?: string; veredicto?: string | null; score?: number | null; devuelto?: boolean; ahora?: { veredicto: string | null; score: number | null } };
+        const d = (await res.json().catch(() => ({}))) as { id?: string; error?: string; estado?: string; veredicto?: string | null; score?: number | null; devuelto?: boolean; ahora?: { veredicto: string | null; score: number | null } };
         if (res.ok && d.id) {
           const nuevo = d.id;
           setResumenesAqui((m) => ({ ...m, [nuevo]: { veredicto: d.veredicto ?? null, score: d.score ?? null, fecha: new Date().toISOString() } }));
@@ -181,7 +181,7 @@ export function PrimeraSeleccion({ encabezado = "dentro", inicial = null }: {
           return;
         }
         // CAMBIÓ DESDE QUE SE MOSTRÓ (23-nov-2026, guia/cobro-mostrado.ts): no se cobró; el pop-up pregunta si lo analiza igual.
-        if (res.status === 412 && d.error === "cambio" && d.ahora?.veredicto) { setConfirmar({ it, sin: false }); setInforme(informeCambio(paso0, { veredicto: d.ahora.veredicto, score: d.ahora.score ?? null })); break; }
+        if (res.ok && d.estado === "cambio" && d.ahora?.veredicto) { setConfirmar({ it, sin: false }); setInforme(informeCambio(paso0, { veredicto: d.ahora.veredicto, score: d.ahora.score ?? null })); break; }
         // Se dio de baja recién, o la cola ya rearmó la selección sin este: el pop-up lo dice y, al cerrarlo, se relee la lista.
         if (res.status === 410 && d.error === "despublicado") { fallar("despublicado"); break; }
         if (d.error === "combinacion") { fallar("fuera"); break; }

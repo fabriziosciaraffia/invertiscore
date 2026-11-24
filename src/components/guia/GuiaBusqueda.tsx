@@ -166,7 +166,7 @@ export function GuiaBusqueda({ analysisId, veredicto, conSesion: conSesionInicia
         // La sesión se fue: el código en la tarjeta, y al entrar vuelve el aviso.
         if (res.status === 401) { setInforme(null); setConfirmar(null); setConSesion(false); setGenerando(null); setRegistrando(it.avisoId); break; }
         // CAMBIÓ DESDE QUE SE MOSTRÓ (23-nov-2026, guia/cobro-mostrado.ts): no se cobró; el pop-up pregunta si lo analiza igual.
-        if (res.status === 412 && d.error === "cambio" && d.ahora?.veredicto) { setConfirmar({ it, sin: false }); setInforme(informeCambio(paso0, { veredicto: d.ahora.veredicto, score: d.ahora.score ?? null })); break; }
+        if (res.ok && d.estado === "cambio" && d.ahora?.veredicto) { setConfirmar({ it, sin: false }); setInforme(informeCambio(paso0, { veredicto: d.ahora.veredicto, score: d.ahora.score ?? null })); break; }
         // Se dio de baja recién: el pop-up lo dice y, al cerrarlo, la guía se arma de nuevo sin él.
         if (res.status === 410 && d.error === "despublicado") { fallar("despublicado"); break; }
         // Sin análisis: el aviso con el pack, no el callejón (13-oct-2026).

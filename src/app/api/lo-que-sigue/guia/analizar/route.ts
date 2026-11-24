@@ -37,7 +37,10 @@ import { verificarNegociado } from "@/lib/avisos/negociar";
 import { devolverCobro } from "@/lib/access";
 import { EVENTO_DETALLE_ABIERTO, MODO_INVIERTE, verGratisInvierte } from "@/lib/invierte-v2/detalles";
 import { chequearPublicacionInvierte, detallesPreparados } from "@/lib/invierte-v2/carril-servidor";
-import { avisadoDelCambio, type MarcaCambio, type Mostrado, type VeredictoHoy } from "@/lib/guia/cobro-mostrado";
+import { avisadoDelCambio, cambioDeVeredicto, type MarcaCambio, type Mostrado, type VeredictoHoy } from "@/lib/guia/cobro-mostrado";
+import { sugerenciasDeAviso } from "@/lib/avisos/evaluar-aviso";
+import { avisoDeCandidato } from "@/lib/guia/guia-servidor";
+import { reevaluarYGuardarFila } from "@/lib/avisos/fila-evaluada";
 import { mostradoDeGuia, mostradoDePantalla, mostradoDelCorreo } from "@/lib/guia/mostrado-servidor";
 import { devolverCobroPorCambio } from "@/lib/guia/cobro-mostrado-servidor";
 
@@ -178,6 +181,15 @@ export async function POST(request: Request) {
     // El veredicto y el puntaje del informe (03-nov-2026, lib/guia/informe-en-camino.ts): el pop-up los compara con los de la
     // tarjeta y, si el veredicto es otro, lo dice antes de abrirlo.
     let delInforme: { veredicto: string | null; score: number | null } | null = null;
+    // EN PARALELO CON LA FICHA (23-nov-2026, Fabrizio: «el aviso tarda 6,4 s»): los comparables del aviso y la UF no dependen de
+    // la lectura de la ficha (las sugerencias miran comuna, m², dormitorios, precio y punto, no la edad), así que arrancan ya y
+    // `preparar` las espera. Antes iban en serie después de la ficha. Con precio negociado, el cuerpo es a otro precio: sin adelantar.
+    const ufTemprana = getUFValue().catch(() => null);
+    const sugTemprana = negociadoUF == null
+      ? leerAvisoGuia(admin, b.avisoId, origen).then((a) => (a ? sugerenciasDeAviso(avisoDeCandidato(a, null)) : null)).catch(() => null)
+      : Promise.resolve(null);
+    // El flujo de hoy, para que la tarjeta del mapa muestre el número de hoy cuando cambió (23-nov-2026).
+    let flujoHoy: number | null = null;
     const r = await analizarAvisoDeGuia({
       async chequear() {
         if (modoInvierte) {
@@ -202,13 +214,14 @@ export async function POST(request: Request) {
         const publicadoUF = Math.round(aviso.precioUF);
         if (negociadoUF != null && !precioNegociadoValido(negociadoUF, aviso.precioUF, Number(b.topeNegociar))) return { ok: false, status: 400, error: "precio-negociado" };
         const precioNegociado = negociadoUF != null ? { publicadoUF, negociadoUF, descuentoPct: Math.round((1 - negociadoUF / publicadoUF) * 1000) / 10 } : null;
-        const [cfg, ufValue] = await Promise.all([leerConfigGuia(admin), getUFValue()]);
+        const [cfg, ufValue] = await Promise.all([leerConfigGuia(admin), ufTemprana.then((u) => u ?? getUFValue())]);
+        const sugLeidas = precioNegociado ? null : await sugTemprana;
         const antiguedad = await antiguedadDelAviso(admin, aviso, lecturaAnio);
         // LA TASA (30-oct-2026): la elegida en el pop-up o la de la selección; sin ella, la del motor —también desde el semanal
         // con un informe de origen (decisión de Fabrizio: no la del último informe)—. La guía sigue con la de su informe.
         const tasaElegida = "tasaPct" in b ? tasaElegidaDe(b.tasaPct) : (combinacion.tasaPct ?? null);
         const conTasa: OrigenGuia = { ...origen, tasa: tasaElegida ?? (desde === "guia" ? origen.tasa : cfg.tasa) };
-        const body = await cuerpoDelAviso(precioNegociado ? { ...aviso, precioUF: precioNegociado.negociadoUF } : aviso, conTasa, combinacion, antiguedad, { uf: ufValue, tasa: cfg.tasa });
+        const body = await cuerpoDelAviso(precioNegociado ? { ...aviso, precioUF: precioNegociado.negociadoUF } : aviso, conTasa, combinacion, antiguedad, { uf: ufValue, tasa: cfg.tasa }, sugLeidas ?? undefined);
         // De dónde salió (14-oct-2026): el dashboard lo dice en lugar de «SIN DIRECCIÓN». Y la tasa elegida: la portada la dice.
         if (body?.origenAviso) body.origenAviso.desde = desde;
         if (body?.origenAviso && tasaElegida != null) { body.origenAviso.tasaElegida = tasaElegida; body.origenAviso.tasaMercado = cfg.tasa; }
@@ -259,7 +272,16 @@ export async function POST(request: Request) {
             medianaDeHoy = medianaDeHoy ?? await prefetchMedianaComunaVenta(admin, body, ufValue);
             const r0 = runAnalysis(body, ufValue, medianaDeHoy);
             const hoy: VeredictoHoy = { veredicto: readVeredicto(r0) ?? null, score: typeof r0.score === "number" ? r0.score : null };
+            flujoHoy = typeof r0.metrics?.flujoNetoMensual === "number" ? Math.round(r0.metrics.flujoNetoMensual) : null;
             cotejo = { mostrado, hoy, aceptoCambio: b.aceptoCambio === true || modoInvierte };
+            // LA FILA GUARDADA SE ACTUALIZA EN ESE MOMENTO (23-nov-2026, decisión de Fabrizio): si lo de hoy es otro veredicto que lo
+            // mostrado, se reevalúa el aviso con la función de la noche y se guarda, para que el mapa y los correos dejen de mostrar el
+            // número viejo a todos. En segundo plano: no demora la respuesta.
+            if (cambioDeVeredicto(mostrado, hoy.veredicto)) {
+              waitUntil(reevaluarYGuardarFila(admin, avisoDeCandidato(aviso), cfg, sugLeidas ? { sug: sugLeidas } : {})
+                .then((x) => { if (!x.ok) captureApiError(new Error(`no se actualizó la fila: ${x.error}`), { ruta: RUTA, operacion: "actualizar-fila-por-cambio", userId: user.id, extra: { avisoId: aviso.avisoId } }); })
+                .catch((e) => captureApiError(e, { ruta: RUTA, operacion: "actualizar-fila-por-cambio", userId: user.id, extra: { avisoId: aviso.avisoId } })));
+            }
             // Siguió tras el aviso: el informe lo guarda (se cobra normal).
             if (avisadoDelCambio(cotejo) && body.origenAviso) body.origenAviso.cambioAvisado = { mostrado: { veredicto: mostrado.veredicto, score: mostrado.score, at: mostrado.at, fuente: mostrado.fuente }, hoy };
           }
@@ -364,9 +386,9 @@ export async function POST(request: Request) {
     if (r.estado === "sin-preparar") return salir(plausibleFallo ?? negociadoFallo ?? NextResponse.json({ error: r.error }, { status: r.status }));
     if (r.estado === "sin-cobro") return salir(NextResponse.json({ error: r.error }, { status: r.status }));
     if (r.estado === "en-curso") return salir(NextResponse.json({ error: "en-curso" }, { status: 409 }));
-    // CAMBIÓ DESDE QUE SE MOSTRÓ (23-nov-2026): no se reclamó ni se cobró; el pop-up pregunta si lo analiza igual. 412 y no 409: los
-    // clientes reintentan el 409 («en curso») solos.
-    if (r.estado === "cambio") return salir(NextResponse.json({ error: "cambio", mostrado: { veredicto: r.mostrado.veredicto, score: r.mostrado.score }, ahora: r.hoy }, { status: 412 }));
+    // CAMBIÓ DESDE QUE SE MOSTRÓ (23-nov-2026): no se reclamó ni se cobró; el pop-up pregunta si lo analiza igual. Respuesta normal
+    // (200) con su estado, no un error (Fabrizio: un 412 dejaba un error en la consola del navegador).
+    if (r.estado === "cambio") return salir(NextResponse.json({ estado: "cambio", mostrado: { veredicto: r.mostrado.veredicto, score: r.mostrado.score }, ahora: { ...r.hoy, flujo: flujoHoy } }));
     // No salió y el crédito volvió (04-nov-2026): el pop-up dice que falló, sin cobro.
     if (r.estado === "fallo") {
       captureApiError(r.error, { ruta: RUTA, operacion: "analizar-aviso-crear", userId: user.id, tags: { credito: "devuelto" } });

@@ -243,7 +243,7 @@ export function SemanalLista({
         // Lo que sigue cierra el pop-up de «Analizar igual» si estaba abierto: el informe no salió.
         setPopup(null);
         // CAMBIÓ DESDE QUE SE MOSTRÓ (23-nov-2026, guia/cobro-mostrado.ts): no se cobró (recién pagado, el crédito queda en la cuenta).
-        if (res.status === 412 && d.error === "cambio" && d.ahora?.veredicto) { setConfirmar({ it, sin: false, analizando: true }); setInforme(informeCambio(paso0, { veredicto: d.ahora.veredicto, score: d.ahora.score ?? null }, recienPagado)); break; }
+        if (res.ok && d.estado === "cambio" && d.ahora?.veredicto) { setConfirmar({ it, sin: false, analizando: true }); setInforme(informeCambio(paso0, { veredicto: d.ahora.veredicto, score: d.ahora.score ?? null }, recienPagado)); break; }
         // Se dio de baja recién: el servidor lo marca y trae el siguiente.
         if (res.status === 410 && d.error === "despublicado") { fallar("despublicado"); break; }
         // Sin análisis: el mismo aviso, con el pack (ya no el callejón «Ya usaste tus análisis.»). Recién pagado, primero se

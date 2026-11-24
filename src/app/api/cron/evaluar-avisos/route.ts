@@ -4,9 +4,10 @@ import { captureApiWarning } from "@/lib/observabilidad";
 import { cerrarCron } from "@/lib/cron-resultado";
 import { latirCron } from "@/lib/cron-heartbeat";
 import { PAGINA_POSTGREST } from "@/lib/comuna-stats";
-import { evaluarAviso, VERSION_EVALUACION } from "@/lib/avisos/evaluar-aviso";
-import { candidatoDeEvaluacion, ESTANDAR25_VACIO, evaluarEstandar25 } from "@/lib/avisos/estandar-deptos";
-import { evaluarNegociar, NEGOCIAR_VACIO } from "@/lib/avisos/negociar";
+import { VERSION_EVALUACION } from "@/lib/avisos/evaluar-aviso";
+// La fila completa (evaluación, 25 años y descuento) vive en fila-evaluada.ts desde el 23-nov-2026: la usa también «Analizar este»
+// cuando el recálculo en vivo da otro veredicto que el guardado.
+import { filaEvaluadaCompleta } from "@/lib/avisos/fila-evaluada";
 import { guardarConteosDeLaNoche, guardarResumenDeLaNoche } from "@/lib/deptos/servidor";
 import { guardarConvienenMapa } from "@/lib/explorar/convienen-guardado";
 import { avisosDeOtraVersion, avisosEvaluables, avisosPendientes, sinDespublicados, VENTANA_VISTOS_DIAS, type EvaluacionGuardada, type FilaAviso } from "@/lib/avisos/depurar";
@@ -121,16 +122,10 @@ export async function GET(request: Request) {
         // Arriendo de radio, sin segmento de precio: medido el 29-sep-2026 sobre 1.538 avisos, el segmento
         // no desinfla los bloques baratos (bajo UF 30/m² lo usan 5 de 190; la mediana no se mueve) y sube
         // los arriendos sospechosos de 861 a 1.280. Queda en arriendo-segmentado.ts, apagado.
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { sug, ...evaluada } = await evaluarAviso(sb, a, cfg, { segmentar: false });
-        // El mismo aviso a 25 años (16-oct-2026; columnas *_25), con la sonda y lo que la fila resolvió.
-        const candidato = evaluada.arriendo ? candidatoDeEvaluacion(a, evaluada) : null;
-        // Y el descuento a Comprar de los que dan Ajustar (02-nov-2026), con lo mismo que resolvió la fila.
-        const t = Date.now();
-        const negociar = candidato ? evaluarNegociar(candidato, evaluada, cfg) : NEGOCIAR_VACIO;
-        msNegociar += Date.now() - t;
-        if (negociar.negociar_20 || negociar.negociar_30) negociados++;
-        const fila = { ...evaluada, ...(candidato ? evaluarEstandar25(candidato, cfg) : ESTANDAR25_VACIO), ...negociar };
+        // La evaluación, el mismo aviso a 25 años (16-oct-2026; columnas *_25) y el descuento a Comprar de los Ajustar (02-nov-2026).
+        const { fila, msNegociar: ms } = await filaEvaluadaCompleta(sb, a, cfg);
+        msNegociar += ms;
+        if (fila.negociar_20 || fila.negociar_30) negociados++;
         if (!fila.arriendo) sinArriendo++;
         // Sugerencia que cayó a la comuna porque el radio no respondió (aun reintentando): se escribe,
         // pero la corrida la cuenta como falla parcial (30-sep-2026). Ver reintento-transitorio.ts.

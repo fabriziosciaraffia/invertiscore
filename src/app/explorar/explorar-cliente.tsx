@@ -268,6 +268,9 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
   const [confirmar, setConfirmar] = useState<{ it: PinMapa; sin: boolean; analizando?: boolean; movido?: string } | null>(null);
   /** El precio negociado que la ruta verificó con los datos de hoy (02-nov-2026): el nuevo, o fuera de la capa si ya no llega. */
   const [movidos, setMovidos] = useState<Record<string, Negociacion>>({});
+  // LO DE HOY (23-nov-2026, decisión de Fabrizio): cuando «Analizar» dice que el depto cambió, la tarjeta pasa a mostrar el veredicto,
+  // el puntaje y el flujo de hoy (la fila guardada también se actualiza en el servidor, para todos).
+  const [hoyAqui, setHoyAqui] = useState<Record<string, { veredicto: string; score: number | null; flujo: number | null }>>({});
   const [noLlegan, setNoLlegan] = useState<string[]>([]);
   const [noDa, setNoDa] = useState<{ it: PinMapa; porQue: string | null; publicacion: string | null; ocupado?: boolean } | null>(null);
   const [generando, setGenerando] = useState<string | null>(null);
@@ -513,7 +516,7 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
   // Las comunas de ESTA vista que fallaron en su último cálculo; con alguna, el mapa muestra lo que sí llegó (02-nov-2026).
   const fallidasAqui = fallidas && fallidas.clave === claveUniverso(filtros) ? fallidas.comunas.filter((c) => comunasACalcular(filtros).includes(c)) : [];
   const universo = universoPara(filtros, universos) ?? (progreso == null && fallidasAqui.length > 0 ? universoPara(filtros, universos, true) : null);
-  const visibles = useMemo(() => (universo ? ordenar(filtrar(universo, filtros).filter((p) => !caidos.includes(p.avisoId)), orden, uf) : []), [universo, filtros, orden, uf, caidos]);
+  const visibles = useMemo(() => (universo ? ordenar(filtrar(universo, filtros).filter((p) => !caidos.includes(p.avisoId)).map((p) => (hoyAqui[p.avisoId] ? { ...p, ...hoyAqui[p.avisoId], flujo: hoyAqui[p.avisoId].flujo ?? p.flujo } : p)), orden, uf) : []), [universo, filtros, orden, uf, caidos, hoyAqui]);
   // LAS DOS CLASES (03-nov-2026): de entrada, los ✓ Comprar y, aparte, los − Ajustar de la noche con este pie que pasan los filtros
   // y el descuento máximo, sin los que ya convienen; «Ver solo ✓ Comprar» deja la primera (capa-negociar.ts › negociadosVisibles).
   const capa = capaVisible(filtros);
@@ -695,7 +698,7 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
           await new Promise((ok) => setTimeout(ok, ESPERA_EN_CURSO_MS));
           continue;
         }
-        const d = (await res.json().catch(() => ({}))) as { id?: string; error?: string; estado?: string; porQue?: string | null; publicacion?: string | null; negociado?: Negociacion & { p: number }; tope?: number; veredicto?: string | null; score?: number | null; devuelto?: boolean; ahora?: { veredicto: string | null; score: number | null } };
+        const d = (await res.json().catch(() => ({}))) as { id?: string; error?: string; estado?: string; porQue?: string | null; publicacion?: string | null; negociado?: Negociacion & { p: number }; tope?: number; veredicto?: string | null; score?: number | null; devuelto?: boolean; ahora?: { veredicto: string | null; score: number | null; flujo?: number | null } };
         if (res.ok && d.id) {
           const nuevo = d.id;
           setResumenesAqui((m) => ({ ...m, [nuevo]: { veredicto: d.veredicto ?? null, score: d.score ?? null, fecha: new Date().toISOString() } }));
@@ -712,7 +715,7 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
           return;
         }
         // CAMBIÓ DESDE QUE SE MOSTRÓ (23-nov-2026, guia/cobro-mostrado.ts): no se cobró; el pop-up pregunta si lo analiza igual.
-        if (res.status === 412 && d.error === "cambio" && d.ahora?.veredicto) { setNoDa(null); setConfirmar({ it, sin: false, analizando: true }); setInforme(informeCambio(paso0, { veredicto: d.ahora.veredicto, score: d.ahora.score ?? null })); break; }
+        if (res.ok && d.estado === "cambio" && d.ahora?.veredicto) { const ahora = { veredicto: d.ahora.veredicto, score: d.ahora.score ?? null, flujo: d.ahora.flujo ?? null }; setHoyAqui((m) => ({ ...m, [it.avisoId]: ahora })); setNoDa(null); setConfirmar({ it, sin: false, analizando: true }); setInforme(informeCambio(paso0, { veredicto: ahora.veredicto, score: ahora.score })); break; }
         // Renta corta medida fina que no da: no se cobró; se ofrece analizar igual.
         if (res.ok && d.estado === "no-da") { setInforme(null); setConfirmar(null); setNoDa({ it, porQue: d.porQue ?? null, publicacion: d.publicacion ?? null }); break; }
         // EL PRECIO NEGOCIADO, VERIFICADO CON LOS DATOS DE HOY (02-nov-2026): no se cobró nada. Si se movió, el pop-up muestra el

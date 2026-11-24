@@ -26,6 +26,7 @@ import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { ChipVeredicto, ChipVeredictoTokens } from "@/components/analysis/shared/ChipVeredicto";
 import { COBRO_MOSTRADO_COPY } from "@/lib/guia/cobro-mostrado";
 import { esVeredicto } from "@/lib/veredicto-etiqueta";
+import { botonOcupado } from "@/lib/carga-global";
 
 /** «Este depto cambió desde que te lo mostramos: ahora sale [− Ajustar]. ¿Quieres analizarlo igual?» — el veredicto con el chip de
  *  la casa (el color de la tríada), 23-nov-2026. El texto entero queda en `aria-label`. */
@@ -134,6 +135,9 @@ export function PopupInforme({ paso, ahora, saldo = null, lugar = "mapa", alCerr
 }) {
   const puedeCerrar = cerrable(paso, ahora);
   const conAbrir = muestraAbrir(paso, ahora);
+  // «Analizarlo igual» queda presionado y ocupado desde el toque: no se puede tocar dos veces (23-nov-2026).
+  const [enviando, setEnviando] = useState(false);
+  const igual = () => { if (enviando || !alAnalizarIgual) return; setEnviando(true); alAnalizarIgual(); };
   const enCurso = paso.paso === "generando" || paso.paso === "listo";
   const fallo = paso.paso === "fallo";
   const reintenta = fallo && (paso.motivo === "error" || paso.motivo === "medicion") && !!alReintentar;
@@ -183,7 +187,7 @@ export function PopupInforme({ paso, ahora, saldo = null, lugar = "mapa", alCerr
         {paso.paso === "cambio" && (
           <div className="wz-modal-mb">
             {/* La acción que cobra es la principal (el rojo es para la acción principal); «Volver» no gasta nada. */}
-            {alAnalizarIgual && <button ref={refPrimario} type="button" className="wz-cta wz-cta-modal" onClick={alAnalizarIgual} data-informe="analizar-igual">{INFORME_COPY.analizarIgual}</button>}
+            {alAnalizarIgual && <button ref={refPrimario} type="button" className="wz-cta wz-cta-modal" onClick={igual} disabled={enviando} {...botonOcupado(enviando)} data-informe="analizar-igual">{INFORME_COPY.analizarIgual}</button>}
             <button ref={alAnalizarIgual ? undefined : refPrimario} type="button" className="wz-modal-cancelar" style={{ minHeight: 44 }} onClick={alCerrar} data-informe="cambio-volver">{INFORME_COPY.volver}</button>
           </div>
         )}
@@ -240,6 +244,8 @@ export function VueltaInforme({ paso, ahora, saldo = null, alReintentar = null, 
   alAbrir?: () => void;
 }) {
   const conAbrir = muestraAbrir(paso, ahora);
+  const [enviando, setEnviando] = useState(false);
+  const igual = () => { if (enviando || !alAnalizarIgual) return; setEnviando(true); alAnalizarIgual(); };
   // La vuelta del pago es de un depto de la selección.
   const fallo = paso.paso === "fallo" ? textoFallo(paso.motivo, "seleccion") : null;
   const reintenta = paso.paso === "fallo" && (paso.motivo === "error" || paso.motivo === "medicion") && !!alReintentar;
@@ -262,14 +268,13 @@ export function VueltaInforme({ paso, ahora, saldo = null, alReintentar = null, 
           <p className="mt-2 text-[15px] leading-[1.5] text-[var(--franco-text)]" role="status" data-informe="distinto">{INFORME_COPY.distinto}</p>
         </>
       )}
-      {/* LA VUELTA DEL PAGO CON EL VEREDICTO CAMBIADO (23-nov-2026, punto 7 de Fabrizio): el pago está hecho y el crédito comprado no
-          se gastó; queda en la cuenta y la persona decide si lo usa en este depto o en otro. */}
+      {/* VEREDICTO CAMBIADO CON EL PAGO HECHO (23-nov-2026, punto 7): el crédito comprado queda en la cuenta y la persona decide. */}
       {paso.paso === "cambio" && (
         <>
           <p className="mt-2 text-[15px] font-semibold leading-[1.45] text-[var(--franco-text)]" role="alert" data-informe="cambio"><AvisoCambio v={paso.ahora.veredicto} /></p>
           <p className={PLANO.bajada} data-informe="cambio-queda">{INFORME_COPY.cambioPagado}</p>
           <div className={`${PLANO.seccion} flex flex-col gap-3`}>
-            {alAnalizarIgual && <button type="button" className={PLANO.principal} onClick={alAnalizarIgual} data-informe="analizar-igual">{INFORME_COPY.usarAca}</button>}
+            {alAnalizarIgual && <button type="button" className={PLANO.principal} onClick={igual} disabled={enviando} {...botonOcupado(enviando)} data-informe="analizar-igual">{INFORME_COPY.usarAca}</button>}
             <EnlaceCarga href="/dashboard" className={alAnalizarIgual ? PLANO.secundario : PLANO.principal} data-informe="cambio-otro">{INFORME_COPY.elegirOtro}</EnlaceCarga>
           </div>
         </>
