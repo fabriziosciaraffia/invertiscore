@@ -291,6 +291,14 @@ async function main(): Promise<number> {
     const fotosGuardadas = ((fv?.reporte as { fotos?: unknown[] } | null)?.fotos ?? []).length;
     const { data: enBucket } = await admin.storage.from("invierte").list(`visitas/${QA}/${v1!.id}`);
     espera(sub.ok && (sub.fotos ?? []).length === 2 && !ajena.ok && fotosGuardadas === 2 && (enBucket ?? []).length === 4, "15 · las fotos de la visita: subidas con su copia liviana y guardadas con el reporte; una foto ajena se rechaza", { sub: sub.ok, ajena, fotosGuardadas, enBucket: (enBucket ?? []).length });
+    // Para probar en el navegador con una sesión real (QA, 24-nov-2026): con RECORRIDO_PAUSA_ARCHIVO, deja la visita publicada con sus fotos,
+    // escribe en ese archivo la visita y el aviso, y espera hasta que alguien lo borre (máximo 10 minutos). Después sigue y limpia como siempre.
+    if (process.env.RECORRIDO_PAUSA_ARCHIVO) {
+      const fs = await import("node:fs");
+      fs.writeFileSync(process.env.RECORRIDO_PAUSA_ARCHIVO, JSON.stringify({ visitaId: v1!.id, avisoId: AVISO }));
+      console.log("  … en pausa: borra el archivo para seguir");
+      for (let k = 0; k < 600 && fs.existsSync(process.env.RECORRIDO_PAUSA_ARCHIVO); k++) await new Promise((r) => setTimeout(r, 1000));
+    }
     const o6c = await oferta(o6.id as string);
     const { data: v1b } = await admin.from("inv_visitas").select("*").eq("id", v1!.id).single();
     espera(ag.ok && pb.ok && v1b?.estado === "reporte_publicado" && v1b.reporte_estado === "arreglos_menores" && (v1b.reporte_arreglos as string[]).length === 1 && Number(o6c.sugerida_uf) < Number(o6a.sugerida_uf) && o6c.sugerida_visita_id === v1!.id, "15 · el reporte con un arreglo baja lo que sugiere Franco, con la visita de respaldo", { ag, pb, v: v1b?.estado, antes: o6a.sugerida_uf, ahora: o6c.sugerida_uf });
@@ -303,15 +311,22 @@ async function main(): Promise<number> {
     const unaCasilla = ro16 ? await firmarRonda(admin, USER, AVISO, { desdeId: o6.id, montoUF: monto16, acepto: true, leyo: true }, null) : null;
     const pp = ro16 && ro16.minUF < Number(o6.monto_uf) ? await firmarRonda(admin, USER, AVISO, { desdeId: o6.id, montoUF: monto16, acepto: true, leyo: true, aceptoFirme: true }, null) : null;
     const o7 = await ultimaRonda(deptoId);
-    espera(unaCasilla?.ok === false && unaCasilla.error === "casilla" && !!pp?.ok && Number(o7.monto_uf) < Number(o6.monto_uf) && o7.visita_id === v1!.id && o7.estado === "firmada" && o7.sujeta_a_visita === false && o7.en_firme_confirmo === true && o7.texto_version === "borrador-en-firme-20261124", "16 · después de la visita la ronda nace en firme (con las dos casillas; con una sola, no se firma), con el reporte de respaldo", { unaCasilla, pp, o7: { m: o7.monto_uf, s: o7.sujeta_a_visita, v: o7.texto_version } });
+    espera(unaCasilla?.ok === false && unaCasilla.error === "casilla" && !!pp?.ok && Number(o7.monto_uf) < Number(o6.monto_uf) && o7.visita_id === v1!.id && o7.estado === "firmada" && o7.sujeta_a_visita === false && o7.en_firme_confirmo === true && o7.texto_version === "borrador-a-firme-20261124", "16 · después de la visita la ronda nace en firme (con las dos casillas; con una sola, no se firma), con el reporte de respaldo", { unaCasilla, pp, o7: { m: o7.monto_uf, s: o7.sujeta_a_visita, v: o7.texto_version } });
 
-    // 17 · Retirarla mientras no responden; otra oferta después de retirar, con la visita publicada, también nace en firme.
-    const rt17 = await retirarOferta(admin, USER, AVISO, null);
+    // 17 · Una oferta a firme no se retira mientras esté vigente: firmada ni presentada. Vence sola; otra oferta después, con la visita
+    // publicada, también nace a firme.
+    const rtFirmada = await retirarOferta(admin, USER, AVISO, null);
+    await accionOfertaAdmin(admin, ADMIN, { accion: "oferta_presentar", ofertaId: o7.id }, null);
+    const rtPresentada = await retirarOferta(admin, USER, AVISO, null);
+    const o7p = await oferta(o7.id as string);
+    const vence17 = await accionOfertaAdmin(admin, ADMIN, { accion: "oferta_prueba_pasada", ofertaId: o7.id, modo: "vencer" }, null);
+    const o7v = await oferta(o7.id as string);
+    espera(!rtFirmada.ok && !rtPresentada.ok && o7p.estado === "presentada" && vence17.ok && o7v.estado === "sin_acuerdo" && o7v.sin_acuerdo_motivo === "vencida", "17 · una oferta a firme no se retira (firmada ni presentada) y vence sola", { rtFirmada, rtPresentada, e: o7p.estado, v: o7v.estado });
     const r17 = await asegurarRango(admin, QA, AVISO, new Date(), { nueva: true });
     const otraUna = await firmarOferta(admin, USER, AVISO, { montoUF: r17?.recomendadoUF, acepto: true, leyo: true }, null);
     const otra = await firmarOferta(admin, USER, AVISO, { montoUF: r17?.recomendadoUF, acepto: true, leyo: true, aceptoFirme: true }, null);
     const o9 = await ultimaRonda(deptoId);
-    espera(rt17.ok && otraUna.ok === false && otra.ok && o9.estado === "firmada" && o9.sujeta_a_visita === false && o9.visita_id === v1!.id, "17 · otra oferta después de retirar, con la visita publicada, nace en firme", { rt17, otraUna, otra, o9: { e: o9.estado, s: o9.sujeta_a_visita } });
+    espera(otraUna.ok === false && otra.ok && o9.estado === "firmada" && o9.sujeta_a_visita === false && o9.visita_id === v1!.id, "17 · otra oferta después, con la visita publicada, nace a firme", { otraUna, otra, o9: { e: o9.estado, s: o9.sujeta_a_visita } });
 
     // 18 · Presentarla y que quien vende la acepte: pasa directo a «en firme», sin otro paso de la persona; ya no se puede retirar.
     await accionOfertaAdmin(admin, ADMIN, { accion: "oferta_presentar", ofertaId: o9.id }, null);
