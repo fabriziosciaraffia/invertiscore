@@ -7,7 +7,7 @@
 export const VERSION_TEXTO_OFERTA = "borrador-20261122";
 // Después de la visita, toda oferta es en firme (24-nov-2026, decisión de Fabrizio): un texto distinto, con su versión propia. Borrador de
 // trabajo marcado BORRADOR: lo revisa el abogado; no es la redacción definitiva.
-export const VERSION_TEXTO_OFERTA_EN_FIRME = "borrador-en-firme-20261124";
+export const VERSION_TEXTO_OFERTA_EN_FIRME = "borrador-a-firme-20261124";
 export const MARCA_BORRADOR = "BORRADOR · TEXTO DE PRUEBA · EN REVISIÓN LEGAL";
 
 export interface DatosOferta {
@@ -33,7 +33,7 @@ export function textoOferta(d: DatosOferta): string[] {
     `Yo, ${d.nombre}, RUT ${d.rut}, ofrezco comprar el departamento ${d.depto}, publicado en ${uf(d.publicadoUF)}, en ${uf(d.montoUF)}.`,
     `Forma de pago: ${d.pagas}.`,
     d.enFirme
-      ? `Condición: ya visité el departamento (visita del ${d.enFirme.visitaFecha}). Esta oferta es en firme: si quien vende la acepta dentro de su vigencia, queda formalizada y ya no puedo retirarla. Mientras quien vende no responda, puedo retirarla.`
+      ? `Condición: ya visité el departamento (visita del ${d.enFirme.visitaFecha}). Esta oferta es a firme: vale ${d.vigenciaDias} días desde que Franco la presenta por escrito a quien vende, y en ese plazo no puedo retirarla. Si quien vende la acepta dentro de su vigencia, hay acuerdo; si no, vence sola.`
       : d.sujetaAVisita
         ? "Condición: esta oferta queda sujeta a la visita del departamento. Si quien vende la acepta, se formaliza recién cuando la confirmo después de la visita, o cuando decido confirmarla sin visitar. Si lo que veo no me convence, puedo retirarla o ajustarla sin costo."
         : "Condición: ya visité el departamento; si quien vende la acepta, la oferta queda formalizada.",
@@ -41,7 +41,7 @@ export function textoOferta(d: DatosOferta): string[] {
     `Vigencia: ${d.vigenciaDias} días desde que Franco la presenta por escrito a quien vende.`,
     "Franco presenta esta oferta en mi nombre y me informa la respuesta. Ninguna oferta se presenta, acepta o formaliza sin mi decisión.",
     d.enFirme
-      ? `Firma electrónica simple: la acepto marcando las casillas «Leí la oferta y estoy de acuerdo» y «Entiendo que si la aceptan no puedo retirarla», y el botón «Firmar en firme por ${uf(d.montoUF)}». Quedan registrados la fecha, la hora y desde dónde firmé.`
+      ? `Firma electrónica simple: la acepto marcando las casillas «Leí la oferta y estoy de acuerdo» y «Entiendo que no puedo retirarla mientras esté vigente», y el botón «Firmar a firme por ${uf(d.montoUF)}». Quedan registrados la fecha, la hora y desde dónde firmé.`
       : "Firma electrónica simple: la acepto marcando la casilla «Leí la oferta y estoy de acuerdo» y el botón «Firmar mi oferta». Quedan registrados la fecha, la hora y desde dónde firmé.",
     MARCA_BORRADOR,
   ];

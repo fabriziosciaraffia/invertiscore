@@ -9,7 +9,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { COLS_OFERTA, leerConfigRango, ofertaDeFila, proximaRonda, textoDeFirma, type OfertaVista } from "./rango-servidor";
-import { OFERTAS_VIVAS, REGLA_SUGERENCIA, esRetirable, insistirDesde, lineaVence, medianocheChile, sugerenciaFranco, sugerenciaValida, venceAlTerminar } from "./b4";
+import { OFERTAS_VIVAS, REGLA_SUGERENCIA, esRetirable, sePuedeRetirar, insistirDesde, lineaVence, medianocheChile, sugerenciaFranco, sugerenciaValida, venceAlTerminar } from "./b4";
 import { WHATSAPP_OFERTA, type EventoOferta } from "./b4-correo";
 import { avisoOferta, topeOferta } from "./rango";
 import { anotar, sha256, ultimaOrdenDe, type ContextoPedido } from "./servidor";
@@ -254,6 +254,8 @@ export async function retirarOferta(admin: SupabaseClient, user: Quien, avisoId:
   if (!f) return { ok: false, error: "oferta" };
   const desde = f.estado as string;
   if (!esRetirable(desde)) return { ok: false, error: "estado" };
+  // Una oferta a firme no se retira mientras esté vigente (24-nov-2026, Fabrizio): firmada o presentada, vence sola a los 5 días.
+  if (!sePuedeRetirar({ estado: desde, sujetaAVisita: f.sujeta_a_visita !== false })) return { ok: false, error: "estado" };
   const iso = ahora.toISOString();
   const { error } = await admin.from(T_OF).update({ estado: "retirada", retirada_at: iso, retirada_desde: desde, updated_at: iso }).eq("id", f.id).eq("estado", desde);
   if (error) { console.error("[inv2] retirar:", error.message); return { ok: false, error: "guardar" }; }

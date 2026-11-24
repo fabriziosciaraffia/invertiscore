@@ -207,7 +207,7 @@ export function parrafoDepto(d: DeptoConCambios): string {
   const p = d.cambios.find((c) => c.tipo === "precio_baja" || c.tipo === "precio_sube");
   const fuera = d.cambios.find((c) => c.tipo === "despublicado");
   const vuelta = d.cambios.find((c) => c.tipo === "republicado");
-  if (fuera) partes.push(`${quien} dejó de estar publicado el ${fechaCorta(fuera.fecha)}. Lo dejamos marcado en tu base y Franco revisa si se vendió.`);
+  if (fuera) partes.push(`${quien} dejó de estar publicado el ${fechaCorta(fuera.fecha)}. Lo dejamos marcado en tu base y Franco va a revisar si se vendió.`);
   else if (vuelta) partes.push(`${quien} volvió a publicarse el ${fechaCorta(vuelta.fecha)}.`);
   const v = d.cambios.find((c) => c.tipo === "veredicto");
   if (p) {

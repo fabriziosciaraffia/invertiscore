@@ -25,7 +25,7 @@ export function urlCorreoOferta(evento: EventoOferta, avisoId: string): string {
 
 export const CORREO_OFERTA: Record<EventoOferta, { asunto: string; boton: string; parrafo: (d: Datos) => string }> = {
   presentada: { asunto: "Franco presentó tu oferta", boton: "Ver mi inversión", parrafo: (d) => `Presentamos a quien vende tu oferta de ${uf(d.montoUF)} por ${d.depto}.${d.vence ? ` ${d.vence}.` : ""} Te avisamos apenas respondan.` },
-  aceptada: { asunto: "Aceptaron tu oferta", boton: "Ver mi inversión", parrafo: (d) => `Quien vende aceptó tu oferta de ${uf(d.montoUF)} por ${d.depto}. Sigue sujeta a tu visita: Franco te escribe para coordinarla.` },
+  aceptada: { asunto: "Aceptaron tu oferta", boton: "Ver mi inversión", parrafo: (d) => `Quien vende aceptó tu oferta de ${uf(d.montoUF)} por ${d.depto}. Sigue sujeta a tu visita: Franco te va a escribir para coordinarla.` },
   contraoferta: { asunto: "Te hicieron una contraoferta", boton: "Responder", parrafo: (d) => `Quien vende respondió tu oferta de ${uf(d.montoUF)} por ${d.depto} con ${uf(d.otroUF)}.${d.vence ? ` ${d.vence}.` : ""}` },
   rechazada: { asunto: "No aceptaron tu oferta", boton: "Ver el depto", parrafo: (d) => `Quien vende no aceptó tu oferta de ${uf(d.montoUF)} por ${d.depto} y no hizo contraoferta. Puedes hacer otra o dejar este depto.` },
   tardia_aceptada: { asunto: "Aceptaron tu oferta, fuera de plazo", boton: "Ver el depto", parrafo: (d) => `Quien vende aceptó tu oferta de ${uf(d.montoUF)} por ${d.depto} después de que venció, así que no te obliga. Si sigues interesado, puedes reactivarla.` },
@@ -33,11 +33,11 @@ export const CORREO_OFERTA: Record<EventoOferta, { asunto: string; boton: string
   vencida: { asunto: "Tu oferta venció", boton: "Ver el depto", parrafo: (d) => `Tu oferta de ${uf(d.montoUF)} por ${d.depto} venció sin respuesta. Quedaste libre para ofertar por otro depto o volver a presentarla.` },
   contra_vencida: { asunto: "La contraoferta venció", boton: "Ver el depto", parrafo: (d) => `La contraoferta de ${uf(d.otroUF)} por ${d.depto} venció sin respuesta. Quedaste libre para ofertar por otro depto o hacer otra oferta.` },
   // Sin redundancia: el párrafo no repite el asunto, suma el depto, el monto y lo que sigue.
-  aceptada_en_firme: { asunto: "Tu oferta está en firme", boton: "Ver mi inversión", parrafo: (d) => `Quien vende aceptó tu oferta de ${uf(d.montoUF)} por ${d.depto}. Franco prepara la promesa.` },
+  aceptada_en_firme: { asunto: "Hay acuerdo", boton: "Ver mi inversión", parrafo: (d) => `Quien vende aceptó tu oferta a firme de ${uf(d.montoUF)} por ${d.depto}. Franco está preparando la promesa.` },
   reporte_listo: { asunto: "El reporte de tu visita está listo", boton: "Ver el depto", parrafo: (d) => `Con lo que se vio en ${d.depto}, te toca decidir cómo sigue tu oferta de ${uf(d.montoUF)}.` },
   mantener_si: { asunto: "Quien vende mantiene su contraoferta", boton: "Ver mi inversión", parrafo: (d) => `Su contraoferta de ${uf(d.otroUF)} por ${d.depto} espera tu visita.${d.vence ? ` ${d.vence}.` : ""}` },
   mantener_no: { asunto: "Quien vende no puede esperar la visita", boton: "Responder", parrafo: (d) => `Su contraoferta de ${uf(d.otroUF)} por ${d.depto} sigue en pie.${d.vence ? ` ${d.vence}.` : ""} Puedes responder sin visitar.` },
-  precio_bajo: { asunto: "Bajó el precio de un depto con tu oferta", boton: "Ver mi inversión", parrafo: (d) => `El precio publicado de ${d.depto} bajó a ${uf(d.otroUF)}, por debajo de tu oferta de ${uf(d.montoUF)}. Franco te escribe para ver cómo seguir.` },
+  precio_bajo: { asunto: "Bajó el precio de un depto con tu oferta", boton: "Ver mi inversión", parrafo: (d) => `El precio publicado de ${d.depto} bajó a ${uf(d.otroUF)}, por debajo de tu oferta de ${uf(d.montoUF)}. Franco te va a escribir para ver cómo seguir.` },
 };
 
 /** El texto del WhatsApp que Franco le manda a la persona cuando le toca actuar (decisión 10). */

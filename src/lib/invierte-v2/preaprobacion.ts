@@ -91,7 +91,7 @@ export const ESTADOS_COPY = {
   por_corregir: { chip: "Te toca a ti", titulo: "Necesitamos que la subas de nuevo", boton: "Subir otra" },
   // Sin lámina: los proponemos con la misma forma (esperan el OK de Fabrizio).
   sin_credito: { chip: "✓ Listo", titulo: "Compras sin crédito", texto: "Ya puedes ofertar o pedir visita. Si después pides un crédito, súbela aquí." },
-  explicando: { chip: "Franco está en eso", titulo: "Te explicamos cómo pedirla", texto: "Una persona de Franco te escribe por WhatsApp para contarte cómo pedirla a tu banco. Cuando la tengas, súbela aquí." },
+  explicando: { chip: "Franco está en eso", titulo: "Te explicamos cómo pedirla", texto: "Una persona de Franco te va a escribir por WhatsApp para contarte cómo pedirla a tu banco. Cuando la tengas, súbela aquí." },
 } as const;
 
 /** «Banco Estado · crédito hasta UF 2.600 · vigente hasta el 15 de febrero.» */

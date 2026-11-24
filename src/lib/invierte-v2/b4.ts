@@ -24,6 +24,8 @@ export const OFERTAS_VIVAS = ["firmada", "en_cola", "presentada", "contraoferta"
 /** Desde dónde se puede retirar (decisión 9 y punto 12): hasta antes de «Oferta en firme». */
 export const RETIRABLES = ["firmada", "en_cola", "presentada", "contraoferta", "aceptada_sujeta"] as const;
 export const esRetirable = (estado: string) => (RETIRABLES as readonly string[]).includes(estado);
+/** Una oferta a firme no se retira mientras esté vigente (24-nov-2026, Fabrizio): firmada o presentada. Las sujetas a visita, como antes. */
+export const sePuedeRetirar = (o: { estado: string; sujetaAVisita: boolean }) => esRetirable(o.estado) && (o.sujetaAVisita || !["firmada", "presentada"].includes(o.estado));
 
 /** La fecha de un instante en Santiago: año, mes (1-12) y día. */
 export function fechaChile(d: Date): { y: number; m: number; d: number } {
@@ -188,12 +190,11 @@ export const B4_COPY = {
   precioAceptado: "Precio aceptado",
   tardiaContraT: (uf: string) => `Quien vende pide ${uf}, fuera de plazo`,
   aceptadaT: (uf: string) => `Aceptaron tu oferta: ${uf}`,
-  aceptadaTxt: "Franco coordina la visita contigo. Tu oferta queda en firme después de la visita.",
   verMiOferta: "Ver mi oferta",
   retirarla: "Retirarla",
   responder: "Responder",
   retirarConfirmaT: "¿Retiras tu oferta?",
-  retirarConfirma: "Franco le avisa a quien vende. Puedes hacer otra cuando quieras.",
+  retirarConfirma: "Franco le va a avisar a quien vende. Puedes hacer otra cuando quieras.",
   retirarSi: "Sí, retirarla",
   retirarNo: "No, mantenerla",
   // Cierres (lámina 4.2-cuando-no-hay-acuerdo).
@@ -209,7 +210,7 @@ export const B4_COPY = {
   noGraciasT: "No seguiste con su respuesta",
   noGraciasTxt: "Respondieron fuera de plazo.",
   retiradaT: "Retiraste tu oferta",
-  retiradaTxt: "Franco le avisa a quien vende.",
+  retiradaTxt: "Franco le va a avisar a quien vende.",
   hacerOtra: "Hacer otra oferta",
   volverAPresentar: "Volver a presentarla",
   cambiarMonto: "Cambiar el monto",
@@ -226,7 +227,7 @@ export const B4_COPY = {
   proponerOtro: "Proponer otro monto",
   noAceptar: "No aceptar la contraoferta",
   noAceptarConfirmaT: "¿No aceptas la contraoferta?",
-  noAceptarConfirma: "Tu oferta se cierra y Franco le avisa a quien vende. El depto vuelve a «Haz tu oferta».",
+  noAceptarConfirma: "Tu oferta se cierra y Franco le va a avisar a quien vende. El depto vuelve a «Haz tu oferta».",
   noAceptarSi: "Sí, no la acepto",
   firmaNota: "Un monto distinto al que firmaste se firma de nuevo. Sigue sujeta a tu visita.",
   // En la pantalla de la contraoferta el título no dice «fuera de plazo»; en «Lo que sigue» sí: ahí basta lo nuevo.

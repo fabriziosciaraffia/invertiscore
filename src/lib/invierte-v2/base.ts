@@ -129,7 +129,7 @@ export const SUMAR_COPY = {
   sumarParecido: "Sumar",
   revisarPerfilPara: "Si cambiaron tu pie o tu renta, actualízalos y vemos de nuevo hasta cuánto puedes comprar.",
   sinFirmaT: "No tienes que firmar de nuevo",
-  sinFirma: (fecha: string) => `Tu orden del ${fecha} cubre también este depto. Franco empieza a gestionarlo y puedes ver todos sus detalles desde tus deptos.`,
+  sinFirma: (fecha: string) => `Tu orden del ${fecha} cubre también este depto. Franco va a empezar a gestionarlo y puedes ver todos sus detalles desde tus deptos.`,
   teAlcanza: "Te alcanza",
   conQue: (f: Tope["fuente"] | null) => (f === "renta" ? "con tu pie y tu renta." : f === "solo_pie" ? "con tu pie." : "con tu preaprobación."),
   noTeAlcanza: "Hoy no te alcanza",

@@ -32,7 +32,7 @@ export const FLUJO_COPY = {
   },
   firma: {
     titulo: "Para partir, necesitamos tu permiso",
-    parrafo: "Con tu firma, Franco empieza a gestionar este depto y a buscar los que mejor calzan contigo.",
+    parrafo: "Con tu firma, Franco va a empezar a gestionar este depto y a buscar los que mejor calzan contigo.",
     cajaFuerte: "Firmar no te obliga a comprar ni tiene costo.",
     cajaResto: "Solo pagas si compras un depto que te presentó Franco.",
     /** Nombres y apellidos por separado (decisión de Fabrizio, 20-nov-2026), con el autocompletado given-name / family-name. */

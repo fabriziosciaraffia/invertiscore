@@ -118,11 +118,11 @@ export const VISITA_COPY = {
   yaVisitasteContraT: (uf: string) => `Ya visitaste: piden ${uf}`,
   // Con espacio que no corta: «UF 2.966» nunca queda partido en dos renglones.
   yaVisitasteAceptadaT: (uf: string) => `Ya visitaste: ¿confirmas ${uf.replace(/^UF /, "UF ")}?`,
-  aceptadaSinVisitaTxt: "Antes de dejarla en firme, mira el depto.",
+  aceptadaSinVisitaTxt: "Antes de cerrar el acuerdo, mira el depto.",
   confirmar: (uf: string) => `Confirmar ${uf}`,
   ajustar: "Ajustar el precio con lo que viste",
   retirarMiOferta: "Retirar mi oferta",
-  enFirmeNota: "Al confirmar queda en firme y ya no se puede retirar.",
+  enFirmeNota: "Al confirmar hay acuerdo y ya no se puede retirar.",
   verReporte: "Ver reporte",
   coincide: "El estado coincide con las fotos",
   ajusteRespaldo: "Va con el reporte de la visita como respaldo.",
@@ -130,9 +130,9 @@ export const VISITA_COPY = {
   antes: "Antes",
   // La confirmación explícita (decisión 7).
   confirmarT: (uf: string) => `¿Confirmas tu oferta en ${uf.replace(/^UF /, "UF ")}?`,
-  confirmarTxt: "Queda en firme y ya no se puede retirar. Franco se lo comunica a quien vende.",
+  confirmarTxt: "Hay acuerdo y ya no se puede retirar. Franco le va a avisar a quien vende.",
   confirmarSinVisitarT: "¿Confirmas sin visitar?",
-  confirmarSinVisitarTxt: "Queda en firme sin haber visto el depto, y ya no se puede retirar.",
+  confirmarSinVisitarTxt: "Hay acuerdo sin haber visto el depto, y ya no se puede retirar.",
   confirmarSi: "Sí, confirmar",
   confirmarNo: "Volver",
   // 5.2 antes y después de la visita.
@@ -143,7 +143,7 @@ export const VISITA_COPY = {
   // Camino.
   caminoAntesRespuesta: "Después de la respuesta",
   caminoRecomendada: "Recomendada antes de responder",
-  caminoCoordina: "Franco la coordina",
+  caminoCoordina: "Franco la está coordinando",
   caminoHecha: (fecha: string) => `Hecha el ${fecha}`,
   caminoAceptada: "Te toca a ti: pedirla o confirmar sin visitar",
   caminoEsperaVisita: "Contraoferta · espera tu visita",
@@ -166,19 +166,19 @@ export const VISITA_COPY = {
   unPuntoMas: (que: string) => `Estimamos un punto más de rebaja por ${que}.`,
   volverDepto: "Volver al depto",
   docReporte: "Reporte de la visita",
-  // Después de la visita, toda oferta es en firme (24-nov-2026, lámina 5.1b y respuestas de Fabrizio). Sin redundancia: el título dice
-  // «en firme»; la línea de abajo dice lo nuevo.
-  firmadaFirmeT: "Franco va a presentar tu oferta en firme a quien vende",
-  presentadaFirmeT: "Franco presentó tu oferta en firme. Esperamos la respuesta",
-  siLaAceptan: "Si la aceptan, ya no puedes retirarla.",
-  comunicarFirme: "Cuando se lo avise, tu oferta queda en firme.",
-  enFirmeT: "Tu oferta está en firme",
-  precioAcordado: "Precio acordado",
+  // Después de la visita, toda oferta es A FIRME (24-nov-2026, lámina 5.1b corregida y respuestas de Fabrizio): se dice «a firme», no se
+  // retira mientras esté vigente (vence sola a los 5 días) y, cuando aceptan las dos partes, hay acuerdo (paso 4, «Acuerdo»).
+  firmadaFirmeT: "Franco va a presentar tu oferta a firme a quien vende",
+  presentadaFirmeT: "Franco presentó tu oferta a firme. Esperamos la respuesta",
+  noSeRetira: "No se puede retirar mientras esté vigente.",
+  comunicarFirme: "Cuando se lo avise, hay acuerdo.",
+  acuerdoT: (uf: string) => `Hay acuerdo por ${uf.replace(/^UF /, "UF ")}`,
   aceptada: "Aceptada",
-  preparaPromesa: "Franco prepara la promesa.",
-  caminoFirmada: "En firme · Franco la va a presentar",
-  caminoPresentada: "En firme · esperando respuesta",
-  caminoPromesa: "Franco prepara la promesa",
+  loQueViene: "Lo que viene",
+  promesa: "Promesa",
+  preparaPromesa: "Franco está preparando la promesa.",
+  caminoFirmada: "A firme · Franco la va a presentar",
+  caminoPresentada: "A firme · esperando respuesta",
   // Los avisos (decisión 9).
 } as const;
 

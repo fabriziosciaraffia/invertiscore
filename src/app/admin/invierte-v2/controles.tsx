@@ -410,7 +410,7 @@ export function OfertaAdmin({ o, pruebas = false, esPrueba = false, avisos = [] 
   const contraAbierta = o.estado === "contraoferta" || (o.estado === "sin_acuerdo" && o.respuestaTardia === "contraoferta" && !o.tardiaDecision);
   return (
     <div className="flex flex-col gap-2" data-admin="inv2-oferta-b4">
-      <p className="m-0"><b>Oferta</b>{o.sujetaAVisita === false && <b className="text-[var(--signal-red)]" data-admin="inv2-en-firme"> · EN FIRME (tras la visita)</b>} · ronda {o.ronda ?? 1} · {o.estado}{o.tipoRonda ? ` (${o.tipoRonda})` : ""} · UF {o.montoUF ?? "—"} · firmada {fecha(o.firmadaAt)}
+      <p className="m-0"><b>Oferta</b>{o.sujetaAVisita === false && <b className="text-[var(--signal-red)]" data-admin="inv2-en-firme"> · A FIRME (tras la visita)</b>} · ronda {o.ronda ?? 1} · {o.estado}{o.tipoRonda ? ` (${o.tipoRonda})` : ""} · UF {o.montoUF ?? "—"} · firmada {fecha(o.firmadaAt)}
         {o.presentadaAt ? ` · presentada ${fecha(o.presentadaAt)}` : ""}{o.vigenteHasta ? ` · ${venceAlTerminarTexto(new Date(o.vigenteHasta))}` : ""}
         {o.respuesta ? ` · respuesta ${o.respuesta} ${fecha(o.respuestaAt)}` : ""}{o.contraofertaUF ? ` · piden UF ${o.contraofertaUF}${o.contraofertaVence ? ` (${venceAlTerminarTexto(new Date(o.contraofertaVence))})` : ""}` : ""}
         {o.sugeridaUF ? ` · Franco sugiere UF ${o.sugeridaUF}${o.sugeridaFuente === "admin" ? ` (corregida; la regla dio ${o.sugeridaReglaUF})` : " (regla)"}` : ""}
@@ -422,10 +422,10 @@ export function OfertaAdmin({ o, pruebas = false, esPrueba = false, avisos = [] 
       )}
       {o.texto && <span><a className={CLASE_BTN} href={`/api/admin/invierte-v2?oferta=${o.id}`} target="_blank" rel="noopener noreferrer" data-admin="inv2-oferta-pdf">Ver el PDF de la oferta firmada</a></span>}
       {o.estado === "firmada" && !comunicar && (
-        <span><button type="button" className={CLASE_BTN} disabled={ocupado} onClick={() => void enviar({ accion: "oferta_presentar" })} data-admin="inv2-presentar">{ocupado ? "Guardando…" : o.sujetaAVisita === false ? "Presentada hoy a quien vende (oferta en firme)" : "Presentada hoy a quien vende"}</button></span>
+        <span><button type="button" className={CLASE_BTN} disabled={ocupado} onClick={() => void enviar({ accion: "oferta_presentar" })} data-admin="inv2-presentar">{ocupado ? "Guardando…" : o.sujetaAVisita === false ? "Presentada hoy a quien vende (oferta a firme)" : "Presentada hoy a quien vende"}</button></span>
       )}
       {comunicar && (
-        <span><button type="button" className={CLASE_BTN} disabled={ocupado} onClick={() => void enviar({ accion: "oferta_comunicada" })} data-admin="inv2-comunicada">{ocupado ? "Guardando…" : `Comunicada: acepta UF ${o.montoUF}${o.sujetaAVisita === false ? " (queda en firme)" : ""}`}</button></span>
+        <span><button type="button" className={CLASE_BTN} disabled={ocupado} onClick={() => void enviar({ accion: "oferta_comunicada" })} data-admin="inv2-comunicada">{ocupado ? "Guardando…" : `Comunicada: acepta UF ${o.montoUF}${o.sujetaAVisita === false ? " (hay acuerdo)" : ""}`}</button></span>
       )}
       {puedeResponder && (
         <div className="flex flex-col gap-2" data-admin="inv2-respuesta">
@@ -433,7 +433,7 @@ export function OfertaAdmin({ o, pruebas = false, esPrueba = false, avisos = [] 
           <span className="flex flex-wrap items-center gap-2">
             <select value={tipo} onChange={(e) => setTipo(e.target.value as typeof tipo)} aria-label="Respuesta" className={campo}>
               <option value="contraoferta">Contraoferta</option>
-              <option value="aceptada">{o.sujetaAVisita === false && !vencidaSinTardia ? "Aceptada (queda en firme)" : "Aceptada (sujeta a visita)"}</option>
+              <option value="aceptada">{o.sujetaAVisita === false && !vencidaSinTardia ? "Aceptada (hay acuerdo)" : "Aceptada (sujeta a visita)"}</option>
               {!vencidaSinTardia && <option value="rechazada">No aceptada</option>}
             </select>
             {tipo === "contraoferta" && <input value={monto} onChange={(e) => setMonto(e.target.value)} aria-label="Lo que piden (UF)" placeholder="UF que piden" className={`${campo} w-28`} />}
