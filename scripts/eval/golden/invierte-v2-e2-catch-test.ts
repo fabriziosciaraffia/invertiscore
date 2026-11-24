@@ -66,7 +66,9 @@ import { MOTIVOS_ADMIN_OFERTA, motivoAdminOferta, venceAlTerminarTexto } from ".
 import { cuandoNoHayAcuerdo } from "../../../src/lib/invierte-v2/depto-flujo";
 import { CORREO_OFERTA, WHATSAPP_OFERTA } from "../../../src/lib/invierte-v2/b4-correo";
 import { BarraRango } from "../../../src/components/invierte-v2/BarraRango";
-import { VISITA_COPY, ajusteSugerido, conArreglo, puntosVisita, rangoTrasVisita } from "../../../src/lib/invierte-v2/visita";
+import { VISITA_COPY, ajusteSugerido, conArreglo, naceEnFirme, puntosVisita, rangoTrasVisita } from "../../../src/lib/invierte-v2/visita";
+import { VERSION_TEXTO_OFERTA_EN_FIRME, textoOferta as textoOferta34 } from "../../../src/lib/invierte-v2/oferta-documento";
+import { marcarComunicada } from "../../../src/lib/invierte-v2/b4-servidor";
 import { visitaMuestra } from "../../../src/lib/invierte-v2/muestra-visita";
 import { confirmarEnFirme, lineaPorDefecto, limpiarPuntos, ACCIONES_VISITA_ADMIN } from "../../../src/lib/invierte-v2/visita-servidor";
 import { puedeRecibirCopia } from "../../../src/lib/invierte-v2/copias-servidor";
@@ -1637,7 +1639,7 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (!/const firmaSug = urlFirmaRonda\(/.test(rc28) || !/const firmaEllos = urlFirmaRonda\(/.test(rc28) || /fetch\(|accion: "firmar/.test(rc28) || !/\$\{urlOferta\(d\.avisoId\)\}\?desde=/.test(rc28)) F("28c · responder la contraoferta firma sin pasar por «Revisa y firma»");
       const b4s = codigo("src/lib/invierte-v2/b4-servidor.ts");
       if (!/export async function firmarRonda\([^]*?\{\s*if \(pedido\.acepto !== true\) return \{ ok: false, error: "casilla" \};/.test(b4s) || !/texto_sha256: sha256\(texto\), acepto_casilla: true/.test(b4s)) F("28c · una ronda nueva se firma sin la casilla o sin guardar el texto firmado");
-      if (!/body: JSON\.stringify\(desdeId \? \{ accion: "firmar_ronda", avisoId, desdeId, montoUF, acepto: true, leyo, retirarOtra \}/.test(codigo("src/components/invierte-v2/FirmaOfertaForm.tsx"))) F("28c · la firma de una ronda no sale de «Revisa y firma»");
+      if (!/body: JSON\.stringify\(desdeId \? \{ accion: "firmar_ronda", avisoId, desdeId, montoUF, acepto: true, leyo, retirarOtra, \.\.\.firme \}/.test(codigo("src/components/invierte-v2/FirmaOfertaForm.tsx"))) F("28c · la firma de una ronda no sale de «Revisa y firma»");
       const r28 = { estado: "contraoferta", montoUF: 2936, contraofertaUF: 3010, contraofertaVence: "2026-11-27T03:00:00Z", sinAcuerdoMotivo: null, respuestaTardia: null, respuestaTardiaUF: null, tardiaDecision: null };
       const rd28 = rondaDesde(r28, new Date("2026-11-25T12:00:00Z"));
       if (!rd28 || rd28.minUF !== 2936 || rd28.maxUF !== 3010 || rondaDesde(r28, new Date("2026-11-27T03:00:01Z")) !== null) F("28c · proponer otro monto no va entre la oferta anterior y lo que piden, o deja responder una contraoferta vencida");
@@ -1768,6 +1770,9 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
           { estado: "contraoferta", contraofertaUF: 3010, sugeridaUF: 2935, contraofertaVence: "2026-11-27T03:00:00Z", visita: visitaMuestra("arreglo") },
           { estado: "aceptada_sujeta", visita: visitaMuestra("coincide", "pedida") }, { estado: "aceptada_sujeta", visita: visitaMuestra("coincide") }, { estado: "aceptada_sujeta", visita: visitaMuestra("aceptada") },
           { estado: "firmada", tipoRonda: "ajustar", anteriorMontoUF: 2966, visita: visitaMuestra("arreglo") },
+          // Después de la visita, toda oferta es en firme (24-nov-2026).
+          { estado: "firmada", sujetaAVisita: false, visita: visitaMuestra("arreglo") }, { estado: "firmada", tipoRonda: "aceptar", sujetaAVisita: false, visita: visitaMuestra("arreglo") },
+          { estado: "presentada", sujetaAVisita: false, presentadaAt: "2026-11-23T15:00:00Z", vigenteHasta: "2026-11-29T03:00:00Z", visita: visitaMuestra("arreglo") },
         ];
         const textos30: string[] = [];
         const juntar = (v: unknown) => { if (v != null) textos30.push(typeof v === "string" ? v : JSON.stringify(v)); };
@@ -1891,6 +1896,55 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
         // 33c · La contraoferta: sin «Ellos» en las cifras (el título lo dice); después de la visita, «Ya visitaste: piden UF X».
         const sinEllos33 = [s30(co32), s30({ ...co32, visita: visitaMuestra("coincide") }), cuandoNoHayAcuerdo(o30({ estado: "sin_acuerdo", sinAcuerdoMotivo: "vencida", respuestaTardia: "contraoferta", contraofertaUF: 3010, sugeridaUF: 2966 }), "a30", null, ah30)];
         if (sinEllos33.some((x) => !x || x.cifras?.map((c) => c.et).join("|") !== "Tú|Franco sugiere") || sinEllos33[1]?.titulo !== "Ya visitaste: piden UF 3.010") F(`33c · la contraoferta repite lo que piden en la cifra «Ellos» (o el título de después de la visita no lo dice) (${JSON.stringify(sinEllos33.map((x) => [x?.titulo, x?.cifras]))})`);
+        // ── 34 · DESPUÉS DE LA VISITA, TODA OFERTA ES EN FIRME (24-nov-2026; lámina 5.1b y respuestas de Fabrizio) ──
+        // 34a · La regla: con el reporte de la visita publicado, nace en firme; antes de visitar (o con la visita solo pedida), sujeta.
+        if (naceEnFirme(null) || naceEnFirme(visitaMuestra("coincide", "pedida")) || !naceEnFirme(visitaMuestra("coincide")) || !naceEnFirme(visitaMuestra("arreglo"))) F("34a · nace en firme sin reporte publicado, o sujeta a visita con él");
+        // 34b · Las dos firmas usan la regla: cualquier ronda (también volver, reactivar, ajustar) y otra oferta después de retirar. Exigen la
+        // segunda casilla y guardan que nació en firme, la visita, la versión propia y la confirmación.
+        const rs34 = codigo("src/lib/invierte-v2/rango-servidor.ts"), b4s34 = codigo("src/lib/invierte-v2/b4-servidor.ts");
+        for (const [nombre, src, visita] of [["firmarOferta", rs34, "p\\.visita"], ["firmarRonda", b4s34, "vista\\.visita"]] as const) {
+          const ok34 = new RegExp(`const enFirme = naceEnFirme\\(${visita}\\) \\? ${visita}! : null;\\s*if \\(enFirme && pedido\\.aceptoFirme !== true\\) return \\{ ok: false, error: "casilla" \\};`).test(src)
+            && /sujeta_a_visita: !enFirme,/.test(src) && /texto_version: enFirme \? VERSION_TEXTO_OFERTA_EN_FIRME : VERSION_TEXTO_OFERTA,/.test(src)
+            && /en_firme_confirmo: true, en_firme_ip: ctx\?\.ip \?\? null,/.test(src);
+          if (!ok34) F(`34b · ${nombre}: una oferta firmada después de un reporte publicado no nace en firme (o sin la segunda casilla, la versión o la confirmación)`);
+        }
+        if (/sujeta_a_visita: true/.test(rs34 + b4s34)) F("34b · queda una firma que fija «sujeta a visita» sin mirar la regla");
+        // 34c · LA ACEPTACIÓN: una oferta en firme aceptada pasa directo a «en firme»; nunca vuelve a «Aceptaron, falta la visita».
+        const base34 = { id: "of34", user_id: "u34", depto_id: "d34", aviso_id: "a34", estado: "presentada", monto_uf: 2900, piso_uf: 2850, recomendado_uf: 2900, techo_uf: 3090, publicado_uf: 3090, senales: { alto: 2950 }, vigente_hasta: "2026-11-29T03:00:00Z", es_prueba: true };
+        const stF = stubB4({ ...base34, sujeta_a_visita: false }, "fuera@x.cl"), stS = stubB4({ ...base34, sujeta_a_visita: true }, "fuera@x.cl");
+        const rF = await registrarRespuesta(stF.sb, { id: "adm", email: "a@x" }, "of34", { tipo: "aceptada" }, null, new Date("2026-11-25T12:00:00Z"));
+        const rS = await registrarRespuesta(stS.sb, { id: "adm", email: "a@x" }, "of34", { tipo: "aceptada" }, null, new Date("2026-11-25T12:00:00Z"));
+        const upF = stF.escrito.find((x) => x.t === "inv_ofertas" && x.op === "update")?.v ?? {}, upS = stS.escrito.find((x) => x.t === "inv_ofertas" && x.op === "update")?.v ?? {};
+        const deptoF = stF.escrito.find((x) => x.t === "inv_deptos" && x.op === "update")?.v ?? {};
+        if (!rF.ok || upF.estado !== "en_firme" || upF.en_firme_como !== "tras_visita" || !upF.en_firme_at || upF.precio_final_uf !== 2900 || deptoF.etapa !== "en_firme" || !rS.ok || upS.estado !== "aceptada_sujeta") F(`34c · una oferta en firme aceptada vuelve a «Aceptaron, falta la visita» (o la sujeta no) (${JSON.stringify([upF.estado, deptoF.etapa, upS.estado])})`);
+        const stC = stubB4({ ...base34, estado: "firmada", sujeta_a_visita: false, senales: { alto: 2950, b4: { tipo: "aceptar" } } }, "fuera@x.cl");
+        const rC = await marcarComunicada(stC.sb, { id: "adm", email: "a@x" }, "of34");
+        const upC = stC.escrito.find((x) => x.t === "inv_ofertas" && x.op === "update")?.v ?? {};
+        if (!rC.ok || upC.estado !== "en_firme" || upC.en_firme_como !== "tras_visita") F(`34c · aceptar su precio en firme no queda en firme al comunicarlo (${JSON.stringify(upC)})`);
+        // 34d · FIRMAR EN FIRME CON UNA SOLA CASILLA: el botón se activa solo con las dos; el servidor rechaza sin la segunda.
+        const ff34 = codigo("src/components/invierte-v2/FirmaOfertaForm.tsx");
+        if (!/const listo = acepto && \(!enFirme \|\| aceptoFirme\);/.test(ff34) || !/disabled=\{!listo \|\| enviando\}/.test(ff34) || !/if \(!listo \|\| enviando\) return;/.test(ff34) || !/const firme = enFirme \? \{ aceptoFirme: true \} : \{\};/.test(ff34) || !/<span>\{F\.casillaFirme\}<\/span>/.test(ff34)) F("34d · se puede firmar en firme con una sola casilla marcada");
+        // 34e · RETIRAR UNA OFERTA EN FIRME YA ACEPTADA: no se puede (solo mientras no respondan).
+        if (esRetirable("en_firme") || !esRetirable("firmada") || !esRetirable("presentada")) F("34e · una oferta en firme ya aceptada se puede retirar (o una en firme sin respuesta ya no)");
+        const ef34 = s30({ estado: "presentada", sujetaAVisita: false, presentadaAt: "2026-11-23T15:00:00Z", vigenteHasta: "2026-11-29T03:00:00Z" });
+        const ac34 = loQueSigue("en_firme", "aprobada", "/pre", o30({ estado: "en_firme", montoUF: 2900, enFirmeAt: "2026-11-27T15:00:00Z" }) as never, "/oferta", { avisoId: "a30", ahora: ah30 });
+        if (!ef34?.acciones?.includes("retirar") || ac34?.acciones?.length || ac34?.boton || ac34?.secundario) F("34e · Lo que sigue deja retirar la aceptada en firme (o no deja retirar la presentada)");
+        // 34f · Los estados de la lámina 5.1b y las respuestas de Fabrizio, sin redundancia.
+        const fi34 = s30({ estado: "firmada", sujetaAVisita: false });
+        if (fi34?.titulo !== "Franco va a presentar tu oferta en firme a quien vende" || fi34.texto !== "Si la aceptan, ya no puedes retirarla." || fi34.cifras?.map((c) => c.et).join("|") !== "Tu oferta|Firmada" || !fi34.acciones?.includes("retirar")) F(`34f · la firmada en firme no es la de la lámina (${JSON.stringify(fi34)})`);
+        if (ef34?.titulo !== "Franco presentó tu oferta en firme. Esperamos la respuesta" || ef34.texto !== "Si la aceptan, ya no puedes retirarla." || !ef34.cifras?.some((c) => c.et === "Vence") || ef34.vigencia == null) F(`34f · la presentada en firme no es la que decidió Fabrizio (${JSON.stringify(ef34)})`);
+        if (ac34?.titulo !== "Tu oferta está en firme" || ac34.texto !== "Franco prepara la promesa." || ac34.cifras?.map((c) => c.et).join("|") !== "Precio acordado|Aceptada") F(`34f · la aceptada en firme no es la de la lámina (${JSON.stringify(ac34)})`);
+        const camF34 = caminoDepto("listo", o30({ estado: "firmada", sujetaAVisita: false }) as unknown as Parameters<typeof caminoDepto>[1]), camA34 = caminoDepto("en_firme", o30({ estado: "en_firme", montoUF: 2900 }) as unknown as Parameters<typeof caminoDepto>[1]);
+        if (camF34.pasos[1].s !== "En firme · Franco la va a presentar" || camA34.actual !== 4 || camA34.pasos[3].s !== "Franco prepara la promesa" || camA34.pasos[1].s !== "Aceptada en UF 2.900") F("34f · el camino de la oferta en firme no es el de la lámina");
+        // 34g · El documento: la versión en firme, con su propia versión, marcada BORRADOR; las dos casillas; sin la garantía (es solo un aviso).
+        const doc34 = textoOferta34({ nombre: "N", rut: "1-9", depto: "D", montoUF: 2900, publicadoUF: 3090, pagas: "P", sujetaAVisita: false, vigenciaDias: 5, enFirme: { visitaFecha: "25 de noviembre", respaldo: "Baño con filtración en el cielo" } }).join("\n");
+        if ((VERSION_TEXTO_OFERTA_EN_FIRME as string) === VERSION_TEXTO_OFERTA || !/^BORRADOR/.test(doc34) || !/Esta oferta es en firme/.test(doc34) || !/Entiendo que si la aceptan no puedo retirarla/.test(doc34) || !/Respaldo: reporte de la visita del 25 de noviembre: baño con filtración en el cielo\./.test(doc34) || /sujeta a la visita/.test(doc34) || /[Gg]arant/.test(doc34)) F("34g · el documento en firme no tiene su versión, su marca de borrador, las dos casillas o el respaldo (o lleva la garantía)");
+        // 34h · La firma 5.1b: Respaldo cuando baja, Garantía solo en firme, y el admin ve que es en firme.
+        if (!/\{enFirme\?\.respaldo && <div data-inv2="fila-respaldo">/.test(ff34) || !/\{enFirme && <div data-inv2="fila-garantia">/.test(ff34) || FIRMA_COPY.garantiaS !== "Por lo general, un cheque por el 10 % del precio. Te avisamos si la pide." || FIRMA_COPY.firmarFirme(2900) !== "Firmar en firme por UF 2.900") F("34h · la firma en firme no lleva Respaldo, Garantía o el botón de la lámina");
+        const ctl34 = codigo("src/app/admin/invierte-v2/controles.tsx");
+        if (!/data-admin="inv2-en-firme"> · EN FIRME \(tras la visita\)/.test(ctl34) || !/"Presentada hoy a quien vende \(oferta en firme\)"/.test(ctl34) || !/"Aceptada \(queda en firme\)"/.test(ctl34)) F("34h · el admin no muestra que es una oferta en firme al presentarla o al registrar la respuesta");
+        // 34i · El alto (revisión visual del 24-nov): a 1.210 × 615 el botón de la firma en firme se ve sin bajar porque queda fijo abajo de su tarjeta.
+        if (!/\.iv2-fo\.iv2-fo-firme \.iv2-acciones \{ position: sticky; bottom: 0;/.test(leer("src/components/invierte-v2/invierte-v2.css")) || !/className=\{`iv2-fo\$\{enFirme \? " iv2-fo-firme" : ""\}`\}/.test(ff34)) F("34i · el botón de la firma en firme queda bajo el borde en un notebook (perdió su lugar fijo abajo)");
         // 32h · El reporte del admin: los puntos se limpian; la línea por defecto es el primer arreglo nuevo o «coincide».
         const lp32 = limpiarPuntos([{ tema: " Baños ", texto: "Filtración en el cielo: hay que repararla.", arreglo: true, enFotos: false }, { tema: "", texto: "x" }, { tema: "Ruido", texto: "Silencioso", arreglo: false, enFotos: true }]);
         if (!lp32 || lp32.length !== 2 || lp32[0].tema !== "Baños" || lp32[1].enFotos || lineaPorDefecto(lp32, "arreglos_menores") !== "Filtración en el cielo" || lineaPorDefecto(lp32, "coincide") !== "El estado coincide con las fotos" || limpiarPuntos([]) !== null) F("32h · los puntos del reporte o su línea por defecto no se arman bien");

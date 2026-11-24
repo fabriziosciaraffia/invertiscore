@@ -12,6 +12,8 @@
 //   · la visita antes del precio (24-nov-2026, pasos 12 a 17): pedirla, mantener la contraoferta, la base que rechaza sugerir bajo la
 //     oferta sin una visita con un arreglo, el reporte que baja la sugerencia, proponer menos con el reporte de respaldo, ajustar bajo lo
 //     aceptado y confirmar en firme solo con la confirmación explícita.
+//   · después de la visita, toda oferta es en firme (24-nov-2026, pasos 16 a 21): las dos casillas, otra oferta después de retirar, la
+//     aceptación que pasa directo a en firme y ya no se retira, la primera oferta que sigue sujeta, el ajuste y aceptar su precio.
 // Dos seguros (24-nov-2026, Fabrizio: la base es la de producción):
 //   · al empezar deja una MARCA en `config` (invierte_recorrido_b4_en_curso: desde cuándo, la etapa del depto, el documento creado); si
 //     encuentra una marca o restos de una corrida anterior (ofertas de la cuenta de QA, la preaprobación de prueba, el depto en otra etapa),
@@ -71,9 +73,12 @@ function limpiar(m: Marca | null = marcaActual): Promise<void> {
     if (!m) return;
     const { data: creadas } = await admin.from("inv_ofertas").select("id").eq("user_id", QA);
     const ids = (creadas ?? []).map((x) => x.id as string);
-    if (ids.length) await admin.from("inv_ofertas").update({ anterior_id: null, visita_id: null, sugerida_visita_id: null }).in("id", ids);
-    await admin.from("inv_visitas").delete().eq("user_id", QA);
+    // Ofertas y visitas se apuntan entre sí, y una oferta en firme no puede soltar su visita (check y trigger): primero se suelta la visita
+    // de su oferta, después se borran las ofertas y al final las visitas.
+    await admin.from("inv_visitas").update({ oferta_id: null }).eq("user_id", QA);
+    if (ids.length) await admin.from("inv_ofertas").update({ anterior_id: null, sugerida_uf: null, sugerida_visita_id: null }).in("id", ids);
     if (ids.length) await admin.from("inv_ofertas").delete().in("id", ids);
+    await admin.from("inv_visitas").delete().eq("user_id", QA);
     await admin.from("inv_tareas").delete().eq("user_id", QA).gte("created_at", m.t0);
     await admin.from("inv_bitacora").delete().eq("user_id", QA).gte("created_at", m.t0);
     await admin.from("inv_documentos").delete().eq("user_id", QA).eq("banco", BANCO_PRUEBA);
@@ -125,6 +130,17 @@ async function tareaPendiente(tipo: string): Promise<boolean> {
 }
 function espera(cond: boolean, paso: string, detalle: unknown) { if (cond) ok(paso); else F(`${paso} (${JSON.stringify(detalle).slice(0, 300)})`); }
 
+/** Empieza otra vuelta desde cero en el mismo depto de prueba: sin ofertas ni visitas de la cuenta de QA, y el depto en «listo». Ofertas y
+ *  visitas se apuntan entre sí, y una oferta en firme no puede soltar su visita: primero se suelta la visita de su oferta. */
+async function otraVuelta(): Promise<void> {
+  await admin.from("inv_visitas").update({ oferta_id: null }).eq("user_id", QA);
+  await admin.from("inv_ofertas").update({ anterior_id: null, sugerida_uf: null, sugerida_visita_id: null }).eq("user_id", QA);
+  const { error } = await admin.from("inv_ofertas").delete().eq("user_id", QA);
+  await admin.from("inv_visitas").delete().eq("user_id", QA);
+  if (error) throw new Error(`no se pudo empezar la otra vuelta: ${error.message}`);
+  if (marcaActual) await admin.from("inv_deptos").update({ etapa: "listo" }).eq("id", marcaActual.deptoId);
+}
+
 async function main(): Promise<number> {
   if (process.env.VERCEL_ENV === "production") { console.log("  ✗ se niega: VERCEL_ENV=production"); return 1; }
   // `--limpiar`: borra los restos de una corrida anterior a partir de su marca.
@@ -167,7 +183,7 @@ async function main(): Promise<number> {
     if (!r0 || r0.estado !== "borrador") throw new Error(`sin borrador: ${JSON.stringify(r0)}`);
     const f1 = await firmarOferta(admin, USER, AVISO, { montoUF: r0.recomendadoUF, acepto: true, leyo: true }, null);
     let o1 = await ultimaRonda(deptoId);
-    espera(f1.ok && o1.estado === "firmada" && o1.es_prueba === true && (await tareaPendiente("presentar_oferta")), "1 · firmada, de prueba, con la tarea de presentar", { f1, estado: o1.estado });
+    espera(f1.ok && o1.estado === "firmada" && o1.es_prueba === true && o1.sujeta_a_visita === true && (await tareaPendiente("presentar_oferta")), "1 · firmada, de prueba, sujeta a visita, con la tarea de presentar", { f1, estado: o1.estado });
 
     // 2 · Presentar (admin).
     const p1 = await accionOfertaAdmin(admin, ADMIN, { accion: "oferta_presentar", ofertaId: o1.id }, null);
@@ -265,30 +281,84 @@ async function main(): Promise<number> {
     const { data: v1b } = await admin.from("inv_visitas").select("*").eq("id", v1!.id).single();
     espera(ag.ok && pb.ok && v1b?.estado === "reporte_publicado" && v1b.reporte_estado === "arreglos_menores" && (v1b.reporte_arreglos as string[]).length === 1 && Number(o6c.sugerida_uf) < Number(o6a.sugerida_uf) && o6c.sugerida_visita_id === v1!.id, "15 · el reporte con un arreglo baja lo que sugiere Franco, con la visita de respaldo", { ag, pb, v: v1b?.estado, antes: o6a.sugerida_uf, ahora: o6c.sugerida_uf });
 
-    // 16 · Proponer menos que la oferta anterior, con la visita de respaldo (la persona): la base lo acepta y la ronda queda atada al reporte.
+    // ── DESPUÉS DE LA VISITA, TODA OFERTA ES EN FIRME (24-nov-2026) ──
+    // 16 · Proponer menos que la oferta anterior con el reporte de respaldo: nace en firme. Con una sola casilla, no se firma.
     const v16 = await visitaParaRonda(admin, deptoId);
     const ro16 = rondaDesde({ ...ofertaDeFila(o6c), visita: v16 });
-    const pp = ro16 && ro16.minUF < Number(o6.monto_uf) ? await firmarRonda(admin, USER, AVISO, { desdeId: o6.id, montoUF: Math.min(ro16.minUF + 10, Number(o6.monto_uf) - 1), acepto: true, leyo: true }, null) : null;
+    const monto16 = ro16 ? Math.min(ro16.minUF + 10, Number(o6.monto_uf) - 1) : 0;
+    const unaCasilla = ro16 ? await firmarRonda(admin, USER, AVISO, { desdeId: o6.id, montoUF: monto16, acepto: true, leyo: true }, null) : null;
+    const pp = ro16 && ro16.minUF < Number(o6.monto_uf) ? await firmarRonda(admin, USER, AVISO, { desdeId: o6.id, montoUF: monto16, acepto: true, leyo: true, aceptoFirme: true }, null) : null;
     const o7 = await ultimaRonda(deptoId);
-    espera(!!pp?.ok && Number(o7.monto_uf) < Number(o6.monto_uf) && o7.visita_id === v1!.id && o7.estado === "firmada", "16 · proponer menos que la oferta anterior, solo con el reporte de respaldo", { ro16, pp, o7: { m: o7.monto_uf, v: o7.visita_id } });
+    espera(unaCasilla?.ok === false && unaCasilla.error === "casilla" && !!pp?.ok && Number(o7.monto_uf) < Number(o6.monto_uf) && o7.visita_id === v1!.id && o7.estado === "firmada" && o7.sujeta_a_visita === false && o7.en_firme_confirmo === true && o7.texto_version === "borrador-en-firme-20261124", "16 · después de la visita la ronda nace en firme (con las dos casillas; con una sola, no se firma), con el reporte de respaldo", { unaCasilla, pp, o7: { m: o7.monto_uf, s: o7.sujeta_a_visita, v: o7.texto_version } });
 
-    // 17 · Aceptada después de la visita: ajustar bajo lo aceptado (ronda «ajustar»), y confirmar en firme solo con la confirmación explícita.
-    await accionOfertaAdmin(admin, ADMIN, { accion: "oferta_presentar", ofertaId: o7.id }, null);
-    await accionOfertaAdmin(admin, ADMIN, { accion: "oferta_respuesta", ofertaId: o7.id, tipo: "aceptada" }, null);
-    const o7b = await oferta(o7.id as string);
-    const ro17 = rondaDesde({ ...ofertaDeFila(o7b), visita: await visitaParaRonda(admin, deptoId) });
-    const aj = ro17?.tipo === "ajustar" ? await firmarRonda(admin, USER, AVISO, { desdeId: o7.id, montoUF: ro17.minUF, acepto: true, leyo: true }, null) : null;
-    const o8 = await ultimaRonda(deptoId);
-    const o7c = await oferta(o7.id as string);
-    espera(o7b.estado === "aceptada_sujeta" && aj?.ok === true && aj.tipo === "ajustar" && o8.estado === "firmada" && o7c.estado === "reemplazada" && Number(o8.monto_uf) < Number(o7.monto_uf), "17 · ajustar el precio con lo que se vio: ronda nueva bajo lo aceptado, la aceptada reemplazada", { ro17, aj, o8: o8.estado, o7: o7c.estado });
-    await accionOfertaAdmin(admin, ADMIN, { accion: "oferta_presentar", ofertaId: o8.id }, null);
-    await accionOfertaAdmin(admin, ADMIN, { accion: "oferta_respuesta", ofertaId: o8.id, tipo: "aceptada" }, null);
+    // 17 · Retirarla mientras no responden; otra oferta después de retirar, con la visita publicada, también nace en firme.
+    const rt17 = await retirarOferta(admin, USER, AVISO, null);
+    const r17 = await asegurarRango(admin, QA, AVISO, new Date(), { nueva: true });
+    const otraUna = await firmarOferta(admin, USER, AVISO, { montoUF: r17?.recomendadoUF, acepto: true, leyo: true }, null);
+    const otra = await firmarOferta(admin, USER, AVISO, { montoUF: r17?.recomendadoUF, acepto: true, leyo: true, aceptoFirme: true }, null);
+    const o9 = await ultimaRonda(deptoId);
+    espera(rt17.ok && otraUna.ok === false && otra.ok && o9.estado === "firmada" && o9.sujeta_a_visita === false && o9.visita_id === v1!.id, "17 · otra oferta después de retirar, con la visita publicada, nace en firme", { rt17, otraUna, otra, o9: { e: o9.estado, s: o9.sujeta_a_visita } });
+
+    // 18 · Presentarla y que quien vende la acepte: pasa directo a «en firme», sin otro paso de la persona; ya no se puede retirar.
+    await accionOfertaAdmin(admin, ADMIN, { accion: "oferta_presentar", ofertaId: o9.id }, null);
+    const ac18 = await accionOfertaAdmin(admin, ADMIN, { accion: "oferta_respuesta", ofertaId: o9.id, tipo: "aceptada" }, null);
+    const o9b = await oferta(o9.id as string);
+    const { data: d18 } = await admin.from("inv_deptos").select("etapa").eq("id", deptoId).single();
+    const rt18 = await retirarOferta(admin, USER, AVISO, null);
+    const o9c = await oferta(o9.id as string);
+    espera(ac18.ok && o9b.estado === "en_firme" && o9b.en_firme_como === "tras_visita" && !!o9b.en_firme_at && d18?.etapa === "en_firme" && !rt18.ok && o9c.estado === "en_firme", "18 · aceptada, la oferta en firme queda en firme directo (no vuelve a «Aceptaron, falta la visita») y ya no se retira", { ac18, e: o9b.estado, etapa: d18?.etapa, rt18 });
+
+    // ── Otra vuelta, desde cero: la visita pedida con la oferta ya aceptada (sujeta, firmada antes de visitar) ──
+    await otraVuelta();
+    await admin.from("inv_deptos").update({ etapa: "listo" }).eq("id", deptoId);
+    // 19 · La primera oferta, antes de visitar, nace sujeta a visita; aceptada, queda «aceptada, sujeta a visita».
+    const r19 = await asegurarRango(admin, QA, AVISO, new Date(), { nueva: true });
+    await firmarOferta(admin, USER, AVISO, { montoUF: r19?.recomendadoUF, acepto: true, leyo: true }, null);
+    const o10 = await ultimaRonda(deptoId);
+    await accionOfertaAdmin(admin, ADMIN, { accion: "oferta_presentar", ofertaId: o10.id }, null);
+    await accionOfertaAdmin(admin, ADMIN, { accion: "oferta_respuesta", ofertaId: o10.id, tipo: "aceptada" }, null);
+    const o10b = await oferta(o10.id as string);
+    espera(o10.sujeta_a_visita === true && o10.texto_version === "borrador-20261122" && o10b.estado === "aceptada_sujeta", "19 · antes de visitar la oferta nace sujeta a visita, y aceptada queda sujeta", { s: o10.sujeta_a_visita, e: o10b.estado });
+
+    // 20 · Pedir la visita desde la aceptada y publicar el reporte: confirmarla sigue como estaba (solo con la confirmación explícita).
+    const visitaDesdeAceptada = async (desdeId: string): Promise<string> => {
+      await pedirVisita(admin, USER, AVISO, null);
+      const { data: v } = await admin.from("inv_visitas").select("id").eq("user_id", QA).order("created_at", { ascending: false }).limit(1).single();
+      await accionVisitaAdmin(admin, ADMIN, { accion: "visita_agendar", visitaId: v!.id, fecha: new Date().toISOString().slice(0, 10) }, null);
+      await accionVisitaAdmin(admin, ADMIN, { accion: "visita_reporte", visitaId: v!.id, puntos: [{ tema: "Baños", texto: "Filtración en el cielo del baño: hay que repararla.", arreglo: true, enFotos: false }], fecha: new Date().toISOString().slice(0, 10) }, null);
+      return desdeId;
+    };
+    await visitaDesdeAceptada(o10.id as string);
     const sinConf = await confirmarEnFirme(admin, USER, AVISO, {}, null);
-    const o8a = await oferta(o8.id as string);
+    const o10s = await oferta(o10.id as string);
     const conf = await confirmarEnFirme(admin, USER, AVISO, { confirmo: true }, null);
-    const o8b = await oferta(o8.id as string);
-    const { data: d17 } = await admin.from("inv_deptos").select("etapa").eq("id", deptoId).single();
-    espera(!sinConf.ok && o8a.estado === "aceptada_sujeta" && conf.ok && o8b.estado === "en_firme" && o8b.en_firme_como === "tras_visita" && o8b.en_firme_confirmo === true && d17?.etapa === "en_firme" && (await tareaPendiente("comunicar_en_firme")), "17 · en firme solo con la confirmación explícita, tras la visita, con la tarea de comunicarlo", { sinConf, conf, e: o8b.estado, como: o8b.en_firme_como, etapa: d17?.etapa });
+    const o10c = await oferta(o10.id as string);
+    const { data: d20 } = await admin.from("inv_deptos").select("etapa").eq("id", deptoId).single();
+    espera(!sinConf.ok && o10s.estado === "aceptada_sujeta" && conf.ok && o10c.estado === "en_firme" && o10c.en_firme_como === "tras_visita" && o10c.en_firme_confirmo === true && d20?.etapa === "en_firme" && (await tareaPendiente("comunicar_en_firme")), "20 · confirmar una aceptada después de visitar sigue como estaba: solo con la confirmación explícita", { sinConf, conf, e: o10c.estado, etapa: d20?.etapa });
+
+    // 21 · Otra vuelta: aceptada, visitada con un arreglo; ajustar el precio con lo que se vio nace en firme.
+    await otraVuelta();
+    const r21 = await asegurarRango(admin, QA, AVISO, new Date(), { nueva: true });
+    await firmarOferta(admin, USER, AVISO, { montoUF: r21?.recomendadoUF, acepto: true, leyo: true }, null);
+    const o11a = await ultimaRonda(deptoId);
+    await accionOfertaAdmin(admin, ADMIN, { accion: "oferta_presentar", ofertaId: o11a.id }, null);
+    await accionOfertaAdmin(admin, ADMIN, { accion: "oferta_respuesta", ofertaId: o11a.id, tipo: "aceptada" }, null);
+    await visitaDesdeAceptada(o11a.id as string);
+    const ro21 = rondaDesde({ ...ofertaDeFila(await oferta(o11a.id as string)), visita: await visitaParaRonda(admin, deptoId) });
+    const aj = ro21?.tipo === "ajustar" ? await firmarRonda(admin, USER, AVISO, { desdeId: o11a.id, montoUF: ro21.minUF, acepto: true, leyo: true, aceptoFirme: true }, null) : null;
+    const o11 = await ultimaRonda(deptoId);
+    const o11ab = await oferta(o11a.id as string);
+    espera(aj?.ok === true && aj.tipo === "ajustar" && o11.estado === "firmada" && o11.sujeta_a_visita === false && o11ab.estado === "reemplazada" && Number(o11.monto_uf) < Number(o11a.monto_uf), "21 · ajustar el precio con lo que se vio nace en firme, la aceptada reemplazada", { ro21, aj, o11: { e: o11.estado, s: o11.sujeta_a_visita } });
+
+    // 22 · Aceptar su precio en firme: al comunicarlo queda en firme.
+    await accionOfertaAdmin(admin, ADMIN, { accion: "oferta_presentar", ofertaId: o11.id }, null);
+    await accionOfertaAdmin(admin, ADMIN, { accion: "oferta_respuesta", ofertaId: o11.id, tipo: "contraoferta", montoUF: Math.round(Number(o11.monto_uf)) + 20, nota: "", vence: null }, null);
+    const o11b = await oferta(o11.id as string);
+    const ac22 = await firmarRonda(admin, USER, AVISO, { desdeId: o11.id, montoUF: Number(o11b.contraoferta_uf), acepto: true, leyo: true, aceptoFirme: true }, null);
+    const o12 = await ultimaRonda(deptoId);
+    const cm22 = await accionOfertaAdmin(admin, ADMIN, { accion: "oferta_comunicada", ofertaId: o12.id }, null);
+    const o12b = await oferta(o12.id as string);
+    espera(ac22.ok && ac22.tipo === "aceptar" && o12.sujeta_a_visita === false && cm22.ok && o12b.estado === "en_firme" && o12b.en_firme_como === "tras_visita", "22 · aceptar su precio después de la visita: en firme al comunicarlo", { ac22, cm22, e: o12b.estado });
   } catch (e) {
     F(`no terminó el recorrido: ${e instanceof Error ? e.message : String(e)}`);
   } finally {
