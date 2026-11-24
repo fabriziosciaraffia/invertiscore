@@ -225,7 +225,7 @@ export function cuandoNoHayAcuerdo(c: OfertaResumen, avisoId: string, otraViva: 
   if (cierre === "tardia") {
     const m = c.respuestaTardiaUF ?? c.montoUF ?? 0;
     return {
-      chip: TE_TOCA, tono: "ciruela", titulo: B4_COPY.tardiaT(uf0(m)), texto: B4_COPY.tardiaTxt, cifras: [...tuCifra, ...vencio],
+      chip: TE_TOCA, tono: "ciruela", titulo: B4_COPY.tardiaT(uf0(m)), texto: B4_COPY.tardiaTxt, cifras: vencio,
       aviso: otraViva ? B4_COPY.tardiaOtra(otraViva.titulo) : null,
       boton: c.id ? { texto: B4_COPY.reactivar, href: urlFirmaRonda(avisoId, m, c.id, !!otraViva) } : null, acciones: ["no_gracias"],
     };
@@ -407,7 +407,7 @@ export function caminoDepto(etapa: Etapa, oferta: (Pick<OfertaBase, "estado" | "
   // La visita deja de ser «Opcional» (LEEME del 23-nov): antes de la respuesta, «Después de la respuesta».
   const subs: (string | null)[] = [null, null, "Después de la respuesta", null, null, null];
   let actual = 1, estado: EstadoPaso = "franco", visitaHecha = false;
-  if (etapa === "confirmando" || etapa === "en_pausa") { subs[0] = "Franco lo está confirmando con quien lo vende"; }
+  if (etapa === "confirmando" || etapa === "en_pausa") { subs[0] = "Franco lo coordina con quien lo vende"; }
   else if (etapa === "sin_preaprobacion") { actual = 2; estado = "tuyo"; subs[1] = "Te toca a ti: sube tu preaprobación"; }
   else if (etapa === "listo") {
     actual = 2;
@@ -441,7 +441,7 @@ export function caminoDepto(etapa: Etapa, oferta: (Pick<OfertaBase, "estado" | "
   else if (etapa === "inscrito") actual = 7;
   if (actual > 1) subs[0] = "Dirección y disponibilidad confirmadas";
   const sinVisita = actual > 3 && oferta?.enFirmeComo === "sin_visitar";
-  if (sinVisita) subs[2] = "No hubo visita";
+  if (sinVisita) subs[2] = "No hubo";
   // En firme tras la visita: la visita hecha, con su fecha.
   if (actual > 3 && !sinVisita && visitaPublicada(oferta?.visita) && oferta?.visita?.visitadaAt) { visitaHecha = true; subs[2] = VC.caminoHecha(diaMes(oferta.visita.visitadaAt)); }
   const pasos = PASOS_CAMINO.map((t0, i): PasoCamino => {

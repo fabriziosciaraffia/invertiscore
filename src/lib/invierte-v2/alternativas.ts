@@ -45,7 +45,8 @@ export const ALTERNATIVAS_COPY = {
   subtitulo: (n: number, nivel: NivelAlt, modo: Donde, comuna: string | null) => {
     const otros = n === 1 ? "Otro parecido" : `Otros ${n} parecidos`;
     if (nivel === "perfil") return "Los que más convienen, parecidos al tuyo";
-    if (nivel === "cerca") return `${otros}, cerca del tuyo`;
+    // Sin redundancia (24-nov-2026): el título ya dice «cerca»; el encabezado dice lo nuevo.
+    if (nivel === "cerca") return "Parecidos que también convienen";
     if (nivel === "tres_km") return `${otros}, un poco más lejos: a menos de 3 km del tuyo`;
     if (modo === "cerca") return `Cerca del tuyo no hay otros que convengan; ${n === 1 ? "este está" : "estos están"} en el resto de ${comuna ?? "la comuna"}`;
     return comuna ? `${otros}, en ${comuna}` : `${otros}, en la comuna`;

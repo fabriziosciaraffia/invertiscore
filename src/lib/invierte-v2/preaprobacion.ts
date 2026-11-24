@@ -165,7 +165,7 @@ export const validarMotivo = (x: unknown): string | null => (typeof x === "strin
 export const CORREO_PREAPROB = {
   aprobada: {
     asunto: "Tu preaprobación está aprobada",
-    parrafo: (d: Parameters<typeof lineaAprobada>[0]) => `Revisamos tu preaprobación: ${lineaAprobada(d).replace(/\.$/, "")}. Ya puedes ofertar o pedir visita en tus deptos.`,
+    parrafo: (d: Parameters<typeof lineaAprobada>[0]) => `${lineaAprobada(d).replace(/\.$/, "")}. Ya puedes ofertar o pedir visita en tus deptos.`,
     boton: "Ver mi inversión",
   },
   por_corregir: {

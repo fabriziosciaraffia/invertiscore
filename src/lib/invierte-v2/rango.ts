@@ -217,6 +217,8 @@ export const OFERTA_COPY = {
   poco: "Poco probable",
   publicado: "Publicado",
   tuOferta: (uf: number) => `Tu oferta UF ${fmt(uf)}`,
+  /** El chip de la barra en la pantalla de la oferta: el monto ya está en el campo de arriba (sin redundancia, 24-nov-2026). */
+  tuChip: "Tú",
   recomendado: (uf: number) => `Recomendado UF ${fmt(uf)}`,
   revisar: "Revisar y firmar mi oferta",
   revisarPor: (uf: number) => `Revisar y firmar por UF ${fmt(uf)}`,

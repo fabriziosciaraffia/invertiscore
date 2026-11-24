@@ -76,14 +76,14 @@ export function OfertaForm({ avisoId, urlFirmar, postura, pisoUF, recomendadoUF,
   return (
     <div className="iv2-of" data-inv2="oferta-form">
       <section className="iv2-of-recomienda" aria-labelledby="iv2-of-rec" data-inv2="recomienda">
-        <div className="iv2-of-rec-cab"><span className="iv2-of-rec-e" id="iv2-of-rec">{O.rotulo}</span><span className="iv2-chip-li" data-inv2="postura">{POSTURA_COPY[postura]}</span></div>
+        <div className="iv2-of-rec-cab"><span className="iv2-sr" id="iv2-of-rec">{O.rotulo}</span><span className="iv2-chip-li" data-inv2="postura">{POSTURA_COPY[postura]}</span></div>
         <span className="iv2-of-entre" data-inv2="rango">{O.entreCorto(pisoUF, altoUF)}</span>
         <span className="iv2-of-rec-pct">{rangoPctPublicado(pisoUF, altoUF, publicadoUF)}</span>
         <ul className="iv2-of-razones" data-inv2="razones">
           {razones.map((t, i) => <li key={i}><span className="iv2-of-marca" aria-hidden="true">{marca(t)}</span><span>{t}</span></li>)}
         </ul>
       </section>
-      <BarraRango pisoUF={pisoUF} altoUF={altoUF} publicadoUF={publicadoUF} fuerteUF={fuerteDesde(pisoUF, publicadoUF, { avisoFuertePct })} montoUF={monto} etiqueta={O.tuOferta(monto)} onCambio={fijar} />
+      <BarraRango pisoUF={pisoUF} altoUF={altoUF} publicadoUF={publicadoUF} fuerteUF={fuerteDesde(pisoUF, publicadoUF, { avisoFuertePct })} montoUF={monto} etiqueta={O.tuChip} onCambio={fijar} />
       <section className="iv2-of-campo" aria-labelledby="iv2-of-campo-t">
         <label className="iv2-of-rotulo" id="iv2-of-campo-t" htmlFor="iv2-of-monto">{O.campoRotulo}</label>
         <div className="iv2-of-stepper">

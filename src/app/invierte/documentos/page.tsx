@@ -43,7 +43,7 @@ export default async function DocumentosPage() {
   if (!orden) redirect(URL_INVIERTE);
   const d = pre.doc;
   const lineaPre = pre.estado === "aprobada" && d ? lineaAprobada({ banco: d.banco, montoUF: d.montoAprobadoUF, vigenteHasta: d.vigenteHasta })
-    : pre.estado === "en_revision" ? ESTADOS_COPY.en_revision.titulo
+    : pre.estado === "en_revision" ? "En revisión"
     : pre.estado === "por_corregir" ? d?.motivo ?? ESTADOS_COPY.por_corregir.titulo
     : pre.estado === "sin_credito" ? ESTADOS_COPY.sin_credito.titulo
     : D.preaprobacionLinea;

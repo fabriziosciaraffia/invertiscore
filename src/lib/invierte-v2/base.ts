@@ -154,7 +154,6 @@ export const ACTUALIZADO_COPY = {
   entra: "Entra",
   fuera: "Fuera de tu alcance hoy",
   siguen: (n: number) => (n === 0 ? "" : n === 1 ? "La que ya tenías sigue ahí." : `Las ${n} que ya tenías siguen ahí.`),
-  nadaSale: "Nada sale por haber cambiado tu perfil.",
   quedanMarcadas: "Las que ya no te alcanzan no se borran: quedan marcadas «fuera de tu alcance hoy».",
   boton: "Ver mis opciones",
 } as const;

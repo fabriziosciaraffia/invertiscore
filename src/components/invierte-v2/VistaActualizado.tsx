@@ -39,7 +39,7 @@ export function VistaActualizado({ r }: { r: PerfilActualizado }) {
           </ul>
         </section>
       )}
-      <p className="iv2-linea-chica" data-inv2="siguen">{[A.siguen(r.siguen), r.fuera.length ? A.quedanMarcadas : r.siguen ? A.nadaSale : ""].filter(Boolean).join(" ")}</p>
+      <p className="iv2-linea-chica" data-inv2="siguen">{[A.siguen(r.siguen), r.fuera.length ? A.quedanMarcadas : ""].filter(Boolean).join(" ")}</p>
       <div className="iv2-acciones">
         <Link href={URL_OPCIONES} className="inv-principal" data-inv2="ver-mis-opciones">{A.boton}</Link>
       </div>
