@@ -9,15 +9,17 @@ import { ResponderContraoferta } from "@/components/invierte-v2/ResponderContrao
 import { sugerenciaFranco, venceAlTerminar } from "@/lib/invierte-v2/b4";
 import { cifrasAPrecio } from "@/lib/invierte-v2/cifras-motor";
 import { MOTOR_MUESTRA } from "@/lib/invierte-v2/muestra-motor";
+import { visitaMuestra } from "@/lib/invierte-v2/muestra-visita";
 
 export const dynamic = "force-dynamic";
 
-export default function ContraofertaDemo({ searchParams }: { searchParams: { caso?: string; otra?: string } }) {
+export default function ContraofertaDemo({ searchParams }: { searchParams: { caso?: string; otra?: string; visita?: string; sinVisitar?: string } }) {
   if (process.env.NODE_ENV === "production" && process.env.VERCEL_ENV !== "preview") notFound();
   const caso = searchParams.caso === "aceptar" || searchParams.caso === "tardia" ? searchParams.caso : "proponer";
   const tu = 2936, piso = 2905, alto = 2966, pub = 3090;
   const ellos = caso === "aceptar" ? 2960 : 3010;
-  const s = sugerenciaFranco({ ofertaUF: tu, contraofertaUF: ellos, altoUF: alto });
+  // Con una visita con arreglo, lo que sugiere Franco se recalcula con el rango de después de la visita (visitaMuestra: piso 2.874, alto 2.936).
+  const s = searchParams.visita === "arreglo" ? sugerenciaFranco({ ofertaUF: tu, contraofertaUF: ellos, altoUF: 2936, bajarHasta: 2874 }) : sugerenciaFranco({ ofertaUF: tu, contraofertaUF: ellos, altoUF: alto });
   const vence = venceAlTerminar(new Date(Date.now() - 2 * 864e5)).toISOString();
   return (
     <MarcoInvierte volver={null} pantalla="contraoferta" layout="formulario" cabecera="Contraoferta" pc={{ sesionEmail: "muestra@ejemplo.cl", invierte: "inversion" }}>
@@ -26,6 +28,8 @@ export default function ContraofertaDemo({ searchParams }: { searchParams: { cas
         avisoId: "muestra", ofertaId: "of", tuUF: tu, ellosUF: ellos, sugeridaUF: s.montoUF, accion: s.accion, topeEsComprar: false, pisoUF: piso, altoUF: alto, publicadoUF: pub, venceAt: vence,
         fueraDePlazo: caso === "tardia", otraViva: searchParams.otra === "1" ? { titulo: "Av. Irarrázaval 2315" } : null,
         cifras: { tu: cifrasAPrecio(MOTOR_MUESTRA, tu), sugerida: cifrasAPrecio(MOTOR_MUESTRA, s.montoUF), ellos: cifrasAPrecio(MOTOR_MUESTRA, ellos) },
+        // ?visita=hecha | arreglo: ya visitó; sin ?visita, todavía no (la visita es el botón rojo); ?sinVisitar=1: «Responder sin visitar».
+        visita: searchParams.visita === "hecha" || searchParams.visita === "arreglo" ? visitaMuestra(searchParams.visita === "arreglo" ? "arreglo" : "coincide") : null, sinVisitar: searchParams.sinVisitar === "1",
       }} />
     </MarcoInvierte>
   );

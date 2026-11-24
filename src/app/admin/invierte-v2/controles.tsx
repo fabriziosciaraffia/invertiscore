@@ -10,6 +10,8 @@ import { FUENTES_RESPUESTA, lineaPregunta, type PreguntaDepto } from "@/lib/invi
 import { POSTURA_COPY, type Postura } from "@/lib/invierte-v2/rango";
 import { motivoAdminOferta, motivoCorreoOferta, venceAlTerminarTexto } from "@/lib/invierte-v2/b4";
 import type { OfertaVista } from "@/lib/invierte-v2/rango-servidor";
+import type { VisitaResumen } from "@/lib/invierte-v2/visita";
+import { VisitaAdmin } from "./visita-admin";
 
 const ROTULO_MODO: Record<ModoInvierteV2, string> = { apagado: "Apagado (todos ven Pronto)", lista: "Solo la lista", todos: "Todos" };
 
@@ -215,7 +217,7 @@ export function RevisarPreaprobacion({ id, banco, montoUF, vigenteHasta }: { id:
  * pegan las coordenadas—. Al confirmar se rehace el análisis con el punto real y el depto pasa de etapa solo si hay acuerdo y el
  * análisis rehecho da Comprar (o Ajusta supuestos con precio al que vuelve a Comprar). Sin dirección confirmada no pasa a listo.
  */
-export function GestionDepto({ userId, avisoId, etapa, acuerdo, alternativa, comuna, pin, ubicacion, preguntas, rango, oferta = null, pruebas = false, esPrueba = false, avisos = [] }: {
+export function GestionDepto({ userId, avisoId, etapa, acuerdo, alternativa, comuna, pin, ubicacion, preguntas, rango, oferta = null, pruebas = false, esPrueba = false, avisos = [], visita = null, arreglosFotos = [] }: {
   userId: string; avisoId: string; etapa: string; acuerdo: string | null; alternativa: string | null; comuna: string | null;
   pin: { lat: number; lng: number } | null;
   ubicacion: { direccion: string; numero: string | null; lat: number; lng: number; distanciaM: number | null; veredicto: string | null; precioComprarUF: number | null; flujoCLP: number | null } | null;
@@ -230,6 +232,9 @@ export function GestionDepto({ userId, avisoId, etapa, acuerdo, alternativa, com
   esPrueba?: boolean;
   /** Los correos de B4 de esta oferta: si salieron o por qué no. */
   avisos?: AvisoOfertaAdmin[];
+  /** La visita del depto (24-nov-2026) y los arreglos que la lectura vio en las fotos (vienen precargados en el reporte). */
+  visita?: VisitaResumen | null;
+  arreglosFotos?: string[];
 }) {
   const router = useRouter();
   const [ac, setAc] = useState(acuerdo ?? "pendiente");
@@ -275,6 +280,7 @@ export function GestionDepto({ userId, avisoId, etapa, acuerdo, alternativa, com
       <PreguntasDepto avisoId={avisoId} preguntas={preguntas} />
       {rango && <RangoDepto userId={userId} avisoId={avisoId} r={rango} />}
       {oferta && <OfertaAdmin o={oferta} pruebas={pruebas} esPrueba={esPrueba} avisos={avisos} />}
+      {oferta && (oferta.estado === "contraoferta" || oferta.estado === "aceptada_sujeta" || visita) && <VisitaAdmin key={visita?.id ?? "sin"} o={oferta} v={visita} arreglosFotos={arreglosFotos} />}
       {estado && <span className="text-[12px] text-[var(--signal-red)]" role="alert">{estado}</span>}
     </div>
   );

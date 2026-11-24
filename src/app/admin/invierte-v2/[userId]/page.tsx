@@ -16,6 +16,7 @@ import { COLS_OFERTA, ofertaDeFila, type OfertaVista } from "@/lib/invierte-v2/r
 import { asegurarPreguntasDeLectura, leerPreguntas, leerUbicaciones } from "@/lib/invierte-v2/depto-servidor";
 import { leerLecturas } from "@/lib/invierte-v2/lectura-franco-servidor";
 import { asegurarRango } from "@/lib/invierte-v2/rango-servidor";
+import { visitaParaRonda } from "@/lib/invierte-v2/visita-lectura";
 import { etapaDe } from "@/lib/invierte-v2/depto-flujo";
 import { leerPreaprobacion } from "@/lib/invierte-v2/preaprobacion-servidor";
 import { lineaAprobada } from "@/lib/invierte-v2/preaprobacion";
@@ -85,6 +86,9 @@ export default async function FichaInvierteV2Page({ params }: { params: { userId
   const { data: ofs } = idsEl.length ? await sb.from("inv_ofertas").select(COLS_OFERTA + ", aviso_id").eq("user_id", userId).in("aviso_id", idsEl).neq("estado", "borrador").order("ronda", { ascending: false }) : { data: [] };
   const ofertaDe = new Map<string, OfertaVista>();
   for (const f of (ofs ?? []) as unknown as Record<string, unknown>[]) if (!ofertaDe.has(f.aviso_id as string)) ofertaDe.set(f.aviso_id as string, ofertaDeFila(f));
+  // La visita de cada depto (24-nov-2026): mantener la contraoferta, agendar y el reporte.
+  const { data: dps } = idsEl.length ? await sb.from("inv_deptos").select("id, aviso_id").eq("user_id", userId).in("aviso_id", idsEl) : { data: [] };
+  const visitaDe = new Map(await Promise.all(((dps ?? []) as { id: string; aviso_id: string }[]).map(async (x) => [x.aviso_id, await visitaParaRonda(sb, x.id)] as const)));
   // Los correos de B4 de cada oferta (24-nov-2026): si salieron o por qué no, de la bitácora.
   const { data: avs } = await sb.from("inv_bitacora").select("detalle, created_at").eq("user_id", userId).eq("accion", "aviso_oferta").order("created_at", { ascending: false }).limit(50);
   const avisosDe = new Map<string, { evento: string; correo: string; motivo: string | null; at: string }[]>();
@@ -228,6 +232,7 @@ export default async function FichaInvierteV2Page({ params }: { params: { userId
                   preguntas={preguntasDe[id] ?? []}
                   rango={rangoDe[id] ?? null}
                   oferta={ofertaDe.get(id) ?? null} pruebas={process.env.VERCEL_ENV !== "production"} esPrueba={d.es_prueba === true} avisos={avisosDe.get(ofertaDe.get(id)?.id ?? "") ?? []}
+                  visita={visitaDe.get(id) ?? null} arreglosFotos={lecturas[id]?.arreglos ?? []}
                   ubicacion={u ? { direccion: u.direccion, numero: u.numero, lat: u.lat, lng: u.lng, distanciaM: u.distanciaM, veredicto: u.analisis?.veredicto ?? null, precioComprarUF: u.precioComprarUF, flujoCLP: u.analisis?.flujoCLP ?? null } : null} />
               </div>
             );

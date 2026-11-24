@@ -7,7 +7,8 @@
 //   · La tarea de insistir sale al empezar el tercer día después de la presentación.
 //   · Franco sugiere (decisión 3): si la contraoferta cae dentro o bajo el borde alto del rango recomendado, aceptar; si queda encima, el
 //     punto medio entre la oferta de la persona y la contraoferta, con tope en el borde alto (en un Ajusta supuestos, el precio al que
-//     vuelve a Comprar). Nunca menos que la oferta anterior de la persona. Es un cálculo que se muestra: el admin lo puede corregir.
+//     vuelve a Comprar). Nunca menos que la oferta anterior de la persona, salvo después de una visita cuyo reporte nombra un arreglo
+//     concreto (visita.ts; 24-nov-2026): entonces el piso es el del rango recalculado. Es un cálculo que se muestra: el admin lo corrige.
 //   · Una a la vez (decisión de Fabrizio, punto 8): firmada, en cola, presentada, contraoferta y aceptada cuentan como vivas.
 // La IA no presenta, no acepta ni firma nada: cada paso de la oferta lo hace una persona.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -109,6 +110,8 @@ export const MOTIVOS_ADMIN_OFERTA: Record<string, string> = {
   preaprobacion: "La preaprobación no deja ofertar.",
   orden: "La persona no tiene la orden firmada.",
   otra_viva: "La persona tiene otra oferta viva: tiene que elegir con cuál se queda.",
+  // La visita (24-nov-2026).
+  confirmacion: "Falta la confirmación explícita de la persona.",
 };
 export const motivoAdminOferta = (codigo: string | null | undefined) => MOTIVOS_ADMIN_OFERTA[codigo ?? ""] ?? `No se guardó: ${codigo ?? "motivo desconocido"} (quedó en Sentry).`;
 
@@ -140,16 +143,19 @@ export function fraccionVigencia(presentadaAt: Date, venceAt: Date, ahora: Date 
 
 /** LO QUE SUGIERE FRANCO en una contraoferta (decisión 3). `altoUF`: el borde alto del rango recomendado; `comprarUF`: en un Ajusta
  *  supuestos, el precio al que vuelve a Comprar (es el tope). Devuelve el monto y si es aceptar su precio o proponer otro. */
-export function sugerenciaFranco(p: { ofertaUF: number; contraofertaUF: number; altoUF: number; comprarUF?: number | null }): { montoUF: number; accion: "aceptar" | "proponer" } {
+export function sugerenciaFranco(p: { ofertaUF: number; contraofertaUF: number; altoUF: number; comprarUF?: number | null; bajarHasta?: number | null }): { montoUF: number; accion: "aceptar" | "proponer" } {
   if (p.contraofertaUF <= p.altoUF) return { montoUF: Math.round(p.contraofertaUF), accion: "aceptar" };
-  const tope = p.comprarUF != null && p.comprarUF > 0 ? p.comprarUF : p.altoUF;
+  // Con una visita que nombra un arreglo, el tope es el borde alto nuevo (no el precio a Comprar, que es más alto) y el piso, el del rango nuevo.
+  const conVisita = p.bajarHasta != null && p.bajarHasta > 0;
+  const tope = !conVisita && p.comprarUF != null && p.comprarUF > 0 ? p.comprarUF : p.altoUF;
   const medio = Math.round((p.ofertaUF + p.contraofertaUF) / 2);
-  const monto = Math.max(Math.round(p.ofertaUF), Math.min(medio, Math.round(tope)));
+  const piso = conVisita ? Math.min(Math.round(p.ofertaUF), Math.round(p.bajarHasta!)) : Math.round(p.ofertaUF);
+  const monto = Math.max(piso, Math.min(medio, Math.round(tope)));
   return monto >= p.contraofertaUF ? { montoUF: Math.round(p.contraofertaUF), accion: "aceptar" } : { montoUF: monto, accion: "proponer" };
 }
 
 /** ¿Un monto corregido por el admin cabe? Entre la oferta de la persona y lo que piden (lo exige también la base). */
-export const sugerenciaValida = (montoUF: number, ofertaUF: number, contraofertaUF: number) => Number.isFinite(montoUF) && montoUF >= ofertaUF && montoUF <= contraofertaUF;
+export const sugerenciaValida = (montoUF: number, ofertaUF: number, contraofertaUF: number, bajarHasta: number | null = null) => Number.isFinite(montoUF) && montoUF >= (bajarHasta != null && bajarHasta > 0 ? Math.min(ofertaUF, bajarHasta) : ofertaUF) && montoUF <= contraofertaUF;
 
 /** Cómo terminó una oferta sin acuerdo, para la tarjeta (lámina 4.2-cuando-no-hay-acuerdo). */
 export type Cierre = "rechazada" | "vencida" | "tardia" | "retirada" | "no_gracias";

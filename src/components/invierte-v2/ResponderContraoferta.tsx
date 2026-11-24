@@ -5,12 +5,17 @@
 // botón rojo es lo que sugiere Franco; la otra salida va como segundo botón, nunca escondida. «Proponer otro monto» abre la oferta con el
 // tope en la contraoferta y el piso en la oferta anterior. Cualquier monto distinto al firmado pasa por «Revisa y firma». «No aceptar la
 // contraoferta» cierra la oferta (o, si llegó fuera de plazo, es «No, gracias»). Sin "use client": la usan la página y /dev.
+// La visita antes del precio (24-nov-2026, lámina 5.2 del 24-nov): si todavía no visita, Franco sugiere visitar y ese es el botón rojo
+// («Responder sin visitar» abre las mismas opciones de después); ya visitó, aparece la línea del reporte y lo que sugiere Franco vuelve
+// a ser el botón rojo, recalculado con el reporte.
 // ─────────────────────────────────────────────────────────────────────────────
 import Link from "next/link";
 import { B4_COPY as B, lineaVence } from "@/lib/invierte-v2/b4";
 import { cuartaCifra, pctCifra, clpCifra, type CifrasAPrecio } from "@/lib/invierte-v2/cifras";
-import { urlFirmaRonda, urlOferta } from "@/lib/invierte-v2/depto-flujo";
+import { diaMes, urlContraoferta, urlFirmaRonda, urlOferta, urlReporteVisita } from "@/lib/invierte-v2/depto-flujo";
 import { AccionOferta } from "./AccionesOferta";
+import { AccionVisita } from "./AccionesVisita";
+import { VISITA_COPY as VC, conArreglo, visitaAbierta, visitaPublicada, type VisitaResumen } from "@/lib/invierte-v2/visita";
 
 const uf0 = (n: number) => `UF ${Math.round(n).toLocaleString("es-CL")}`;
 
@@ -33,6 +38,11 @@ export interface DatosContraoferta {
   otraViva: { titulo: string } | null;
   /** Las cifras del motor a cada precio (sin datos fijos del motor, la tabla queda solo con el precio). */
   cifras: { tu: CifrasAPrecio | null; sugerida: CifrasAPrecio | null; ellos: CifrasAPrecio | null };
+  /** La visita del depto (24-nov-2026) y si la persona eligió «Responder sin visitar». */
+  visita?: VisitaResumen | null;
+  sinVisitar?: boolean;
+  /** «Se mantiene hasta el jueves 26» si quien vende aceptó esperar la visita. */
+  mantiene?: boolean;
 }
 
 /** La barra: la franja recomendada, las tres marcas y el publicado al final (lámina 5.2). */
@@ -77,13 +87,18 @@ export function ResponderContraoferta({ d, volverA }: { d: DatosContraoferta; vo
   const retirarOtra = !!d.otraViva;
   const firmaSug = urlFirmaRonda(d.avisoId, d.sugeridaUF, d.ofertaId, retirarOtra && !proponer);
   const firmaEllos = urlFirmaRonda(d.avisoId, d.ellosUF, d.ofertaId, retirarOtra);
-  const porque = proponer ? (d.topeEsComprar ? B.porqueComprar(uf0(d.ellosUF - d.sugeridaUF)) : B.porqueTope(uf0(d.ellosUF - d.sugeridaUF))) : B.porqueDentro(uf0(d.ellosUF - d.tuUF));
+  const visito = visitaPublicada(d.visita);
+  // Antes de visitar (y sin haber elegido «Responder sin visitar», ni con la visita ya pedida, ni fuera de plazo): la visita es lo que sigue.
+  const antesDeVisitar = !visito && !d.sinVisitar && !visitaAbierta(d.visita) && !d.fueraDePlazo;
+  const porque = visito
+    ? (conArreglo(d.visita) && d.visita!.delta > 0 ? "Con lo que se vio en la visita, el tope de lo que recomendamos bajó." : proponer ? `Es el tope de lo que recomendamos. ${VC.sinCambioRango}` : B.porqueDentro(uf0(d.ellosUF - d.tuUF)))
+    : proponer ? (d.topeEsComprar ? B.porqueComprar(uf0(d.ellosUF - d.sugeridaUF)) : B.porqueTope(uf0(d.ellosUF - d.sugeridaUF))) : B.porqueDentro(uf0(d.ellosUF - d.tuUF));
   return (
     <div className="iv2-co" data-inv2="responder-contraoferta" data-accion={d.accion}>
       <div className="iv2-co-cab">
         <div>
           <h1 className="iv2-co-t" id="iv2-t">{B.piden(uf0(d.ellosUF))}</h1>
-          {v && <p className="iv2-co-vence" data-inv2="co-vence">{v.vencida ? "Venció" : [v.vence, v.quedan ? `te ${v.quedan}` : null].filter(Boolean).join(" · ")}</p>}
+          {v && <p className="iv2-co-vence" data-inv2="co-vence">{v.vencida ? "Venció" : [d.mantiene ? VC.seMantieneCorto(v.vence.replace(/^Vence (el )?/i, "")) : v.vence, v.quedan ? `te ${v.quedan}` : null].filter(Boolean).join(" · ")}</p>}
         </div>
         <span className="iv2-chip-tuyo" data-inv2="co-chip"><i aria-hidden="true" />Te toca a ti</span>
       </div>
@@ -97,16 +112,32 @@ export function ResponderContraoferta({ d, volverA }: { d: DatosContraoferta; vo
           <tr><th scope="row">{etMes}</th>{cols.map((x) => { const q = cuartaCifra(x.c?.flujoCLP); return <td key={x.k} data-destacada={x.dest ? "1" : undefined} data-inv2={`co-mes-${x.k}`}>{mixto && x.c?.flujoCLP != null ? `${q.pones ? "Pones" : "Sobran"} ${clpCifra(x.c.flujoCLP)}` : clpCifra(x.c?.flujoCLP)}</td>; })}</tr>
         </tbody>
       </table>
+      {visito && d.visita!.visitadaAt && (
+        <p className="iv2-dp-reporte" data-inv2="co-reporte">
+          <span className={`iv2-dp-ic ${conArreglo(d.visita) ? "iv2-dp-ic-arreglo" : "iv2-dp-ic-ok"}`} aria-hidden="true">{conArreglo(d.visita) ? "!" : "✓"}</span>
+          <span className="iv2-dp-reporte-l">{VC.visitasteEl(diaMes(d.visita!.visitadaAt))} · {(d.visita!.reporteLinea ?? VC.coincide).replace(/^El estado/, "el estado")}</span>
+          <Link href={urlReporteVisita(d.avisoId)} className="iv2-enlace-azul" data-inv2="co-ver-reporte">{VC.verReporte}</Link>
+        </p>
+      )}
       <section className="iv2-co-sugiere" data-inv2="co-sugiere" aria-label={B.francoSugiere}>
         <span className="iv2-co-sugiere-r">{B.francoSugiere}</span>
-        <p className="iv2-co-sugiere-t">{proponer ? B.proponer(uf0(d.sugeridaUF)) : B.aceptar(uf0(d.ellosUF))}</p>
-        <p className="iv2-co-sugiere-txt">{porque}</p>
+        <p className="iv2-co-sugiere-t">{antesDeVisitar ? VC.sugiereVisitaT : proponer ? B.proponer(uf0(d.sugeridaUF)) : B.aceptar(uf0(d.ellosUF))}</p>
+        <p className="iv2-co-sugiere-txt">{antesDeVisitar ? VC.sugiereVisita(uf0(d.sugeridaUF)) : porque}</p>
       </section>
       {d.otraViva && <p className="iv2-dp-sigue-aviso" data-inv2="co-otra-viva">{B.tardiaOtra(d.otraViva.titulo)}</p>}
       <div className="iv2-acciones iv2-co-acciones">
-        <Link href={proponer ? firmaSug : firmaEllos} className="inv-principal" data-inv2="co-principal">{proponer ? B.proponer(uf0(d.sugeridaUF)) : B.aceptar(uf0(d.ellosUF))}</Link>
-        {proponer && <Link href={firmaEllos} className="iv2-secundario" data-inv2="co-aceptar">{B.aceptar(uf0(d.ellosUF))}</Link>}
-        <Link href={`${urlOferta(d.avisoId)}?desde=${encodeURIComponent(d.ofertaId)}&monto=${Math.round(proponer ? d.sugeridaUF : d.tuUF)}`} className="iv2-enlace-azul iv2-co-enlace" data-inv2="co-otro-monto">{B.proponerOtro}</Link>
+        {antesDeVisitar ? (
+          <>
+            <AccionVisita avisoId={d.avisoId} tipo="pedir_visita" texto={VC.visitarAntes} volverA={volverA} />
+            <Link href={urlContraoferta(d.avisoId, true)} className="iv2-secundario" data-inv2="co-sin-visitar">{VC.responderSinVisitar}</Link>
+          </>
+        ) : (
+          <>
+            <Link href={proponer ? firmaSug : firmaEllos} className="inv-principal" data-inv2="co-principal">{proponer ? B.proponer(uf0(d.sugeridaUF)) : B.aceptar(uf0(d.ellosUF))}</Link>
+            {proponer && <Link href={firmaEllos} className="iv2-secundario" data-inv2="co-aceptar">{B.aceptar(uf0(d.ellosUF))}</Link>}
+            <Link href={`${urlOferta(d.avisoId)}?desde=${encodeURIComponent(d.ofertaId)}&monto=${Math.round(proponer ? d.sugeridaUF : d.tuUF)}`} className="iv2-enlace-azul iv2-co-enlace" data-inv2="co-otro-monto">{B.proponerOtro}</Link>
+          </>
+        )}
         <AccionOferta avisoId={d.avisoId} accion={d.fueraDePlazo ? "no_aceptar_tardia" : "no_aceptar"} clase="iv2-enlace-gris iv2-co-enlace" volverA={volverA} />
         <p className="iv2-co-nota">{B.firmaNota}</p>
       </div>

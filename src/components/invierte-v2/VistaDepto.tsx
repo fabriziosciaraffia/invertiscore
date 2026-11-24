@@ -13,7 +13,7 @@ import { ChipVeredicto } from "@/components/analysis/shared/ChipVeredicto";
 import type { Veredicto } from "@/lib/types";
 import { fmtUF } from "@/lib/invierte-v2/opciones";
 import { lineaDepto, urlWhatsapp } from "@/lib/invierte-v2/base";
-import { AVERIGUO_COPY as AV, DEPTO_COPY as D, caminoDepto, conDocumentos, cuadrasMetro, diaMes, loQueSigue, metaPregunta, preguntasOrdenadas, urlOferta } from "@/lib/invierte-v2/depto-flujo";
+import { AVERIGUO_COPY as AV, DEPTO_COPY as D, caminoDepto, conDocumentos, cuadrasMetro, diaMes, loQueSigue, metaPregunta, preguntasOrdenadas, urlOferta, urlReporteVisita } from "@/lib/invierte-v2/depto-flujo";
 import { OFERTA_COPY, fuerteDesde } from "@/lib/invierte-v2/rango";
 import { MAPA_DEPTO, puntoValido, urlMapaDepto } from "@/lib/invierte-v2/mapa-depto";
 import { VerTexto } from "./VerTexto";
@@ -30,7 +30,9 @@ import { MapaDepto } from "./MapaDepto";
 import { LoQueVeFrancoDepto } from "./LoQueVeFrancoDepto";
 import { CuatroCifras, CifrasAOtroPrecio } from "./CuatroCifras";
 import { AccionOferta } from "./AccionesOferta";
+import { AccionVisita } from "./AccionesVisita";
 import { CIFRAS_COPY } from "@/lib/invierte-v2/cifras";
+import { VISITA_COPY } from "@/lib/invierte-v2/visita";
 
 
 function Cabeza({ p }: { p: PaginaDepto }) {
@@ -91,20 +93,30 @@ function LoQueSigueBloque({ p }: { p: PaginaDepto }) {
         <div className="iv2-dp-vigencia" role="img" aria-label={s.texto ?? "Vigencia de tu oferta"} data-inv2="vigencia"><span style={{ width: `${Math.round(s.vigencia * 100)}%` }} /></div>
       )}
       {s.texto && <p className="iv2-dp-sigue-txt">{s.texto}</p>}
+      {s.reporte && (
+        <p className="iv2-dp-reporte" data-inv2="sigue-reporte">
+          <span className={`iv2-dp-ic ${s.reporte.arreglo ? "iv2-dp-ic-arreglo" : "iv2-dp-ic-ok"}`} aria-hidden="true">{s.reporte.arreglo ? "!" : "✓"}</span>
+          <span className="iv2-dp-reporte-l">{s.reporte.linea}</span>
+          <Link href={s.reporte.href} className="iv2-enlace-azul" data-inv2="ver-reporte">{VISITA_COPY.verReporte}</Link>
+        </p>
+      )}
       {s.aviso && <p className="iv2-dp-sigue-aviso" data-inv2="sigue-aviso">{s.aviso}</p>}
       {s.barra && o && (
         <BarraRango chica pisoUF={o.pisoUF} altoUF={o.altoUF} publicadoUF={o.publicadoUF} fuerteUF={fuerteDesde(o.pisoUF, o.publicadoUF)} montoUF={o.recomendadoUF} etiqueta={OFERTA_COPY.recomendado(o.recomendadoUF)} />
       )}
       {s.boton && <Link href={s.boton.href} className="inv-principal" data-inv2="sigue-boton">{s.boton.texto}</Link>}
+      {s.botonAccion && <AccionVisita avisoId={p.avisoId} tipo={s.botonAccion.tipo} texto={s.botonAccion.texto} montoUF={o?.montoUF ? `UF ${Math.round(o.montoUF).toLocaleString("es-CL")}` : null} />}
       {s.secundario && <Link href={s.secundario.href} className="iv2-secundario" data-inv2="sigue-secundario">{s.secundario.texto}</Link>}
+      {s.secundarioAccion && <AccionVisita avisoId={p.avisoId} tipo={s.secundarioAccion.tipo} texto={s.secundarioAccion.texto} />}
       {s.acciones?.includes("no_gracias") && <AccionOferta avisoId={p.avisoId} accion="no_gracias" clase="iv2-secundario" />}
-      {s.nota && <p className="iv2-dp-sigue-nota">{s.nota}</p>}
+      {s.nota && !s.notaAlFinal && <p className="iv2-dp-sigue-nota">{s.nota}</p>}
       {((s.verOferta && textoFirmado) || s.acciones?.includes("retirar")) && (
         <div className="iv2-dp-sigue-enlace">
           {s.verOferta && textoFirmado && <VerTexto titulo="Oferta de compra" parrafos={textoFirmado.split("\n\n")} etiqueta={D.verMiOferta} />}
-          {s.acciones?.includes("retirar") && <AccionOferta avisoId={p.avisoId} accion="retirar" />}
+          {s.acciones?.includes("retirar") && <AccionOferta avisoId={p.avisoId} accion="retirar" texto={s.retirarTexto} />}
         </div>
       )}
+      {s.nota && s.notaAlFinal && <p className="iv2-dp-sigue-nota" data-inv2="sigue-nota-final">{s.nota}</p>}
     </section>
   );
 }
@@ -174,7 +186,9 @@ function Cambios({ p }: { p: PaginaDepto }) {
 function Documentos({ p }: { p: PaginaDepto }) {
   if (!conDocumentos(p.etapa)) return null;
   const oferta = p.oferta?.texto && p.oferta.firmadaAt ? p.oferta : null;
-  const n = (oferta ? 1 : 0) + p.documentos.length;
+  // El reporte de la visita queda aquí (decisión 6): se abre con «Ver», igual que desde «Lo que sigue».
+  const reporte = p.visita?.estado === "reporte_publicado" && p.visita.visitadaAt ? p.visita : null;
+  const n = (oferta ? 1 : 0) + (reporte ? 1 : 0) + p.documentos.length;
   return (
     <section className="iv2-dp-tj" aria-labelledby="iv2-docs-t" data-inv2="documentos-depto">
       <div className="iv2-dp-th"><h2 className="iv2-dp-th-t" id="iv2-docs-t">{AV.documentosT}</h2><span className="iv2-dp-th-n">{n}</span></div>
@@ -183,6 +197,12 @@ function Documentos({ p }: { p: PaginaDepto }) {
           <li className="iv2-dp-tr" data-inv2="doc-oferta">
             <span className="iv2-dp-tr-txt"><span className="iv2-dp-q">Oferta de compra</span><span className="iv2-dp-tr-s">Firmada el {diaMes(oferta.firmadaAt!)}</span></span>
             <VerTexto titulo="Oferta de compra" parrafos={oferta.texto!.split("\n\n")} />
+          </li>
+        )}
+        {reporte && (
+          <li className="iv2-dp-tr" data-inv2="doc-reporte-visita">
+            <span className="iv2-dp-tr-txt"><span className="iv2-dp-q">{VISITA_COPY.docReporte}</span><span className="iv2-dp-tr-s">Visita del {diaMes(reporte.visitadaAt!)}</span></span>
+            <Link href={urlReporteVisita(p.avisoId)} className="iv2-enlace-azul" data-inv2="ver-reporte-doc">Ver</Link>
           </li>
         )}
         {n === 0 && (

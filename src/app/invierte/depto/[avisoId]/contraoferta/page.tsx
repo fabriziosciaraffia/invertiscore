@@ -14,7 +14,7 @@ import { ResponderContraoferta, type DatosContraoferta } from "@/components/invi
 export const dynamic = "force-dynamic";
 export const metadata = METADATA_FLUJO;
 
-export default async function ContraofertaPage({ params }: { params: { avisoId: string } }) {
+export default async function ContraofertaPage({ params, searchParams }: { params: { avisoId: string }; searchParams: { sinVisitar?: string } }) {
   const { user, acceso } = await sesionYAcceso();
   if (!user || !acceso) notFound();
   const avisoId = decodeURIComponent(params.avisoId);
@@ -30,6 +30,8 @@ export default async function ContraofertaPage({ params }: { params: { avisoId: 
     topeEsComprar: o.comprarUF != null, pisoUF: o.pisoUF, altoUF: o.altoUF, publicadoUF: o.publicadoUF, venceAt: o.contraofertaVence ?? null,
     fueraDePlazo: r.tipo === "tardia_contra", otraViva: r.tipo === "tardia_contra" ? p.otraViva ?? null : null,
     cifras: { tu: motor ? cifrasAPrecio(motor, o.montoUF) : null, sugerida: motor ? cifrasAPrecio(motor, sugerida) : null, ellos: motor ? cifrasAPrecio(motor, o.contraofertaUF) : null },
+    // La visita antes del precio (24-nov-2026): la visita del depto, «Responder sin visitar» y si quien vende aceptó esperar.
+    visita: o.estado === "contraoferta" ? p.visita ?? null : null, sinVisitar: searchParams.sinVisitar === "1", mantiene: o.mantenerRespuesta === "acepta",
   };
   return (
     <MarcoInvierte volver={null} pantalla="contraoferta" layout="formulario" cabecera="Contraoferta" pc={{ sesionEmail: user.email ?? null, invierte: "inversion" }}>

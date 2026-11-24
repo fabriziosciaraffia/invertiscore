@@ -1372,3 +1372,27 @@
 }
 /* La contraoferta trae dos botones, dos enlaces y una nota: no van fijos abajo (taparían «Franco sugiere»), van después del recuadro. */
 .iv2-cuerpo.iv2-formulario .iv2-co > .iv2-co-acciones { position: static; padding: 4px 0 calc(12px + env(safe-area-inset-bottom, 0px)); }
+
+/* La visita antes del precio (24-nov-2026; láminas 4.2-la-visita y 4.4): la línea del reporte en «Lo que sigue» (✓ azul si coincide,
+   ! negro si hay un arreglo) con «Ver reporte», y el reporte de solo lectura. */
+.iv2-dp-ic-arreglo { background: #141414; color: #FFFFFF; }
+.iv2-dp-reporte { margin: 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; line-height: 1.4; padding: 10px 12px; border-radius: 12px; background: #F4F4F6; }
+.iv2-dp-reporte .iv2-dp-ic { width: 20px; height: 20px; font-size: 11px; }
+.iv2-dp-reporte-l { flex: 1 1 140px; min-width: 0; font-weight: 600; color: #141414; }
+.iv2-dp-reporte .iv2-enlace-azul { flex: none; }
+.iv2-rv { display: flex; flex-direction: column; gap: 16px; }
+.iv2-rv-cab { display: flex; flex-direction: column; gap: 6px; }
+.iv2-rv-t { margin: 0; font-size: 22px; line-height: 1.25; font-weight: 700; color: #141414; overflow-wrap: anywhere; }
+.iv2-rv-sub { margin: 0; font-size: 14px; line-height: 1.45; color: #3A3A3F; }
+.iv2-rv-fotos { margin: 0; font-size: 13px; color: #5A5A5F; }
+.iv2-rv-precio { display: flex; flex-direction: column; gap: 10px; padding: 16px; border-radius: 16px; background: #EEF2F8; }
+.iv2-rv-cifras { display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap; }
+.iv2-rv-cifras > div { display: flex; flex-direction: column; gap: 2px; }
+.iv2-rv-et { font-size: 12px; color: #5A5A5F; }
+.iv2-rv-v { font-size: 20px; font-weight: 700; color: #141414; }
+.iv2-rv-flecha { font-size: 18px; color: #5A5A5F; padding-bottom: 2px; }
+.iv2-rv-razon { margin: 0; font-size: 13px; line-height: 1.45; color: #3A3A3F; }
+.iv2-rv-volver { align-self: stretch; text-align: center; }
+/* 44 px de alto en celular: «Ver reporte» y «Confirmar sin visitar» (revisión visual del 24-nov). */
+.iv2-dp-reporte .iv2-enlace-azul, [data-inv2="accion-confirmar_sin_visitar"] { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+.iv2-dp-reporte { padding-top: 2px; padding-bottom: 2px; }

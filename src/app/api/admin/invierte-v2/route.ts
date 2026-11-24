@@ -13,6 +13,7 @@ import { puedeRecibirCopia } from "@/lib/invierte-v2/copias-servidor";
 import { agregarPregunta, ajustarPorPreaprobacion, confirmarUbicacion, marcarPreguntasEnviadas, registrarAcuerdo, responderPregunta } from "@/lib/invierte-v2/depto-servidor";
 import { corregirRango } from "@/lib/invierte-v2/rango-servidor";
 import { accionOfertaAdmin, esAccionOfertaAdmin } from "@/lib/invierte-v2/b4-servidor";
+import { accionVisitaAdmin, esAccionVisitaAdmin } from "@/lib/invierte-v2/visita-servidor";
 import { captureApiError } from "@/lib/observabilidad";
 import { DEPS_AVISO_B4 } from "@/lib/invierte-v2/b4-avisos";
 import { pdfOrden } from "@/lib/invierte-v2/orden-pdf";
@@ -139,11 +140,13 @@ export async function POST(request: Request) {
   }
   // B4 (24-nov-2026): las acciones del panel de la oferta, todas con el prefijo «oferta_» (la «respuesta» de B2 atrapaba la de B4).
   // Cada error queda en Sentry con la acción, la oferta y el motivo; la pantalla muestra el motivo en una línea.
-  if (esAccionOfertaAdmin(accion)) {
+  // La visita antes del precio (24-nov-2026): «visita_mantener», «visita_agendar» y «visita_reporte», con el mismo trato de errores.
+  if (esAccionOfertaAdmin(accion) || esAccionVisitaAdmin(accion)) {
     try {
-      const r = await accionOfertaAdmin(createAdminServiceClient(), { id: adminUser.id, email: adminUser.email ?? null }, b ?? {}, DEPS_AVISO_B4);
+      const quien = { id: adminUser.id, email: adminUser.email ?? null };
+      const r = esAccionVisitaAdmin(accion) ? await accionVisitaAdmin(createAdminServiceClient(), quien, b ?? {}, DEPS_AVISO_B4) : await accionOfertaAdmin(createAdminServiceClient(), quien, b ?? {}, DEPS_AVISO_B4);
       if (!r.ok) {
-        captureApiError(new Error(`admin Invierte ${accion}: ${r.error}`), { ruta: "POST /api/admin/invierte-v2", operacion: accion, tags: { accion, motivo: r.error }, extra: { ofertaId: b?.ofertaId ?? null } });
+        captureApiError(new Error(`admin Invierte ${accion}: ${r.error}`), { ruta: "POST /api/admin/invierte-v2", operacion: accion, tags: { accion, motivo: r.error }, extra: { ofertaId: b?.ofertaId ?? null, visitaId: b?.visitaId ?? null } });
         return NextResponse.json({ error: r.error }, { status: r.error === "produccion" ? 404 : r.error === "guardar" ? 500 : 400 });
       }
       return NextResponse.json(r);

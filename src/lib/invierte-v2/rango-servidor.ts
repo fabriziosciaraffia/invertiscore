@@ -25,6 +25,7 @@ import { lineaDepto } from "./base";
 import { publicadoDesde, ultimaBajadaCadena } from "./gemelos";
 import { leerPaginaDepto } from "./depto-pagina-servidor";
 import { OFERTAS_VIVAS } from "./b4";
+import type { VisitaResumen } from "./visita";
 
 const T_OF = "inv_ofertas";
 // En firme también: la página del depto la lee para el camino (si quedó en firme sin visitar). Firmar exige borrador (asegurarRango).
@@ -163,6 +164,15 @@ export interface OfertaVista {
   retiradaAt?: string | null;
   retiradaDesde?: string | null;
   updatedAt?: string | null;
+  // La visita antes del precio (24-nov-2026): Franco pidió mantener la contraoferta, qué respondió quien vende y la fecha de antes; la
+  // visita que respalda esta ronda (un ajuste bajo la anterior); y la visita del depto con su reporte (la carga leerPaginaDepto).
+  mantenerPedidoAt?: string | null;
+  mantenerRespuesta?: string | null;
+  contraofertaVenceOriginal?: string | null;
+  visitaId?: string | null;
+  visita?: VisitaResumen | null;
+  /** En un ajuste después de la visita, el monto de la ronda anterior («Antes»). */
+  anteriorMontoUF?: number | null;
 }
 
 function aVista(f: Record<string, unknown>): OfertaVista {
@@ -182,10 +192,12 @@ function aVista(f: Record<string, unknown>): OfertaVista {
     respuestaTardia: (f.respuesta_tardia as string | null) ?? null, respuestaTardiaUF: num(f.respuesta_tardia_uf), respuestaTardiaAt: (f.respuesta_tardia_at as string | null) ?? null,
     tardiaDecision: (f.tardia_decision as string | null) ?? null,
     retiradaAt: (f.retirada_at as string | null) ?? null, retiradaDesde: (f.retirada_desde as string | null) ?? null, updatedAt: (f.updated_at as string | null) ?? null,
+    mantenerPedidoAt: (f.mantener_pedido_at as string | null) ?? null, mantenerRespuesta: (f.mantener_respuesta as string | null) ?? null,
+    contraofertaVenceOriginal: (f.contraoferta_vence_original as string | null) ?? null, visitaId: (f.visita_id as string | null) ?? null,
   };
 }
 export { aVista as ofertaDeFila };
-const COLS = "id, estado, postura_recomendada, piso_uf, recomendado_uf, techo_uf, publicado_uf, razones, senales, monto_uf, firmada_at, texto, texto_version, rango_fuente, regla_version, en_firme_como, precio_final_uf, ronda, anterior_id, presentada_at, vigente_hasta, respuesta, respuesta_at, contraoferta_uf, contraoferta_nota, contraoferta_vence, sugerida_uf, sugerida_regla_uf, sugerida_fuente, sin_acuerdo_motivo, respuesta_tardia, respuesta_tardia_uf, respuesta_tardia_at, tardia_decision, retirada_at, retirada_desde, updated_at";
+const COLS = "id, estado, postura_recomendada, piso_uf, recomendado_uf, techo_uf, publicado_uf, razones, senales, monto_uf, firmada_at, texto, texto_version, rango_fuente, regla_version, en_firme_como, precio_final_uf, ronda, anterior_id, presentada_at, vigente_hasta, respuesta, respuesta_at, contraoferta_uf, contraoferta_nota, contraoferta_vence, sugerida_uf, sugerida_regla_uf, sugerida_fuente, sin_acuerdo_motivo, respuesta_tardia, respuesta_tardia_uf, respuesta_tardia_at, tardia_decision, retirada_at, retirada_desde, updated_at, mantener_pedido_at, mantener_respuesta, contraoferta_vence_original, visita_id";
 export const COLS_OFERTA = COLS;
 
 /** La oferta abierta del depto (borrador o ya firmada), sin calcular nada. */

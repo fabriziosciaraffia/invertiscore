@@ -10,6 +10,7 @@
 // Gate en el servidor: dev y previews de Vercel sí; producción, 404.
 import { notFound } from "next/navigation";
 import { MarcoInvierte } from "@/components/invierte-v2/MarcoInvierte";
+import { visitaMuestra } from "@/lib/invierte-v2/muestra-visita";
 import { VistaDepto } from "@/components/invierte-v2/VistaDepto";
 import { DEPTO_COPY, type Etapa } from "@/lib/invierte-v2/depto-flujo";
 import type { PaginaDepto } from "@/lib/invierte-v2/depto-pagina-servidor";
@@ -22,7 +23,7 @@ import { venceAlTerminar } from "@/lib/invierte-v2/b4";
 
 export const dynamic = "force-dynamic";
 
-export default function DeptoDemo({ searchParams }: { searchParams: { etapa?: string; aviso?: string; confirmada?: string; preguntas?: string; oferta?: string; lectura?: string; fotos?: string; pocos?: string; cierre?: string; otra?: string } }) {
+export default function DeptoDemo({ searchParams }: { searchParams: { etapa?: string; aviso?: string; confirmada?: string; preguntas?: string; oferta?: string; lectura?: string; fotos?: string; pocos?: string; cierre?: string; otra?: string; visita?: string; mantener?: string } }) {
   if (process.env.NODE_ENV === "production" && process.env.VERCEL_ENV !== "preview") notFound();
   const e = searchParams.etapa ?? "confirmando";
   const etapa: Etapa = e === "revision" || e === "corregir" ? "sin_preaprobacion" : e === "dejo" ? "no_avanza" : (["confirmando", "sin_preaprobacion", "listo", "no_avanza"].includes(e) ? e : "confirmando") as Etapa;
@@ -32,16 +33,16 @@ export default function DeptoDemo({ searchParams }: { searchParams: { etapa?: st
   const metro = { estacion: "Parque Bustamante", metros: 420 };
   const analisisMuestra = { arriendoCLP: MOTOR_MUESTRA.arriendoCLP, flujoCLP: null, motor: MOTOR_MUESTRA, comparables: searchParams.pocos === "1" ? 4 : 6 };
   const cifras = cifrasDeDepto({ publicadoUF: 3090, arriendoNoche: null, flujoNoche: null, analisis: analisisMuestra, uf: MOTOR_MUESTRA.uf, comparables: null });
-  const ESTADOS = ["firmada", "ronda_nueva", "en_cola", "comunicar", "presentada", "presentada_hoy", "contraoferta", "aceptada_sujeta"];
+  const ESTADOS = ["firmada", "ronda_nueva", "ajustada", "en_cola", "comunicar", "presentada", "presentada_hoy", "contraoferta", "aceptada_sujeta"];
   const pedido = ESTADOS.includes(searchParams.oferta ?? "") ? (searchParams.oferta as string) : "borrador";
-  const estadoOferta = pedido === "comunicar" || pedido === "ronda_nueva" ? "firmada" : pedido === "presentada_hoy" ? "presentada" : pedido;
+  const estadoOferta = pedido === "comunicar" || pedido === "ronda_nueva" || pedido === "ajustada" ? "firmada" : pedido === "presentada_hoy" ? "presentada" : pedido;
   const ahora = Date.now(), DIA = 864e5;
   // Presentada hace un día (o hoy, al quinto día de su plazo, para ver «Vence hoy»); la contraoferta vence en tres días.
   const presentadaAt = new Date(ahora - (pedido === "presentada_hoy" ? 5 : 1) * DIA).toISOString();
   const b4 = {
     presentadaAt: ["presentada", "contraoferta", "aceptada_sujeta"].includes(estadoOferta) ? presentadaAt : null,
     vigenteHasta: estadoOferta === "presentada" ? venceAlTerminar(new Date(presentadaAt)).toISOString() : null,
-    tipoRonda: pedido === "comunicar" ? "aceptar" : pedido === "ronda_nueva" ? "proponer" : null,
+    tipoRonda: pedido === "comunicar" ? "aceptar" : pedido === "ronda_nueva" ? "proponer" : pedido === "ajustada" ? "ajustar" : null,
     contraofertaUF: estadoOferta === "contraoferta" ? 3010 : null, contraofertaVence: estadoOferta === "contraoferta" ? venceAlTerminar(new Date(ahora - 2 * DIA)).toISOString() : null,
     sugeridaUF: estadoOferta === "contraoferta" ? 2966 : null, respuesta: estadoOferta === "contraoferta" ? "contraoferta" : estadoOferta === "aceptada_sujeta" ? "aceptada_sujeta" : null,
   };
@@ -92,6 +93,15 @@ export default function DeptoDemo({ searchParams }: { searchParams: { etapa?: st
       : { ...base, estado: "sin_acuerdo", sinAcuerdoMotivo: "vencida", respuestaTardia: "aceptada_sujeta", respuestaTardiaUF: 2936, tardiaDecision: "no_gracias" };
     p.oferta = null;
     p.otraViva = searchParams.otra === "1" ? { avisoId: "otro", titulo: "Av. Irarrázaval 2315", estado: "presentada" } : null;
+  }
+  // La visita (24-nov-2026): ?visita=pedida | hecha (coincide) | arreglo (con un arreglo que no se veía), y ?mantener=acepta | no.
+  if (p.oferta && (searchParams.visita || pedido === "ajustada")) {
+    const caso = searchParams.visita === "arreglo" || pedido === "ajustada" ? "arreglo" : "coincide";
+    p.visita = visitaMuestra(caso, searchParams.visita === "pedida" ? "pedida" : "reporte_publicado");
+    p.oferta.visita = p.visita;
+    if (searchParams.mantener === "acepta" || searchParams.mantener === "no") p.oferta.mantenerRespuesta = searchParams.mantener === "acepta" ? "acepta" : "no_acepta";
+    if (pedido === "ajustada") { p.oferta.montoUF = 2900; p.oferta.anteriorMontoUF = 2966; }
+    if (pedido === "aceptada_sujeta") p.oferta.montoUF = 2966;
   }
   // El bloque de la oferta de la ficha, con el motor (firmada o presentada: «Con tu oferta»; aceptada: «Con el precio acordado»).
   p.bloqueOferta = bloqueOfertaCifras(MOTOR_MUESTRA, p.oferta, 3090);

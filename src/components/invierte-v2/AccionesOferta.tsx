@@ -16,11 +16,11 @@ async function enviar(accion: "retirar" | "no_gracias", avisoId: string): Promis
   return !!r?.ok;
 }
 
-export function AccionOferta({ avisoId, accion, clase, volverA }: { avisoId: string; accion: Accion; clase?: string; volverA?: string }) {
+export function AccionOferta({ avisoId, accion, clase, volverA, texto }: { avisoId: string; accion: Accion; clase?: string; volverA?: string; texto?: string }) {
   const [confirmar, setConfirmar] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState(false);
-  const etiqueta = accion === "retirar" ? B.retirarla : accion === "no_gracias" ? B.noGracias : B.noAceptar;
+  const etiqueta = texto ?? (accion === "retirar" ? B.retirarla : accion === "no_gracias" ? B.noGracias : B.noAceptar);
   async function hacer() {
     if (enviando) return;
     setEnviando(true); setError(false);

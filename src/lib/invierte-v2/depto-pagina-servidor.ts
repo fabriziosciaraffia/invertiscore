@@ -17,6 +17,8 @@ import { direccionDepto, tituloDepto } from "./titulo-depto";
 import { CERRADAS, asegurarRango, ofertaAbierta, ultimaOferta, type OfertaVista } from "./rango-servidor";
 import { OFERTAS_VIVAS } from "./b4";
 import { bloqueOfertaCifras } from "./cifras-motor";
+import { visitaParaRonda } from "./visita-lectura";
+import type { VisitaResumen } from "./visita";
 import type { BloqueCifrasOferta } from "./cifras";
 
 export interface PaginaDepto {
@@ -48,6 +50,8 @@ export interface PaginaDepto {
   bloqueOferta: BloqueCifrasOferta | null;
   /** B4: sin oferta abierta, la última ronda si cerró sin acuerdo (no la aceptaron, venció, respondieron fuera de plazo, la retiró). */
   cierre?: OfertaVista | null;
+  /** La visita del depto (24-nov-2026): la abierta, o la última con el reporte publicado. También va dentro de la oferta (oferta.visita). */
+  visita?: VisitaResumen | null;
   /** B4: otra oferta viva de la persona, en otro depto (para elegir con cuál se queda ante una respuesta fuera de plazo). */
   otraViva?: { avisoId: string; titulo: string; estado: string } | null;
 }
@@ -93,6 +97,16 @@ export async function leerPaginaDepto(admin: SupabaseClient, userId: string, avi
   const cierre = ultima && (CERRADAS as readonly string[]).includes(ultima.estado) ? ultima : null;
   const { data: otra } = cierre ? await admin.from("inv_ofertas").select("aviso_id, estado").eq("user_id", userId).neq("depto_id", f.id as string).in("estado", OFERTAS_VIVAS as unknown as string[]).limit(1).maybeSingle() : { data: null };
   const otraFicha = otra ? (await fichasDe(admin, [otra.aviso_id as string]))[otra.aviso_id as string] ?? null : null;
+  // La visita (24-nov-2026): va dentro de la oferta, para «Lo que sigue», el camino, la contraoferta y la ronda nueva; y en un ajuste, el
+  // monto de la ronda anterior («Antes»).
+  const visita = etapa === "listo" || etapa === "en_firme" ? await visitaParaRonda(admin, f.id as string) : null;
+  if (oferta) {
+    oferta.visita = visita;
+    if (oferta.tipoRonda === "ajustar" && oferta.anteriorId) {
+      const { data: ant } = await admin.from("inv_ofertas").select("monto_uf").eq("id", oferta.anteriorId).maybeSingle();
+      oferta.anteriorMontoUF = ant?.monto_uf != null ? Number(ant.monto_uf) : null;
+    }
+  }
   const [preguntas, { data: docs }] = await Promise.all([
     leerPreguntas(admin, avisoId),
     admin.from("inv_documentos").select("id, tipo, created_at").eq("user_id", userId).eq("depto_id", f.id as string).order("created_at", { ascending: false }).limit(20),
@@ -101,5 +115,5 @@ export async function leerPaginaDepto(admin: SupabaseClient, userId: string, avi
   const cambios = filasCs.map((c) => lineaCambio(c, c.fecha)).filter((x): x is string => !!x);
   const cambiosFilas = filasCs.map((c) => filaCambio(c, c.fecha)).filter((x): x is NonNullable<ReturnType<typeof filaCambio>> => !!x);
   return { avisoId, etapa, noAvanzaMotivo: (f.no_avanza_motivo as string | null) ?? null, datos, ficha, tituloConNumero, direccion, ubicacion: u, cambios, cambiosFilas, preaprobacion: pre.estado, whatsapp, alternativa, activos: (elegidos ?? []).map((e) => ({ avisoId: e.aviso_id as string, datos: (e.datos ?? {}) as DatosDepto })),
-    oferta, cierre, otraViva: otra ? { avisoId: otra.aviso_id as string, titulo: otraFicha?.titulo ?? "otro depto", estado: otra.estado as string } : null, bloqueOferta: bloqueOfertaCifras(u?.analisis?.motor ?? null, oferta, ficha?.cifras.publicadoUF ?? datos.precioUF ?? null), preguntas, documentos: ((docs ?? []) as { id: string; tipo: string; created_at: string }[]).map((d) => ({ id: d.id, tipo: d.tipo, creadoAt: d.created_at })) };
+    oferta, cierre, visita, otraViva: otra ? { avisoId: otra.aviso_id as string, titulo: otraFicha?.titulo ?? "otro depto", estado: otra.estado as string } : null, bloqueOferta: bloqueOfertaCifras(u?.analisis?.motor ?? null, oferta, ficha?.cifras.publicadoUF ?? datos.precioUF ?? null), preguntas, documentos: ((docs ?? []) as { id: string; tipo: string; created_at: string }[]).map((d) => ({ id: d.id, tipo: d.tipo, creadoAt: d.created_at })) };
 }

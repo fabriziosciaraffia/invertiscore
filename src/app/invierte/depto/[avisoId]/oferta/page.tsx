@@ -30,7 +30,8 @@ export default async function OfertaPage({ params, searchParams }: { params: { a
   if (!p) redirect("/invierte");
   const desde = desdeId ? (p.oferta?.id === desdeId ? p.oferta : p.cierre?.id === desdeId ? p.cierre : null) : null;
   const ronda = desde ? rondaDesde(desde) : null;
-  if (desdeId && (!desde || !ronda || (ronda.tipo !== "contra" && ronda.tipo !== "tardia_contra"))) redirect(urlDepto(avisoId));
+  // La visita (24-nov-2026): «Ajustar el precio con lo que viste» desde la aceptada, con el piso del rango recalculado.
+  if (desdeId && (!desde || !ronda || (ronda.tipo !== "contra" && ronda.tipo !== "tardia_contra" && ronda.tipo !== "ajustar"))) redirect(urlDepto(avisoId));
   const o = desde ?? p.oferta;
   if (p.etapa !== "listo" || !puedeOfertar(p.preaprobacion) || !o || (!desde && o.estado !== "borrador")) redirect(urlDepto(avisoId));
   const cfg = await leerConfigRango(admin);
