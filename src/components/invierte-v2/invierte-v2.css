@@ -1384,7 +1384,6 @@
 .iv2-rv-cab { display: flex; flex-direction: column; gap: 6px; }
 .iv2-rv-t { margin: 0; font-size: 22px; line-height: 1.25; font-weight: 700; color: #141414; overflow-wrap: anywhere; }
 .iv2-rv-sub { margin: 0; font-size: 14px; line-height: 1.45; color: #3A3A3F; }
-.iv2-rv-fotos { margin: 0; font-size: 13px; color: #5A5A5F; }
 .iv2-rv-precio { display: flex; flex-direction: column; gap: 10px; padding: 16px; border-radius: 16px; background: #EEF2F8; }
 .iv2-rv-cifras { display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap; }
 .iv2-rv-cifras > div { display: flex; flex-direction: column; gap: 2px; }
@@ -1402,3 +1401,11 @@
 @media (min-width: 1024px) {
   .iv2-con-pc .iv2-cuerpo.iv2-formulario .iv2-fo.iv2-fo-firme .iv2-acciones { position: sticky; bottom: 0; z-index: 2; background: #FFFFFF; padding: 8px 0 4px; }
 }
+
+/* Las fotos del reporte de la visita (24-nov-2026): la tira de miniaturas, completas (contain), que abren el visor. */
+.iv2-rv-fotos { display: flex; flex-direction: column; gap: 8px; }
+.iv2-rv-fotos-l { margin: 0; font-size: 13px; color: #5A5A5F; }
+.iv2-rv-tira { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.iv2-rv-mini { position: relative; display: block; width: 100%; aspect-ratio: 1 / 1; min-height: 44px; padding: 0; border: 1px solid #E2E2E6; border-radius: 12px; overflow: hidden; background: #F4F4F6; cursor: pointer; }
+.iv2-rv-mini img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.iv2-rv-mas { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(20, 20, 20, 0.55); color: #FFFFFF; font-size: 16px; font-weight: 700; }

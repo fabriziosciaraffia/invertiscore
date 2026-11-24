@@ -27,7 +27,7 @@
 import { createServiceClient } from "../../src/lib/supabase/service";
 import { accionOfertaAdmin, firmarRonda, noGracias, retirarOferta } from "../../src/lib/invierte-v2/b4-servidor";
 import { asegurarRango, firmarOferta } from "../../src/lib/invierte-v2/rango-servidor";
-import { accionVisitaAdmin, confirmarEnFirme, pedirVisita } from "../../src/lib/invierte-v2/visita-servidor";
+import { accionVisitaAdmin, borrarFotosVisitas, confirmarEnFirme, pedirVisita } from "../../src/lib/invierte-v2/visita-servidor";
 import { rondaDesde } from "../../src/lib/invierte-v2/b4-servidor";
 import { ofertaDeFila } from "../../src/lib/invierte-v2/rango-servidor";
 import { visitaParaRonda } from "../../src/lib/invierte-v2/visita-lectura";
@@ -75,6 +75,7 @@ function limpiar(m: Marca | null = marcaActual): Promise<void> {
     const ids = (creadas ?? []).map((x) => x.id as string);
     // Ofertas y visitas se apuntan entre sí, y una oferta en firme no puede soltar su visita (check y trigger): primero se suelta la visita
     // de su oferta, después se borran las ofertas y al final las visitas.
+    await borrarFotosVisitas(admin, QA);
     await admin.from("inv_visitas").update({ oferta_id: null }).eq("user_id", QA);
     if (ids.length) await admin.from("inv_ofertas").update({ anterior_id: null, sugerida_uf: null, sugerida_visita_id: null }).in("id", ids);
     if (ids.length) await admin.from("inv_ofertas").delete().in("id", ids);
@@ -108,6 +109,9 @@ async function cortarSiToca(paso: number): Promise<void> {
 async function verificarLimpio(m: Marca | null): Promise<boolean> {
   if (!m) return true;
   const [quedan, { data: d1 }] = await Promise.all([restos(), admin.from("inv_deptos").select("etapa").eq("id", m.deptoId).single()]);
+  // Las fotos de las visitas de la cuenta de QA también se van del bucket.
+  const { data: carpetas } = await admin.storage.from("invierte").list(`visitas/${QA}`);
+  if ((carpetas ?? []).length) quedan.push(`${(carpetas ?? []).length} carpeta(s) de fotos de visitas en el bucket`);
   const ok = !quedan.length && (m.etapa == null || d1?.etapa === m.etapa);
   espera(ok, "limpieza: no quedó la marca, ninguna oferta de la cuenta de QA ni la preaprobación de prueba, y el depto volvió a su etapa", { quedan, etapa: d1?.etapa, esperada: m.etapa });
   return ok;
@@ -133,6 +137,7 @@ function espera(cond: boolean, paso: string, detalle: unknown) { if (cond) ok(pa
 /** Empieza otra vuelta desde cero en el mismo depto de prueba: sin ofertas ni visitas de la cuenta de QA, y el depto en «listo». Ofertas y
  *  visitas se apuntan entre sí, y una oferta en firme no puede soltar su visita: primero se suelta la visita de su oferta. */
 async function otraVuelta(): Promise<void> {
+  await borrarFotosVisitas(admin, QA);
   await admin.from("inv_visitas").update({ oferta_id: null }).eq("user_id", QA);
   await admin.from("inv_ofertas").update({ anterior_id: null, sugerida_uf: null, sugerida_visita_id: null }).eq("user_id", QA);
   const { error } = await admin.from("inv_ofertas").delete().eq("user_id", QA);
@@ -276,7 +281,16 @@ async function main(): Promise<number> {
 
     // 15 · Agendar y publicar el reporte con un arreglo que no se veía en las fotos (admin): el rango baja y lo que sugiere Franco también.
     const ag = await accionVisitaAdmin(admin, ADMIN, { accion: "visita_agendar", visitaId: v1!.id, fecha: new Date().toISOString().slice(0, 10) }, null);
-    const pb = await accionVisitaAdmin(admin, ADMIN, { accion: "visita_reporte", visitaId: v1!.id, puntos: [{ tema: "Baños", texto: "Filtración en el cielo del baño: hay que repararla.", arreglo: true, enFotos: false }, { tema: "Cocina", texto: "En buen estado.", arreglo: false }], fecha: new Date().toISOString().slice(0, 10) }, null);
+    // Las fotos de la visita: dos URLs firmadas por foto (la original y su copia liviana), una foto que no es de aquí se rechaza.
+    const JPG = Buffer.from("/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAAMCAgICAgMCAgIDAwMDBAYEBAQEBAgGBgUGCQgKCgkICQkKDA8MCgsOCwkJDRENDg8QEBEQCgwSExIQEw8QEBD/yQALCAABAAEBAREA/8wABgAQEAX/2gAIAQEAAD8A0s8g/9k=", "base64");
+    const sub = await accionVisitaAdmin(admin, ADMIN, { accion: "visita_fotos_subida", visitaId: v1!.id, archivos: [{ mime: "image/jpeg", bytes: JPG.length }, { mime: "image/jpeg", bytes: JPG.length }] }, null) as { ok: boolean; fotos?: { path: string; token: string; mini: string; tokenMini: string }[] };
+    for (const u of sub.fotos ?? []) { await admin.storage.from("invierte").uploadToSignedUrl(u.path, u.token, JPG, { contentType: "image/jpeg" }); await admin.storage.from("invierte").uploadToSignedUrl(u.mini, u.tokenMini, JPG, { contentType: "image/jpeg" }); }
+    const ajena = await accionVisitaAdmin(admin, ADMIN, { accion: "visita_reporte", visitaId: v1!.id, puntos: [{ tema: "Baños", texto: "x", arreglo: false }], fotos: [{ path: "visitas/otra/persona.jpg", mini: "visitas/otra/persona-mini.jpg" }] }, null);
+    const pb = await accionVisitaAdmin(admin, ADMIN, { accion: "visita_reporte", visitaId: v1!.id, puntos: [{ tema: "Baños", texto: "Filtración en el cielo del baño: hay que repararla.", arreglo: true, enFotos: false }, { tema: "Cocina", texto: "En buen estado.", arreglo: false }], fecha: new Date().toISOString().slice(0, 10), fotos: (sub.fotos ?? []).map((u) => ({ path: u.path, mini: u.mini })) }, null);
+    const { data: fv } = await admin.from("inv_visitas").select("reporte").eq("id", v1!.id).single();
+    const fotosGuardadas = ((fv?.reporte as { fotos?: unknown[] } | null)?.fotos ?? []).length;
+    const { data: enBucket } = await admin.storage.from("invierte").list(`visitas/${QA}/${v1!.id}`);
+    espera(sub.ok && (sub.fotos ?? []).length === 2 && !ajena.ok && fotosGuardadas === 2 && (enBucket ?? []).length === 4, "15 · las fotos de la visita: subidas con su copia liviana y guardadas con el reporte; una foto ajena se rechaza", { sub: sub.ok, ajena, fotosGuardadas, enBucket: (enBucket ?? []).length });
     const o6c = await oferta(o6.id as string);
     const { data: v1b } = await admin.from("inv_visitas").select("*").eq("id", v1!.id).single();
     espera(ag.ok && pb.ok && v1b?.estado === "reporte_publicado" && v1b.reporte_estado === "arreglos_menores" && (v1b.reporte_arreglos as string[]).length === 1 && Number(o6c.sugerida_uf) < Number(o6a.sugerida_uf) && o6c.sugerida_visita_id === v1!.id, "15 · el reporte con un arreglo baja lo que sugiere Franco, con la visita de respaldo", { ag, pb, v: v1b?.estado, antes: o6a.sugerida_uf, ahora: o6c.sugerida_uf });

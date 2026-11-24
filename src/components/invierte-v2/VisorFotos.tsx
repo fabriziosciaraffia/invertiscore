@@ -32,7 +32,10 @@ export function cuentaSana(i: number, n: number, rotas: ReadonlySet<number>): { 
 
 const distancia = (t: TouchEvent["touches"]) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
 
-export function VisorFotos({ avisoId, n, inicio = 0, titulo = null, alCerrar }: { avisoId: string; n: number; inicio?: number; titulo?: string | null; alCerrar: () => void }) {
+// Las fotos de la visita (24-nov-2026) usan el mismo visor: `src` da la foto grande y `mini` la miniatura (su copia liviana).
+export function VisorFotos({ avisoId, n, inicio = 0, titulo = null, alCerrar, src, mini }: { avisoId: string; n: number; inicio?: number; titulo?: string | null; alCerrar: () => void; src?: (i: number) => string; mini?: (i: number) => string }) {
+  const grande = src ?? ((k: number) => urlFoto(avisoId, k));
+  const chica = mini ?? grande;
   const [i, setI] = useState(Math.min(Math.max(0, inicio), Math.max(0, n - 1)));
   const [rotas, setRotas] = useState<Set<number>>(() => new Set());
   const [zoom, setZoom] = useState({ s: 1, x: 0, y: 0 });
@@ -101,7 +104,7 @@ export function VisorFotos({ avisoId, n, inicio = 0, titulo = null, alCerrar }: 
       <div className="iv2-visor-escena" data-fondo="1" onTouchStart={toqueIni} onTouchMove={toqueMueve} onTouchEnd={toqueFin}>
         {ninguna ? <p className="iv2-visor-ninguna">{VISOR_COPY.ninguna}</p> : (
           // eslint-disable-next-line @next/next/no-img-element -- la sirve la ruta propia; completa, sin recortar (object-fit: contain)
-          <img key={i} src={urlFoto(avisoId, i)} alt={VISOR_COPY.foto(c.k, c.total)} className="iv2-visor-img" data-inv2="visor-img" draggable={false}
+          <img key={i} src={grande(i)} alt={VISOR_COPY.foto(c.k, c.total)} className="iv2-visor-img" data-inv2="visor-img" draggable={false}
             style={zoom.s > 1 ? { transform: `translate(${zoom.x}px, ${zoom.y}px) scale(${zoom.s})` } : undefined}
             onError={() => romper(i)} onLoad={(e) => { if (e.currentTarget.naturalWidth <= 1) romper(i); }}
             onDoubleClick={() => setZoom((z) => (z.s > 1 ? { s: 1, x: 0, y: 0 } : { s: 2, x: 0, y: 0 }))} />
@@ -115,7 +118,7 @@ export function VisorFotos({ avisoId, n, inicio = 0, titulo = null, alCerrar }: 
             {Array.from({ length: n }, (_, k) => k).filter((k) => !rotas.has(k)).map((k) => (
               <button key={k} type="button" className="iv2-visor-mini" aria-label={VISOR_COPY.foto(cuentaSana(k, n, rotas).k, c.total)} aria-current={k === i ? "true" : undefined} onClick={() => { setI(k); setZoom({ s: 1, x: 0, y: 0 }); }}>
                 {/* eslint-disable-next-line @next/next/no-img-element -- miniatura: la misma foto, cargada recién al abrir el visor */}
-                <img src={urlFoto(avisoId, k)} alt="" onError={() => romper(k)} onLoad={(e) => { if (e.currentTarget.naturalWidth <= 1) romper(k); }} />
+                <img src={chica(k)} alt="" onError={() => romper(k)} onLoad={(e) => { if (e.currentTarget.naturalWidth <= 1) romper(k); }} />
               </button>
             ))}
           </div>

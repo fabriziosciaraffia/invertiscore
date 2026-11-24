@@ -70,7 +70,8 @@ import { VISITA_COPY, ajusteSugerido, conArreglo, naceEnFirme, puntosVisita, ran
 import { VERSION_TEXTO_OFERTA_EN_FIRME, textoOferta as textoOferta34 } from "../../../src/lib/invierte-v2/oferta-documento";
 import { marcarComunicada } from "../../../src/lib/invierte-v2/b4-servidor";
 import { visitaMuestra } from "../../../src/lib/invierte-v2/muestra-visita";
-import { confirmarEnFirme, lineaPorDefecto, limpiarPuntos, ACCIONES_VISITA_ADMIN } from "../../../src/lib/invierte-v2/visita-servidor";
+import { confirmarEnFirme, lineaPorDefecto, limpiarFotos, limpiarPuntos, ACCIONES_VISITA_ADMIN } from "../../../src/lib/invierte-v2/visita-servidor";
+import { MAX_FOTOS_VISITA, carpetaFotosVisita, validarFotoVisita } from "../../../src/lib/invierte-v2/visita";
 import { puedeRecibirCopia } from "../../../src/lib/invierte-v2/copias-servidor";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -1953,6 +1954,20 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
         const of35 = codigo("src/components/invierte-v2/OfertaForm.tsx");
         if (!/<span className="iv2-sr" id="iv2-of-rec">\{O\.rotulo\}<\/span>/.test(of35) || !/etiqueta=\{O\.tuChip\}/.test(of35)) F("35 · la oferta vuelve a mostrar «Franco recomienda» bajo el título, o el chip de la barra repite el monto (9 y 11)");
         if (!/: pre\.estado === "en_revision" \? "En revisión"/.test(codigo("src/app/invierte/documentos/page.tsx"))) F("35 · Mis documentos vuelve a «Recibimos tu preaprobación» junto a la fila (14)");
+        // ── 36 · LAS FOTOS DE LA VISITA (24-nov-2026, decisión de Fabrizio): hasta 12, de hasta 10 MB, JPEG, PNG o WEBP; cada una con su
+        // copia liviana (la misma foto completa, achicada, sin recortar ni filtrar); solo la persona dueña de la visita las ve.
+        if (MAX_FOTOS_VISITA !== 12 || !validarFotoVisita({ mime: "image/jpeg", bytes: 10 * 1024 * 1024 }).ok || validarFotoVisita({ mime: "image/jpeg", bytes: 10 * 1024 * 1024 + 1 }).ok || validarFotoVisita({ mime: "image/heic", bytes: 100 }).ok || !validarFotoVisita({ mime: "image/webp", bytes: 100 }).ok || !validarFotoVisita({ mime: "image/png", bytes: 100 }).ok) F("36a · los límites de las fotos no son los decididos (12, 10 MB, JPEG/PNG/WEBP)");
+        const c36 = carpetaFotosVisita("u36", "v36");
+        const f36 = limpiarFotos([{ path: `${c36}a.jpg`, mini: `${c36}a-mini.jpg` }], "u36", "v36");
+        if (f36?.length !== 1 || limpiarFotos([{ path: "visitas/otra/a.jpg", mini: `${c36}a-mini.jpg` }], "u36", "v36") !== null || limpiarFotos([{ path: `${c36}../x.jpg`, mini: `${c36}m.jpg` }], "u36", "v36") !== null || limpiarFotos(Array.from({ length: 13 }, (_, i) => ({ path: `${c36}${i}.jpg`, mini: `${c36}${i}m.jpg` })), "u36", "v36") !== null) F("36b · el reporte acepta fotos que no son de la carpeta de esa visita, con «..» o más de 12");
+        const vs36 = codigo("src/lib/invierte-v2/visita-servidor.ts");
+        if (!/const fotos = limpiarFotos\(b\.fotos, vf\.user_id as string, visitaId\);\s*if \(fotos == null\) return \{ ok: false, error: "datos" \};/.test(vs36) || !/reporte: \{ puntos, fotos, delta,/.test(vs36)) F("36b · publicar el reporte no guarda las fotos validadas");
+        const ruta36 = codigo("src/app/api/invierte-v2/foto-visita/route.ts");
+        if (!/if \(!v \|\| v\.user_id !== user\.id \|\| v\.estado !== "reporte_publicado"\) return NO_EXISTE\(\);/.test(ruta36) || !/if \(!ruta \|\| !ruta\.startsWith\(carpetaFotosVisita\(user\.id, visitaId\)\)\) return NO_EXISTE\(\);/.test(ruta36) || !/createSignedUrl\(ruta, 60\)/.test(ruta36)) F("36c · la ruta de las fotos se las entrega a alguien que no es la dueña de la visita, o sin el reporte publicado");
+        const va36 = codigo("src/app/admin/invierte-v2/visita-admin.tsx");
+        if (!/const k = Math\.min\(1, LADO_MINI_VISITA \/ Math\.max\(img\.width, img\.height\)\);/.test(va36) || !/drawImage\(img, 0, 0, c\.width, c\.height\)/.test(va36) || !/uploadToSignedUrl\(u\.path, u\.token, f, \{ contentType: f\.type \}\)/.test(va36)) F("36d · la copia liviana recorta o no conserva la foto completa, o la original no se sube tal cual");
+        if (!/\.iv2-rv-mini img \{ width: 100%; height: 100%; object-fit: contain;/.test(leer("src/components/invierte-v2/invierte-v2.css")) || !/src=\{\(k\) => url\(k\)\} mini=\{\(k\) => url\(k, true\)\}/.test(codigo("src/components/invierte-v2/FotosVisita.tsx"))) F("36e · las miniaturas recortan, o el visor no abre la foto original");
+        if (!/await borrarFotosVisitas\(admin, user\.id\);/.test(codigo("src/app/api/account/request-deletion/route.ts"))) F("36f · al pedir la eliminación de la cuenta las fotos de las visitas quedan en el bucket");
         // 32h · El reporte del admin: los puntos se limpian; la línea por defecto es el primer arreglo nuevo o «coincide».
         const lp32 = limpiarPuntos([{ tema: " Baños ", texto: "Filtración en el cielo: hay que repararla.", arreglo: true, enFotos: false }, { tema: "", texto: "x" }, { tema: "Ruido", texto: "Silencioso", arreglo: false, enFotos: true }]);
         if (!lp32 || lp32.length !== 2 || lp32[0].tema !== "Baños" || lp32[1].enFotos || lineaPorDefecto(lp32, "arreglos_menores") !== "Filtración en el cielo" || lineaPorDefecto(lp32, "coincide") !== "El estado coincide con las fotos" || limpiarPuntos([]) !== null) F("32h · los puntos del reporte o su línea por defecto no se arman bien");

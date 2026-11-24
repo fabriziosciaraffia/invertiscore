@@ -20,6 +20,26 @@ export type EstadoReporte = "coincide" | "arreglos_menores" | "remodelacion";
 /** Un punto de lo que se revisó: el tema («Baños»), lo que se vio, si es un arreglo concreto y si ya se veía en las fotos. */
 export interface PuntoVisita { tema: string; texto: string; arreglo: boolean; enFotos: boolean }
 
+// ── LAS FOTOS DE LA VISITA (24-nov-2026, decisión de Fabrizio): las sube el admin en la tarjeta del reporte; cada una con una copia
+// liviana para las miniaturas, la misma foto completa, sin recortar ni filtrar. Hasta 12, de hasta 10 MB, JPEG, PNG o WEBP. Se guardan en
+// el bucket privado «invierte» y se ven por /api/invierte-v2/foto-visita (solo la persona dueña de la visita).
+export interface FotoVisita { path: string; mini: string }
+export const MAX_FOTOS_VISITA = 12;
+export const MAX_BYTES_FOTO_VISITA = 10 * 1024 * 1024;
+export const TIPOS_FOTO_VISITA = ["image/jpeg", "image/png", "image/webp"] as const;
+/** El lado más largo de la copia liviana (la misma foto, achicada; nunca recortada). */
+export const LADO_MINI_VISITA = 640;
+export const URL_FOTO_VISITA = "/api/invierte-v2/foto-visita";
+export const urlFotoVisita = (visitaId: string, i: number, mini = false) => `${URL_FOTO_VISITA}?visita=${encodeURIComponent(visitaId)}&i=${i}${mini ? "&mini=1" : ""}`;
+/** ¿Se puede subir? Tipo y peso (el bucket además corta en 15 MB). */
+export function validarFotoVisita(f: { mime: string; bytes: number }): { ok: true } | { ok: false; error: "tipo" | "tamano" } {
+  if (!(TIPOS_FOTO_VISITA as readonly string[]).includes(f.mime)) return { ok: false, error: "tipo" };
+  if (!(f.bytes > 0) || f.bytes > MAX_BYTES_FOTO_VISITA) return { ok: false, error: "tamano" };
+  return { ok: true };
+}
+/** La carpeta de las fotos de una visita: una ruta que no sea de aquí no se acepta en el reporte. */
+export const carpetaFotosVisita = (userId: string, visitaId: string) => `visitas/${userId}/${visitaId}/`;
+
 /** Lo que la oferta y la página necesitan saber de la visita del depto. */
 export interface VisitaResumen {
   id: string;
@@ -30,7 +50,7 @@ export interface VisitaResumen {
   reporteLinea: string | null;
   arreglos: string[];
   puntos: PuntoVisita[];
-  fotos: string[];
+  fotos: FotoVisita[];
   /** Cuántos puntos de rebaja sumó la visita (0 si coincide o si sus arreglos ya se veían en las fotos). */
   delta: number;
   /** El rango después de la visita (igual al de antes si no sumó puntos). */

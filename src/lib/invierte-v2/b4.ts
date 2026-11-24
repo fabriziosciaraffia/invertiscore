@@ -112,6 +112,8 @@ export const MOTIVOS_ADMIN_OFERTA: Record<string, string> = {
   otra_viva: "La persona tiene otra oferta viva: tiene que elegir con cuál se queda.",
   // La visita (24-nov-2026).
   confirmacion: "Falta la confirmación explícita de la persona.",
+  tipo: "Esa foto no se puede subir: solo JPEG, PNG o WEBP.",
+  tamano: "Esa foto pesa más de 10 MB.",
 };
 export const motivoAdminOferta = (codigo: string | null | undefined) => MOTIVOS_ADMIN_OFERTA[codigo ?? ""] ?? `No se guardó: ${codigo ?? "motivo desconocido"} (quedó en Sentry).`;
 

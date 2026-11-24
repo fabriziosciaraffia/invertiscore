@@ -8,7 +8,18 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motivoAdminOferta } from "@/lib/invierte-v2/b4";
 import type { OfertaVista } from "@/lib/invierte-v2/rango-servidor";
-import type { PuntoVisita, VisitaResumen } from "@/lib/invierte-v2/visita";
+import { LADO_MINI_VISITA, MAX_FOTOS_VISITA, TIPOS_FOTO_VISITA, validarFotoVisita, type FotoVisita, type PuntoVisita, type VisitaResumen } from "@/lib/invierte-v2/visita";
+import { createClient } from "@/lib/supabase/client";
+
+/** La copia liviana: la misma foto completa, achicada a LADO_MINI_VISITA en su lado más largo (sin recortar ni filtrar), en JPEG. */
+async function copiaLiviana(f: File): Promise<Blob> {
+  const img = await createImageBitmap(f);
+  const k = Math.min(1, LADO_MINI_VISITA / Math.max(img.width, img.height));
+  const c = document.createElement("canvas");
+  c.width = Math.max(1, Math.round(img.width * k)); c.height = Math.max(1, Math.round(img.height * k));
+  c.getContext("2d")!.drawImage(img, 0, 0, c.width, c.height);
+  return await new Promise<Blob>((ok, mal) => c.toBlob((b) => (b ? ok(b) : mal(new Error("sin copia"))), "image/jpeg", 0.82));
+}
 
 const CLASE_BTN = "rounded-full border border-[var(--franco-border)] px-3 py-1 font-body text-[12px] text-[var(--franco-text)] disabled:opacity-50";
 const CAMPO = "rounded-md border border-[var(--franco-border)] bg-[var(--franco-card)] px-2 py-1 font-body text-[13px] text-[var(--franco-text)]";
@@ -35,6 +46,32 @@ export function VisitaAdmin({ o, v, arreglosFotos }: { o: OfertaVista; v: Visita
   const [remodelacion, setRemodelacion] = useState(false);
   const [linea, setLinea] = useState("");
   const [fecha, setFecha] = useState(hoy());
+  // Las fotos de la visita (24-nov-2026): se suben al elegirlas (la original y su copia liviana) y van con «Publicar reporte».
+  const [fotos, setFotos] = useState<(FotoVisita & { nombre: string })[]>([]);
+  const [subiendo, setSubiendo] = useState(false);
+  async function subirFotos(lista: FileList | null) {
+    if (!lista || !v) return;
+    const archivos = Array.from(lista).slice(0, MAX_FOTOS_VISITA - fotos.length);
+    const mala = archivos.find((f) => !validarFotoVisita({ mime: f.type, bytes: f.size }).ok);
+    if (mala) { setEstado(`«${mala.name}» no se puede subir: solo JPEG, PNG o WEBP de hasta 10 MB.`); return; }
+    if (!archivos.length) { setEstado(`Ya hay ${MAX_FOTOS_VISITA} fotos: es el máximo.`); return; }
+    setSubiendo(true); setEstado(null);
+    const r = await fetch("/api/admin/invierte-v2", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ accion: "visita_fotos_subida", visitaId: v.id, archivos: archivos.map((f) => ({ mime: f.type, bytes: f.size })) }) }).catch(() => null);
+    const d = r ? ((await r.json().catch(() => ({}))) as { error?: string; fotos?: { path: string; token: string; mini: string; tokenMini: string }[] }) : null;
+    if (!r?.ok || !d?.fotos) { setSubiendo(false); setEstado(motivoAdminOferta(d?.error ?? "red")); return; }
+    const sb = createClient().storage.from("invierte");
+    const nuevas: (FotoVisita & { nombre: string })[] = [];
+    for (let i = 0; i < archivos.length; i++) {
+      const f = archivos[i], u = d.fotos[i];
+      try {
+        const [a, b] = await Promise.all([sb.uploadToSignedUrl(u.path, u.token, f, { contentType: f.type }), copiaLiviana(f).then((m) => sb.uploadToSignedUrl(u.mini, u.tokenMini, m, { contentType: "image/jpeg" }))]);
+        if (a.error || b.error) throw new Error(a.error?.message ?? b.error?.message);
+        nuevas.push({ path: u.path, mini: u.mini, nombre: f.name });
+      } catch { setEstado(`No se pudo subir «${f.name}». Prueba de nuevo.`); }
+    }
+    setFotos((x) => [...x, ...nuevas]);
+    setSubiendo(false);
+  }
   async function enviar(cuerpo: Record<string, unknown>) {
     setOcupado(true); setEstado(null);
     const x = await llamar(cuerpo);
@@ -81,8 +118,18 @@ export function VisitaAdmin({ o, v, arreglosFotos }: { o: OfertaVista; v: Visita
             <label className="text-[12px]"><input type="checkbox" checked={remodelacion} onChange={(e) => setRemodelacion(e.target.checked)} /> Necesita remodelación</label>
             <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} aria-label="Fecha de la visita" className={CAMPO} />
           </span>
+          <span className="flex flex-wrap items-center gap-2" data-admin="inv2-fotos-visita">
+            <label className={CLASE_BTN}>
+              <input type="file" accept={TIPOS_FOTO_VISITA.join(",")} multiple className="sr-only" disabled={subiendo || fotos.length >= MAX_FOTOS_VISITA} onChange={(e) => { void subirFotos(e.target.files); e.target.value = ""; }} />
+              {subiendo ? "Subiendo fotos…" : "Subir fotos de la visita"}
+            </label>
+            <span className="text-[12px]">{fotos.length} de {MAX_FOTOS_VISITA} · JPEG, PNG o WEBP de hasta 10 MB · se muestran tal como se suben</span>
+            {fotos.map((f, i) => (
+              <button key={f.path} type="button" className={CLASE_BTN} onClick={() => setFotos((x) => x.filter((_, j) => j !== i))} title="Quitar esta foto">{f.nombre} ✕</button>
+            ))}
+          </span>
           <input value={linea} onChange={(e) => setLinea(e.target.value)} aria-label="La línea que ve la persona" placeholder="La línea que ve la persona (vacía: el primer arreglo, o «El estado coincide con las fotos»)" className={`${CAMPO} min-w-[320px]`} />
-          <span><button type="button" className={CLASE_BTN} disabled={ocupado || !puntos.some((p) => p.tema.trim() && p.texto.trim())} onClick={() => void enviar({ accion: "visita_reporte", visitaId: v!.id, puntos: puntos.filter((p) => p.tema.trim() && p.texto.trim()), remodelacion, linea, fecha })} data-admin="inv2-publicar-reporte">{ocupado ? "Publicando…" : "Publicar reporte"}</button></span>
+          <span><button type="button" className={CLASE_BTN} disabled={ocupado || subiendo || !puntos.some((p) => p.tema.trim() && p.texto.trim())} onClick={() => void enviar({ accion: "visita_reporte", visitaId: v!.id, puntos: puntos.filter((p) => p.tema.trim() && p.texto.trim()), remodelacion, linea, fecha, fotos: fotos.map((f) => ({ path: f.path, mini: f.mini })) })} data-admin="inv2-publicar-reporte">{ocupado ? "Publicando…" : "Publicar reporte"}</button></span>
         </div>
       )}
       {estado && <span className="text-[12px] text-[var(--signal-red)]" role="alert">{estado}</span>}

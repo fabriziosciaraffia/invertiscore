@@ -8,6 +8,7 @@
 import Link from "next/link";
 import { VISITA_COPY as VC, tituloReporte, type VisitaResumen } from "@/lib/invierte-v2/visita";
 import { diaMes } from "@/lib/invierte-v2/depto-flujo";
+import { FotosVisita } from "./FotosVisita";
 
 const uf0 = (n: number) => `UF ${Math.round(n).toLocaleString("es-CL")}`;
 
@@ -18,7 +19,7 @@ function razon(v: VisitaResumen): string {
   return VC.unPuntoMas(n === 1 ? "el arreglo que no se veía en las fotos" : "los arreglos que no se veían en las fotos");
 }
 
-export function ReporteVisita({ v, volverA, aceptada }: { v: VisitaResumen; volverA: string; aceptada: boolean }) {
+export function ReporteVisita({ v, volverA, aceptada, muestraFotos = null }: { v: VisitaResumen; volverA: string; aceptada: boolean; muestraFotos?: string[] | null }) {
   const cambia = v.delta > 0 && v.sugeridaAntesUF != null && v.sugeridaDespuesUF != null && v.sugeridaDespuesUF !== v.sugeridaAntesUF;
   const sub = v.reporteEstado === "coincide" ? VC.reporteSinCambio : `${(v.reporteLinea ?? "").replace(/\.$/, "")}.`;
   return (
@@ -28,7 +29,7 @@ export function ReporteVisita({ v, volverA, aceptada }: { v: VisitaResumen; volv
         <h1 className="iv2-rv-t" id="iv2-t">{tituloReporte(v)}</h1>
         <p className="iv2-rv-sub">{sub}</p>
       </section>
-      {v.fotos.length > 0 && <p className="iv2-rv-fotos" data-inv2="rv-fotos">{VC.fotosVisita(v.fotos.length)}</p>}
+      <FotosVisita visitaId={v.id} n={v.fotos.length} muestra={muestraFotos} />
       <section className="iv2-dp-tj" aria-labelledby="iv2-rv-reviso">
         <div className="iv2-dp-th"><h2 className="iv2-dp-th-t" id="iv2-rv-reviso">{VC.seReviso}</h2><span className="iv2-dp-th-n">{v.puntos.length}</span></div>
         <ul className="iv2-dp-filas-t">

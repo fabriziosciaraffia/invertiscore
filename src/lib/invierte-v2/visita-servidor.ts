@@ -9,8 +9,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { COLS_OFERTA, leerConfigRango, ofertaDeFila } from "./rango-servidor";
 import { REGLA_SUGERENCIA, sugerenciaFranco } from "./b4";
 import { avisarPersona, cerrarTareas, venceContraoferta, visitaParaRonda, type DepsAviso } from "./b4-servidor";
-import { anotar, type ContextoPedido } from "./servidor";
-import { VISITAS_ABIERTAS, ajusteSugerido, estadoDelReporte, puntosVisita, rangoTrasVisita, type EstadoReporte, type PuntoVisita } from "./visita";
+import { BUCKET_INVIERTE, anotar, type ContextoPedido } from "./servidor";
+import { MAX_FOTOS_VISITA, VISITAS_ABIERTAS, ajusteSugerido, carpetaFotosVisita, estadoDelReporte, puntosVisita, rangoTrasVisita, validarFotoVisita, type EstadoReporte, type FotoVisita, type PuntoVisita } from "./visita";
 
 const T_V = "inv_visitas", T_OF = "inv_ofertas";
 const COLS_V = "id, user_id, depto_id, oferta_id, estado, pedida_desde, agendada_para, visitada_at, reporte, reporte_estado, reporte_arreglos, reporte_linea, sugerida_antes_uf, sugerida_despues_uf, reporte_publicado_at, cancelada_motivo, es_prueba, created_at";
@@ -155,11 +155,14 @@ export function lineaPorDefecto(puntos: readonly PuntoVisita[], estado: EstadoRe
  *  rebaja de la visita (visita.ts › puntosVisita), el rango después de la visita y lo que sugiere Franco: con contraoferta, se recalcula
  *  y queda en la oferta con esta visita de respaldo (puede quedar bajo la oferta solo con un arreglo); aceptada, el ajuste sugerido. Le
  *  avisa a la persona (le toca decidir). */
-export async function publicarReporte(admin: SupabaseClient, quien: Quien, visitaId: string, b: { puntos?: unknown; remodelacion?: unknown; linea?: unknown; fecha?: unknown }, deps: DepsAviso | null, ahora: Date = new Date()): Promise<{ ok: true; delta: number; sugeridaUF: number | null } | { ok: false; error: ErrorVisita }> {
+export async function publicarReporte(admin: SupabaseClient, quien: Quien, visitaId: string, b: { puntos?: unknown; remodelacion?: unknown; linea?: unknown; fecha?: unknown; fotos?: unknown }, deps: DepsAviso | null, ahora: Date = new Date()): Promise<{ ok: true; delta: number; sugeridaUF: number | null } | { ok: false; error: ErrorVisita }> {
   const puntos = limpiarPuntos(b.puntos);
   if (!puntos) return { ok: false, error: "datos" };
   const { data: vf } = await admin.from(T_V).select(COLS_V).eq("id", visitaId).maybeSingle();
   if (!vf || !(VISITAS_ABIERTAS as readonly string[]).includes(vf.estado as string)) return { ok: false, error: "estado" };
+  // Las fotos que subió el admin: solo rutas de la carpeta de esta visita, como mucho 12, cada una con su copia liviana.
+  const fotos = limpiarFotos(b.fotos, vf.user_id as string, visitaId);
+  if (fotos == null) return { ok: false, error: "datos" };
   const fechaOk = typeof b.fecha === "string" && /^\d{4}-\d{2}-\d{2}$/.test(b.fecha) ? new Date(`${b.fecha}T12:00:00-03:00`) : ahora;
   if (fechaOk.getTime() > ahora.getTime() + 864e5) return { ok: false, error: "fecha" };
   // La oferta viva del depto (la contraoferta o la aceptada), no necesariamente la ronda que había cuando se pidió.
@@ -186,7 +189,7 @@ export async function publicarReporte(admin: SupabaseClient, quien: Quien, visit
   const iso = ahora.toISOString();
   const { error } = await admin.from(T_V).update({
     estado: "reporte_publicado", agendada_para: (vf.agendada_para as string | null) ?? fechaOk.toISOString(), visitada_at: fechaOk.toISOString(),
-    reporte: { puntos, fotos: [], delta, rango: { pisoUF: rango.pisoUF, altoUF: rango.altoUF, descuentoPct: rango.descuentoPct }, regla: REGLA_SUGERENCIA },
+    reporte: { puntos, fotos, delta, rango: { pisoUF: rango.pisoUF, altoUF: rango.altoUF, descuentoPct: rango.descuentoPct }, regla: REGLA_SUGERENCIA },
     reporte_estado: estado, reporte_arreglos: arreglos, reporte_linea: linea, sugerida_antes_uf: antes, sugerida_despues_uf: despues,
     reporte_publicado_at: iso, reporte_publicado_por: quien.id, oferta_id: f.id, updated_at: iso,
   }).eq("id", visitaId);
@@ -201,7 +204,55 @@ export async function publicarReporte(admin: SupabaseClient, quien: Quien, visit
   return { ok: true, delta, sugeridaUF: despues };
 }
 
-export const ACCIONES_VISITA_ADMIN = ["visita_mantener", "visita_agendar", "visita_reporte"] as const;
+// ── LAS FOTOS DE LA VISITA (24-nov-2026) ─────────────────────────────────────
+/** Las fotos del reporte, validadas: rutas dentro de la carpeta de esa visita (la original y su copia liviana), sin repetir, hasta 12.
+ *  null si alguna no es de aquí. */
+export function limpiarFotos(x: unknown, userId: string, visitaId: string): FotoVisita[] | null {
+  if (x == null) return [];
+  if (!Array.isArray(x) || x.length > MAX_FOTOS_VISITA) return null;
+  const carpeta = carpetaFotosVisita(userId, visitaId);
+  const fotos: FotoVisita[] = [];
+  for (const f of x as { path?: unknown; mini?: unknown }[]) {
+    const path = typeof f?.path === "string" ? f.path : "", mini = typeof f?.mini === "string" ? f.mini : "";
+    if (!path.startsWith(carpeta) || !mini.startsWith(carpeta) || path.includes("..") || mini.includes("..")) return null;
+    if (!fotos.some((g) => g.path === path)) fotos.push({ path, mini });
+  }
+  return fotos;
+}
+
+const EXT: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
+
+/** SUBIR LAS FOTOS (admin): por cada foto, dos URLs firmadas de un solo uso (la original y su copia liviana en JPEG), en la carpeta de la
+ *  visita. El navegador del admin sube directo al bucket; las rutas vuelven en «Publicar reporte». */
+export async function urlsSubidaFotos(admin: SupabaseClient, visitaId: string, archivos: unknown): Promise<{ ok: true; fotos: { path: string; token: string; mini: string; tokenMini: string }[] } | { ok: false; error: ErrorVisita | "tipo" | "tamano" }> {
+  if (!Array.isArray(archivos) || !archivos.length || archivos.length > MAX_FOTOS_VISITA) return { ok: false, error: "datos" };
+  const { data: v } = await admin.from(T_V).select("id, user_id, estado").eq("id", visitaId).maybeSingle();
+  if (!v || !(VISITAS_ABIERTAS as readonly string[]).includes(v.estado as string)) return { ok: false, error: "estado" };
+  const carpeta = carpetaFotosVisita(v.user_id as string, visitaId);
+  const fotos: { path: string; token: string; mini: string; tokenMini: string }[] = [];
+  for (const a of archivos as { mime?: unknown; bytes?: unknown }[]) {
+    const mime = String(a?.mime ?? ""), bytes = Number(a?.bytes);
+    const val = validarFotoVisita({ mime, bytes });
+    if (!val.ok) return { ok: false, error: val.error };
+    const base = `${carpeta}${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    const [o, m] = await Promise.all([admin.storage.from(BUCKET_INVIERTE).createSignedUploadUrl(`${base}.${EXT[mime]}`), admin.storage.from(BUCKET_INVIERTE).createSignedUploadUrl(`${base}-mini.jpg`)]);
+    if (o.error || m.error || !o.data || !m.data) return { ok: false, error: "guardar" };
+    fotos.push({ path: o.data.path, token: o.data.token, mini: m.data.path, tokenMini: m.data.token });
+  }
+  return { ok: true, fotos };
+}
+
+/** Al pedir la eliminación de la cuenta: las fotos de sus visitas salen del bucket. Devuelve cuántos archivos borró. */
+export async function borrarFotosVisitas(admin: SupabaseClient, userId: string): Promise<number> {
+  const { data } = await admin.from(T_V).select("reporte").eq("user_id", userId);
+  const rutas = ((data ?? []) as { reporte: { fotos?: FotoVisita[] } | null }[]).flatMap((v) => (v.reporte?.fotos ?? []).flatMap((f) => [f.path, f.mini])).filter((r): r is string => typeof r === "string" && r.startsWith(`visitas/${userId}/`));
+  if (!rutas.length) return 0;
+  const { error } = await admin.storage.from(BUCKET_INVIERTE).remove(rutas);
+  if (error) { console.error("[inv2] borrar fotos de visitas:", error.message); return 0; }
+  return rutas.length;
+}
+
+export const ACCIONES_VISITA_ADMIN = ["visita_mantener", "visita_agendar", "visita_reporte", "visita_fotos_subida"] as const;
 export const esAccionVisitaAdmin = (x: unknown): x is (typeof ACCIONES_VISITA_ADMIN)[number] => typeof x === "string" && (ACCIONES_VISITA_ADMIN as readonly string[]).includes(x);
 const uuid = (x: unknown) => (typeof x === "string" && /^[0-9a-f-]{36}$/i.test(x) ? x : null);
 
@@ -212,5 +263,6 @@ export async function accionVisitaAdmin(admin: SupabaseClient, quien: Quien, b: 
   const visitaId = uuid(b.visitaId);
   if (!visitaId) return { ok: false, error: "datos" };
   if (b.accion === "visita_agendar") return agendarVisita(admin, quien, visitaId, b.fecha);
-  return publicarReporte(admin, quien, visitaId, { puntos: b.puntos, remodelacion: b.remodelacion, linea: b.linea, fecha: b.fecha }, deps, ahora);
+  if (b.accion === "visita_fotos_subida") return urlsSubidaFotos(admin, visitaId, b.archivos);
+  return publicarReporte(admin, quien, visitaId, { puntos: b.puntos, remodelacion: b.remodelacion, linea: b.linea, fecha: b.fecha, fotos: b.fotos }, deps, ahora);
 }
