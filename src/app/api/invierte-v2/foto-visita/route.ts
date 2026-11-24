@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { BUCKET_INVIERTE } from "@/lib/invierte-v2/servidor";
 import { NO_EXISTE, personaConSesion } from "@/lib/invierte-v2/rutas";
-import { MAX_FOTOS_VISITA, carpetaFotosVisita } from "@/lib/invierte-v2/visita";
+import { MAX_FOTOS_VISITA, rutaFotoVisita } from "@/lib/invierte-v2/visita";
 
 // ───────────────────────────────────────────────────────────
 // GET /api/invierte-v2/foto-visita?visita=<uuid>&i=<n>[&mini=1] (24-nov-2026): una foto del reporte de la visita, o su copia liviana.
@@ -21,10 +21,8 @@ export async function GET(request: Request) {
   if (!user) return NO_EXISTE();
   const admin = createServiceClient();
   const { data: v } = await admin.from("inv_visitas").select("user_id, estado, reporte").eq("id", visitaId).maybeSingle();
-  if (!v || v.user_id !== user.id || v.estado !== "reporte_publicado") return NO_EXISTE();
-  const f = ((v.reporte as { fotos?: { path?: string; mini?: string }[] } | null)?.fotos ?? [])[i];
-  const ruta = q.get("mini") === "1" ? f?.mini : f?.path;
-  if (!ruta || !ruta.startsWith(carpetaFotosVisita(user.id, visitaId))) return NO_EXISTE();
+  const ruta = rutaFotoVisita(v, user.id, visitaId, i, q.get("mini") === "1");
+  if (!ruta) return NO_EXISTE();
   const { data, error } = await admin.storage.from(BUCKET_INVIERTE).createSignedUrl(ruta, 60);
   if (error || !data?.signedUrl) return NO_EXISTE();
   return NextResponse.redirect(data.signedUrl, { status: 302, headers: { "Cache-Control": "private, max-age=50" } });

@@ -16,6 +16,7 @@
 import { useEffect, useRef, useState, type TouchEvent } from "react";
 import { createPortal } from "react-dom";
 import { urlFoto } from "@/lib/invierte-v2/fotos";
+import { fotoSana } from "@/lib/invierte-v2/visita";
 
 export const VISOR_COPY = { cerrar: "Cerrar las fotos", anterior: "Foto anterior", siguiente: "Foto siguiente", foto: (k: number, n: number) => `Foto ${k} de ${n}`, abrir: "Ver las fotos en grande", ninguna: "No pudimos cargar las fotos.", gesto: "Desliza para pasar · pellizca para acercar" } as const;
 
@@ -106,7 +107,7 @@ export function VisorFotos({ avisoId, n, inicio = 0, titulo = null, alCerrar, sr
           // eslint-disable-next-line @next/next/no-img-element -- la sirve la ruta propia; completa, sin recortar (object-fit: contain)
           <img key={i} src={grande(i)} alt={VISOR_COPY.foto(c.k, c.total)} className="iv2-visor-img" data-inv2="visor-img" draggable={false}
             style={zoom.s > 1 ? { transform: `translate(${zoom.x}px, ${zoom.y}px) scale(${zoom.s})` } : undefined}
-            onError={() => romper(i)} onLoad={(e) => { if (e.currentTarget.naturalWidth <= 1) romper(i); }}
+            onError={() => romper(i)} onLoad={(e) => { if (!fotoSana(e.currentTarget.naturalWidth)) romper(i); }}
             onDoubleClick={() => setZoom((z) => (z.s > 1 ? { s: 1, x: 0, y: 0 } : { s: 2, x: 0, y: 0 }))} />
         )}
       </div>
@@ -118,7 +119,7 @@ export function VisorFotos({ avisoId, n, inicio = 0, titulo = null, alCerrar, sr
             {Array.from({ length: n }, (_, k) => k).filter((k) => !rotas.has(k)).map((k) => (
               <button key={k} type="button" className="iv2-visor-mini" aria-label={VISOR_COPY.foto(cuentaSana(k, n, rotas).k, c.total)} aria-current={k === i ? "true" : undefined} onClick={() => { setI(k); setZoom({ s: 1, x: 0, y: 0 }); }}>
                 {/* eslint-disable-next-line @next/next/no-img-element -- miniatura: la misma foto, cargada recién al abrir el visor */}
-                <img src={chica(k)} alt="" onError={() => romper(k)} onLoad={(e) => { if (e.currentTarget.naturalWidth <= 1) romper(k); }} />
+                <img src={chica(k)} alt="" onError={() => romper(k)} onLoad={(e) => { if (!fotoSana(e.currentTarget.naturalWidth)) romper(k); }} />
               </button>
             ))}
           </div>

@@ -31,6 +31,19 @@ import { accionVisitaAdmin, borrarFotosVisitas, confirmarEnFirme, pedirVisita } 
 import { rondaDesde } from "../../src/lib/invierte-v2/b4-servidor";
 import { ofertaDeFila } from "../../src/lib/invierte-v2/rango-servidor";
 import { visitaParaRonda } from "../../src/lib/invierte-v2/visita-lectura";
+import { fotoSana, rutaFotoVisita, urlFotoVisita } from "../../src/lib/invierte-v2/visita";
+
+/** El ancho de un JPEG, leído de su encabezado SOF (sin decodificar la imagen); 0 si no es un JPEG. */
+function anchoJpeg(b: Buffer): number {
+  if (b.length < 4 || b[0] !== 0xff || b[1] !== 0xd8) return 0;
+  for (let k = 2; k + 9 < b.length;) {
+    if (b[k] !== 0xff) return 0;
+    const m = b[k + 1];
+    if (m >= 0xc0 && m <= 0xcf && m !== 0xc4 && m !== 0xc8 && m !== 0xcc) return b.readUInt16BE(k + 7);
+    k += 2 + b.readUInt16BE(k + 2);
+  }
+  return 0;
+}
 
 const QA = "67977905-a84f-4ae5-8a08-28eb2d5d4b6f";
 const AVISO = "4f543801-000f-4d45-87b8-b245b4b014fb";
@@ -281,16 +294,28 @@ async function main(): Promise<number> {
 
     // 15 · Agendar y publicar el reporte con un arreglo que no se veía en las fotos (admin): el rango baja y lo que sugiere Franco también.
     const ag = await accionVisitaAdmin(admin, ADMIN, { accion: "visita_agendar", visitaId: v1!.id, fecha: new Date().toISOString().slice(0, 10) }, null);
-    // Las fotos de la visita: dos URLs firmadas por foto (la original y su copia liviana), una foto que no es de aquí se rechaza.
-    const JPG = Buffer.from("/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAAMCAgICAgMCAgIDAwMDBAYEBAQEBAgGBgUGCQgKCgkICQkKDA8MCgsOCwkJDRENDg8QEBEQCgwSExIQEw8QEBD/yQALCAABAAEBAREA/8wABgAQEAX/2gAIAQEAAD8A0s8g/9k=", "base64");
-    const sub = await accionVisitaAdmin(admin, ADMIN, { accion: "visita_fotos_subida", visitaId: v1!.id, archivos: [{ mime: "image/jpeg", bytes: JPG.length }, { mime: "image/jpeg", bytes: JPG.length }] }, null) as { ok: boolean; fotos?: { path: string; token: string; mini: string; tokenMini: string }[] };
-    for (const u of sub.fotos ?? []) { await admin.storage.from("invierte").uploadToSignedUrl(u.path, u.token, JPG, { contentType: "image/jpeg" }); await admin.storage.from("invierte").uploadToSignedUrl(u.mini, u.tokenMini, JPG, { contentType: "image/jpeg" }); }
+    // Las fotos de la visita: dos URLs firmadas por foto (la original y su copia liviana), una foto que no es de aquí se rechaza. Fotos de
+    // verdad, chicas (24-nov-2026, Fabrizio): la original de 160 × 120 y la copia liviana de 64 × 48; un JPEG de 1 × 1 el visor lo da por roto.
+    const ORIG = Buffer.from("/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDAA0JCgsKCA0LCgsODg0PEyAVExISEyccHhcgLikxMC4pLSwzOko+MzZGNywtQFdBRkxOUlNSMj5aYVpQYEpRUk//2wBDAQ4ODhMREyYVFSZPNS01T09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT0//wAARCAB4AKADASIAAhEBAxEB/8QAFwABAQEBAAAAAAAAAAAAAAAAAAECBf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/xAAXAQEBAQEAAAAAAAAAAAAAAAABAgQF/8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAwDAQACEQMRAD8A4IDqMQACABQoAgAUAAgAIAFCgCABTIDQxgAUKAIAFAAIACABQoAgAUAAsgNDIKAIAFAAIACABQoAgAUAAgAUyoNDGABQACAAgAUKAIAFAAIAFAAKANDIAAgAIAFCgCABQACABQACAoLIDQyAAIAFCgCABQACABQACAoIAFMgNDGABQoAgAUAAgAUAAgKCABQACyA0MgoAgAIAFAAIAFAAKgBQACABT//2Q==", "base64");
+    const MINI = Buffer.from("/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDAA0JCgsKCA0LCgsODg0PEyAVExISEyccHhcgLikxMC4pLSwzOko+MzZGNywtQFdBRkxOUlNSMj5aYVpQYEpRUk//2wBDAQ4ODhMREyYVFSZPNS01T09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT0//wAARCAAwAEADASIAAhEBAxEB/8QAFgABAQEAAAAAAAAAAAAAAAAAAAEF/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/EABcBAQEBAQAAAAAAAAAAAAAAAAIDBAX/xAAVEQEBAAAAAAAAAAAAAAAAAAABAP/aAAwDAQACEQMRAD8AwQV0lsgQAVqBAAWYRQFagUAVWgEABZhFAVqBABWYUAUWgEUBWoEAFZhFAFqBf//Z", "base64");
+    const sub = await accionVisitaAdmin(admin, ADMIN, { accion: "visita_fotos_subida", visitaId: v1!.id, archivos: [{ mime: "image/jpeg", bytes: ORIG.length }, { mime: "image/jpeg", bytes: ORIG.length }] }, null) as { ok: boolean; fotos?: { path: string; token: string; mini: string; tokenMini: string }[] };
+    for (const u of sub.fotos ?? []) { await admin.storage.from("invierte").uploadToSignedUrl(u.path, u.token, ORIG, { contentType: "image/jpeg" }); await admin.storage.from("invierte").uploadToSignedUrl(u.mini, u.tokenMini, MINI, { contentType: "image/jpeg" }); }
     const ajena = await accionVisitaAdmin(admin, ADMIN, { accion: "visita_reporte", visitaId: v1!.id, puntos: [{ tema: "Baños", texto: "x", arreglo: false }], fotos: [{ path: "visitas/otra/persona.jpg", mini: "visitas/otra/persona-mini.jpg" }] }, null);
     const pb = await accionVisitaAdmin(admin, ADMIN, { accion: "visita_reporte", visitaId: v1!.id, puntos: [{ tema: "Baños", texto: "Filtración en el cielo del baño: hay que repararla.", arreglo: true, enFotos: false }, { tema: "Cocina", texto: "En buen estado.", arreglo: false }], fecha: new Date().toISOString().slice(0, 10), fotos: (sub.fotos ?? []).map((u) => ({ path: u.path, mini: u.mini })) }, null);
     const { data: fv } = await admin.from("inv_visitas").select("reporte").eq("id", v1!.id).single();
     const fotosGuardadas = ((fv?.reporte as { fotos?: unknown[] } | null)?.fotos ?? []).length;
     const { data: enBucket } = await admin.storage.from("invierte").list(`visitas/${QA}/${v1!.id}`);
     espera(sub.ok && (sub.fotos ?? []).length === 2 && !ajena.ok && fotosGuardadas === 2 && (enBucket ?? []).length === 4, "15 · las fotos de la visita: subidas con su copia liviana y guardadas con el reporte; una foto ajena se rechaza", { sub: sub.ok, ajena, fotosGuardadas, enBucket: (enBucket ?? []).length });
+    // El visor abre la original: la dirección que pide el visor (urlFotoVisita sin «mini») lleva, por la misma función que usa la ruta, a la
+    // foto original —los mismos bytes que se subieron, 160 px de ancho, sana para el visor—; la miniatura, a la copia liviana; otra persona, a nada.
+    const { data: filaV } = await admin.from("inv_visitas").select("user_id, estado, reporte").eq("id", v1!.id).single();
+    const pideFoto = (mini: boolean) => { const q = new URL(urlFotoVisita(v1!.id, 0, mini), "http://x").searchParams; return rutaFotoVisita(filaV, QA, q.get("visita") ?? "", Number(q.get("i")), q.get("mini") === "1"); };
+    const bajar = async (ruta: string | null) => { if (!ruta) return Buffer.alloc(0); const { data: f } = await admin.storage.from("invierte").createSignedUrl(ruta, 60); return f?.signedUrl ? Buffer.from(await (await fetch(f.signedUrl)).arrayBuffer()) : Buffer.alloc(0); };
+    const rOrig = pideFoto(false), rMini = pideFoto(true);
+    const [bOrig, bMini] = await Promise.all([bajar(rOrig), bajar(rMini)]);
+    const anchos = { orig: anchoJpeg(bOrig), mini: anchoJpeg(bMini) };
+    espera(!!rOrig && !!rMini && rOrig !== rMini && bOrig.equals(ORIG) && bMini.equals(MINI) && anchos.orig === 160 && anchos.mini === 64 && fotoSana(anchos.orig) && fotoSana(anchos.mini) && !fotoSana(1) && rutaFotoVisita(filaV, "00000000-0000-0000-0000-000000000000", v1!.id, 0, false) === null,
+      "15 · el visor abre la original (160 px, los bytes subidos) y la miniatura su copia liviana (64 px); otra persona no ve nada", { rOrig, rMini, anchos, iguales: bOrig.equals(ORIG) });
     // Para probar en el navegador con una sesión real (QA, 24-nov-2026): con RECORRIDO_PAUSA_ARCHIVO, deja la visita publicada con sus fotos,
     // escribe en ese archivo la visita y el aviso, y espera hasta que alguien lo borre (máximo 10 minutos). Después sigue y limpia como siempre.
     if (process.env.RECORRIDO_PAUSA_ARCHIVO) {
@@ -311,7 +336,7 @@ async function main(): Promise<number> {
     const unaCasilla = ro16 ? await firmarRonda(admin, USER, AVISO, { desdeId: o6.id, montoUF: monto16, acepto: true, leyo: true }, null) : null;
     const pp = ro16 && ro16.minUF < Number(o6.monto_uf) ? await firmarRonda(admin, USER, AVISO, { desdeId: o6.id, montoUF: monto16, acepto: true, leyo: true, aceptoFirme: true }, null) : null;
     const o7 = await ultimaRonda(deptoId);
-    espera(unaCasilla?.ok === false && unaCasilla.error === "casilla" && !!pp?.ok && Number(o7.monto_uf) < Number(o6.monto_uf) && o7.visita_id === v1!.id && o7.estado === "firmada" && o7.sujeta_a_visita === false && o7.en_firme_confirmo === true && o7.texto_version === "borrador-a-firme-20261124", "16 · después de la visita la ronda nace en firme (con las dos casillas; con una sola, no se firma), con el reporte de respaldo", { unaCasilla, pp, o7: { m: o7.monto_uf, s: o7.sujeta_a_visita, v: o7.texto_version } });
+    espera(unaCasilla?.ok === false && unaCasilla.error === "casilla" && !!pp?.ok && Number(o7.monto_uf) < Number(o6.monto_uf) && o7.visita_id === v1!.id && o7.estado === "firmada" && o7.sujeta_a_visita === false && o7.en_firme_confirmo === true && o7.texto_version === "borrador-a-firme-20261124b", "16 · después de la visita la ronda nace en firme (con las dos casillas; con una sola, no se firma), con el reporte de respaldo", { unaCasilla, pp, o7: { m: o7.monto_uf, s: o7.sujeta_a_visita, v: o7.texto_version } });
 
     // 17 · Una oferta a firme no se retira mientras esté vigente: firmada ni presentada. Vence sola; otra oferta después, con la visita
     // publicada, también nace a firme.
@@ -347,7 +372,7 @@ async function main(): Promise<number> {
     await accionOfertaAdmin(admin, ADMIN, { accion: "oferta_presentar", ofertaId: o10.id }, null);
     await accionOfertaAdmin(admin, ADMIN, { accion: "oferta_respuesta", ofertaId: o10.id, tipo: "aceptada" }, null);
     const o10b = await oferta(o10.id as string);
-    espera(o10.sujeta_a_visita === true && o10.texto_version === "borrador-20261122" && o10b.estado === "aceptada_sujeta", "19 · antes de visitar la oferta nace sujeta a visita, y aceptada queda sujeta", { s: o10.sujeta_a_visita, e: o10b.estado });
+    espera(o10.sujeta_a_visita === true && o10.texto_version === "borrador-20261124" && o10b.estado === "aceptada_sujeta", "19 · antes de visitar la oferta nace sujeta a visita, y aceptada queda sujeta", { s: o10.sujeta_a_visita, e: o10b.estado });
 
     // 20 · Pedir la visita desde la aceptada y publicar el reporte: confirmarla sigue como estaba (solo con la confirmación explícita).
     const visitaDesdeAceptada = async (desdeId: string): Promise<string> => {

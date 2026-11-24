@@ -60,7 +60,7 @@ import { bloqueOfertaCifras, cifrasAPrecio, cifrasDeDepto } from "../../../src/l
 import { MOTOR_MUESTRA } from "../../../src/lib/invierte-v2/muestra-motor";
 import { sondaConPatch } from "../../../src/lib/analysis";
 import { numerosDe as numerosLectura } from "../../../src/lib/invierte-v2/lectura-franco";
-import { B4_COPY, OFERTAS_VIVAS, RETIRABLES, cierreDe, esRetirable, sePuedeRetirar, insistirDesde, lineaVence, sugerenciaFranco, sugerenciaValida, venceAlTerminar as venceAlTerminar28 } from "../../../src/lib/invierte-v2/b4";
+import { B4_COPY, OFERTAS_VIVAS, RETIRABLES, cierreDe, esRetirable, sePuedeRetirar, textoOtraFirme, insistirDesde, lineaVence, sugerenciaFranco, sugerenciaValida, venceAlTerminar as venceAlTerminar28 } from "../../../src/lib/invierte-v2/b4";
 import { ACCIONES_OFERTA_ADMIN, accionOfertaAdmin, avisarPersona, pasadaDeUnaOferta, pasadaManualPermitida, rondaDesde, registrarRespuesta } from "../../../src/lib/invierte-v2/b4-servidor";
 import { MOTIVOS_ADMIN_OFERTA, motivoAdminOferta, venceAlTerminarTexto } from "../../../src/lib/invierte-v2/b4";
 import { cuandoNoHayAcuerdo } from "../../../src/lib/invierte-v2/depto-flujo";
@@ -71,7 +71,7 @@ import { VERSION_TEXTO_OFERTA_EN_FIRME, textoOferta as textoOferta34 } from "../
 import { marcarComunicada } from "../../../src/lib/invierte-v2/b4-servidor";
 import { visitaMuestra } from "../../../src/lib/invierte-v2/muestra-visita";
 import { confirmarEnFirme, lineaPorDefecto, limpiarFotos, limpiarPuntos, ACCIONES_VISITA_ADMIN } from "../../../src/lib/invierte-v2/visita-servidor";
-import { MAX_FOTOS_VISITA, carpetaFotosVisita, validarFotoVisita } from "../../../src/lib/invierte-v2/visita";
+import { MAX_FOTOS_VISITA, carpetaFotosVisita, rutaFotoVisita, validarFotoVisita } from "../../../src/lib/invierte-v2/visita";
 import { puedeRecibirCopia } from "../../../src/lib/invierte-v2/copias-servidor";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -1407,7 +1407,7 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       const iNo = fq.indexOf("Firmar no te obliga a comprar"), iRes = fq.indexOf('data-inv2="resumen-oferta"');
       if (iNo < 0 || iRes < 0 || iNo > iRes || FIRMA_COPY.pasos.join("|") !== "Firmas|Responden|Visitas el depto|Confirmas o la retiras" || (fq.match(/<li><i aria-hidden="true">\d<\/i>/g) ?? []).length !== 4) F("24q · la firma no parte con «Firmar no te obliga a comprar» y sus cuatro pasos");
       const filas = (fq.slice(iRes, fq.indexOf("</dl>", iRes)).match(/<dt>/g) ?? []).length;
-      if (filas !== 3 || !/<dt>Vigencia<\/dt><dd><span>5 días desde que Franco la presenta<\/span><span class="iv2-fo-dd-s" data-inv2="vigencia-otro">Mientras tanto no puedes ofertar por otro depto</.test(fq) || !/5\s% bajo el precio publicado/.test(fq)) F(`24q · el resumen no son tres filas o la vigencia no dice que no puede ofertar por otro depto (${filas} filas)`);
+      if (filas !== 3 || !/<dt>Vigencia<\/dt><dd><span>5 días desde que Franco la presente<\/span><span class="iv2-fo-dd-s" data-inv2="vigencia-otro">Mientras tanto no puedes ofertar por otro depto</.test(fq) || !/5\s% bajo el precio publicado/.test(fq)) F(`24q · el resumen no son tres filas o la vigencia no dice que no puede ofertar por otro depto (${filas} filas)`);
       if (FIRMA_COPY.sujetaVentana.length < 3 || FIRMA_COPY.sujetaVentana.length > 4 || !/data-inv2="que-significa">¿Qué significa «sujeta a visita»\?</.test(fq) || !/variante="chica"/.test(leer("src/components/invierte-v2/FirmaOfertaForm.tsx"))) F("24q · «¿Qué significa sujeta a visita?» no abre una ventana chica de tres o cuatro líneas");
       if (!/disabled=""[^>]*data-inv2="boton-firmar-oferta">Firmar mi oferta por UF 2\.936</.test(fq)) F("24q · el botón de firmar no está apagado hasta marcar la casilla o no dice el monto");
       const css24 = leer("src/components/invierte-v2/invierte-v2.css");
@@ -1930,7 +1930,7 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
         const ef34 = s30({ estado: "presentada", sujetaAVisita: false, presentadaAt: "2026-11-23T15:00:00Z", vigenteHasta: "2026-11-29T03:00:00Z" });
         const ac34 = loQueSigue("en_firme", "aprobada", "/pre", o30({ estado: "en_firme", montoUF: 2900, enFirmeAt: "2026-11-27T15:00:00Z" }) as never, "/oferta", { avisoId: "a30", ahora: ah30 });
         if (ef34?.acciones?.includes("retirar") || s30({ estado: "firmada", sujetaAVisita: false })?.acciones?.includes("retirar") || ac34?.acciones?.length || ac34?.boton || ac34?.secundario || !s30({ estado: "presentada", presentadaAt: "2026-11-23T15:00:00Z", vigenteHasta: "2026-11-29T03:00:00Z" })?.acciones?.includes("retirar")) F("34e · Lo que sigue deja retirar una oferta a firme (firmada, presentada o aceptada), o le quita el «Retirarla» a una sujeta a visita"); /* ⚠ ACTA (24-nov-2026, Fabrizio, «a firme»): a firme, sin retiro mientras está vigente, el paso 4 «Acuerdo» y frases con tiempo. */
-        if (!/if \(otrasVivas\.some\(\(o\) => !sePuedeRetirar\(\{ estado: o\.estado, sujetaAVisita: o\.sujeta_a_visita !== false \}\)\)\) return \{ ok: false, error: "otra_firme" \};\s*for \(const o of otrasVivas\) await retirarOferta/.test(codigo("src/lib/invierte-v2/b4-servidor.ts")) || !/select\("id, aviso_id, estado, sujeta_a_visita"\)/.test(codigo("src/lib/invierte-v2/b4-servidor.ts"))) F("34e · aceptar en otro depto retira una oferta a firme vigente (o deja dos vivas cuando el retiro falla)");
+        if (!/const firme = otrasVivas\.find\(\(o\) => !sePuedeRetirar\(\{ estado: o\.estado, sujetaAVisita: o\.sujeta_a_visita !== false \}\)\);\s*if \(firme\) return \{ ok: false, error: "otra_firme"/.test(codigo("src/lib/invierte-v2/b4-servidor.ts"))) F("34e · aceptar en otro depto retira una oferta a firme vigente (o deja dos vivas cuando el retiro falla)");
         if (sePuedeRetirar({ estado: "firmada", sujetaAVisita: false }) || sePuedeRetirar({ estado: "presentada", sujetaAVisita: false }) || !sePuedeRetirar({ estado: "presentada", sujetaAVisita: true }) || !sePuedeRetirar({ estado: "firmada", sujetaAVisita: true }) || !/if \(!sePuedeRetirar\(\{ estado: desde, sujetaAVisita: f\.sujeta_a_visita !== false \}\)\) return \{ ok: false, error: "estado" \};/.test(codigo("src/lib/invierte-v2/b4-servidor.ts"))) F("34e · el servidor deja retirar una oferta a firme firmada o presentada (o no deja retirar una sujeta)");
         // 34f · Los estados de la lámina 5.1b y las respuestas de Fabrizio, sin redundancia.
         const fi34 = s30({ estado: "firmada", sujetaAVisita: false });
@@ -1941,9 +1941,9 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
         if (camF34.pasos[1].s !== "A firme · Franco la va a presentar" || camA34.actual !== 4 || camA34.pasos[3].t !== "Acuerdo" || camA34.pasos[3].s !== "Franco está en eso" || camA34.pasos[1].s !== "Aceptada en UF 2.900") F("34f · el camino de la oferta en firme no es el de la lámina");
         // 34g · El documento: la versión en firme, con su propia versión, marcada BORRADOR; las dos casillas; sin la garantía (es solo un aviso).
         const doc34 = textoOferta34({ nombre: "N", rut: "1-9", depto: "D", montoUF: 2900, publicadoUF: 3090, pagas: "P", sujetaAVisita: false, vigenciaDias: 5, enFirme: { visitaFecha: "25 de noviembre", respaldo: "Baño con filtración en el cielo" } }).join("\n");
-        if ((VERSION_TEXTO_OFERTA_EN_FIRME as string) === VERSION_TEXTO_OFERTA || !/^BORRADOR/.test(doc34) || !/Esta oferta es a firme: vale 5 días desde que Franco la presenta por escrito a quien vende, y en ese plazo no puedo retirarla\./.test(doc34) || !/Entiendo que no puedo retirarla mientras esté vigente/.test(doc34) || /puedo retirarla\.\s*$|Mientras quien vende no responda, puedo retirarla/m.test(doc34) || !/«Firmar a firme por UF 2\.900»/.test(doc34) || !/Respaldo: reporte de la visita del 25 de noviembre: baño con filtración en el cielo\./.test(doc34) || /sujeta a la visita/.test(doc34) || /[Gg]arant/.test(doc34)) F("34g · el documento en firme no tiene su versión, su marca de borrador, las dos casillas o el respaldo (o lleva la garantía)");
+        if ((VERSION_TEXTO_OFERTA_EN_FIRME as string) === VERSION_TEXTO_OFERTA || !/^BORRADOR/.test(doc34) || !/Esta oferta es a firme: vale 5 días desde que Franco la presente por escrito a quien vende, y en ese plazo no puedo retirarla\./.test(doc34) || !/Entiendo que no puedo retirarla mientras esté vigente/.test(doc34) || /puedo retirarla\.\s*$|Mientras quien vende no responda, puedo retirarla/m.test(doc34) || !/«Firmar a firme por UF 2\.900»/.test(doc34) || !/Respaldo: reporte de la visita del 25 de noviembre: baño con filtración en el cielo\./.test(doc34) || /sujeta a la visita/.test(doc34) || /[Gg]arant/.test(doc34)) F("34g · el documento en firme no tiene su versión, su marca de borrador, las dos casillas o el respaldo (o lleva la garantía)");
         // 34h · La firma 5.1b: Respaldo cuando baja, Garantía solo en firme, y el admin ve que es en firme.
-        if (!/\{enFirme\?\.respaldo && <div data-inv2="fila-respaldo">/.test(ff34) || !/\{enFirme && <div data-inv2="fila-garantia">/.test(ff34) || FIRMA_COPY.garantiaS !== "Por lo general, un cheque por el 10 % del precio. Te avisamos si la pide." || FIRMA_COPY.firmarFirme(2900) !== "Firmar a firme por UF 2.900" || FIRMA_COPY.enFirmeRetiro !== "Vale 5 días desde que Franco la presenta. En ese plazo no puedes retirarla." || FIRMA_COPY.casillaFirme !== "Entiendo que no puedo retirarla mientras esté vigente" || FIRMA_COPY.enFirmePasos[2] !== "Si la aceptan, hay acuerdo" || FIRMA_COPY.enFirmeVentana.length > 3) F("34h · la firma en firme no lleva Respaldo, Garantía o el botón de la lámina");
+        if (!/\{enFirme\?\.respaldo && <div data-inv2="fila-respaldo">/.test(ff34) || !/\{enFirme && <div data-inv2="fila-garantia">/.test(ff34) || FIRMA_COPY.garantiaS !== "Por lo general, un cheque por el 10 % del precio. Te avisamos si la pide." || FIRMA_COPY.firmarFirme(2900) !== "Firmar a firme por UF 2.900" || FIRMA_COPY.enFirmeRetiro !== "Vale 5 días desde que Franco la presente. En ese plazo no puedes retirarla." || FIRMA_COPY.casillaFirme !== "Entiendo que no puedo retirarla mientras esté vigente" || FIRMA_COPY.enFirmePasos[2] !== "Si la aceptan, hay acuerdo" || FIRMA_COPY.enFirmeVentana.length > 3) F("34h · la firma en firme no lleva Respaldo, Garantía o el botón de la lámina");
         const ctl34 = codigo("src/app/admin/invierte-v2/controles.tsx");
         if (!/data-admin="inv2-en-firme"> · A FIRME \(tras la visita\)/.test(ctl34) || !/"Presentada hoy a quien vende \(oferta a firme\)"/.test(ctl34) || !/"Aceptada \(hay acuerdo\)"/.test(ctl34)) F("34h · el admin no muestra que es una oferta en firme al presentarla o al registrar la respuesta");
         // 34i · El alto (revisión visual del 24-nov): a 1.210 × 615 el botón de la firma en firme se ve sin bajar porque queda fijo abajo de su tarjeta.
@@ -1965,7 +1965,14 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
         const vs36 = codigo("src/lib/invierte-v2/visita-servidor.ts");
         if (!/const fotos = limpiarFotos\(b\.fotos, vf\.user_id as string, visitaId\);\s*if \(fotos == null\) return \{ ok: false, error: "datos" \};/.test(vs36) || !/reporte: \{ puntos, fotos, delta,/.test(vs36)) F("36b · publicar el reporte no guarda las fotos validadas");
         const ruta36 = codigo("src/app/api/invierte-v2/foto-visita/route.ts");
-        if (!/if \(!v \|\| v\.user_id !== user\.id \|\| v\.estado !== "reporte_publicado"\) return NO_EXISTE\(\);/.test(ruta36) || !/if \(!ruta \|\| !ruta\.startsWith\(carpetaFotosVisita\(user\.id, visitaId\)\)\) return NO_EXISTE\(\);/.test(ruta36) || !/createSignedUrl\(ruta, 60\)/.test(ruta36)) F("36c · la ruta de las fotos se las entrega a alguien que no es la dueña de la visita, o sin el reporte publicado");
+        { // 36c · Qué foto entrega la ruta, sobre la función que usa (rutaFotoVisita): la dueña con el reporte publicado y una ruta de su carpeta,
+          // sí (la original, o la copia liviana con mini); otra persona, sin publicar, fuera de la carpeta o fuera de rango, nada (404).
+          const U36 = "u-36", V36 = "v-36", c36 = carpetaFotosVisita(U36, V36);
+          const fila36 = (estado: string, path = `${c36}a.jpg`) => ({ user_id: U36, estado, reporte: { fotos: [{ path, mini: `${c36}a-mini.jpg` }] } });
+          const ok36 = rutaFotoVisita(fila36("reporte_publicado"), U36, V36, 0, false) === `${c36}a.jpg` && rutaFotoVisita(fila36("reporte_publicado"), U36, V36, 0, true) === `${c36}a-mini.jpg`;
+          const no36 = [rutaFotoVisita(fila36("reporte_publicado"), "otra", V36, 0, false), rutaFotoVisita(fila36("reporte_publicado", `${carpetaFotosVisita("otra", V36)}a.jpg`), "otra", V36, 0, false), rutaFotoVisita(fila36("visitada"), U36, V36, 0, false), rutaFotoVisita(fila36("reporte_publicado", "visitas/otra/x.jpg"), U36, V36, 0, false), rutaFotoVisita(fila36("reporte_publicado"), U36, V36, 1, false), rutaFotoVisita(fila36("reporte_publicado"), U36, V36, -1, false), rutaFotoVisita(null, U36, V36, 0, false)];
+          if (!ok36 || no36.some((x) => x !== null) || !/createSignedUrl\(ruta, 60\)/.test(ruta36)) F("36c · la ruta de las fotos se las entrega a alguien que no es la dueña de la visita, o sin el reporte publicado");
+        }
         const va36 = codigo("src/app/admin/invierte-v2/visita-admin.tsx");
         if (!/const k = Math\.min\(1, LADO_MINI_VISITA \/ Math\.max\(img\.width, img\.height\)\);/.test(va36) || !/drawImage\(img, 0, 0, c\.width, c\.height\)/.test(va36) || !/uploadToSignedUrl\(u\.path, u\.token, f, \{ contentType: f\.type \}\)/.test(va36)) F("36d · la copia liviana recorta o no conserva la foto completa, o la original no se sube tal cual");
         if (!/\.iv2-rv-mini img \{ width: 100%; height: 100%; object-fit: contain;/.test(leer("src/components/invierte-v2/invierte-v2.css")) || !/src=\{\(k\) => url\(k\)\} mini=\{\(k\) => url\(k, true\)\}/.test(codigo("src/components/invierte-v2/FotosVisita.tsx"))) F("36e · las miniaturas recortan, o el visor no abre la foto original");
@@ -1990,12 +1997,53 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
         // haciendo, va a hacer o hizo. Los verbos que aparecieron en la pasada del 24-nov, y los que podrían aparecer.
         const VERBOS37 = ["presenta", "prepara", "coordina", "comunica", "avisa", "revisa", "escribe", "confirma", "gestiona", "empieza", "acompaña", "usa", "llama", "busca", "pide", "envía", "manda", "entrega", "carga", "sube", "negocia", "contacta", "informa", "visita", "agenda", "publica"];
         const cortada37 = new RegExp(`\\bFranco (?:(?:te|le|la|lo|se|les|los|las|me|nos) )*(${VERBOS37.join("|")})\\b`, "i");
-        // Las DUDOSAS que esperan la decisión de Fabrizio (se sacan de aquí cuando decida): el paso 2 del dibujo de la firma («Franco la
-        // presenta», lámina 5.1b), las subordinadas de la vigencia («desde que Franco la presenta», lámina) y el documento firmado (lo revisa
-        // el abogado).
-        const dudosas37 = [/^(.*: )?Franco la presenta$/, /desde que Franco la presenta/, /Franco presenta esta oferta en mi nombre/, /Franco te acompaña en todo el proceso/];
+        // La ÚNICA excepción (Fabrizio, 24-nov-2026): «Franco te acompaña en todo el proceso» se queda como está. Las otras tres dudosas se
+        // reescribieron («Franco la va a presentar», «desde que Franco la presente», «Autorizo a Franco a presentar…»). /* ⚠ ACTA (24-nov-2026, Fabrizio): «desde que Franco la presente», «Franco la va a presentar» y «Autorizo a Franco a presentar…». */
+        const dudosas37 = [/Franco te acompaña en todo el proceso/];
         const cortadas37 = todos37.filter((t) => cortada37.test(t) && !dudosas37.some((d) => d.test(t)));
         if (cortadas37.length) F(`37b · una frase visible dice «Franco» con un verbo en presente simple (${cortadas37.length}): ${cortadas37.slice(0, 3).map((t) => t.slice(0, 150)).join(" | ")}`);
+        // ── 38 · LAS RESPUESTAS DEL 24-NOV (Fabrizio): las tres dudosas reescritas, la oferta a firme en espera y otra_firme.
+        // 38a · El paso 2 del dibujo, la vigencia (bloque principal, fila del resumen —también en la sujeta— y ventana) y el documento.
+        const docSuj38 = textoOferta34({ nombre: "N", rut: "1-9", depto: "D", montoUF: 2900, publicadoUF: 3090, pagas: "P", sujetaAVisita: true, vigenciaDias: 5, enFirme: null }).join("\n");
+        if (FIRMA_COPY.enFirmePasos[1] !== "Franco la va a presentar" || FIRMA_COPY.vigenciaTexto !== "5 días desde que Franco la presente" || FIRMA_COPY.enFirmeRetiro !== "Vale 5 días desde que Franco la presente. En ese plazo no puedes retirarla." || !/desde que Franco la presente/.test(FIRMA_COPY.enFirmeVentana[0]))
+          F("38a · la firma no dice «Franco la va a presentar» o «desde que Franco la presente»");
+        for (const [nom, doc] of [["sujeta", docSuj38], ["a firme", doc37]] as const) {
+          if (!/Autorizo a Franco a presentar esta oferta en mi nombre/.test(doc) || /Franco presenta esta oferta|desde que Franco la presenta\b/.test(doc) || !/^BORRADOR/.test(doc) || !/desde que Franco la presente por escrito/.test(doc)) F(`38a · el documento (${nom}) no dice «Autorizo a Franco a presentar…» o «desde que Franco la presente», o perdió la marca BORRADOR`);
+        }
+        if (VERSION_TEXTO_OFERTA !== "borrador-20261124" || VERSION_TEXTO_OFERTA_EN_FIRME !== "borrador-a-firme-20261124b") F("38a · el texto del documento cambió y la versión no");
+        // 38b · La oferta a firme en espera se retira y lo dice en una línea; al presentarse, ya no. La sujeta en espera sigue como antes.
+        const cola38 = s30({ estado: "en_cola", sujetaAVisita: false }), colaS38 = s30({ estado: "en_cola" });
+        if (cola38?.texto !== "Puedes retirarla mientras esté en espera." || !cola38.acciones?.includes("retirar") || colaS38?.texto !== B4_COPY.enColaTxt || !sePuedeRetirar({ estado: "en_cola", sujetaAVisita: false }))
+          F(`38b · la oferta a firme en espera no dice que se puede retirar (o no se retira): ${JSON.stringify(cola38)}`);
+        // 38c · otra_firme: el texto con la fecha real (presentada el lunes 23, vence al terminar el sábado 28) y, sin presentar, sin fecha.
+        const vence38 = "2026-11-29T03:00:00Z";
+        if (textoOtraFirme(vence38, new Date("2026-11-24T15:00:00Z")) !== "Tienes una oferta a firme vigente por otro depto. Vence el sábado 28; hasta entonces no puedes ofertar por este." || !/no puedes ofertar por este/.test(textoOtraFirme(null)))
+          F(`38c · el texto de otra_firme no es el que decidió Fabrizio: ${textoOtraFirme(vence38, new Date("2026-11-24T15:00:00Z"))}`);
+        // 38d · Fuera de plazo con la otra a firme: el texto y SIN el botón que la retira (reactivar). Con una otra que se retira, como antes.
+        const tardO38 = o30({ estado: "sin_acuerdo", sinAcuerdoMotivo: "vencida", vigenteHasta: "2026-11-24T03:00:00Z", respuestaTardia: "aceptada_sujeta", respuestaTardiaUF: 2936 });
+        const tardF38 = cuandoNoHayAcuerdo(tardO38, "a30", { titulo: "otro", firme: { venceAt: vence38 } }, new Date("2026-11-24T15:00:00Z"));
+        const tardV38 = cuandoNoHayAcuerdo(tardO38, "a30", { titulo: "otro", firme: null }, new Date("2026-11-24T15:00:00Z"));
+        if (tardF38?.boton || !/^Tienes una oferta a firme vigente por otro depto\. Vence el sábado 28/.test(tardF38?.aviso ?? "") || !tardV38?.boton || tardV38.aviso !== B4_COPY.tardiaOtra("otro"))
+          F(`38d · fuera de plazo con la otra a firme deja reactivar (o perdió el texto), o le quitó el botón a la otra que se retira: ${JSON.stringify({ tardF38, tardV38 })}`);
+        // 38e · La contraoferta fuera de plazo con la otra a firme: el texto y ningún botón que firme (aceptar, proponer ni otro monto).
+        const rc38 = codigo("src/components/invierte-v2/ResponderContraoferta.tsx");
+        if (!/\{d\.otraViva\.firme \? textoOtraFirme\(d\.otraViva\.firme\.venceAt\) : B\.tardiaOtra\(d\.otraViva\.titulo\)\}/.test(rc38) || !/\) : d\.otraViva\?\.firme \? null : \(\s*<>\s*<Link href=\{proponer \? firmaSug : firmaEllos\}/.test(rc38) || !/\{!d\.otraViva\?\.firme && <p className="iv2-co-nota">\{B\.firmaNota\}<\/p>\}/.test(rc38))
+          F("38e · la contraoferta con la otra a firme muestra botones para firmar (o perdió el texto)");
+        // 38f · El servidor: firmarRonda devuelve la fecha de la que bloquea; la ruta la pasa; la firma muestra el texto propio; la página del
+        // depto prefiere la a firme entre las otras vivas.
+        const b4s38 = codigo("src/lib/invierte-v2/b4-servidor.ts"), ruta38 = codigo("src/app/api/invierte-v2/oferta/route.ts"), fof38 = codigo("src/components/invierte-v2/FirmaOfertaForm.tsx"), pag38 = codigo("src/lib/invierte-v2/depto-pagina-servidor.ts");
+        if (!/if \(firme\) return \{ ok: false, error: "otra_firme", venceAt: firme\.vigente_hasta \};\s*for \(const o of otrasVivas\) await retirarOferta/.test(b4s38) || !/select\("id, aviso_id, estado, sujeta_a_visita, vigente_hasta"\)/.test(b4s38))
+          F("38f · firmarRonda no rechaza con la fecha de la oferta a firme que bloquea");
+        if (!/error: r\.error, \.\.\.\(r\.venceAt !== undefined \? \{ venceAt: r\.venceAt \} : \{\}\)/.test(ruta38) || !/setError\(d\?\.error === "otra_firme" \? textoOtraFirme\(d\.venceAt \?\? null\) : F\.error\)/.test(fof38) || !/<div className="iv2-acciones iv2-fo-acciones">\s*\{error && <p className="inv-error" role="alert" data-inv2="firma-error">\{error\}<\/p>\}/.test(fof38))
+          F("38f · la firma no muestra el texto propio de otra_firme con su fecha");
+        if (!/const otra = otraFirme \?\? filasOtras\[0\] \?\? null;/.test(pag38) || !/firme: otraFirme \? \{ venceAt: otraFirme\.vigente_hasta \} : null/.test(pag38) || /\.limit\(1\)\.maybeSingle\(\) : \{ data: null \}/.test(pag38))
+          F("38f · la página del depto no prefiere la oferta a firme entre las otras vivas");
+        // 38g · El gate B4 prueba el visor con las MISMAS funciones que usan el visor y la ruta: si una de las dos vuelve a su copia propia
+        // de la regla, el recorrido prueba otra cosa.
+        const vis38 = codigo("src/components/invierte-v2/VisorFotos.tsx"), rfv38 = codigo("src/app/api/invierte-v2/foto-visita/route.ts");
+        if ((vis38.match(/onLoad=\{\(e\) => \{ if \(!fotoSana\(e\.currentTarget\.naturalWidth\)\) romper\([ik]\); \}\}/g) ?? []).length !== 2 || /naturalWidth <= 1/.test(vis38)
+          || !/const ruta = rutaFotoVisita\(v, user\.id, visitaId, i, q\.get\("mini"\) === "1"\);\s*if \(!ruta\) return NO_EXISTE\(\);/.test(rfv38) || /\.fotos \?\? \[\]\)\[i\]/.test(rfv38))
+          F("38g · el visor o la ruta de las fotos de la visita no usan fotoSana / rutaFotoVisita (el gate B4 probaría una copia)");
         // 32h · El reporte del admin: los puntos se limpian; la línea por defecto es el primer arreglo nuevo o «coincide».
         const lp32 = limpiarPuntos([{ tema: " Baños ", texto: "Filtración en el cielo: hay que repararla.", arreglo: true, enFotos: false }, { tema: "", texto: "x" }, { tema: "Ruido", texto: "Silencioso", arreglo: false, enFotos: true }]);
         if (!lp32 || lp32.length !== 2 || lp32[0].tema !== "Baños" || lp32[1].enFotos || lineaPorDefecto(lp32, "arreglos_menores") !== "Filtración en el cielo" || lineaPorDefecto(lp32, "coincide") !== "El estado coincide con las fotos" || limpiarPuntos([]) !== null) F("32h · los puntos del reporte o su línea por defecto no se arman bien");
