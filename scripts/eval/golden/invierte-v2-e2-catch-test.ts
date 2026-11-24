@@ -2017,8 +2017,8 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
           F(`38b · la oferta a firme en espera no dice que se puede retirar (o no se retira): ${JSON.stringify(cola38)}`);
         // 38c · otra_firme: el texto con la fecha real (presentada el lunes 23, vence al terminar el sábado 28) y, sin presentar, sin fecha.
         const vence38 = "2026-11-29T03:00:00Z";
-        if (textoOtraFirme(vence38, new Date("2026-11-24T15:00:00Z")) !== "Tienes una oferta a firme vigente por otro depto. Vence el sábado 28; hasta entonces no puedes ofertar por este." || !/no puedes ofertar por este/.test(textoOtraFirme(null)))
-          F(`38c · el texto de otra_firme no es el que decidió Fabrizio: ${textoOtraFirme(vence38, new Date("2026-11-24T15:00:00Z"))}`);
+        if (textoOtraFirme(vence38, new Date("2026-11-24T15:00:00Z")) !== "Tienes una oferta a firme vigente por otro depto. Vence el sábado 28; hasta entonces no puedes ofertar por este." || textoOtraFirme(null) !== "Franco va a presentar tu oferta a firme por otro depto. Hasta que la respondan o venza, no puedes ofertar por este.")
+          F(`38c · el texto de otra_firme no es el que decidió Fabrizio: ${textoOtraFirme(vence38, new Date("2026-11-24T15:00:00Z"))} | sin fecha: ${textoOtraFirme(null)}`); /* ⚠ ACTA (24-nov-2026, Fabrizio): sin presentar, «Franco va a presentar tu oferta a firme por otro depto…» (el anterior se leía como si Franco presentara el depto). */
         // 38d · Fuera de plazo con la otra a firme: el texto y SIN el botón que la retira (reactivar). Con una otra que se retira, como antes.
         const tardO38 = o30({ estado: "sin_acuerdo", sinAcuerdoMotivo: "vencida", vigenteHasta: "2026-11-24T03:00:00Z", respuestaTardia: "aceptada_sujeta", respuestaTardiaUF: 2936 });
         const tardF38 = cuandoNoHayAcuerdo(tardO38, "a30", { titulo: "otro", firme: { venceAt: vence38 } }, new Date("2026-11-24T15:00:00Z"));

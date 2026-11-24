@@ -81,7 +81,7 @@ export type OtraViva = { titulo: string; firme?: { venceAt: string | null } | nu
 /** Con una oferta a firme vigente en otro depto no se oferta por este (24-nov-2026, Fabrizio): la fecha real de vencimiento. Sin presentar
  *  todavía no hay fecha (corre desde que Franco la presente). */
 export function textoOtraFirme(venceAt: string | null, ahora: Date = new Date()): string {
-  if (!venceAt) return "Tienes una oferta a firme por otro depto que Franco va a presentar. Hasta que la respondan o venza, no puedes ofertar por este.";
+  if (!venceAt) return "Franco va a presentar tu oferta a firme por otro depto. Hasta que la respondan o venza, no puedes ofertar por este.";
   return `Tienes una oferta a firme vigente por otro depto. ${lineaVence(new Date(venceAt), ahora).vence}; hasta entonces no puedes ofertar por este.`;
 }
 
