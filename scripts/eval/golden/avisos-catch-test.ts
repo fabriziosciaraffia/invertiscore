@@ -132,7 +132,9 @@ export function runAvisosTier(): { hard: number } {
     for (const w of escrituras) if (!/\.from\("avisos_evaluados"\)/.test(w)) F(`6 · ${f} escribe fuera de avisos_evaluados: ${w.slice(0, 60)}`);
   }
   if (!/if \(dry\) \{ muestraDry\.push\(fila\); exitosos\+\+; continue; \}\s*const \{ error \} = await sb\.from\("avisos_evaluados"\)\.upsert\(fila, \{ onConflict: "aviso_id" \}\);/.test(cron)) F("6 · el modo dry escribe (o el upsert no es idempotente por aviso)");
-  if (!/await evaluarAviso\(sb, a, cfg, \{ segmentar: false \}\)/.test(cron)) F("6 · el cron evalúa con el arriendo del segmento, que el censo del 29-sep descartó");
+  // ⚠ ACTA (23-nov-2026, goal «no cobrar cuando el informe contradice lo mostrado») · la fila de la noche se arma en avisos/fila-evaluada.ts (la usa también
+  // «Analizar este» al detectar un cambio): el cron la llama y la función evalúa sin segmento. Se exige lo mismo, donde vive.
+  if (!/await filaEvaluadaCompleta\(sb, a, cfg\);/.test(cron) || !/await evaluarAviso\(sb, a, cfg, \{ segmentar: false,/.test(leer("src/lib/avisos/fila-evaluada.ts"))) F("6 · el cron evalúa con el arriendo del segmento, que el censo del 29-sep descartó");
   if (!/\.gte\("scraped_at", desde\)/.test(cron) || !/VENTANA_VISTOS_DIAS \* 864e5/.test(cron)) F("6 · el cron no lee solo los avisos vistos en la ventana");
   const vj = JSON.parse(leer("vercel.json")) as { crons: { path: string; schedule: string }[] };
   const c = vj.crons.find((x) => x.path === "/api/cron/evaluar-avisos");

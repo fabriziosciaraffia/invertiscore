@@ -488,7 +488,9 @@ export async function runPuertaBTier(): Promise<{ hard: number }> {
       if (!/"\/deptos"/.test(leer("src/middleware.ts"))) F("7 · /deptos no pasa por la medición de llegada (el fbclid del anuncio)");
 // ⚠ ACTA (02-nov-2026, goal «Filtros v2 y negociar», tier EXPLORAR-NEGOCIAR) · el candidato de la fila se arma una vez y lo comparten el estándar de 25 años y el descuento a
       // Comprar de la capa «Si negocias» (avisos/negociar.ts), que entra en la misma fila: la regla es la misma, sin arriendo no hay ninguno.
-      if (JSON.stringify(PIES_DEPTOS) !== "[20,30]" || !/const candidato = evaluada\.arriendo \? candidatoDeEvaluacion\(a, evaluada\) : null;[\s\S]{0,400}const fila = \{ \.\.\.evaluada, \.\.\.\(candidato \? evaluarEstandar25\(candidato, cfg\) : ESTANDAR25_VACIO\), \.\.\.negociar \};[\s\S]{0,600}\.upsert\(fila, \{ onConflict: "aviso_id" \}\);/.test(leer("src/app/api/cron/evaluar-avisos/route.ts")))
+      // ⚠ ACTA (23-nov-2026, goal «no cobrar cuando el informe contradice lo mostrado») · la fila vive en avisos/fila-evaluada.ts (cron y «Analizar este»): el candidato,
+      // el estándar de 25 años y el descuento se arman ahí, y el cron guarda esa fila.
+      if (JSON.stringify(PIES_DEPTOS) !== "[20,30]" || !/const candidato = evaluada\.arriendo \? candidatoDeEvaluacion\(a, evaluada\) : null;[\s\S]{0,400}const fila = \{ \.\.\.evaluada, \.\.\.\(candidato \? evaluarEstandar25\(candidato, cfg\) : ESTANDAR25_VACIO\), \.\.\.negociar \};/.test(leer("src/lib/avisos/fila-evaluada.ts")) || !/const \{ fila, msNegociar: ms \} = await filaEvaluadaCompleta\(sb, a, cfg\);[\s\S]{0,800}\.upsert\(fila, \{ onConflict: "aviso_id" \}\);/.test(leer("src/app/api/cron/evaluar-avisos/route.ts")))
         F("7 · la evaluación de la noche no escribe el estándar de 25 años");
       // ⚠ ACTA (23-oct-2026, goal Explorar) · el estándar de 25 años y el recálculo del pop-up comparten la sonda (sondaDeCandidato); el plazo sigue siendo PLAZO_DEPTOS.
       const estandar = leer("src/lib/avisos/estandar-deptos.ts");

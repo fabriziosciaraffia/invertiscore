@@ -114,10 +114,11 @@ export function runVueltaFlowTier(): { hard: number } {
   // ⚠ ACTA (03-nov-2026, «el informe en camino» en la vuelta del pago, tier INFORME-EN-CAMINO §7) · generarDepto ya no navega: le pasa el
   // informe a InformeEnLaVuelta, que lo abre EN SU LUGAR (router.replace, como antes) y, a los 10 s, ofrece «Ver los detalles». Y si no
   // puede generar ya no vuelve al dashboard en silencio a intentarlo de nuevo: lo dice ahí mismo. Sin la vuelta como argumento.
-  if (!/async function generarDepto\(depto: DeptoDelPago\)/.test(ret)) F("3 · la pantalla no tiene generarDepto");
+  // ⚠ ACTA (23-nov-2026, goal «no cobrar cuando el informe contradice lo mostrado») · generarDepto recibe `aceptoCambio` («Usarlo en este depto» tras el aviso) y lo manda.
+  if (!/async function generarDepto\(depto: DeptoDelPago, aceptoCambio = false\)/.test(ret)) F("3 · la pantalla no tiene generarDepto");
   const iGen = ret.indexOf("async function generarDepto(");
   const gen = iGen < 0 ? "" : ret.slice(iGen, ret.indexOf("\n  useEffect(() => {", iGen));
-  if (!/fetch\("\/api\/lo-que-sigue\/guia\/analizar", \{[\s\S]*?body: JSON\.stringify\(\{ origenId: depto\.origenId, avisoId: depto\.avisoId, semanal: depto\.token \}\)/.test(gen)) F("3 · generarDepto no pide el informe del depto con su selección");
+  if (!/fetch\("\/api\/lo-que-sigue\/guia\/analizar", \{[\s\S]*?body: JSON\.stringify\(\{ origenId: depto\.origenId, avisoId: depto\.avisoId, semanal: depto\.token, \.\.\.\(aceptoCambio \? \{ aceptoCambio: true \} : \{\}\) \}\)/.test(gen)) F("3 · generarDepto no pide el informe del depto con su selección");
   if (!/if \(res\.status === 409\) \{ await esperar\(ESPERA_GENERAR_MS\); continue; \}/.test(gen)) F("3 · generarDepto no espera un informe en curso");
   if (!/if \(res\.ok && d\.id\) \{ setInforme\(informeListo\(paso0, \{ id: d\.id, ruta: `\/analisis\/\$\{d\.id\}`/.test(gen) || !/try \{ if \(reemplazar\) router\.replace\(paso\.ruta\); else router\.push\(paso\.ruta\); \}/.test(codigo("src/components/guia/InformeEnCamino.tsx"))) F("3 · generarDepto no abre el informe generado");
   if (!/if \(d\.error === "sin-creditos" && sinCredito\+\+ < REINTENTOS_CREDITO_RETORNO\) \{ await esperar\(ESPERA_GENERAR_MS\); continue; \}/.test(gen)) F("3 · generarDepto no espera el crédito que el webhook otorga aparte");

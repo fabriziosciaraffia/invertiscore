@@ -193,7 +193,8 @@ export async function runCobroMostradoTier(): Promise<{ hard: number }> {
     if (!/cotejo = \{ mostrado, hoy, aceptoCambio: b\.aceptoCambio === true \|\| modoInvierte \};/.test(ruta)) F("3 · «aceptoCambio» no viene de la persona (o Invierte, que prepara en segundo plano, se frena)");
     if (!/return \{ ok: true, piezas: \{\s*async reclamar\(\)[\s\S]*?\n {10}cotejo,\n[\s\S]*?\n {8}\} \};/.test(ruta) ||!/async devolverPorCambio\(id: string, _d, marca: MarcaCambio\) \{\s*const grantId = await devolverCobroPorCambio\(admin,/.test(ruta)) F("3 · las piezas de la ruta no llevan el cotejo o el respaldo");
     if (!/return \{ id, veredicto: veredictoInforme \};/.test(ruta)) F("3 · `crear` no devuelve el veredicto del informe (el respaldo no tiene con qué comparar)");
-    if (!/if \(r\.estado === "cambio"\) return salir\(NextResponse\.json\(\{ error: "cambio", mostrado: \{ veredicto: r\.mostrado\.veredicto, score: r\.mostrado\.score \}, ahora: r\.hoy \}, \{ status: 412 \}\)\);/.test(ruta)) F("3 · el cambio no responde 412 «cambio» con lo de hoy");
+    // ⚠ ACTA (23-nov-2026, Fabrizio: «la respuesta de cambio va como respuesta normal con su estado, no como error 412»).
+    if (!/if \(r\.estado === "cambio"\) return salir\(NextResponse\.json\(\{ estado: "cambio", mostrado: \{ veredicto: r\.mostrado\.veredicto, score: r\.mostrado\.score \}, ahora: \{ \.\.\.r\.hoy, flujo: flujoHoy \} \}\)\);/.test(ruta) || /estado: "cambio"[^\n]*status: 4\d\d/.test(ruta)) F("3 · el cambio no responde normal (200) con su estado y lo de hoy");
     const srv = codigo("src/lib/guia/cobro-mostrado-servidor.ts");
     if (!/grantCredits\(p\.userId, FUENTE_DEVOLUCION_COBRO, 1, \{ noExpire: true \}\)/.test(srv) || !/from\("admin_audit_log"\)\.insert\(/.test(srv) || !/automatica: true/.test(srv)) F("3 · el respaldo no deja el lote `devolucion_cobro` sin vencimiento y la fila del admin");
     const mos = codigo("src/lib/guia/mostrado-servidor.ts");
@@ -228,7 +229,7 @@ export async function runCobroMostradoTier(): Promise<{ hard: number }> {
     ];
     for (const [nombre, f] of SUPERFICIES) {
       const src = codigo(f);
-      if (!/if \(res\.status === 412 && d\.error === "cambio" && d\.ahora\?\.veredicto\) \{[^\n]*setInforme\(informeCambio\(paso0, \{ veredicto: d\.ahora\.veredicto, score: d\.ahora\.score \?\? null \}/.test(src)) F(`4 · ${nombre}: el aviso de cambio no aparece (no maneja el 412 «cambio»)`);
+      if (!/if \(res\.ok && d\.estado === "cambio" && d\.ahora\?\.veredicto\) \{[^\n]*setInforme\(informeCambio\(paso0, \{ veredicto: (?:d\.ahora\.veredicto, score: d\.ahora\.score \?\? null|ahora\.veredicto, score: ahora\.score) \}/.test(src) || /status === 412 && d\.error === "cambio"/.test(src)) F(`4 · ${nombre}: el aviso de cambio no aparece (no lee la respuesta «cambio»)`);
       if (!/\.\.\.\(aceptoCambio \? \{ aceptoCambio: true \} : \{\}\)/.test(src)) F(`4 · ${nombre}: «Analizarlo igual» no manda aceptoCambio`);
       if (!/devuelto: d\.devuelto \?\? null/.test(src)) F(`4 · ${nombre}: no le pasa al pop-up si el cobro se devolvió`);
     }
@@ -284,6 +285,32 @@ export async function runCobroMostradoTier(): Promise<{ hard: number }> {
     if (!/lineaCambio=\{lineaCambioPortada\(inputData\)\}/.test(codigo("src/app/analisis/renta-corta/[id]/results-client.tsx"))) F("7 · el informe de renta corta no dice la línea del cambio");
   }
 
+  // ══ §8 · LO DE HOY PARA TODOS: LA FILA Y LA TARJETA ═════════════════════════════════════
+  // Decisión de Fabrizio (23-nov-2026): si el recálculo en vivo da otro veredicto que lo guardado, la fila se actualiza en ese momento
+  // con la MISMA función de la noche (el mapa y los correos dejan de mostrar el número viejo a todos), y al volver al mapa la tarjeta
+  // de ese depto muestra el veredicto de hoy.
+  {
+    const ruta = codigo("src/app/api/lo-que-sigue/guia/analizar/route.ts");
+    if (!/if \(cambioDeVeredicto\(mostrado, hoy\.veredicto\)\) \{\s*waitUntil\(reevaluarYGuardarFila\(admin, avisoDeCandidato\(aviso\), cfg, sugLeidas \? \{ sug: sugLeidas \} : \{\}\)/.test(ruta)) F("8 · al detectar el cambio, la fila guardada no se actualiza");
+    const fila = codigo("src/lib/avisos/fila-evaluada.ts");
+    if (!/await evaluarAviso\(sb, a, cfg, \{ segmentar: false,/.test(fila) || !/evaluarEstandar25\(candidato, cfg\)/.test(fila) || !/evaluarNegociar\(candidato, evaluada, cfg\)/.test(fila) || !/\.from\("avisos_evaluados"\)\.upsert\(fila, \{ onConflict: "aviso_id" \}\)/.test(fila)) F("8 · la fila que se guarda no es la completa de la noche (evaluación, 25 años y descuento)");
+    const cron = codigo("src/app/api/cron/evaluar-avisos/route.ts");
+    if (!/const \{ fila, msNegociar: ms \} = await filaEvaluadaCompleta\(sb, a, cfg\);/.test(cron) || /evaluarAviso\(sb, a, cfg/.test(cron)) F("8 · el cron y la actualización no usan la misma función (la noche arma su fila por otro lado)");
+    const exp = codigo("src/app/explorar/explorar-cliente.tsx");
+    if (!/setHoyAqui\(\(m\) => \(\{ \.\.\.m, \[it\.avisoId\]: ahora \}\)\)/.test(exp) || !/\.map\(\(p\) => \(hoyAqui\[p\.avisoId\] \? \{ \.\.\.p, \.\.\.hoyAqui\[p\.avisoId\]/.test(exp)) F("8 · al volver al mapa, la tarjeta sigue con el veredicto viejo");
+  }
+
+  // ══ §9 · RÁPIDO Y SIN DOBLE TOQUE ════════════════════════════════════════════════════
+  {
+    const ruta = codigo("src/app/api/lo-que-sigue/guia/analizar/route.ts");
+    const iTemp = ruta.indexOf("const sugTemprana = negociadoUF == null"), iOrq = ruta.indexOf("const r = await analizarAvisoDeGuia({");
+    if (iTemp < 0 || iOrq < 0 || iTemp > iOrq || !/const ufTemprana = getUFValue\(\)\.catch\(\(\) => null\);/.test(ruta)) F("9 · los comparables y la UF no arrancan en paralelo con la lectura de la ficha");
+    if (!/const sugLeidas = precioNegociado \? null : await sugTemprana;/.test(ruta) || !/\{ uf: ufValue, tasa: cfg\.tasa \}, sugLeidas \?\? undefined\);/.test(ruta)) F("9 · el informe vuelve a leer los comparables en vez de usar los adelantados");
+    const comp = codigo("src/components/guia/InformeEnCamino.tsx");
+    if ((comp.match(/onClick=\{igual\} disabled=\{enviando\} \{\.\.\.botonOcupado\(enviando\)\}/g) ?? []).length !== 2 || (comp.match(/const igual = \(\) => \{ if \(enviando \|\| !alAnalizarIgual\) return; setEnviando\(true\); alAnalizarIgual\(\); \};/g) ?? []).length !== 2) F("9 · «Analizarlo igual» se puede tocar dos veces (o no queda ocupado)");
+    if (!/@media \(max-width: 767px\) \{ button\.wz-disco \{ width: 44px; height: 44px; \} \}/.test(leer("src/components/formulario-v4/wizard-v4.css"))) F("9 · la X de los pop-ups no llega a 44 px en celular");
+  }
+
   if (fallas.length === 0) console.log("  ✓ COBRO-MOSTRADO: todo en orden");
   for (const f of fallas) console.log(`  ✗ ${f}`);
   if (fallas.length) console.log(`  ${fallas.length} falla(s) dura(s)`);
@@ -316,4 +343,11 @@ if (require.main === module) {
 //   M16 renta corta sin respaldo (aceptoCambio siempre true) ....................... §7
 //   M17 (23-nov, Fabrizio: «el veredicto es Ajustar … el chip de Ajustar») el aviso sin el chip ........ §4 «no dibuja el veredicto con el chip»
 //   (M13 queda superado: la forma «nombre» se retiró y los textos usan la etiqueta de la casa.)
+//   M18 sin actualizar la fila al detectar el cambio ................ §8
+//   M19 la tarjeta del mapa sin lo de hoy ........................... §8
+//   M20 la respuesta de cambio vuelve a ser 412 ..................... §3
+//   M21 comparables en serie (sin adelantar) ........................ §9
+//   M22 «Analizarlo igual» sin freno al doble toque ................. §9
+//   M23 la X vuelve a 32 px en celular .............................. §9
+//   M24 el cron vuelve a armar su fila por su cuenta ................ §8 (una primera versión de la mutación quedó verde por débil: se rehízo)
 // ============================================================================
