@@ -76,6 +76,15 @@ export function diasEntre(desde: Date, hasta: Date): number {
   return Math.round((Date.UTC(b.y, b.m - 1, b.d) - Date.UTC(a.y, a.m - 1, a.d)) / 864e5);
 }
 
+/** Otra oferta viva de la persona en otro depto; `firme` si es una a firme vigente (firmada o presentada), que no se retira. */
+export type OtraViva = { titulo: string; firme?: { venceAt: string | null } | null };
+/** Con una oferta a firme vigente en otro depto no se oferta por este (24-nov-2026, Fabrizio): la fecha real de vencimiento. Sin presentar
+ *  todavía no hay fecha (corre desde que Franco la presente). */
+export function textoOtraFirme(venceAt: string | null, ahora: Date = new Date()): string {
+  if (!venceAt) return "Tienes una oferta a firme por otro depto que Franco va a presentar. Hasta que la respondan o venza, no puedes ofertar por este.";
+  return `Tienes una oferta a firme vigente por otro depto. ${lineaVence(new Date(venceAt), ahora).vence}; hasta entonces no puedes ofertar por este.`;
+}
+
 /** «Vence el sábado 28» · «quedan 4 días» · el último día, «Vence hoy». `vencida` si ya pasó. */
 export function lineaVence(venceAt: Date, ahora: Date = new Date()): { vence: string; quedan: string | null; vencida: boolean } {
   if (ahora.getTime() >= venceAt.getTime()) return { vence: "Venció", quedan: null, vencida: true };

@@ -15,7 +15,7 @@ import { leerPreaprobacion } from "./preaprobacion-servidor";
 import type { EstadoVisible } from "./preaprobacion";
 import { direccionDepto, tituloDepto } from "./titulo-depto";
 import { CERRADAS, asegurarRango, ofertaAbierta, ultimaOferta, type OfertaVista } from "./rango-servidor";
-import { OFERTAS_VIVAS } from "./b4";
+import { OFERTAS_VIVAS, sePuedeRetirar } from "./b4";
 import { bloqueOfertaCifras } from "./cifras-motor";
 import { visitaParaRonda } from "./visita-lectura";
 import type { VisitaResumen } from "./visita";
@@ -53,7 +53,7 @@ export interface PaginaDepto {
   /** La visita del depto (24-nov-2026): la abierta, o la última con el reporte publicado. También va dentro de la oferta (oferta.visita). */
   visita?: VisitaResumen | null;
   /** B4: otra oferta viva de la persona, en otro depto (para elegir con cuál se queda ante una respuesta fuera de plazo). */
-  otraViva?: { avisoId: string; titulo: string; estado: string } | null;
+  otraViva?: { avisoId: string; titulo: string; estado: string; firme: { venceAt: string | null } | null } | null;
 }
 
 export async function leerPaginaDepto(admin: SupabaseClient, userId: string, avisoId: string, opts: { nuevaRonda?: boolean } = {}): Promise<PaginaDepto | null> {
@@ -95,7 +95,11 @@ export async function leerPaginaDepto(admin: SupabaseClient, userId: string, avi
   // B4: sin oferta abierta, la última ronda cerrada (su tarjeta de cierre) y, si hay, otra oferta viva en otro depto.
   const ultima = !oferta ? await ultimaOferta(admin, f.id as string) : null;
   const cierre = ultima && (CERRADAS as readonly string[]).includes(ultima.estado) ? ultima : null;
-  const { data: otra } = cierre ? await admin.from("inv_ofertas").select("aviso_id, estado").eq("user_id", userId).neq("depto_id", f.id as string).in("estado", OFERTAS_VIVAS as unknown as string[]).limit(1).maybeSingle() : { data: null };
+  // Una a firme vigente va primero: con ella no se oferta por este depto (24-nov-2026).
+  const { data: otras } = cierre ? await admin.from("inv_ofertas").select("aviso_id, estado, sujeta_a_visita, vigente_hasta").eq("user_id", userId).neq("depto_id", f.id as string).in("estado", OFERTAS_VIVAS as unknown as string[]) : { data: null };
+  const filasOtras = (otras ?? []) as { aviso_id: string; estado: string; sujeta_a_visita: boolean | null; vigente_hasta: string | null }[];
+  const otraFirme = filasOtras.find((o) => !sePuedeRetirar({ estado: o.estado, sujetaAVisita: o.sujeta_a_visita !== false })) ?? null;
+  const otra = otraFirme ?? filasOtras[0] ?? null;
   const otraFicha = otra ? (await fichasDe(admin, [otra.aviso_id as string]))[otra.aviso_id as string] ?? null : null;
   // La visita (24-nov-2026): va dentro de la oferta, para «Lo que sigue», el camino, la contraoferta y la ronda nueva; y en un ajuste, el
   // monto de la ronda anterior («Antes»).
@@ -115,5 +119,5 @@ export async function leerPaginaDepto(admin: SupabaseClient, userId: string, avi
   const cambios = filasCs.map((c) => lineaCambio(c, c.fecha)).filter((x): x is string => !!x);
   const cambiosFilas = filasCs.map((c) => filaCambio(c, c.fecha)).filter((x): x is NonNullable<ReturnType<typeof filaCambio>> => !!x);
   return { avisoId, etapa, noAvanzaMotivo: (f.no_avanza_motivo as string | null) ?? null, datos, ficha, tituloConNumero, direccion, ubicacion: u, cambios, cambiosFilas, preaprobacion: pre.estado, whatsapp, alternativa, activos: (elegidos ?? []).map((e) => ({ avisoId: e.aviso_id as string, datos: (e.datos ?? {}) as DatosDepto })),
-    oferta, cierre, visita, otraViva: otra ? { avisoId: otra.aviso_id as string, titulo: otraFicha?.titulo ?? "otro depto", estado: otra.estado as string } : null, bloqueOferta: bloqueOfertaCifras(u?.analisis?.motor ?? null, oferta, ficha?.cifras.publicadoUF ?? datos.precioUF ?? null), preguntas, documentos: ((docs ?? []) as { id: string; tipo: string; created_at: string }[]).map((d) => ({ id: d.id, tipo: d.tipo, creadoAt: d.created_at })) };
+    oferta, cierre, visita, otraViva: otra ? { avisoId: otra.aviso_id, titulo: otraFicha?.titulo ?? "otro depto", estado: otra.estado, firme: otraFirme ? { venceAt: otraFirme.vigente_hasta } : null } : null, bloqueOferta: bloqueOfertaCifras(u?.analisis?.motor ?? null, oferta, ficha?.cifras.publicadoUF ?? datos.precioUF ?? null), preguntas, documentos: ((docs ?? []) as { id: string; tipo: string; created_at: string }[]).map((d) => ({ id: d.id, tipo: d.tipo, creadoAt: d.created_at })) };
 }

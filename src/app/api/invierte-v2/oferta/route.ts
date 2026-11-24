@@ -32,7 +32,7 @@ export async function POST(request: Request) {
   }
   if (b.accion === "firmar_ronda") {
     const r = await firmarRonda(createServiceClient(), u, b.avisoId, b, contextoDe(request));
-    if (!r.ok) return NextResponse.json({ error: r.error }, { status: r.error === "guardar" ? 500 : 409 });
+    if (!r.ok) return NextResponse.json({ error: r.error, ...(r.venceAt !== undefined ? { venceAt: r.venceAt } : {}) }, { status: r.error === "guardar" ? 500 : 409 });
     return NextResponse.json(r);
   }
   if (b.accion === "retirar") {

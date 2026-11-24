@@ -31,6 +31,16 @@ export const TIPOS_FOTO_VISITA = ["image/jpeg", "image/png", "image/webp"] as co
 export const LADO_MINI_VISITA = 640;
 export const URL_FOTO_VISITA = "/api/invierte-v2/foto-visita";
 export const urlFotoVisita = (visitaId: string, i: number, mini = false) => `${URL_FOTO_VISITA}?visita=${encodeURIComponent(visitaId)}&i=${i}${mini ? "&mini=1" : ""}`;
+/** La regla del visor (y de las miniaturas): una imagen de 1 px de ancho es el marcador de una foto rota, no una foto. */
+export const fotoSana = (anchoPx: number) => anchoPx > 1;
+/** Qué foto entrega /api/invierte-v2/foto-visita (la ruta y el gate B4 usan esta misma función): la original o su copia liviana, solo a la
+ *  persona dueña de la visita, con el reporte publicado y si la ruta es de la carpeta de esa visita; si no, null (404). */
+export function rutaFotoVisita(v: { user_id: string; estado: string; reporte: unknown } | null, userId: string, visitaId: string, i: number, mini: boolean): string | null {
+  if (!v || v.user_id !== userId || v.estado !== "reporte_publicado" || !Number.isInteger(i) || i < 0 || i >= MAX_FOTOS_VISITA) return null;
+  const f = ((v.reporte as { fotos?: { path?: string; mini?: string }[] } | null)?.fotos ?? [])[i];
+  const ruta = mini ? f?.mini : f?.path;
+  return ruta && ruta.startsWith(carpetaFotosVisita(userId, visitaId)) ? ruta : null;
+}
 /** ¿Se puede subir? Tipo y peso (el bucket además corta en 15 MB). */
 export function validarFotoVisita(f: { mime: string; bytes: number }): { ok: true } | { ok: false; error: "tipo" | "tamano" } {
   if (!(TIPOS_FOTO_VISITA as readonly string[]).includes(f.mime)) return { ok: false, error: "tipo" };
@@ -171,6 +181,8 @@ export const VISITA_COPY = {
   firmadaFirmeT: "Franco va a presentar tu oferta a firme a quien vende",
   presentadaFirmeT: "Franco presentó tu oferta a firme. Esperamos la respuesta",
   noSeRetira: "No se puede retirar mientras esté vigente.",
+  /** La oferta a firme en espera (en cola) sí se retira; al presentarse, ya no (24-nov-2026, Fabrizio). */
+  enEspera: "Puedes retirarla mientras esté en espera.",
   comunicarFirme: "Cuando se lo avise, hay acuerdo.",
   acuerdoT: (uf: string) => `Hay acuerdo por ${uf.replace(/^UF /, "UF ")}`,
   aceptada: "Aceptada",

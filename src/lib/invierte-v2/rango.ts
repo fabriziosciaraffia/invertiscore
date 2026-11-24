@@ -262,7 +262,7 @@ export const FIRMA_COPY = {
     `Preaprobación${banco ? ` de ${/^banco/i.test(banco) ? banco : `Banco ${banco}`}` : ""}${monto ? ` por UF ${fmt(monto)}` : ""}`,
   ver: "Ver",
   vigencia: "Vigencia",
-  vigenciaTexto: "5 días desde que Franco la presenta",
+  vigenciaTexto: "5 días desde que Franco la presente",
   vigenciaS: "Mientras tanto no puedes ofertar por otro depto",
   documentoT: "Oferta de compra",
   documentoLinea: "El documento que vas a firmar",
@@ -272,11 +272,11 @@ export const FIRMA_COPY = {
   // Después de la visita, toda oferta es en firme (24-nov-2026, lámina 5.1b del 24-nov, tal como está escrita).
   enFirmeT: "Esta oferta es a firme",
   enFirmeS: "Ya visitaste el depto: no queda sujeta a visita",
-  enFirmePasos: ["Firmas", "Franco la presenta", "Si la aceptan, hay acuerdo", "Promesa"],
-  enFirmeRetiro: "Vale 5 días desde que Franco la presenta. En ese plazo no puedes retirarla.",
+  enFirmePasos: ["Firmas", "Franco la va a presentar", "Si la aceptan, hay acuerdo", "Promesa"],
+  enFirmeRetiro: "Vale 5 días desde que Franco la presente. En ese plazo no puedes retirarla.",
   enFirmeQue: "¿Qué significa «a firme»?",
   enFirmeVentana: [
-    "Vale 5 días desde que Franco la presenta, y en ese plazo no puedes retirarla.",
+    "Vale 5 días desde que Franco la presente, y en ese plazo no puedes retirarla.",
     "Si no la aceptan, vence sola.",
     "Si la aceptan, hay acuerdo y Franco va a preparar la promesa.",
   ],

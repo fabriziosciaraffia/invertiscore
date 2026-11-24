@@ -1,6 +1,6 @@
 // /dev/invierte-v2/contraoferta (B4, 23-nov-2026; lámina 5.2): responder la contraoferta con datos de muestra, sin cuentas ni escrituras.
 //   ?caso=proponer (por defecto: piden UF 3.010, sobre lo recomendado) | aceptar (piden UF 2.960, dentro) | tardia (llegó fuera de plazo)
-//   ?otra=1: con otra oferta viva (aceptar la retira). Las cifras de la tabla, del motor con los datos fijos de un depto real de muestra.
+//   ?otra=1: con otra oferta viva (aceptar la retira); ?otra=firme: la otra es a firme vigente (no se oferta por este, sin botones). Las cifras de la tabla, del motor con los datos fijos de un depto real de muestra.
 // Gate en el servidor: dev y previews de Vercel sí; producción, 404.
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -26,7 +26,7 @@ export default function ContraofertaDemo({ searchParams }: { searchParams: { cas
       <div className="iv2-mi-inversion"><Link href="/dev/invierte-v2/depto?etapa=listo&confirmada=1&oferta=contraoferta" className="iv2-mi-inversion-a">← Av. Grecia 1250</Link></div>
       <ResponderContraoferta volverA="/dev/invierte-v2/depto?etapa=listo&confirmada=1" d={{
         avisoId: "muestra", ofertaId: "of", tuUF: tu, ellosUF: ellos, sugeridaUF: s.montoUF, accion: s.accion, topeEsComprar: false, pisoUF: piso, altoUF: alto, publicadoUF: pub, venceAt: vence,
-        fueraDePlazo: caso === "tardia", otraViva: searchParams.otra === "1" ? { titulo: "Av. Irarrázaval 2315" } : null,
+        fueraDePlazo: caso === "tardia", otraViva: searchParams.otra === "1" ? { titulo: "Av. Irarrázaval 2315" } : searchParams.otra === "firme" ? { titulo: "Av. Irarrázaval 2315", firme: { venceAt: venceAlTerminar(new Date(Date.now() - 864e5)).toISOString() } } : null,
         cifras: { tu: cifrasAPrecio(MOTOR_MUESTRA, tu), sugerida: cifrasAPrecio(MOTOR_MUESTRA, s.montoUF), ellos: cifrasAPrecio(MOTOR_MUESTRA, ellos) },
         // ?visita=hecha | arreglo: ya visitó; sin ?visita, todavía no (la visita es el botón rojo); ?sinVisitar=1: «Responder sin visitar».
         visita: searchParams.visita === "hecha" || searchParams.visita === "arreglo" ? visitaMuestra(searchParams.visita === "arreglo" ? "arreglo" : "coincide") : null, sinVisitar: searchParams.sinVisitar === "1",

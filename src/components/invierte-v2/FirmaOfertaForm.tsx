@@ -12,6 +12,7 @@
 // pasos y que se puede retirar solo mientras no respondan; el resumen suma «Respaldo» (el reporte, si el monto baja) y «Garantía» (solo
 // un aviso); lleva una segunda casilla, la confirmación explícita, y el botón se activa solo con las dos marcadas.
 import { useState, type ReactNode } from "react";
+import { textoOtraFirme } from "@/lib/invierte-v2/b4";
 import Link from "next/link";
 import { FIRMA_COPY as F, pctBajoPublicado } from "@/lib/invierte-v2/rango";
 import { VentanaDocumento } from "./VentanaDocumento";
@@ -35,15 +36,17 @@ export function FirmaOfertaForm({ avisoId, montoUF, publicadoUF, documento, urlV
   const [leyo, setLeyo] = useState(false);
   const [abierto, setAbierto] = useState<"documento" | "sujeta" | null>(null);
   const [enviando, setEnviando] = useState(false);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   async function firmar() {
     if (!listo || enviando) return;
-    setEnviando(true); setError(false);
+    setEnviando(true); setError(null);
     const firme = enFirme ? { aceptoFirme: true } : {};
     const r = await fetch(URL_API_OFERTA, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(desdeId ? { accion: "firmar_ronda", avisoId, desdeId, montoUF, acepto: true, leyo, retirarOtra, ...firme } : { accion: "firmar", avisoId, montoUF, acepto: true, leyo, ...firme }) }).catch(() => null);
     // A la página del depto, recargada (con la oferta firmada).
     if (r?.ok) { window.location.assign(urlVolver); return; }
-    setEnviando(false); setError(true);
+    // Con una oferta a firme vigente en otro depto, el texto propio con la fecha real (24-nov-2026).
+    const d = r ? ((await r.json().catch(() => ({}))) as { error?: string; venceAt?: string | null }) : null;
+    setEnviando(false); setError(d?.error === "otra_firme" ? textoOtraFirme(d.venceAt ?? null) : F.error);
   }
   return (
     <div className={`iv2-fo${enFirme ? " iv2-fo-firme" : ""}`} data-inv2="firma-oferta">
@@ -81,8 +84,9 @@ export function FirmaOfertaForm({ avisoId, montoUF, publicadoUF, documento, urlV
             <span>{F.casillaFirme}</span>
           </label>
         )}
-        {error && <p className="inv-error" role="alert">{F.error}</p>}
+        {/* El error va dentro de la barra fija del botón: fuera, la barra lo tapaba (24-nov-2026, el texto de otra_firme ocupa dos líneas). */}
         <div className="iv2-acciones iv2-fo-acciones">
+          {error && <p className="inv-error" role="alert" data-inv2="firma-error">{error}</p>}
           <button type="button" className="inv-principal" disabled={!listo || enviando} aria-busy={enviando || undefined} onClick={() => void firmar()} data-inv2="boton-firmar-oferta">{enviando ? F.firmando : enFirme ? F.firmarFirme(montoUF) : F.firmar(montoUF)}</button>
           <p className="iv2-fo-nota">{F.nota}</p>
         </div>

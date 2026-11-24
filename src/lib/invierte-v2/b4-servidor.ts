@@ -308,7 +308,7 @@ export function rondaDesde(o: Pick<OfertaVista, "estado" | "montoUF" | "contraof
  *  venció. Todo pasa por «Revisa y firma». Aceptar crea la tarea «comunicar_aceptacion» (sin otro plazo); proponer o volver a presentar,
  *  la de presentar. Una a la vez: si la persona tiene otra oferta viva, para aceptar o reactivar primero elige con cuál se queda
  *  (`retirarOtra`); un monto nuevo con otra viva queda en cola. */
-export async function firmarRonda(admin: SupabaseClient, user: Quien, avisoId: string, pedido: { desdeId?: unknown; montoUF?: unknown; acepto?: unknown; leyo?: unknown; retirarOtra?: unknown; aceptoFirme?: unknown }, ctx: ContextoPedido | null, ahora: Date = new Date()): Promise<{ ok: true; estado: string; tipo: string } | { ok: false; error: ErrorB4 }> {
+export async function firmarRonda(admin: SupabaseClient, user: Quien, avisoId: string, pedido: { desdeId?: unknown; montoUF?: unknown; acepto?: unknown; leyo?: unknown; retirarOtra?: unknown; aceptoFirme?: unknown }, ctx: ContextoPedido | null, ahora: Date = new Date()): Promise<{ ok: true; estado: string; tipo: string } | { ok: false; error: ErrorB4; venceAt?: string | null }> {
   if (pedido.acepto !== true) return { ok: false, error: "casilla" };
   const monto = Math.round(Number(pedido.montoUF));
   const p = await leerPaginaDepto(admin, user.id, avisoId);
@@ -326,16 +326,17 @@ export async function firmarRonda(admin: SupabaseClient, user: Quien, avisoId: s
   const tipo = r.tipo === "volver" ? "volver" : r.tipo === "ajustar" ? "ajustar" : acepta ? (r.tipo === "contra" ? "aceptar" : "reactivar") : "proponer";
   const [orden, pre, { data: otras }] = await Promise.all([
     ultimaOrdenDe(admin, user.id), leerPreaprobacion(admin, user.id),
-    admin.from(T_OF).select("id, aviso_id, estado, sujeta_a_visita").eq("user_id", user.id).neq("depto_id", d.id).in("estado", OFERTAS_VIVAS as unknown as string[]),
+    admin.from(T_OF).select("id, aviso_id, estado, sujeta_a_visita, vigente_hasta").eq("user_id", user.id).neq("depto_id", d.id).in("estado", OFERTAS_VIVAS as unknown as string[]),
   ]);
   if (!orden) return { ok: false, error: "orden" };
-  const otrasVivas = (otras ?? []) as { id: string; aviso_id: string; estado: string; sujeta_a_visita: boolean | null }[];
+  const otrasVivas = (otras ?? []) as { id: string; aviso_id: string; estado: string; sujeta_a_visita: boolean | null; vigente_hasta: string | null }[];
   // Aceptar o reactivar con otra oferta viva: primero elige con cuál se queda (sigue valiendo una a la vez).
   if ((tipo === "aceptar" || tipo === "reactivar") && otrasVivas.length) {
     if (pedido.retirarOtra !== true) return { ok: false, error: "otra_viva" };
     // Una oferta a firme vigente en otro depto no se retira (24-nov-2026): aceptar aquí se rechaza antes de tocar nada, en vez de dejar
     // dos ofertas vivas porque el retiro de la otra falló.
-    if (otrasVivas.some((o) => !sePuedeRetirar({ estado: o.estado, sujetaAVisita: o.sujeta_a_visita !== false }))) return { ok: false, error: "otra_firme" };
+    const firme = otrasVivas.find((o) => !sePuedeRetirar({ estado: o.estado, sujetaAVisita: o.sujeta_a_visita !== false }));
+    if (firme) return { ok: false, error: "otra_firme", venceAt: firme.vigente_hasta };
     for (const o of otrasVivas) await retirarOferta(admin, user, o.aviso_id, ctx, ahora);
   }
   const quedaEnCola = (tipo === "proponer" || tipo === "volver" || tipo === "ajustar") && otrasVivas.length > 0 && pedido.retirarOtra !== true;

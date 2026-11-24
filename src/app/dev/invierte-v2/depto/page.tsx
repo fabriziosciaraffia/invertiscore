@@ -92,7 +92,7 @@ export default function DeptoDemo({ searchParams }: { searchParams: { etapa?: st
       : cierrePedido === "retirada" ? { ...base, estado: "retirada", retiradaAt: new Date(ahora - 2 * DIA).toISOString(), retiradaDesde: "presentada" }
       : { ...base, estado: "sin_acuerdo", sinAcuerdoMotivo: "vencida", respuestaTardia: "aceptada_sujeta", respuestaTardiaUF: 2936, tardiaDecision: "no_gracias" };
     p.oferta = null;
-    p.otraViva = searchParams.otra === "1" ? { avisoId: "otro", titulo: "Av. Irarrázaval 2315", estado: "presentada" } : null;
+    p.otraViva = searchParams.otra === "1" || searchParams.otra === "firme" ? { avisoId: "otro", titulo: "Av. Irarrázaval 2315", estado: "presentada", firme: searchParams.otra === "firme" ? { venceAt: venceAlTerminar(new Date(ahora - DIA)).toISOString() } : null } : null;
   }
   // La visita (24-nov-2026): ?visita=pedida | hecha (coincide) | arreglo (con un arreglo que no se veía), y ?mantener=acepta | no.
   if (p.oferta && (searchParams.visita || pedido === "ajustada")) {

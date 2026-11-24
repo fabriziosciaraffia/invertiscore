@@ -10,7 +10,7 @@
 //   · «Lo que sigue»: un solo bloque con a lo más UN botón, rojo solo cuando le toca a la persona.
 // ─────────────────────────────────────────────────────────────────────────────
 import { puedeOfertar, type EstadoVisible } from "./preaprobacion";
-import { B4_COPY, cierreDe, fechaCorta, fraccionVigencia, lineaVence, ultimoDia } from "./b4";
+import { B4_COPY, cierreDe, fechaCorta, fraccionVigencia, lineaVence, textoOtraFirme, ultimoDia, type OtraViva } from "./b4";
 import { VISITA_COPY as VC, conArreglo, visitaAbierta, visitaPublicada, type VisitaResumen } from "./visita";
 
 export const ETAPAS = ["confirmando", "no_avanza", "sin_preaprobacion", "listo", "en_pausa", "en_firme", "promesa", "escritura", "inscrito", "no_sigo"] as const;
@@ -167,7 +167,7 @@ function despuesDeFirmar(o: OfertaResumen, avisoId: string, ahora: Date): LoQueS
   if (o.estado === "firmada") {
     return { chip: FRANCO_EN_ESO, tono: "gris", titulo: o.tipoRonda === "proponer" ? B4_COPY.rondaNuevaT : B4_COPY.firmadaT, texto: B4_COPY.firmadaTxt, boton: null, cifras: [...tuCifra, ...(o.firmadaAt ? [{ et: "Firmada", v: diaMes(o.firmadaAt) }] : [])], verOferta: true, acciones: ["retirar"] };
   }
-  if (o.estado === "en_cola") return { chip: FRANCO_EN_ESO, tono: "gris", titulo: B4_COPY.enColaT, texto: B4_COPY.enColaTxt, boton: null, cifras: tuCifra, verOferta: true, acciones: ["retirar"] };
+  if (o.estado === "en_cola") return { chip: FRANCO_EN_ESO, tono: "gris", titulo: B4_COPY.enColaT, texto: o.sujetaAVisita === false ? VC.enEspera : B4_COPY.enColaTxt, boton: null, cifras: tuCifra, verOferta: true, acciones: ["retirar"] };
   if (o.estado === "presentada") {
     const vence = o.vigenteHasta ? new Date(o.vigenteHasta) : null;
     const l = vence ? lineaVence(vence, ahora) : null;
@@ -209,7 +209,7 @@ function despuesDeFirmar(o: OfertaResumen, avisoId: string, ahora: Date): LoQueS
 }
 
 /** «Lo que sigue» cuando la oferta no llegó a acuerdo (B4; lámina 4.2-cuando-no-hay-acuerdo): el depto vuelve al paso 2. */
-export function cuandoNoHayAcuerdo(c: OfertaResumen, avisoId: string, otraViva: { titulo: string } | null, ahora: Date = new Date()): LoQueSigue | null {
+export function cuandoNoHayAcuerdo(c: OfertaResumen, avisoId: string, otraViva: OtraViva | null, ahora: Date = new Date()): LoQueSigue | null {
   const cierre = cierreDe(c);
   const tu = c.montoUF ? uf0(c.montoUF) : null;
   const tuCifra = tu ? [{ et: B4_COPY.tuOferta, v: tu }] : [];
@@ -226,8 +226,8 @@ export function cuandoNoHayAcuerdo(c: OfertaResumen, avisoId: string, otraViva: 
     const m = c.respuestaTardiaUF ?? c.montoUF ?? 0;
     return {
       chip: TE_TOCA, tono: "ciruela", titulo: B4_COPY.tardiaT(uf0(m)), texto: B4_COPY.tardiaTxt, cifras: vencio,
-      aviso: otraViva ? B4_COPY.tardiaOtra(otraViva.titulo) : null,
-      boton: c.id ? { texto: B4_COPY.reactivar, href: urlFirmaRonda(avisoId, m, c.id, !!otraViva) } : null, acciones: ["no_gracias"],
+      aviso: otraViva?.firme ? textoOtraFirme(otraViva.firme.venceAt, ahora) : otraViva ? B4_COPY.tardiaOtra(otraViva.titulo) : null,
+      boton: c.id && !otraViva?.firme ? { texto: B4_COPY.reactivar, href: urlFirmaRonda(avisoId, m, c.id, !!otraViva) } : null, acciones: ["no_gracias"],
     };
   }
   if (cierre === "retirada") return { chip: "Sin oferta", tono: "gris", titulo: B4_COPY.retiradaT, texto: B4_COPY.retiradaTxt, cifras: [...tuCifra, ...(c.retiradaAt ? [{ et: "Retirada", v: diaMes(c.retiradaAt) }] : [])], boton: null, secundario: otra };
@@ -236,7 +236,7 @@ export function cuandoNoHayAcuerdo(c: OfertaResumen, avisoId: string, otraViva: 
 }
 
 /** «Lo que sigue» en la página del depto, según su etapa y la preaprobación. null en no_avanza (la página entera cambia). */
-export function loQueSigue(etapa: Etapa, pre: EstadoVisible, urlPreaprobacion: string, oferta: OfertaResumen | null = null, urlDeLaOferta = "", extra: { avisoId?: string; ahora?: Date; cierre?: OfertaResumen | null; otraViva?: { titulo: string } | null } = {}): LoQueSigue | null {
+export function loQueSigue(etapa: Etapa, pre: EstadoVisible, urlPreaprobacion: string, oferta: OfertaResumen | null = null, urlDeLaOferta = "", extra: { avisoId?: string; ahora?: Date; cierre?: OfertaResumen | null; otraViva?: OtraViva | null } = {}): LoQueSigue | null {
   const avisoId = extra.avisoId ?? "";
   const ahora = extra.ahora ?? new Date();
   if (etapa === "confirmando") {
