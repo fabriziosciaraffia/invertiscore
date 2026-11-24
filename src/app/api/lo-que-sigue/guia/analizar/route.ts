@@ -70,7 +70,7 @@ import { devolverCobroPorCambio } from "@/lib/guia/cobro-mostrado-servidor";
 // que la portada dice. `analisis_creado` lleva la marca. El crédito, el de siempre: una vez por persona y aviso.
 // LO MOSTRADO CONTRA HOY (23-nov-2026, decisión de Fabrizio, cobro-mostrado.ts): con el cuerpo de hoy ya armado y antes de reclamar
 // o cobrar, se corre el motor. Si su veredicto es otro que el que la persona vio (reconstruido acá: el ítem del correo por su token,
-// o la sonda de la pantalla con la misma combinación), la ruta responde 412 «cambio» sin cobrar ni mandar a pagar; con
+// o la sonda de la pantalla con la misma combinación), la ruta responde normal (200) con `estado: "cambio"`, sin cobrar ni mandar a pagar; con
 // `aceptoCambio: true` sigue, cobra y el informe queda marcado (`origenAviso.cambioAvisado`). Si igual se crea distinto sin aviso, el
 // crédito vuelve solo (`origenAviso.cobroDevuelto`, `devuelto: true` en la respuesta). El precio negociado tiene su propia verificación.
 // ─────────────────────────────────────────────────────────────────────────────

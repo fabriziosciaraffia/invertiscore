@@ -109,7 +109,7 @@ export function informeListo(p: PasoInforme, r: { id: string; ruta: string; vere
   return r.devuelto === true ? { ...base, paso: "distinto" } : { ...base, paso: "listo" };
 }
 
-/** Antes de cobrar, cambió el veredicto (412 «cambio»): no se cobró; la persona decide si lo analiza igual. */
+/** Antes de cobrar, cambió el veredicto (`estado: "cambio"`, respuesta normal): no se cobró; la persona decide si lo analiza igual. */
 export function informeCambio(p: PasoInforme, ahora: VeredictoVisto, pagado = false): PasoInforme {
   return { paso: "cambio", depto: p.depto, t0: p.t0, esperado: p.esperado, ahora, pagado };
 }
