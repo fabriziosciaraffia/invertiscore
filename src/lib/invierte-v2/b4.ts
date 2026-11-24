@@ -112,6 +112,7 @@ export const MOTIVOS_ADMIN_OFERTA: Record<string, string> = {
   preaprobacion: "La preaprobación no deja ofertar.",
   orden: "La persona no tiene la orden firmada.",
   otra_viva: "La persona tiene otra oferta viva: tiene que elegir con cuál se queda.",
+  otra_firme: "La persona tiene una oferta a firme vigente en otro depto: no se retira hasta que venza o la respondan.",
   // La visita (24-nov-2026).
   confirmacion: "Falta la confirmación explícita de la persona.",
   tipo: "Esa foto no se puede subir: solo JPEG, PNG o WEBP.",
