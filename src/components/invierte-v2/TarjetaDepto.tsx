@@ -83,14 +83,16 @@ function direccionDe(f: FichaDepto | null, l: LecturaFranco | null, datos: Datos
 /** EL CAMINO EN CHICO (segunda vuelta del rediseño, 23-nov-2026, lámina 3.3): los seis puntos del camino de la página del depto
  *  (`caminoDepto`, la misma fuente). Hechos en azul; el actual más grande, ciruela si le toca a la persona, negro si lo lleva Franco;
  *  los que faltan en gris; la visita que no hubo, gris hueco. Al lado, «Paso n de 6 · Nombre» (en celular, «n de 6»). */
-export function CaminoChico({ camino }: { camino: { actual: number; pasos: PasoCamino[] } }) {
+// Sin redundancia (24-nov-2026): si el título de la tarjeta ya es el nombre del paso («Oferta en firme», «Promesa»), solo «Paso n de 6».
+export function CaminoChico({ camino, titulo = null }: { camino: { actual: number; pasos: PasoCamino[] }; titulo?: string | null }) {
   const actual = camino.pasos[camino.actual - 1];
+  const nombre = actual?.t && titulo && actual.t.toLowerCase() === titulo.toLowerCase().replace(/^confirmando el depto$/, "confirmar el depto") ? null : actual?.t;
   return (
     <span className="iv2-cc" data-inv2="camino-chico" data-actual={camino.actual}>
       <span className="iv2-cc-puntos" aria-hidden="true">
         {camino.pasos.map((x) => <span key={x.n} className={`iv2-cc-p iv2-cc-${x.estado}`} data-estado={x.estado} />)}
       </span>
-      <span className="iv2-cc-txt"><span className="iv2-cc-pc">Paso {camino.actual} de {camino.pasos.length} · {actual?.t}</span><span className="iv2-cc-movil">{camino.actual} de {camino.pasos.length}</span></span>
+      <span className="iv2-cc-txt"><span className="iv2-cc-pc">Paso {camino.actual} de {camino.pasos.length}{nombre ? ` · ${nombre}` : ""}</span><span className="iv2-cc-movil">{camino.actual} de {camino.pasos.length}</span></span>
     </span>
   );
 }
@@ -121,7 +123,7 @@ export function TarjetaBase({ avisoId, datos, ficha, numeroConfirmado = null, al
           <span className={tuyo ? "iv2-chip-tuyo" : "iv2-chip-franco"} data-inv2="estado-depto">{tuyo && <i aria-hidden="true" />}{estado.chip}</span>
           {estado.titulo && <span className="iv2-td-estado-t" data-inv2="estado-titulo">{estado.titulo}</span>}
           <span className="iv2-td-estado-linea">{estado.linea}</span>
-          {camino && <CaminoChico camino={camino} />}
+          {camino && <CaminoChico camino={camino} titulo={estado.titulo ?? null} />}
           <span className="iv2-td-abrir" aria-hidden="true">{B.abrirEsteDepto} ›</span>
         </span>
         <span className="iv2-td-flecha" aria-hidden="true">›</span>

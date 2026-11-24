@@ -173,7 +173,7 @@ export function cuandoNoHayAcuerdo(c: OfertaResumen, avisoId: string, otraViva: 
   if (cierre === "vencida") return { chip: TE_TOCA, tono: "ciruela", titulo: B4_COPY.vencidaT, texto: B4_COPY.vencidaTxt, cifras: [...tuCifra, ...vencio], boton: c.id && c.montoUF ? { texto: B4_COPY.volverAPresentar, href: urlFirmaRonda(avisoId, c.montoUF, c.id) } : otra, secundario: { texto: B4_COPY.cambiarMonto, href: urlOferta(avisoId) } };
   if (cierre === "tardia" && c.respuestaTardia === "contraoferta") {
     const v = c.contraofertaVence ? lineaVence(new Date(c.contraofertaVence), ahora) : null;
-    return { chip: TE_TOCA, tono: "ciruela", titulo: B4_COPY.tardiaContraT(uf0(c.contraofertaUF ?? 0)), texto: B4_COPY.fueraDePlazo, cifras: tresCifras(c), boton: { texto: B4_COPY.responder, href: urlContraoferta(avisoId) }, nota: v ? v.vence : undefined };
+    return { chip: TE_TOCA, tono: "ciruela", titulo: B4_COPY.tardiaContraT(uf0(c.contraofertaUF ?? 0)), texto: B4_COPY.fueraDePlazoCorto, cifras: tresCifras(c), boton: { texto: B4_COPY.responder, href: urlContraoferta(avisoId) }, nota: v ? v.vence : undefined };
   }
   if (cierre === "tardia") {
     const m = c.respuestaTardiaUF ?? c.montoUF ?? 0;

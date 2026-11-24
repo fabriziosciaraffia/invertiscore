@@ -170,7 +170,7 @@ export const CORREO_PREAPROB = {
   },
   por_corregir: {
     asunto: "Necesitamos que subas de nuevo tu preaprobación",
-    parrafo: (motivo: string) => `Revisamos tu preaprobación y necesitamos que la subas de nuevo. ${motivo.replace(/([^.!?])$/, "$1.")}`,
+    parrafo: (motivo: string) => motivo.replace(/([^.!?])$/, "$1."),
     boton: "Subir otra",
   },
 } as const;

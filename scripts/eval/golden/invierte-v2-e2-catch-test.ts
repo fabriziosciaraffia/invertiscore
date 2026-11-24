@@ -588,7 +588,7 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (!validarAprobacion({ banco: "Estado", montoUF: "2600", vigenteHasta: "2027-02-15" }).ok || validarAprobacion({ banco: "", montoUF: 2600, vigenteHasta: "2027-02-15" }).ok || validarAprobacion({ banco: "Estado", montoUF: 50, vigenteHasta: "2027-02-15" }).ok || validarAprobacion({ banco: "Estado", montoUF: 2600, vigenteHasta: "15-02-2027" }).ok) F("10 · la aprobación acepta datos incompletos o inválidos");
       if (validarMotivo("corto") || !validarMotivo("Venció el 3 de noviembre. Pídele a tu banco una vigente.")) F("10 · el motivo de corregir no se valida (10 a 300 caracteres)");
       if (CORREO_PREAPROB.aprobada.parrafo({ banco: "Estado", montoUF: 2600, vigenteHasta: "2027-02-15" }) !== "Revisamos tu preaprobación: Banco Estado · crédito hasta UF 2.600 · vigente hasta el 15 de febrero. Ya puedes ofertar o pedir visita en tus deptos.") F("10 · el correo de aprobada no es el propuesto");
-      if (CORREO_PREAPROB.por_corregir.parrafo("Venció el 3 de noviembre") !== "Revisamos tu preaprobación y necesitamos que la subas de nuevo. Venció el 3 de noviembre.") F("10 · el correo de por corregir no es el propuesto");
+      if (CORREO_PREAPROB.por_corregir.parrafo("Venció el 3 de noviembre") !== "Venció el 3 de noviembre.") F("10 · el correo de por corregir no es el propuesto");
 
       // La lectura con IA, con un cliente falso: transcribe; HEIC no se manda; una negativa no rompe nada; el costo con la tarifa.
       const respuesta = (o: { stop_reason?: string; texto?: string }) => ({ beta: { messages: { create: async () => ({ model: CLAUDE_MODEL_DOCUMENTOS, stop_reason: o.stop_reason ?? "end_turn", usage: { input_tokens: 3000, output_tokens: 200 }, content: o.texto ? [{ type: "text", text: o.texto }] : [] }) } } });
@@ -1801,6 +1801,12 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
         if (tarjetas31.length < 60 || tarjetas31.filter((t) => t.lineas.length).length < 40) F(`31b · el censo de tarjetas quedó corto (${tarjetas31.length}): no mide lo que dice`);
         const malas31 = tarjetas31.flatMap((t) => sobra31(t).map((ln) => `${t.donde}: «${t.titulo}» / «${ln}»`));
         if (malas31.length) F(`31b · una línea repite el título o una cifra de su tarjeta (${malas31.length}): ${malas31[0].slice(0, 220)}`);
+        // 31c · El camino chico de la base no repite el título de la tarjeta cuando es el nombre del paso; la pantalla de la contraoferta
+        // (cuyo título no dice «fuera de plazo») conserva la frase entera, y «Lo que sigue» (cuyo título sí lo dice) solo lo nuevo.
+        const cf31 = renderToStaticMarkup(createElement(CaminoChico, { camino: caminoDepto("en_firme", { estado: "en_firme" }), titulo: "Oferta en firme" }));
+        const co31 = renderToStaticMarkup(createElement(CaminoChico, { camino: caminoDepto("listo", { estado: "presentada" }), titulo: "Oferta presentada" }));
+        if (/Oferta en firme/.test(cf31) || !/Paso 4 de 6/.test(cf31) || !/Paso 2 de 6 · Oferta/.test(co31) || !/titulo=\{estado\.titulo \?\? null\}/.test(codigo("src/components/invierte-v2/TarjetaDepto.tsx"))) F("31c · el camino chico repite el título de la tarjeta (o pierde el nombre cuando no lo repite)");
+        if (B4_COPY.fueraDePlazo !== "Llegó fuera de plazo, tu oferta ya no te obliga." || !/\{B\.fueraDePlazo\}/.test(codigo("src/components/invierte-v2/ResponderContraoferta.tsx")) || cuandoNoHayAcuerdo(o30({ estado: "sin_acuerdo", sinAcuerdoMotivo: "vencida", respuestaTardia: "contraoferta", contraofertaUF: 3010, sugeridaUF: 2966 }), "a30", null, ah30)?.texto !== "Tu oferta ya no te obliga.") F("31c · la frase de fuera de plazo se perdió en la contraoferta o sobra en «Lo que sigue»");
       }
       }
       // 24l · Los arreglos de la lectura: solo concretos; sin «no se ve» ni «falta información»; en el esquema y la versión.
