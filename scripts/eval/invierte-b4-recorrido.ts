@@ -9,6 +9,9 @@
 //   · nunca contra producción: se niega si VERCEL_ENV es «production»; corre en local con el código de la rama;
 //   · ningún correo: los avisos van sin envío (deps null); el WhatsApp queda como tarea y se borra con lo demás;
 //   · la oferta 715d5df2 y el depto a67843d8 no se tocan (se verifica que no cambiaron).
+//   · la visita antes del precio (24-nov-2026, pasos 12 a 17): pedirla, mantener la contraoferta, la base que rechaza sugerir bajo la
+//     oferta sin una visita con un arreglo, el reporte que baja la sugerencia, proponer menos con el reporte de respaldo, ajustar bajo lo
+//     aceptado y confirmar en firme solo con la confirmación explícita.
 // Dos seguros (24-nov-2026, Fabrizio: la base es la de producción):
 //   · al empezar deja una MARCA en `config` (invierte_recorrido_b4_en_curso: desde cuándo, la etapa del depto, el documento creado); si
 //     encuentra una marca o restos de una corrida anterior (ofertas de la cuenta de QA, la preaprobación de prueba, el depto en otra etapa),
@@ -22,6 +25,10 @@
 import { createServiceClient } from "../../src/lib/supabase/service";
 import { accionOfertaAdmin, firmarRonda, noGracias, retirarOferta } from "../../src/lib/invierte-v2/b4-servidor";
 import { asegurarRango, firmarOferta } from "../../src/lib/invierte-v2/rango-servidor";
+import { accionVisitaAdmin, confirmarEnFirme, pedirVisita } from "../../src/lib/invierte-v2/visita-servidor";
+import { rondaDesde } from "../../src/lib/invierte-v2/b4-servidor";
+import { ofertaDeFila } from "../../src/lib/invierte-v2/rango-servidor";
+import { visitaParaRonda } from "../../src/lib/invierte-v2/visita-lectura";
 
 const QA = "67977905-a84f-4ae5-8a08-28eb2d5d4b6f";
 const AVISO = "4f543801-000f-4d45-87b8-b245b4b014fb";
@@ -48,12 +55,13 @@ async function guardarMarca(m: Marca): Promise<void> {
 
 /** Los restos de una corrida anterior: la marca, ofertas de la cuenta de QA o la preaprobación de prueba. */
 async function restos(): Promise<string[]> {
-  const [m, { count: of }, { count: docs }] = await Promise.all([
+  const [m, { count: of }, { count: docs }, { count: vis }] = await Promise.all([
     leerMarca(),
     admin.from("inv_ofertas").select("id", { count: "exact", head: true }).eq("user_id", QA),
     admin.from("inv_documentos").select("id", { count: "exact", head: true }).eq("user_id", QA).eq("banco", BANCO_PRUEBA),
+    admin.from("inv_visitas").select("id", { count: "exact", head: true }).eq("user_id", QA),
   ]);
-  return [m ? `la marca de una corrida del ${m.t0}` : null, of ? `${of} oferta(s) de la cuenta de QA` : null, docs ? `${docs} preaprobación(es) de prueba` : null].filter((x): x is string => !!x);
+  return [m ? `la marca de una corrida del ${m.t0}` : null, of ? `${of} oferta(s) de la cuenta de QA` : null, docs ? `${docs} preaprobación(es) de prueba` : null, vis ? `${vis} visita(s) de la cuenta de QA` : null].filter((x): x is string => !!x);
 }
 
 /** LA LIMPIEZA: todo lo creado desde la marca, el depto a su etapa, y la marca al final. Idempotente; corre una sola vez a la vez. */
@@ -63,10 +71,9 @@ function limpiar(m: Marca | null = marcaActual): Promise<void> {
     if (!m) return;
     const { data: creadas } = await admin.from("inv_ofertas").select("id").eq("user_id", QA);
     const ids = (creadas ?? []).map((x) => x.id as string);
-    if (ids.length) {
-      await admin.from("inv_ofertas").update({ anterior_id: null }).in("id", ids);
-      await admin.from("inv_ofertas").delete().in("id", ids);
-    }
+    if (ids.length) await admin.from("inv_ofertas").update({ anterior_id: null, visita_id: null, sugerida_visita_id: null }).in("id", ids);
+    await admin.from("inv_visitas").delete().eq("user_id", QA);
+    if (ids.length) await admin.from("inv_ofertas").delete().in("id", ids);
     await admin.from("inv_tareas").delete().eq("user_id", QA).gte("created_at", m.t0);
     await admin.from("inv_bitacora").delete().eq("user_id", QA).gte("created_at", m.t0);
     await admin.from("inv_documentos").delete().eq("user_id", QA).eq("banco", BANCO_PRUEBA);
@@ -226,6 +233,62 @@ async function main(): Promise<number> {
     const rt2 = await retirarOferta(admin, USER, AVISO, null);
     const o5b = await oferta(o5.id as string);
     espera(rt2.ok && o5b.estado === "retirada" && o5b.retirada_desde === "firmada", "11 · retirar una ronda firmada", { rt2, e: o5b.estado });
+
+    // ── LA VISITA ANTES DE CERRAR EL PRECIO (24-nov-2026) ──
+    // 12 · Una oferta nueva con contraoferta; «Visitar antes de responder» (la persona): visita pedida, sus tareas y el pedido de mantener.
+    const r6 = await asegurarRango(admin, QA, AVISO, new Date(), { nueva: true });
+    await firmarOferta(admin, USER, AVISO, { montoUF: r6?.recomendadoUF, acepto: true, leyo: true }, null);
+    const o6 = await ultimaRonda(deptoId);
+    await accionOfertaAdmin(admin, ADMIN, { accion: "oferta_presentar", ofertaId: o6.id }, null);
+    await accionOfertaAdmin(admin, ADMIN, { accion: "oferta_respuesta", ofertaId: o6.id, tipo: "contraoferta", montoUF: Math.round(Number(o6.monto_uf)) + 120, nota: "", vence: null }, null);
+    const pv = await pedirVisita(admin, USER, AVISO, null);
+    const o6a = await oferta(o6.id as string);
+    const { data: v1 } = await admin.from("inv_visitas").select("*").eq("user_id", QA).order("created_at", { ascending: false }).limit(1).single();
+    espera(pv.ok && v1?.estado === "pedida" && v1.pedida_desde === "contraoferta" && v1.modo == null && !!o6a.mantener_pedido_at && (await tareaPendiente("agendar_visita")) && (await tareaPendiente("pedir_mantener_contraoferta")), "12 · visitar antes de responder: visita pedida (quién va, sin decidir), sus tareas y el pedido de mantener", { pv, v: v1?.estado, m: o6a.mantener_pedido_at });
+
+    // 13 · Quien vende acepta mantenerla (admin): la fecha nueva reemplaza al vencimiento; la de antes queda guardada.
+    const nueva13 = new Date(Date.now() + 9 * 864e5).toISOString().slice(0, 10);
+    const mt = await accionVisitaAdmin(admin, ADMIN, { accion: "visita_mantener", ofertaId: o6.id, acepta: true, fecha: nueva13 }, null);
+    const o6b = await oferta(o6.id as string);
+    espera(mt.ok && o6b.mantener_respuesta === "acepta" && o6b.contraoferta_vence_original === o6a.contraoferta_vence && o6b.contraoferta_vence !== o6a.contraoferta_vence && !(await tareaPendiente("pedir_mantener_contraoferta")), "13 · mantener la contraoferta: la fecha nueva reemplaza al vencimiento, la original guardada", { mt, o: o6b.contraoferta_vence, orig: o6b.contraoferta_vence_original });
+
+    // 14 · LA BASE: lo que sugiere Franco bajo la oferta, sin una visita con un arreglo publicado, se rechaza (check y trigger).
+    const bajo = Math.round(Number(o6.monto_uf)) - 10;
+    const { error: e14a } = await admin.from("inv_ofertas").update({ sugerida_uf: bajo }).eq("id", o6.id as string);
+    const { error: e14b } = await admin.from("inv_ofertas").update({ sugerida_uf: bajo, sugerida_visita_id: v1!.id }).eq("id", o6.id as string);
+    espera(!!e14a && !!e14b && /arreglo concreto/.test(e14b.message), "14 · la base rechaza sugerir bajo la oferta sin una visita con un arreglo publicado", { e14a: e14a?.message, e14b: e14b?.message });
+
+    // 15 · Agendar y publicar el reporte con un arreglo que no se veía en las fotos (admin): el rango baja y lo que sugiere Franco también.
+    const ag = await accionVisitaAdmin(admin, ADMIN, { accion: "visita_agendar", visitaId: v1!.id, fecha: new Date().toISOString().slice(0, 10) }, null);
+    const pb = await accionVisitaAdmin(admin, ADMIN, { accion: "visita_reporte", visitaId: v1!.id, puntos: [{ tema: "Baños", texto: "Filtración en el cielo del baño: hay que repararla.", arreglo: true, enFotos: false }, { tema: "Cocina", texto: "En buen estado.", arreglo: false }], fecha: new Date().toISOString().slice(0, 10) }, null);
+    const o6c = await oferta(o6.id as string);
+    const { data: v1b } = await admin.from("inv_visitas").select("*").eq("id", v1!.id).single();
+    espera(ag.ok && pb.ok && v1b?.estado === "reporte_publicado" && v1b.reporte_estado === "arreglos_menores" && (v1b.reporte_arreglos as string[]).length === 1 && Number(o6c.sugerida_uf) < Number(o6a.sugerida_uf) && o6c.sugerida_visita_id === v1!.id, "15 · el reporte con un arreglo baja lo que sugiere Franco, con la visita de respaldo", { ag, pb, v: v1b?.estado, antes: o6a.sugerida_uf, ahora: o6c.sugerida_uf });
+
+    // 16 · Proponer menos que la oferta anterior, con la visita de respaldo (la persona): la base lo acepta y la ronda queda atada al reporte.
+    const v16 = await visitaParaRonda(admin, deptoId);
+    const ro16 = rondaDesde({ ...ofertaDeFila(o6c), visita: v16 });
+    const pp = ro16 && ro16.minUF < Number(o6.monto_uf) ? await firmarRonda(admin, USER, AVISO, { desdeId: o6.id, montoUF: Math.min(ro16.minUF + 10, Number(o6.monto_uf) - 1), acepto: true, leyo: true }, null) : null;
+    const o7 = await ultimaRonda(deptoId);
+    espera(!!pp?.ok && Number(o7.monto_uf) < Number(o6.monto_uf) && o7.visita_id === v1!.id && o7.estado === "firmada", "16 · proponer menos que la oferta anterior, solo con el reporte de respaldo", { ro16, pp, o7: { m: o7.monto_uf, v: o7.visita_id } });
+
+    // 17 · Aceptada después de la visita: ajustar bajo lo aceptado (ronda «ajustar»), y confirmar en firme solo con la confirmación explícita.
+    await accionOfertaAdmin(admin, ADMIN, { accion: "oferta_presentar", ofertaId: o7.id }, null);
+    await accionOfertaAdmin(admin, ADMIN, { accion: "oferta_respuesta", ofertaId: o7.id, tipo: "aceptada" }, null);
+    const o7b = await oferta(o7.id as string);
+    const ro17 = rondaDesde({ ...ofertaDeFila(o7b), visita: await visitaParaRonda(admin, deptoId) });
+    const aj = ro17?.tipo === "ajustar" ? await firmarRonda(admin, USER, AVISO, { desdeId: o7.id, montoUF: ro17.minUF, acepto: true, leyo: true }, null) : null;
+    const o8 = await ultimaRonda(deptoId);
+    const o7c = await oferta(o7.id as string);
+    espera(o7b.estado === "aceptada_sujeta" && aj?.ok === true && aj.tipo === "ajustar" && o8.estado === "firmada" && o7c.estado === "reemplazada" && Number(o8.monto_uf) < Number(o7.monto_uf), "17 · ajustar el precio con lo que se vio: ronda nueva bajo lo aceptado, la aceptada reemplazada", { ro17, aj, o8: o8.estado, o7: o7c.estado });
+    await accionOfertaAdmin(admin, ADMIN, { accion: "oferta_presentar", ofertaId: o8.id }, null);
+    await accionOfertaAdmin(admin, ADMIN, { accion: "oferta_respuesta", ofertaId: o8.id, tipo: "aceptada" }, null);
+    const sinConf = await confirmarEnFirme(admin, USER, AVISO, {}, null);
+    const o8a = await oferta(o8.id as string);
+    const conf = await confirmarEnFirme(admin, USER, AVISO, { confirmo: true }, null);
+    const o8b = await oferta(o8.id as string);
+    const { data: d17 } = await admin.from("inv_deptos").select("etapa").eq("id", deptoId).single();
+    espera(!sinConf.ok && o8a.estado === "aceptada_sujeta" && conf.ok && o8b.estado === "en_firme" && o8b.en_firme_como === "tras_visita" && o8b.en_firme_confirmo === true && d17?.etapa === "en_firme" && (await tareaPendiente("comunicar_en_firme")), "17 · en firme solo con la confirmación explícita, tras la visita, con la tarea de comunicarlo", { sinConf, conf, e: o8b.estado, como: o8b.en_firme_como, etapa: d17?.etapa });
   } catch (e) {
     F(`no terminó el recorrido: ${e instanceof Error ? e.message : String(e)}`);
   } finally {
