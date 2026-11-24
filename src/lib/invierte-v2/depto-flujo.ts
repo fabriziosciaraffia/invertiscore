@@ -132,13 +132,12 @@ const diaDe = (vence: string, ahora: Date) => lineaVence(new Date(vence), ahora)
 export const urlFirmaRonda = (avisoId: string, montoUF: number, desdeId: string, retirarOtra = false) =>
   `${urlOferta(avisoId)}/firmar?monto=${Math.round(montoUF)}&desde=${encodeURIComponent(desdeId)}${retirarOtra ? "&retirarOtra=1" : ""}`;
 const FRANCO_EN_ESO = "Franco está en eso", TE_TOCA = "Te toca a ti";
-const mayuscula = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
 
-/** Las tres cifras de la contraoferta, lado a lado (lámina 4.2-estados): tú, ellos y lo que sugiere Franco. */
+/** Las cifras de la contraoferta (lámina 4.2-estados): tú y lo que sugiere Franco. Sin redundancia (24-nov-2026, Fabrizio): lo que
+ *  piden ya lo dice el título («Piden UF X»), así que «Ellos» se va de las cifras. */
 function tresCifras(o: OfertaResumen): { et: string; v: string; azul?: boolean }[] {
   return [
     ...(o.montoUF ? [{ et: B4_COPY.tu, v: uf0(o.montoUF) }] : []),
-    ...(o.contraofertaUF ? [{ et: B4_COPY.ellos, v: uf0(o.contraofertaUF) }] : []),
     ...(o.sugeridaUF ? [{ et: B4_COPY.francoSugiere, v: uf0(o.sugeridaUF), azul: true }] : []),
   ];
 }
@@ -161,13 +160,13 @@ function despuesDeFirmar(o: OfertaResumen, avisoId: string, ahora: Date): LoQueS
   if (o.estado === "presentada") {
     const vence = o.vigenteHasta ? new Date(o.vigenteHasta) : null;
     const l = vence ? lineaVence(vence, ahora) : null;
-    const primero = l ? (l.vencida ? l.vence : l.quedan ? mayuscula(l.quedan) : l.vence) : null;
     return {
       chip: FRANCO_EN_ESO, tono: "gris", titulo: B4_COPY.presentadaT, boton: null,
       cifras: [...tuCifra, ...(vence ? [{ et: "Vence", v: fechaCorta(ultimoDia(vence)) }] : [])],
       vigencia: vence && o.presentadaAt ? fraccionVigencia(new Date(o.presentadaAt), vence, ahora) : undefined,
       // Entre la medianoche en que vence y la pasada de la mañana que la cierra, solo «Venció sin respuesta».
-      texto: l?.vencida ? "Venció sin respuesta" : [primero, B4_COPY.presentadaTxt].filter(Boolean).join(" · "), verOferta: true, acciones: ["retirar"],
+      // Sin redundancia (24-nov-2026): el plazo ya lo dicen la cifra «Vence» y la barra; se va «Quedan 4 días».
+      texto: l?.vencida ? "Venció sin respuesta" : B4_COPY.presentadaTxt, verOferta: true, acciones: ["retirar"],
     };
   }
   // LA VISITA ANTES DE CERRAR EL PRECIO (24-nov-2026; láminas 4.2-estados y 4.2-la-visita del 24-nov). Cuando quien vende responde, lo
@@ -179,7 +178,7 @@ function despuesDeFirmar(o: OfertaResumen, avisoId: string, ahora: Date): LoQueS
     const dia = o.contraofertaVence ? diaDe(o.contraofertaVence, ahora) : null;
     const mantiene = o.mantenerRespuesta === "acepta";
     const venceLinea = o.contraofertaVence ? lineaVence(new Date(o.contraofertaVence), ahora).vence : undefined;
-    if (reporte) return { chip: TE_TOCA, tono: "ciruela", titulo: VC.yaVisitasteContraT, texto: null, cifras: tresCifras(o), reporte, boton: { texto: B4_COPY.responder, href: urlContraoferta(avisoId) }, nota: dia && mantiene ? VC.seMantieneCorto(dia) : venceLinea };
+    if (reporte) return { chip: TE_TOCA, tono: "ciruela", titulo: VC.yaVisitasteContraT(piden), texto: null, cifras: tresCifras(o), reporte, boton: { texto: B4_COPY.responder, href: urlContraoferta(avisoId) }, nota: dia && mantiene ? VC.seMantieneCorto(dia) : venceLinea };
     if (visitaAbierta(v) && o.mantenerRespuesta === "no_acepta") return { chip: TE_TOCA, tono: "ciruela", titulo: VC.noEsperaT, texto: dia ? VC.noEspera(dia) : null, cifras: [{ et: "Piden", v: piden }], boton: { texto: B4_COPY.responder, href: urlContraoferta(avisoId, true) } };
     if (visitaAbierta(v)) {
       const vence = o.contraofertaVence ? [{ et: mantiene ? VC.seMantieneEt : "Vence", v: fechaCorta(ultimoDia(new Date(o.contraofertaVence))) }] : [];

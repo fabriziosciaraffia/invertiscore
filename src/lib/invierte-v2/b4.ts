@@ -175,7 +175,7 @@ export function cierreDe(o: { estado: string; sinAcuerdoMotivo?: string | null; 
 export const B4_COPY = {
   // Títulos de «Lo que sigue» en frase completa: qué está pasando y quién lo hace (LEEME del 23-nov, visita antes del precio).
   presentadaT: "Franco presentó tu oferta. Esperamos la respuesta",
-  presentadaTxt: "te avisamos apenas respondan",
+  presentadaTxt: "Te avisamos apenas respondan",
   firmadaT: "Franco va a presentar tu oferta a quien vende",
   firmadaTxt: "Va por escrito. Te avisamos apenas esté presentada.",
   rondaNuevaT: "Franco va a presentar tu nueva oferta a quien vende",

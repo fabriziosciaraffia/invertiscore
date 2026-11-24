@@ -52,11 +52,13 @@ export function BarraRango({ pisoUF, altoUF, publicadoUF, fuerteUF, montoUF, eti
           />
         </div>
       </div>
-      <div className="iv2-barra-rotulos">
+      {/* Sin redundancia (24-nov-2026, Fabrizio): en «Haz tu oferta» las tres cifras de arriba ya dicen el rango y el publicado; la barra
+          chica va sin rótulos. En la pantalla de la oferta los conserva: ahí es el control principal. */}
+      {!chica && <div className="iv2-barra-rotulos">
         {rayada >= 12 && rotuloCentro >= 44 && <span className="iv2-barra-poco">{O.poco}</span>}
         <span className="iv2-barra-rec" style={{ left: `${rotuloCentro}%` }}>Franco recomienda<br />{O.entreCorto(pisoUF, altoUF)}</span>
         <span className="iv2-barra-pub">{O.publicado}<br />UF {fmt(publicadoUF)}</span>
-      </div>
+      </div>}
     </div>
   );
 }

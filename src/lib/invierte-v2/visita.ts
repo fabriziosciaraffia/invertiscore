@@ -88,7 +88,8 @@ export const VISITA_COPY = {
   seMantieneCorto: (fecha: string) => `Se mantiene hasta el ${fecha}`,
   noEsperaT: "Quien vende no puede esperar la visita",
   noEspera: (fecha: string) => `La contraoferta vence el ${fecha}.`,
-  yaVisitasteContraT: "Ya visitaste: responde la contraoferta",
+  // Después de la visita el título dice lo que piden (24-nov-2026, Fabrizio): las cifras quedan en Tú y Franco sugiere.
+  yaVisitasteContraT: (uf: string) => `Ya visitaste: piden ${uf}`,
   // Con espacio que no corta: «UF 2.966» nunca queda partido en dos renglones.
   yaVisitasteAceptadaT: (uf: string) => `Ya visitaste: ¿confirmas ${uf.replace(/^UF /, "UF ")}?`,
   aceptadaSinVisitaTxt: "Antes de dejarla en firme, mira el depto.",
