@@ -33,7 +33,9 @@ async function llamar(cuerpo: Record<string, unknown>): Promise<{ ok: boolean; e
   return { ok: r.ok, ...d };
 }
 
-export function VisitaAdmin({ o, v, arreglosFotos }: { o: OfertaVista; v: VisitaResumen | null; arreglosFotos: string[] }) {
+/** `demo` (solo /dev/invierte-v2/admin-visita): no llama a la red ni al bucket; arma la copia liviana en el navegador y dice qué se
+ *  publicaría, para revisar la tarjeta sin una visita de verdad. */
+export function VisitaAdmin({ o, v, arreglosFotos, demo = false }: { o: OfertaVista; v: VisitaResumen | null; arreglosFotos: string[]; demo?: boolean }) {
   const router = useRouter();
   const [ocupado, setOcupado] = useState(false);
   const [estado, setEstado] = useState<string | null>(null);
@@ -47,7 +49,8 @@ export function VisitaAdmin({ o, v, arreglosFotos }: { o: OfertaVista; v: Visita
   const [linea, setLinea] = useState("");
   const [fecha, setFecha] = useState(hoy());
   // Las fotos de la visita (24-nov-2026): se suben al elegirlas (la original y su copia liviana) y van con «Publicar reporte».
-  const [fotos, setFotos] = useState<(FotoVisita & { nombre: string })[]>([]);
+  const [fotos, setFotos] = useState<(FotoVisita & { nombre: string; medida?: string })[]>([]);
+  const [muestra, setMuestra] = useState<string | null>(null);
   const [subiendo, setSubiendo] = useState(false);
   async function subirFotos(lista: FileList | null) {
     if (!lista || !v) return;
@@ -56,6 +59,21 @@ export function VisitaAdmin({ o, v, arreglosFotos }: { o: OfertaVista; v: Visita
     if (mala) { setEstado(`«${mala.name}» no se puede subir: solo JPEG, PNG o WEBP de hasta 10 MB.`); return; }
     if (!archivos.length) { setEstado(`Ya hay ${MAX_FOTOS_VISITA} fotos: es el máximo.`); return; }
     setSubiendo(true); setEstado(null);
+    if (demo) {
+      // La muestra: la misma validación y la misma copia liviana, sin subir nada.
+      const hechas: (FotoVisita & { nombre: string; medida: string })[] = [];
+      for (const f of archivos) {
+        try {
+          const m = await copiaLiviana(f);
+          const b = await createImageBitmap(m);
+          hechas.push({ path: `muestra/${f.name}`, mini: `muestra/${f.name}-mini`, nombre: f.name, medida: `copia liviana ${b.width} × ${b.height}, ${Math.round(m.size / 1024)} KB` });
+        } catch { setEstado(`No se pudo leer «${f.name}». Prueba con otra foto.`); }
+      }
+      await new Promise((ok) => setTimeout(ok, 600));
+      setFotos((x) => [...x, ...hechas]);
+      setSubiendo(false);
+      return;
+    }
     const r = await fetch("/api/admin/invierte-v2", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ accion: "visita_fotos_subida", visitaId: v.id, archivos: archivos.map((f) => ({ mime: f.type, bytes: f.size })) }) }).catch(() => null);
     const d = r ? ((await r.json().catch(() => ({}))) as { error?: string; fotos?: { path: string; token: string; mini: string; tokenMini: string }[] }) : null;
     if (!r?.ok || !d?.fotos) { setSubiendo(false); setEstado(motivoAdminOferta(d?.error ?? "red")); return; }
@@ -73,6 +91,10 @@ export function VisitaAdmin({ o, v, arreglosFotos }: { o: OfertaVista; v: Visita
     setSubiendo(false);
   }
   async function enviar(cuerpo: Record<string, unknown>) {
+    if (demo) {
+      setMuestra(`Muestra: no se publica nada. Iría «${String(cuerpo.accion)}»${Array.isArray(cuerpo.puntos) ? ` con ${cuerpo.puntos.length} punto(s)` : ""}${Array.isArray(cuerpo.fotos) ? ` y ${cuerpo.fotos.length} foto(s)` : ""}.`);
+      return;
+    }
     setOcupado(true); setEstado(null);
     const x = await llamar(cuerpo);
     setOcupado(false);
@@ -125,7 +147,7 @@ export function VisitaAdmin({ o, v, arreglosFotos }: { o: OfertaVista; v: Visita
             </label>
             <span className="text-[12px]">{fotos.length} de {MAX_FOTOS_VISITA} · JPEG, PNG o WEBP de hasta 10 MB · se muestran tal como se suben</span>
             {fotos.map((f, i) => (
-              <button key={f.path} type="button" className={CLASE_BTN} onClick={() => setFotos((x) => x.filter((_, j) => j !== i))} title="Quitar esta foto">{f.nombre} ✕</button>
+              <button key={f.path} type="button" className={CLASE_BTN} onClick={() => setFotos((x) => x.filter((_, j) => j !== i))} title="Quitar esta foto">{f.nombre}{f.medida ? ` · ${f.medida}` : ""} ✕</button>
             ))}
           </span>
           <input value={linea} onChange={(e) => setLinea(e.target.value)} aria-label="La línea que ve la persona" placeholder="La línea que ve la persona (vacía: el primer arreglo, o «El estado coincide con las fotos»)" className={`${CAMPO} min-w-[320px]`} />
@@ -133,6 +155,7 @@ export function VisitaAdmin({ o, v, arreglosFotos }: { o: OfertaVista; v: Visita
         </div>
       )}
       {estado && <span className="text-[12px] text-[var(--signal-red)]" role="alert">{estado}</span>}
+      {muestra && <span className="text-[12px] text-[var(--franco-text-muted)]" role="status" data-admin="inv2-visita-muestra">{muestra}</span>}
     </div>
   );
 }
