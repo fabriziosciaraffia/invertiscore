@@ -143,7 +143,7 @@ export function calcularRango(publicadoUF: number, s: SenalesRango, ahora: Date 
     aplicado.push({ senal: s.estadoArriendo === "remodelacion" ? "remodelacion" : "arreglos", puntos: pa, dato: { arreglos: s.arreglos } });
     razones.push(`${conMayuscula(arreglosEnUnaFrase(s.arreglos))}: es un argumento concreto para pedir rebaja.`);
   }
-  if (!razones.length) razones.push(`No vimos nada en este depto que mueva el precio. Estimamos que los vendedores de deptos usados que ajustan su precio ceden cerca de ${fmt(c.base)} %.`);
+  if (!razones.length) razones.push(`No vimos nada en este depto que mueva el precio. Estimamos que quienes venden deptos usados y ajustan su precio ceden cerca de ${fmt(c.base)} %.`);
   const descuentoPct = Math.min(c.max, Math.max(c.min, pts));
   const pub = publicadoUF;
   const recomendadoUF = Math.round(pub * (1 - descuentoPct / 100));
@@ -158,7 +158,7 @@ export function calcularRango(publicadoUF: number, s: SenalesRango, ahora: Date 
   // Ajusta con el recomendado normal sobre el precio a Comprar: se recomienda ese precio y el rango baja desde ahí.
   const dComprar = Math.round((1 - comprar / pub) * 1000) / 10;
   aplicado.push({ senal: "ajusta_sobre_comprar", puntos: Math.round((dComprar - descuentoPct) * 10) / 10, dato: { comprarUF: comprar, descuentoNormalPct: descuentoPct } });
-  razones.unshift(`Al precio publicado no conviene. Conviene desde UF ${fmt(comprar)} hacia abajo. Es más rebaja de la que suelen dar los vendedores: puede que no la acepten.`);
+  razones.unshift(`Al precio publicado no conviene. Conviene desde UF ${fmt(comprar)} hacia abajo. Es más rebaja de la que suele dar quien vende: puede que no la acepte.`);
   const pisoUF = Math.round(pub * (1 - (dComprar + c.bandaAjusta) / 100));
   return { regla: REGLA_VERSION, descuentoPct: dComprar, postura: "negocia_argumentos", techoUF: comprar, comprarUF: comprar, recomendadoUF: comprar, pisoUF, altoUF: comprar, razones, aplicado };
 }

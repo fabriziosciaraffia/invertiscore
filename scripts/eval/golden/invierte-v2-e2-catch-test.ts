@@ -563,7 +563,7 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       const textos: [string, string][] = [
         [PREAPROB_COPY.titulo, "Para ofertar o visitar, sube tu preaprobación"],
         [PREAPROB_COPY.linea, "Es el documento de tu banco que dice hasta cuánto te prestaría. Se sube una vez y vale para todos tus deptos."],
-        [PREAPROB_COPY.porQueT, "Por qué te la pedimos"], [PREAPROB_COPY.porQue, "Los vendedores la exigen para recibir una oferta o agendar una visita. Con ella llegas con respaldo."],
+        [PREAPROB_COPY.porQueT, "Por qué te la pedimos"], [PREAPROB_COPY.porQue, "Quien vende la exige para recibir una oferta o agendar una visita. Con ella llegas con respaldo."],
         [PREAPROB_COPY.cajaT, "Foto o PDF de tu preaprobación"], [PREAPROB_COPY.cajaS, "O el certificado de tu banco."],
         [PREAPROB_COPY.subir, "Subir mi preaprobación"], [PREAPROB_COPY.todaviaNo, "Todavía no la tengo"], [PREAPROB_COPY.sinCredito, "Compro sin crédito"],
         [PREAPROB_COPY.perfilS, "Foto o PDF. Puedes subirla ahora o después."], [PREAPROB_COPY.volver, "Volver a mis deptos"],
@@ -1238,11 +1238,11 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (ls("confirmando", "subir")?.boton !== null || ls("sin_preaprobacion", "en_revision")?.boton !== null || ls("sin_preaprobacion", "subir")?.boton?.href !== "/invierte/preaprobacion" || ls("no_avanza", "subir") !== null) F("22i · «Lo que sigue» pone un botón cuando no le toca a la persona (o no lo pone cuando sí)");
       const P22 = (etapa: string, o: Record<string, unknown> = {}) => ({ avisoId: "x", etapa, noAvanzaMotivo: null, datos: { comuna: "Ñuñoa", dormitorios: 2, banos: 2, m2: 58, precioUF: 3090, veredicto: "COMPRAR", score: 81 }, ficha: null, tituloConNumero: "Serrano 120 · Metro Ñuñoa", direccion: null, ubicacion: null, cambios: ["Bajó UF 80 el 12 nov"], cambiosFilas: [{ icono: "↓", t: "Bajó UF 80", s: "12 nov · de UF 3.170 a UF 3.090" }], preaprobacion: "subir", whatsapp: "+56912345678", alternativa: null, activos: [], preguntas: [], documentos: [], ...o });
       const h22 = renderToStaticMarkup(createElement(VistaDepto, { p: P22("confirmando") as never })).replace(/<[^>]+>/g, "|");
-      if (!h22.includes("|Serrano 120 · Metro Ñuñoa|") || !h22.includes("|Estamos confirmando este depto|") || !h22.includes("|Bajó UF 80|") || !h22.includes("|12 nov · de UF 3.170 a UF 3.090|") || !h22.includes("|Ubicación aproximada, según la publicación|")) F("22i · la página del depto en confirmando no dice su título, «Lo que sigue», los cambios (en filas, rediseño del 23-nov) o la ubicación aproximada");
+      if (!h22.includes("|Serrano 120 · Metro Ñuñoa|") || !h22.includes("|Franco está confirmando este depto con quien lo vende|") || !h22.includes("|Bajó UF 80|") || !h22.includes("|12 nov · de UF 3.170 a UF 3.090|") || !h22.includes("|Ubicación aproximada, según la publicación|")) F("22i · la página del depto en confirmando no dice su título, «Lo que sigue», los cambios (en filas, rediseño del 23-nov) o la ubicación aproximada");
       const h22c = renderToStaticMarkup(createElement(VistaDepto, { p: P22("listo", { ubicacion: u22, preaprobacion: "aprobada" }) as never }));
       if (/Ubicación aproximada/.test(h22c) || /class="inv-principal"/.test(h22c)) F("22i · con la ubicación confirmada sigue diciendo «aproximada», o listo trae un botón rojo antes de la oferta (B3)");
       const h22n = renderToStaticMarkup(createElement(VistaDepto, { p: P22("no_avanza", { noAvanzaMotivo: "dejo_de_convenir" }) as never })).replace(/<[^>]+>/g, "|");
-      if (!h22n.includes("|No pudimos avanzar con este depto|") || !h22n.includes("dejó de convenir") || /Estamos confirmando/.test(h22n)) F("22i · «no avanza» no cambia la página entera o no dice que dejó de convenir");
+      if (!h22n.includes("|No pudimos avanzar con este depto|") || !h22n.includes("dejó de convenir") || /Franco está confirmando este depto/.test(h22n)) F("22i · «no avanza» no cambia la página entera o no dice que dejó de convenir");
       const wa = renderToStaticMarkup(createElement(VistaDepto, { p: P22("confirmando") as never }));
       if (!wa.includes(encodeURIComponent("Hola, tengo una pregunta sobre Serrano 120 · Metro Ñuñoa."))) F("22i · «Pregúntale a Franco» no abre WhatsApp con el depto ya escrito");
       // 22j · El admin: acuerdo y ubicación (con el análisis rehecho) por la ruta del admin; la IA no mueve etapas.
@@ -1296,7 +1296,7 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       // 24a · Sin señales: la base (5 %), «Negocia un poco» y la razón única; el rango un punto arriba y uno abajo del recomendado.
       const r0 = calcularRango(3000, S0, ah24);
       if (r0.descuentoPct !== 5 || r0.postura !== "negocia_poco" || r0.recomendadoUF !== 2850 || r0.pisoUF !== 2820 || r0.altoUF !== 2880 || r0.techoUF !== 3000 || r0.regla !== "v1.1" || REGLA_VERSION !== "v1.1" || r0.comprarUF !== null) F(`24a · la base del rango no da 5 % con su rango ±1 punto (${JSON.stringify(r0)})`);
-      if (r0.razones.join() !== "No vimos nada en este depto que mueva el precio. Estimamos que los vendedores de deptos usados que ajustan su precio ceden cerca de 5 %.") F("24a · sin señales, la razón no es la decidida");
+      if (r0.razones.join() !== "No vimos nada en este depto que mueva el precio. Estimamos que quienes venden deptos usados y ajustan su precio ceden cerca de 5 %.") F("24a · sin señales, la razón no es la decidida");
       // 24b · Ya bajó: +1, con cuánto y cuándo.
       const r1 = calcularRango(3000, { ...S0, bajada: { uf: 80, fecha: "2026-11-01" } }, ah24);
       if (r1.descuentoPct !== 6 || r1.razones[0] !== "Ya bajó UF 80 hace tres semanas: quien vende está dispuesto a moverse.") F(`24b · «ya bajó» no suma 1 o no dice cuánto y cuándo (${r1.razones[0]})`);
@@ -1358,7 +1358,7 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       const rj1 = calcularRango(3000, S0, ah24, CONFIG_RANGO_V1, 2870);
       if (rj1.recomendadoUF !== 2850 || rj1.pisoUF !== 2820 || rj1.altoUF !== 2870 || rj1.techoUF !== 2870 || rj1.comprarUF !== 2870 || rj1.postura !== "negocia_poco" || /no conviene/.test(rj1.razones.join())) F(`24o · un Ajusta con el recomendado normal bajo el precio a Comprar no lleva el rango normal con ese tope (${JSON.stringify(rj1)})`);
       const rj2 = calcularRango(3000, S0, ah24, CONFIG_RANGO_V1, 2760);
-      if (rj2.recomendadoUF !== 2760 || rj2.altoUF !== 2760 || rj2.techoUF !== 2760 || rj2.pisoUF !== 2700 || rj2.descuentoPct !== 8 || rj2.postura !== "negocia_argumentos" || rj2.razones[0] !== "Al precio publicado no conviene. Conviene desde UF 2.760 hacia abajo. Es más rebaja de la que suelen dar los vendedores: puede que no la acepten.") F(`24o · un Ajusta que necesita más rebaja que la normal no recomienda el precio a Comprar con 2 puntos abajo, «Negocia con argumentos» y su razón (${JSON.stringify(rj2)})`);
+      if (rj2.recomendadoUF !== 2760 || rj2.altoUF !== 2760 || rj2.techoUF !== 2760 || rj2.pisoUF !== 2700 || rj2.descuentoPct !== 8 || rj2.postura !== "negocia_argumentos" || rj2.razones[0] !== "Al precio publicado no conviene. Conviene desde UF 2.760 hacia abajo. Es más rebaja de la que suele dar quien vende: puede que no la acepte.") F(`24o · un Ajusta que necesita más rebaja que la normal no recomienda el precio a Comprar con 2 puntos abajo, «Negocia con argumentos» y su razón (${JSON.stringify(rj2)})`);
       // Aunque la rebaja que necesita (6 %) caiga en el tramo de «Negocia un poco», la postura es «Negocia con argumentos».
       const rj5 = calcularRango(3000, { ...S0, vecinos: V([60, 60, 60, 60, 60, 60, 60], 52) }, ah24, CONFIG_RANGO_V1, 2820);
       if (rj5.recomendadoUF !== 2820 || rj5.descuentoPct !== 6 || rj5.postura !== "negocia_argumentos") F(`24o · un Ajusta sobre el precio a Comprar no va con «Negocia con argumentos» cuando la rebaja cae en otro tramo (${rj5.postura})`);
@@ -1766,6 +1766,42 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
         const malos30 = textos30.filter((t) => /vendedor|corredor/i.test(t));
         if (textos30.length < 60) F(`30c · el censo de textos quedó corto (${textos30.length}): no mide lo que dice`);
         if (malos30.length) F(`30c · un texto que ve la persona dice «vendedor» o «corredor»: ${malos30[0].slice(0, 160)}`);
+
+      // ── 31 · SIN REDUNDANCIA (24-nov-2026, regla permanente de Fabrizio): cada línea de una tarjeta aporta un dato nuevo. Si el título
+      // o una cifra ya lo dicen, la línea no va. El guard compara cada frase de la tarjeta contra su título por raíces (5 letras, sin
+      // tildes ni palabras vacías): si 60 % o más de sus palabras ya están en el título, o si repite una cifra de la tarjeta, sobra.
+      // Medido el 24-nov sobre las 77 tarjetas de todos los estados: 0 marcadas; el caso real de Fabrizio da 0,8.
+      {
+        const VACIAS31 = new Set("a al de del el la las los lo le les que y o en con por para su sus tu tus un una es se ya te mi no si me nos esta este esto hay muy mas".split(" "));
+        const raices31 = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/uf\s?[\d.]+/g, " ").split(/[^a-zñ0-9]+/).filter((w) => w.length >= 3 && !VACIAS31.has(w)).map((w) => w.slice(0, 5));
+        const frases31 = (t: string) => t.split(/(?<=[.?!])\s+|\s·\s/).map((x) => x.trim()).filter(Boolean);
+        const repite31 = (titulo: string, linea: string) => { const T = new Set(raices31(titulo)); const L = raices31(linea); return L.length ? L.filter((w) => T.has(w)).length / L.length : 0; };
+        type Tarjeta31 = { donde: string; titulo: string; lineas: string[]; cifras: string[] };
+        const deSigue = (donde: string, l: ReturnType<typeof loQueSigue>): Tarjeta31[] => l ? [{ donde, titulo: l.titulo, lineas: [l.texto, l.nota, l.aviso].filter((t): t is string => !!t).flatMap(frases31), cifras: (l.cifras ?? []).map((c) => c.v) }] : [];
+        const sobra31 = (t: Tarjeta31) => t.lineas.filter((ln) => repite31(t.titulo, ln) >= 0.6 || t.cifras.some((c) => ln.includes(c)));
+        // 31a · El caso real: «Franco le está avisando a quien vende que aceptaste» no lleva debajo «Le avisamos a quien vende que aceptas
+        // su precio»; queda «Sigue sujeta a tu visita.», y la cifra es «Precio aceptado».
+        if (repite31("Franco le está avisando a quien vende que aceptaste", "Le avisamos a quien vende que aceptas su precio.") < 0.6) F("31a · el guard no marca el caso real de Fabrizio");
+        const ac31 = s30({ estado: "firmada", tipoRonda: "aceptar" });
+        if (ac31?.texto !== "Sigue sujeta a tu visita." || JSON.stringify(ac31?.cifras) !== JSON.stringify([{ et: "Precio aceptado", v: "UF 2.936" }])) F(`31a · la tarjeta de «aceptaste» repite el título o no rotula «Precio aceptado» (${JSON.stringify(ac31)})`);
+        // 31b · La regla en general: Lo que sigue, los cierres y la tarjeta de la base, en todos los estados.
+        const tarjetas31: Tarjeta31[] = [];
+        for (const x of estados30) {
+          tarjetas31.push(...deSigue(`sigue ${JSON.stringify(x)}`, s30(x)), ...deSigue(`cierre ${JSON.stringify(x)}`, cuandoNoHayAcuerdo(o30(x), "a30", null, ah30)));
+          const b = estadoEnBase("listo", "aprobada", null, o30(x) as unknown as Parameters<typeof estadoEnBase>[3], ah30);
+          tarjetas31.push({ donde: `base ${JSON.stringify(x)}`, titulo: b.titulo ?? "", lineas: frases31(b.linea), cifras: [] });
+        }
+        for (const etapa of ["confirmando", "sin_preaprobacion", "en_firme", "promesa", "escritura", "inscrito", "en_pausa", "no_avanza"] as const) {
+          for (const pre of ["aprobada", "en_revision", "por_corregir", "sin_documento"] as const) {
+            tarjetas31.push(...deSigue(`sigue ${etapa}/${pre}`, loQueSigue(etapa, pre as Parameters<typeof loQueSigue>[1], "/pre", null, "/oferta", { avisoId: "a30", ahora: ah30 })));
+            const b = estadoEnBase(etapa, pre as Parameters<typeof estadoEnBase>[1], null, null, ah30);
+            tarjetas31.push({ donde: `base ${etapa}/${pre}`, titulo: b.titulo ?? "", lineas: frases31(b.linea), cifras: [] });
+          }
+        }
+        if (tarjetas31.length < 60 || tarjetas31.filter((t) => t.lineas.length).length < 40) F(`31b · el censo de tarjetas quedó corto (${tarjetas31.length}): no mide lo que dice`);
+        const malas31 = tarjetas31.flatMap((t) => sobra31(t).map((ln) => `${t.donde}: «${t.titulo}» / «${ln}»`));
+        if (malas31.length) F(`31b · una línea repite el título o una cifra de su tarjeta (${malas31.length}): ${malas31[0].slice(0, 220)}`);
+      }
       }
       // 24l · Los arreglos de la lectura: solo concretos; sin «no se ve» ni «falta información»; en el esquema y la versión.
       if (limpiarArreglos(["la cocina tiene muebles dañados", "no se ve el baño", "falta información del estado", "piso manchado"]).join("|") !== "la cocina tiene muebles dañados|piso manchado" || !(ESQUEMA_LECTURA_FRANCO as unknown as { required: string[] }).required.includes("arreglos") || VERSION_LECTURA15 < 13) F("24l · la lectura no deja solo arreglos concretos (o falta en el esquema o la versión no subió)");

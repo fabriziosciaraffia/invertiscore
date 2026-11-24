@@ -177,7 +177,7 @@ export function PerfilForm({ inicial }: { inicial: InicialPerfil }) {
           )}
           {/* Lámina 3.1-perfil-paso2-con-preaprobacion: se puede subir aquí («ahora o después»); si la sube, se salta la 3.4. */}
           {inicial.puedeSubirPreaprobacion && <SubirPreaprobacion variante="perfil" />}
-          <p className="iv2-info iv2-porque-azul"><b>Por qué te la pedimos.</b> Los vendedores la exigen para recibir una oferta o agendar una visita. Con ella llegas con respaldo.</p>
+          <p className="iv2-info iv2-porque-azul"><b>Por qué te la pedimos.</b> Quien vende la exige para recibir una oferta o agendar una visita. Con ella llegas con respaldo.</p>
         </>
       ) : preaprobado ? (
         <>

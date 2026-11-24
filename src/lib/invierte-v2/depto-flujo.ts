@@ -132,7 +132,7 @@ function despuesDeFirmar(o: OfertaResumen, avisoId: string, ahora: Date): LoQueS
   const tu = o.montoUF ? uf0(o.montoUF) : null;
   const tuCifra = tu ? [{ et: B4_COPY.tuOferta, v: tu }] : [];
   if (o.estado === "firmada" && (o.tipoRonda === "aceptar" || o.tipoRonda === "reactivar")) {
-    return { chip: FRANCO_EN_ESO, tono: "gris", titulo: B4_COPY.comunicarT, texto: B4_COPY.comunicarTxt, boton: null, cifras: tuCifra, verOferta: true, acciones: ["retirar"] };
+    return { chip: FRANCO_EN_ESO, tono: "gris", titulo: B4_COPY.comunicarT, texto: B4_COPY.comunicarTxt, boton: null, cifras: tu ? [{ et: B4_COPY.precioAceptado, v: tu }] : [], verOferta: true, acciones: ["retirar"] };
   }
   if (o.estado === "firmada") {
     return { chip: FRANCO_EN_ESO, tono: "gris", titulo: o.tipoRonda === "proponer" ? B4_COPY.rondaNuevaT : B4_COPY.firmadaT, texto: B4_COPY.firmadaTxt, boton: null, cifras: [...tuCifra, ...(o.firmadaAt ? [{ et: "Firmada", v: diaMes(o.firmadaAt) }] : [])], verOferta: true, acciones: ["retirar"] };
@@ -193,10 +193,10 @@ export function loQueSigue(etapa: Etapa, pre: EstadoVisible, urlPreaprobacion: s
   const avisoId = extra.avisoId ?? "";
   const ahora = extra.ahora ?? new Date();
   if (etapa === "confirmando") {
-    return { chip: "Franco está en eso", tono: "gris", titulo: "Estamos confirmando este depto", texto: "Franco está coordinando con quien lo vende para dejarlo listo para tu oferta o tu visita. Te avisamos apenas esté.", boton: null };
+    return { chip: "Franco está en eso", tono: "gris", titulo: "Franco está confirmando este depto con quien lo vende", texto: "Te avisamos apenas esté listo para tu oferta o tu visita.", boton: null };
   }
   if (etapa === "sin_preaprobacion") {
-    if (pre === "en_revision") return { chip: "Franco está en eso", tono: "gris", titulo: "Tu preaprobación está en revisión", texto: "Apenas la revisemos, puedes ofertar o pedir una visita.", boton: null };
+    if (pre === "en_revision") return { chip: "Franco está en eso", tono: "gris", titulo: "Franco está revisando tu preaprobación", texto: "Apenas esté, puedes ofertar o pedir una visita.", boton: null };
     if (pre === "por_corregir") return { chip: "Te toca a ti", tono: "ciruela", titulo: "Sube de nuevo tu preaprobación para ofertar o visitar", texto: null, boton: { texto: "Subir otra", href: `${urlPreaprobacion}?subir=1` } };
     return { chip: "Te toca a ti", tono: "ciruela", titulo: "Sube tu preaprobación para ofertar o visitar", texto: "Se sube una vez y vale para todos tus deptos.", boton: { texto: "Subir mi preaprobación", href: urlPreaprobacion } };
   }
@@ -220,7 +220,7 @@ export function loQueSigue(etapa: Etapa, pre: EstadoVisible, urlPreaprobacion: s
   }
   if (etapa === "listo") {
     // Sin rango calculado todavía (sin precio publicado): sin botón.
-    return { chip: "Te toca a ti", tono: "ciruela", titulo: "Listo para ofertar o visitar", texto: "Franco ya lo dejó listo con quien lo vende. Muy pronto vas a poder hacer tu oferta o pedir una visita desde aquí.", boton: null };
+    return { chip: "Te toca a ti", tono: "ciruela", titulo: "Este depto está listo para tu oferta", texto: "Muy pronto vas a poder hacer tu oferta desde aquí.", boton: null };
   }
   return null;
 }
@@ -251,8 +251,8 @@ export function estadoEnBase(etapa: Etapa, pre: EstadoVisible, motivo: string | 
     : { chip: TUYO, tono: "ciruela", nivel: "tuyo", titulo: "Sube tu preaprobación", linea: "Para ofertar o visitar" };
   if (etapa === "listo") {
     const e = oferta?.estado ?? "borrador";
-    if (e === "firmada" && (oferta?.tipoRonda === "aceptar" || oferta?.tipoRonda === "reactivar")) return { chip: FRANCO, tono: "gris", nivel: "curso", titulo: "Aceptas su precio", linea: [monto, "Franco se lo comunica"].filter(Boolean).join(" · ") };
-    if (e === "firmada") return { chip: FRANCO, tono: "gris", nivel: "curso", titulo: "Oferta firmada", linea: [monto, "Franco la presenta"].filter(Boolean).join(" · ") };
+    if (e === "firmada" && (oferta?.tipoRonda === "aceptar" || oferta?.tipoRonda === "reactivar")) return { chip: FRANCO, tono: "gris", nivel: "curso", titulo: "Aceptaste su precio", linea: [monto, "Franco le está avisando a quien vende"].filter(Boolean).join(" · ") };
+    if (e === "firmada") return { chip: FRANCO, tono: "gris", nivel: "curso", titulo: "Oferta firmada", linea: [monto, "Franco la va a presentar"].filter(Boolean).join(" · ") };
     if (e === "en_cola") return { chip: FRANCO, tono: "gris", nivel: "curso", titulo: "Oferta preparada", linea: [monto, "se presenta después de la vigente"].filter(Boolean).join(" · ") };
     // B4 (punto 7 de Fabrizio): sin «día n de 5»: «vence el sábado 28»; el último día, «vence hoy».
     if (e === "presentada") return { chip: FRANCO, tono: "gris", nivel: "curso", titulo: "Oferta presentada", linea: [monto, oferta?.vigenteHasta ? lineaVence(new Date(oferta.vigenteHasta), ahora).vence.toLowerCase() : null].filter(Boolean).join(" · ") };
@@ -346,15 +346,15 @@ export function caminoDepto(etapa: Etapa, oferta: (Pick<OfertaBase, "estado" | "
     actual = 2;
     const e = oferta?.estado ?? "borrador";
     const cierre = oferta ? cierreDe(oferta as Parameters<typeof cierreDe>[0]) : null;
-    if (e === "firmada" && (oferta?.tipoRonda === "aceptar" || oferta?.tipoRonda === "reactivar")) { estado = "franco"; subs[1] = oferta?.montoUF ? `Aceptas ${uf0(oferta.montoUF)} · Franco se lo comunica` : "Aceptas · Franco se lo comunica"; }
+    if (e === "firmada" && (oferta?.tipoRonda === "aceptar" || oferta?.tipoRonda === "reactivar")) { estado = "franco"; subs[1] = oferta?.montoUF ? `Aceptaste ${uf0(oferta.montoUF)} · Franco le está avisando` : "Aceptaste · Franco le está avisando"; }
     else if (e === "firmada") { estado = "franco"; subs[1] = oferta?.tipoRonda === "proponer" ? "Nueva oferta · Franco la va a presentar" : "Firmada · Franco la va a presentar"; }
-    else if (e === "en_cola") { estado = "franco"; subs[1] = "Preparada · Franco la presenta después de la vigente"; }
+    else if (e === "en_cola") { estado = "franco"; subs[1] = "Preparada · Franco la va a presentar después de la vigente"; }
     else if (e === "presentada") { estado = "franco"; subs[1] = "Presentada · esperando respuesta"; }
     else if (e === "contraoferta") { estado = "tuyo"; subs[1] = "Contraoferta · te toca a ti"; }
     else if (e === "aceptada_sujeta") { actual = 3; estado = "tuyo"; subs[1] = oferta?.montoUF ? `Aceptada en ${uf0(oferta.montoUF)}` : "Aceptada"; subs[2] = "Visita pendiente · Franco la coordina"; }
     else if (cierre === "rechazada") { estado = "tuyo"; subs[1] = "No aceptada · te toca a ti"; }
     else if (cierre === "vencida") { estado = "tuyo"; subs[1] = "Vencida · te toca a ti"; }
-    else if (cierre === "tardia") { estado = "tuyo"; subs[1] = "Respondieron tarde · te toca a ti"; }
+    else if (cierre === "tardia") { estado = "tuyo"; subs[1] = "Respuesta fuera de plazo · te toca a ti"; }
     else if (cierre === "retirada") { estado = "pendiente"; subs[1] = oferta?.retiradaAt ? `Retirada el ${diaMes(oferta.retiradaAt)}` : "Retirada"; }
     else if (cierre === "no_gracias") { estado = "pendiente"; subs[1] = "Sin oferta · puedes hacer otra"; }
     else { estado = "tuyo"; subs[1] = "Te toca a ti: haz tu oferta"; }

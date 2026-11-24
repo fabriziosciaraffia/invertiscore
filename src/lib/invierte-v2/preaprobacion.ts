@@ -59,7 +59,7 @@ export const PREAPROB_COPY = {
   titulo: "Para ofertar o visitar, sube tu preaprobación",
   linea: "Es el documento de tu banco que dice hasta cuánto te prestaría. Se sube una vez y vale para todos tus deptos.",
   porQueT: "Por qué te la pedimos",
-  porQue: "Los vendedores la exigen para recibir una oferta o agendar una visita. Con ella llegas con respaldo.",
+  porQue: "Quien vende la exige para recibir una oferta o agendar una visita. Con ella llegas con respaldo.",
   cajaT: "Foto o PDF de tu preaprobación",
   cajaS: "O el certificado de tu banco.",
   elegido: (nombre: string) => `Elegiste: ${nombre}`,
