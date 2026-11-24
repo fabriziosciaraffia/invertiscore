@@ -311,6 +311,35 @@ export async function runCobroMostradoTier(): Promise<{ hard: number }> {
     if (!/@media \(max-width: 767px\) \{ button\.wz-disco \{ width: 44px; height: 44px; \} \}/.test(leer("src/components/formulario-v4/wizard-v4.css"))) F("9 · la X de los pop-ups no llega a 44 px en celular");
   }
 
+  // ══ §11 · EL AVISO DE CAMBIO, CONTADO EN POSTHOG ════════════════════════════════════════════
+  // Decisión de Fabrizio (24-nov-2026): cada aviso de cambio visto, con el origen y lo que eligió la persona (volver o analizarlo igual).
+  {
+    const casos: Array<[ie.DesdeInforme, boolean, string]> = [["explorar", false, "mapa"], ["semanal", false, "semanal"], ["semanal", true, "inmediato"], ["guia", false, "guia"], ["pago", false, "vuelta_pago"], ["dashboard", false, "dashboard"], ["seleccion", false, "seleccion"]];
+    for (const [d, inm, esperado] of casos) if (ie.origenAvisoCambio(d, inm) !== esperado) F(`11 · el origen de ${d}${inm ? " (inmediato)" : ""} sale ${ie.origenAvisoCambio(d, inm)}, no ${esperado}`);
+    const gen = ie.informeGenerando("Las Condes · 3D", { veredicto: "COMPRAR", score: 82 }, 1000);
+    const cambio = ie.informeCambio(gen, { veredicto: "BUSCAR OTRA", score: 39 });
+    const visto = ie.propsAvisoCambio(cambio, "mapa");
+    if (!visto || visto.origen !== "mapa" || visto.mostrado !== "COMPRAR" || visto.mostrado_score !== 82 || visto.ahora !== "BUSCAR OTRA" || visto.ahora_score !== 39 || visto.pagado !== false || "eleccion" in visto) F(`11 · el evento del aviso visto no lleva origen, lo mostrado y lo de hoy: ${JSON.stringify(visto)}`);
+    const eleg = ie.propsAvisoCambio(cambio, "inmediato", "analizar_igual");
+    if (eleg?.eleccion !== "analizar_igual" || eleg?.origen !== "inmediato") F(`11 · la elección no lleva lo que eligió la persona: ${JSON.stringify(eleg)}`);
+    if (ie.propsAvisoCambio(gen, "mapa") !== null) F("11 · se cuenta un aviso de cambio sin aviso de cambio (generando)");
+    if (ie.EVENTO_AVISO_CAMBIO_VISTO !== "aviso_cambio_visto" || ie.EVENTO_AVISO_CAMBIO_ELECCION !== "aviso_cambio_eleccion") F("11 · los nombres de los eventos cambiaron");
+    // El cableado: el hook manda el visto en un efecto y la elección en los dos envoltorios; Volver/✕/Escape cuentan como volver.
+    const comp = codigo("src/components/guia/InformeEnCamino.tsx");
+    if (!/useEffect\(\(\) => \{\s*const props = propsAvisoCambio\(paso, origen\);\s*if \(props\) \{ try \{ posthog\?\.capture\(EVENTO_AVISO_CAMBIO_VISTO, props\); \}/.test(comp)) F("11 · el aviso visto no se manda a PostHog");
+    if (!/const props = propsAvisoCambio\(paso, origen, eleccion\);\s*if \(props\) \{ try \{ posthog\?\.capture\(EVENTO_AVISO_CAMBIO_ELECCION, props\); \}/.test(comp)) F("11 · la elección no se manda a PostHog");
+    const pop = comp.slice(comp.indexOf("export function InformeEnCamino("), comp.indexOf("export function PopupInforme("));
+    if (!/const elegir = useAvisoCambioMedido\(paso, origenAvisoCambio\(desdeDeRuta\(window\.location\.pathname\), inmediato\)\);/.test(pop)
+      || !/const alCerrar = useCallback\(\(\) => \{ elegir\("volver"\); alCerrarFuera\(\); \}, \[elegir, alCerrarFuera\]\);/.test(pop)
+      || !/const alAnalizarIgual = alAnalizarIgualFuera \? \(\) => \{ elegir\("analizar_igual"\); alAnalizarIgualFuera\(\); \} : null;/.test(pop)
+      || !/<PopupInforme [^\n]*alCerrar=\{alCerrar\} alReintentar=\{alReintentar\} alAnalizarIgual=\{alAnalizarIgual\}/.test(pop)
+      || !/if \(puedeCerrar\) alCerrar\(\);/.test(pop)) F("11 · el pop-up no cuenta lo que eligió la persona (volver, la ✕, Escape o analizarlo igual)");
+    const vuelta = comp.slice(comp.indexOf("export function InformeEnLaVuelta("), comp.indexOf("export function VueltaInforme("));
+    if (!/const elegir = useAvisoCambioMedido\(paso, origenAvisoCambio\("pago"\)\);/.test(vuelta) || !/alAnalizarIgual=\{alAnalizarIgual \? \(\) => \{ elegir\("analizar_igual"\); alAnalizarIgual\(\); \} : null\} alElegirOtro=\{\(\) => elegir\("volver"\)\}/.test(vuelta)
+      || !/data-informe="cambio-otro"/.test(comp) || !/onClick=\{alElegirOtro\} data-informe="cambio-otro"/.test(comp)) F("11 · la vuelta del pago no cuenta lo que eligió la persona");
+    if (!/inmediato=\{inmediato\} saldo=/.test(codigo("src/components/guia/AvisoAntesDeAnalizar.tsx")) || !/<AvisoAntesDeAnalizar\s+modalidad=\{modalidad\}\s+inmediato=\{inmediato\}/.test(codigo("src/app/semanal/semanal-lista.tsx"))) F("11 · el aviso inmediato se cuenta como semanal (no llega `inmediato`)");
+  }
+
   if (fallas.length === 0) console.log("  ✓ COBRO-MOSTRADO: todo en orden");
   for (const f of fallas) console.log(`  ✗ ${f}`);
   if (fallas.length) console.log(`  ${fallas.length} falla(s) dura(s)`);

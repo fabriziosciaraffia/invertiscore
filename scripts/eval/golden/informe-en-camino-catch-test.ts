@@ -114,7 +114,8 @@ export async function runInformeEnCaminoTier(): Promise<{ hard: number }> {
     // a la vista») · el pop-up le pasa el saldo de lo que mostraba (con N, el regalo = 1, sin = 0; el plan, sin cifra).
     // ⚠ ACTA (23-nov-2026, goal de Fabrizio «no cobrar cuando el informe contradice lo mostrado», cobro-mostrado.ts) · el pop-up
     // también recibe «Analizarlo igual» (alAnalizarIgual) para el aviso de cambio antes de cobrar. Lo demás, igual.
-    if (!/if \(informe\) return <InformeEnCamino paso=\{informe\} alCerrar=\{alCerrarInforme \?\? alCancelar\} alReintentar=\{alReintentarInforme\} alAnalizarIgual=\{alAnalizarIgualInforme\} saldo=\{uso\.tipo === "con" \? uso\.n : uso\.tipo === "regalo" \? 1 : uso\.tipo === "sin" \? 0 : null\} \/>;/.test(aviso)) F("1 · el pop-up de «Ver este depto» no pasa a «Generando el informe…»: se cierra o se reemplaza por otro");
+    // ⚠ ACTA (24-nov-2026, Fabrizio: «la lectura de la ficha parte al principio y las lecturas previas van en una sola tanda») · y `inmediato`, para contar el aviso de cambio con su origen (COBRO-MOSTRADO §11).
+    if (!/if \(informe\) return <InformeEnCamino paso=\{informe\} alCerrar=\{alCerrarInforme \?\? alCancelar\} alReintentar=\{alReintentarInforme\} alAnalizarIgual=\{alAnalizarIgualInforme\} inmediato=\{inmediato\} saldo=\{uso\.tipo === "con" \? uso\.n : uso\.tipo === "regalo" \? 1 : uso\.tipo === "sin" \? 0 : null\} \/>;/.test(aviso)) F("1 · el pop-up de «Ver este depto» no pasa a «Generando el informe…»: se cierra o se reemplaza por otro");
     for (const s of pantallas) {
       const analizar = cuerpo(s.src, "async function analizar(");
       const exito = bloque(analizar, "if (res.ok && d.id) {");
