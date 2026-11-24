@@ -244,7 +244,8 @@ export async function runPuertaBMockupsTier(): Promise<{ hard: number }> {
         || !/largo: \(\(actual\?\.items \?\? fila\.items \?\? null\) as ItemSemanal\[\] \| null\),/.test(dd)
         || !/items: x\.largo \? aItems\(x\.largo, previos\.largo\) : \[\],\s*items_str: x\.corto \? aItems\(x\.corto, previos\.corto\) : \[\],/.test(dd)) F("4 · la cola del correo del día no respeta el orden de lo que la fila tiene AHORA (la pantalla escribe los de la noche mientras la vuelta corre)");
       const ss = codigo("src/lib/guia/semanal-servidor.ts");
-      if (!/select\("estado, tipo, items, items_str"\)\.eq\("user_id", userId\)\.eq\("semana", semana\)\.maybeSingle\(\);/.test(ss) || !/items: aItems\(g, informeVisto, previos\.largo\)/.test(ss) || !/items_str: aItems\(g, undefined, previos\.corto\)/.test(ss) || !/ordenFijo\(previosDe,/.test(ss))
+      // ⚠ ACTA (23-nov-2026, goal «no cobrar cuando el informe contradice lo mostrado») · la lectura previa suma `enviada_at` (una fila ya enviada no se rearma al confirmar en vivo).
+      if (!/select\("estado, tipo, items, items_str, enviada_at"\)\.eq\("user_id", userId\)\.eq\("semana", semana\)\.maybeSingle\(\);/.test(ss) || !/items: aItems\(g, informeVisto, previos\.largo\)/.test(ss) || !/items_str: aItems\(g, undefined, previos\.corto\)/.test(ss) || !/ordenFijo\(previosDe,/.test(ss))
         F("4 · el armado del domingo no respeta el orden de lo que la fila ya tenía");
       // Los primeros de la noche: a igual puntaje, por flujo y por id, venga como venga la RPC.
       const dep = cargar<typeof import("../../../src/lib/deptos/servidor")>("src/lib/deptos/servidor");
