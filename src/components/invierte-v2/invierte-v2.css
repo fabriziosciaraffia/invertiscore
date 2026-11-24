@@ -1396,3 +1396,9 @@
 /* 44 px de alto en celular: «Ver reporte» y «Confirmar sin visitar» (revisión visual del 24-nov). */
 .iv2-dp-reporte .iv2-enlace-azul, [data-inv2="accion-confirmar_sin_visitar"] { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
 .iv2-dp-reporte { padding-top: 2px; padding-bottom: 2px; }
+
+/* La firma en firme (24-nov-2026, lámina 5.1b) suma Respaldo, Garantía y una segunda casilla: en notebook el botón queda fijo abajo de su
+   tarjeta, para que «Firmar en firme por UF X» se vea sin bajar a 1.210 × 615 (revisión visual del 24-nov). */
+@media (min-width: 1024px) {
+  .iv2-con-pc .iv2-cuerpo.iv2-formulario .iv2-fo.iv2-fo-firme .iv2-acciones { position: sticky; bottom: 0; z-index: 2; background: #FFFFFF; padding: 8px 0 4px; }
+}

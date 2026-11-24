@@ -6,7 +6,7 @@ import { URL_INVIERTE } from "./destino";
 import { urlContraoferta, urlDepto } from "./depto-flujo";
 
 // La visita (24-nov-2026, decisión 9): el reporte listo, y quien vende que acepta o no mantener la contraoferta mientras se visita.
-export const EVENTOS_OFERTA = ["presentada", "aceptada", "contraoferta", "rechazada", "tardia_aceptada", "tardia_contraoferta", "vencida", "contra_vencida", "precio_bajo", "reporte_listo", "mantener_si", "mantener_no"] as const;
+export const EVENTOS_OFERTA = ["presentada", "aceptada", "contraoferta", "rechazada", "tardia_aceptada", "tardia_contraoferta", "vencida", "contra_vencida", "precio_bajo", "reporte_listo", "mantener_si", "mantener_no", "aceptada_en_firme"] as const;
 export type EventoOferta = (typeof EVENTOS_OFERTA)[number];
 
 const uf = (n: number | null | undefined) => (n == null ? "" : `UF ${Math.round(n).toLocaleString("es-CL")}`);
@@ -33,6 +33,7 @@ export const CORREO_OFERTA: Record<EventoOferta, { asunto: string; boton: string
   vencida: { asunto: "Tu oferta venció", boton: "Ver el depto", parrafo: (d) => `Tu oferta de ${uf(d.montoUF)} por ${d.depto} venció sin respuesta. Quedaste libre para ofertar por otro depto o volver a presentarla.` },
   contra_vencida: { asunto: "La contraoferta venció", boton: "Ver el depto", parrafo: (d) => `La contraoferta de ${uf(d.otroUF)} por ${d.depto} venció sin respuesta. Quedaste libre para ofertar por otro depto o hacer otra oferta.` },
   // Sin redundancia: el párrafo no repite el asunto, suma el depto, el monto y lo que sigue.
+  aceptada_en_firme: { asunto: "Tu oferta está en firme", boton: "Ver mi inversión", parrafo: (d) => `Quien vende aceptó tu oferta de ${uf(d.montoUF)} por ${d.depto}. Franco prepara la promesa.` },
   reporte_listo: { asunto: "El reporte de tu visita está listo", boton: "Ver el depto", parrafo: (d) => `Con lo que se vio en ${d.depto}, te toca decidir cómo sigue tu oferta de ${uf(d.montoUF)}.` },
   mantener_si: { asunto: "Quien vende mantiene su contraoferta", boton: "Ver mi inversión", parrafo: (d) => `Su contraoferta de ${uf(d.otroUF)} por ${d.depto} espera tu visita.${d.vence ? ` ${d.vence}.` : ""}` },
   mantener_no: { asunto: "Quien vende no puede esperar la visita", boton: "Responder", parrafo: (d) => `Su contraoferta de ${uf(d.otroUF)} por ${d.depto} sigue en pie.${d.vence ? ` ${d.vence}.` : ""} Puedes responder sin visitar.` },

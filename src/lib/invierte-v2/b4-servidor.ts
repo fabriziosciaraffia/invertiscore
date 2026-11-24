@@ -16,16 +16,17 @@ import { anotar, sha256, ultimaOrdenDe, type ContextoPedido } from "./servidor";
 import { leerPaginaDepto } from "./depto-pagina-servidor";
 import { leerPreaprobacion } from "./preaprobacion-servidor";
 import { puedeOfertar } from "./preaprobacion";
-import { VERSION_TEXTO_OFERTA } from "./oferta-documento";
+import { VERSION_TEXTO_OFERTA, VERSION_TEXTO_OFERTA_EN_FIRME } from "./oferta-documento";
 import { lineaDepto, urlWhatsapp } from "./base";
 import type { DatosDepto } from "./base-servidor";
 import { captureApiWarning } from "@/lib/observabilidad";
-import { conArreglo, type VisitaResumen } from "./visita";
+import { conArreglo, fechaVisitaLarga, naceEnFirme, type VisitaResumen } from "./visita";
 import { visitaParaRonda } from "./visita-lectura";
 export { visitaParaRonda };
 
 const T_OF = "inv_ofertas";
-const COLS_FILA = `${COLS_OFERTA}, user_id, depto_id, aviso_id, es_prueba, postura, rango_fuente, aviso_nivel, insistir_tarea_at, sugerida_visita_id`;
+const iso0 = (d: Date) => d.toISOString();
+const COLS_FILA = `${COLS_OFERTA}, user_id, depto_id, aviso_id, es_prueba, postura, rango_fuente, aviso_nivel, insistir_tarea_at, sugerida_visita_id, sujeta_a_visita`;
 type Fila = Record<string, unknown>;
 const n = (x: unknown) => (x == null ? null : Number.isFinite(Number(x)) ? Number(x) : null);
 
@@ -171,14 +172,18 @@ export async function registrarRespuesta(admin: SupabaseClient, quien: Quien, of
   const tardia = f.estado === "sin_acuerdo" && f.sin_acuerdo_motivo === "vencida" && !f.respuesta_tardia;
   if (f.estado === "presentada") {
     const base = { respuesta: tipo === "aceptada" ? "aceptada_sujeta" : tipo, respuesta_at: iso, respuesta_por: quien.id, updated_at: iso };
-    const cambio = tipo === "aceptada" ? { ...base, estado: "aceptada_sujeta" }
+    // Después de la visita, toda oferta es en firme (24-nov-2026): si nació en firme y la aceptan, queda en firme sin otro paso de la persona.
+    const enFirme = f.sujeta_a_visita === false;
+    const cambio = tipo === "aceptada" && enFirme ? { ...base, estado: "en_firme", en_firme_at: iso, en_firme_como: "tras_visita", precio_final_uf: monto }
+      : tipo === "aceptada" ? { ...base, estado: "aceptada_sujeta" }
       : tipo === "contraoferta" ? { ...base, estado: "contraoferta", contraoferta_uf: contra, contraoferta_nota: nota, contraoferta_vence: venceContra!.toISOString(), sugerida_uf: sugerida!.montoUF, sugerida_regla_uf: sugerida!.montoUF, sugerida_fuente: "regla", sugerida_regla_version: REGLA_SUGERENCIA }
       : { ...base, estado: "sin_acuerdo", sin_acuerdo_motivo: "rechazada" };
     const { error } = await admin.from(T_OF).update(cambio).eq("id", ofertaId).eq("estado", "presentada");
     if (error) { console.error("[inv2] respuesta:", error.message); return { ok: false, error: "guardar" }; }
     await cerrarTareas(admin, f.user_id as string, f.aviso_id as string, ["insistir_oferta", "registrar_respuesta"], quien.email);
     await anotar(admin, { userId: f.user_id as string, email: null, actor: "admin", actorEmail: quien.email, accion: "oferta_respuesta", detalle: { oferta_id: ofertaId, tipo, contraoferta_uf: contra, nota, vence: venceContra?.toISOString() ?? null, sugerida: sugerida?.montoUF ?? null }, esPrueba: f.es_prueba === true });
-    await avisarPersona(admin, deps, f, tipo === "aceptada" ? "aceptada" : tipo, { otroUF: contra, venceAt: venceContra });
+    if (tipo === "aceptada" && enFirme) await admin.from("inv_deptos").update({ etapa: "en_firme", updated_at: iso }).eq("id", f.depto_id as string);
+    await avisarPersona(admin, deps, f, tipo === "aceptada" ? (enFirme ? "aceptada_en_firme" : "aceptada") : tipo, { otroUF: contra, venceAt: venceContra });
     if (tipo === "rechazada") await promoverCola(admin, f.user_id as string);
     return { ok: true, fueraDePlazo: false };
   }
@@ -222,8 +227,11 @@ export async function marcarComunicada(admin: SupabaseClient, quien: Quien, ofer
   const tipo = ofertaDeFila(f).tipoRonda;
   if (f.estado !== "firmada" || (tipo !== "aceptar" && tipo !== "reactivar")) return { ok: false, error: "estado" };
   const iso = new Date().toISOString();
-  const { error } = await admin.from(T_OF).update({ estado: "aceptada_sujeta", presentada_at: iso, presentada_por: quien.id, respuesta: "aceptada_sujeta", respuesta_at: iso, respuesta_por: quien.id, updated_at: iso }).eq("id", ofertaId).eq("estado", "firmada");
+  const enFirme = f.sujeta_a_visita === false;
+  const { error } = await admin.from(T_OF).update({ estado: enFirme ? "en_firme" : "aceptada_sujeta", presentada_at: iso, presentada_por: quien.id, respuesta: "aceptada_sujeta", respuesta_at: iso, respuesta_por: quien.id, updated_at: iso,
+    ...(enFirme ? { en_firme_at: iso, en_firme_como: "tras_visita", precio_final_uf: n(f.monto_uf) } : {}) }).eq("id", ofertaId).eq("estado", "firmada");
   if (error) { console.error("[inv2] comunicada:", error.message); return { ok: false, error: "guardar" }; }
+  if (enFirme) await admin.from("inv_deptos").update({ etapa: "en_firme", updated_at: iso }).eq("id", f.depto_id as string);
   await cerrarTareas(admin, f.user_id as string, f.aviso_id as string, ["comunicar_aceptacion"], quien.email);
   await anotar(admin, { userId: f.user_id as string, email: null, actor: "admin", actorEmail: quien.email, accion: "oferta_aceptacion_comunicada", detalle: { oferta_id: ofertaId, monto_uf: n(f.monto_uf) }, esPrueba: f.es_prueba === true });
   return { ok: true };
@@ -298,7 +306,7 @@ export function rondaDesde(o: Pick<OfertaVista, "estado" | "montoUF" | "contraof
  *  venció. Todo pasa por «Revisa y firma». Aceptar crea la tarea «comunicar_aceptacion» (sin otro plazo); proponer o volver a presentar,
  *  la de presentar. Una a la vez: si la persona tiene otra oferta viva, para aceptar o reactivar primero elige con cuál se queda
  *  (`retirarOtra`); un monto nuevo con otra viva queda en cola. */
-export async function firmarRonda(admin: SupabaseClient, user: Quien, avisoId: string, pedido: { desdeId?: unknown; montoUF?: unknown; acepto?: unknown; leyo?: unknown; retirarOtra?: unknown }, ctx: ContextoPedido | null, ahora: Date = new Date()): Promise<{ ok: true; estado: string; tipo: string } | { ok: false; error: ErrorB4 }> {
+export async function firmarRonda(admin: SupabaseClient, user: Quien, avisoId: string, pedido: { desdeId?: unknown; montoUF?: unknown; acepto?: unknown; leyo?: unknown; retirarOtra?: unknown; aceptoFirme?: unknown }, ctx: ContextoPedido | null, ahora: Date = new Date()): Promise<{ ok: true; estado: string; tipo: string } | { ok: false; error: ErrorB4 }> {
   if (pedido.acepto !== true) return { ok: false, error: "casilla" };
   const monto = Math.round(Number(pedido.montoUF));
   const p = await leerPaginaDepto(admin, user.id, avisoId);
@@ -326,7 +334,12 @@ export async function firmarRonda(admin: SupabaseClient, user: Quien, avisoId: s
     for (const o of otrasVivas) await retirarOferta(admin, user, o.aviso_id, ctx, ahora);
   }
   const quedaEnCola = (tipo === "proponer" || tipo === "volver" || tipo === "ajustar") && otrasVivas.length > 0 && pedido.retirarOtra !== true;
-  const texto = textoDeFirma({ orden, pre, tituloConNumero: p.tituloConNumero, datos: p.datos, montoUF: monto, publicadoUF: vista.publicadoUF });
+  // Después de la visita, toda oferta es en firme (24-nov-2026): cualquier ronda firmada con el reporte de la visita publicado. Exige la
+  // segunda casilla; si el monto baja de la oferta anterior, el documento lleva el reporte como respaldo.
+  const enFirme = naceEnFirme(vista.visita) ? vista.visita! : null;
+  if (enFirme && pedido.aceptoFirme !== true) return { ok: false, error: "casilla" };
+  const respaldo = enFirme && monto < Number(desde.monto_uf) ? enFirme.reporteLinea : null;
+  const texto = textoDeFirma({ orden, pre, tituloConNumero: p.tituloConNumero, datos: p.datos, montoUF: monto, publicadoUF: vista.publicadoUF, enFirme: enFirme ? { visitaFecha: fechaVisitaLarga(enFirme.visitadaAt ?? iso0(ahora)), respaldo } : null });
   const cfg = await leerConfigRango(admin);
   const aviso = avisoOferta(monto, { pisoUF: vista.pisoUF, altoUF: vista.altoUF, comprarUF: vista.comprarUF }, vista.publicadoUF, cfg);
   const iso = ahora.toISOString();
@@ -342,10 +355,11 @@ export async function firmarRonda(admin: SupabaseClient, user: Quien, avisoId: s
     postura_recomendada: desde.postura_recomendada, postura: desde.postura ?? desde.postura_recomendada, publicado_uf: desde.publicado_uf, piso_uf: desde.piso_uf, recomendado_uf: desde.recomendado_uf, techo_uf: desde.techo_uf,
     rango_fuente: desde.rango_fuente ?? "regla", regla_version: desde.regla_version, razones: desde.razones,
     senales: { ...((desde.senales ?? {}) as Record<string, unknown>), b4: { tipo, desde: desde.id } },
-    monto_uf: monto, aviso_nivel: aviso, insistio_at: aviso === "ninguno" ? null : iso, sujeta_a_visita: true, vigencia_dias: 5,
+    monto_uf: monto, aviso_nivel: aviso, insistio_at: aviso === "ninguno" ? null : iso, sujeta_a_visita: !enFirme, vigencia_dias: 5,
+    ...(enFirme ? { en_firme_confirmo: true, en_firme_ip: ctx?.ip ?? null, en_firme_user_agent: ctx?.ua ? ctx.ua.slice(0, 500) : null } : {}),
     // La visita que respalda la ronda: el reporte va como respaldo, y la base exige un arreglo si el monto baja de la anterior.
     visita_id: vista.visita && vista.visita.estado === "reporte_publicado" ? vista.visita.id : null,
-    nombre: orden.nombre, rut: orden.rut, texto_version: VERSION_TEXTO_OFERTA, texto, texto_sha256: sha256(texto), acepto_casilla: true, leyo_hasta_el_final: pedido.leyo === true,
+    nombre: orden.nombre, rut: orden.rut, texto_version: enFirme ? VERSION_TEXTO_OFERTA_EN_FIRME : VERSION_TEXTO_OFERTA, texto, texto_sha256: sha256(texto), acepto_casilla: true, leyo_hasta_el_final: pedido.leyo === true,
     firmada_at: iso, ip: ctx?.ip ?? null, user_agent: ctx?.ua ? ctx.ua.slice(0, 500) : null, updated_at: iso,
   };
   const { data: ins, error } = await admin.from(T_OF).insert(nueva).select("id").maybeSingle();

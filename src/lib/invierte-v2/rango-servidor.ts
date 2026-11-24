@@ -19,13 +19,13 @@ import { etapaDe } from "./depto-flujo";
 import { anotar, sha256, ultimaOrdenDe, type ContextoPedido } from "./servidor";
 import { leerPreaprobacion } from "./preaprobacion-servidor";
 import { puedeOfertar } from "./preaprobacion";
-import { VERSION_TEXTO_OFERTA, textoPlanoOferta } from "./oferta-documento";
+import { VERSION_TEXTO_OFERTA, VERSION_TEXTO_OFERTA_EN_FIRME, textoPlanoOferta } from "./oferta-documento";
 import { FIRMA_COPY } from "./rango";
 import { lineaDepto } from "./base";
 import { publicadoDesde, ultimaBajadaCadena } from "./gemelos";
 import { leerPaginaDepto } from "./depto-pagina-servidor";
 import { OFERTAS_VIVAS } from "./b4";
-import type { VisitaResumen } from "./visita";
+import { fechaVisitaLarga, naceEnFirme, type VisitaResumen } from "./visita";
 
 const T_OF = "inv_ofertas";
 // En firme también: la página del depto la lee para el camino (si quedó en firme sin visitar). Firmar exige borrador (asegurarRango).
@@ -171,6 +171,9 @@ export interface OfertaVista {
   contraofertaVenceOriginal?: string | null;
   visitaId?: string | null;
   visita?: VisitaResumen | null;
+  /** Después de la visita, toda oferta es en firme (24-nov-2026): false si nació en firme; cuándo quedó en firme. */
+  sujetaAVisita?: boolean;
+  enFirmeAt?: string | null;
   /** En un ajuste después de la visita, el monto de la ronda anterior («Antes»). */
   anteriorMontoUF?: number | null;
 }
@@ -194,10 +197,11 @@ function aVista(f: Record<string, unknown>): OfertaVista {
     retiradaAt: (f.retirada_at as string | null) ?? null, retiradaDesde: (f.retirada_desde as string | null) ?? null, updatedAt: (f.updated_at as string | null) ?? null,
     mantenerPedidoAt: (f.mantener_pedido_at as string | null) ?? null, mantenerRespuesta: (f.mantener_respuesta as string | null) ?? null,
     contraofertaVenceOriginal: (f.contraoferta_vence_original as string | null) ?? null, visitaId: (f.visita_id as string | null) ?? null,
+    sujetaAVisita: f.sujeta_a_visita !== false, enFirmeAt: (f.en_firme_at as string | null) ?? null,
   };
 }
 export { aVista as ofertaDeFila };
-const COLS = "id, estado, postura_recomendada, piso_uf, recomendado_uf, techo_uf, publicado_uf, razones, senales, monto_uf, firmada_at, texto, texto_version, rango_fuente, regla_version, en_firme_como, precio_final_uf, ronda, anterior_id, presentada_at, vigente_hasta, respuesta, respuesta_at, contraoferta_uf, contraoferta_nota, contraoferta_vence, sugerida_uf, sugerida_regla_uf, sugerida_fuente, sin_acuerdo_motivo, respuesta_tardia, respuesta_tardia_uf, respuesta_tardia_at, tardia_decision, retirada_at, retirada_desde, updated_at, mantener_pedido_at, mantener_respuesta, contraoferta_vence_original, visita_id";
+const COLS = "id, estado, postura_recomendada, piso_uf, recomendado_uf, techo_uf, publicado_uf, razones, senales, monto_uf, firmada_at, texto, texto_version, rango_fuente, regla_version, en_firme_como, precio_final_uf, ronda, anterior_id, presentada_at, vigente_hasta, respuesta, respuesta_at, contraoferta_uf, contraoferta_nota, contraoferta_vence, sugerida_uf, sugerida_regla_uf, sugerida_fuente, sin_acuerdo_motivo, respuesta_tardia, respuesta_tardia_uf, respuesta_tardia_at, tardia_decision, retirada_at, retirada_desde, updated_at, mantener_pedido_at, mantener_respuesta, contraoferta_vence_original, visita_id, sujeta_a_visita, en_firme_at";
 export const COLS_OFERTA = COLS;
 
 /** La oferta abierta del depto (borrador o ya firmada), sin calcular nada. */
@@ -254,15 +258,15 @@ export async function asegurarRango(admin: SupabaseClient, userId: string, aviso
 }
 
 /** EL TEXTO QUE SE FIRMA (B3; también las rondas de B4): el mismo para la primera oferta, una contraoferta aceptada o un monto nuevo. */
-export function textoDeFirma(x: { orden: { nombre: string; rut: string }; pre: Awaited<ReturnType<typeof leerPreaprobacion>>; tituloConNumero: string; datos: DatosDepto; montoUF: number; publicadoUF: number }): string {
+export function textoDeFirma(x: { orden: { nombre: string; rut: string }; pre: Awaited<ReturnType<typeof leerPreaprobacion>>; tituloConNumero: string; datos: DatosDepto; montoUF: number; publicadoUF: number; enFirme?: { visitaFecha: string; respaldo: string | null } | null }): string {
   const pagas = x.pre.estado === "sin_credito" ? FIRMA_COPY.sinCredito : `${FIRMA_COPY.pieYCredito(Math.round(x.montoUF * 0.2))}, ${FIRMA_COPY.conPreaprobacion(x.pre.doc?.banco ?? null, x.pre.doc?.montoAprobadoUF ?? null, fechaLarga(x.pre.doc?.vigenteHasta ?? null)).replace(/^Con/, "con")}`;
-  return textoPlanoOferta({ nombre: x.orden.nombre, rut: x.orden.rut, depto: [x.tituloConNumero, lineaDepto(x.datos)].join(" · "), montoUF: x.montoUF, publicadoUF: x.publicadoUF, pagas, sujetaAVisita: true, vigenciaDias: 5 });
+  return textoPlanoOferta({ nombre: x.orden.nombre, rut: x.orden.rut, depto: [x.tituloConNumero, lineaDepto(x.datos)].join(" · "), montoUF: x.montoUF, publicadoUF: x.publicadoUF, pagas, sujetaAVisita: !x.enFirme, vigenciaDias: 5, enFirme: x.enFirme ?? null });
 }
 
 export type ErrorFirma = "depto" | "etapa" | "preaprobacion" | "rango" | "monto" | "casilla" | "orden" | "ubicacion" | "guardar";
 
 /** FIRMAR LA OFERTA (5.1b). La persona elige el monto (sin límite: los avisos no bloquean); se firma el texto exacto. */
-export async function firmarOferta(admin: SupabaseClient, user: { id: string; email: string | null }, avisoId: string, pedido: { montoUF?: unknown; acepto?: unknown; leyo?: unknown }, ctx: ContextoPedido | null): Promise<{ ok: true; estado: string } | { ok: false; error: ErrorFirma }> {
+export async function firmarOferta(admin: SupabaseClient, user: { id: string; email: string | null }, avisoId: string, pedido: { montoUF?: unknown; acepto?: unknown; leyo?: unknown; aceptoFirme?: unknown }, ctx: ContextoPedido | null): Promise<{ ok: true; estado: string } | { ok: false; error: ErrorFirma }> {
   if (pedido.acepto !== true) return { ok: false, error: "casilla" };
   const monto = Math.round(Number(pedido.montoUF));
   const p = await leerPaginaDepto(admin, user.id, avisoId, { nuevaRonda: true });
@@ -281,14 +285,18 @@ export async function firmarOferta(admin: SupabaseClient, user: { id: string; em
     leerConfigRango(admin),
   ]);
   if (!orden) return { ok: false, error: "orden" };
-  const texto = textoDeFirma({ orden, pre, tituloConNumero: p.tituloConNumero, datos: p.datos, montoUF: monto, publicadoUF: of.publicadoUF });
+  // Después de la visita, toda oferta es en firme (24-nov-2026): también otra oferta después de retirar la anterior. Exige la segunda casilla.
+  const enFirme = naceEnFirme(p.visita) ? p.visita! : null;
+  if (enFirme && pedido.aceptoFirme !== true) return { ok: false, error: "casilla" };
+  const texto = textoDeFirma({ orden, pre, tituloConNumero: p.tituloConNumero, datos: p.datos, montoUF: monto, publicadoUF: of.publicadoUF, enFirme: enFirme ? { visitaFecha: fechaVisitaLarga(enFirme.visitadaAt ?? new Date().toISOString()), respaldo: null } : null });
   const aviso = avisoOferta(monto, of, of.publicadoUF, cfg);
   const estado = (viva ?? []).length ? "en_cola" : "firmada";
   const ahora = new Date().toISOString();
   const { error } = await admin.from(T_OF).update({
-    estado, monto_uf: monto, aviso_nivel: aviso, insistio_at: aviso === "ninguno" ? null : ahora, sujeta_a_visita: true, vigencia_dias: 5,
-    nombre: orden.nombre, rut: orden.rut, texto_version: VERSION_TEXTO_OFERTA, texto, texto_sha256: sha256(texto), acepto_casilla: true, leyo_hasta_el_final: pedido.leyo === true,
+    estado, monto_uf: monto, aviso_nivel: aviso, insistio_at: aviso === "ninguno" ? null : ahora, sujeta_a_visita: !enFirme, vigencia_dias: 5,
+    nombre: orden.nombre, rut: orden.rut, texto_version: enFirme ? VERSION_TEXTO_OFERTA_EN_FIRME : VERSION_TEXTO_OFERTA, texto, texto_sha256: sha256(texto), acepto_casilla: true, leyo_hasta_el_final: pedido.leyo === true,
     firmada_at: ahora, ip: ctx?.ip ?? null, user_agent: ctx?.ua ? ctx.ua.slice(0, 500) : null, updated_at: ahora,
+    ...(enFirme ? { visita_id: enFirme.id, en_firme_confirmo: true, en_firme_ip: ctx?.ip ?? null, en_firme_user_agent: ctx?.ua ? ctx.ua.slice(0, 500) : null } : {}),
   }).eq("id", of.id).eq("estado", "borrador");
   if (error) { console.error("[inv2] firmar oferta:", error.message); return { ok: false, error: /ubicaci/.test(error.message) ? "ubicacion" : "guardar" }; }
   if (estado === "firmada") await admin.from("inv_tareas").insert({ user_id: user.id, tipo: "presentar_oferta", aviso_id: avisoId, estado: "pendiente", detalle: { oferta_id: of.id, monto_uf: monto, aviso }, es_prueba: d?.es_prueba === true });

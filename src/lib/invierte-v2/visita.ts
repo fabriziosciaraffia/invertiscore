@@ -44,6 +44,12 @@ export const visitaPublicada = (v: VisitaResumen | null | undefined): v is Visit
 export const visitaAbierta = (v: VisitaResumen | null | undefined): v is VisitaResumen => !!v && (VISITAS_ABIERTAS as readonly string[]).includes(v.estado);
 /** ¿El reporte nombra un arreglo concreto? Es lo único que permite bajar de la oferta anterior. */
 export const conArreglo = (v: VisitaResumen | null | undefined) => visitaPublicada(v) && v.arreglos.length > 0;
+/** DESPUÉS DE LA VISITA, TODA OFERTA ES EN FIRME (24-nov-2026, decisión de Fabrizio): si el depto ya tiene un reporte de visita publicado,
+ *  lo que se firma —cualquier ronda, también volver a presentar, reactivar u otra oferta después de retirar— nace en firme. La primera
+ *  oferta, antes de visitar, sigue sujeta a visita. */
+export const naceEnFirme = (v: VisitaResumen | null | undefined) => visitaPublicada(v);
+/** «25 de noviembre» de la visita, para el documento firmado. */
+export const fechaVisitaLarga = (iso: string) => new Intl.DateTimeFormat("es-CL", { timeZone: "America/Santiago", day: "numeric", month: "long" }).format(new Date(iso));
 
 /** El estado del reporte sale de los puntos: sin arreglos, «coincide»; con alguno, «arreglos menores», salvo que el admin marque remodelación. */
 export function estadoDelReporte(puntos: readonly PuntoVisita[], remodelacion: boolean): EstadoReporte {
@@ -140,6 +146,19 @@ export const VISITA_COPY = {
   unPuntoMas: (que: string) => `Estimamos un punto más de rebaja por ${que}.`,
   volverDepto: "Volver al depto",
   docReporte: "Reporte de la visita",
+  // Después de la visita, toda oferta es en firme (24-nov-2026, lámina 5.1b y respuestas de Fabrizio). Sin redundancia: el título dice
+  // «en firme»; la línea de abajo dice lo nuevo.
+  firmadaFirmeT: "Franco va a presentar tu oferta en firme a quien vende",
+  presentadaFirmeT: "Franco presentó tu oferta en firme. Esperamos la respuesta",
+  siLaAceptan: "Si la aceptan, ya no puedes retirarla.",
+  comunicarFirme: "Cuando se lo avise, tu oferta queda en firme.",
+  enFirmeT: "Tu oferta está en firme",
+  precioAcordado: "Precio acordado",
+  aceptada: "Aceptada",
+  preparaPromesa: "Franco prepara la promesa.",
+  caminoFirmada: "En firme · Franco la va a presentar",
+  caminoPresentada: "En firme · esperando respuesta",
+  caminoPromesa: "Franco prepara la promesa",
   // Los avisos (decisión 9).
 } as const;
 

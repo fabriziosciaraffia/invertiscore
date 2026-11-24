@@ -18,7 +18,7 @@ import { NO_EXISTE, contextoDe, personaConAcceso } from "@/lib/invierte-v2/rutas
 export async function POST(request: Request) {
   const user = await personaConAcceso();
   if (!user) return NO_EXISTE();
-  const b = (await request.json().catch(() => ({}))) as { accion?: unknown; avisoId?: unknown; montoUF?: unknown; acepto?: unknown; leyo?: unknown; desdeId?: unknown; retirarOtra?: unknown; confirmo?: unknown };
+  const b = (await request.json().catch(() => ({}))) as { accion?: unknown; avisoId?: unknown; montoUF?: unknown; acepto?: unknown; leyo?: unknown; desdeId?: unknown; retirarOtra?: unknown; confirmo?: unknown; aceptoFirme?: unknown };
   if (!esAvisoId(b.avisoId)) return NextResponse.json({ error: "datos" }, { status: 400 });
   const u = { id: user.id, email: user.email ?? null };
   if (b.accion === "hablar") {

@@ -1,6 +1,7 @@
 // /dev/invierte-v2/oferta (etapa 3, B3, 22-nov-2026; rediseño del 23-nov): las pantallas de la oferta, sin cuentas ni escrituras.
 //   ?pantalla=oferta (por defecto; lámina 5.1) | firmar (lámina 5.1b) · ?monto=UF (en oferta, el monto con que parte; en firmar, el que firma)
 //   ?caso=ajusta | ajusta-normal: un Ajusta supuestos de muestra.
+//   ?firme=1 (en firmar): la firma en firme, después de la visita (lámina 5.1b); ?firme=baja: además baja de la oferta anterior (Respaldo).
 //   «A este precio» (23-nov-2026) sale del motor con los datos fijos de un depto real de muestra (muestra-motor.ts).
 //   ?aviso=<uuid>: con los números REALES de ese depto (su rango guardado, su dirección y su preaprobación), solo lectura: para revisar la
 //   pantalla de un depto cuya oferta ya está firmada (y que por eso ya no abre la página de verdad). SOLO EN LOCAL (development).
@@ -47,7 +48,7 @@ async function deptoReal(avisoId: string): Promise<Muestra | null> {
   };
 }
 
-export default async function OfertaDemo({ searchParams }: { searchParams: { pantalla?: string; monto?: string; caso?: string; aviso?: string } }) {
+export default async function OfertaDemo({ searchParams }: { searchParams: { pantalla?: string; monto?: string; caso?: string; aviso?: string; firme?: string } }) {
   if (process.env.NODE_ENV === "production" && process.env.VERCEL_ENV !== "preview") notFound();
   const monto = Number(searchParams.monto);
   const sinSenales = { bajada: null, vecinos: null, pinSospechoso: false, estadoArriendo: "listo", arreglos: [] as string[] };
@@ -63,13 +64,14 @@ export default async function OfertaDemo({ searchParams }: { searchParams: { pan
   if (searchParams.pantalla === "firmar") {
     const mm = monto > 0 ? monto : m.recomendadoUF;
     const conPre = F.conPreaprobacion(m.banco, m.preUF, null);
-    const documento = textoOferta({ nombre: "María José Fernández Valdivieso", rut: "12.345.678-5", depto: `${m.direccion} · ${m.linea}`, montoUF: mm, publicadoUF: m.publicadoUF, pagas: `${F.pieYCredito(Math.round(mm * 0.2))}, ${conPre.replace(/^Con/, "con")}`, sujetaAVisita: true, vigenciaDias: 5 });
+    const firme = searchParams.firme === "1" || searchParams.firme === "baja" ? { antesUF: searchParams.firme === "baja" ? 2966 : null, respaldo: searchParams.firme === "baja" ? { fecha: "25 nov", linea: "Baño con filtración en el cielo", href: "/dev/invierte-v2/visita?caso=arreglo" } : null } : null;
+    const documento = textoOferta({ nombre: "María José Fernández Valdivieso", rut: "12.345.678-5", depto: `${m.direccion} · ${m.linea}`, montoUF: mm, publicadoUF: m.publicadoUF, pagas: `${F.pieYCredito(Math.round(mm * 0.2))}, ${conPre.replace(/^Con/, "con")}`, sujetaAVisita: !firme, vigenciaDias: 5, enFirme: firme ? { visitaFecha: "25 de noviembre", respaldo: firme.respaldo?.linea ?? null } : null });
     return (
       <MarcoInvierte volver={null} pantalla="firmar-oferta" layout="formulario" cabecera="Tu oferta" pc={{ sesionEmail: "muestra@ejemplo.cl", invierte: "inversion" }}>
         <div className="iv2-mi-inversion"><Link href={q(`monto=${mm}`)} className="iv2-mi-inversion-a">← {F.volver}</Link></div>
         <div className="inv-encabezado iv2-sumar-cab"><h1 className="iv2-titulo-res" id="iv2-t">{F.titulo}</h1><p className="iv2-depto-s">{m.direccion} · {m.linea}<span className="iv2-fo-pub"> · publicado en {pub}</span></p></div>
         <FirmaOfertaForm avisoId="muestra" montoUF={mm} publicadoUF={m.publicadoUF} documento={documento} urlVolver="/dev/invierte-v2/depto?etapa=listo&oferta=firmada"
-          pagas={F.pieYCredito(Math.round(mm * 0.2))} pagasLinea={<>{F.preaprobacion(m.banco, m.preUF)} · <span className="iv2-enlace-azul">{F.ver}</span></>} />
+          pagas={F.pieYCredito(Math.round(mm * 0.2))} pagasLinea={<>{F.preaprobacion(m.banco, m.preUF)} · <span className="iv2-enlace-azul">{F.ver}</span></>} enFirme={firme} />
       </MarcoInvierte>
     );
   }

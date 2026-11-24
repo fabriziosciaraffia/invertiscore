@@ -23,10 +23,10 @@ import { venceAlTerminar } from "@/lib/invierte-v2/b4";
 
 export const dynamic = "force-dynamic";
 
-export default function DeptoDemo({ searchParams }: { searchParams: { etapa?: string; aviso?: string; confirmada?: string; preguntas?: string; oferta?: string; lectura?: string; fotos?: string; pocos?: string; cierre?: string; otra?: string; visita?: string; mantener?: string } }) {
+export default function DeptoDemo({ searchParams }: { searchParams: { etapa?: string; aviso?: string; confirmada?: string; preguntas?: string; oferta?: string; lectura?: string; fotos?: string; pocos?: string; cierre?: string; otra?: string; visita?: string; mantener?: string; firme?: string } }) {
   if (process.env.NODE_ENV === "production" && process.env.VERCEL_ENV !== "preview") notFound();
   const e = searchParams.etapa ?? "confirmando";
-  const etapa: Etapa = e === "revision" || e === "corregir" ? "sin_preaprobacion" : e === "dejo" ? "no_avanza" : (["confirmando", "sin_preaprobacion", "listo", "no_avanza"].includes(e) ? e : "confirmando") as Etapa;
+  const etapa: Etapa = e === "revision" || e === "corregir" ? "sin_preaprobacion" : e === "dejo" ? "no_avanza" : (["confirmando", "sin_preaprobacion", "listo", "no_avanza", "en_firme"].includes(e) ? e : "confirmando") as Etapa;
   const pre: EstadoVisible = e === "revision" ? "en_revision" : e === "corregir" ? "por_corregir" : e === "listo" ? "aprobada" : "subir";
   const confirmada = searchParams.confirmada === "1";
   const avisoId = searchParams.aviso && /^[0-9a-f-]{36}$/i.test(searchParams.aviso) ? searchParams.aviso : "muestra";
@@ -73,7 +73,7 @@ export default function DeptoDemo({ searchParams }: { searchParams: { etapa?: st
     ],
     documentos: [],
     // B3: en listo, la oferta borrador con el rango de la regla v1 (?oferta=firmada la muestra firmada).
-    oferta: etapa === "listo" ? {
+    oferta: etapa === "listo" || etapa === "en_firme" ? {
       id: "of", estado: estadoOferta, ...b4, postura: "negocia_poco", descuentoPct: 5, pisoUF: 2905, recomendadoUF: 2936, altoUF: 2967, techoUF: 3090, comprarUF: null, publicadoUF: 3090,
       razones: ["Ya bajó UF 80 hace tres semanas: quien vende está dispuesto a moverse.", "La cocina tiene muebles dañados y piso manchado: es un argumento concreto para pedir rebaja."],
       corregida: null, montoUF: estadoOferta !== "borrador" ? 2930 : null, firmadaAt: estadoOferta !== "borrador" ? "2026-11-22T15:00:00Z" : null,
@@ -102,6 +102,13 @@ export default function DeptoDemo({ searchParams }: { searchParams: { etapa?: st
     if (searchParams.mantener === "acepta" || searchParams.mantener === "no") p.oferta.mantenerRespuesta = searchParams.mantener === "acepta" ? "acepta" : "no_acepta";
     if (pedido === "ajustada") { p.oferta.montoUF = 2900; p.oferta.anteriorMontoUF = 2966; }
     if (pedido === "aceptada_sujeta") p.oferta.montoUF = 2966;
+  }
+  // Después de la visita, toda oferta es en firme (24-nov-2026): ?firme=1 la oferta nació en firme; ?etapa=en_firme, la aceptaron.
+  if (p.oferta && (searchParams.firme === "1" || etapa === "en_firme")) {
+    p.visita = p.visita ?? visitaMuestra("arreglo");
+    p.oferta.visita = p.visita;
+    p.oferta.sujetaAVisita = false;
+    if (etapa === "en_firme") { p.oferta.estado = "en_firme"; p.oferta.montoUF = 2900; p.oferta.enFirmeAt = new Date(ahora - DIA).toISOString(); }
   }
   // El bloque de la oferta de la ficha, con el motor (firmada o presentada: «Con tu oferta»; aceptada: «Con el precio acordado»).
   p.bloqueOferta = bloqueOfertaCifras(MOTOR_MUESTRA, p.oferta, 3090);

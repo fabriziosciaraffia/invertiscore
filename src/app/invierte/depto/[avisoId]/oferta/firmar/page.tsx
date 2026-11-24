@@ -3,8 +3,9 @@ import { notFound, redirect } from "next/navigation";
 import { createServiceClient } from "@/lib/supabase/service";
 import { lineaDepto } from "@/lib/invierte-v2/base";
 import { fmtUF } from "@/lib/invierte-v2/opciones";
-import { urlContraoferta, urlDepto, urlOferta } from "@/lib/invierte-v2/depto-flujo";
+import { diaMes, urlContraoferta, urlDepto, urlOferta, urlReporteVisita } from "@/lib/invierte-v2/depto-flujo";
 import { rondaDesde } from "@/lib/invierte-v2/b4-servidor";
+import { fechaVisitaLarga, naceEnFirme } from "@/lib/invierte-v2/visita";
 import { leerPaginaDepto } from "@/lib/invierte-v2/depto-pagina-servidor";
 import { FIRMA_COPY as F, topeOferta } from "@/lib/invierte-v2/rango";
 import { textoOferta } from "@/lib/invierte-v2/oferta-documento";
@@ -35,7 +36,7 @@ export default async function FirmarOfertaPage({ params, searchParams }: { param
   const [p, pre, orden] = await Promise.all([leerPaginaDepto(admin, user.id, avisoId, { nuevaRonda: !desdeId }), leerPreaprobacion(admin, user.id), ultimaOrdenDe(admin, user.id)]);
   if (!p) redirect("/invierte");
   const desde = desdeId ? (p.oferta?.id === desdeId ? p.oferta : p.cierre?.id === desdeId ? p.cierre : null) : null;
-  const ronda = desde ? rondaDesde(desde) : null;
+  const ronda = desde ? rondaDesde({ ...desde, visita: p.visita ?? null }) : null;
   if (desdeId && (!desde || !ronda || monto < ronda.minUF || monto > ronda.maxUF)) redirect(urlDepto(avisoId));
   const o = desde ?? p.oferta;
   if (p.etapa !== "listo" || !puedeOfertar(p.preaprobacion) || !o || (!desde && o.estado !== "borrador") || !orden) redirect(urlDepto(avisoId));
@@ -44,7 +45,11 @@ export default async function FirmarOfertaPage({ params, searchParams }: { param
   const sinCredito = pre.estado === "sin_credito";
   const conPre = F.conPreaprobacion(pre.doc?.banco ?? null, pre.doc?.montoAprobadoUF ?? null, fechaLarga(pre.doc?.vigenteHasta ?? null));
   const pagas = sinCredito ? F.sinCredito : `${F.pieYCredito(Math.round(monto * 0.2))}, ${conPre.replace(/^Con/, "con")}`;
-  const documento = textoOferta({ nombre: orden.nombre, rut: orden.rut, depto: [p.tituloConNumero, lineaDepto(p.datos)].join(" · "), montoUF: monto, publicadoUF: o.publicadoUF, pagas, sujetaAVisita: true, vigenciaDias: 5 });
+  // Después de la visita, toda oferta es en firme (24-nov-2026): la misma regla que el servidor (naceEnFirme), el mismo texto que se firma.
+  const v = naceEnFirme(p.visita) ? p.visita! : null;
+  const respaldoLinea = v && desde?.montoUF && monto < desde.montoUF ? v.reporteLinea : null;
+  const enFirme = v ? { antesUF: desde?.montoUF ?? null, respaldo: respaldoLinea && v.visitadaAt ? { fecha: diaMes(v.visitadaAt), linea: respaldoLinea, href: urlReporteVisita(avisoId) } : null } : null;
+  const documento = textoOferta({ nombre: orden.nombre, rut: orden.rut, depto: [p.tituloConNumero, lineaDepto(p.datos)].join(" · "), montoUF: monto, publicadoUF: o.publicadoUF, pagas, sujetaAVisita: !v, vigenciaDias: 5, enFirme: v ? { visitaFecha: fechaVisitaLarga(v.visitadaAt ?? new Date().toISOString()), respaldo: respaldoLinea } : null });
   const pagasLinea = sinCredito ? null : <>{F.preaprobacion(pre.doc?.banco ?? null, pre.doc?.montoAprobadoUF ?? null)} · <VerPreaprobacion etiqueta={F.ver} estado="Aprobada" titulo={PREAPROB_COPY.cabecera} meta={conPre} mime={pre.doc?.mime ?? null} /></>;
   return (
     <MarcoInvierte volver={null} pantalla="firmar-oferta" layout="formulario" cabecera="Tu oferta" pc={{ sesionEmail: user.email ?? null, invierte: "inversion" }}>
@@ -53,7 +58,7 @@ export default async function FirmarOfertaPage({ params, searchParams }: { param
         <h1 className="iv2-titulo-res" id="iv2-t">{F.titulo}</h1>
         <p className="iv2-depto-s" data-inv2="firma-depto">{p.direccion ?? p.tituloConNumero} · {lineaDepto(p.datos)}<span className="iv2-fo-pub"> · publicado en UF {fmtUF(o.publicadoUF)}</span></p>
       </div>
-      <FirmaOfertaForm avisoId={avisoId} montoUF={monto} publicadoUF={o.publicadoUF} documento={documento} urlVolver={urlDepto(avisoId)} desdeId={desde?.id ?? null} retirarOtra={searchParams.retirarOtra === "1"}
+      <FirmaOfertaForm avisoId={avisoId} montoUF={monto} publicadoUF={o.publicadoUF} documento={documento} urlVolver={urlDepto(avisoId)} desdeId={desde?.id ?? null} retirarOtra={searchParams.retirarOtra === "1"} enFirme={enFirme}
         pagas={sinCredito ? F.sinCredito : F.pieYCredito(Math.round(monto * 0.2))} pagasLinea={pagasLinea} />
     </MarcoInvierte>
   );
