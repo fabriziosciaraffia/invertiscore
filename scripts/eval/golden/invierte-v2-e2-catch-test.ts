@@ -2167,8 +2167,8 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
           const datos40 = { avisoId: "a40", ofertaId: "o40", tuUF: 2936, ellosUF: 3010, sugeridaUF: 2966, accion: "proponer", topeEsComprar: false, pisoUF: 2874, altoUF: 2966, publicadoUF: 3090, venceAt: null, fueraDePlazo: true, otraViva: null, cifras: { tu: null, sugerida: null, ellos: null }, visita: null } as unknown as Parameters<typeof ResponderContraoferta>[0]["d"];
           const conPausa40 = renderToStaticMarkup(createElement(ResponderContraoferta, { d: { ...datos40, pausaAcuerdo: true }, volverA: "/x" }));
           const sinPausa40 = renderToStaticMarkup(createElement(ResponderContraoferta, { d: datos40, volverA: "/x" }));
-          if (/Franco sugiere|punto-sugerida|co-precio-sugerida|data-destacada/.test(conPausa40) || !/punto-sugerida/.test(sinPausa40) || !/co-precio-sugerida/.test(sinPausa40) || !/data-destacada/.test(sinPausa40))
-            F(`40g · la contraoferta en pausa sigue mostrando «Franco sugiere» en la barra o la tabla (o la perdió sin pausa): ${(conPausa40.match(/.{0,60}(Franco sugiere|punto-sugerida|co-precio-sugerida|data-destacada).{0,40}/) ?? [""])[0]}`);
+          if (/Franco sugiere|punto-sugerida|co-precio-sugerida|data-destacada|iv2-co-franja/.test(conPausa40) || !/punto-sugerida/.test(sinPausa40) || !/co-precio-sugerida/.test(sinPausa40) || !/data-destacada/.test(sinPausa40) || !/iv2-co-franja/.test(sinPausa40)) /* ⚠ ACTA (25-nov-2026, Fabrizio): la franja del rango, tampoco. */
+            F(`40g · la contraoferta en pausa sigue mostrando «Franco sugiere» en la barra o la tabla (o la perdió sin pausa): ${(conPausa40.match(/.{0,60}(Franco sugiere|punto-sugerida|co-precio-sugerida|data-destacada|iv2-co-franja).{0,40}/) ?? [""])[0]}`);
         }
         // 32h · El reporte del admin: los puntos se limpian; la línea por defecto es el primer arreglo nuevo o «coincide».
         const lp32 = limpiarPuntos([{ tema: " Baños ", texto: "Filtración en el cielo: hay que repararla.", arreglo: true, enFotos: false }, { tema: "", texto: "x" }, { tema: "Ruido", texto: "Silencioso", arreglo: false, enFotos: true }]);

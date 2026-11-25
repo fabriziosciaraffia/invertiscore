@@ -61,7 +61,8 @@ function BarraContraoferta({ d }: { d: DatosContraoferta }) {
         <span className="iv2-co-chip iv2-co-chip-ellos" style={{ left: pos(d.ellosUF) }}>{B.ellos}</span>
       </div>
       <div className="iv2-co-pista">
-        <span className="iv2-co-franja" style={{ left: pos(d.pisoUF), width: `calc(${pos(d.altoUF)} - ${pos(d.pisoUF)})` }} />
+        {/* La franja del rango recomendado es la misma sugerencia: en pausa, tampoco (Fabrizio, 25-nov-2026). */}
+        {!d.pausaAcuerdo && <span className="iv2-co-franja" style={{ left: pos(d.pisoUF), width: `calc(${pos(d.altoUF)} - ${pos(d.pisoUF)})` }} />}
         <span className="iv2-co-fin" aria-hidden="true" />
         <span className="iv2-co-punto iv2-co-punto-tu" style={{ left: pos(d.tuUF) }} />
         {proponer && <span className="iv2-co-punto iv2-co-punto-sug" style={{ left: pos(d.sugeridaUF) }} data-inv2="punto-sugerida" />}
