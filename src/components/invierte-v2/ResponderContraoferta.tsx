@@ -52,7 +52,8 @@ function BarraContraoferta({ d }: { d: DatosContraoferta }) {
   const min = Math.min(d.pisoUF, d.tuUF) - Math.max(20, (d.publicadoUF - Math.min(d.pisoUF, d.tuUF)) * 0.35);
   const max = d.publicadoUF;
   const pos = (v: number) => `${Math.min(100, Math.max(0, ((v - min) / (max - min)) * 100)).toFixed(1)}%`;
-  const proponer = d.accion === "proponer";
+  // En pausa (25-nov-2026): sin lo que sugiere Franco mientras dure; si el acuerdo se cae y la contraoferta sigue viva, vuelve.
+  const proponer = d.accion === "proponer" && !d.pausaAcuerdo;
   return (
     <div className="iv2-co-barra" data-inv2="barra-contraoferta" role="img" aria-label={`${B.tu} ${uf0(d.tuUF)}, ${B.ellos} ${uf0(d.ellosUF)}${proponer ? `, ${B.francoSugiere} ${uf0(d.sugeridaUF)}` : ""}, publicado ${uf0(d.publicadoUF)}`}>
       <div className="iv2-co-chips">
@@ -77,11 +78,12 @@ function BarraContraoferta({ d }: { d: DatosContraoferta }) {
 export function ResponderContraoferta({ d, volverA }: { d: DatosContraoferta; volverA: string }) {
   const v = d.venceAt ? lineaVence(new Date(d.venceAt)) : null;
   const proponer = d.accion === "proponer";
-  // Las columnas: tu oferta, lo que sugiere Franco (si es proponer) y lo que piden; la destacada es la de Franco.
+  // Las columnas: tu oferta, lo que sugiere Franco (si es proponer) y lo que piden; la destacada es la de Franco. En pausa (25-nov-2026),
+  // ni la columna de Franco ni la destacada: no hay nada que decidir mientras dure.
   const cols = [
     { k: "tu", t: B.tuOferta, uf: d.tuUF, c: d.cifras.tu, dest: false },
-    ...(proponer ? [{ k: "sugerida", t: B.francoSugiere, uf: d.sugeridaUF, c: d.cifras.sugerida, dest: true }] : []),
-    { k: "ellos", t: B.ellos, uf: d.ellosUF, c: d.cifras.ellos, dest: !proponer },
+    ...(proponer && !d.pausaAcuerdo ? [{ k: "sugerida", t: B.francoSugiere, uf: d.sugeridaUF, c: d.cifras.sugerida, dest: true }] : []),
+    { k: "ellos", t: B.ellos, uf: d.ellosUF, c: d.cifras.ellos, dest: !proponer && !d.pausaAcuerdo },
   ];
   const flujos = cols.map((x) => x.c?.flujoCLP ?? null).filter((x): x is number => x != null);
   const etMes = flujos.length && flujos.every((f) => f > 0) ? "Te sobran al mes" : flujos.every((f) => f <= 0) ? "Pones al mes" : "Al mes";
