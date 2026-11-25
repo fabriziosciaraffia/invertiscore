@@ -24,6 +24,7 @@ import { PIE_POR_DEFECTO, PLAZO_POR_DEFECTO } from "@/lib/deptos/estandar";
 import { pasaFiltros, pinDeFila, TOPE_NEGOCIAR_DE_ENTRADA, TOPES_NEGOCIAR, type FiltrosPortal, type PinMapa, type TopeNegociar } from "./portal";
 import { TOPE_NEGOCIAR_PCT } from "@/lib/avisos/negociar-tope";
 import { NEGOCIADO_COPY } from "@/lib/precio-publicado";
+import type { ClaseMapa } from "./mapa-todos";
 
 // Los topes de Filtros (5 % y 10 %) viven en portal.ts (son parte de los filtros de la URL); acá se reexportan. El mayor es el
 // que calcula la noche: si se separan, la capa ofrecería un tope sin datos (lo cuida EXPLORAR-NEGOCIAR).
@@ -54,6 +55,10 @@ export type PinNegociado = PinMapa & { neg: Negociacion };
 export const esNegociado = (p: PinMapa): p is PinNegociado => !!(p as Partial<PinNegociado>).neg;
 /** ¿Viajaron sus cifras? Sin cuenta, no: el precio negociado y el descuento se dibujan borrosos. */
 export const conCifrasNegociado = (p: PinNegociado): p is PinNegociado & { neg: { p: number } } => p.neg.p != null;
+
+/** La clase de un pin del mapa con todos los deptos (25-nov-2026, mapa-todos.ts): Ajustar si trae su descuento, Comprar si da Comprar,
+ *  y si no, No conviene (BUSCAR OTRA o un Ajustar que no llega con 10 %). */
+export const claseDePin = (p: PinMapa): ClaseMapa => (esNegociado(p) ? "ajustar" : p.veredicto === "COMPRAR" ? "comprar" : "no");
 
 /** Un círculo del mapa: su centro en píxeles del mundo a ese zoom (explorar.ts › proyectar) y su radio en píxeles. */
 export interface Circulo {
@@ -89,9 +94,11 @@ export function capaDeLaNoche(f: Pick<FiltrosPortal, "modalidad" | "pie" | "plaz
   return f.modalidad === "ltr" && f.tasa == null && f.plazo === PLAZO_POR_DEFECTO && (PIES_NEGOCIAR as readonly number[]).includes(f.pie);
 }
 
-/** ¿Esta combinación tiene capa? En arriendo tradicional, siempre (04-nov-2026): la de la noche o la calculada por comuna. */
+/** ¿Esta combinación tiene capa? En arriendo tradicional, siempre (04-nov-2026): la de la noche o la calculada por comuna. Y DESDE EL
+ *  25-NOV-2026 TAMBIÉN EN RENTA CORTA (decisión 10): todo Ajustar que se ve trae su «Conviene desde UF X», calculado por comuna. */
 export function capaNegociarDisponible(f: Pick<FiltrosPortal, "modalidad" | "pie" | "plazo" | "tasa">): boolean {
-  return f.modalidad === "ltr";
+  void f;
+  return true;
 }
 
 /** ¿Se ve la capa? Con estos supuestos existe y «Ver solo ✓ Comprar» está apagado (03-nov-2026: de entrada, sí). */
@@ -109,13 +116,14 @@ export interface NegociadosCompactos {
   comunas: string[];
   /** [id, comuna (índice), lat, lng, m2, dormitorios, baños, precio publicado, puntaje, flujo, arriendo, condición (0, 1 usado,
    *  2 nuevo), alta, descuento, precio negociado, puntaje negociado, flujo negociado] */
-  filas: Array<[string, number, number, number, number, number, number | null, number, number | null, number | null, number | null, 0 | 1 | 2, number | null, number, number | null, number | null, number | null]>;
+  // Desde el 25-nov-2026, al final, los tramos de arriendo, cap rate y flujo (mapa-todos.ts; sin cuenta no van).
+  filas: Array<[string, number, number, number, number, number, number | null, number, number | null, number | null, number | null, 0 | 1 | 2, number | null, number, number | null, number | null, number | null, (number | null)?, (number | null)?, (number | null)?]>;
 }
 
 /** Una fila de explorar_negociar (17 campos) como pin de la capa. */
 export function negociadoDeFila(r: unknown[]): PinNegociado {
   const n = (v: unknown): number | null => (v == null || v === "" || !Number.isFinite(Number(v)) ? null : Number(v));
-  const base = pinDeFila({ id: String(r[0]), comuna: String(r[1]), lat: r[2], lng: r[3], m2: r[4], dormitorios: r[5], banos: r[6], precio: r[7], score: r[8], flujo: r[9], arriendo: r[10], condicion: r[11], alta: r[12] });
+  const base = pinDeFila({ id: String(r[0]), comuna: String(r[1]), lat: r[2], lng: r[3], m2: r[4], dormitorios: r[5], banos: r[6], precio: r[7], score: r[8], flujo: r[9], arriendo: r[10], condicion: r[11], alta: r[12], tramos: r.length > 17 ? [r[17], r[18], r[19]] : undefined });
   const p = n(r[14]);
   return { ...base, veredicto: "AJUSTA SUPUESTOS", neg: { d: Number(r[13]), p: p == null ? null : Math.round(p), s: n(r[15]), f: n(r[16]) } };
 }
@@ -126,14 +134,16 @@ export function compactarNegociados(pines: readonly PinNegociado[]): NegociadosC
   const filas: NegociadosCompactos["filas"] = pines.map((p) => {
     let i = idx.get(p.comuna);
     if (i == null) { i = comunas.length; comunas.push(p.comuna); idx.set(p.comuna, i); }
-    return [p.avisoId, i, p.lat, p.lng, p.m2, p.dormitorios, p.banos, p.precioUF, p.score, p.flujo, p.arriendo, p.condicion === "usado" ? 1 : p.condicion === "nuevo" ? 2 : 0, p.alta, p.neg.d, p.neg.p, p.neg.s, p.neg.f];
+    const fila: NegociadosCompactos["filas"][number] = [p.avisoId, i, p.lat, p.lng, p.m2, p.dormitorios, p.banos, p.precioUF, p.score, p.flujo, p.arriendo, p.condicion === "usado" ? 1 : p.condicion === "nuevo" ? 2 : 0, p.alta, p.neg.d, p.neg.p, p.neg.s, p.neg.f];
+    if (p.tramos) fila.push(p.tramos[0], p.tramos[1], p.tramos[2]);
+    return fila;
   });
   return { comunas, filas };
 }
 
 export function descompactarNegociados(u: NegociadosCompactos | null | undefined): PinNegociado[] {
   if (!u || !Array.isArray(u.filas)) return [];
-  return u.filas.map((f) => negociadoDeFila([f[0], u.comunas[f[1]] ?? "", f[2], f[3], f[4], f[5], f[6], f[7], f[8], f[9], f[10], f[11] === 1 ? "usado" : f[11] === 2 ? "nuevo" : null, f[12], f[13], f[14], f[15], f[16]]));
+  return u.filas.map((f) => negociadoDeFila([f[0], u.comunas[f[1]] ?? "", f[2], f[3], f[4], f[5], f[6], f[7], f[8], f[9], f[10], f[11] === 1 ? "usado" : f[11] === 2 ? "nuevo" : null, f[12], f[13], f[14], f[15], f[16], ...(f.length > 17 ? [f[17], f[18], f[19]] : [])]));
 }
 
 /** El menor tope que alcanza un descuento (4,2 → 5; 7,5 → 10). */

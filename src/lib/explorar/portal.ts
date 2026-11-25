@@ -24,6 +24,7 @@ import { condicionDe, type CondicionDepto } from "@/lib/guia/linea-depto";
 import { AVISO_NUEVOS } from "@/lib/guia/aviso-nuevos";
 import { capRatePct, esCombinacionDeLaNoche, pieDeLista, PIES_EXPLORAR, plazoDeLista, PLAZOS_EXPLORAR, tipologiaDeDorm, type PieExplorar, type PlazoExplorar } from "./explorar";
 import type { PerfilBusqueda } from "@/lib/perfil-busqueda";
+import { BARRAS_PANEL, CLASES_MAPA, cortesDeBarra, INDICE_TRAMO, tramoDe, validarRango, type BarraPanel, type CifraPin, type ClaseMapa, type RangoTramos, type Tramos } from "./mapa-todos";
 
 export type ModalidadPortal = "ltr" | "str";
 export type Publicados = "todos" | "7d" | "hoy";
@@ -51,8 +52,17 @@ export interface FiltrosPortal {
   /** «Descuento máximo para − Ajustar» (02-nov-2026, capa-negociar.ts; desde el 03-nov-2026 la capa se ve de entrada): hasta
    *  cuánto descuento llega un Ajustar a Comprar para mostrarse (5 o 10 %, 10 por defecto). No entra en «convienen». */
   negociar: TopeNegociar;
-  /** «Ver solo ✓ Comprar» (03-nov-2026, el chip de la barra): esconde los − Ajustar que llegan negociando. Apagado por defecto. */
+  /** «Ver solo ✓ Comprar» (03-nov-2026, el chip de la barra): esconde los − Ajustar que llegan negociando. Apagado por defecto.
+   *  DESDE EL 25-NOV-2026 (el mapa con todos los deptos) lo reemplazan los chips de la tarjeta del contador (`ocultar`): queda siempre
+   *  en false, y un enlace viejo con `solo=1` abre con Ajustar y No conviene apagados. */
   soloComprar: boolean;
+  /** LOS CHIPS DEL CONTADOR (25-nov-2026, decisión 5): las clases apagadas en el mapa. Vacío = las tres se ven. */
+  ocultar: ClaseMapa[];
+  /** LAS BARRAS DEL PANEL (25-nov-2026, lámina 6): el rango de tramos elegido en arriendo estimado, cap rate, flujo y UF por m²
+   *  (mapa-todos.ts › CORTES). El precio sigue en `ufMin` y `ufMax`. Sin rango, la barra entera. */
+  rangos: Partial<Record<Exclude<BarraPanel, "precio">, RangoTramos>>;
+  /** LA CIFRA DE LOS PINES (25-nov-2026, decisión 6): el precio, o la barra que se movió por última vez. */
+  cifra: CifraPin;
 }
 
 /** Los topes del descuento máximo, en % del precio publicado (la noche calcula hasta el mayor: avisos/negociar.ts). */
@@ -60,13 +70,12 @@ export const TOPES_NEGOCIAR = [5, 10] as const;
 export type TopeNegociar = (typeof TOPES_NEGOCIAR)[number];
 /** El de entrada (03-nov-2026, la pasada real de Fabrizio): 10 %, el mayor que calcula la noche. */
 export const TOPE_NEGOCIAR_DE_ENTRADA: TopeNegociar = 10;
-const topeNegociarDe = (x: unknown): TopeNegociar | null => (x != null && x !== "" && (TOPES_NEGOCIAR as readonly number[]).includes(Number(x)) ? (Number(x) as TopeNegociar) : null);
 
 /** LA VISTA GLOBAL: lo que abre /explorar sin nada en la URL. Los supuestos del número de anoche; de entrada (03-nov-2026) se ven
  *  los ✓ Comprar y los − Ajustar que llegan a Comprar con hasta 10 % de descuento. */
 export const FILTROS_GLOBALES: FiltrosPortal = {
   comunas: [], tipologias: [], ufMin: null, ufMax: null, pie: PIE_POR_DEFECTO, plazo: PLAZO_POR_DEFECTO, tasa: null, modalidad: "ltr", flujoPositivo: false, publicados: "todos", zona: null,
-  negociar: TOPE_NEGOCIAR_DE_ENTRADA, soloComprar: false,
+  negociar: TOPE_NEGOCIAR_DE_ENTRADA, soloComprar: false, ocultar: [], rangos: {}, cifra: "precio",
 };
 export const ORDEN_POR_DEFECTO: OrdenPortal = "puntaje";
 export const ORDENES: ReadonlyArray<{ id: OrdenPortal; etiqueta: string }> = [
@@ -124,10 +133,31 @@ export function validarPortal(f: Partial<Record<keyof FiltrosPortal, unknown>> |
     flujoPositivo: f.flujoPositivo === true,
     publicados: f.publicados === "7d" || f.publicados === "hoy" ? f.publicados : "todos",
     zona: caja(f.zona),
-    negociar: topeNegociarDe(f.negociar) ?? g.negociar,
-    soloComprar: f.soloComprar === true,
+    // EL DESCUENTO MÁXIMO SE FUE DEL PANEL (25-nov-2026, decisión 2): siempre 10 %, el tope de la noche. Un enlace viejo con `n=5`
+    // abre igual, con 10 %: un Ajustar que necesita más de 10 % ya se muestra como No conviene.
+    negociar: g.negociar,
+    soloComprar: false,
+    ocultar: ocultarDe(f.ocultar, f.soloComprar === true),
+    rangos: rangosDe(f.rangos),
+    cifra: (BARRAS_PANEL as readonly unknown[]).includes(f.cifra) ? (f.cifra as CifraPin) : "precio",
   };
 }
+
+const ocultarDe = (v: unknown, soloComprar: boolean): ClaseMapa[] => {
+  const xs = Array.isArray(v) ? v.filter((c): c is ClaseMapa => (CLASES_MAPA as readonly unknown[]).includes(c)) : [];
+  const out = soloComprar ? Array.from(new Set<ClaseMapa>([...xs, "ajustar", "no"])) : Array.from(new Set(xs));
+  // Las tres apagadas es lo mismo que ninguna: el mapa no se queda vacío por un toque.
+  return out.length >= CLASES_MAPA.length ? [] : CLASES_MAPA.filter((c) => out.includes(c));
+};
+const rangosDe = (v: unknown): FiltrosPortal["rangos"] => {
+  const out: FiltrosPortal["rangos"] = {};
+  if (!v || typeof v !== "object") return out;
+  for (const b of ["arriendo", "cap", "flujo", "ufm2"] as const) {
+    const r = validarRango((v as Record<string, unknown>)[b]);
+    if (r) out[b] = r;
+  }
+  return out;
+};
 
 /** Los filtros y el orden en la URL (`?c=Ñuñoa,Santiago&t=1,2&d=1500&h=3000&p=30&z=25&ta=4.5&m=str&f=1&pub=7d&n=5&solo=1&o=flujo`).
  *  Solo lo que no es global; sin nada, la vista global. Sin `ta`, la tasa de hoy. `solo=1` (03-nov-2026): el filtro «Ver solo ✓
@@ -142,10 +172,15 @@ export function portalDeUrl(sp: { get(k: string): string | null }): { filtros: F
       comunas: lista("c"), tipologias: lista("t"), ufMin: sp.get("d"), ufMax: sp.get("h"), pie: sp.get("p") ?? undefined, plazo: sp.get("z") ?? undefined,
       tasa: sp.get("ta"), modalidad: sp.get("m"), flujoPositivo: sp.get("f") === "1", publicados: sp.get("pub"), zona: zona.length === 4 ? zona : null,
       negociar: sp.get("n"), soloComprar: sp.get("solo") === "1",
+      ocultar: lista("oc"), cifra: sp.get("cp"),
+      rangos: Object.fromEntries((["arriendo", "cap", "flujo", "ufm2"] as const).map((b) => [b, (sp.get(CLAVE_RANGO[b]) ?? "").split("-").map(Number)])),
     }),
     orden: ORDENES_OK.has(o as OrdenPortal) ? (o as OrdenPortal) : ORDEN_POR_DEFECTO,
   };
 }
+
+/** La clave de cada rango en la URL (`ra=3-11`). */
+const CLAVE_RANGO = { arriendo: "ra", cap: "rc", flujo: "rf", ufm2: "rm" } as const;
 
 export function urlDePortal(f: FiltrosPortal, orden: OrdenPortal = ORDEN_POR_DEFECTO): string {
   const p = new URLSearchParams();
@@ -161,7 +196,9 @@ export function urlDePortal(f: FiltrosPortal, orden: OrdenPortal = ORDEN_POR_DEF
   if (f.publicados !== "todos") p.set("pub", f.publicados);
   if (f.zona) p.set("zona", f.zona.join(","));
   if (f.negociar !== FILTROS_GLOBALES.negociar) p.set("n", String(f.negociar));
-  if (f.soloComprar) p.set("solo", "1");
+  if (f.ocultar.length) p.set("oc", f.ocultar.join(","));
+  for (const b of ["arriendo", "cap", "flujo", "ufm2"] as const) { const r = f.rangos[b]; if (r) p.set(CLAVE_RANGO[b], `${r[0]}-${r[1]}`); }
+  if (f.cifra !== "precio") p.set("cp", f.cifra);
   if (orden !== ORDEN_POR_DEFECTO) p.set("o", orden);
   return p.toString();
 }
@@ -170,7 +207,7 @@ export function urlDePortal(f: FiltrosPortal, orden: OrdenPortal = ORDEN_POR_DEF
  *  Comprar» no: vive en la barra y se ve prendido ahí. */
 export function filtrosActivos(f: FiltrosPortal): number {
   const g = FILTROS_GLOBALES;
-  return [f.comunas.length > 0, f.tipologias.length > 0, f.ufMin != null || f.ufMax != null, f.pie !== g.pie || f.plazo !== g.plazo || f.tasa != null, f.modalidad !== g.modalidad, f.flujoPositivo, f.publicados !== g.publicados, f.zona != null, f.negociar !== g.negociar].filter(Boolean).length;
+  return [f.comunas.length > 0, f.tipologias.length > 0, f.ufMin != null || f.ufMax != null, f.pie !== g.pie || f.plazo !== g.plazo || f.tasa != null, f.modalidad !== g.modalidad, f.flujoPositivo, f.publicados !== g.publicados, f.zona != null, f.negociar !== g.negociar, ...Object.values(f.rangos).map((r) => !!r)].filter(Boolean).length;
 }
 export const esVistaGlobal = (f: FiltrosPortal): boolean => filtrosActivos(f) === 0;
 
@@ -180,7 +217,9 @@ export const esVistaGlobal = (f: FiltrosPortal): boolean => filtrosActivos(f) ==
 export const claveUniverso = (f: { modalidad: ModalidadPortal; pie: number; plazo: number; tasa?: number | null }): string => `${f.modalidad}-${f.pie}-${f.plazo}${f.tasa != null ? `-t${f.tasa}` : ""}`;
 /** Arriendo tradicional con un pie y un plazo de la noche y la tasa de hoy: todo Gran Santiago sale de sus columnas, en un
  *  pedido. Con otra tasa, se calcula (30-oct-2026): la noche evaluó con la del motor. */
-export const universoDeLaNoche = (f: { modalidad: ModalidadPortal; pie: number; plazo: number; tasa?: number | null }): boolean => f.modalidad === "ltr" && f.tasa == null && esCombinacionDeLaNoche(f as { pie: PieExplorar; plazo: PlazoExplorar });
+// DESDE EL 25-NOV-2026 (el mapa con todos los deptos) SOLO A 30 AÑOS: la noche guarda el «Conviene desde UF X» de los Ajustar solo a 30
+// años (explorar_mapa_todos), y todo Ajustar que se ve lo trae (decisión 2). Pie 20 o 30 a 25 años se calcula por comuna, como el resto.
+export const universoDeLaNoche = (f: { modalidad: ModalidadPortal; pie: number; plazo: number; tasa?: number | null }): boolean => f.modalidad === "ltr" && f.tasa == null && f.plazo === 30 && esCombinacionDeLaNoche(f as { pie: PieExplorar; plazo: PlazoExplorar });
 /** Las comunas que hay que calcular cuando el universo no es de la noche: las elegidas o todas. */
 export const comunasACalcular = (f: Pick<FiltrosPortal, "comunas">): string[] => (f.comunas.length ? [...f.comunas] : [...(COMUNAS_DISPONIBLES as readonly string[])]);
 
@@ -202,17 +241,20 @@ export interface PinMapa {
   arriendo: number | null;
   condicion?: CondicionDepto;
   alta: number | null;
+  /** Los tramos de arriendo, cap rate y flujo (25-nov-2026, mapa-todos.ts): los mismos que dibuja el panel. Sin cuenta no viajan. */
+  tramos?: Tramos;
 }
 
 /** Cómo viaja el universo: las comunas una vez y cada depto como un arreglo corto (650 kB → la mitad). */
 export interface UniversoCompacto {
   comunas: string[];
   /** [id, comuna (índice), lat, lng, m2, dormitorios, baños, precio UF, puntaje, flujo, arriendo, condición (0 nada, 1 usado, 2 nuevo), alta] */
-  filas: Array<[string, number, number, number, number, number, number | null, number, number | null, number | null, number | null, 0 | 1 | 2, number | null]>;
+  // Desde el 25-nov-2026, al final, los tramos de arriendo, cap rate y flujo (sin cuenta no van).
+  filas: Array<[string, number, number, number, number, number, number | null, number, number | null, number | null, number | null, 0 | 1 | 2, number | null, (number | null)?, (number | null)?, (number | null)?]>;
 }
 
 /** Una fila del servidor (la de explorar_mapa, o la armada para una combinación calculada) como pin. */
-export function pinDeFila(r: { id: string; comuna: string; lat: unknown; lng: unknown; m2: unknown; dormitorios: unknown; banos: unknown; precio: unknown; score: unknown; flujo: unknown; arriendo: unknown; condicion: unknown; alta: unknown }): PinMapa {
+export function pinDeFila(r: { id: string; comuna: string; lat: unknown; lng: unknown; m2: unknown; dormitorios: unknown; banos: unknown; precio: unknown; score: unknown; flujo: unknown; arriendo: unknown; condicion: unknown; alta: unknown; tramos?: unknown }): PinMapa {
   const n = (v: unknown): number | null => (v == null || v === "" || !Number.isFinite(Number(v)) ? null : Number(v));
   const dorm = Number(r.dormitorios) || 0;
   const cond = condicionDe(r.condicion);
@@ -220,6 +262,7 @@ export function pinDeFila(r: { id: string; comuna: string; lat: unknown; lng: un
     avisoId: r.id, comuna: r.comuna, lat: Number(r.lat), lng: Number(r.lng), m2: Math.round(Number(r.m2) || 0), dormitorios: dorm, banos: n(r.banos),
     tipologia: tipologiaDe(dorm, n(r.banos)), precioUF: Math.round(Number(r.precio) || 0), veredicto: "COMPRAR",
     score: n(r.score), flujo: n(r.flujo), arriendo: (n(r.arriendo) ?? 0) > 0 ? n(r.arriendo) : null, ...(cond ? { condicion: cond } : {}), alta: n(r.alta),
+    ...(Array.isArray(r.tramos) && r.tramos.some((t) => t != null) ? { tramos: [n(r.tramos[0]), n(r.tramos[1]), n(r.tramos[2])] as Tramos } : {}),
   };
 }
 
@@ -229,7 +272,9 @@ export function compactar(pines: readonly PinMapa[]): UniversoCompacto {
   const filas: UniversoCompacto["filas"] = pines.map((p) => {
     let i = idx.get(p.comuna);
     if (i == null) { i = comunas.length; comunas.push(p.comuna); idx.set(p.comuna, i); }
-    return [p.avisoId, i, Math.round(p.lat * 1e6) / 1e6, Math.round(p.lng * 1e6) / 1e6, p.m2, p.dormitorios, p.banos, p.precioUF, p.score, p.flujo, p.arriendo, p.condicion === "usado" ? 1 : p.condicion === "nuevo" ? 2 : 0, p.alta];
+    const fila: UniversoCompacto["filas"][number] = [p.avisoId, i, Math.round(p.lat * 1e6) / 1e6, Math.round(p.lng * 1e6) / 1e6, p.m2, p.dormitorios, p.banos, p.precioUF, p.score, p.flujo, p.arriendo, p.condicion === "usado" ? 1 : p.condicion === "nuevo" ? 2 : 0, p.alta];
+    if (p.tramos) fila.push(p.tramos[0], p.tramos[1], p.tramos[2]);
+    return fila;
   });
   return { comunas, filas };
 }
@@ -243,8 +288,9 @@ export const cuantosConvienen = (u: UniversoCompacto | null | undefined): number
 
 export function descompactar(u: UniversoCompacto | null | undefined): PinMapa[] {
   if (!u || !Array.isArray(u.filas)) return [];
-  return u.filas.map(([id, ci, lat, lng, m2, dorm, banos, precioUF, score, flujo, arriendo, cond, alta]) => pinDeFila({
+  return u.filas.map(([id, ci, lat, lng, m2, dorm, banos, precioUF, score, flujo, arriendo, cond, alta, ta, tc, tf]) => pinDeFila({
     id, comuna: u.comunas[ci] ?? "", lat, lng, m2, dormitorios: dorm, banos, precio: precioUF, score, flujo, arriendo, condicion: cond === 1 ? "usado" : cond === 2 ? "nuevo" : null, alta,
+    tramos: ta !== undefined ? [ta, tc, tf] : undefined,
   }));
 }
 
@@ -273,6 +319,24 @@ export function pasaFiltros(p: PinMapa, f: FiltrosPortal, ahora: Date = new Date
   if (f.zona) {
     const [s, w, n, e] = f.zona;
     if (p.lat < s || p.lat > n || p.lng < w || p.lng > e) return false;
+  }
+  return pasaRangos(p, f.rangos);
+}
+
+/** LAS BARRAS DEL PANEL (25-nov-2026): un depto pasa si su tramo cae en el rango de cada barra con rango. Arriendo, cap rate y flujo
+ *  miran el tramo que trajo (el de la base, el mismo para las tres clases); sin tramo —sin cuenta, que no ve esas barras— no pasa
+ *  una barra con rango. La UF por m² se calcula acá, del precio y los m², que son públicos. */
+export function pasaRangos(p: Pick<PinMapa, "tramos" | "precioUF" | "m2">, rangos: FiltrosPortal["rangos"]): boolean {
+  for (const b of ["arriendo", "cap", "flujo"] as const) {
+    const r = rangos[b];
+    if (!r) continue;
+    const t = p.tramos?.[INDICE_TRAMO[b]];
+    if (t == null || t < r[0] || t > r[1]) return false;
+  }
+  const r = rangos.ufm2;
+  if (r) {
+    const t = tramoDe(p.m2 > 0 ? p.precioUF / p.m2 : null, cortesDeBarra("ufm2"));
+    if (t == null || t < r[0] || t > r[1]) return false;
   }
   return true;
 }

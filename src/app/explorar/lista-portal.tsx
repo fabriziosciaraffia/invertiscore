@@ -14,6 +14,7 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import { lineaDepto } from "@/lib/guia/linea-depto";
 import { flujoTexto } from "@/lib/explorar/explorar";
+import { TARJETA_COPY } from "@/lib/explorar/mapa-todos";
 import { ORDENES, PORTAL_COPY, type DesgloseBarra, type OrdenPortal, type PinMapa } from "@/lib/explorar/portal";
 import { BORROSO } from "@/lib/explorar/abierto";
 import { esNegociado, NEGOCIAR_COPY, type PinNegociado } from "@/lib/explorar/capa-negociar";
@@ -27,10 +28,13 @@ const TANDA = 30;
 const CIERRE_DESLIZANDO_PX = 90;
 const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
 
-export function ListaPortal({ pines, negociados = [], tope = null, desglose, calculando, orden, analizados, resumenes = {}, guardados, alOrden, alAbrir, alGuardar, alCompartir, alPrepararCompartir, alAvisame, alCerrar, sinCuenta = false }: {
+export function ListaPortal({ pines, negociados = [], noConviene = [], tope = null, desglose, calculando, orden, analizados, resumenes = {}, guardados, alOrden, alAbrir, alGuardar, alCompartir, alPrepararCompartir, alAvisame, alCerrar, sinCuenta = false }: {
   pines: PinMapa[];
   /** Los − Ajustar (vacía si la capa no se ve): van después de los que convienen. */
   negociados?: PinNegociado[];
+  /** Los No conviene (25-nov-2026, el mapa con todos los deptos): al final, con el chip «No conviene a este precio» y sin cifras. La
+   *  lista es el camino del teclado y del lector de pantalla al mapa (un canvas): lleva lo mismo que el mapa muestra. */
+  noConviene?: PinMapa[];
   /** El descuento máximo, para su título; null sin capa. */
   tope?: number | null;
   /** El desglose de la barra de abajo (03-nov-2026): la cabecera dice lo mismo. null mientras se calcula. */
@@ -59,7 +63,7 @@ export function ListaPortal({ pines, negociados = [], tope = null, desglose, cal
   const fin = useRef<HTMLDivElement>(null);
   useEffect(() => { setHasta(TANDA); }, [orden, pines.length, negociados.length]);
   // Los que convienen y, después, los negociados: una sola lista para las tandas.
-  const filas: PinMapa[] = negociados.length ? [...pines, ...negociados] : pines;
+  const filas: PinMapa[] = [...pines, ...negociados, ...noConviene];
   useEffect(() => {
     const el = fin.current;
     if (!el || typeof IntersectionObserver === "undefined") return;
@@ -133,7 +137,9 @@ export function ListaPortal({ pines, negociados = [], tope = null, desglose, cal
                               ? <ChipInformePropio resumen={resumenes[analizados[p.avisoId]]} noche={{ veredicto: p.veredicto, score: p.score }} enColumna={false} />
                               : <b className="ex-ver">{PORTAL_COPY.analizado}</b>}
                           </span>
-                        ) : negociado ? <VeredictosNegociado p={p} /> : (
+                        ) : negociado ? <VeredictosNegociado p={p} /> : p.veredicto === "BUSCAR OTRA" ? (
+                          <span className="ex-linea2"><span className="chip-v b" data-veredicto="BUSCAR OTRA" data-explorar="no-conviene">{TARJETA_COPY.noConviene}</span></span>
+                        ) : (
                           <span className="ex-linea2">
                             <VeredictoDelPin p={p} />
                             {sinCuenta ? <> · <Borroso texto={BORROSO.flujo} /></> : p.flujo != null && <> · <b className={neg ? "ex-neg" : undefined}>{flujoTexto(p.flujo)}</b></>}

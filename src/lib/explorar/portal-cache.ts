@@ -15,15 +15,16 @@
 import { unstable_cache } from "next/cache";
 import { createServiceClient } from "@/lib/supabase/service";
 import { claveUniverso, compactar, type TasaDelMotor, type UniversoCompacto } from "./portal";
-import { negociablesDeLaNoche, universoDeLaNoche, type RespuestaUniverso } from "./portal-servidor";
+import { negociablesDeLaNoche, todosDeLaNoche, universoDeLaNoche, type RespuestaUniverso } from "./portal-servidor";
 import { capaDeLaNoche, compactarNegociados, sinCifrasNegociados, type NegociadosCompactos } from "./capa-negociar";
 import { sinCifras as universoSinCifras } from "./abierto";
 import { selloDeHora, selloDeToken, tokenDeSello, VIDA_SELLO_S } from "./sello-noche";
 
 /** La noche de un sello, como se guarda: el número del sello y lo leído junto. */
-export interface NocheGuardada { n: number; universo: UniversoCompacto; negociados: NegociadosCompactos | null }
+// `noConviene` (25-nov-2026, el mapa con todos los deptos): los No conviene de la noche, sin cifras (solo tramos). Null a 25 años.
+export interface NocheGuardada { n: number; universo: UniversoCompacto; negociados: NegociadosCompactos | null; noConviene?: UniversoCompacto | null }
 /** La noche que leen la página y la API: lo guardado y el sello firmado que viaja al navegador (null sin secreto). */
-export interface NocheExplorar { sello: string | null; universo: UniversoCompacto; negociados: NegociadosCompactos | null }
+export interface NocheExplorar { sello: string | null; universo: UniversoCompacto; negociados: NegociadosCompactos | null; noConviene?: UniversoCompacto | null }
 
 // La capa que GUARDA la noche (pie 20 % o 30 % a 30 años); la de 25 años se calcula por comuna (04-nov-2026), no viaja con la noche.
 const capaDe = (pie: number, plazo: number) => capaDeLaNoche({ modalidad: "ltr", pie, plazo, tasa: null } as Parameters<typeof capaDeLaNoche>[0]);
@@ -31,6 +32,12 @@ const capaDe = (pie: number, plazo: number) => capaDeLaNoche({ modalidad: "ltr",
 const nocheDeSello = unstable_cache(
   async (n: number, pie: number, plazo: number): Promise<NocheGuardada> => {
     const admin = createServiceClient();
+    // A 30 AÑOS (25-nov-2026, explorar_mapa_todos): los Comprar y los Ajustar con su «Conviene desde UF X». Los No conviene van en su
+    // PROPIA entrada (noConvieneDeSello): las tres clases juntas pesan 2,25 MB y unstable_cache no guarda más de 2 MB (medido el 25-nov).
+    if (plazo >= 30) {
+      const t = await todosDeLaNoche(admin, pie);
+      return { n, universo: compactar(t.pines), negociados: compactarNegociados(t.negociados) };
+    }
     const leerCapa = () => negociablesDeLaNoche(admin, pie);
     const [u, neg] = await Promise.all([
       universoDeLaNoche(admin, pie, plazo),
@@ -38,10 +45,22 @@ const nocheDeSello = unstable_cache(
     ]);
     return { n, universo: compactar(u), negociados: neg ? compactarNegociados(neg) : null };
   },
-  ["explorar-noche-v2"],
+  ["explorar-noche-v4"],
   // Más que la vida de un sello: mientras un sello vale, su entrada no se vuelve a leer de la base.
   { revalidate: VIDA_SELLO_S * 2 },
 );
+
+/** LOS NO CONVIENE DE LA NOCHE, aparte (25-nov-2026): ~1,3 MB, bajo el tope de 2 MB de unstable_cache. Mismo sello y misma vida. */
+const noConvieneDeSello = unstable_cache(
+  async (n: number, pie: number): Promise<UniversoCompacto> => { void n; return compactar((await todosDeLaNoche(createServiceClient(), pie)).noConviene); },
+  ["explorar-noche-no-v1"],
+  { revalidate: VIDA_SELLO_S * 2 },
+);
+/** La noche de un sello con sus tres clases: las dos entradas, en paralelo. Sin los No conviene (si fallan), el mapa sigue con dos. */
+const nocheCompleta = async (n: number, pie: number, plazo: number): Promise<NocheGuardada> => {
+  const [g, no] = await Promise.all([nocheDeSello(n, pie, plazo), plazo >= 30 ? noConvieneDeSello(n, pie).catch(() => null) : Promise.resolve(null)]);
+  return { ...g, noConviene: no };
+};
 
 const selloVigenteCache = unstable_cache(async (): Promise<number> => selloDeHora(Date.now()), ["explorar-sello-v1"], { revalidate: 300 });
 
@@ -54,7 +73,7 @@ export interface FuentesNoche {
 }
 const FUENTES: FuentesNoche = {
   vigente: () => selloVigenteCache().catch(() => selloDeHora(Date.now())),
-  deSello: nocheDeSello,
+  deSello: nocheCompleta,
   token: (n) => tokenDeSello(n),
   leerToken: (t) => selloDeToken(t),
 };
@@ -63,7 +82,7 @@ const FUENTES: FuentesNoche = {
 export async function nocheExplorar(pie: number, plazo: number, sello: string | null = null, f: FuentesNoche = FUENTES): Promise<NocheExplorar> {
   const n = (sello ? f.leerToken(sello) : null) ?? (await f.vigente());
   const g = await f.deSello(n, pie >= 30 ? 30 : 20, plazo >= 30 ? 30 : 25);
-  return { sello: f.token(g.n), universo: g.universo, negociados: g.negociados };
+  return { sello: f.token(g.n), universo: g.universo, negociados: g.negociados, noConviene: g.noConviene ?? null };
 }
 
 /** EL PEDIDO DEL MAPA DE LA NOCHE (03-nov-2026, la pasada real de Fabrizio: de entrada se ven las dos clases): el universo de los
@@ -82,7 +101,10 @@ export async function respuestaDeLaNoche(
   const n = capaDe(pie, plazo) ? noche.negociados : null;
   return {
     clave: claveUniverso(q), comunas: [], universo: o.sinCifras ? universoSinCifras(noche.universo) : noche.universo,
-    ...(n ? { negociados: o.sinCifras ? sinCifrasNegociados(n) : n } : {}), sello: noche.sello, calculados: 0, ms: 0,
+    ...(n ? { negociados: o.sinCifras ? sinCifrasNegociados(n) : n } : {}),
+    // Los No conviene ya viajan sin cifras; sin cuenta, tampoco sus tramos (abierto.ts › sinCifras deja las 13 primeras columnas).
+    ...(noche.noConviene ? { noConviene: o.sinCifras ? universoSinCifras(noche.noConviene) : noche.noConviene } : {}),
+    sello: noche.sello, calculados: 0, ms: 0,
   };
 }
 

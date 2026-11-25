@@ -489,3 +489,85 @@
 .ex-capa-op { min-height: 32px; padding: 0 12px; border: 0; border-radius: 999px; background: transparent; color: var(--franco-text); font-family: var(--font-body); font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; }
 .ex-capa-op[aria-checked="true"] { background: var(--franco-text); color: var(--franco-card); }
 .ex-capa-op:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; }
+
+/* ── EL MAPA CON TODOS LOS DEPTOS (25-nov-2026, láminas 5, 6, 7 y 8 del canvas «La asesoría en el mapa») ── */
+/* Los pines van en un canvas sobre el mapa (capa-canvas.ts): no captura toques; el mapa los recibe y la capa dice qué se tocó. */
+.ex-lienzo { position: absolute; left: 0; top: 0; pointer-events: none; }
+/* El crédito de OpenStreetMap (el barrio o sector de la tarjeta sale de sus datos), arriba del logo de Google. */
+.ex-credito-osm { position: absolute; left: 8px; bottom: 26px; z-index: 2; margin: 0; padding: 1px 6px; border-radius: 4px; background: rgba(255, 255, 255, 0.78); color: #3A3A3F; font-family: var(--font-body); font-size: 10px; line-height: 1.5; pointer-events: none; }
+
+/* La barra: solo Usados o Proyectos, y Filtros (lámina 5, opción B). */
+.ex-selector { display: flex; flex: none; padding: 3px; border-radius: 999px; background: var(--franco-bg); }
+.ex-selector-op { min-height: 36px; padding: 0 14px; border: 0; border-radius: 999px; background: transparent; color: var(--franco-text-secondary); font-family: var(--font-body); font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.ex-selector-op[data-on="1"] { background: var(--franco-text); color: var(--franco-card); }
+.ex-boton svg { flex: none; }
+
+/* La tarjeta del contador (láminas 5 y 8): flota arriba a la izquierda; en el teléfono, de lado a lado. */
+.ex-contador { position: absolute; left: 12px; right: 12px; top: 12px; z-index: 4; display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border-radius: 14px; background: color-mix(in srgb, var(--franco-card) 92%, transparent); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); box-shadow: 0 4px 14px rgba(20, 20, 20, 0.14); font-family: var(--font-body); color: var(--franco-text); }
+.ex-contador-cab { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ex-contador-n { margin: 0; display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.ex-contador-n b { font-size: 17px; font-weight: 700; }
+.ex-contador-n span { font-size: 12px; color: var(--franco-text-secondary); }
+.ex-contador-i { flex: none; width: 40px; height: 40px; margin: -8px -6px -8px 0; display: flex; align-items: center; justify-content: center; border: 0; background: transparent; color: var(--franco-text-secondary); cursor: pointer; border-radius: 999px; }
+.ex-contador-i:focus-visible, .ex-vc:focus-visible, .ex-contador-lista:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; }
+/* En el teléfono los chips van en una fila que se desliza de lado (decisión 5). */
+.ex-contador-chips { display: flex; gap: 6px; flex-wrap: nowrap; overflow-x: auto; margin: 0 -12px; padding: 0 12px; scrollbar-width: none; }
+.ex-contador-chips::-webkit-scrollbar { display: none; }
+.ex-vc { flex: none; display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--franco-text); background: var(--franco-card); color: var(--franco-text); font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.ex-vc i { width: 9px; height: 9px; border-radius: 999px; display: block; }
+.ex-vc[data-clase="comprar"] i { background: var(--chip-v-c, #2B558F); }
+.ex-vc[data-clase="ajustar"] i { background: var(--chip-v-a, #6E4560); }
+.ex-vc[data-clase="no"] i { background: var(--chip-v-b, #C8323C); }
+.ex-vc[data-off="1"] { border-color: var(--franco-border); color: var(--franco-text-muted); }
+.ex-vc[data-off="1"] i { opacity: 0.35; }
+.ex-contador-lista { align-self: flex-start; min-height: 32px; padding: 0; border: 0; background: transparent; color: var(--franco-text); font-family: inherit; font-size: 13px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+@media (min-width: 768px) {
+  .ex-contador { left: 24px; right: auto; top: 12px; max-width: 520px; }
+  .ex-contador-chips { flex-wrap: wrap; overflow: visible; margin: 0; padding: 0; }
+  .ex-vc { min-height: 40px; }
+}
+
+/* La tarjeta del depto (lámina 7): la comuna en mayúsculas, el lugar, el chip y la franja de cuatro cifras. */
+.ex-tarjeta-titulo { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ex-comuna { font-size: 16px; font-weight: 700; line-height: 1.25; letter-spacing: 0.01em; color: var(--franco-text); }
+.ex-franja { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-top: 2px; }
+.ex-franja[data-n="1"] { grid-template-columns: minmax(0, 1fr); }
+.ex-cifra { display: flex; flex-direction: column; gap: 1px; min-width: 0; padding: 7px 10px; border-radius: 10px; background: var(--franco-bg); }
+.ex-cifra > span { font-size: 11px; color: var(--franco-text-secondary); white-space: nowrap; }
+.ex-cifra > b { font-size: 14px; font-weight: 700; color: var(--franco-text); white-space: nowrap; }
+.ex-cifra > b.ex-neg { color: var(--signal-red, #C8323C); }
+.ex-conviene-desde { display: block; font-size: 13px; font-weight: 600; color: var(--chip-v-a, #6E4560); }
+@media (min-width: 768px) {
+  .ex-tarjeta-wrap { width: 560px; }
+  .ex-franja { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; padding: 8px 2px; border-radius: 10px; background: var(--franco-bg); }
+  .ex-franja[data-n="1"] { grid-template-columns: minmax(0, 1fr); }
+  .ex-franja[data-n="3"] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .ex-cifra { padding: 0 8px; border-radius: 0; background: transparent; border-left: 1px solid var(--franco-border); }
+  .ex-cifra:first-child { border-left: 0; }
+}
+
+/* El panel de filtros (lámina 6). */
+.ex-filtros-v3 .ex-filtros-cuerpo { display: flex; flex-direction: column; gap: 18px; }
+.ex-seg2 { display: flex; padding: 3px; border-radius: 999px; background: var(--franco-bg); }
+.ex-seg2 button { flex: 1; min-height: 38px; border: 0; border-radius: 999px; background: transparent; color: var(--franco-text-secondary); font-family: var(--font-body); font-size: 13px; font-weight: 600; cursor: pointer; }
+.ex-seg2 button[data-on="1"] { background: var(--franco-text); color: var(--franco-card); }
+.ex-supuestos { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border-radius: 12px; background: var(--franco-bg); font-size: 13px; line-height: 1.4; color: var(--franco-text); }
+.ex-supuestos .ex-enlace { flex: none; min-height: 44px; }
+.ex-supuestos-edicion { display: flex; flex-direction: column; gap: 14px; }
+.ex-barra-f { margin: 0; padding: 0; border: 0; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.ex-histo { display: flex; align-items: flex-end; gap: 2px; height: 44px; padding: 0 10px; }
+.ex-histo span { flex: 1; border-radius: 2px 2px 0 0; background: var(--franco-border); }
+.ex-histo span[data-dentro="1"] { background: var(--chip-v-c, #2B558F); }
+/* Dos tiradores sobre la misma pista: solo los tiradores reciben el dedo. */
+.ex-doble { position: relative; height: 24px; margin: -6px 0 0; }
+.ex-doble input { position: absolute; left: 0; right: 0; top: 0; width: 100%; height: 24px; margin: 0; background: transparent; pointer-events: none; -webkit-appearance: none; appearance: none; }
+.ex-doble input::-webkit-slider-runnable-track { height: 2px; background: var(--franco-border); }
+.ex-doble input::-moz-range-track { height: 2px; background: var(--franco-border); }
+.ex-doble input::-webkit-slider-thumb { pointer-events: auto; -webkit-appearance: none; width: 22px; height: 22px; margin-top: -10px; border-radius: 999px; background: #FFFFFF; border: 1px solid #B9B9BF; box-shadow: 0 1px 4px rgba(20, 20, 20, 0.2); cursor: pointer; }
+.ex-doble input::-moz-range-thumb { pointer-events: auto; width: 22px; height: 22px; border-radius: 999px; background: #FFFFFF; border: 1px solid #B9B9BF; box-shadow: 0 1px 4px rgba(20, 20, 20, 0.2); cursor: pointer; }
+.ex-doble input:focus-visible::-webkit-slider-thumb { outline: 2px solid var(--franco-text); outline-offset: 2px; }
+.ex-cajas { display: flex; gap: 10px; }
+.ex-caja { flex: 1; display: flex; flex-direction: column; gap: 1px; padding: 6px 10px; border: 1px solid var(--franco-border); border-radius: 10px; min-width: 0; }
+.ex-caja span { font-size: 10px; color: var(--franco-text-secondary); }
+.ex-caja b { font-size: 13px; font-weight: 600; color: var(--franco-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ex-barra-cerrada { min-height: 44px; padding: 0 14px; border: 1px dashed var(--franco-border); border-radius: 12px; background: transparent; color: var(--franco-text); font-family: var(--font-body); font-size: 13px; font-weight: 600; text-align: left; cursor: pointer; }

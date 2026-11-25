@@ -52,22 +52,24 @@ import type { EstadoSaldo } from "@/lib/casa-saldo";
 import { botonAnalizar, type Recalculo } from "@/lib/explorar/explorar";
 import { textoAnalizarIgual } from "@/lib/guia/semanal-str";
 import {
-  cercanos, claveUniverso, COMO_SE_CALCULA, comunasACalcular, descompactar, desgloseBarra, EVENTOS_PORTAL, etiquetaFiltros, filtrar, filtrosCambiados, lineaPlan, propsDeTasa,
-  lineaBusqueda, ordenar, perfilDeFiltros, PORTAL_COPY, propsDeFiltros, textoRecalculo, universoDeLaNoche, urlDePortal,
+  cercanos, claveUniverso, comunasACalcular, descompactar, desgloseBarra, EVENTOS_PORTAL, etiquetaFiltros, filtrar, filtrosCambiados, lineaPlan, propsDeTasa,
+  lineaBusqueda, ordenar, perfilDeFiltros, PORTAL_COPY, propsDeFiltros, textoRecalculo, universoDeLaNoche, urlDePortal, validarPortal,
   type Caja, type FiltrosPortal, type OrdenPortal, type PinMapa, type TasaDelMotor,
 } from "@/lib/explorar/portal";
 // Solo el tipo (se borra al compilar): la forma de GET /api/explorar, la misma que arma la ruta.
 import type { RespuestaUniverso } from "@/lib/explorar/portal-servidor";
 import { TarjetaPin } from "./tarjeta-pin";
-import { ChipVeredicto, ChipVeredictoTokens } from "@/components/analysis/shared/ChipVeredicto";
+import { ChipVeredictoTokens } from "@/components/analysis/shared/ChipVeredicto";
 import type { ResumenInforme } from "@/lib/informe-propio";
 import type { MotivoSinRegalo } from "@/lib/regalo-alta";
 import {
-  capaDeLaNoche, capaNegociarDisponible, capaVisible, conCifrasNegociado, descompactarNegociados, esNegociado, EVENTO_NEGOCIAR, EVENTO_SOLO_COMPRAR, NEGOCIAR_COPY, negociadosVisibles, ordenarNegociados, propsNegociar,
+  capaDeLaNoche, capaVisible, claseDePin, conCifrasNegociado, descompactarNegociados, esNegociado, EVENTO_NEGOCIAR, EVENTO_SOLO_COMPRAR, negociadosVisibles, ordenarNegociados, propsNegociar,
   propsSoloComprar, type Negociacion, type NegociadosCompactos, type PinNegociado,
 } from "@/lib/explorar/capa-negociar";
 import { NEGOCIADO_COPY } from "@/lib/precio-publicado";
-import { BarraAbajo } from "./desglose";
+import { Contador } from "./contador";
+import { histograma, PROYECTOS_VISIBLE, SELECTOR_COPY, textoCifraPin, type BarraPanel, type ClaseMapa, type ConteoClases } from "@/lib/explorar/mapa-todos";
+import type { ItemCapa } from "@/lib/explorar/capa-canvas";
 import {
   accionDeVuelta, bienvenidaVista, EVENTOS_ABIERTO, filtrosAbiertos, marcarBienvenida, ORDENES_CON_CIFRAS, PIE_ABIERTO,
   type MotivoRegistro, type OrigenExplorar, type PedidoRegistro,
@@ -149,6 +151,8 @@ export interface InicialPortal {
   negociadosGlobal: number | null;
   /** Los − Ajustar con estos filtros, contados por el servidor para el primer pintado de la barra (null: hay que esperar la capa). */
   nAjustar: number | null;
+  /** Los No conviene con estos filtros (25-nov-2026), para el primer pintado del contador; null: hay que esperar el universo. */
+  nNo?: number | null;
   /** El sello de la noche que contó estas cifras (03-nov-2026, portal-cache.ts › nocheExplorar); null si no se leyó la noche. */
   sello: string | null;
 }
@@ -203,7 +207,10 @@ const CUENTA_VACIA: CuentaCliente = {
 /** El pop-up que usa el regalo habla solo del regalo (ofertas de a una, 29-oct-2026): sin la línea del ticket. */
 const usaRegalo = (s: EstadoSaldo): boolean => s.tipo === "regalo" || (s.tipo === "con" && !!s.proximoRegalo);
 
-type Universo = { comunas: "todas" | string[]; pines: PinMapa[] };
+// `no` (25-nov-2026, el mapa con todos los deptos): los No conviene de ese universo, sin cifras (solo sus tramos).
+type Universo = { comunas: "todas" | string[]; pines: PinMapa[]; no?: PinMapa[] };
+/** Los No conviene de una respuesta: descompactados, con el veredicto de su clase (llegan en el formato del universo). */
+const noDe = (u: RespuestaUniverso["noConviene"]): PinMapa[] => descompactar(u).map((p) => ({ ...p, veredicto: "BUSCAR OTRA", score: null, flujo: null, arriendo: null }));
 /** La capa calculada de una combinación (04-nov-2026): las comunas que ya llegaron y sus − Ajustar. */
 type CapaCalculada = { comunas: string[]; pines: PinNegociado[] };
 /** Suma los − Ajustar de una comuna a la capa calculada de una clave (una comuna llega una vez). */
@@ -449,7 +456,7 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
           const d = (await res.json()) as RespuestaUniverso;
           if (d.sello) selloRef.current = d.sello;
           if (vivo.current) {
-            setUniversos((us) => ({ ...us, [clave]: { comunas: "todas", pines: descompactar(d.universo) } }));
+            setUniversos((us) => ({ ...us, [clave]: { comunas: "todas", pines: descompactar(d.universo), no: noDe(d.noConviene) } }));
             if (conCapa && d.negociados) {
               trajoCapa = true;
               const ns = descompactarNegociados(d.negociados);
@@ -476,6 +483,7 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
         pedir: async (c) => respuestaDeComuna(await fetch(`${base}&c=${encodeURIComponent(c)}`, { cache: "default" })),
         alListo: (comuna, d) => {
           const nuevos = descompactar(d.universo);
+          const nuevosNo = noDe(d.noConviene);
           // Los − Ajustar de esta comuna con esta combinación (renta larga, 04-nov-2026), en el mismo pedido.
           const negs = d.negociados ? descompactarNegociados(d.negociados) : null;
           if (vivo.current && negs) setCapasCalc((cs) => agregarCapa(cs, clave, comuna, negs));
@@ -483,7 +491,8 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
             const prev = us[clave];
             const comunas = prev && prev.comunas !== "todas" ? [...prev.comunas, comuna] : [comuna];
             const ids = new Set((prev?.pines ?? []).map((p) => p.avisoId));
-            return { ...us, [clave]: { comunas, pines: [...(prev?.pines ?? []), ...nuevos.filter((p) => !ids.has(p.avisoId))] } };
+            const idsNo = new Set((prev?.no ?? []).map((p) => p.avisoId));
+            return { ...us, [clave]: { comunas, pines: [...(prev?.pines ?? []), ...nuevos.filter((p) => !ids.has(p.avisoId))], no: [...(prev?.no ?? []), ...nuevosNo.filter((p) => !idsNo.has(p.avisoId))] } };
           });
         },
         alAvance: (a) => { if (vivo.current) setProgreso(a); },
@@ -521,22 +530,44 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
   // y el descuento máximo, sin los que ya convienen; «Ver solo ✓ Comprar» deja la primera (capa-negociar.ts › negociadosVisibles).
   const capa = capaVisible(filtros);
   // La de la noche (por pie) o, con otra combinación, la calculada (por comuna; si alguna falló, lo que llegó).
-  const negociadosDelPie = sinCuenta ? negociados[PIE_ABIERTO] : capaDeLaNoche(filtros) ? negociados[filtros.pie]
+  // Sin cuenta, la capa de la noche solo con la combinación de la noche (25-nov-2026: en renta corta, la calculada por comuna).
+  const negociadosDelPie = capaDeLaNoche(filtros) ? negociados[sinCuenta ? PIE_ABIERTO : filtros.pie]
     : capaCalculadaPara(filtros, capasCalc) ?? (progreso == null && fallidasAqui.length > 0 ? capaCalculadaPara(filtros, capasCalc, true) : null);
   const idsComprar = useMemo(() => new Set((universo ?? []).map((p) => p.avisoId)), [universo]);
   const visiblesNeg = useMemo(
     () => ordenarNegociados(negociadosVisibles(negociadosDelPie, filtros, idsComprar).filter((p) => !caidos.includes(p.avisoId) && !noLlegan.includes(p.avisoId)).map((p) => (movidos[p.avisoId] ? { ...p, neg: movidos[p.avisoId] } : p))),
     [negociadosDelPie, filtros, idsComprar, caidos, movidos, noLlegan],
   );
-  /** Los dos, para la tarjeta (se desliza entre los cercanos de cualquiera de las dos capas). */
-  const todos = useMemo((): PinMapa[] => (visiblesNeg.length ? [...visibles, ...visiblesNeg] : visibles), [visibles, visiblesNeg]);
+  // LOS NO CONVIENE (25-nov-2026, el mapa con todos los deptos): los del mismo universo que pasan los filtros (sus barras miran los
+  // tramos; sus cifras no viajan).
+  const universoNo = useMemo(() => {
+    const u = universos[claveUniverso(filtros)];
+    return universo && u ? u.no ?? [] : null;
+  }, [universos, filtros, universo]);
+  const visiblesNo = useMemo(() => (universoNo ? filtrar(universoNo, filtros).filter((p) => !caidos.includes(p.avisoId)) : []), [universoNo, filtros, caidos]);
+  /** Las clases que se ven en el mapa (los chips del contador apagan las otras). */
+  const seVe = (c: ClaseMapa) => !filtros.ocultar.includes(c);
+  /** Los que se ven, de las tres clases, para la tarjeta (se desliza entre los cercanos) y la lista. */
+  const todos = useMemo((): PinMapa[] => [...(seVe("comprar") ? visibles : []), ...(seVe("ajustar") ? visiblesNeg : []), ...(seVe("no") ? visiblesNo : [])],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [visibles, visiblesNeg, visiblesNo, filtros.ocultar]);
+  /** LOS PINES DEL CANVAS (25-nov-2026, capa-canvas.ts): cada uno con su clase, su cifra (el precio, o la barra que se movió) y su
+   *  puntaje (el que decide quién conserva la cifra si dos chocan). */
+  const items = useMemo((): ItemCapa[] => todos.map((p) => {
+    const clase = claseDePin(p);
+    return { id: p.avisoId, lat: p.lat, lng: p.lng, clase, texto: textoCifraPin(p, clase, filtros.cifra, uf, sinCuenta), puntaje: clase === "no" ? null : p.score };
+  }), [todos, filtros.cifra, uf, sinCuenta]);
   // Antes de que llegue el universo, el número que contó el servidor (solo para los filtros con que se entró).
   const total = universo ? visibles.length : filtros === inicial.filtros ? inicial.n : null;
+  /** EL CONTADOR (25-nov-2026): las tres clases con los filtros (apagar un chip no cambia la cuenta). Antes de que llegue el universo,
+   *  lo que contó el servidor para los filtros con que se entró; null mientras falte algo. */
+  const conteo: ConteoClases | null = universo && universoNo && negociadosDelPie
+    ? { comprar: visibles.length, ajustar: visiblesNeg.length, no: visiblesNo.length }
+    : filtros === inicial.filtros && inicial.n != null && inicial.nAjustar != null && inicial.nNo != null ? { comprar: inicial.n, ajustar: inicial.nAjustar, no: inicial.nNo } : null;
   const calculando = !universo && (progreso != null || !universoDeLaNoche(filtros));
   // Los analizados de la cuenta y los de esta visita (un informe listo que no se abrió).
   const analizadosVivos = useMemo(() => ({ ...cuenta.analizados, ...analizadosAqui }), [cuenta.analizados, analizadosAqui]);
   const resumenesVivos = useMemo(() => ({ ...(cuenta.resumenes ?? {}), ...resumenesAqui }), [cuenta.resumenes, resumenesAqui]);
-  const analizadosSet = useMemo(() => new Set(Object.keys(analizadosVivos)), [analizadosVivos]);
   /** Cuántos darían unos filtros, sobre lo cargado (la hoja de filtros); null si hay que traer otro universo. */
   const contar = useCallback((f: FiltrosPortal): number | null => {
     const u = universoPara(f, universosRef.current);
@@ -546,10 +577,33 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
    *  ellos, null mientras llega. */
   const contarNegociados = useCallback((f: FiltrosPortal): number | null => {
     if (!capaVisible(f)) return 0;
-    const ns = sinCuentaRef.current ? negociadosRef.current[PIE_ABIERTO] : capaDeLaNoche(f) ? negociadosRef.current[f.pie] : capaCalculadaPara(f, capasCalcRef.current);
+    const ns = capaDeLaNoche(f) ? negociadosRef.current[sinCuentaRef.current ? PIE_ABIERTO : f.pie] : capaCalculadaPara(f, capasCalcRef.current);
     if (!ns) return null;
     const u = universoPara(f, universosRef.current);
     return negociadosVisibles(ns, f, new Set((u ?? []).map((p) => p.avisoId))).filter((p) => !caidos.includes(p.avisoId)).length;
+  }, [universoPara, capaCalculadaPara, caidos]);
+
+  /** Los No conviene que darían unos filtros, sobre lo cargado; null si falta su universo. */
+  const contarNo = useCallback((f: FiltrosPortal): number | null => {
+    const u = universoPara(f, universosRef.current);
+    const no = u ? universosRef.current[claveUniverso(f)]?.no ?? [] : null;
+    return no ? filtrar(no, f).filter((p) => !caidos.includes(p.avisoId)).length : null;
+  }, [universoPara, caidos]);
+  /** «Ver N deptos» del panel (25-nov-2026): las tres clases con unos filtros; null mientras falte algo. */
+  const contarTodos = useCallback((f: FiltrosPortal): number | null => {
+    const a = contar(f), b = contarNegociados(f), c = contarNo(f);
+    return a == null || b == null || c == null ? null : a + b + c;
+  }, [contar, contarNegociados, contarNo]);
+  /** LA DISTRIBUCIÓN DIBUJADA DE UNA BARRA (25-nov-2026, lámina 6): los deptos de las tres clases que pasan los OTROS filtros, por
+   *  tramo de esa barra (sin su propio rango: la barra muestra todo lo que hay a los lados). Null si falta el universo. */
+  const distribucion = useCallback((f: FiltrosPortal, barra: BarraPanel): number[] | null => {
+    const u = universoPara(f, universosRef.current);
+    if (!u) return null;
+    const sinEsta = validarPortal(barra === "precio" ? { ...f, ufMin: null, ufMax: null } : { ...f, rangos: { ...f.rangos, [barra]: undefined } });
+    const no = universosRef.current[claveUniverso(f)]?.no ?? [];
+    const ns = capaDeLaNoche(f) ? negociadosRef.current[sinCuentaRef.current ? PIE_ABIERTO : f.pie] : capaCalculadaPara(f, capasCalcRef.current);
+    const negs = negociadosVisibles(ns ?? [], sinEsta, new Set(u.map((p) => p.avisoId)));
+    return histograma([...filtrar(u, sinEsta), ...negs, ...filtrar(no, sinEsta)].filter((p) => !caidos.includes(p.avisoId)), barra);
   }, [universoPara, capaCalculadaPara, caidos]);
 
   // ── los cambios ──
@@ -560,7 +614,7 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
     posthog?.capture(EVENTOS_PORTAL.vista, { ...propsDeFiltros(f, o), n, fuente });
 
   /** Aplica unos filtros: la URL, el universo que falte y la medición. No toca el perfil. */
-  function aplicar(f0: FiltrosPortal, fuente: "filtros" | "mi_busqueda" | "zona" | "limpiar" | "solo_comprar" | "fusible") {
+  function aplicar(f0: FiltrosPortal, fuente: "filtros" | "mi_busqueda" | "zona" | "limpiar" | "solo_comprar" | "fusible" | "chips") {
     // Sin cuenta, el financiamiento por defecto, y sin «Solo flujo positivo» (piden registro).
     const f = sinCuenta ? filtrosAbiertos(f0) : f0;
     const cambiados = filtrosCambiados(filtros, f);
@@ -584,21 +638,16 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
     ponerEnUrl(filtros, o);
     vistaCambio(filtros, o, "orden", universo ? visibles.length : null);
   }
-  /** EL CHIP «VER SOLO ✓ COMPRAR» (03-nov-2026, la pasada real de Fabrizio; reemplaza al chip «Si negocias el precio»): prende o
-   *  apaga el filtro que esconde los − Ajustar. Al prenderlo, «explorar_solo_comprar» con el descuento máximo. Sin capa con estos
-   *  supuestos (otra tasa, pie, plazo o renta corta) ya se ven solo los ✓ Comprar: abre Filtros, que lo dice. */
-  function alternarSoloComprar() {
-    if (!capaNegociarDisponible(filtros)) { setHojaFiltros(true); return; }
-    const f = { ...filtros, soloComprar: !filtros.soloComprar };
-    if (f.soloComprar) posthog?.capture(EVENTO_SOLO_COMPRAR, propsSoloComprar(filtros.negociar, universo ? visibles.length : null, negociadosDelPie ? visiblesNeg.length : null, sinCuenta));
-    aplicar(f, "solo_comprar");
+  /** LOS CHIPS DEL CONTADOR (25-nov-2026, decisión 5; reemplazan a «Ver solo ✓ Comprar»): tocar uno apaga esa clase en el mapa, y
+   *  otra vez la prende. Apagar «Ajustar» y «No conviene» es lo que hacía «Ver solo ✓ Comprar»: se mide con el mismo evento. */
+  function alternarClase(c: ClaseMapa) {
+    const ocultar = filtros.ocultar.includes(c) ? filtros.ocultar.filter((x) => x !== c) : [...filtros.ocultar, c];
+    const f = validarPortal({ ...filtros, ocultar });
+    if (f.ocultar.includes("ajustar") && f.ocultar.includes("no") && !filtros.ocultar.includes(c)) posthog?.capture(EVENTO_SOLO_COMPRAR, propsSoloComprar(filtros.negociar, universo ? visibles.length : null, negociadosDelPie ? visiblesNeg.length : null, sinCuenta));
+    aplicar(f, "chips");
   }
-  function miBusqueda() {
-    setHojaFiltros(false);
-    if (!cuenta.miBusqueda) { setSinBusqueda(true); return; }
-    aplicar(cuenta.miBusqueda, "mi_busqueda");
-  }
-  const enMiBusqueda = !!cuenta.miBusqueda && urlDePortal(cuenta.miBusqueda) === urlDePortal(filtros);
+  // «Aplicar mi perfil de búsqueda» se fue del panel (25-nov-2026, lámina 6): los supuestos van en una línea editable y las barras
+  // filtran el resto. El perfil sigue siendo el de la selección semanal; «Avísame de nuevos» (la lista) lo escribe.
 
   // ── LA HOJA DE REGISTRO (sin cuenta) ──
   /** Abre la hoja con lo que se tocó. El perfil nace del pin (o, en «Avísame», de los filtros); al terminar, se hace eso. */
@@ -691,7 +740,7 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
           method: "POST",
           headers: { "Content-Type": "application/json" },
           // Un negociado (02-nov-2026): el precio negociado y el tope elegido; la ruta lo acepta con el piso del tope.
-          body: JSON.stringify({ avisoId: it.avisoId, piePct: combinacion.piePct, plazoAnios: combinacion.plazoAnios, tasaPct, explorar: true, ...(esNegociado(it) && conCifrasNegociado(it) && filtros.negociar != null ? { precioNegociadoUF: it.neg.p, topeNegociar: filtros.negociar } : {}), ...(igual ? { igual: true } : {}), ...(aceptoCambio ? { aceptoCambio: true } : {}) }),
+          body: JSON.stringify({ avisoId: it.avisoId, piePct: combinacion.piePct, plazoAnios: combinacion.plazoAnios, tasaPct, explorar: true, ...(!corta && esNegociado(it) && conCifrasNegociado(it) && filtros.negociar != null ? { precioNegociadoUF: it.neg.p, topeNegociar: filtros.negociar } : {}), ...(igual ? { igual: true } : {}), ...(aceptoCambio ? { aceptoCambio: true } : {}) }),
         });
         if (res.status === 409) {
           if (intento === 7) { fallar("error"); break; }
@@ -1053,19 +1102,17 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
           en el PC, sin tooltip: en el PC «ⓘ ¿Cómo se calcula?» en texto; en el teléfono un botón redondo en tinta con la ⓘ en blanco,
           más grande que un chip, con «Cómo se calcula» al lado si cabe (`comoCabe`, medido). Un solo botón para los dos. */}
       <div className="ex-barra" role="toolbar" aria-label="Filtros" ref={barra} data-como-cabe={comoCabe ? "1" : undefined}>
+        {/* LA BARRA (25-nov-2026, lámina 5, opción B): solo Usados o Proyectos, y Filtros. PROYECTOS QUEDA ESCONDIDO hasta que haya
+            nuevos evaluados (hoy no hay precio por unidad): el selector lleva solo «Usados». La (i) de «¿Cómo se calcula?» pasó a la
+            tarjeta del contador. */}
+        <div className="ex-selector" role="radiogroup" aria-label={SELECTOR_COPY.grupo} data-explorar="selector">
+          <button type="button" role="radio" aria-checked="true" className="ex-selector-op" data-on="1" data-explorar="usados">{SELECTOR_COPY.usados}</button>
+          {PROYECTOS_VISIBLE && <button type="button" role="radio" aria-checked="false" className="ex-selector-op" data-explorar="proyectos">{SELECTOR_COPY.proyectos}</button>}
+        </div>
         <button type="button" className="ex-boton" data-activo={etiquetaFiltros(filtros) !== PORTAL_COPY.filtros ? "1" : undefined} data-explorar="filtros" onClick={() => setHojaFiltros(true)}>
-          <span aria-hidden="true">☰</span> {etiquetaFiltros(filtros)}
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4" /></svg> {etiquetaFiltros(filtros)}
         </button>
-        <button type="button" role="switch" aria-checked={filtros.soloComprar} aria-label={`${NEGOCIAR_COPY.soloComprar} ✓ Comprar`} className="ex-chip-neg" data-on={filtros.soloComprar ? "1" : undefined} data-sin-capa={capaNegociarDisponible(filtros) ? undefined : "1"} data-explorar="solo-comprar" onClick={alternarSoloComprar}>
-          <span className="ex-chip-neg-t">{NEGOCIAR_COPY.soloComprar} <ChipVeredicto v="COMPRAR" /></span>
-          <span className="ex-sw" aria-hidden="true" />
-        </button>
-        <button type="button" className="ex-como" data-explorar="como-se-calcula" aria-label={COMO_SE_CALCULA.enlace} onClick={abrirCalculo}>
-          <span className="ex-como-glifo" aria-hidden="true">ⓘ</span>
-          <span className="ex-como-i" aria-hidden="true">i</span>
-          <span className="ex-como-t ex-como-t-pc">{COMO_SE_CALCULA.enlace}</span>
-          <span className="ex-como-t ex-como-t-movil" ref={comoTexto}>{COMO_SE_CALCULA.enlaceCorto}</span>
-        </button>
+
       </div>
       {toast && <p className="ex-toast" role="status" data-explorar="toast">{toast}</p>}
       {aviso && (
@@ -1093,22 +1140,24 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
         <div className="ex-mapa-wrap" data-mapa={mapa}>
           {mapaListo && mapa !== "fallo" && (
             <MapaExplorar
-              pines={visibles}
-              negociados={visiblesNeg}
-              analizados={analizadosSet}
+              items={items}
               seleccionado={tarjeta ? sel : null}
               encuadre={`${claveUniverso(filtros)}|${filtros.comunas.join()}|${filtros.tipologias.join()}|${filtros.ufMin}|${filtros.ufMax}|${filtros.flujoPositivo}|${filtros.publicados}|${universo ? "1" : "0"}`}
+              /* Las barras y los chips no reencuadran: la persona mira dónde estaba y ve qué queda. */
               conZona={!!filtros.zona}
               onSeleccionar={tocarPin}
               onTocarMapa={() => setSel(null)}
               onMovido={(c) => setZonaPendiente(c)}
               onEstado={setMapa}
-              sinCifras={sinCuenta}
               foco={foco}
               onFoco={() => setFocoUsado(true)}
             />
           )}
           {mapa === "fallo" && <p className="ex-mapa-vacio" data-explorar="sin-mapa">{PORTAL_COPY.sinMapa}</p>}
+          {vista === "mapa" && (
+            <Contador conteo={conteo} ocultar={filtros.ocultar} calculando={progreso == null && conteo == null ? enCalculo : null}
+              alAlternar={alternarClase} alComo={abrirCalculo} alVerLista={() => setVista("lista")} />
+          )}
           {zonaPendiente && (
             <button type="button" className="ex-zona" data-explorar="buscar-zona" onClick={() => aplicar({ ...filtros, zona: zonaPendiente }, "zona")}>{PORTAL_COPY.buscarZona}</button>
           )}
@@ -1151,18 +1200,16 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
                 setInvierte({ pin: p, retomar: false });
               }}
             />
-          ) : vista === "mapa" && (
-            // LA BARRA DE ABAJO (03-nov-2026): la misma en el teléfono y en el PC (la píldora negra del PC se retiró), con el
-            // desglose de las dos clases y «Ver lista» a la derecha.
-            <BarraAbajo desglose={desglose} calculando={enCalculoAbajo} alVerLista={() => setVista("lista")} />
-          )}
+          ) : null}
         </div>
 
         {/* ── la lista ── */}
         {vista === "lista" && (
           <ListaPortal
-            pines={visibles}
-            negociados={visiblesNeg}
+            // La lista lleva lo mismo que el mapa (25-nov-2026): las tres clases, sin las apagadas en los chips del contador.
+            pines={seVe("comprar") ? visibles : []}
+            negociados={seVe("ajustar") ? visiblesNeg : []}
+            noConviene={seVe("no") ? ordenar(visiblesNo, "precio", uf) : []}
             tope={capa ? filtros.negociar : null}
             desglose={desglose}
             calculando={enCalculoAbajo}
@@ -1187,9 +1234,8 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
         <HojaFiltros
           filtros={filtros}
           tasa={inicial.tasa}
-          miBusqueda={sinCuenta ? null : { activa: enMiBusqueda, alUsar: miBusqueda, perfil: cuenta.miBusqueda }}
-          contar={contar}
-          contarNegociados={contarNegociados}
+          contarTodos={contarTodos}
+          distribucion={distribucion}
           asegurar={(f) => { void asegurar(f); }}
           alMoverTasa={(t) => posthog?.capture(EVENTOS_PORTAL.tasaSlider, propsDeTasa(t, inicial.tasa?.tasa ?? null, "filtros"))}
           alAplicar={(f) => { setHojaFiltros(false); aplicar(f, "filtros"); }}
@@ -1258,7 +1304,7 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
       {confirmar && (
         <AvisoAntesDeAnalizar
           depto={{ comuna: confirmar.it.comuna, tipologia: confirmar.it.tipologia, m2: confirmar.it.m2, precioUF: confirmar.it.precioUF, condicion: confirmar.it.condicion }}
-          negociado={esNegociado(confirmar.it) && conCifrasNegociado(confirmar.it) ? { precioUF: confirmar.it.neg.p, descuentoPct: confirmar.it.neg.d, score: confirmar.it.neg.s } : null}
+          negociado={filtros.modalidad === "ltr" && esNegociado(confirmar.it) && conCifrasNegociado(confirmar.it) ? { precioUF: confirmar.it.neg.p, descuentoPct: confirmar.it.neg.d, score: confirmar.it.neg.s } : null}
           modalidad={filtros.modalidad}
           combinacion={{ piePct: filtros.pie, plazoAnios: filtros.plazo, tasaPct: filtros.tasa }}
           finanzas={{ tasa: cuenta.finanzas.tasa, uf: cuenta.finanzas.uf, arriendo: confirmar.it.arriendo }}

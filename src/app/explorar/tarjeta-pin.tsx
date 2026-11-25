@@ -19,19 +19,20 @@
 // «PRONTO: INVIERTE CON FRANCO» (11-nov-2026): en un usado o un nuevo de inmobiliaria que da ✓ Comprar o − Ajustar negociable, debajo de lo que la tarjeta
 // ya tiene, el botón secundario «Invierte con Franco» (con y sin cuenta); inscrito, la etiqueta. «Analizar este» sigue primero.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
 import { botonOcupado } from "@/lib/carga-global";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 import { GUIA } from "@/lib/guia/copy";
-import { lineaDepto } from "@/lib/guia/linea-depto";
-import { capRatePct, flujoTexto, pctUno, ufPorM2 } from "@/lib/explorar/explorar";
+
+import { capRatePct, pctUno } from "@/lib/explorar/explorar";
 import { PORTAL_COPY, type PinMapa } from "@/lib/explorar/portal";
 import { ImagenDepto, useCalle } from "@/components/guia/ImagenDepto";
 import { YA_ANALIZADO } from "@/lib/guia/semanal-str";
-import { ABIERTO_COPY, BORROSO } from "@/lib/explorar/abierto";
+import { BORROSO } from "@/lib/explorar/abierto";
 import { ChipVeredicto } from "@/components/analysis/shared/ChipVeredicto";
-import { conCifrasNegociado, esNegociado, NEGOCIAR_COPY, type PinNegociado } from "@/lib/explorar/capa-negociar";
+import { claseDePin, conCifrasNegociado, esNegociado, NEGOCIAR_COPY, type PinNegociado } from "@/lib/explorar/capa-negociar";
+import { TARJETA_COPY } from "@/lib/explorar/mapa-todos";
 import { AL_PRECIO_PUBLICADO } from "@/lib/precio-publicado";
 import type { Veredicto } from "@/lib/types";
 import { COMPARTIR_COPY } from "@/lib/explorar/compartir";
@@ -108,6 +109,31 @@ export function VeredictosNegociado({ p }: { p: PinNegociado }) {
   );
 }
 
+/** EL LUGAR DE CADA DEPTO (25-nov-2026, lugar.ts): lo pide a POST /api/explorar/lugar para los cercanos del carrusel, una vez por
+ *  aviso en esta visita. Mientras llega, la línea va sin lugar. */
+const lugaresVistos = new Map<string, string | null>();
+const lugaresPedidos = new Set<string>();
+export function useLugares(ids: readonly string[]): Record<string, string | null> {
+  const [, setTick] = useState(0);
+  const clave = ids.join(",");
+  // Redibuja mientras la tarjeta siga montada, aunque entretanto cambien los cercanos (un pedido lento no se pierde).
+  const montada = useRef(true);
+  useEffect(() => () => { montada.current = false; }, []);
+  useEffect(() => {
+    const faltan = ids.filter((id) => !lugaresVistos.has(id) && !lugaresPedidos.has(id)).slice(0, 40);
+    if (!faltan.length) return;
+    for (const id of faltan) lugaresPedidos.add(id);
+    fetch("/api/explorar/lugar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids: faltan }) })
+      // Una respuesta mala no se recuerda: el próximo carrusel lo vuelve a pedir.
+      .then((r) => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
+      .then((d: Record<string, string | null>) => { for (const id of faltan) lugaresVistos.set(id, typeof d[id] === "string" ? d[id] : null); if (montada.current) setTick((n) => n + 1); })
+      .catch(() => { /* sin lugar: la línea sigue con tipología y m² */ })
+      .finally(() => { for (const id of faltan) lugaresPedidos.delete(id); });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clave]);
+  return Object.fromEntries(ids.map((id) => [id, lugaresVistos.get(id) ?? null]));
+}
+
 export function TarjetaPin({ pines, seleccionado, uf, analizados, resumenes = {}, guardados, generando, error, alCambiar, alCerrar, alGuardar, alAnalizar, alCompartir, alPrepararCompartir, alVerInforme, sinCuenta = false, recien = null, inscritos, alInvertir, etiquetaInvertir }: {
   /** Los cercanos, el tocado primero. */
   pines: PinMapa[];
@@ -141,6 +167,7 @@ export function TarjetaPin({ pines, seleccionado, uf, analizados, resumenes = {}
 }) {
   const fila = useRef<HTMLDivElement>(null);
   const tipos = useCalle(pines.map((p) => p.avisoId));
+  const lugares = useLugares(pines.map((p) => p.avisoId));
   const i = Math.max(0, pines.findIndex((p) => p.avisoId === seleccionado));
   const desdeAfuera = useRef(true);
 
@@ -190,8 +217,9 @@ export function TarjetaPin({ pines, seleccionado, uf, analizados, resumenes = {}
         {pines.map((p) => {
           const informe = analizados[p.avisoId];
           const cap = capRatePct(p.arriendo, p.precioUF, uf);
-          const m2 = ufPorM2(p.precioUF, p.m2);
           const neg = (p.flujo ?? 0) < 0;
+          const clase = claseDePin(p);
+          const analizadoAqui = !!informe && !sinCuenta;
           const nueva = !sinCuenta && recien?.avisoId === p.avisoId;
           return (
             <article key={p.avisoId} className="ex-tarjeta" data-explorar="tarjeta" data-aviso={p.avisoId} data-sel={p.avisoId === seleccionado ? "1" : undefined} data-recien={nueva ? "1" : undefined} aria-current={p.avisoId === seleccionado ? "true" : undefined}>
@@ -208,50 +236,65 @@ export function TarjetaPin({ pines, seleccionado, uf, analizados, resumenes = {}
               <div className="ex-tarjeta-fila">
                 <ImagenDepto avisoId={p.avisoId} tipo={tipos[p.avisoId]} clase="ex-img" ajustar={esNegociado(p)} />
                 <div className="ex-tarjeta-datos">
+                  {/* LA CABECERA (25-nov-2026, lámina 7): la comuna en mayúsculas y, debajo, el lugar —el metro a menos de 1 km, el
+                      barrio o sector, o la avenida principal (lugar.ts)—, la tipología y los m². A la derecha, el chip del veredicto. */}
                   <div className="ex-tarjeta-cab">
-                    <span className="ex-ojo" data-explorar="linea">{lineaDepto(p)}</span>
+                    <div className="ex-tarjeta-titulo">
+                      <b className="ex-comuna" data-explorar="comuna">{p.comuna.toLocaleUpperCase("es-CL")}</b>
+                      <span className="ex-ojo" data-explorar="linea">{[lugares[p.avisoId] ?? null, p.tipologia, `${miles(p.m2)} m²`].filter(Boolean).join(" · ")}</span>
+                    </div>
                     <span className="ex-iconos">
                       <BotonCompartir alTocar={() => alCompartir(p)} alPreparar={alPrepararCompartir ? () => alPrepararCompartir(p) : undefined} />
                       <Corazon guardado={guardados.has(p.avisoId)} alTocar={() => alGuardar(p.avisoId)} />
                     </span>
                   </div>
-                  <b className="ex-precio" data-explorar="precio">UF {miles(p.precioUF)}{esNegociado(p) && <span className="ex-publicado"> {NEGOCIAR_COPY.publicado}</span>}</b>
-                  {informe && !sinCuenta ? (
-                    // YA LO ANALIZÓ (05-nov-2026, lib/informe-propio.ts): lo que dice SU informe —veredicto, puntaje y fecha—, no la
-                    // noche (ni su flujo); si la noche hoy da distinto, la línea chica. Las cifras de la publicación siguen.
-                    <>
-                      {resumenes[informe] && <span className="ex-linea2" data-explorar="informe-propio"><ChipInformePropio resumen={resumenes[informe]} noche={{ veredicto: p.veredicto, score: p.score }} /></span>}
-                      <span className="ex-linea3" data-explorar="cifras">
-                        {[cap != null ? `${PORTAL_COPY.capRate} ${pctUno(cap)}` : null, m2 != null ? `${miles(m2)} ${PORTAL_COPY.porM2}` : null].filter(Boolean).join(" · ")}
-                      </span>
-                    </>
-                  ) : esNegociado(p) ? (
-                    <VeredictosNegociado p={p} />
-                  ) : sinCuenta ? (
-                    <>
-                      <span className="ex-linea2" data-explorar="veredicto"><VeredictoDelPin p={p} /></span>
-                      <span className="ex-linea2" data-explorar="flujo-oculto">{ABIERTO_COPY.flujo} <Borroso texto={BORROSO.flujo} /> {ABIERTO_COPY.alMes}</span>
-                      <span className="ex-linea3" data-explorar="cifras">{ABIERTO_COPY.capRate} <Borroso texto={BORROSO.capRate} /> · <Borroso texto={BORROSO.porM2} /></span>
-                    </>
-                  ) : (
-                    <>
-                      <span className="ex-linea2" data-explorar="veredicto"><VeredictoDelPin p={p} /></span>
-                      {p.flujo != null && <span className="ex-linea2" data-explorar="flujo"><b className={neg ? "ex-neg" : undefined}>{flujoTexto(p.flujo)}</b> {PORTAL_COPY.alMes}</span>}
-                      <span className="ex-linea3" data-explorar="cifras">
-                        {[cap != null ? `${PORTAL_COPY.capRate} ${pctUno(cap)}` : null, m2 != null ? `${miles(m2)} ${PORTAL_COPY.porM2}` : null].filter(Boolean).join(" · ")}
-                      </span>
-                    </>
+                  <span className="ex-linea2" data-explorar="veredicto">
+                    {informe && !sinCuenta && resumenes[informe] ? (
+                      // YA LO ANALIZÓ (05-nov-2026, lib/informe-propio.ts): lo que dice SU informe, no la noche.
+                      <span data-explorar="informe-propio"><ChipInformePropio resumen={resumenes[informe]} noche={{ veredicto: p.veredicto, score: p.score }} /></span>
+                    ) : clase === "no" ? (
+                      <span className="chip-v b" data-veredicto="BUSCAR OTRA" data-explorar="no-conviene">{TARJETA_COPY.noConviene}</span>
+                    ) : (
+                      <ChipVeredicto v={(clase === "ajustar" ? "AJUSTA SUPUESTOS" : "COMPRAR") as Veredicto} puntaje={sinCuenta ? null : p.score} />
+                    )}
+                  </span>
+                  {/* LA FRANJA DE CUATRO CIFRAS (lámina 7): publicado, arriendo estimado, cap rate y te sobran o pones al mes. No conviene
+                      muestra solo el publicado (sus cifras quedan dentro del depto). Sin cuenta, solo el publicado se ve nítido. */}
+                  <div className="ex-franja" data-explorar="franja" data-n={clase === "no" ? 1 : analizadoAqui ? 3 : 4}>
+                    <div className="ex-cifra"><span>{TARJETA_COPY.publicado}</span><b data-explorar="precio">UF {miles(p.precioUF)}</b></div>
+                    {clase !== "no" && (sinCuenta ? (
+                      <>
+                        <div className="ex-cifra"><span>{TARJETA_COPY.arriendo}</span><Borroso texto={BORROSO.flujo} /></div>
+                        <div className="ex-cifra"><span>{TARJETA_COPY.capRate}</span><Borroso texto={BORROSO.capRate} /></div>
+                        <div className="ex-cifra"><span>{TARJETA_COPY.teSobran}</span><Borroso texto={BORROSO.flujo} /></div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="ex-cifra"><span>{TARJETA_COPY.arriendo}</span><b data-explorar="arriendo">{p.arriendo != null ? `$${miles(p.arriendo)}` : "—"}</b></div>
+                        <div className="ex-cifra"><span>{TARJETA_COPY.capRate}</span><b data-explorar="cap-rate">{cap != null ? pctUno(cap) : "—"}</b></div>
+                        {/* YA LO ANALIZÓ (05-nov-2026): el flujo es el de su informe, no el de la noche; la franja no lo repite. */}
+                        {!analizadoAqui && <div className="ex-cifra"><span>{neg ? TARJETA_COPY.pones : TARJETA_COPY.teSobran}</span><b data-explorar="flujo" className={neg ? "ex-neg" : undefined}>{p.flujo != null ? `$${miles(Math.abs(p.flujo))}` : "—"}</b></div>}
+                      </>
+                    ))}
+                  </div>
+                  {/* AJUSTAR SUMA «Conviene desde UF X · N % menos» (decisión 7). Sin cuenta, el precio y el descuento van difuminados. */}
+                  {esNegociado(p) && (
+                    <span className="ex-conviene-desde" data-explorar="conviene-desde">
+                      {conCifrasNegociado(p) ? TARJETA_COPY.convieneDesde(p.neg.p, p.neg.d) : <>{TARJETA_COPY.convieneDesde(0, 0).split(" UF")[0]} <Borroso texto={NEGOCIAR_COPY.borroso.precio} /> <Borroso texto={NEGOCIAR_COPY.borroso.descuento} /></>}
+                    </span>
                   )}
                 </div>
               </div>
               {sinCuenta ? (
-                <button type="button" className="ex-cta ex-cta-triada" onClick={() => alAnalizar(p)} data-explorar="registrate">{ABIERTO_COPY.cta}</button>
+                <button type="button" className="ex-cta" onClick={() => alAnalizar(p)} data-explorar="registrate">{TARJETA_COPY.verGratis}</button>
               ) : informe ? (
                 // «Ya lo analizaste · Ver informe» (03-nov-2026): la misma frase de la selección y del dashboard (YA_ANALIZADO).
                 <EnlaceCarga href={`/analisis/${informe}`} className="ex-cta ex-cta-enlace" data-explorar="ver-informe" onClick={() => alVerInforme?.(p.avisoId, informe)}>{YA_ANALIZADO.texto} · {YA_ANALIZADO.enlace}</EnlaceCarga>
               ) : (
+                // «VER ESTE DEPTO» (cambio de textos del 17-nov-2026, decisión 4 del 25-nov): gasta un crédito, como siempre. También en
+                // un Ajustar: el precio con descuento ya lo dice la línea de arriba.
                 <button type="button" className="ex-cta" onClick={() => alAnalizar(p)} disabled={!!generando} {...botonOcupado(generando === p.avisoId)} data-explorar="analizar">
-                  {generando === p.avisoId ? GUIA.analizando : esNegociado(p) && conCifrasNegociado(p) ? NEGOCIAR_COPY.analizarA(p.neg.p) : nueva && recien.regalo ? PORTAL_COPY.vuelta.analizarRegalo : PORTAL_COPY.analizar}
+                  {generando === p.avisoId ? GUIA.analizando : nueva && recien.regalo ? PORTAL_COPY.vuelta.analizarRegalo : TARJETA_COPY.verDepto}
                 </button>
               )}
               {error?.avisoId === p.avisoId && <p className="ex-error" role="alert">{error.texto}</p>}

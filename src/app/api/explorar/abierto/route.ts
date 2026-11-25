@@ -3,7 +3,8 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { captureApiError } from "@/lib/observabilidad";
 import { COMUNAS_DISPONIBLES } from "@/lib/comunas-disponibles";
 import { PIE_ABIERTO, PLAZO_ABIERTO, sinCifras } from "@/lib/explorar/abierto";
-import { respuestaUniverso, universoCalculado } from "@/lib/explorar/portal-servidor";
+import { respuestaUniverso, universoYCapaCalculados } from "@/lib/explorar/portal-servidor";
+import { sinCifrasNegociados } from "@/lib/explorar/capa-negociar";
 import { respuestaDeLaNoche } from "@/lib/explorar/portal-cache";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -35,9 +36,12 @@ export async function GET(request: Request) {
     const comuna = (sp.get("c") ?? "").trim();
     if (!COMUNAS_OK.has(comuna)) return NextResponse.json({ error: "comunas" }, { status: 400 });
     const cuenta = { calculados: 0, ms: 0 };
-    const pines = await universoCalculado(createServiceClient(), { ...q, comunas: [comuna] }, new Date(), cuenta);
-    const r = respuestaUniverso(pines, { ...q, comunas: [comuna] }, cuenta);
-    return NextResponse.json({ ...r, universo: sinCifras(r.universo) }, { headers: { "Cache-Control": CACHE } });
+    // Las tres clases (25-nov-2026, el mapa con todos los deptos), sin cifras: el color y el precio, nada más.
+    const t = await universoYCapaCalculados(createServiceClient(), { ...q, comunas: [comuna] }, new Date(), cuenta, { conCapa: true });
+    const r = respuestaUniverso(t.pines, { ...q, comunas: [comuna] }, cuenta, t.negociados, t.noConviene);
+    return NextResponse.json({
+      ...r, universo: sinCifras(r.universo), ...(r.negociados ? { negociados: sinCifrasNegociados(r.negociados) } : {}), ...(r.noConviene ? { noConviene: sinCifras(r.noConviene) } : {}),
+    }, { headers: { "Cache-Control": CACHE } });
   } catch (e) {
     captureApiError(e, { ruta: "GET /api/explorar/abierto", operacion: "universo", extra: { modalidad } });
     return NextResponse.json({ error: "interno" }, { status: 500, headers: { "Cache-Control": "no-store" } });

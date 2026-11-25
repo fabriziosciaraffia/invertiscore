@@ -54,10 +54,11 @@ export async function GET(request: Request) {
     const cuenta = { calculados: 0, ms: 0 };
     // EL TOPE Y EL FUSIBLE (04-nov-2026, después de la caída de la base): si hay algo que calcular, un turno de los dos del sitio;
     // lo calculado se guarda dentro del turno, antes de responder (turnos-recalculo.ts). Sin turno: 503 «ocupado» o «pausado».
-    const conCapa = modalidad === "ltr";
+    // Desde el 25-nov-2026 también en renta corta: todo Ajustar que se ve trae su «Conviene desde UF X» (decisiones 2 y 10).
+    const conCapa = true;
     const turnos = new TurnosRecalculo(almacenDeConfig(admin));
-    const { pines, negociados } = await universoYCapaCalculados(admin, { ...q, comunas }, new Date(), cuenta, { conCapa, turnos, quien: user.id });
-    return NextResponse.json(respuestaUniverso(pines, { ...q, comunas }, cuenta, conCapa ? negociados : null), { headers: { "Cache-Control": "private, max-age=300" } });
+    const { pines, negociados, noConviene } = await universoYCapaCalculados(admin, { ...q, comunas }, new Date(), cuenta, { conCapa, turnos, quien: user.id });
+    return NextResponse.json(respuestaUniverso(pines, { ...q, comunas }, cuenta, negociados, noConviene), { headers: { "Cache-Control": "private, max-age=300" } });
   } catch (e) {
     if (esRecalculoEnEspera(e)) return NextResponse.json({ error: e.motivo }, { status: 503, headers: { "Cache-Control": "no-store", "Retry-After": "3" } });
     captureApiError(e, { ruta: "GET /api/explorar", operacion: "universo", userId: user.id, extra: { modalidad, pie, plazo, tasa } });

@@ -165,8 +165,8 @@ async function ExplorarAbierto({ consulta }: { consulta: string }) {
   // La bienvenida dice el número de todo el sitio, aunque la URL traiga filtros; el del mapa es el filtrado. Y, aparte, cuántos
   // más llegan negociando (03-nov-2026), en la vista global: nunca sumados a los que convienen. La barra del primer pintado:
   // los − Ajustar con los filtros de la URL; 0 si la capa no se ve con ellos.
-  const { n, convienen, negociadosGlobal, nAjustar } = cifrasDeLaNoche(noche, filtros);
-  return <ExplorarCliente inicial={{ filtros, orden, n, cuenta: null, tasa, convienen, negociadosGlobal, nAjustar, sello: noche?.sello ?? null }} abrir={compartido?.avisoId ?? sp.get("a")} compartido={compartido} origen={origenDeLlegada(sp.get("desde"))} invierteV2={invierteV2} />;
+  const { n, convienen, negociadosGlobal, nAjustar, nNo } = cifrasDeLaNoche(noche, filtros);
+  return <ExplorarCliente inicial={{ filtros, orden, n, cuenta: null, tasa, convienen, negociadosGlobal, nAjustar, nNo, sello: noche?.sello ?? null }} abrir={compartido?.avisoId ?? sp.get("a")} compartido={compartido} origen={origenDeLlegada(sp.get("desde"))} invierteV2={invierteV2} />;
 }
 
 /** La cuenta y el número: lo que el esqueleto no espera. */
@@ -185,7 +185,7 @@ async function ExplorarConDatos({ consulta, user }: { consulta: string; user: Us
     accesoInvierteV2(user),
   ]);
   // La barra del primer pintado (03-nov-2026): los − Ajustar con estos filtros; 0 si la capa no se ve con ellos.
-  const { n, nAjustar } = cifrasDeLaNoche(noche, filtros);
+  const { n, nAjustar, nNo } = cifrasDeLaNoche(noche, filtros);
   void capturarServidor(eventoPortalVista({ userId: user.id, filtros, orden, n, robot: robotDeVisita(headers().get("user-agent"), headers()), llegada: llegadaDeExplorar(sp.get("desde")) })).catch(() => false);
   const a = compartido?.avisoId ?? sp.get("a");
   // Ya firmó la orden de Invierte con Franco (20-nov-2026): el botón de los usados dice «Sumar a mis opciones de inversión».
@@ -196,7 +196,7 @@ async function ExplorarConDatos({ consulta, user }: { consulta: string; user: Us
     : [];
   return (
     <ExplorarCliente
-      inicial={{ filtros, orden, n, cuenta, tasa, convienen: null, negociadosGlobal: null, nAjustar, sello: noche?.sello ?? null }}
+      inicial={{ filtros, orden, n, cuenta, tasa, convienen: null, negociadosGlobal: null, nAjustar, nNo, sello: noche?.sello ?? null }}
       abrir={a}
       compartido={compartido}
       autoAnalizar={sp.get("analizar") === "1" ? a : null}

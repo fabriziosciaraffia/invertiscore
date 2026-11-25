@@ -1,48 +1,43 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// EL MAPA DE EXPLORAR (23-oct-2026; como portal desde el 28-oct-2026, 5b-explorar-portal.html): Google Maps con el estilo de
-// Franco (map-styles.ts), cargado DESPUÉS del primer pintado (lo monta explorar-cliente.tsx por next/dynamic, con la página
-// quieta). LEJOS, GRUPOS CON NÚMERO (explorar.ts › agruparPines, por celdas de la proyección a cada zoom); CON ZOOM, cada pin
-// dice su flujo mensual («+$142 mil»), los ya analizados por la cuenta dicen «✓ Analizado» y los aparecidos en las últimas 24
-// horas, «Nuevo hoy» (portal.ts › textoPin). Tocar un grupo acerca; tocar un pin abre su tarjeta; tocar el mapa la cierra.
-// Cuando LA PERSONA mueve el mapa (no el encuadre automático), avisa la caja para «Buscar en esta zona». Usa
-// `google.maps.Marker` como el resto del sitio (AdvancedMarkerElement exige un Map ID).
-// LOS COLORES (03-nov-2026, la pasada real de Fabrizio; colores-pin.ts, uno solo para todos los mapas): ✓ Comprar en el azul del
-// chip Comprar, − Ajustar en la ciruela del chip Ajustar, los ya analizados en tinta con un ✓ blanco; el elegido, el mismo color
-// más grande y con el anillo blanco más grueso; los grupos, del color de su clase. ROJO EN NINGÚN PIN (hasta el 03-nov los que
-// convienen iban en rojo, los analizados en azul y el elegido en tinta).
-// LOS − AJUSTAR (02-nov-2026, capa-negociar.ts; de entrada desde el 03-nov): se agrupan y se dibujan APARTE; con zoom, el pin
-// dice el descuento («−4,2 % dcto.»). Debajo de los ✓ Comprar; lejos, el grupo que uno de ellos tapa se corre a su borde
-// (satélite).
-// EL ENLACE DE UN DEPTO COMPARTIDO (02-nov-2026): con `foco`, el primer encuadre no abarca los pines sino que se centra en el
-// depto, de cerca (ZOOM_FOCO, con su etiqueta), una vez; después los filtros encuadran como siempre. Desde el 04-nov-2026 también el
-// pin abierto al volver del informe (volver-al-mapa.ts).
-// LA VISTA SATELITAL (04-nov-2026, la pasada de Fabrizio; regla en lib/explorar/capa-mapa.ts): «Mapa | Satélite» junto al zoom, un
-// control de Google donde React dibuja el botón. En satélite, la foto híbrida sin el estilo de Franco, igual en los dos temas.
+// EL MAPA DE EXPLORAR (23-oct-2026; como portal desde el 28-oct-2026; CON TODOS LOS DEPTOS desde el 25-nov-2026, láminas 5 y 8 del
+// canvas «La asesoría en el mapa»): Google Maps con el estilo de Franco (map-styles.ts), cargado DESPUÉS del primer pintado (lo monta
+// explorar-cliente.tsx por next/dynamic, con la página quieta).
+// LOS PINES VAN EN UN CANVAS PROPIO sobre el mapa (25-nov-2026, aprobado por Fabrizio): ~19 mil usados con veredicto no caben en
+// marcadores de Google (en zoom 15, más de 3 mil por pantalla). Qué se dibuja y qué se tocó vive en lib/explorar/capa-canvas.ts:
+// lejos, grupos con número en tinta y puntos de color; cerca, la cifra de cada depto, y si dos chocan, la conserva el de mejor puntaje.
+// Los colores salen de colores-pin.ts (Comprar azul, Ajustar ciruela, No conviene rojo). Tocar un grupo acerca; tocar un pin abre su
+// tarjeta; tocar el mapa la cierra. Cuando LA PERSONA mueve el mapa (no el encuadre automático), avisa la caja para «Buscar en esta zona».
+// EL CRÉDITO DE OPENSTREETMAP (25-nov-2026): el barrio o sector de la tarjeta sale de sus datos, y su licencia pide el crédito visible.
+// EL ENLACE DE UN DEPTO COMPARTIDO (02-nov-2026): con `foco`, el primer encuadre se centra en el depto, de cerca (ZOOM_FOCO), una vez.
+// LA VISTA SATELITAL (04-nov-2026; regla en lib/explorar/capa-mapa.ts): «Mapa | Satélite» junto al zoom.
 // ─────────────────────────────────────────────────────────────────────────────
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { loadGoogleMaps } from "@/lib/loadGoogleMaps";
 import { CAPA_MAPA_COPY, CAPAS_MAPA, guardarCapaMapa, leerCapaMapa, opcionesDeCapa, type CapaMapa } from "@/lib/explorar/capa-mapa";
-import { agruparPines, proyectar } from "@/lib/explorar/explorar";
-import { textoPin, type Caja, type PinMapa } from "@/lib/explorar/portal";
-import { NEGOCIAR_COPY, satelite, type Circulo, type PinNegociado } from "@/lib/explorar/capa-negociar";
-import type { ClasePin, TemaPin } from "@/lib/explorar/colores-pin";
-import { iconoPin } from "@/lib/explorar/iconos-pin";
+import type { Caja } from "@/lib/explorar/portal";
+import { componerCapa, RADIO_PUNTO, tocado, type Dibujo, type ItemCapa } from "@/lib/explorar/capa-canvas";
+import { ANILLO_ELEGIDO_PX, ANILLO_PIN, ANILLO_PIN_PX, colorPin, type TemaPin } from "@/lib/explorar/colores-pin";
+import { CREDITO_OSM } from "@/lib/explorar/lugar";
+
 const ZOOM_MAX_ENCUADRE = 15;
-/** El zoom con que se abre un depto compartido: de cuadra, con las etiquetas de los pines (ZOOM_ETIQUETAS). */
+/** El zoom con que se abre un depto compartido: de cuadra, con las cifras de los pines. */
 export const ZOOM_FOCO = 16;
-/** Desde este zoom cada pin dice su flujo (antes, grupos y puntos). */
-export const ZOOM_ETIQUETAS = 15;
+/** Desde este zoom cada pin dice su cifra (antes, grupos y puntos). */
+export { ZOOM_CIFRAS as ZOOM_ETIQUETAS } from "@/lib/explorar/capa-canvas";
 const TOPE_CARGA_MS = 12000;
 const CENTRO_SANTIAGO = { lat: -33.4489, lng: -70.6393 };
+/** La letra de las cifras de los pines (la del sitio, Inter). */
+const FUENTE_PIN = "700 12px Inter, system-ui, sans-serif";
+const FUENTE_GRUPO = "700 12px Inter, system-ui, sans-serif";
+/** Los grupos van en tinta, con su anillo blanco (lámina 5). */
+const GRUPO = { fondo: "#141414", texto: "#FFFFFF" } as const;
 
 const esClaro = () => typeof document !== "undefined" && document.documentElement.getAttribute("data-theme") === "light";
-/** EL MAPA EN OSCURO (30-oct-2026): el estilo oscuro de Franco (map-styles.ts: fondo oscuro, calles en gris medio, nombres
- *  legibles, agua y parques apagados) y el fondo mientras cargan las teselas. Sigue al tema del sitio y cambia al momento. En
- *  satélite (04-nov-2026), la foto híbrida sin estilo, igual en los dos temas (capa-mapa.ts › opcionesDeCapa). */
 const opcionesDe = (capa: CapaMapa) => opcionesDeCapa(capa, esClaro());
+const temaPin = (): TemaPin => (esClaro() ? "claro" : "oscuro");
 
 /** «Mapa | Satélite» (04-nov-2026): dos posiciones, con el estilo de las opciones de la casa (la elegida, rellena en tinta). */
 export function ConmutadorCapa({ capa, alCambiar }: { capa: CapaMapa; alCambiar: (c: CapaMapa) => void }) {
@@ -54,13 +49,10 @@ export function ConmutadorCapa({ capa, alCambiar }: { capa: CapaMapa; alCambiar:
     </div>
   );
 }
-const temaPin = (): TemaPin => (esClaro() ? "claro" : "oscuro");
 
 export interface MapaExplorarProps {
-  pines: PinMapa[];
-  /** La capa «Si negocias» (vacía si está apagada): aparte, en el color de Ajustar. */
-  negociados?: PinNegociado[];
-  analizados: ReadonlySet<string>;
+  /** Los deptos que se ven (ya filtrados, sin las clases apagadas), cada uno con su cifra. */
+  items: ItemCapa[];
   seleccionado: string | null;
   /** Cambia cuando cambian los filtros (no la zona): el mapa se vuelve a encuadrar sobre los pines. */
   encuadre: string;
@@ -73,34 +65,77 @@ export interface MapaExplorarProps {
   onMovido: (caja: Caja) => void;
   /** «listo»: el mapa existe; «teselas»: ya dibujó sus teselas (el mapa quieto se puede ir); «fallo»: no cargó. */
   onEstado: (estado: "listo" | "teselas" | "fallo") => void;
-  /** Sin cuenta (29-oct-2026, la puerta E): con zoom, cada pin es solo el punto —el flujo no viaja al navegador—. */
-  sinCifras?: boolean;
   /** El punto donde centrarse en el próximo encuadre (el depto de un enlace compartido); `onFoco` avisa que se usó. */
   foco?: { lat: number; lng: number } | null;
   onFoco?: () => void;
 }
 
-export default function MapaExplorar({ pines, negociados = [], analizados, seleccionado, encuadre, conZona, onSeleccionar, onTocarMapa, onMovido, onEstado, sinCifras = false, foco = null, onFoco }: MapaExplorarProps) {
+/** Dibuja la capa en el canvas: puntos, grupos y cifras, con los colores de su clase y del tema. */
+function pintar(ctx: CanvasRenderingContext2D, dibujos: readonly Dibujo[], tema: TemaPin) {
+  const circulo = (x: number, y: number, r: number, fondo: string, anillo: number) => {
+    ctx.beginPath();
+    ctx.arc(x, y, r + anillo, 0, Math.PI * 2);
+    ctx.fillStyle = ANILLO_PIN;
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fillStyle = fondo;
+    ctx.fill();
+  };
+  for (const d of dibujos) {
+    if (d.tipo === "punto") {
+      circulo(d.x, d.y, RADIO_PUNTO, colorPin(d.clase, tema).fondo, ANILLO_PIN_PX);
+    } else if (d.tipo === "grupo") {
+      ctx.shadowColor = "rgba(20,20,20,0.25)"; ctx.shadowBlur = 6; ctx.shadowOffsetY = 2;
+      circulo(d.x, d.y, d.r - ANILLO_PIN_PX, GRUPO.fondo, ANILLO_PIN_PX);
+      ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+      ctx.fillStyle = GRUPO.texto;
+      ctx.font = FUENTE_GRUPO;
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(d.texto, d.x, d.y + 0.5);
+    } else {
+      const c = colorPin(d.clase, tema);
+      const anillo = d.elegido ? ANILLO_ELEGIDO_PX : 0;
+      const w = d.w + anillo * 2, h = d.h + anillo * 2, x = d.x - w / 2, y = d.y - h / 2, r = h / 2;
+      ctx.shadowColor = "rgba(20,20,20,0.25)"; ctx.shadowBlur = d.elegido ? 10 : 6; ctx.shadowOffsetY = 2;
+      ctx.beginPath();
+      ctx.roundRect(x, y, w, h, r);
+      ctx.fillStyle = d.elegido ? ANILLO_PIN : c.fondo;
+      ctx.fill();
+      ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+      if (d.elegido) {
+        ctx.beginPath();
+        ctx.roundRect(x + anillo, y + anillo, d.w, d.h, d.h / 2);
+        ctx.fillStyle = c.fondo;
+        ctx.fill();
+      }
+      ctx.fillStyle = c.texto;
+      ctx.font = FUENTE_PIN;
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(d.texto, d.x, d.y + 0.5);
+    }
+  }
+}
+
+export default function MapaExplorar({ items, seleccionado, encuadre, conZona, onSeleccionar, onTocarMapa, onMovido, onEstado, foco = null, onFoco }: MapaExplorarProps) {
   const divRef = useRef<HTMLDivElement>(null);
+  const lienzoRef = useRef<HTMLCanvasElement | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mapRef = useRef<any>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const marcadoresRef = useRef<any[]>([]);
-  const pinesRef = useRef(pines);
-  const negociadosRef = useRef(negociados);
-  const analizadosRef = useRef(analizados);
+  const proyRef = useRef<any>(null);
+  const itemsRef = useRef(items);
   const selRef = useRef(seleccionado);
+  const dibujosRef = useRef<Dibujo[]>([]);
   const cb = useRef({ onSeleccionar, onTocarMapa, onMovido, onEstado, onFoco });
-  const sinCifrasRef = useRef(sinCifras);
   const focoRef = useRef(foco);
-  pinesRef.current = pines; negociadosRef.current = negociados; analizadosRef.current = analizados; selRef.current = seleccionado; sinCifrasRef.current = sinCifras; focoRef.current = foco;
+  itemsRef.current = items; selRef.current = seleccionado; focoRef.current = foco;
   cb.current = { onSeleccionar, onTocarMapa, onMovido, onEstado, onFoco };
   const dibujarRef = useRef<() => void>(() => {});
   const encuadrarRef = useRef<() => void>(() => {});
   // Los movimientos que hace el propio mapa (encuadrar, acercar a un grupo) no son «la persona movió el mapa».
   const propio = useRef(false);
-  const tocado = useRef(false);
-  // La vista (04-nov-2026): la última elegida en este navegador; el control vive dentro del mapa de Google.
+  const tocadoRef = useRef(false);
   const [capa, setCapa] = useState<CapaMapa>("mapa");
   const capaRef = useRef(capa);
   capaRef.current = capa;
@@ -111,6 +146,7 @@ export default function MapaExplorar({ pines, negociados = [], analizados, selec
 
   useEffect(() => {
     let cancelado = false;
+    let cuadro = 0;
     const tope = window.setTimeout(() => { if (!mapRef.current) cb.current.onEstado("fallo"); }, TOPE_CARGA_MS);
     loadGoogleMaps().then(() => {
       if (cancelado || !divRef.current) return;
@@ -119,107 +155,60 @@ export default function MapaExplorar({ pines, negociados = [], analizados, selec
       if (!g?.maps?.Map) { cb.current.onEstado("fallo"); return; }
       window.clearTimeout(tope);
       const map = new g.maps.Map(divRef.current, {
-        // El zoom al centro derecho: abajo lo tapaban la hoja y la tarjeta (QA en WebKit 390, 28-oct-2026).
         center: CENTRO_SANTIAGO, zoom: 11, disableDefaultUI: true, zoomControl: true, zoomControlOptions: { position: g.maps.ControlPosition.RIGHT_CENTER }, clickableIcons: false,
         gestureHandling: "greedy", ...opcionesDe(capaRef.current),
       });
       mapRef.current = map;
-      // «Mapa | Satélite», junto al zoom (el mismo lado: abajo lo tapan la hoja y la tarjeta en el teléfono).
       const ctl = document.createElement("div");
       ctl.className = "ex-capa-ctl";
       map.controls[g.maps.ControlPosition.RIGHT_CENTER].push(ctl);
       setControl(ctl);
+      // EL CANVAS VIVE EN UNA CAPA DEL MAPA (overlayLayer), debajo de los controles de Google: un pin nunca tapa el zoom ni «Mapa |
+      // Satélite». Cada dibujo lo pone sobre lo que se ve; al arrastrar se mueve con el mapa sin redibujar.
+      const lienzo = document.createElement("canvas");
+      lienzo.className = "ex-lienzo";
+      lienzo.setAttribute("data-explorar", "lienzo");
+      lienzo.setAttribute("aria-hidden", "true");
+      lienzoRef.current = lienzo;
+      const ov = new g.maps.OverlayView();
+      ov.onAdd = () => { ov.getPanes()?.overlayLayer.appendChild(lienzo); };
+      ov.draw = () => { dibujarRef.current(); };
+      ov.onRemove = () => { lienzo.remove(); };
+      ov.setMap(map);
+      proyRef.current = ov;
 
-      const limpiar = () => { for (const m of marcadoresRef.current) m.setMap(null); marcadoresRef.current = []; };
-      // `corrido`: el ícono se dibuja corrido de su punto, en píxeles (el satélite de la capa «Si negocias»).
-      const marcador = (pos: { lat: number; lng: number }, icono: { url: string; w: number; h: number }, zIndex: number, alTocar: () => void, titulo?: string, corrido = { dx: 0, dy: 0 }) => {
-        const m = new g.maps.Marker({ position: pos, map, zIndex, title: titulo, icon: { url: icono.url, scaledSize: new g.maps.Size(icono.w, icono.h), anchor: new g.maps.Point(icono.w / 2 - corrido.dx, icono.h / 2 - corrido.dy) } });
-        m.addListener("click", alTocar);
-        marcadoresRef.current.push(m);
-      };
-      dibujarRef.current = () => {
+      // EL DIBUJO: un cuadro por vez (el mapa avisa muchas veces por segundo mientras se arrastra).
+      const pintarYa = () => {
+        const lienzo = lienzoRef.current, div = divRef.current, proy = ov.getProjection?.();
         const zoom = map.getZoom();
-        const caja = map.getBounds();
-        if (zoom == null) return;
-        limpiar();
-        // Todo ícono sale de iconoPin, con el color de su clase y del tema (colores-pin.ts): ni un color escrito acá.
-        const tema = temaPin();
-        const punto = (c: ClasePin, elegido = false) => iconoPin(c, tema, { forma: "punto" }, elegido);
-        const etiqueta = (c: ClasePin, texto: string, elegido = false) => iconoPin(c, tema, { forma: "etiqueta", texto }, elegido);
-        const grupo = (c: ClasePin, n: number) => iconoPin(c, tema, { forma: "grupo", n });
-        const an = analizadosRef.current;
-        // Solo lo que está a la vista: a Gran Santiago entero no hace falta dibujarle miles de marcadores.
-        const visibles = caja ? pinesRef.current.filter((p) => caja.contains({ lat: p.lat, lng: p.lng })) : pinesRef.current;
-        const sel = selRef.current;
-        const porId = new Map(visibles.map((p) => [p.avisoId, p]));
-        const ahora = new Date();
-        // Los círculos de los ✓ Comprar de este dibujo (grupos y puntos), para correr los − Ajustar que tapan.
-        const arriba: Circulo[] = [];
-        const circulo = (lat: number, lng: number, r: number) => ({ ...proyectar(lat, lng, zoom), r });
-        const agrupaEn = zoom >= ZOOM_ETIQUETAS ? 44 : 56;
-        for (const gr of agruparPines(visibles, zoom, an, agrupaEn)) {
-          if (gr.n === 1) {
-            const id = gr.ids[0];
-            const p = porId.get(id);
-            if (!p) continue;
-            const elegido = id === sel;
-            if (sinCifrasRef.current) {
-              // Sin cuenta: puntos sin número (el flujo no viaja); el elegido, el mismo azul más grande.
-              marcador({ lat: p.lat, lng: p.lng }, punto("comprar", elegido), elegido ? 20 : 2, () => cb.current.onSeleccionar(id));
-              if (!elegido) arriba.push(circulo(p.lat, p.lng, 9));
-            } else if (zoom >= ZOOM_ETIQUETAS || elegido) {
-              const t = textoPin(p, { analizado: an.has(id), ahora });
-              marcador({ lat: p.lat, lng: p.lng }, etiqueta(t.tipo === "analizado" ? "analizado" : "comprar", t.texto, elegido), elegido ? 20 : t.tipo === "analizado" ? 4 : 3, () => cb.current.onSeleccionar(id), t.texto);
-            } else {
-              arriba.push(circulo(p.lat, p.lng, 9));
-              marcador({ lat: p.lat, lng: p.lng }, punto(an.has(id) ? "analizado" : "comprar"), an.has(id) ? 3 : 2, () => cb.current.onSeleccionar(id));
-            }
-          } else {
-            const pos = { lat: gr.lat, lng: gr.lng };
-            const icono = grupo(gr.analizados === gr.n ? "analizado" : "comprar", gr.n);
-            arriba.push(circulo(gr.lat, gr.lng, icono.w / 2));
-            marcador(pos, icono, 1, () => { propio.current = true; map.setZoom(Math.min(zoom + 2, 18)); map.panTo(pos); });
-          }
+        if (!lienzo || !div || !proy || zoom == null) return;
+        const w = div.clientWidth, h = div.clientHeight, dpr = Math.min(window.devicePixelRatio || 1, 2);
+        if (lienzo.width !== Math.round(w * dpr) || lienzo.height !== Math.round(h * dpr)) {
+          lienzo.width = Math.round(w * dpr); lienzo.height = Math.round(h * dpr);
+          lienzo.style.width = `${w}px`; lienzo.style.height = `${h}px`;
         }
-        // LOS − AJUSTAR (02-nov-2026; de entrada desde el 03-nov): sus propios grupos y pines, en la ciruela del chip, debajo de los
-        // ✓ Comprar. Con zoom, el descuento («−4,2 % dcto.»); el elegido, la misma ciruela más grande. Sin cuenta, puntos.
-        const negs = caja ? negociadosRef.current.filter((p) => caja.contains({ lat: p.lat, lng: p.lng })) : negociadosRef.current;
-        const negPorId = new Map(negs.map((p) => [p.avisoId, p]));
-        const gruposNeg = agruparPines(negs, zoom, new Set<string>(), agrupaEn);
-        for (const gr of gruposNeg) {
-          if (gr.n === 1) {
-            const id = gr.ids[0];
-            const p = negPorId.get(id);
-            if (!p) continue;
-            const elegido = id === sel;
-            // Sin cuenta, como el resto: puntos sin número (el descuento no viaja).
-            if (sinCifrasRef.current) marcador({ lat: p.lat, lng: p.lng }, punto("ajustar", elegido), elegido ? 20 : 1, () => cb.current.onSeleccionar(id), undefined, elegido ? undefined : satelite(circulo(p.lat, p.lng, 9), arriba));
-            else if (zoom >= ZOOM_ETIQUETAS || elegido) {
-              const texto = NEGOCIAR_COPY.pin(p.neg.d);
-              marcador({ lat: p.lat, lng: p.lng }, etiqueta("ajustar", texto, elegido), elegido ? 20 : 1, () => cb.current.onSeleccionar(id), texto);
-            } else marcador({ lat: p.lat, lng: p.lng }, punto("ajustar"), 1, () => cb.current.onSeleccionar(id), undefined, satelite(circulo(p.lat, p.lng, 9), arriba));
-          } else {
-            const pos = { lat: gr.lat, lng: gr.lng };
-            const icono = grupo("ajustar", gr.n);
-            marcador(pos, icono, 0, () => { propio.current = true; map.setZoom(Math.min(zoom + 2, 18)); map.panTo(pos); }, undefined, satelite(circulo(gr.lat, gr.lng, icono.w / 2), arriba));
-          }
-        }
-        // El elegido, si quedó dentro de un grupo, igual se ve: del color de su clase, más grande.
-        const e = sel ? pinesRef.current.find((p) => p.avisoId === sel) : null;
-        if (e && !(zoom >= ZOOM_ETIQUETAS) && !agruparPines(visibles, zoom, an, agrupaEn).some((gr) => gr.n === 1 && gr.ids[0] === sel)) {
-          const t = textoPin(e, { analizado: an.has(e.avisoId), ahora });
-          const clase: ClasePin = an.has(e.avisoId) ? "analizado" : "comprar";
-          marcador({ lat: e.lat, lng: e.lng }, sinCifrasRef.current ? punto(clase, true) : etiqueta(clase, t.texto, true), 20, () => cb.current.onSeleccionar(e.avisoId));
-        }
-        const en = sel && !e ? negociadosRef.current.find((p) => p.avisoId === sel) : null;
-        if (en && !(zoom >= ZOOM_ETIQUETAS) && !gruposNeg.some((gr) => gr.n === 1 && gr.ids[0] === sel)) {
-          marcador({ lat: en.lat, lng: en.lng }, sinCifrasRef.current ? punto("ajustar", true) : etiqueta("ajustar", NEGOCIAR_COPY.pin(en.neg.d), true), 20, () => cb.current.onSeleccionar(en.avisoId));
-        }
+        // La esquina de arriba a la izquierda de lo que se ve, en píxeles de la capa: ahí va el canvas.
+        const esquina = proy.fromLatLngToDivPixel(proy.fromContainerPixelToLatLng(new g.maps.Point(0, 0)));
+        lienzo.style.left = `${esquina.x}px`; lienzo.style.top = `${esquina.y}px`;
+        const ctx = lienzo.getContext("2d");
+        if (!ctx) return;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, w, h);
+        ctx.font = FUENTE_PIN;
+        const anchos = new Map<string, number>();
+        const ancho = (t: string) => { let a = anchos.get(t); if (a == null) { a = ctx.measureText(t).width; anchos.set(t, a); } return a; };
+        const dibujos = componerCapa(itemsRef.current, {
+          zoom, elegido: selRef.current, ancho, vista: { w, h },
+          aPixel: (lat, lng) => { const p = proy.fromLatLngToContainerPixel(new g.maps.LatLng(lat, lng)); return { x: p.x, y: p.y }; },
+        });
+        dibujosRef.current = dibujos;
+        pintar(ctx, dibujos, temaPin());
       };
+      dibujarRef.current = () => { if (cuadro) return; cuadro = window.requestAnimationFrame(() => { cuadro = 0; pintarYa(); }); };
+
       encuadrarRef.current = () => {
-        const ps = pinesRef.current;
+        const ps = itemsRef.current;
         propio.current = true;
-        // El depto de un enlace compartido: centrado y de cerca, una vez.
         const f = focoRef.current;
         if (f) { map.setCenter(f); map.setZoom(ZOOM_FOCO); focoRef.current = null; cb.current.onFoco?.(); return; }
         if (ps.length === 0) { map.setCenter(CENTRO_SANTIAGO); map.setZoom(11); return; }
@@ -228,23 +217,41 @@ export default function MapaExplorar({ pines, negociados = [], analizados, selec
         map.fitBounds(b, 40);
         g.maps.event.addListenerOnce(map, "idle", () => { if ((map.getZoom() ?? 0) > ZOOM_MAX_ENCUADRE) { propio.current = true; map.setZoom(ZOOM_MAX_ENCUADRE); } });
       };
-      map.addListener("dragstart", () => { tocado.current = true; });
-      map.addListener("zoom_changed", () => { if (!propio.current) tocado.current = true; });
-      map.addListener("click", () => cb.current.onTocarMapa?.());
+      // EL TOQUE: el mapa recibe el clic (el canvas no captura nada) y la capa dice qué se tocó.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const queHay = (e: any): Dibujo | null => {
+        const proy = ov.getProjection?.();
+        if (!proy || !e?.latLng) return null;
+        const p = proy.fromLatLngToContainerPixel(e.latLng);
+        return tocado(dibujosRef.current, p.x, p.y);
+      };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      map.addListener("click", (e: any) => {
+        const d = queHay(e);
+        if (!d) { cb.current.onTocarMapa?.(); return; }
+        if (d.tipo === "grupo") { propio.current = true; map.setZoom(Math.min((map.getZoom() ?? 11) + 2, 18)); map.panTo({ lat: d.lat, lng: d.lng }); return; }
+        cb.current.onSeleccionar(d.id);
+      });
+      // La mano sobre un pin o un grupo (en el PC).
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      map.addListener("mousemove", (e: any) => { map.setOptions({ draggableCursor: queHay(e) ? "pointer" : null }); });
+      map.addListener("bounds_changed", () => dibujarRef.current());
+      map.addListener("dragstart", () => { tocadoRef.current = true; });
+      map.addListener("zoom_changed", () => { if (!propio.current) tocadoRef.current = true; });
       map.addListener("idle", () => {
         dibujarRef.current();
-        if (tocado.current && !propio.current) {
+        if (tocadoRef.current && !propio.current) {
           const c = map.getBounds();
           if (c) { const s = c.getSouthWest(), n = c.getNorthEast(); cb.current.onMovido([s.lat(), s.lng(), n.lat(), n.lng()]); }
         }
         propio.current = false;
-        tocado.current = false;
+        tocadoRef.current = false;
       });
       g.maps.event.addListenerOnce(map, "tilesloaded", () => cb.current.onEstado("teselas"));
       encuadrarRef.current();
       cb.current.onEstado("listo");
     }).catch(() => { if (!cancelado) cb.current.onEstado("fallo"); });
-    return () => { cancelado = true; window.clearTimeout(tope); };
+    return () => { cancelado = true; window.clearTimeout(tope); if (cuadro) window.cancelAnimationFrame(cuadro); };
   }, []);
 
   // Cambió el tema del sitio (30-oct-2026): el estilo del mapa y los pines, al momento, sin volver a cargar el mapa.
@@ -258,28 +265,36 @@ export default function MapaExplorar({ pines, negociados = [], analizados, selec
     o.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
     return () => o.disconnect();
   }, []);
+  // Redibuja al cambiar el tamaño del contenedor (rotar el teléfono, abrir la lista en el PC).
+  useEffect(() => {
+    const div = divRef.current;
+    if (!div || typeof ResizeObserver === "undefined") return;
+    const o = new ResizeObserver(() => dibujarRef.current());
+    o.observe(div);
+    return () => o.disconnect();
+  }, []);
 
-  // Cambió la vista (04-nov-2026): el mismo mapa con otro tipo, sin volver a cargarlo.
   useEffect(() => { const map = mapRef.current; if (map) { map.setOptions(opcionesDe(capa)); dibujarRef.current(); } }, [capa]);
-
-  // Cambiaron los filtros (o llegó el universo): se encuadra de nuevo, salvo con una zona elegida. Llegó un foco (el depto
-  // compartido, cuando el universo dice dónde está): se centra en él.
   useEffect(() => { if (mapRef.current) { if (!conZona) encuadrarRef.current(); dibujarRef.current(); } }, [encuadre, conZona]);
   useEffect(() => { if (mapRef.current && focoRef.current) { encuadrarRef.current(); dibujarRef.current(); } }, [foco]);
-  // Cambiaron los pines a la vista o el elegido: se redibuja; el elegido, si está fuera, se trae a la vista.
+  // Cambiaron los pines o el elegido: se redibuja; el elegido, si está fuera, se trae a la vista.
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
     dibujarRef.current();
-    const p = seleccionado ? pines.find((x) => x.avisoId === seleccionado) ?? negociados.find((x) => x.avisoId === seleccionado) : null;
+    const p = seleccionado ? items.find((x) => x.id === seleccionado) : null;
     const c = map.getBounds();
     if (p && c && !c.contains({ lat: p.lat, lng: p.lng })) { propio.current = true; map.panTo({ lat: p.lat, lng: p.lng }); }
-  }, [seleccionado, pines, negociados, analizados]);
+  }, [seleccionado, items]);
 
   return (
     <>
-      <div ref={divRef} className="ex-mapa" data-explorar="mapa" data-vista={capa} aria-label="Mapa de los deptos que convienen" role="application" />
+      <div ref={divRef} className="ex-mapa" data-explorar="mapa" data-vista={capa} aria-label="Mapa de los deptos con su veredicto" role="application" />
+      <p className="ex-credito-osm" data-explorar="credito-osm">{CREDITO_OSM}</p>
       {control && createPortal(<ConmutadorCapa capa={capa} alCambiar={cambiarCapa} />, control)}
+      {/* Para revisar sin mirar el canvas: cuántos dibujos hay y de qué clase (lo lee la revisión con Playwright). */}
+      <span hidden data-explorar="pines-dibujados" data-n={items.length} />
+
     </>
   );
 }

@@ -8,10 +8,13 @@
 // Desde el 03-nov-2026 (la pasada real), las dos barras de hoy con las clases del cliente: arriba «Filtros», «Ver solo [✓ Comprar]»
 // apagado y el botón de «¿Cómo se calcula?» (texto en el PC, redondo en el teléfono); abajo la misma barra en los dos tamaños, sin
 // la píldora negra del PC. Lo fija el tier EXPLORAR-PASADA §8.
+// DESDE EL 25-NOV-2026 (el mapa con todos los deptos, lámina 5): arriba el selector con «Usados» y «Filtros»; sobre el mapa, la tarjeta
+// del contador calculando, con sus tres chips y «Ver lista». Ya no hay «Ver solo ✓ Comprar», ni la ⓘ en la barra, ni barra de abajo.
 // ─────────────────────────────────────────────────────────────────────────────
-import { ChipVeredicto, ChipVeredictoTokens } from "@/components/analysis/shared/ChipVeredicto";
-import { COMO_SE_CALCULA, PORTAL_COPY } from "@/lib/explorar/portal";
-import { NEGOCIAR_COPY } from "@/lib/explorar/capa-negociar";
+import { ChipVeredictoTokens } from "@/components/analysis/shared/ChipVeredicto";
+import { PORTAL_COPY } from "@/lib/explorar/portal";
+import { SELECTOR_COPY } from "@/lib/explorar/mapa-todos";
+import { Contador } from "./contador";
 import "./explorar.css";
 
 export function EsqueletoExplorar() {
@@ -19,24 +22,12 @@ export function EsqueletoExplorar() {
     <div className="ex" data-explorar="esqueleto" aria-busy="true">
       <ChipVeredictoTokens />
       <div className="ex-barra" aria-hidden="true">
-        <span className="ex-boton"><span>☰</span> {PORTAL_COPY.filtros}</span>
-        <span className="ex-chip-neg">
-          <span className="ex-chip-neg-t">{NEGOCIAR_COPY.soloComprar} <ChipVeredicto v="COMPRAR" /></span>
-          <span className="ex-sw" />
-        </span>
-        <span className="ex-como">
-          <span className="ex-como-glifo">ⓘ</span>
-          <span className="ex-como-i">i</span>
-          <span className="ex-como-t ex-como-t-pc">{COMO_SE_CALCULA.enlace}</span>
-        </span>
+        <span className="ex-selector"><span className="ex-selector-op" data-on="1">{SELECTOR_COPY.usados}</span></span>
+        <span className="ex-boton">{PORTAL_COPY.filtros}</span>
       </div>
       <div className="ex-cuerpo">
         <div className="ex-mapa-wrap" data-mapa="cargando">
-          <div className="ex-hoja" aria-hidden="true">
-            <span className="ex-asa" />
-            <span className="ex-hoja-cuentas"><span className="ex-hoja-t">{PORTAL_COPY.calculando}</span></span>
-            <span className="ex-hoja-ver">{PORTAL_COPY.verLista}</span>
-          </div>
+          <Contador conteo={null} ocultar={[]} calculando={PORTAL_COPY.calculando} />
         </div>
       </div>
     </div>

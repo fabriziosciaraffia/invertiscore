@@ -17,9 +17,11 @@ export interface CifrasNoche {
   negociadosGlobal: number | null;
   /** Los − Ajustar con estos filtros (la barra); 0 si la capa no se ve con ellos. */
   nAjustar: number | null;
+  /** Los No conviene con estos filtros (25-nov-2026, el contador del mapa con todos los deptos); null si no son de la noche. */
+  nNo: number | null;
 }
 
-export function cifrasDeLaNoche(noche: { universo: UniversoCompacto; negociados: NegociadosCompactos | null } | null, filtros: FiltrosPortal, ahora: Date = new Date()): CifrasNoche {
+export function cifrasDeLaNoche(noche: { universo: UniversoCompacto; negociados: NegociadosCompactos | null; noConviene?: UniversoCompacto | null } | null, filtros: FiltrosPortal, ahora: Date = new Date()): CifrasNoche {
   const deLaNoche = !!noche && universoDeLaNoche(filtros);
   const pines = noche ? descompactar(noche.universo) : [];
   const ids = new Set(pines.map((p) => p.avisoId));
@@ -30,5 +32,6 @@ export function cifrasDeLaNoche(noche: { universo: UniversoCompacto; negociados:
     negociadosGlobal: noche && capa ? negociadosVisibles(capa, FILTROS_GLOBALES, ids, ahora).length : null,
     // Con una capa que la noche no guarda (otra tasa, pie o plazo: se calcula en el navegador), aún no se sabe (04-nov-2026).
     nAjustar: !capaVisible(filtros) ? 0 : deLaNoche && capaDeLaNoche(filtros) && capa ? negociadosVisibles(capa, filtros, ids, ahora).length : null,
+    nNo: deLaNoche && noche?.noConviene ? filtrar(descompactar(noche.noConviene), filtros, ahora).length : null,
   };
 }

@@ -22,6 +22,7 @@ import { candidatoDeFila, comunaDeAviso, type FilaRpc } from "@/lib/guia/semanal
 import { leerConfigGuia } from "@/lib/guia/guia-servidor";
 import { sondaDeCandidato } from "@/lib/avisos/estandar-deptos";
 import { negociarCandidato, TOPE_NEGOCIAR_PCT } from "@/lib/avisos/negociar";
+import { precioRecomendadoUF } from "@/lib/reanalisis";
 import { celdaDormitorios, cuerpoStrDeAviso, evaluarStrCon, zonasDeComuna, type ZonaStr } from "@/lib/guia/semanal-str-servidor";
 import { origenSinteticoStr } from "@/lib/guia/semanal-str-servidor";
 import { estadoSaldo, leerSaldo, type EstadoSaldo } from "@/lib/casa-saldo";
@@ -33,6 +34,7 @@ import type { MotivoRobot } from "@/lib/vista-entrada";
 import type { LlegadaExplorar } from "./puertas-landing";
 import { compactarNegociados, negociadoDeFila, type Negociacion, type NegociadosCompactos, type PinNegociado } from "./capa-negociar";
 import { comboVigente, VIDA_COMBO_MS, type ComboGuardado } from "./explorar";
+import { claseDeCodigo, claseDeVeredicto, tramosDe, VEREDICTO_DE_CLASE } from "./mapa-todos";
 import { filasParaSonda, guardarCombos, informesDeExplorar, type FilaUniverso } from "./servidor";
 import { RecalculoEnEspera, type Turno, type TurnosRecalculo } from "./turnos-recalculo";
 import type { ResumenInforme } from "@/lib/informe-propio";
@@ -51,12 +53,53 @@ const TODOS_LOS_DORMS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 // ── EL UNIVERSO DE LA NOCHE ──────────────────────────────────────────────────
 type FilaMapa = [string, string, number, number, number, number, number | null, number, number | null, number | null, number | null, string | null, number | null];
 
-/** Todo Gran Santiago, solo los Comprar con ese pie y ese plazo de la noche, por puntaje. Un pedido. */
+/** Todo Gran Santiago, solo los Comprar con ese pie y ese plazo de la noche, por puntaje. Un pedido. A 30 AÑOS (25-nov-2026), los
+ *  Comprar de explorar_mapa_todos: solo usados, el mismo universo que dibuja el mapa con todos los deptos, así «convienen» es el
+ *  mismo número en la landing, /deptos y el contador del mapa (decisión 3). A 25 años, la función de antes. */
 export async function universoDeLaNoche(admin: SupabaseClient, pie: number, plazo: number, ahora: Date = new Date()): Promise<PinMapa[]> {
-  const { data, error } = await admin.rpc("explorar_mapa", { comunas: [...(COMUNAS_DISPONIBLES as readonly string[])].map(comunaDeAviso), desde: desdeVentana(ahora), pie: pie >= 30 ? 30 : 20, plazo: plazo >= 30 ? 30 : 25 });
+  if (plazo >= 30) return (await todosDeLaNoche(admin, pie, ahora)).pines;
+  const { data, error } = await admin.rpc("explorar_mapa", { comunas: [...(COMUNAS_DISPONIBLES as readonly string[])].map(comunaDeAviso), desde: desdeVentana(ahora), pie: pie >= 30 ? 30 : 20, plazo: 25 });
   if (error) throw new Error(`explorar_mapa: ${error.message}`);
   const filas = (Array.isArray(data) ? data : []) as FilaMapa[];
   return filas.map(([id, comuna, lat, lng, m2, dormitorios, banos, precio, score, flujo, arriendo, condicion, alta]) => pinDeFila({ id, comuna, lat, lng, m2, dormitorios, banos, precio, score, flujo, arriendo, condicion, alta }));
+}
+
+// ── EL MAPA CON TODOS LOS DEPTOS (25-nov-2026, mapa-todos.ts) ─────────────────
+/** Una fila de explorar_mapa_todos (migración 20261126_explorar_mapa_todos_tramos): [0 id, 1 comuna, 2 lat, 3 lng, 4 m2,
+ *  5 dormitorios, 6 baños, 7 precio, 8 clase (0 Comprar, 1 Ajustar, 2 No conviene), 9 puntaje, 10 flujo, 11 arriendo (nulos en la
+ *  clase 2), 12 alta (la del primer eslabón de avisos_gemelos), 13 descuento, 14 precio con descuento, 15-17 tramos]. */
+type FilaTodos = [string, string, number, number, number, number, number | null, number, number, number | null, number | null, number | null, number | null, number | null, number | null, number | null, number | null, number | null];
+
+/** Las tres clases de una lectura: los Comprar (pines de siempre), los Ajustar con su «Conviene desde UF X» (la capa de siempre) y
+ *  los No conviene, sin cifras: solo sus tramos. */
+export interface TodosDelMapa { pines: PinMapa[]; negociados: PinNegociado[]; noConviene: PinMapa[] }
+
+/** Un No conviene: el veredicto de la clase y sin puntaje, flujo ni arriendo (no viajan; solo los tramos). */
+export const pinNoConviene = (p: PinMapa): PinMapa => ({ ...p, veredicto: VEREDICTO_DE_CLASE.no, score: null, flujo: null, arriendo: null });
+
+/** Todo Gran Santiago con ese pie, a 30 años, las tres clases en UN pedido (explorar_mapa_todos). El puntaje y el flujo al precio
+ *  con descuento de cada Ajustar salen de explorar_negociar, en paralelo (el pop-up dice «✓ Comprar · 71»); si esa lectura falla,
+ *  el Ajustar sigue, sin ellos. */
+export async function todosDeLaNoche(admin: SupabaseClient, pie: number, ahora: Date = new Date()): Promise<TodosDelMapa> {
+  const comunas = [...(COMUNAS_DISPONIBLES as readonly string[])].map(comunaDeAviso);
+  const p = pie >= 30 ? 30 : 20;
+  const [r, conPuntaje] = await Promise.all([
+    admin.rpc("explorar_mapa_todos", { comunas, desde: desdeVentana(ahora), pie: p }),
+    negociablesDeLaNoche(admin, p, ahora).catch(() => [] as PinNegociado[]),
+  ]);
+  if (r.error) throw new Error(`explorar_mapa_todos: ${r.error.message}`);
+  const neg = new Map(conPuntaje.map((x) => [x.avisoId, x.neg]));
+  const out: TodosDelMapa = { pines: [], negociados: [], noConviene: [] };
+  for (const f of (Array.isArray(r.data) ? r.data : []) as FilaTodos[]) {
+    const clase = claseDeCodigo(f[8]);
+    const base = pinDeFila({ id: f[0], comuna: f[1], lat: f[2], lng: f[3], m2: f[4], dormitorios: f[5], banos: f[6], precio: f[7], score: f[9], flujo: f[10], arriendo: f[11], condicion: "usado", alta: f[12], tramos: [f[15], f[16], f[17]] });
+    if (clase === "comprar") out.pines.push(base);
+    else if (clase === "ajustar" && f[13] != null) {
+      const n = neg.get(f[0]);
+      out.negociados.push({ ...base, veredicto: VEREDICTO_DE_CLASE.ajustar, neg: { d: Number(f[13]), p: f[14] == null ? null : Math.round(Number(f[14])), s: n?.s ?? null, f: n?.f ?? null } });
+    } else out.noConviene.push(pinNoConviene(base));
+  }
+  return out;
 }
 
 // ── LOS QUE CONVIENEN SI NEGOCIAS (02-nov-2026, capa-negociar.ts) ──────────
@@ -88,6 +131,8 @@ export interface DepsPortal {
   zonas?: (comuna: string) => Promise<Map<number, ZonaStr>>;
   /** El descuento mínimo a Comprar de un Ajustar (avisos/negociar.ts › negociarCandidato con la combinación). */
   negociarLtr?: typeof negociarCandidato;
+  /** Lo mismo en renta corta (25-nov-2026, negociarStrReal), con la zona de su celda. */
+  negociarStr?: (fila: FilaRpc, combo: { piePct: number; plazoAnios: number; tasa?: number | null }, cfg: { uf: number; tasa: number }, zona: ZonaStr | undefined, asOf: Date) => Negociacion | null;
   /** LOS − AJUSTAR CON OTRA COMBINACIÓN (04-nov-2026, la pasada de Fabrizio: con otra tasa el mapa quedaba solo con azules y parecía
    *  un error): en renta larga, además de los ✓ Comprar, el descuento de cada Ajustar, con el mismo tope de la noche. */
   conCapa?: boolean;
@@ -117,6 +162,30 @@ const sondaStrReal: NonNullable<DepsPortal["sondaStr"]> = (fila, combo, cfg, zon
   return { v: ev.veredicto, s: ev.score, f: ev.flujo, i: ev.ingresoMensual };
 };
 
+/** EL «CONVIENE DESDE UF X» EN RENTA CORTA (25-nov-2026, decisión 10): el descuento mínimo para que un Ajustar de renta corta dé
+ *  Comprar con la zona de su celda —la misma regla de la noche en renta larga: bisección de 0,1 punto hasta 10 % (TOPE_NEGOCIAR_PCT) y
+ *  el precio en UF enteras verificado—. null si no llega. Medido el 25-nov-2026 en tres comunas: ~0,4 ms por cada Ajustar. */
+export const negociarStrReal: NonNullable<DepsPortal["negociarStr"]> = (fila, combo, cfg, zona, asOf) => {
+  if (!zona) return null;
+  const c = candidatoDeFila(fila);
+  const o0 = origenSinteticoStr("", { piePct: combo.piePct, plazoAnios: combo.plazoAnios, comunas: [], dormitorios: [] }, cfg);
+  const o = combo.tasa != null ? { ...o0, tasa: combo.tasa } : o0;
+  const body = cuerpoStrDeAviso(c, o, combo, cfg) as unknown as ({ precioCompra: number; precioCompraUF: number } & Record<string, unknown>) | null;
+  if (!body || !(body.precioCompraUF > 0)) return null;
+  const precioUF = body.precioCompraUF;
+  const en = (uf: number) => evaluarStrCon({ ...body, precioCompraUF: uf, precioCompra: body.precioCompra * (uf / precioUF) } as never, zona.estimacion, { uf: cfg.uf }, c.medianaComuna, asOf);
+  const cruza = (d: number) => en(precioUF * (1 - d / 100)).veredicto === "COMPRAR";
+  if (!cruza(TOPE_NEGOCIAR_PCT)) return null;
+  let lo = 0, hi = TOPE_NEGOCIAR_PCT;
+  while (hi - lo > 0.1) { const m = (lo + hi) / 2; if (cruza(m)) hi = m; else lo = m; }
+  for (let d = Math.min(Math.ceil(hi * 10 - 1e-9) / 10, TOPE_NEGOCIAR_PCT); ; d = Math.min(Math.round((d + 0.1) * 10) / 10, TOPE_NEGOCIAR_PCT)) {
+    const p = precioRecomendadoUF(precioUF, d);
+    const s = en(p);
+    if (s.veredicto === "COMPRAR") return { d, p, s: s.score, f: s.flujo };
+    if (d >= TOPE_NEGOCIAR_PCT) return null;
+  }
+};
+
 /** El universo de unas comunas para una combinación calculada: todos los Comprar, por puntaje. `cuenta.calculados`: cuántos
  *  se calcularon recién (el resto salió de lo guardado). Con `deps.conCapa`, en renta larga, también los − Ajustar que llegan a
  *  Comprar negociando (universoYCapaCalculados). */
@@ -130,14 +199,19 @@ export async function universoCalculado(
 export async function universoYCapaCalculados(
   admin: SupabaseClient, q: { comunas: string[]; modalidad: ModalidadPortal; pie: number; plazo: number; tasa?: number | null }, ahora: Date = new Date(),
   cuenta?: { calculados: number; ms: number }, deps: DepsPortal = {},
-): Promise<{ pines: PinMapa[]; negociados: PinNegociado[] }> {
+): Promise<TodosDelMapa> {
   const t0 = Date.now();
   const clave = claveComboPortal(q.modalidad, q.pie, q.plazo, q.tasa ?? null);
   const combo = { piePct: q.pie, plazoAnios: q.plazo, tasa: q.tasa ?? null };
-  const conCapa = !!deps.conCapa && q.modalidad === "ltr";
+  // EL «CONVIENE DESDE UF X» (25-nov-2026, decisión 2): todo Ajustar que se ve lo trae, también en renta corta (decisión 10; medido el
+  // 25-nov: ~0,3 ms por depto y ~0,4 ms por cada Ajustar). Sin `conCapa` (pruebas viejas), como antes.
+  const conCapa = !!deps.conCapa;
   // Vigente para lo que se pide: con la capa, un Ajustar guardado sin su descuento (de antes del 04-nov-2026) se calcula de nuevo.
+  // Un Ajustar guardado sin su descuento (de antes del 04-nov-2026 en renta larga, o de antes del 25-nov en renta corta) se calcula de nuevo.
   const vigente = (r: { combo?: unknown; evaluado_at?: string | null }) =>
     comboVigente(r.combo, r.evaluado_at, ahora) && !(conCapa && (r.combo as ComboPortal).v === "AJUSTA SUPUESTOS" && (r.combo as ComboPortal).n === undefined);
+  // La UF de los tramos del cap rate: la misma config que lee la evaluación (si no hay nada que calcular, se lee igual, una vez).
+  let cfgTramos: number | null = deps.cfg?.uf ?? null;
   const turnos = deps.turnos;
   const tU = Date.now();
   const { data, error } = await admin.rpc("explorar_universo_liviano", { comunas: q.comunas.map(comunaDeAviso), dorms: TODOS_LOS_DORMS, uf_min: 0, uf_max: 1e9, desde: desdeVentana(ahora), clave });
@@ -157,6 +231,7 @@ export async function universoYCapaCalculados(
     const [cfg, pesadas] = porCalcular.length
       ? await Promise.all([deps.cfg ?? leerConfigGuia(admin), filasParaSonda(admin, porCalcular.map((r) => r.id), notar)])
       : [null, new Map<string, FilaRpc>()];
+    cfgTramos = cfg?.uf ?? cfgTramos ?? (await (deps.cfg ? Promise.resolve(deps.cfg) : leerConfigGuia(admin)).catch(() => null))?.uf ?? null;
     // Renta corta: la zona de cada comuna (una lectura por comuna, en paralelo; queda en memoria 30 minutos).
     // UNA ZONA QUE FALLA NO SE DISIMULA (02-nov-2026): si la lectura falla, el pedido falla —sin guardar nada— y el navegador
     // ofrece reintentar esa comuna. Antes se tomaba como zona vacía y cada aviso quedaba guardado 24 horas sin veredicto.
@@ -182,6 +257,11 @@ export async function universoYCapaCalculados(
       else if (q.modalidad === "str") {
         const s = sondaStr(pesada, combo, cfg, zonas.get(r.comuna)?.get(celdaDormitorios(Number(pesada.dormitorios))), ahora);
         c = { v: s?.v ?? null, s: s?.s ?? null, f: s?.f ?? null, i: s?.i ?? null, at: ahora.toISOString() };
+        // El Ajustar de renta corta: la misma regla de la noche (el descuento mínimo a Comprar, bisección de 0,1 punto, hasta 10 %).
+        if (conCapa && c.v === "AJUSTA SUPUESTOS") {
+          const n = (deps.negociarStr ?? negociarStrReal)(pesada, combo, cfg, zonas.get(r.comuna)?.get(celdaDormitorios(Number(pesada.dormitorios))), ahora);
+          c.n = n;
+        }
       } else {
         const cand = candidatoDeFila(pesada);
         const s = sondaLtr(cand, combo, cfg, ahora);
@@ -200,14 +280,23 @@ export async function universoYCapaCalculados(
     if (cuenta) { cuenta.calculados += nuevos.length; cuenta.ms += Date.now() - t0; }
     const pines: PinMapa[] = [];
     const negociados: PinNegociado[] = [];
+    const noConviene: PinMapa[] = [];
     for (const r of filas) {
+      // Solo usados (25-nov-2026, decisión 1): Proyectos queda escondido hasta que haya nuevos evaluados.
+      if (r.condicion === "nuevo") continue;
       const c = resultado.get(r.id);
-      const arriendo = q.modalidad === "str" ? c?.i ?? null : r.arriendo_monto;
-      const base = { id: r.id, comuna: r.comuna, lat: r.lat, lng: r.lng, m2: r.superficie_m2, dormitorios: r.dormitorios, banos: r.banos, precio: r.precio_uf, score: c?.s ?? null, flujo: c?.f ?? null, arriendo, condicion: r.condicion ?? null, alta: r.alta ?? null };
-      if (c?.v === "COMPRAR") pines.push(pinDeFila(base));
-      else if (conCapa && c?.v === "AJUSTA SUPUESTOS" && c.n) negociados.push({ ...pinDeFila(base), veredicto: "AJUSTA SUPUESTOS", neg: { d: c.n.d, p: c.n.p, s: c.n.s, f: c.n.f } });
+      // Sin veredicto (sin arriendo, sin zona en renta corta): no tiene clase y no se dibuja.
+      if (!c?.v) continue;
+      const arriendo = q.modalidad === "str" ? c.i ?? null : r.arriendo_monto;
+      const precio = Number(r.precio_uf);
+      const tramos = tramosDe({ arriendo: arriendo != null && arriendo > 0 ? arriendo : null, flujo: c.f ?? null, precioUF: Math.round(precio) }, cfgTramos);
+      const base = { id: r.id, comuna: r.comuna, lat: r.lat, lng: r.lng, m2: r.superficie_m2, dormitorios: r.dormitorios, banos: r.banos, precio: r.precio_uf, score: c.s ?? null, flujo: c.f ?? null, arriendo, condicion: r.condicion ?? null, alta: r.alta ?? null, tramos };
+      const clase = claseDeVeredicto(c.v, !!(conCapa && c.n));
+      if (clase === "comprar") pines.push(pinDeFila(base));
+      else if (clase === "ajustar" && c.n) negociados.push({ ...pinDeFila(base), veredicto: VEREDICTO_DE_CLASE.ajustar, neg: { d: c.n.d, p: c.n.p, s: c.n.s, f: c.n.f } });
+      else noConviene.push(pinNoConviene(pinDeFila(base)));
     }
-    return { pines: pines.sort((a, b) => (b.score ?? -1) - (a.score ?? -1) || a.avisoId.localeCompare(b.avisoId)), negociados };
+    return { pines: pines.sort((a, b) => (b.score ?? -1) - (a.score ?? -1) || a.avisoId.localeCompare(b.avisoId)), negociados, noConviene };
   } finally {
     if (turno && turnos) await turnos.soltar(turno);
   }
@@ -218,10 +307,15 @@ export async function universoYCapaCalculados(
  *  negociando, en el MISMO PEDIDO (03-nov-2026: se ven de entrada); sin cuenta, sin cifras. Si la capa no se pudo leer, falta
  *  `negociados` y el mapa sigue con los ✓ Comprar. */
 /** `sello` (03-nov-2026): el de la noche que se leyó (portal-cache.ts › nocheExplorar); solo en la noche. */
-export interface RespuestaUniverso { clave: string; comunas: string[]; universo: UniversoCompacto; negociados?: NegociadosCompactos; sello?: string | null; calculados: number; ms: number }
+/** `noConviene` (25-nov-2026, el mapa con todos los deptos): los No conviene, en el formato del universo, sin puntaje, flujo ni
+ *  arriendo —solo sus tramos, y sin cuenta ni eso—. */
+export interface RespuestaUniverso { clave: string; comunas: string[]; universo: UniversoCompacto; negociados?: NegociadosCompactos; noConviene?: UniversoCompacto; sello?: string | null; calculados: number; ms: number }
 /** `negociados` (04-nov-2026): con una combinación calculada en renta larga, los − Ajustar de esas comunas, en el mismo pedido. */
-export function respuestaUniverso(pines: PinMapa[], q: { modalidad: ModalidadPortal; pie: number; plazo: number; tasa?: number | null; comunas: string[] }, cuenta = { calculados: 0, ms: 0 }, negociados: PinNegociado[] | null = null): RespuestaUniverso {
-  return { clave: claveUniverso(q), comunas: q.comunas, universo: compactar(pines), ...(negociados ? { negociados: compactarNegociados(negociados) } : {}), calculados: cuenta.calculados, ms: cuenta.ms };
+export function respuestaUniverso(pines: PinMapa[], q: { modalidad: ModalidadPortal; pie: number; plazo: number; tasa?: number | null; comunas: string[] }, cuenta = { calculados: 0, ms: 0 }, negociados: PinNegociado[] | null = null, noConviene: PinMapa[] | null = null): RespuestaUniverso {
+  return {
+    clave: claveUniverso(q), comunas: q.comunas, universo: compactar(pines), ...(negociados ? { negociados: compactarNegociados(negociados) } : {}),
+    ...(noConviene ? { noConviene: compactar(noConviene.map(pinNoConviene)) } : {}), calculados: cuenta.calculados, ms: cuenta.ms,
+  };
 }
 
 // ── LA CUENTA ────────────────────────────────────────────────────────────────
