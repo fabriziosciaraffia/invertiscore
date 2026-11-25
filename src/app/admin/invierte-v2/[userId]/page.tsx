@@ -18,6 +18,7 @@ import { leerLecturas } from "@/lib/invierte-v2/lectura-franco-servidor";
 import { asegurarRango } from "@/lib/invierte-v2/rango-servidor";
 import { visitaParaRonda } from "@/lib/invierte-v2/visita-lectura";
 import { etapaDe } from "@/lib/invierte-v2/depto-flujo";
+import { avisosEnPausa, tareaEnPausa } from "@/lib/invierte-v2/b4";
 import { leerPreaprobacion } from "@/lib/invierte-v2/preaprobacion-servidor";
 import { lineaAprobada } from "@/lib/invierte-v2/preaprobacion";
 
@@ -98,7 +99,10 @@ export default async function FichaInvierteV2Page({ params }: { params: { userId
     avisosDe.set(id, [...(avisosDe.get(id) ?? []), { evento: String(a.detalle?.evento ?? ""), correo: String(a.detalle?.correo ?? ""), motivo: (a.detalle?.motivo as string | null) ?? null, at: a.created_at }]);
   }
   const pinDe = new Map(((pines ?? []) as { id: string; lat: number | null; lng: number | null; comuna: string | null }[]).map((x) => [x.id, x]));
-  const pendientes = (tareas ?? []).filter((t) => t.estado === "pendiente");
+  // Con un acuerdo en un depto, los demás en pausa (25-nov-2026): su «Gestionar al corredor» no es pendiente mientras dure.
+  const enPausa = avisosEnPausa(elegidos.map((d) => ({ avisoId: d.aviso_id as string, etapa: etapaDe({ estado: "elegido", etapa: (d.etapa as string | null) ?? null }) ?? "confirmando", estadoOferta: ofertaDe.get(d.aviso_id as string)?.estado ?? null })));
+  const pendientes = (tareas ?? []).filter((t) => t.estado === "pendiente" && !tareaEnPausa({ tipo: t.tipo as string, aviso_id: (t.aviso_id as string | null) ?? null }, enPausa));
+  const pausadas = (tareas ?? []).filter((t) => t.estado === "pendiente" && tareaEnPausa({ tipo: t.tipo as string, aviso_id: (t.aviso_id as string | null) ?? null }, enPausa));
   const hechas = (tareas ?? []).filter((t) => t.estado !== "pendiente");
   const H = INVIERTE_COPY.hoja;
 
@@ -128,6 +132,11 @@ export default async function FichaInvierteV2Page({ params }: { params: { userId
             </li>
           ))}
         </ul>
+        {pausadas.length > 0 && (
+          <p className="m-0 mt-3 font-body text-[12px] text-[var(--franco-text-secondary)]" data-admin="inv2-tareas-en-pausa">
+            En pausa por un acuerdo en otro depto: {pausadas.map((t) => `${TIPO_TAREA[t.tipo as string] ?? (t.tipo as string)} · ${linea.get(t.aviso_id as string) || (t.aviso_id as string)}`).join(" · ")}
+          </p>
+        )}
         {hechas.length > 0 && (
           <details className="mt-3 font-body text-[12px] text-[var(--franco-text-secondary)]">
             <summary className="cursor-pointer">{fmtNumber(hechas.length)} hechas</summary>
@@ -227,7 +236,7 @@ export default async function FichaInvierteV2Page({ params }: { params: { userId
             return (
               <div key={id} className="border-b border-[var(--franco-border)] pb-4 last:border-0">
                 <p className="m-0 mb-2 font-body text-[13px] font-semibold">{lineaDepto((d.datos ?? {}) as DatosDepto) || id} <span className="font-mono text-[11px] font-normal text-[var(--franco-text-muted)]">{id}</span></p>
-                <GestionDepto userId={userId} avisoId={id} etapa={etapaDe({ estado: "elegido", etapa: (d.etapa as string | null) ?? null }) ?? "confirmando"} acuerdo={(d.acuerdo as string | null) ?? null} alternativa={(d.alternativa_aviso_id as string | null) ?? null}
+                <GestionDepto userId={userId} avisoId={id} enPausa={enPausa.has(id)} etapa={etapaDe({ estado: "elegido", etapa: (d.etapa as string | null) ?? null }) ?? "confirmando"} acuerdo={(d.acuerdo as string | null) ?? null} alternativa={(d.alternativa_aviso_id as string | null) ?? null}
                   comuna={pin?.comuna ?? null} pin={pin?.lat != null && pin?.lng != null ? { lat: Number(pin.lat), lng: Number(pin.lng) } : null}
                   preguntas={preguntasDe[id] ?? []}
                   rango={rangoDe[id] ?? null}

@@ -218,8 +218,8 @@ export function RevisarPreaprobacion({ id, banco, montoUF, vigenteHasta }: { id:
  * pegan las coordenadas—. Al confirmar se rehace el análisis con el punto real y el depto pasa de etapa solo si hay acuerdo y el
  * análisis rehecho da Comprar (o Ajusta supuestos con precio al que vuelve a Comprar). Sin dirección confirmada no pasa a listo.
  */
-export function GestionDepto({ userId, avisoId, etapa, acuerdo, alternativa, comuna, pin, ubicacion, preguntas, rango, oferta = null, pruebas = false, esPrueba = false, avisos = [], visita = null, arreglosFotos = [] }: {
-  userId: string; avisoId: string; etapa: string; acuerdo: string | null; alternativa: string | null; comuna: string | null;
+export function GestionDepto({ userId, avisoId, enPausa = false, etapa, acuerdo, alternativa, comuna, pin, ubicacion, preguntas, rango, oferta = null, pruebas = false, esPrueba = false, avisos = [], visita = null, arreglosFotos = [] }: {
+  userId: string; avisoId: string; /** Con un acuerdo en otro depto (25-nov-2026). */ enPausa?: boolean; etapa: string; acuerdo: string | null; alternativa: string | null; comuna: string | null;
   pin: { lat: number; lng: number } | null;
   ubicacion: { direccion: string; numero: string | null; lat: number; lng: number; distanciaM: number | null; veredicto: string | null; precioComprarUF: number | null; flujoCLP: number | null } | null;
   /** B2: «Lo que Franco averiguó» de este depto. */
@@ -258,7 +258,7 @@ export function GestionDepto({ userId, avisoId, etapa, acuerdo, alternativa, com
   const nLat = Number(lat), nLng = Number(lng);
   return (
     <div className="flex flex-col gap-3 font-body text-[13px]" data-admin="inv2-gestion-depto">
-      <p className="m-0"><b>Etapa:</b> {textoAdmin(TEXTO_ETAPA, etapa)}{ubicacion ? ` · ubicación confirmada (${ubicacion.distanciaM ?? "?"} m del pin) · rehecho: ${ubicacion.veredicto ?? "—"}${ubicacion.precioComprarUF ? ` (Comprar a UF ${Math.round(ubicacion.precioComprarUF)})` : ""}${ubicacion.flujoCLP != null ? ` · al mes ${ubicacion.flujoCLP}` : ""}` : " · ubicación sin confirmar"}</p>
+      <p className="m-0"><b>Etapa:</b> {enPausa ? "En pausa (acuerdo en otro depto)" : textoAdmin(TEXTO_ETAPA, etapa)}{ubicacion ? ` · ubicación confirmada (${ubicacion.distanciaM ?? "?"} m del pin) · rehecho: ${ubicacion.veredicto ?? "—"}${ubicacion.precioComprarUF ? ` (Comprar a UF ${Math.round(ubicacion.precioComprarUF)})` : ""}${ubicacion.flujoCLP != null ? ` · al mes ${ubicacion.flujoCLP}` : ""}` : " · ubicación sin confirmar"}</p>
       <div className="flex flex-wrap items-center gap-2">
         <select value={ac} onChange={(e) => setAc(e.target.value)} aria-label="Acuerdo con quien vende" className={campo}>
           <option value="pendiente">Acuerdo pendiente</option>
@@ -280,7 +280,7 @@ export function GestionDepto({ userId, avisoId, etapa, acuerdo, alternativa, com
       </div>
       <PreguntasDepto avisoId={avisoId} preguntas={preguntas} />
       {rango && <RangoDepto userId={userId} avisoId={avisoId} r={rango} />}
-      {oferta && <OfertaAdmin o={oferta} pruebas={pruebas} esPrueba={esPrueba} avisos={avisos} />}
+      {oferta && <OfertaAdmin o={oferta} pruebas={pruebas} esPrueba={esPrueba} avisos={avisos} enPausa={enPausa} />}
       {oferta && (oferta.estado === "contraoferta" || oferta.estado === "aceptada_sujeta" || visita) && <VisitaAdmin key={visita?.id ?? "sin"} o={oferta} v={visita} arreglosFotos={arreglosFotos} />}
       {estado && <span className="text-[12px] text-[var(--signal-red)]" role="alert">{estado}</span>}
     </div>
@@ -386,7 +386,7 @@ function RangoDepto({ userId, avisoId, r }: { userId: string; avisoId: string; r
 /** Un aviso de B4 a la persona, de la bitácora: qué evento y si el correo salió (y si no, por qué). */
 export interface AvisoOfertaAdmin { evento: string; correo: string; motivo: string | null; at: string }
 
-export function OfertaAdmin({ o, pruebas = false, esPrueba = false, avisos = [] }: { o: OfertaVista; pruebas?: boolean; esPrueba?: boolean; avisos?: AvisoOfertaAdmin[] }) {
+export function OfertaAdmin({ o, pruebas = false, esPrueba = false, avisos = [], enPausa = false }: { o: OfertaVista; pruebas?: boolean; esPrueba?: boolean; avisos?: AvisoOfertaAdmin[]; enPausa?: boolean }) {
   const router = useRouter();
   const [tipo, setTipo] = useState<"aceptada" | "contraoferta" | "rechazada">("contraoferta");
   const [monto, setMonto] = useState("");
@@ -411,7 +411,7 @@ export function OfertaAdmin({ o, pruebas = false, esPrueba = false, avisos = [] 
   const contraAbierta = o.estado === "contraoferta" || (o.estado === "sin_acuerdo" && o.respuestaTardia === "contraoferta" && !o.tardiaDecision);
   return (
     <div className="flex flex-col gap-2" data-admin="inv2-oferta-b4">
-      <p className="m-0"><b>Oferta</b>{o.sujetaAVisita === false && <b className="text-[var(--signal-red)]" data-admin="inv2-en-firme"> · A FIRME (tras la visita)</b>} · ronda {o.ronda ?? 1} · {textoAdmin(TEXTO_ESTADO_OFERTA, o.estado)}{o.tipoRonda ? ` (${o.tipoRonda})` : ""} · UF {o.montoUF ?? "—"} · firmada {fecha(o.firmadaAt)}
+      <p className="m-0"><b>Oferta</b>{o.sujetaAVisita === false && <b className="text-[var(--signal-red)]" data-admin="inv2-en-firme"> · A FIRME (tras la visita)</b>} · ronda {o.ronda ?? 1} · {enPausa && o.estado === "en_cola" ? "En pausa" : textoAdmin(TEXTO_ESTADO_OFERTA, o.estado)}{o.tipoRonda ? ` (${o.tipoRonda})` : ""} · UF {o.montoUF ?? "—"} · firmada {fecha(o.firmadaAt)}
         {o.presentadaAt ? ` · presentada ${fecha(o.presentadaAt)}` : ""}{o.vigenteHasta ? ` · ${venceAlTerminarTexto(new Date(o.vigenteHasta))}` : ""}
         {o.respuesta ? ` · respuesta: ${textoAdmin(TEXTO_ESTADO_OFERTA, o.respuesta).toLowerCase()} ${fecha(o.respuestaAt)}` : ""}{o.contraofertaUF ? ` · piden UF ${o.contraofertaUF}${o.contraofertaVence ? ` (${venceAlTerminarTexto(new Date(o.contraofertaVence))})` : ""}` : ""}
         {o.sugeridaUF ? ` · Franco sugiere UF ${o.sugeridaUF}${o.sugeridaFuente === "admin" ? ` (corregida; la regla dio ${o.sugeridaReglaUF})` : " (regla)"}` : ""}

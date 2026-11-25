@@ -117,7 +117,7 @@ export async function leerPaginaDepto(admin: SupabaseClient, userId: string, avi
   const [preguntas, { data: docs }, conAcuerdo] = await Promise.all([
     leerPreguntas(admin, avisoId),
     admin.from("inv_documentos").select("id, tipo, created_at").eq("user_id", userId).eq("depto_id", f.id as string).order("created_at", { ascending: false }).limit(20),
-    etapa === "listo" ? deptoConAcuerdo(admin, userId, f.id as string) : Promise.resolve(null),
+    etapa === "listo" || etapa === "confirmando" ? deptoConAcuerdo(admin, userId, f.id as string) : Promise.resolve(null),
   ]);
   const filasCs = (cs ?? []) as { tipo: TipoCambio; antes: Record<string, unknown>; despues: Record<string, unknown>; fecha: string }[];
   const cambios = filasCs.map((c) => lineaCambio(c, c.fecha)).filter((x): x is string => !!x);

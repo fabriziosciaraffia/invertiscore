@@ -7,6 +7,7 @@ import { leerCrm } from "@/lib/invierte-v2/servidor";
 import { VERSION_ORDEN } from "@/lib/invierte-v2/orden";
 import { AgregarCorreo, ModoSelect, NumeroWhatsapp, QuitarCorreo, ReenviarCopia, ReiniciarPrueba } from "./controles";
 import { numeroFranco } from "@/lib/invierte-v2/base-servidor";
+import { TAREAS_EN_PAUSA, avisosEnPausa, tareaEnPausa } from "@/lib/invierte-v2/b4";
 
 export const dynamic = "force-dynamic";
 
@@ -19,11 +20,14 @@ export default async function AdminInvierteV2Page() {
   const { sb } = await requireAdminPage();
   const [{ modo, lista }, { filas, sinTabla }, whatsapp, { data: tareas }] = await Promise.all([
     estadoInterruptor(), leerCrm(sb), numeroFranco(sb),
-    sb.from("inv_tareas").select("user_id").eq("estado", "pendiente").limit(1000),
+    sb.from("inv_tareas").select("user_id, tipo, aviso_id").eq("estado", "pendiente").limit(1000),
   ]);
-  // Las tareas pendientes por persona (entrega 2): se ven y se marcan en su ficha.
+  // Las tareas pendientes por persona (entrega 2): se ven y se marcan en su ficha. Sin las que están en pausa por un acuerdo (25-nov-2026).
+  const conTareaPausable = Array.from(new Set((tareas ?? []).filter((t) => (TAREAS_EN_PAUSA as readonly string[]).includes(t.tipo as string)).map((t) => t.user_id as string)));
+  const { data: dps } = conTareaPausable.length ? await sb.from("inv_deptos").select("user_id, aviso_id, etapa").eq("estado", "elegido").in("user_id", conTareaPausable) : { data: [] };
+  const enPausaDe = new Map(conTareaPausable.map((u) => [u, avisosEnPausa(((dps ?? []) as { user_id: string; aviso_id: string; etapa: string | null }[]).filter((d) => d.user_id === u).map((d) => ({ avisoId: d.aviso_id, etapa: d.etapa ?? "confirmando", estadoOferta: null })))]));
   const pendientes = new Map<string, number>();
-  for (const t of tareas ?? []) if (t.user_id) pendientes.set(t.user_id as string, (pendientes.get(t.user_id as string) ?? 0) + 1);
+  for (const t of tareas ?? []) if (t.user_id && !tareaEnPausa({ tipo: t.tipo as string, aviso_id: (t.aviso_id as string | null) ?? null }, enPausaDe.get(t.user_id as string) ?? new Set())) pendientes.set(t.user_id as string, (pendientes.get(t.user_id as string) ?? 0) + 1);
   const H = INVIERTE_COPY.hoja;
   const firmaron = filas.filter((f) => f.orden).length;
   const sinCopia = filas.filter((f) => f.orden && !f.orden.copia).length;

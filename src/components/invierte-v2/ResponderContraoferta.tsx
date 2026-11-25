@@ -102,7 +102,7 @@ export function ResponderContraoferta({ d, volverA }: { d: DatosContraoferta; vo
           <h1 className="iv2-co-t" id="iv2-t">{B.piden(uf0(d.ellosUF))}</h1>
           {v && <p className="iv2-co-vence" data-inv2="co-vence">{v.vencida ? "Venció" : [d.mantiene ? VC.seMantieneCorto(v.vence.replace(/^Vence (el )?/i, "")) : v.vence, v.quedan ? `te ${v.quedan}` : null].filter(Boolean).join(" · ")}</p>}
         </div>
-        <span className="iv2-chip-tuyo" data-inv2="co-chip"><i aria-hidden="true" />Te toca a ti</span>
+        {d.pausaAcuerdo ? <span className="iv2-chip-franco" data-inv2="co-chip">{B.pausaChip}</span> : <span className="iv2-chip-tuyo" data-inv2="co-chip"><i aria-hidden="true" />Te toca a ti</span>}
       </div>
       {d.fueraDePlazo && <p className="iv2-co-fuera" data-inv2="fuera-de-plazo">{B.fueraDePlazo}</p>}
       <BarraContraoferta d={d} />
@@ -121,11 +121,11 @@ export function ResponderContraoferta({ d, volverA }: { d: DatosContraoferta; vo
           <Link href={urlReporteVisita(d.avisoId)} className="iv2-enlace-azul" data-inv2="co-ver-reporte">{VC.verReporte}</Link>
         </p>
       )}
-      <section className="iv2-co-sugiere" data-inv2="co-sugiere" aria-label={B.francoSugiere}>
+      {!d.pausaAcuerdo && <section className="iv2-co-sugiere" data-inv2="co-sugiere" aria-label={B.francoSugiere}>
         <span className="iv2-co-sugiere-r">{B.francoSugiere}</span>
         <p className="iv2-co-sugiere-t">{antesDeVisitar ? VC.sugiereVisitaT : proponer ? B.proponer(uf0(d.sugeridaUF)) : B.aceptar(uf0(d.ellosUF))}</p>
         <p className="iv2-co-sugiere-txt">{antesDeVisitar ? VC.sugiereVisita(uf0(d.sugeridaUF)) : porque}</p>
-      </section>
+      </section>}
       {d.pausaAcuerdo && <p className="iv2-dp-sigue-aviso" data-inv2="co-pausa">{B.pausaDeptoT} {B.pausaDeptoTxt}</p>}
       {!d.pausaAcuerdo && d.otraViva && <p className="iv2-dp-sigue-aviso" data-inv2="co-otra-viva">{d.otraViva.firme ? textoOtraFirme(d.otraViva.firme.venceAt) : B.tardiaOtra(d.otraViva.titulo)}</p>}
       <div className="iv2-acciones iv2-co-acciones">

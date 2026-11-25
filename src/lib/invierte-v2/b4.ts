@@ -80,6 +80,18 @@ export function diasEntre(desde: Date, hasta: Date): number {
 export const ETAPAS_CON_ACUERDO = ["en_firme", "promesa", "escritura", "inscrito"] as const;
 /** ¿Queda en pausa con un acuerdo en otro depto? Sí, si no tiene una oferta en curso (sin oferta, en borrador, en espera o cerrada). */
 export const quedaEnPausa = (estado: string | null | undefined) => !estado || !["firmada", "presentada", "contraoferta", "aceptada_sujeta"].includes(estado);
+/** ¿Este depto queda en pausa por un acuerdo en otro? Confirmando, siempre (25-nov-2026: su «Gestionar al corredor» también); listo, si no
+ *  tiene una oferta en curso. */
+export const deptoEnPausa = (etapa: string | null | undefined, estadoOferta: string | null | undefined, hayAcuerdoEnOtro: boolean) =>
+  hayAcuerdoEnOtro && (etapa === "confirmando" || (etapa === "listo" && quedaEnPausa(estadoOferta)));
+/** Las tareas que quedan en pausa con el depto (25-nov-2026): no aparecen como pendientes mientras haya acuerdo; si se cae, vuelven. */
+export const TAREAS_EN_PAUSA = ["gestionar_corredor"] as const;
+/** Los deptos en pausa de una persona (admin): los avisos de sus deptos elegidos que `deptoEnPausa` pausa, con un acuerdo en otro. */
+export function avisosEnPausa(deptos: { avisoId: string; etapa: string; estadoOferta: string | null }[]): Set<string> {
+  const conAcuerdo = deptos.filter((d) => (ETAPAS_CON_ACUERDO as readonly string[]).includes(d.etapa));
+  return new Set(deptos.filter((d) => deptoEnPausa(d.etapa, d.estadoOferta, conAcuerdo.some((x) => x.avisoId !== d.avisoId))).map((d) => d.avisoId));
+}
+export const tareaEnPausa = (t: { tipo: string; aviso_id: string | null }, enPausa: ReadonlySet<string>) => (TAREAS_EN_PAUSA as readonly string[]).includes(t.tipo) && !!t.aviso_id && enPausa.has(t.aviso_id);
 /** El texto que ve la persona, para los códigos internos que mostraba el admin (25-nov-2026, Fabrizio). */
 export const TEXTO_ESTADO_OFERTA: Record<string, string> = { borrador: "Borrador", firmada: "Firmada", en_cola: "En espera", presentada: "Presentada", contraoferta: "Contraoferta", aceptada_sujeta: "Aceptada, sujeta a visita", en_firme: "Acuerdo", sin_acuerdo: "Sin acuerdo", retirada: "Retirada", reemplazada: "Reemplazada", rechazada: "Rechazada" };
 export const TEXTO_ETAPA: Record<string, string> = { confirmando: "Confirmando", sin_preaprobacion: "Sin preaprobación", listo: "Lista para ofertar", en_firme: "Acuerdo", promesa: "Promesa", escritura: "Escritura", inscrito: "Inscrito", en_pausa: "En pausa", no_avanza: "No avanzó" };
@@ -204,13 +216,12 @@ export const B4_COPY = {
   firmadaTxt: "Va por escrito. Te avisamos apenas esté presentada.",
   rondaNuevaT: "Franco va a presentar tu nueva oferta a quien vende",
   enColaT: "Franco va a presentar tu oferta cuando termine la que tienes vigente",
-  enColaTxt: "Nunca se presenta sola.",
   // Con un acuerdo en otro depto, en pausa (25-nov-2026, Fabrizio): Lo que sigue, la tarjeta de la base y el camino chico.
   pausaChip: "En pausa",
   pausaT: "Tienes un acuerdo por otro depto. Esta oferta queda en pausa.",
   pausaTxt: "Si ese negocio no sigue, Franco te va a preguntar antes de presentarla.",
   pausaDeptoT: "Tienes un acuerdo por otro depto. Este depto queda en pausa.",
-  pausaDeptoTxt: "Si ese negocio no sigue, Franco te va a preguntar cómo seguir.",
+  pausaDeptoTxt: "Si ese negocio no sigue, Franco te va a preguntar cómo quieres seguir.",
   pausaBaseT: "Tienes un acuerdo por otro depto",
   pausaBaseOferta: "Esta oferta queda en pausa",
   pausaBaseDepto: "Este depto queda en pausa",

@@ -6,7 +6,7 @@ import { URL_INVIERTE } from "./destino";
 import { urlContraoferta, urlDepto } from "./depto-flujo";
 
 // La visita (24-nov-2026, decisión 9): el reporte listo, y quien vende que acepta o no mantener la contraoferta mientras se visita.
-export const EVENTOS_OFERTA = ["presentada", "aceptada", "contraoferta", "rechazada", "tardia_aceptada", "tardia_contraoferta", "vencida", "contra_vencida", "precio_bajo", "reporte_listo", "mantener_si", "mantener_no", "aceptada_en_firme"] as const;
+export const EVENTOS_OFERTA = ["presentada", "aceptada", "contraoferta", "rechazada", "tardia_aceptada", "tardia_contraoferta", "vencida", "contra_vencida", "precio_bajo", "reporte_listo", "mantener_si", "mantener_no", "aceptada_en_firme", "cola_por_presentar", "cola_por_presentar_firme"] as const;
 export type EventoOferta = (typeof EVENTOS_OFERTA)[number];
 
 const uf = (n: number | null | undefined) => (n == null ? "" : `UF ${Math.round(n).toLocaleString("es-CL")}`);
@@ -15,7 +15,7 @@ type Datos = { depto: string; montoUF: number; otroUF: number | null; vence: str
 export { urlContraoferta };
 
 /** ¿Le toca hacer algo a la persona con este aviso? Si no, el botón va a /invierte. */
-export const EVENTOS_CON_ACCION: readonly EventoOferta[] = ["contraoferta", "tardia_contraoferta", "rechazada", "tardia_aceptada", "vencida", "contra_vencida", "reporte_listo", "mantener_no"];
+export const EVENTOS_CON_ACCION: readonly EventoOferta[] = ["contraoferta", "tardia_contraoferta", "rechazada", "tardia_aceptada", "vencida", "contra_vencida", "reporte_listo", "mantener_no", "cola_por_presentar", "cola_por_presentar_firme"];
 
 export function urlCorreoOferta(evento: EventoOferta, avisoId: string): string {
   if (evento === "contraoferta" || evento === "tardia_contraoferta" || evento === "mantener_no") return urlContraoferta(avisoId);
@@ -34,6 +34,10 @@ export const CORREO_OFERTA: Record<EventoOferta, { asunto: string; boton: string
   contra_vencida: { asunto: "La contraoferta venció", boton: "Ver el depto", parrafo: (d) => `La contraoferta de ${uf(d.otroUF)} por ${d.depto} venció sin respuesta. Quedaste libre para ofertar por otro depto o hacer otra oferta.` },
   // Sin redundancia: el párrafo no repite el asunto, suma el depto, el monto y lo que sigue.
   aceptada_en_firme: { asunto: "Hay acuerdo", boton: "Ver mi inversión", parrafo: (d) => `Quien vende aceptó tu oferta a firme de ${uf(d.montoUF)} por ${d.depto}. Franco está preparando la promesa.` },
+  // La oferta en espera pasa sola a «por presentar» cuando termina la vigente (25-nov-2026, Fabrizio): el aviso, con su depto para verla
+  // o retirarla. La a firme ya no se retira al pasar a «por presentar»: el correo lo dice en vez de ofrecerlo.
+  cola_por_presentar: { asunto: "Franco va a presentar tu oferta", boton: "Ver mi oferta", parrafo: (d) => `Terminó la oferta que tenías vigente, así que Franco va a presentar tu oferta de ${uf(d.montoUF)} por ${d.depto}. Si ya no la quieres, puedes retirarla antes de que la presente.` },
+  cola_por_presentar_firme: { asunto: "Franco va a presentar tu oferta", boton: "Ver mi oferta", parrafo: (d) => `Terminó la oferta que tenías vigente, así que Franco va a presentar tu oferta a firme de ${uf(d.montoUF)} por ${d.depto}. Como es a firme, ya no se puede retirar.` },
   reporte_listo: { asunto: "El reporte de tu visita está listo", boton: "Ver el depto", parrafo: (d) => `Con lo que se vio en ${d.depto}, te toca decidir cómo sigue tu oferta de ${uf(d.montoUF)}.` },
   mantener_si: { asunto: "Quien vende mantiene su contraoferta", boton: "Ver mi inversión", parrafo: (d) => `Su contraoferta de ${uf(d.otroUF)} por ${d.depto} espera tu visita.${d.vence ? ` ${d.vence}.` : ""}` },
   mantener_no: { asunto: "Quien vende no puede esperar la visita", boton: "Responder", parrafo: (d) => `Su contraoferta de ${uf(d.otroUF)} por ${d.depto} sigue en pie.${d.vence ? ` ${d.vence}.` : ""} Puedes responder sin visitar.` },

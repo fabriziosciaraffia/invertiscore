@@ -3,6 +3,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { esAvisoId } from "@/lib/invierte-v2/destino";
 import { firmarOferta, hablarConFranco } from "@/lib/invierte-v2/rango-servidor";
 import { firmarRonda, noGracias, retirarOferta } from "@/lib/invierte-v2/b4-servidor";
+import { DEPS_AVISO_B4 } from "@/lib/invierte-v2/b4-avisos";
 import { confirmarEnFirme, pedirVisita } from "@/lib/invierte-v2/visita-servidor";
 import { NO_EXISTE, contextoDe, personaConAcceso } from "@/lib/invierte-v2/rutas";
 
@@ -36,7 +37,7 @@ export async function POST(request: Request) {
     return NextResponse.json(r);
   }
   if (b.accion === "retirar") {
-    const r = await retirarOferta(createServiceClient(), u, b.avisoId, contextoDe(request));
+    const r = await retirarOferta(createServiceClient(), u, b.avisoId, contextoDe(request), new Date(), DEPS_AVISO_B4);
     if (!r.ok) return NextResponse.json({ error: r.error }, { status: r.error === "guardar" ? 500 : 409 });
     return NextResponse.json(r);
   }

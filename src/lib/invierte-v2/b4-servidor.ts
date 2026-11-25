@@ -109,7 +109,7 @@ async function fila(admin: SupabaseClient, ofertaId: string): Promise<Fila | nul
 
 /** LA COLA: si la persona ya no tiene una oferta viva que no sea en cola, la más antigua en cola pasa a «por presentar» (firmada) con
  *  su tarea para Franco (decisión 9). Devuelve la que pasó, si alguna. */
-export async function promoverCola(admin: SupabaseClient, userId: string): Promise<string | null> {
+export async function promoverCola(admin: SupabaseClient, userId: string, deps: DepsAviso | null = null): Promise<string | null> {
   // Con un acuerdo vigente, la cola queda en pausa: si ese negocio no sigue, Franco le pregunta a la persona antes (25-nov-2026).
   if (await deptoConAcuerdo(admin, userId, null)) return null;
   const { data: vivas } = await admin.from(T_OF).select("id").eq("user_id", userId).in("estado", ["firmada", "presentada", "contraoferta", "aceptada_sujeta"]).limit(1);
@@ -119,6 +119,9 @@ export async function promoverCola(admin: SupabaseClient, userId: string): Promi
   const { error } = await admin.from(T_OF).update({ estado: "firmada", updated_at: new Date().toISOString() }).eq("id", c.id).eq("estado", "en_cola");
   if (error) return null;
   await admin.from("inv_tareas").insert({ user_id: userId, tipo: "presentar_oferta", aviso_id: c.aviso_id, estado: "pendiente", detalle: { oferta_id: c.id, monto_uf: n(c.monto_uf), desde: "cola" }, es_prueba: c.es_prueba === true });
+  // El aviso a la persona (25-nov-2026): Franco va a presentar su oferta por ese depto; con su depto para verla o retirarla.
+  const fc = deps ? await fila(admin, c.id as string) : null;
+  if (deps && fc) await avisarPersona(admin, deps, fc, fc.sujeta_a_visita === false ? "cola_por_presentar_firme" : "cola_por_presentar");
   return c.id as string;
 }
 
@@ -188,7 +191,7 @@ export async function registrarRespuesta(admin: SupabaseClient, quien: Quien, of
     await anotar(admin, { userId: f.user_id as string, email: null, actor: "admin", actorEmail: quien.email, accion: "oferta_respuesta", detalle: { oferta_id: ofertaId, tipo, contraoferta_uf: contra, nota, vence: venceContra?.toISOString() ?? null, sugerida: sugerida?.montoUF ?? null }, esPrueba: f.es_prueba === true });
     if (tipo === "aceptada" && enFirme) await pasarAAcuerdo(admin, f.depto_id as string, { tipo: "admin", email: quien.email }, iso);
     await avisarPersona(admin, deps, f, tipo === "aceptada" ? (enFirme ? "aceptada_en_firme" : "aceptada") : tipo, { otroUF: contra, venceAt: venceContra });
-    if (tipo === "rechazada") await promoverCola(admin, f.user_id as string);
+    if (tipo === "rechazada") await promoverCola(admin, f.user_id as string, deps);
     return { ok: true, fueraDePlazo: false };
   }
   if (tardia) {
@@ -250,7 +253,7 @@ async function deptoDe(admin: SupabaseClient, userId: string, avisoId: string): 
 /** RETIRARLA (decisión 9 y punto 12): mientras esté firmada, en cola, presentada, en contraoferta («No aceptar la contraoferta») o
  *  aceptada con la visita pendiente; nunca desde en firme. Si quien vende ya la conocía, Franco le avisa (tarea). La siguiente en cola
  *  pasa a «por presentar». */
-export async function retirarOferta(admin: SupabaseClient, user: Quien, avisoId: string, ctx: ContextoPedido | null, ahora: Date = new Date()): Promise<{ ok: true; desde: string } | { ok: false; error: ErrorB4 }> {
+export async function retirarOferta(admin: SupabaseClient, user: Quien, avisoId: string, ctx: ContextoPedido | null, ahora: Date = new Date(), deps: DepsAviso | null = null): Promise<{ ok: true; desde: string } | { ok: false; error: ErrorB4 }> {
   const d = await deptoDe(admin, user.id, avisoId);
   if (!d) return { ok: false, error: "depto" };
   const { data } = await admin.from(T_OF).select(COLS_FILA).eq("depto_id", d.id).eq("user_id", user.id).in("estado", ["firmada", "en_cola", "presentada", "contraoferta", "aceptada_sujeta", "en_firme"]).order("ronda", { ascending: false }).limit(1).maybeSingle();
@@ -269,7 +272,7 @@ export async function retirarOferta(admin: SupabaseClient, user: Quien, avisoId:
   const laConocia = desde === "presentada" || desde === "contraoferta" || desde === "aceptada_sujeta" || (desde === "firmada" && !!f.anterior_id);
   if (laConocia) await admin.from("inv_tareas").insert({ user_id: user.id, tipo: "avisar_retiro", aviso_id: avisoId, estado: "pendiente", detalle: { oferta_id: f.id, desde, monto_uf: n(f.monto_uf) }, es_prueba: f.es_prueba === true });
   await anotar(admin, { userId: user.id, email: user.email, actor: "persona", accion: desde === "contraoferta" ? "contraoferta_no_aceptada" : "oferta_retirada", detalle: { oferta_id: f.id, aviso_id: avisoId, desde }, ctx, esPrueba: f.es_prueba === true });
-  await promoverCola(admin, user.id);
+  await promoverCola(admin, user.id, deps);
   return { ok: true, desde };
 }
 
@@ -396,7 +399,7 @@ async function vencerUna(admin: SupabaseClient, f: Fila, deps: DepsAviso | null,
   await cancelarVisitaDeOferta(admin, f.depto_id as string, "oferta_cerrada");
   await anotar(admin, { userId: f.user_id as string, email: null, actor: "sistema", accion: deContra ? "contraoferta_vencida" : "oferta_vencida", detalle: { oferta_id: f.id, aviso_id: f.aviso_id }, esPrueba: f.es_prueba === true });
   if (deps) await avisarPersona(admin, deps, f, deContra ? "contra_vencida" : "vencida", { otroUF: n(f.contraoferta_uf) });
-  await promoverCola(admin, f.user_id as string);
+  await promoverCola(admin, f.user_id as string, deps);
   return true;
 }
 

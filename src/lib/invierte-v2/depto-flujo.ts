@@ -10,7 +10,7 @@
 //   · «Lo que sigue»: un solo bloque con a lo más UN botón, rojo solo cuando le toca a la persona.
 // ─────────────────────────────────────────────────────────────────────────────
 import { puedeOfertar, type EstadoVisible } from "./preaprobacion";
-import { B4_COPY, cierreDe, fechaCorta, fraccionVigencia, lineaVence, quedaEnPausa, textoOtraFirme, ultimoDia, type OtraViva } from "./b4";
+import { B4_COPY, cierreDe, deptoEnPausa, fechaCorta, fraccionVigencia, lineaVence, quedaEnPausa, textoOtraFirme, ultimoDia, type OtraViva } from "./b4";
 import { VISITA_COPY as VC, conArreglo, visitaAbierta, visitaPublicada, type VisitaResumen } from "./visita";
 
 export const ETAPAS = ["confirmando", "no_avanza", "sin_preaprobacion", "listo", "en_pausa", "en_firme", "promesa", "escritura", "inscrito", "no_sigo"] as const;
@@ -167,7 +167,7 @@ function despuesDeFirmar(o: OfertaResumen, avisoId: string, ahora: Date): LoQueS
   if (o.estado === "firmada") {
     return { chip: FRANCO_EN_ESO, tono: "gris", titulo: o.tipoRonda === "proponer" ? B4_COPY.rondaNuevaT : B4_COPY.firmadaT, texto: B4_COPY.firmadaTxt, boton: null, cifras: [...tuCifra, ...(o.firmadaAt ? [{ et: "Firmada", v: diaMes(o.firmadaAt) }] : [])], verOferta: true, acciones: ["retirar"] };
   }
-  if (o.estado === "en_cola") return { chip: FRANCO_EN_ESO, tono: "gris", titulo: B4_COPY.enColaT, texto: o.sujetaAVisita === false ? VC.enEspera : B4_COPY.enColaTxt, boton: null, cifras: tuCifra, verOferta: true, acciones: ["retirar"] };
+  if (o.estado === "en_cola") return { chip: FRANCO_EN_ESO, tono: "gris", titulo: B4_COPY.enColaT, texto: o.sujetaAVisita === false ? VC.enEspera : null, boton: null, cifras: tuCifra, verOferta: true, acciones: ["retirar"] };
   if (o.estado === "presentada") {
     const vence = o.vigenteHasta ? new Date(o.vigenteHasta) : null;
     const l = vence ? lineaVence(vence, ahora) : null;
@@ -239,6 +239,7 @@ export function cuandoNoHayAcuerdo(c: OfertaResumen, avisoId: string, otraViva: 
 export function loQueSigue(etapa: Etapa, pre: EstadoVisible, urlPreaprobacion: string, oferta: OfertaResumen | null = null, urlDeLaOferta = "", extra: { avisoId?: string; ahora?: Date; cierre?: OfertaResumen | null; otraViva?: OtraViva | null; pausaAcuerdo?: boolean } = {}): LoQueSigue | null {
   const avisoId = extra.avisoId ?? "";
   const ahora = extra.ahora ?? new Date();
+  if (etapa === "confirmando" && extra.pausaAcuerdo) return { chip: B4_COPY.pausaChip, tono: "gris", titulo: B4_COPY.pausaDeptoT, texto: B4_COPY.pausaDeptoTxt, boton: null };
   if (etapa === "confirmando") {
     return { chip: "Franco está en eso", tono: "gris", titulo: "Franco está confirmando este depto con quien lo vende", texto: "Te avisamos apenas esté listo para tu oferta o tu visita.", boton: null };
   }
@@ -307,13 +308,13 @@ export function diaVigencia(presentadaAt: string, ahora: Date = new Date()): num
 /** El estado de la tarjeta en la base: el chip, qué pasa (`titulo`), el dato que importa (`linea`) y su nivel. */
 export function estadoEnBase(etapa: Etapa, pre: EstadoVisible, motivo: string | null, oferta: OfertaBase | null = null, ahora: Date = new Date(), pausaAcuerdo = false): EstadoBase {
   const monto = oferta?.montoUF ? uf0(oferta.montoUF) : null;
+  if (deptoEnPausa(etapa, oferta?.estado ?? "borrador", pausaAcuerdo)) return { chip: B4_COPY.pausaChip, tono: "gris", nivel: "partiendo", titulo: B4_COPY.pausaBaseT, linea: oferta?.estado === "en_cola" ? B4_COPY.pausaBaseOferta : B4_COPY.pausaBaseDepto };
   if (etapa === "no_avanza") return { chip: "No avanzó", tono: "gris", nivel: "partiendo", linea: motivo === "dejo_de_convenir" ? "Al confirmar dónde está, dejó de convenir" : "Te mostramos el más parecido que sí podemos gestionar" };
   if (etapa === "sin_preaprobacion") return pre === "en_revision"
     ? { chip: FRANCO, tono: "gris", nivel: "partiendo", titulo: "Revisando tu preaprobación", linea: "Te avisamos apenas esté" }
     : { chip: TUYO, tono: "ciruela", nivel: "tuyo", titulo: "Sube tu preaprobación", linea: "Para ofertar o visitar" };
   if (etapa === "listo") {
     const e = oferta?.estado ?? "borrador";
-    if (pausaAcuerdo && quedaEnPausa(e)) return { chip: B4_COPY.pausaChip, tono: "gris", nivel: "partiendo", titulo: B4_COPY.pausaBaseT, linea: e === "en_cola" ? B4_COPY.pausaBaseOferta : B4_COPY.pausaBaseDepto };
     if (e === "firmada" && (oferta?.tipoRonda === "aceptar" || oferta?.tipoRonda === "reactivar")) return { chip: FRANCO, tono: "gris", nivel: "curso", titulo: "Aceptaste su precio", linea: [monto, "Franco le está avisando a quien vende"].filter(Boolean).join(" · ") };
     if (e === "firmada" && oferta?.sujetaAVisita === false && oferta?.tipoRonda !== "aceptar" && oferta?.tipoRonda !== "reactivar") return { chip: FRANCO, tono: "gris", nivel: "curso", titulo: "Oferta a firme firmada", linea: [monto, "Franco la va a presentar"].filter(Boolean).join(" · ") };
     if (e === "presentada" && oferta?.sujetaAVisita === false) return { chip: FRANCO, tono: "gris", nivel: "curso", titulo: "Oferta a firme presentada", linea: [monto, oferta?.vigenteHasta ? lineaVence(new Date(oferta.vigenteHasta), ahora).vence.toLowerCase() : null].filter(Boolean).join(" · ") };
@@ -415,7 +416,10 @@ export function caminoDepto(etapa: Etapa, oferta: (Pick<OfertaBase, "estado" | "
   // La visita deja de ser «Opcional» (LEEME del 23-nov): antes de la respuesta, «Después de la respuesta».
   const subs: (string | null)[] = [null, null, "Después de la respuesta", null, null, null];
   let actual = 1, estado: EstadoPaso = "franco", visitaHecha = false;
-  if (etapa === "confirmando" || etapa === "en_pausa") { subs[0] = "Franco lo está coordinando con quien lo vende"; }
+  // Con un acuerdo en otro depto (25-nov-2026): el paso actual dice «En pausa», en la columna del celular y en la línea de PC.
+  const enPausa = deptoEnPausa(etapa, oferta?.estado ?? "borrador", pausaAcuerdo);
+  if (etapa === "confirmando" && enPausa) { subs[0] = B4_COPY.caminoPausa; }
+  else if (etapa === "confirmando" || etapa === "en_pausa") { subs[0] = "Franco lo está coordinando con quien lo vende"; }
   else if (etapa === "sin_preaprobacion") { actual = 2; estado = "tuyo"; subs[1] = "Te toca a ti: sube tu preaprobación"; }
   else if (etapa === "listo") {
     actual = 2;
@@ -423,7 +427,7 @@ export function caminoDepto(etapa: Etapa, oferta: (Pick<OfertaBase, "estado" | "
     const cierre = oferta ? cierreDe(oferta as Parameters<typeof cierreDe>[0]) : null;
     const vc = oferta?.visita ?? null;
     if (visitaPublicada(vc) && vc.visitadaAt) { visitaHecha = true; subs[2] = VC.caminoHecha(diaMes(vc.visitadaAt)); }
-    if (pausaAcuerdo && quedaEnPausa(oferta ? e : null)) { estado = "franco"; subs[1] = B4_COPY.caminoPausa; }
+    if (enPausa) { estado = "franco"; subs[1] = B4_COPY.caminoPausa; }
     else if (e === "firmada" && oferta?.sujetaAVisita === false && oferta?.tipoRonda !== "aceptar" && oferta?.tipoRonda !== "reactivar") { estado = "franco"; subs[1] = VC.caminoFirmada; }
     else if (e === "presentada" && oferta?.sujetaAVisita === false) { estado = "franco"; subs[1] = VC.caminoPresentada; }
     else if (e === "firmada" && oferta?.tipoRonda === "ajustar") { estado = "franco"; subs[1] = VC.caminoNuevaOferta; }
@@ -457,7 +461,7 @@ export function caminoDepto(etapa: Etapa, oferta: (Pick<OfertaBase, "estado" | "
     const n = i + 1;
     const e: EstadoPaso = n === 3 && sinVisita ? "omitido" : n === 3 && visitaHecha ? "hecho" : n < actual ? "hecho" : n === actual ? estado : "pendiente";
     const t = n === 1 && actual === 1 ? "Confirmar el depto" : t0;
-    const corto = e === "omitido" ? "Sin visita" : n === 3 && visitaHecha ? subs[2] : e === "hecho" ? "Listo" : e === "tuyo" ? "Te toca a ti" : e === "franco" ? "Franco está en eso" : n === 3 ? subs[2] : null;
+    const corto = enPausa && n === actual ? B4_COPY.pausaChip : e === "omitido" ? "Sin visita" : n === 3 && visitaHecha ? subs[2] : e === "hecho" ? "Listo" : e === "tuyo" ? "Te toca a ti" : e === "franco" ? "Franco está en eso" : n === 3 ? subs[2] : null;
     return { n, t, s: n === actual || n === 1 || n === 3 || (n === 2 && !!subs[1]) || (n === 4 && !!subs[3]) ? subs[i] : null, corto, estado: e };
   });
   return { actual: Math.min(actual, PASOS_CAMINO.length), pasos };
