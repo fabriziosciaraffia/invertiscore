@@ -19,6 +19,8 @@ import { PORTAL_COPY } from "@/lib/explorar/portal";
 
 /** La llave en el navegador de «la dejó plegada». */
 export const CLAVE_CONTADOR_PLEGADO = "franco_contador_plegado";
+/** La llave de «ya tocó una casilla»: la línea de ayuda se va después del primer uso (26-nov-2026). */
+export const CLAVE_CASILLAS_USADAS = "franco_contador_casillas_usadas";
 
 export function Contador({ conteo, ocultar, calculando = null, alAlternar }: {
   /** null mientras llega el universo. */
@@ -29,8 +31,20 @@ export function Contador({ conteo, ocultar, calculando = null, alAlternar }: {
   alAlternar?: (clase: ClaseMapa) => void;
 }) {
   const [plegada, setPlegada] = useState(false);
+  // QUE SE NOTE QUE SE TOCAN (26-nov-2026, pedido de Fabrizio): además del cambio al pasar el mouse y al presionar (explorar.css), una
+  // línea de ayuda bajo las casillas hasta el primer toque; el navegador recuerda que ya las usó.
+  const [usadas, setUsadas] = useState(false);
   // Lo que dejó la persona la última vez (después del primer pintado: el servidor no sabe).
-  useEffect(() => { try { if (window.localStorage.getItem(CLAVE_CONTADOR_PLEGADO) === "1") setPlegada(true); } catch { /* sin almacenamiento */ } }, []);
+  useEffect(() => {
+    try {
+      if (window.localStorage.getItem(CLAVE_CONTADOR_PLEGADO) === "1") setPlegada(true);
+      if (window.localStorage.getItem(CLAVE_CASILLAS_USADAS) === "1") setUsadas(true);
+    } catch { /* sin almacenamiento */ }
+  }, []);
+  const tocarCasilla = (c: ClaseMapa) => {
+    alAlternar?.(c);
+    if (!usadas) { setUsadas(true); try { window.localStorage.setItem(CLAVE_CASILLAS_USADAS, "1"); } catch { /* sin almacenamiento */ } }
+  };
   const alternarPliegue = () => setPlegada((x) => {
     try { window.localStorage.setItem(CLAVE_CONTADOR_PLEGADO, x ? "0" : "1"); } catch { /* sin almacenamiento */ }
     return !x;
@@ -57,13 +71,15 @@ export function Contador({ conteo, ocultar, calculando = null, alAlternar }: {
               const apagado = ocultar.includes(c);
               return (
                 <button key={c} type="button" className="ex-vc" data-clase={c} data-off={apagado ? "1" : undefined} aria-pressed={!apagado}
-                  aria-label={conteo ? `${textoChipClase(c, conteo[c])}${apagado ? ", apagado" : ""}` : CHIP_CLASE_COPY[c]} data-explorar={`chip-${c}`} onClick={alAlternar ? () => alAlternar(c) : undefined}>
+                  aria-label={conteo ? `${textoChipClase(c, conteo[c])}${apagado ? ", apagado" : ""}` : CHIP_CLASE_COPY[c]} title={CONTADOR_COPY.accion(c, apagado)}
+                  data-explorar={`chip-${c}`} onClick={alAlternar ? () => tocarCasilla(c) : undefined}>
                   <span className="ex-ck" aria-hidden="true">{!apagado && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l5 5 9-10" /></svg>}</span>
                   {conteo ? textoChipClase(c, conteo[c]) : CHIP_CLASE_COPY[c]}
                 </button>
               );
             })}
           </div>
+          {!usadas && <p className="ex-contador-ayuda" data-explorar="contador-ayuda">{CONTADOR_COPY.ayuda}</p>}
         </>
       )}
     </section>

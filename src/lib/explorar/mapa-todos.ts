@@ -157,6 +157,10 @@ export function textoComoSeCalcula(tasa: number | null, sinCuenta: boolean) {
 }
 
 export const CONTADOR_COPY = {
+  /** La línea de ayuda bajo las casillas, hasta el primer toque (26-nov-2026). */
+  ayuda: "Toca un veredicto para mostrarlo u ocultarlo en el mapa",
+  /** Lo que hace cada casilla, al pasar el mouse: «Ocultar Comprar en el mapa» o «Mostrar…». */
+  accion: (c: ClaseMapa, apagado: boolean) => `${apagado ? "Mostrar" : "Ocultar"} ${CHIP_CLASE_COPY[c]} en el mapa`,
   region: "Cuántos convienen",
   grupo: "Qué veredictos se ven en el mapa",
   plegar: "Plegar",
