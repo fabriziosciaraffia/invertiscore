@@ -36,6 +36,8 @@ export interface DatosContraoferta {
   fueraDePlazo: boolean;
   /** Otra oferta viva en otro depto: aceptar la retira (una a la vez). */
   otraViva: OtraViva | null;
+  /** Con un acuerdo en otro depto (25-nov-2026): en pausa, sin botones para firmar. */
+  pausaAcuerdo?: boolean;
   /** Las cifras del motor a cada precio (sin datos fijos del motor, la tabla queda solo con el precio). */
   cifras: { tu: CifrasAPrecio | null; sugerida: CifrasAPrecio | null; ellos: CifrasAPrecio | null };
   /** La visita del depto (24-nov-2026) y si la persona eligió «Responder sin visitar». */
@@ -124,14 +126,15 @@ export function ResponderContraoferta({ d, volverA }: { d: DatosContraoferta; vo
         <p className="iv2-co-sugiere-t">{antesDeVisitar ? VC.sugiereVisitaT : proponer ? B.proponer(uf0(d.sugeridaUF)) : B.aceptar(uf0(d.ellosUF))}</p>
         <p className="iv2-co-sugiere-txt">{antesDeVisitar ? VC.sugiereVisita(uf0(d.sugeridaUF)) : porque}</p>
       </section>
-      {d.otraViva && <p className="iv2-dp-sigue-aviso" data-inv2="co-otra-viva">{d.otraViva.firme ? textoOtraFirme(d.otraViva.firme.venceAt) : B.tardiaOtra(d.otraViva.titulo)}</p>}
+      {d.pausaAcuerdo && <p className="iv2-dp-sigue-aviso" data-inv2="co-pausa">{B.pausaDeptoT} {B.pausaDeptoTxt}</p>}
+      {!d.pausaAcuerdo && d.otraViva && <p className="iv2-dp-sigue-aviso" data-inv2="co-otra-viva">{d.otraViva.firme ? textoOtraFirme(d.otraViva.firme.venceAt) : B.tardiaOtra(d.otraViva.titulo)}</p>}
       <div className="iv2-acciones iv2-co-acciones">
         {antesDeVisitar ? (
           <>
             <AccionVisita avisoId={d.avisoId} tipo="pedir_visita" texto={VC.visitarAntes} volverA={volverA} />
             <Link href={urlContraoferta(d.avisoId, true)} className="iv2-secundario" data-inv2="co-sin-visitar">{VC.responderSinVisitar}</Link>
           </>
-        ) : d.otraViva?.firme ? null : (
+        ) : d.otraViva?.firme || d.pausaAcuerdo ? null : (
           <>
             <Link href={proponer ? firmaSug : firmaEllos} className="inv-principal" data-inv2="co-principal">{proponer ? B.proponer(uf0(d.sugeridaUF)) : B.aceptar(uf0(d.ellosUF))}</Link>
             {proponer && <Link href={firmaEllos} className="iv2-secundario" data-inv2="co-aceptar">{B.aceptar(uf0(d.ellosUF))}</Link>}
@@ -139,7 +142,7 @@ export function ResponderContraoferta({ d, volverA }: { d: DatosContraoferta; vo
           </>
         )}
         <AccionOferta avisoId={d.avisoId} accion={d.fueraDePlazo ? "no_aceptar_tardia" : "no_aceptar"} clase="iv2-enlace-gris iv2-co-enlace" volverA={volverA} />
-        {!d.otraViva?.firme && <p className="iv2-co-nota">{B.firmaNota}</p>}
+        {!d.otraViva?.firme && !d.pausaAcuerdo && <p className="iv2-co-nota">{B.firmaNota}</p>}
       </div>
     </div>
   );

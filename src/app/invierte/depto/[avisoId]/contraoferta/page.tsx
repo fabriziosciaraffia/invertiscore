@@ -28,7 +28,7 @@ export default async function ContraofertaPage({ params, searchParams }: { param
   const d: DatosContraoferta = {
     avisoId, ofertaId: o.id, tuUF: o.montoUF, ellosUF: o.contraofertaUF, sugeridaUF: sugerida, accion: sugerida >= o.contraofertaUF ? "aceptar" : "proponer",
     topeEsComprar: o.comprarUF != null, pisoUF: o.pisoUF, altoUF: o.altoUF, publicadoUF: o.publicadoUF, venceAt: o.contraofertaVence ?? null,
-    fueraDePlazo: r.tipo === "tardia_contra", otraViva: r.tipo === "tardia_contra" ? p.otraViva ?? null : null,
+    fueraDePlazo: r.tipo === "tardia_contra", otraViva: r.tipo === "tardia_contra" ? p.otraViva ?? null : null, pausaAcuerdo: p.pausaAcuerdo === true,
     cifras: { tu: motor ? cifrasAPrecio(motor, o.montoUF) : null, sugerida: motor ? cifrasAPrecio(motor, sugerida) : null, ellos: motor ? cifrasAPrecio(motor, o.contraofertaUF) : null },
     // La visita antes del precio (24-nov-2026): la visita del depto, «Responder sin visitar» y si quien vende aceptó esperar.
     visita: o.estado === "contraoferta" ? p.visita ?? null : null, sinVisitar: searchParams.sinVisitar === "1", mantiene: o.mantenerRespuesta === "acepta",

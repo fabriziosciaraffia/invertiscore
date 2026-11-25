@@ -23,7 +23,7 @@ import { venceAlTerminar } from "@/lib/invierte-v2/b4";
 
 export const dynamic = "force-dynamic";
 
-export default function DeptoDemo({ searchParams }: { searchParams: { etapa?: string; aviso?: string; confirmada?: string; preguntas?: string; oferta?: string; lectura?: string; fotos?: string; pocos?: string; cierre?: string; otra?: string; visita?: string; mantener?: string; firme?: string } }) {
+export default function DeptoDemo({ searchParams }: { searchParams: { etapa?: string; aviso?: string; confirmada?: string; preguntas?: string; oferta?: string; lectura?: string; fotos?: string; pocos?: string; cierre?: string; otra?: string; visita?: string; mantener?: string; firme?: string; acuerdo?: string } }) {
   if (process.env.NODE_ENV === "production" && process.env.VERCEL_ENV !== "preview") notFound();
   const e = searchParams.etapa ?? "confirmando";
   const etapa: Etapa = e === "revision" || e === "corregir" ? "sin_preaprobacion" : e === "dejo" ? "no_avanza" : (["confirmando", "sin_preaprobacion", "listo", "no_avanza", "en_firme"].includes(e) ? e : "confirmando") as Etapa;
@@ -103,6 +103,8 @@ export default function DeptoDemo({ searchParams }: { searchParams: { etapa?: st
     if (pedido === "ajustada") { p.oferta.montoUF = 2900; p.oferta.anteriorMontoUF = 2966; }
     if (pedido === "aceptada_sujeta") p.oferta.montoUF = 2966;
   }
+  // ?acuerdo=1 (25-nov-2026): con un acuerdo en otro depto, este queda en pausa (con ?oferta=en_cola, la oferta en espera).
+  if (searchParams.acuerdo === "1") p.pausaAcuerdo = true;
   // Después de la visita, toda oferta es en firme (24-nov-2026): ?firme=1 la oferta nació en firme; ?etapa=en_firme, la aceptaron.
   if (p.oferta && (searchParams.firme === "1" || etapa === "en_firme")) {
     p.visita = p.visita ?? visitaMuestra("arreglo");

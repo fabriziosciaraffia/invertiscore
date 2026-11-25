@@ -10,7 +10,7 @@
 //   · «Lo que sigue»: un solo bloque con a lo más UN botón, rojo solo cuando le toca a la persona.
 // ─────────────────────────────────────────────────────────────────────────────
 import { puedeOfertar, type EstadoVisible } from "./preaprobacion";
-import { B4_COPY, cierreDe, fechaCorta, fraccionVigencia, lineaVence, textoOtraFirme, ultimoDia, type OtraViva } from "./b4";
+import { B4_COPY, cierreDe, fechaCorta, fraccionVigencia, lineaVence, quedaEnPausa, textoOtraFirme, ultimoDia, type OtraViva } from "./b4";
 import { VISITA_COPY as VC, conArreglo, visitaAbierta, visitaPublicada, type VisitaResumen } from "./visita";
 
 export const ETAPAS = ["confirmando", "no_avanza", "sin_preaprobacion", "listo", "en_pausa", "en_firme", "promesa", "escritura", "inscrito", "no_sigo"] as const;
@@ -236,7 +236,7 @@ export function cuandoNoHayAcuerdo(c: OfertaResumen, avisoId: string, otraViva: 
 }
 
 /** «Lo que sigue» en la página del depto, según su etapa y la preaprobación. null en no_avanza (la página entera cambia). */
-export function loQueSigue(etapa: Etapa, pre: EstadoVisible, urlPreaprobacion: string, oferta: OfertaResumen | null = null, urlDeLaOferta = "", extra: { avisoId?: string; ahora?: Date; cierre?: OfertaResumen | null; otraViva?: OtraViva | null } = {}): LoQueSigue | null {
+export function loQueSigue(etapa: Etapa, pre: EstadoVisible, urlPreaprobacion: string, oferta: OfertaResumen | null = null, urlDeLaOferta = "", extra: { avisoId?: string; ahora?: Date; cierre?: OfertaResumen | null; otraViva?: OtraViva | null; pausaAcuerdo?: boolean } = {}): LoQueSigue | null {
   const avisoId = extra.avisoId ?? "";
   const ahora = extra.ahora ?? new Date();
   if (etapa === "confirmando") {
@@ -246,6 +246,12 @@ export function loQueSigue(etapa: Etapa, pre: EstadoVisible, urlPreaprobacion: s
     if (pre === "en_revision") return { chip: "Franco está en eso", tono: "gris", titulo: "Franco está revisando tu preaprobación", texto: "Apenas esté, puedes ofertar o pedir una visita.", boton: null };
     if (pre === "por_corregir") return { chip: "Te toca a ti", tono: "ciruela", titulo: "Sube de nuevo tu preaprobación para ofertar o visitar", texto: null, boton: { texto: "Subir otra", href: `${urlPreaprobacion}?subir=1` } };
     return { chip: "Te toca a ti", tono: "ciruela", titulo: "Sube tu preaprobación para ofertar o visitar", texto: "Se sube una vez y vale para todos tus deptos.", boton: { texto: "Subir mi preaprobación", href: urlPreaprobacion } };
+  }
+  // Con un acuerdo en otro depto (25-nov-2026): la oferta en espera y el depto sin oferta en curso quedan en pausa, sin botón para firmar.
+  if (etapa === "listo" && extra.pausaAcuerdo && quedaEnPausa(oferta?.estado)) {
+    const cola = oferta?.estado === "en_cola";
+    if (cola) return { chip: B4_COPY.pausaChip, tono: "gris", titulo: B4_COPY.pausaT, texto: B4_COPY.pausaTxt, boton: null, cifras: oferta.montoUF ? [{ et: B4_COPY.tuOferta, v: uf0(oferta.montoUF) }] : [], verOferta: true, acciones: ["retirar"] };
+    return { chip: B4_COPY.pausaChip, tono: "gris", titulo: B4_COPY.pausaDeptoT, texto: B4_COPY.pausaDeptoTxt, boton: null };
   }
   if (etapa === "listo" && oferta?.estado === "borrador") {
     // B3 (lámina 4.2 del 23-nov): las tres cifras, la barra del rango en chico y el único botón rojo de la página.
@@ -299,7 +305,7 @@ export function diaVigencia(presentadaAt: string, ahora: Date = new Date()): num
   return Math.min(5, Math.max(1, Math.floor((ahora.getTime() - new Date(presentadaAt).getTime()) / 864e5) + 1));
 }
 /** El estado de la tarjeta en la base: el chip, qué pasa (`titulo`), el dato que importa (`linea`) y su nivel. */
-export function estadoEnBase(etapa: Etapa, pre: EstadoVisible, motivo: string | null, oferta: OfertaBase | null = null, ahora: Date = new Date()): EstadoBase {
+export function estadoEnBase(etapa: Etapa, pre: EstadoVisible, motivo: string | null, oferta: OfertaBase | null = null, ahora: Date = new Date(), pausaAcuerdo = false): EstadoBase {
   const monto = oferta?.montoUF ? uf0(oferta.montoUF) : null;
   if (etapa === "no_avanza") return { chip: "No avanzó", tono: "gris", nivel: "partiendo", linea: motivo === "dejo_de_convenir" ? "Al confirmar dónde está, dejó de convenir" : "Te mostramos el más parecido que sí podemos gestionar" };
   if (etapa === "sin_preaprobacion") return pre === "en_revision"
@@ -307,6 +313,7 @@ export function estadoEnBase(etapa: Etapa, pre: EstadoVisible, motivo: string | 
     : { chip: TUYO, tono: "ciruela", nivel: "tuyo", titulo: "Sube tu preaprobación", linea: "Para ofertar o visitar" };
   if (etapa === "listo") {
     const e = oferta?.estado ?? "borrador";
+    if (pausaAcuerdo && quedaEnPausa(e)) return { chip: B4_COPY.pausaChip, tono: "gris", nivel: "partiendo", titulo: B4_COPY.pausaBaseT, linea: e === "en_cola" ? B4_COPY.pausaBaseOferta : B4_COPY.pausaBaseDepto };
     if (e === "firmada" && (oferta?.tipoRonda === "aceptar" || oferta?.tipoRonda === "reactivar")) return { chip: FRANCO, tono: "gris", nivel: "curso", titulo: "Aceptaste su precio", linea: [monto, "Franco le está avisando a quien vende"].filter(Boolean).join(" · ") };
     if (e === "firmada" && oferta?.sujetaAVisita === false && oferta?.tipoRonda !== "aceptar" && oferta?.tipoRonda !== "reactivar") return { chip: FRANCO, tono: "gris", nivel: "curso", titulo: "Oferta a firme firmada", linea: [monto, "Franco la va a presentar"].filter(Boolean).join(" · ") };
     if (e === "presentada" && oferta?.sujetaAVisita === false) return { chip: FRANCO, tono: "gris", nivel: "curso", titulo: "Oferta a firme presentada", linea: [monto, oferta?.vigenteHasta ? lineaVence(new Date(oferta.vigenteHasta), ahora).vence.toLowerCase() : null].filter(Boolean).join(" · ") };
@@ -334,7 +341,7 @@ export function estadoEnBase(etapa: Etapa, pre: EstadoVisible, motivo: string | 
     const rango = oferta?.pisoUF && oferta.altoUF ? `Franco recomienda ${uf0(oferta.pisoUF)} a ${Math.round(oferta.altoUF).toLocaleString("es-CL")}` : "Franco ya lo dejó listo con quien lo vende";
     return { chip: TUYO, tono: "ciruela", nivel: "tuyo", titulo: "Haz tu oferta", linea: rango };
   }
-  if (etapa === "en_firme") return { chip: FRANCO, tono: "gris", nivel: "curso", titulo: monto ? `Hay acuerdo por ${monto}` : "Hay acuerdo", linea: "Franco está preparando la promesa" };
+  if (etapa === "en_firme") return { chip: FRANCO, tono: "gris", nivel: "curso", titulo: monto ? VC.acuerdoT(monto) : "Hay acuerdo", linea: "Franco está preparando la promesa" };
   if (etapa === "promesa") return { chip: FRANCO, tono: "gris", nivel: "curso", titulo: "Promesa", linea: monto ?? "Franco está coordinando la promesa" };
   if (etapa === "escritura") return { chip: FRANCO, tono: "gris", nivel: "curso", titulo: "Escritura", linea: monto ?? "Franco está coordinando la escritura" };
   if (etapa === "inscrito") return { chip: "Listo", tono: "gris", nivel: "curso", titulo: "Inscrito a tu nombre", linea: monto ?? "El depto ya es tuyo" };
@@ -346,8 +353,8 @@ const RANGO_NIVEL: Record<NivelBase, number> = { tuyo: 0, curso: 1, partiendo: 2
  *  más avanzado en el camino (el mismo camino de la página del depto); a igual paso, en el orden en que llegaron. Dentro de «Recién
  *  partiendo», en pausa y no avanzó van al final (decisión de Fabrizio, 23-nov-2026). */
 const AL_FINAL: readonly Etapa[] = ["en_pausa", "no_avanza"];
-export function ordenBase<T extends { etapa: Etapa; noAvanzaMotivo: string | null; oferta: OfertaBase | null }>(xs: T[], pre: EstadoVisible): T[] {
-  const clave = (d: T) => ({ n: RANGO_NIVEL[estadoEnBase(d.etapa, pre, d.noAvanzaMotivo, d.oferta).nivel], fin: AL_FINAL.includes(d.etapa) ? 1 : 0, paso: caminoDepto(d.etapa, d.oferta).actual });
+export function ordenBase<T extends { etapa: Etapa; noAvanzaMotivo: string | null; oferta: OfertaBase | null; pausaAcuerdo?: boolean }>(xs: T[], pre: EstadoVisible): T[] {
+  const clave = (d: T) => ({ n: RANGO_NIVEL[estadoEnBase(d.etapa, pre, d.noAvanzaMotivo, d.oferta, undefined, d.pausaAcuerdo === true).nivel], fin: AL_FINAL.includes(d.etapa) ? 1 : 0, paso: caminoDepto(d.etapa, d.oferta, d.pausaAcuerdo === true).actual });
   return xs.map((d, i) => ({ d, i, k: clave(d) })).sort((a, b) => a.k.n - b.k.n || a.k.fin - b.k.fin || b.k.paso - a.k.paso || a.i - b.i).map((x) => x.d);
 }
 
@@ -404,7 +411,7 @@ export const PASOS_CAMINO = ["Depto confirmado", "Oferta", "Visita", "Acuerdo", 
  *  camino (sale la tarjeta «Oferta · Sin presentar»). Es LA fuente del camino: la página del depto y el camino chico de la base lo
  *  dibujan desde aquí. Segunda vuelta (23-nov): el paso 1 se llama «Confirmar el depto» mientras está en curso; la visita que no hubo
  *  queda «omitida» (gris hueco) cuando el depto ya pasó de ahí; la oferta aceptada pasa a la visita, nunca a «Haz tu oferta». */
-export function caminoDepto(etapa: Etapa, oferta: (Pick<OfertaBase, "estado" | "enFirmeComo" | "montoUF"> & Partial<OfertaBase>) | null): { actual: number; pasos: PasoCamino[] } {
+export function caminoDepto(etapa: Etapa, oferta: (Pick<OfertaBase, "estado" | "enFirmeComo" | "montoUF"> & Partial<OfertaBase>) | null, pausaAcuerdo = false): { actual: number; pasos: PasoCamino[] } {
   // La visita deja de ser «Opcional» (LEEME del 23-nov): antes de la respuesta, «Después de la respuesta».
   const subs: (string | null)[] = [null, null, "Después de la respuesta", null, null, null];
   let actual = 1, estado: EstadoPaso = "franco", visitaHecha = false;
@@ -416,7 +423,8 @@ export function caminoDepto(etapa: Etapa, oferta: (Pick<OfertaBase, "estado" | "
     const cierre = oferta ? cierreDe(oferta as Parameters<typeof cierreDe>[0]) : null;
     const vc = oferta?.visita ?? null;
     if (visitaPublicada(vc) && vc.visitadaAt) { visitaHecha = true; subs[2] = VC.caminoHecha(diaMes(vc.visitadaAt)); }
-    if (e === "firmada" && oferta?.sujetaAVisita === false && oferta?.tipoRonda !== "aceptar" && oferta?.tipoRonda !== "reactivar") { estado = "franco"; subs[1] = VC.caminoFirmada; }
+    if (pausaAcuerdo && quedaEnPausa(oferta ? e : null)) { estado = "franco"; subs[1] = B4_COPY.caminoPausa; }
+    else if (e === "firmada" && oferta?.sujetaAVisita === false && oferta?.tipoRonda !== "aceptar" && oferta?.tipoRonda !== "reactivar") { estado = "franco"; subs[1] = VC.caminoFirmada; }
     else if (e === "presentada" && oferta?.sujetaAVisita === false) { estado = "franco"; subs[1] = VC.caminoPresentada; }
     else if (e === "firmada" && oferta?.tipoRonda === "ajustar") { estado = "franco"; subs[1] = VC.caminoNuevaOferta; }
     else if (e === "firmada" && (oferta?.tipoRonda === "aceptar" || oferta?.tipoRonda === "reactivar")) { estado = "franco"; subs[1] = oferta?.montoUF ? `Aceptaste ${uf0(oferta.montoUF)} · Franco le está avisando` : "Aceptaste · Franco le está avisando"; }

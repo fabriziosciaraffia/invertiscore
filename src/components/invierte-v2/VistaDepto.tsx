@@ -73,7 +73,7 @@ function Cabeza({ p }: { p: PaginaDepto }) {
 function LoQueSigueBloque({ p }: { p: PaginaDepto }) {
   const o = p.oferta;
   // B4: la oferta entera (después de firmar, su vencimiento, la contraoferta, lo que sugiere Franco) y, sin oferta abierta, cómo terminó.
-  const s = loQueSigue(p.etapa, p.preaprobacion, URL_PREAPROBACION, o, urlOferta(p.avisoId), { avisoId: p.avisoId, cierre: p.cierre ?? null, otraViva: p.otraViva ?? null });
+  const s = loQueSigue(p.etapa, p.preaprobacion, URL_PREAPROBACION, o, urlOferta(p.avisoId), { avisoId: p.avisoId, cierre: p.cierre ?? null, otraViva: p.otraViva ?? null, pausaAcuerdo: p.pausaAcuerdo === true });
   const textoFirmado = o?.texto ?? p.cierre?.texto ?? null;
   if (!s) return null;
   const tuyo = s.tono === "ciruela";
@@ -125,7 +125,7 @@ function LoQueSigueBloque({ p }: { p: PaginaDepto }) {
 function Camino({ p }: { p: PaginaDepto }) {
   // La misma llamada que el camino chico de la base (VistaBase): el estado, el monto y si quedó en firme sin visitar.
   // B4: sin oferta abierta, el camino dice cómo terminó la última (no la aceptaron, venció, respondieron tarde, la retiró).
-  const c = caminoDepto(p.etapa, p.oferta ?? p.cierre ?? null);
+  const c = caminoDepto(p.etapa, p.oferta ?? p.cierre ?? null, p.pausaAcuerdo === true);
   return (
     <section className="iv2-dp-tj iv2-dp-camino" aria-labelledby="iv2-camino-t" data-inv2="camino-depto">
       <div className="iv2-dp-th iv2-dp-camino-th"><h2 className="iv2-dp-th-t" id="iv2-camino-t">{D.caminoT}</h2><span className="iv2-dp-th-n">{D.pasoDe(c.actual, c.pasos.length)}</span></div>

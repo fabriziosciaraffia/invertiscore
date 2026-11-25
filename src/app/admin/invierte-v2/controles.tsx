@@ -8,7 +8,8 @@ import { MODOS_INVIERTE_V2, type ModoInvierteV2 } from "@/lib/invierte-v2/acceso
 import { MapaPinAjustable } from "@/components/formulario-v4/MapaPinAjustable";
 import { FUENTES_RESPUESTA, lineaPregunta, type PreguntaDepto } from "@/lib/invierte-v2/depto-flujo";
 import { POSTURA_COPY, type Postura } from "@/lib/invierte-v2/rango";
-import { motivoAdminOferta, motivoCorreoOferta, venceAlTerminarTexto } from "@/lib/invierte-v2/b4";
+import { TEXTO_ESTADO_OFERTA, TEXTO_ETAPA, motivoAdminOferta, motivoCorreoOferta, textoAdmin, venceAlTerminarTexto } from "@/lib/invierte-v2/b4";
+import { CORREO_OFERTA } from "@/lib/invierte-v2/b4-correo";
 import type { OfertaVista } from "@/lib/invierte-v2/rango-servidor";
 import type { VisitaResumen } from "@/lib/invierte-v2/visita";
 import { VisitaAdmin } from "./visita-admin";
@@ -257,7 +258,7 @@ export function GestionDepto({ userId, avisoId, etapa, acuerdo, alternativa, com
   const nLat = Number(lat), nLng = Number(lng);
   return (
     <div className="flex flex-col gap-3 font-body text-[13px]" data-admin="inv2-gestion-depto">
-      <p className="m-0"><b>Etapa:</b> {etapa}{ubicacion ? ` · ubicación confirmada (${ubicacion.distanciaM ?? "?"} m del pin) · rehecho: ${ubicacion.veredicto ?? "—"}${ubicacion.precioComprarUF ? ` (Comprar a UF ${Math.round(ubicacion.precioComprarUF)})` : ""}${ubicacion.flujoCLP != null ? ` · al mes ${ubicacion.flujoCLP}` : ""}` : " · ubicación sin confirmar"}</p>
+      <p className="m-0"><b>Etapa:</b> {textoAdmin(TEXTO_ETAPA, etapa)}{ubicacion ? ` · ubicación confirmada (${ubicacion.distanciaM ?? "?"} m del pin) · rehecho: ${ubicacion.veredicto ?? "—"}${ubicacion.precioComprarUF ? ` (Comprar a UF ${Math.round(ubicacion.precioComprarUF)})` : ""}${ubicacion.flujoCLP != null ? ` · al mes ${ubicacion.flujoCLP}` : ""}` : " · ubicación sin confirmar"}</p>
       <div className="flex flex-wrap items-center gap-2">
         <select value={ac} onChange={(e) => setAc(e.target.value)} aria-label="Acuerdo con quien vende" className={campo}>
           <option value="pendiente">Acuerdo pendiente</option>
@@ -410,14 +411,14 @@ export function OfertaAdmin({ o, pruebas = false, esPrueba = false, avisos = [] 
   const contraAbierta = o.estado === "contraoferta" || (o.estado === "sin_acuerdo" && o.respuestaTardia === "contraoferta" && !o.tardiaDecision);
   return (
     <div className="flex flex-col gap-2" data-admin="inv2-oferta-b4">
-      <p className="m-0"><b>Oferta</b>{o.sujetaAVisita === false && <b className="text-[var(--signal-red)]" data-admin="inv2-en-firme"> · A FIRME (tras la visita)</b>} · ronda {o.ronda ?? 1} · {o.estado}{o.tipoRonda ? ` (${o.tipoRonda})` : ""} · UF {o.montoUF ?? "—"} · firmada {fecha(o.firmadaAt)}
+      <p className="m-0"><b>Oferta</b>{o.sujetaAVisita === false && <b className="text-[var(--signal-red)]" data-admin="inv2-en-firme"> · A FIRME (tras la visita)</b>} · ronda {o.ronda ?? 1} · {textoAdmin(TEXTO_ESTADO_OFERTA, o.estado)}{o.tipoRonda ? ` (${o.tipoRonda})` : ""} · UF {o.montoUF ?? "—"} · firmada {fecha(o.firmadaAt)}
         {o.presentadaAt ? ` · presentada ${fecha(o.presentadaAt)}` : ""}{o.vigenteHasta ? ` · ${venceAlTerminarTexto(new Date(o.vigenteHasta))}` : ""}
-        {o.respuesta ? ` · respuesta ${o.respuesta} ${fecha(o.respuestaAt)}` : ""}{o.contraofertaUF ? ` · piden UF ${o.contraofertaUF}${o.contraofertaVence ? ` (${venceAlTerminarTexto(new Date(o.contraofertaVence))})` : ""}` : ""}
+        {o.respuesta ? ` · respuesta: ${textoAdmin(TEXTO_ESTADO_OFERTA, o.respuesta).toLowerCase()} ${fecha(o.respuestaAt)}` : ""}{o.contraofertaUF ? ` · piden UF ${o.contraofertaUF}${o.contraofertaVence ? ` (${venceAlTerminarTexto(new Date(o.contraofertaVence))})` : ""}` : ""}
         {o.sugeridaUF ? ` · Franco sugiere UF ${o.sugeridaUF}${o.sugeridaFuente === "admin" ? ` (corregida; la regla dio ${o.sugeridaReglaUF})` : " (regla)"}` : ""}
         {o.respuestaTardia ? ` · fuera de plazo: ${o.respuestaTardia}${o.tardiaDecision ? ` → ${o.tardiaDecision}` : ""}` : ""}{o.retiradaAt ? ` · retirada ${fecha(o.retiradaAt)} desde ${o.retiradaDesde}` : ""}</p>
       {avisos.length > 0 && (
         <ul className="m-0 pl-5 text-[12px]" data-admin="inv2-avisos-oferta">
-          {avisos.map((a, i) => <li key={i} className={a.correo === "enviado" ? undefined : "text-[var(--signal-red)]"}>Correo «{a.evento}» · {fecha(a.at)} · {a.correo === "enviado" ? "salió" : motivoCorreoOferta(a.motivo)}</li>)}
+          {avisos.map((a, i) => <li key={i} className={a.correo === "enviado" ? undefined : "text-[var(--signal-red)]"}>Correo «{(CORREO_OFERTA as Record<string, { asunto: string }>)[a.evento]?.asunto ?? a.evento}» · {fecha(a.at)} · {a.correo === "enviado" ? "salió" : motivoCorreoOferta(a.motivo)}</li>)}
         </ul>
       )}
       {o.texto && <span><a className={CLASE_BTN} href={`/api/admin/invierte-v2?oferta=${o.id}`} target="_blank" rel="noopener noreferrer" data-admin="inv2-oferta-pdf">Ver el PDF de la oferta firmada</a></span>}

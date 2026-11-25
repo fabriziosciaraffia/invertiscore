@@ -10,6 +10,7 @@ import { COLS_OFERTA, leerConfigRango, ofertaDeFila } from "./rango-servidor";
 import { REGLA_SUGERENCIA, sugerenciaFranco } from "./b4";
 import { avisarPersona, cerrarTareas, venceContraoferta, visitaParaRonda, type DepsAviso } from "./b4-servidor";
 import { BUCKET_INVIERTE, anotar, type ContextoPedido } from "./servidor";
+import { pasarAAcuerdo } from "./acuerdo-servidor";
 import { MAX_FOTOS_VISITA, VISITAS_ABIERTAS, ajusteSugerido, carpetaFotosVisita, estadoDelReporte, puntosVisita, rangoTrasVisita, validarFotoVisita, type EstadoReporte, type FotoVisita, type PuntoVisita } from "./visita";
 
 const T_V = "inv_visitas", T_OF = "inv_ofertas";
@@ -83,7 +84,7 @@ export async function confirmarEnFirme(admin: SupabaseClient, user: Quien, aviso
   if (error) { console.error("[inv2] en firme:", error.message); return { ok: false, error: "guardar" }; }
   if (como === "sin_visitar") await cancelarVisitaAbierta(admin, x.depto.id, "persona");
   else await admin.from(T_V).update({ respuesta: "confirmo", respuesta_at: iso, updated_at: iso }).eq("id", v!.id);
-  await admin.from("inv_deptos").update({ etapa: "en_firme", updated_at: iso }).eq("id", x.depto.id);
+  await pasarAAcuerdo(admin, x.depto.id, { tipo: "persona", email: user.email }, iso);
   await tarea(admin, user.id, "comunicar_en_firme", avisoId, { oferta_id: x.f.id, monto_uf: n(x.f.monto_uf), como }, x.depto.es_prueba);
   await anotar(admin, { userId: user.id, email: user.email, actor: "persona", accion: "oferta_en_firme", detalle: { aviso_id: avisoId, oferta_id: x.f.id, como, monto_uf: n(x.f.monto_uf) }, ctx, esPrueba: x.depto.es_prueba });
   return { ok: true, como };

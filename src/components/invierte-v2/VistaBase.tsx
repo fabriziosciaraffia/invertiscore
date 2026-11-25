@@ -88,7 +88,7 @@ export function VistaBase({ base }: { base: Base }) {
               {/* Una tarjeta por fila (etapa 3, parte A; lámina 3.3-base). La tarjeta entera se toca: hoy abre los detalles; cuando exista la
                   página de cada depto (parte B), esa página. Lo que cambió en la publicación pasa a esa página (lámina 4.2). */}
               {base.elegidos.map((d) => {
-                const estado = estadoEnBase(d.etapa, base.preaprobacion, d.noAvanzaMotivo, d.oferta);
+                const estado = estadoEnBase(d.etapa, base.preaprobacion, d.noAvanzaMotivo, d.oferta, undefined, d.pausaAcuerdo === true);
                 // Tres niveles (segunda vuelta, 23-nov, lámina 3.3): «Te toca a ti» se levanta (sombra fuerte, borde oscuro, pulso); «En curso
                 // con Franco», borde oscuro y sombra suave; «Recién partiendo», plana. El camino chico sale de caminoDepto, como la página.
                 return (
@@ -96,7 +96,7 @@ export function VistaBase({ base }: { base: Base }) {
                     {/* La tarjeta entera abre la página del depto (etapa 3, B1; lámina 3.3-base) y dice en qué va. */}
                     <Link href={urlDepto(d.avisoId)} className={`iv2-depto iv2-depto-tocable${NIVEL_CLASE[estado.nivel]}`} aria-label={B.abrirDepto(d.ficha?.titulo ?? lineaDepto(d.datos))} data-inv2="abrir-depto">
                       <span className="iv2-depto-cuerpo">
-                        <TarjetaBase avisoId={d.avisoId} datos={d.datos} ficha={d.ficha} numeroConfirmado={d.numeroConfirmado} alcanza={d.alcanza} estado={estado} camino={caminoDepto(d.etapa, d.oferta)} />
+                        <TarjetaBase avisoId={d.avisoId} datos={d.datos} ficha={d.ficha} numeroConfirmado={d.numeroConfirmado} alcanza={d.alcanza} estado={estado} camino={caminoDepto(d.etapa, d.oferta, d.pausaAcuerdo === true)} />
                       </span>
                     </Link>
                     {/* La lupa abre el visor; va AL LADO del enlace (no adentro), sobre la esquina de la foto: tocarla no navega al depto. */}

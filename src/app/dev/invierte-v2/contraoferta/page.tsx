@@ -13,7 +13,7 @@ import { visitaMuestra } from "@/lib/invierte-v2/muestra-visita";
 
 export const dynamic = "force-dynamic";
 
-export default function ContraofertaDemo({ searchParams }: { searchParams: { caso?: string; otra?: string; visita?: string; sinVisitar?: string } }) {
+export default function ContraofertaDemo({ searchParams }: { searchParams: { caso?: string; otra?: string; visita?: string; sinVisitar?: string; acuerdo?: string } }) {
   if (process.env.NODE_ENV === "production" && process.env.VERCEL_ENV !== "preview") notFound();
   const caso = searchParams.caso === "aceptar" || searchParams.caso === "tardia" ? searchParams.caso : "proponer";
   const tu = 2936, piso = 2905, alto = 2966, pub = 3090;
@@ -26,7 +26,7 @@ export default function ContraofertaDemo({ searchParams }: { searchParams: { cas
       <div className="iv2-mi-inversion"><Link href="/dev/invierte-v2/depto?etapa=listo&confirmada=1&oferta=contraoferta" className="iv2-mi-inversion-a">← Av. Grecia 1250</Link></div>
       <ResponderContraoferta volverA="/dev/invierte-v2/depto?etapa=listo&confirmada=1" d={{
         avisoId: "muestra", ofertaId: "of", tuUF: tu, ellosUF: ellos, sugeridaUF: s.montoUF, accion: s.accion, topeEsComprar: false, pisoUF: piso, altoUF: alto, publicadoUF: pub, venceAt: vence,
-        fueraDePlazo: caso === "tardia", otraViva: searchParams.otra === "1" ? { titulo: "Av. Irarrázaval 2315" } : searchParams.otra === "firme" ? { titulo: "Av. Irarrázaval 2315", firme: { venceAt: venceAlTerminar(new Date(Date.now() - 864e5)).toISOString() } } : searchParams.otra === "firme-sin" ? { titulo: "Av. Irarrázaval 2315", firme: { venceAt: null } } : null,
+        fueraDePlazo: caso === "tardia", pausaAcuerdo: searchParams.acuerdo === "1", otraViva: searchParams.otra === "1" ? { titulo: "Av. Irarrázaval 2315" } : searchParams.otra === "firme" ? { titulo: "Av. Irarrázaval 2315", firme: { venceAt: venceAlTerminar(new Date(Date.now() - 864e5)).toISOString() } } : searchParams.otra === "firme-sin" ? { titulo: "Av. Irarrázaval 2315", firme: { venceAt: null } } : null,
         cifras: { tu: cifrasAPrecio(MOTOR_MUESTRA, tu), sugerida: cifrasAPrecio(MOTOR_MUESTRA, s.montoUF), ellos: cifrasAPrecio(MOTOR_MUESTRA, ellos) },
         // ?visita=hecha | arreglo: ya visitó; sin ?visita, todavía no (la visita es el botón rojo); ?sinVisitar=1: «Responder sin visitar».
         visita: searchParams.visita === "hecha" || searchParams.visita === "arreglo" ? visitaMuestra(searchParams.visita === "arreglo" ? "arreglo" : "coincide") : null, sinVisitar: searchParams.sinVisitar === "1",

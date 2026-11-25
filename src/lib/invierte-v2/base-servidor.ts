@@ -21,6 +21,7 @@ import { leerPreaprobacion } from "./preaprobacion-servidor";
 import type { EstadoVisible } from "./preaprobacion";
 import { fichasDe, type FichaDepto } from "./ficha-depto-servidor";
 import { etapaDe, ordenBase, type Etapa, type OfertaBase } from "./depto-flujo";
+import { ETAPAS_CON_ACUERDO } from "./b4";
 import { leerUbicaciones, numerosDe } from "./depto-servidor";
 
 const T_DEPTOS = "inv_deptos";
@@ -30,7 +31,7 @@ export interface DatosDepto { precioUF?: number; veredicto?: string | null; scor
 export type OrigenDepto = "entrada" | "franco" | "mapa";
 export interface DeptoDeBase { avisoId: string; alcanza: boolean; datos: DatosDepto; lineas: string[]; preparado: boolean; alMesEnCambio: boolean; origen: OrigenDepto; ficha: FichaDepto | null; /** Etapa 3, B1: en qué va (la línea de estado de la tarjeta). */ etapa: Etapa; noAvanzaMotivo: string | null;
   /** Rediseño del 23-nov (lámina 3.3): la oferta abierta (para decir el rango o que Franco la presenta) y el número confirmado de la calle. */
-  oferta: OfertaBase | null; numeroConfirmado: string | null }
+  oferta: OfertaBase | null; numeroConfirmado: string | null; /** Con un acuerdo en otro depto, en pausa (25-nov-2026). */ pausaAcuerdo?: boolean }
 
 interface FilaCambio { aviso_id: string; tipo: TipoCambio; antes: Record<string, unknown>; despues: Record<string, unknown>; fecha: string }
 const PRINCIPALES: TipoCambio[] = ["precio_baja", "precio_sube", "despublicado", "republicado"];
@@ -101,7 +102,7 @@ export async function leerBase(admin: SupabaseClient, userId: string): Promise<B
       preparado: listos.has(id), alMesEnCambio: conCambioAlMes.has(`${id}|${ultimaFecha.get(id) ?? ""}`),
       origen: ((f.origen as string | null) ?? "mapa") as OrigenDepto, ficha: null as FichaDepto | null,
       etapa: etapaDe({ estado: "elegido", etapa: (f.etapa as string | null) ?? null }) ?? "confirmando", noAvanzaMotivo: (f.no_avanza_motivo as string | null) ?? null,
-      oferta: null as DeptoDeBase["oferta"], numeroConfirmado: null as string | null,
+      oferta: null as DeptoDeBase["oferta"], numeroConfirmado: null as string | null, pausaAcuerdo: false as boolean,
     };
   });
   // «Otras opciones que convienen»: las recomendaciones de Franco que no eligió, nunca más del cupo de tres en todo el flujo
@@ -132,6 +133,9 @@ export async function leerBase(admin: SupabaseClient, userId: string): Promise<B
     // B4: el vencimiento y cómo terminó (la última ronda del depto, aunque haya cerrado sin acuerdo).
     vigenteHasta: o.vigente_hasta, sinAcuerdoMotivo: o.sin_acuerdo_motivo, respuesta: o.respuesta, respuestaTardia: o.respuesta_tardia, tardiaDecision: o.tardia_decision, retiradaAt: o.retirada_at, tipoRonda: o.senales?.b4?.tipo ?? null, mantenerRespuesta: o.mantener_respuesta, sujetaAVisita: o.sujeta_a_visita !== false, visita: visitaPor.get(o.depto_id) ?? null });
   for (const d of elegidos) { d.oferta = ofPor.get(d.avisoId) ?? null; d.numeroConfirmado = ubic[d.avisoId]?.numero ?? null; }
+  // Con un acuerdo en un depto, los demás quedan en pausa (25-nov-2026).
+  const conAcuerdo = elegidos.filter((d) => (ETAPAS_CON_ACUERDO as readonly string[]).includes(d.etapa));
+  for (const d of elegidos) d.pausaAcuerdo = conAcuerdo.some((x) => x.avisoId !== d.avisoId);
   // Por nivel (Te toca a ti, En curso, Recién partiendo) y, dentro de cada nivel, el más avanzado primero (segunda vuelta, 23-nov).
   const ordenados = ordenBase(elegidos, pre.estado);
   // Las cuatro cifras de cada tarjeta, de una sola fuente (23-nov-2026): fichasDe las arma con el motor si la ubicación está confirmada.

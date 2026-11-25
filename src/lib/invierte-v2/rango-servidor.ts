@@ -263,7 +263,7 @@ export function textoDeFirma(x: { orden: { nombre: string; rut: string }; pre: A
   return textoPlanoOferta({ nombre: x.orden.nombre, rut: x.orden.rut, depto: [x.tituloConNumero, lineaDepto(x.datos)].join(" · "), montoUF: x.montoUF, publicadoUF: x.publicadoUF, pagas, sujetaAVisita: !x.enFirme, vigenciaDias: 5, enFirme: x.enFirme ?? null });
 }
 
-export type ErrorFirma = "depto" | "etapa" | "preaprobacion" | "rango" | "monto" | "casilla" | "orden" | "ubicacion" | "guardar";
+export type ErrorFirma = "depto" | "etapa" | "acuerdo" | "preaprobacion" | "rango" | "monto" | "casilla" | "orden" | "ubicacion" | "guardar";
 
 /** FIRMAR LA OFERTA (5.1b). La persona elige el monto (sin límite: los avisos no bloquean); se firma el texto exacto. */
 export async function firmarOferta(admin: SupabaseClient, user: { id: string; email: string | null }, avisoId: string, pedido: { montoUF?: unknown; acepto?: unknown; leyo?: unknown; aceptoFirme?: unknown }, ctx: ContextoPedido | null): Promise<{ ok: true; estado: string } | { ok: false; error: ErrorFirma }> {
@@ -272,6 +272,7 @@ export async function firmarOferta(admin: SupabaseClient, user: { id: string; em
   const p = await leerPaginaDepto(admin, user.id, avisoId, { nuevaRonda: true });
   if (!p) return { ok: false, error: "depto" };
   if (p.etapa !== "listo") return { ok: false, error: "etapa" };
+  if (p.pausaAcuerdo) return { ok: false, error: "acuerdo" };
   if (!puedeOfertar(p.preaprobacion)) return { ok: false, error: "preaprobacion" };
   if (!p.ubicacion) return { ok: false, error: "ubicacion" };
   const of = await asegurarRango(admin, user.id, avisoId, new Date(), { nueva: true });

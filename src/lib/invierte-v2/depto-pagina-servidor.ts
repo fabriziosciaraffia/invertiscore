@@ -16,6 +16,7 @@ import type { EstadoVisible } from "./preaprobacion";
 import { direccionDepto, tituloDepto } from "./titulo-depto";
 import { CERRADAS, asegurarRango, ofertaAbierta, ultimaOferta, type OfertaVista } from "./rango-servidor";
 import { OFERTAS_VIVAS, sePuedeRetirar } from "./b4";
+import { deptoConAcuerdo } from "./acuerdo-servidor";
 import { bloqueOfertaCifras } from "./cifras-motor";
 import { visitaParaRonda } from "./visita-lectura";
 import type { VisitaResumen } from "./visita";
@@ -54,6 +55,8 @@ export interface PaginaDepto {
   visita?: VisitaResumen | null;
   /** B4: otra oferta viva de la persona, en otro depto (para elegir con cuál se queda ante una respuesta fuera de plazo). */
   otraViva?: { avisoId: string; titulo: string; estado: string; firme: { venceAt: string | null } | null } | null;
+  /** Con un acuerdo en otro depto, este queda en pausa (25-nov-2026): no se firma ni se presenta. */
+  pausaAcuerdo?: boolean;
 }
 
 export async function leerPaginaDepto(admin: SupabaseClient, userId: string, avisoId: string, opts: { nuevaRonda?: boolean } = {}): Promise<PaginaDepto | null> {
@@ -111,13 +114,14 @@ export async function leerPaginaDepto(admin: SupabaseClient, userId: string, avi
       oferta.anteriorMontoUF = ant?.monto_uf != null ? Number(ant.monto_uf) : null;
     }
   }
-  const [preguntas, { data: docs }] = await Promise.all([
+  const [preguntas, { data: docs }, conAcuerdo] = await Promise.all([
     leerPreguntas(admin, avisoId),
     admin.from("inv_documentos").select("id, tipo, created_at").eq("user_id", userId).eq("depto_id", f.id as string).order("created_at", { ascending: false }).limit(20),
+    etapa === "listo" ? deptoConAcuerdo(admin, userId, f.id as string) : Promise.resolve(null),
   ]);
   const filasCs = (cs ?? []) as { tipo: TipoCambio; antes: Record<string, unknown>; despues: Record<string, unknown>; fecha: string }[];
   const cambios = filasCs.map((c) => lineaCambio(c, c.fecha)).filter((x): x is string => !!x);
   const cambiosFilas = filasCs.map((c) => filaCambio(c, c.fecha)).filter((x): x is NonNullable<ReturnType<typeof filaCambio>> => !!x);
   return { avisoId, etapa, noAvanzaMotivo: (f.no_avanza_motivo as string | null) ?? null, datos, ficha, tituloConNumero, direccion, ubicacion: u, cambios, cambiosFilas, preaprobacion: pre.estado, whatsapp, alternativa, activos: (elegidos ?? []).map((e) => ({ avisoId: e.aviso_id as string, datos: (e.datos ?? {}) as DatosDepto })),
-    oferta, cierre, visita, otraViva: otra ? { avisoId: otra.aviso_id, titulo: otraFicha?.titulo ?? "otro depto", estado: otra.estado, firme: otraFirme ? { venceAt: otraFirme.vigente_hasta } : null } : null, bloqueOferta: bloqueOfertaCifras(u?.analisis?.motor ?? null, oferta, ficha?.cifras.publicadoUF ?? datos.precioUF ?? null), preguntas, documentos: ((docs ?? []) as { id: string; tipo: string; created_at: string }[]).map((d) => ({ id: d.id, tipo: d.tipo, creadoAt: d.created_at })) };
+    oferta, cierre, visita, pausaAcuerdo: !!conAcuerdo, otraViva: otra ? { avisoId: otra.aviso_id, titulo: otraFicha?.titulo ?? "otro depto", estado: otra.estado, firme: otraFirme ? { venceAt: otraFirme.vigente_hasta } : null } : null, bloqueOferta: bloqueOfertaCifras(u?.analisis?.motor ?? null, oferta, ficha?.cifras.publicadoUF ?? datos.precioUF ?? null), preguntas, documentos: ((docs ?? []) as { id: string; tipo: string; created_at: string }[]).map((d) => ({ id: d.id, tipo: d.tipo, creadoAt: d.created_at })) };
 }

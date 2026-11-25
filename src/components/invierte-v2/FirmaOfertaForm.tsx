@@ -12,7 +12,7 @@
 // pasos y que se puede retirar solo mientras no respondan; el resumen suma «Respaldo» (el reporte, si el monto baja) y «Garantía» (solo
 // un aviso); lleva una segunda casilla, la confirmación explícita, y el botón se activa solo con las dos marcadas.
 import { useState, type ReactNode } from "react";
-import { textoOtraFirme } from "@/lib/invierte-v2/b4";
+import { B4_COPY, textoOtraFirme } from "@/lib/invierte-v2/b4";
 import Link from "next/link";
 import { FIRMA_COPY as F, pctBajoPublicado } from "@/lib/invierte-v2/rango";
 import { VentanaDocumento } from "./VentanaDocumento";
@@ -46,7 +46,7 @@ export function FirmaOfertaForm({ avisoId, montoUF, publicadoUF, documento, urlV
     if (r?.ok) { window.location.assign(urlVolver); return; }
     // Con una oferta a firme vigente en otro depto, el texto propio con la fecha real (24-nov-2026).
     const d = r ? ((await r.json().catch(() => ({}))) as { error?: string; venceAt?: string | null }) : null;
-    setEnviando(false); setError(d?.error === "otra_firme" ? textoOtraFirme(d.venceAt ?? null) : F.error);
+    setEnviando(false); setError(d?.error === "otra_firme" ? textoOtraFirme(d.venceAt ?? null) : d?.error === "acuerdo" ? B4_COPY.pausaDeptoT : F.error);
   }
   return (
     <div className={`iv2-fo${enFirme ? " iv2-fo-firme" : ""}`} data-inv2="firma-oferta">

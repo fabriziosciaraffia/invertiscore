@@ -68,7 +68,7 @@ const OFERTAS_MUESTRA: (Base["elegidos"][number]["oferta"])[] = [null, { estado:
 // El de la etapa «listo» con su rango (rediseño del 23-nov, lámina 3.3): la tarjeta se levanta, dice «Haz tu oferta» y va primera.
 const conAlMes = (e: Omit<Base["elegidos"][number], "alMesEnCambio" | "etapa" | "noAvanzaMotivo" | "oferta" | "numeroConfirmado">, i: number): Base["elegidos"][number] => ({ ...e, alMesEnCambio: e.lineas.some((l) => /al mes$/.test(l)), etapa: ETAPAS_MUESTRA[i] ?? "confirmando", noAvanzaMotivo: null, oferta: OFERTAS_MUESTRA[i] ?? null, numeroConfirmado: OFERTAS_MUESTRA[i] ? "1250" : null });
 
-export default function BaseDemo({ searchParams }: { searchParams: { vista?: string; pre?: string } }) {
+export default function BaseDemo({ searchParams }: { searchParams: { vista?: string; pre?: string; acuerdo?: string } }) {
   if (process.env.NODE_ENV === "production" && process.env.VERCEL_ENV !== "preview") notFound();
   if (searchParams.vista === "actualizado") {
     const r: PerfilActualizado = {
@@ -88,7 +88,9 @@ export default function BaseDemo({ searchParams }: { searchParams: { vista?: str
   const base: Base = {
     orden: { id: "o", nombre: "María José Fernández Valdivieso", firmadoAt: "2026-11-15T15:00:00Z" } as OrdenInv,
     perfil: { topeUF: 3500, comunas: ["Pedro Aguirre Cerda", "Estación Central", "Independencia"] } as PerfilInv,
-    elegidos: ordenBase((seis ? ELEGIDOS : ELEGIDOS.slice(0, 4)).map(conAlMes), pre), otras: OTRAS, whatsapp: "+56912345678",
+    // ?acuerdo=1 (25-nov-2026): con el acuerdo del cuarto depto, los demás en pausa (el segundo, con su oferta en espera), como en leerBase.
+    elegidos: ordenBase((seis ? ELEGIDOS : ELEGIDOS.slice(0, 4)).map(conAlMes).map((d, i, xs) => searchParams.acuerdo !== "1" ? d
+      : { ...d, oferta: i === 1 ? { estado: "en_cola", pisoUF: 3145, altoUF: 3212, montoUF: 3160 } : i === 2 ? null : d.oferta, etapa: i === 2 ? "listo" : d.etapa, pausaAcuerdo: xs.some((x, j) => j !== i && x.etapa === "en_firme") }), pre), otras: OTRAS, whatsapp: "+56912345678",
     preaprobacion: pre,
     // ?pre=subir|revision|corregir|aprobada|aprobada-revision (20-nov-2026): las formas de «Lo que te toca hoy» y la línea de capacidad.
     preDetalle: {

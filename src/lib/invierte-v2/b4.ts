@@ -76,6 +76,15 @@ export function diasEntre(desde: Date, hasta: Date): number {
   return Math.round((Date.UTC(b.y, b.m - 1, b.d) - Date.UTC(a.y, a.m - 1, a.d)) / 864e5);
 }
 
+/** Las etapas en que el depto tiene un acuerdo (25-nov-2026): con una, los demás deptos de la persona quedan en pausa. */
+export const ETAPAS_CON_ACUERDO = ["en_firme", "promesa", "escritura", "inscrito"] as const;
+/** ¿Queda en pausa con un acuerdo en otro depto? Sí, si no tiene una oferta en curso (sin oferta, en borrador, en espera o cerrada). */
+export const quedaEnPausa = (estado: string | null | undefined) => !estado || !["firmada", "presentada", "contraoferta", "aceptada_sujeta"].includes(estado);
+/** El texto que ve la persona, para los códigos internos que mostraba el admin (25-nov-2026, Fabrizio). */
+export const TEXTO_ESTADO_OFERTA: Record<string, string> = { borrador: "Borrador", firmada: "Firmada", en_cola: "En espera", presentada: "Presentada", contraoferta: "Contraoferta", aceptada_sujeta: "Aceptada, sujeta a visita", en_firme: "Acuerdo", sin_acuerdo: "Sin acuerdo", retirada: "Retirada", reemplazada: "Reemplazada", rechazada: "Rechazada" };
+export const TEXTO_ETAPA: Record<string, string> = { confirmando: "Confirmando", sin_preaprobacion: "Sin preaprobación", listo: "Lista para ofertar", en_firme: "Acuerdo", promesa: "Promesa", escritura: "Escritura", inscrito: "Inscrito", en_pausa: "En pausa", no_avanza: "No avanzó" };
+export const textoAdmin = (mapa: Record<string, string>, codigo: string | null | undefined) => (codigo ? mapa[codigo] ?? codigo : "—");
+
 /** Otra oferta viva de la persona en otro depto; `firme` si es una a firme vigente (firmada o presentada), que no se retira. */
 export type OtraViva = { titulo: string; firme?: { venceAt: string | null } | null };
 /** Con una oferta a firme vigente en otro depto no se oferta por este (24-nov-2026, Fabrizio): la fecha real de vencimiento. Sin presentar
@@ -122,6 +131,7 @@ export const MOTIVOS_ADMIN_OFERTA: Record<string, string> = {
   orden: "La persona no tiene la orden firmada.",
   otra_viva: "La persona tiene otra oferta viva: tiene que elegir con cuál se queda.",
   otra_firme: "La persona tiene una oferta a firme vigente en otro depto: no se retira hasta que venza o la respondan.",
+  acuerdo: "La persona tiene un acuerdo por otro depto: esta oferta queda en pausa y no se presenta.",
   // La visita (24-nov-2026).
   confirmacion: "Falta la confirmación explícita de la persona.",
   tipo: "Esa foto no se puede subir: solo JPEG, PNG o WEBP.",
@@ -195,6 +205,16 @@ export const B4_COPY = {
   rondaNuevaT: "Franco va a presentar tu nueva oferta a quien vende",
   enColaT: "Franco va a presentar tu oferta cuando termine la que tienes vigente",
   enColaTxt: "Nunca se presenta sola.",
+  // Con un acuerdo en otro depto, en pausa (25-nov-2026, Fabrizio): Lo que sigue, la tarjeta de la base y el camino chico.
+  pausaChip: "En pausa",
+  pausaT: "Tienes un acuerdo por otro depto. Esta oferta queda en pausa.",
+  pausaTxt: "Si ese negocio no sigue, Franco te va a preguntar antes de presentarla.",
+  pausaDeptoT: "Tienes un acuerdo por otro depto. Este depto queda en pausa.",
+  pausaDeptoTxt: "Si ese negocio no sigue, Franco te va a preguntar cómo seguir.",
+  pausaBaseT: "Tienes un acuerdo por otro depto",
+  pausaBaseOferta: "Esta oferta queda en pausa",
+  pausaBaseDepto: "Este depto queda en pausa",
+  caminoPausa: "En pausa · tienes un acuerdo por otro depto",
   comunicarT: "Franco le está avisando a quien vende que aceptaste",
   comunicarTxt: "Sigue sujeta a tu visita.",
   precioAceptado: "Precio aceptado",
