@@ -93,12 +93,29 @@ export function registrarInformeVisto(args: {
   // Persistencia fire-and-forget: no se awaitea desde el render.
   void (async () => {
     try {
-      const supabase = createClient();
-      await Promise.all(
-        args.ids.map((id) => supabase.rpc("marcar_informe_visible", { p_analysis_id: id })),
-      );
+      await marcarInformesVisibles(createClient() as unknown as ClienteMarca, args.ids);
     } catch {
-      /* RPC ausente (migración sin aplicar) o sin sesión — el render no se entera */
+      /* RPC ausente (migración sin aplicar) — el render no se entera */
     }
   })();
+}
+
+/** Lo que `marcarInformesVisibles` necesita del cliente de Supabase (el tier MEDICION lo prueba con uno falso). */
+export interface ClienteMarca {
+  auth: { getSession(): Promise<{ data: { session: unknown } }> };
+  rpc(fn: string, args: Record<string, unknown>): PromiseLike<unknown>;
+}
+
+/**
+ * SIN SESIÓN NO SE LLAMA (25-nov-2026, Fabrizio): `marcar_informe_visible` solo escribe para el dueño (SECURITY INVOKER y
+ * RLS), y el rol anónimo no tiene permiso sobre `analisis`, así que un visitante sin cuenta —el informe de ejemplo, un enlace
+ * compartido— recibía un 401 en la consola en cada visita. La sesión se lee de la cookie local, sin ir a la red. Devuelve
+ * cuántos informes intentó marcar.
+ */
+export async function marcarInformesVisibles(supabase: ClienteMarca, ids: string[]): Promise<number> {
+  if (ids.length === 0) return 0;
+  const { data } = await supabase.auth.getSession();
+  if (!data?.session) return 0;
+  await Promise.all(ids.map((id) => supabase.rpc("marcar_informe_visible", { p_analysis_id: id })));
+  return ids.length;
 }

@@ -29,7 +29,7 @@ import { capturarServidor, distinctIdDeCorreo, uuidDeterminista } from "../../..
 import { eventoPagoConfirmado } from "../../../src/lib/medicion-pago";
 import { EVENTOS_RESEND, TIPOS_CORREO, eventoCorreoEnviado, eventoDeResend, identidadCorreo, tagsCorreo, valorTag } from "../../../src/lib/medicion-correo";
 import { firmarSvix, verificarFirmaSvix } from "../../../src/lib/resend-webhook";
-import { registrarInformeVisto } from "../../../src/lib/informe-visto";
+import { marcarInformesVisibles, registrarInformeVisto, type ClienteMarca } from "../../../src/lib/informe-visto";
 import { emitirAuthCompletada } from "../../../src/lib/auth-analytics";
 import { EV } from "../../../src/components/landing-v14/eventos";
 
@@ -66,6 +66,20 @@ export async function runMedicionTier(): Promise<{ hard: number }> {
     const props = (cap?.args[1] ?? {}) as Record<string, unknown>;
     if (cap?.args[0] !== "informe_visto") F("2 · registrarInformeVisto no emite informe_visto");
     if (props.comuna !== "Ñuñoa" || props.score !== 59 || props.veredicto !== "AJUSTA SUPUESTOS" || props.access_level !== "premium" || props.es_compartido !== false) F(`2 · informe_visto no absorbió lo de analysis_viewed (${JSON.stringify(props)})`);
+    // SIN SESIÓN NO SE LLAMA (25-nov-2026, Fabrizio): el rol anónimo recibe 401 de `marcar_informe_visible` (no tiene permiso sobre
+    // `analisis`), así que un visitante del informe de ejemplo o de un enlace compartido no lo llama; con sesión, uno por informe.
+    const clienteFalso = (session: unknown) => {
+      const rpc: Array<[string, Record<string, unknown>]> = [];
+      const c: ClienteMarca = { auth: { getSession: async () => ({ data: { session } }) }, rpc: async (fn, args) => { rpc.push([fn, args]); return null; } };
+      return { c, rpc };
+    };
+    const anon = clienteFalso(null);
+    const nAnon = await marcarInformesVisibles(anon.c, ["a1", "a2"]);
+    if (nAnon !== 0 || anon.rpc.length !== 0) F(`2 · marcar_informe_visible se llama sin sesión (${anon.rpc.length} llamadas)`);
+    const dueno = clienteFalso({ user: { id: "u" } });
+    const nDueno = await marcarInformesVisibles(dueno.c, ["a1", "a2"]);
+    if (nDueno !== 2 || dueno.rpc.map(([f, a]) => `${f}:${a.p_analysis_id}`).join() !== "marcar_informe_visible:a1,marcar_informe_visible:a2") F(`2 · con sesión no se marca cada informe (${JSON.stringify(dueno.rpc)})`);
+    if (!/await marcarInformesVisibles\(createClient\(\) as unknown as ClienteMarca, args\.ids\);/.test(sinComentarios(leer("src/lib/informe-visto.ts"))) || /supabase\.rpc\("marcar_informe_visible"[^\n]*\n[^\n]*\}\)\),\s*\);/.test(leer("src/lib/informe-visto.ts"))) F("2 · registrarInformeVisto no pasa por marcarInformesVisibles (el RPC se llama por otro lado)");
     const ltr = sinComentarios(leer("src/app/analisis/[id]/results-client.tsx"));
     if (!/registrarInformeVisto\(\{[\s\S]*?comuna,\s*\n\s*score,\s*\n\s*veredicto: readVeredicto\(results\),\s*\n\s*accessLevel,\s*\n\s*esCompartido: isSharedView \|\| isSharedLink,/.test(ltr)) F("2 · el informe LTR no le pasa comuna, score, veredicto y acceso a informe_visto");
   }
