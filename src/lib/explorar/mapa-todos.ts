@@ -71,7 +71,9 @@ export const BARRAS_SIN_CUENTA: readonly BarraPanel[] = ["precio"];
 export const BARRA_COPY: Record<BarraPanel, string> = {
   precio: "Precio",
   arriendo: "Arriendo estimado",
-  cap: "Cap rate",
+  // «Cap rate BRUTO» (26-nov-2026, ajuste de Fabrizio): la tarjeta y el panel muestran el bruto (arriendo × 12 / precio) y la página
+  // del informe el neto; con el nombre completo nadie ve dos cifras distintas y piensa que hay un error.
+  cap: "Cap rate bruto",
   flujo: "Te sobran o pones al mes",
   ufm2: "UF por m²",
 };
@@ -133,7 +135,8 @@ export const TARJETA_COPY = {
   publicado: "Publicado",
   arriendo: "Arriendo est.",
   arriendoLargo: "Arriendo estimado",
-  capRate: "Cap rate",
+  /** El bruto (arriendo × 12 / precio), con su nombre: el informe muestra el neto (26-nov-2026). */
+  capRate: "Cap rate bruto",
   teSobran: "Te sobran al mes",
   pones: "Pones al mes",
   noConviene: "No conviene a este precio",
@@ -202,7 +205,7 @@ export const PANEL_COPY = {
   minimo: "Mínimo",
   maximo: "Máximo",
   /** Sin cuenta, las barras de cifras piden crear la cuenta (decisión 8). */
-  conCuenta: (barra: BarraPanel) => `Crea tu cuenta gratis para filtrar por ${({ precio: "precio", arriendo: "arriendo estimado", cap: "cap rate", flujo: "lo que te sobra o pones al mes", ufm2: "UF por m²" } as const)[barra]}`,
+  conCuenta: (barra: BarraPanel) => `Crea tu cuenta gratis para filtrar por ${({ precio: "precio", arriendo: "arriendo estimado", cap: "cap rate bruto", flujo: "lo que te sobra o pones al mes", ufm2: "UF por m²" } as const)[barra]}`,
   ver: (n: number) => (n === 1 ? "Ver 1 depto" : `Ver ${miles(n)} deptos`),
   contando: "Ver deptos",
   ninguno: "Ninguno con estos filtros",

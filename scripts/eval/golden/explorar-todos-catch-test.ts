@@ -147,6 +147,8 @@ export async function runExplorarTodosTier(): Promise<{ hard: number }> {
     if (!/data-explorar="linea">2D1B · 50 m²</.test(hC)) F("7 · la línea no lleva tipología y m²");
     for (const [k, v] of [["precio", "UF 2.800"], ["arriendo", "\\$520\\.000"], ["cap-rate", "5,9 %"], ["flujo", "\\$20\\.457"]]) if (!new RegExp(`data-explorar="${k}"[^>]*>${v}<`).test(hC)) F(`7 · la franja no trae ${k} = ${v}`);
     if (!/data-explorar="analizar"[^>]*>Ver este depto</.test(hC)) F("7 · el botón principal no dice «Ver este depto»");
+    // «Cap rate bruto» (26-nov-2026): la tarjeta dice el bruto con su nombre (el informe muestra el neto), con y sin cuenta.
+    if (!/<span>Cap rate bruto<\/span><b data-explorar="cap-rate">/.test(hC) || !/<span>Cap rate bruto<\/span><b class="ex-borroso"/.test(tarjeta(pin(), true))) F("7 · la tarjeta no dice «Cap rate bruto» (con y sin cuenta)");
     const hA = tarjeta({ ...pin({ veredicto: "AJUSTA SUPUESTOS", flujo: -45000 }), neg: { d: 3.2, p: 2810, s: 70, f: 1 } } as po.PinMapa);
     if (!/Conviene desde UF 2\.810 · 3,2 % menos/.test(hA)) F("7 · Ajustar no suma «Conviene desde UF X · N % menos»");
     if (!/>Pones al mes</.test(hA)) F("7 · con flujo negativo la franja no dice «Pones al mes»");
@@ -172,6 +174,7 @@ export async function runExplorarTodosTier(): Promise<{ hard: number }> {
     for (const b of mt.BARRAS_PANEL) if (!new RegExp(`data-explorar="barra-${b}"`).test(h9)) F(`9 · falta la barra ${b}`);
     if ((h9.match(/<span style="height:\d+px"/g) ?? []).length !== 24 * 5) F("9 · las barras no dibujan su distribución (24 tramos cada una)");
     if (!/data-explorar="dormitorios"/.test(h9) || !/data-tipologia="2"/.test(h9)) F("9 · los dormitorios no van como botones");
+    if (!/data-explorar="barra-cap"[^>]*><legend class="ex-grupo-t">Cap rate bruto<\/legend>/.test(h9)) F("9 · la barra del cap rate no dice «Cap rate bruto»");
     if (!/Con pie de <b>20 %<\/b>, crédito a <b>30 años<\/b> y tasa de <b>4,07 %<\/b>/.test(h9) || !/data-explorar="cambiar-supuestos"/.test(h9)) F("9 · los supuestos no van en una línea editable");
     if (!h9.includes(mt.PANEL_COPY.cortaPorZona) || !/data-explorar="renta-corta"/.test(h9)) F("9 · falta renta corta con «se estima por zona»");
     if (!/Ver 19\.056 deptos/.test(h9)) F("9 · el botón no dice «Ver N deptos»");

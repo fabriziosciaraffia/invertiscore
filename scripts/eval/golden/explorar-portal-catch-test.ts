@@ -193,7 +193,8 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
       ["el precio «UF 4.591»", /<span>Publicado<\/span><b data-explorar="precio">UF 4\.591<\/b>/.test(una)],
       ["el veredicto y el puntaje «Comprar · 84»", t.includes("Comprar · 84")],
       ["el flujo «Te sobran al mes $142.264»", /<span>Te sobran al mes<\/span><b data-explorar="flujo">\$142\.264<\/b>/.test(una)],
-      ["el cap rate «5,8 %» y el arriendo «$865.000»", /<span>Cap rate<\/span><b data-explorar="cap-rate">5,8 %<\/b>/.test(una) && /<span>Arriendo est\.<\/span><b data-explorar="arriendo">\$865\.000<\/b>/.test(una)],
+      // ACTA 26-nov-2026 (ajuste de Fabrizio): antes fijaba la etiqueta «Cap rate»; ahora dice «Cap rate bruto» (el informe muestra el neto).
+      ["el cap rate bruto «5,8 %» y el arriendo «$865.000»", /<span>Cap rate bruto<\/span><b data-explorar="cap-rate">5,8 %<\/b>/.test(una) && /<span>Arriendo est\.<\/span><b data-explorar="arriendo">\$865\.000<\/b>/.test(una)],
       ["«Ver este depto»", /data-explorar="analizar"[^>]*>\s*Ver este depto/.test(una)],
       ["el corazón", /data-explorar="corazon"/.test(una)],
       ["la imagen", /data-explorar="imagen"/.test(una) && /\/api\/explorar\/calle\//.test(una)],
