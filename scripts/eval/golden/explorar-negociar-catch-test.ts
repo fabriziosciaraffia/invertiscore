@@ -129,7 +129,7 @@ export async function runExplorarNegociarTier(): Promise<{ hard: number }> {
   const tarjeta = (pines: unknown[], sel: string, sinCuenta = false) => modTar ? dibujar(createElement(modTar.TarjetaPin, { pines, seleccionado: sel, uf: 39000, analizados: {}, guardados: new Set(), generando: null, error: null, alCambiar: NADA, alCerrar: NADA, alGuardar: NADA, alAnalizar: NADA, sinCuenta })) : "";
   // (03-nov-2026) La cabecera de la lista es el desglose de la barra: dos ✓ Comprar y un − Ajustar.
   const lista = (sinCuenta = false) => modLis ? dibujar(createElement(modLis.ListaPortal, { pines: [PIN, { ...PIN, avisoId: "c2", score: 80 }], negociados: [NEG], tope: 5, desglose: po.desgloseBarra(2, 1, 5), calculando: null, orden: "puntaje", uf: 39000, analizados: {}, guardados: new Set(), alOrden: NADA, alAbrir: NADA, alGuardar: NADA, alAvisame: NADA, alCerrar: NADA, sinCuenta })) : "";
-  const filtros = (f: po.FiltrosPortal, extra: Record<string, unknown> = {}) => modFil ? dibujar(createElement(modFil.HojaFiltros, { filtros: f, tasa: { tasa: 4.07 }, miBusqueda: { activa: false, alUsar() {}, perfil: PERFIL }, contar: () => 201, contarNegociados: () => 48, asegurar() {}, alAplicar() {}, alCerrar() {}, alPedirRegistro: null, ...extra })) : "";
+  const filtros = (f: po.FiltrosPortal, extra: Record<string, unknown> = {}) => modFil ? dibujar(createElement(modFil.HojaFiltros, { filtros: f, tasa: { tasa: 4.07 }, contarTodos: () => 249, distribucion: () => null, alMoverTasa() {}, asegurar() {}, alAplicar() {}, alCerrar() {}, alPedirRegistro: null, ...extra })) : "";
   const popup = (negociado: unknown, movido: string | null = null) => modPop ? dibujarPopup(createElement(modPop.AvisoAntesDeAnalizar, {
     depto: { comuna: "Ñuñoa", tipologia: "2D2B", m2: 58, precioUF: negociado ? 3080 : 4290, condicion: "usado" }, negociado, movido,
     modalidad: "ltr", combinacion: { piePct: 20, plazoAnios: 30, tasaPct: null }, finanzas: { tasa: 4.07, uf: 39000, arriendo: 720000 },
@@ -163,9 +163,14 @@ export async function runExplorarNegociarTier(): Promise<{ hard: number }> {
       if (!/<span class="chip-v c"[^>]*data-veredicto="COMPRAR"[^>]*>[^<]*<\/span> al precio publicado/.test(lc)) F("1 · la barra de abajo no dice «al precio publicado» junto al chip ✓ Comprar");
     }
     // Todo chip de Comprar con número, en la tarjeta y la lista (sin los negociados, que dicen «Si consigues»), lo dice al lado.
-    const conNumero = [...chipsComprarConNumero(hTarjetaC), ...chipsComprarConNumero(sinNegociadas(hLista))];
-    if (conNumero.length < 3) F(`1 · la tarjeta y la lista dibujan ${conNumero.length} chips de Comprar con número (se esperaban 3: no se pudo medir)`);
-    for (const c of conNumero) if (!c.despues.startsWith("al precio publicado")) F(`1 · un chip «${texto(c.chip)}» no dice «al precio publicado» al lado: «${c.despues.slice(0, 60)}»`);
+    // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 7): antes la tarjeta decía «al precio publicado» al lado del chip; la
+    // tarjeta nueva lleva bajo el chip la franja de cuatro cifras, que abre con «Publicado UF X»: el precio al que vale el chip va
+    // pegado a él. En la tarjeta se exige eso (la franja inmediatamente después del chip, abriendo con «Publicado»); en la lista, la
+    // frase de siempre.
+    const enTarjeta = chipsComprarConNumero(hTarjetaC), enLista = chipsComprarConNumero(sinNegociadas(hLista));
+    if (enTarjeta.length < 1 || enLista.length < 2) F(`1 · la tarjeta y la lista dibujan ${enTarjeta.length} + ${enLista.length} chips de Comprar con número (se esperaban 1 + 2: no se pudo medir)`);
+    for (const c of enTarjeta) if (!/^Publicado UF 4\.290 /.test(c.despues)) F(`1 · el chip «${texto(c.chip)}» de la tarjeta no va seguido de la franja con «Publicado UF X»: «${c.despues.slice(0, 60)}»`);
+    for (const c of enLista) if (!c.despues.startsWith("al precio publicado")) F(`1 · un chip «${texto(c.chip)}» no dice «al precio publicado» al lado: «${c.despues.slice(0, 60)}»`);
     // ⚠ ACTA (03-nov-2026) · la cabecera de la lista es el desglose: el total y la línea de los ✓ Comprar «al precio publicado».
     const cab = texto(hLista.match(/<div[^>]*data-explorar="titulo-lista"[^>]*>[\s\S]*?<\/div>/)?.[0] ?? "");
     if (!/^3 deptos 2 ✓ Comprar al precio publicado/.test(cab)) F(`1 · el título de la lista no dice «al precio publicado»: «${cab}»`);
@@ -206,7 +211,12 @@ export async function runExplorarNegociarTier(): Promise<{ hard: number }> {
         const linea = codigo(p).slice(codigo(p).lastIndexOf("\n", m.index ?? 0), codigo(p).indexOf("\n", m.index ?? 0));
         // ⚠ ACTA (04-nov-2026, la pasada de Fabrizio por /explorar, tier EXPLORAR-PASADA-0411) · el pop-up de «Ver este depto» también dibuja el chip con su puntaje (`enTarjeta.score`) y la
         // frase en la misma línea.
-        const ok = ((m[1] === "p.score" || m[1] === "enTarjeta.score ?? null") && /\{AL_PRECIO_PUBLICADO\}/.test(linea)) || (/neg\.s|negociado\.score/.test(m[1]) && /\{siConsigues\.antes\}|\{NEGOCIAR_COPY\.consigues\}/.test(linea));
+        // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 7): en la tarjeta del pin el chip (`sinCuenta ? null : p.score`) va
+        // seguido de la franja que abre con TARJETA_COPY.publicado; se acepta ese caso solo en tarjeta-pin.tsx y solo si la franja es
+        // lo que sigue al chip en el código (el render lo mide arriba).
+        const sigue = codigo(p).slice((m.index ?? 0) + m[0].length, (m.index ?? 0) + m[0].length + 900);
+        const franja = p === "src/app/explorar/tarjeta-pin.tsx" && m[1] === "sinCuenta ? null : p.score" && /^\s*\)\}\s*<\/span>\s*<div className="ex-franja" data-explorar="franja"[^>]*>\s*<div className="ex-cifra"><span>\{TARJETA_COPY\.publicado\}<\/span>/.test(sigue);
+        const ok = franja || ((m[1] === "p.score" || m[1] === "enTarjeta.score ?? null") && /\{AL_PRECIO_PUBLICADO\}/.test(linea)) || (/neg\.s|negociado\.score/.test(m[1]) && /\{siConsigues\.antes\}|\{NEGOCIAR_COPY\.consigues\}/.test(linea));
         if (!ok) F(`1 · ${p}: un chip con número («puntaje={${m[1]}}») sin «al precio publicado» ni «Si consigues» al lado`);
       }
     }
@@ -215,18 +225,19 @@ export async function runExplorarNegociarTier(): Promise<{ hard: number }> {
   // ── 2 · LOS CHIPS SON EL DE LA CASA ──
   // Mutaciones: M5 la ayuda de Filtros con un chip inventado · M6 el chip de la casa sin el puntaje adentro.
   {
-    const html = { tarjetaComprar: hTarjetaC, tarjetaNegociado: hTarjetaN, lista: hLista, filtros: hFiltros, popupNegociado: hPopN };
+    // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 2): Filtros salió de la lista de superficies con chip: el descuento
+    // máximo se fue del panel y con él su ayuda con los chips. Igual se le exige no nombrar un veredicto fuera de ChipVeredicto.
+    const html = { tarjetaComprar: hTarjetaC, tarjetaNegociado: hTarjetaN, lista: hLista, popupNegociado: hPopN };
+    if (CHIP_INVENTADO.test(texto(sinChipsDeLaCasa(hFiltros)))) F("2 · Filtros nombra un veredicto como chip fuera de ChipVeredicto");
     for (const [k, h] of Object.entries(html)) {
       if (!h) { F(`2 · no se pudo dibujar ${k}`); continue; }
       const resto = texto(sinChipsDeLaCasa(h));
       if (CHIP_INVENTADO.test(resto)) F(`2 · ${k} nombra un veredicto como chip fuera de ChipVeredicto: «${resto.match(CHIP_INVENTADO)?.[0]}»`);
       if (!/class="chip-v /.test(h)) F(`2 · ${k} no dibuja ningún chip de la casa`);
     }
-    const ayuda = hFiltros.match(/<p[^>]*data-explorar="ayuda-negociar"[^>]*>[\s\S]*?<\/p>/)?.[0] ?? "";
-    if (!/class="chip-v a"[^>]*data-veredicto="AJUSTA SUPUESTOS"/.test(ayuda) || !/class="chip-v c"[^>]*data-veredicto="COMPRAR"/.test(ayuda)) F("2 · la ayuda de «Si negocias el precio» no lleva los chips reales de Ajustar y Comprar");
-    // ⚠ ACTA (03-nov-2026, goal «la pasada real de /explorar») · el grupo es «Descuento máximo para − Ajustar» y la capa se ve de
-    // entrada: la ayuda dice qué son y de cuánto descuento, sin «Suma» (ya no se prende acá).
-    if (!/^Los deptos que al precio publicado dan − Ajustar , pero llegan a ✓ Comprar si consigues un descuento de hasta:$/.test(texto(ayuda))) F(`2 · la ayuda de negociar dice «${texto(ayuda)}»`);
+    // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 2): antes fijaba la ayuda «Los deptos que al precio publicado dan
+    // − Ajustar…» del grupo «Descuento máximo para − Ajustar»; ese grupo se fue del panel (siempre 10 %). Se retira y queda el negativo.
+    if (/data-explorar="ayuda-negociar"|data-explorar="bloque-negociar"/.test(hFiltros)) F("2 · vuelve al panel el descuento máximo para − Ajustar");
     if (/factible|con argumentos/i.test(texto(hFiltros))) F("2 · Filtros dice «factible» o «con argumentos»");
     const conPuntaje = renderToStaticMarkup(createElement((require(join(RAIZ, "src/components/analysis/shared/ChipVeredicto")) as { ChipVeredicto: FC<Record<string, unknown>> }).ChipVeredicto, { v: "COMPRAR", puntaje: 71 }));
     if (!/^<span class="chip-v c" data-veredicto="COMPRAR" data-puntaje="71">✓ Comprar · 71<\/span>$/.test(conPuntaje)) F(`2 · el chip de la casa con puntaje dibuja ${conPuntaje}`);
@@ -259,8 +270,11 @@ export async function runExplorarNegociarTier(): Promise<{ hard: number }> {
     const cpin = require(join(RAIZ, "src/lib/explorar/colores-pin")) as typeof import("../../../src/lib/explorar/colores-pin");
     const ajusta = leer("src/app/globals.css").match(/--verdict-ajusta:(#[0-9A-Fa-f]{6})/)?.[1];
     if (cpin.COLORES_PIN.claro.ajustar.fondo !== ajusta) F(`3 · el pin negociado no es el color de Ajustar (${cpin.COLORES_PIN.claro.ajustar.fondo} vs --verdict-ajusta ${ajusta})`);
-    const capa = mapaSrc.slice(mapaSrc.indexOf("const negs ="), mapaSrc.indexOf("const e = sel ?"));
-    if (capa.length < 200 || (capa.match(/"ajustar"/g) ?? []).length < 3 || /"comprar"|C8323C|signal-red/.test(capa)) F("3 · el mapa dibuja la capa negociada sin ciruela o con otro color");
+    // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 6): antes leía el tramo `const negs = …` que dibujaba la capa con
+    // marcadores de Google; ahora todos los pines van en el canvas con la clase de cada uno: el negociado es clase «ajustar»
+    // (claseDePin), el cliente se la pasa a la capa y el canvas lo pinta con colorPin(d.clase, tema): la ciruela, nunca el rojo.
+    const clienteSrc = codigo("src/app/explorar/explorar-cliente.tsx");
+    if (cn.claseDePin(NEG as unknown as cn.PinNegociado) !== "ajustar" || !/const clase = claseDePin\(p\);\s*return \{ id: p\.avisoId, lat: p\.lat, lng: p\.lng, clase,/.test(clienteSrc) || !/colorPin\(d\.clase, tema\)\.fondo/.test(mapaSrc) || cpin.COLORES_PIN.claro.ajustar.fondo === cpin.COLORES_PIN.claro.no.fondo) F("3 · el mapa dibuja la capa negociada sin ciruela o con otro color");
     if (cpin.COLORES_PIN.claro.ajustar.texto.toUpperCase() !== "#FFFFFF") F("3 · el número del pin negociado no es blanco");
     // EL SATÉLITE (QA en el preview, 02-nov-2026): lejos, el grupo de la capa que un rojo tapa se corre a su borde con el número a
     // la vista; el que nada tapa no se mueve. Fixtures sobre la función pura, y el cableado en el mapa.
@@ -277,10 +291,11 @@ export async function runExplorarNegociarTier(): Promise<{ hard: number }> {
       const otro = { x: Math.cos(Math.PI / 4) * 44, y: Math.sin(Math.PI / 4) * 44, r: 24 };
       const s4 = cn.satelite(mismo, [rojo, otro]);
       if ([rojo, otro].some((r) => fuera(mismo, s4, r) < 20 * cn.SATELITE_FUERA - 1e-6)) F(`3 · con otro rojo en el camino, el satélite queda tapado: ${JSON.stringify(s4)}`);
-      // ⚠ ACTA (03-nov-2026) · los de arriba ya no son rojos (azul ✓ Comprar): la lista se llama `arriba`; la regla es la misma.
-      if (!/arriba\.push\(circulo\(gr\.lat, gr\.lng, icono\.w \/ 2\)\)/.test(mapaSrc)) F("3 · el mapa no anota los grupos de los ✓ Comprar para el satélite");
-      if (!/const icono = grupo\("ajustar", gr\.n\);\s*marcador\(pos, icono, 0, [^\n]*, satelite\(circulo\(gr\.lat, gr\.lng, icono\.w \/ 2\), arriba\)\)/.test(capa)) F("3 · los grupos de la capa no se corren cuando un ✓ Comprar los tapa");
-      if (!/anchor: new g\.maps\.Point\(icono\.w \/ 2 - corrido\.dx, icono\.h \/ 2 - corrido\.dy\)/.test(mapaSrc)) F("3 · el corrimiento no llega al ancla del ícono");
+      // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 6): se retiran los tres predicados del cableado del satélite (los
+      // grupos de los ✓ Comprar anotados, el grupo de la capa corrido y el ancla del ícono): con el canvas no hay grupos por clase
+      // que se tapen (lejos, un grupo es UNO, en tinta, con todas las clases) y cerca los choques los resuelve componerCapa por
+      // puntaje (EXPLORAR-TODOS §6). La función pura `satelite` queda probada arriba por si vuelve a usarse; que el mapa NO la use:
+      if (/satelite\(/.test(mapaSrc)) F("3 · el mapa volvió a correr grupos con satelite() (con el canvas, los choques los resuelve componerCapa)");
     }
     // El interruptor del chip y la marca de la tasa, en tinta (sin el rojo).
     const css = leer("src/app/explorar/explorar.css");
@@ -375,7 +390,11 @@ export async function runExplorarNegociarTier(): Promise<{ hard: number }> {
     const pop = texto(hPopN);
     if (!/Al precio publicado − Ajustar/.test(pop) || !/Si consigues UF 2\.950 \(−4,2 %\) ✓ Comprar · 71/.test(pop)) F(`5 · el pop-up del negociado no dice los dos veredictos: «${pop.slice(0, 200)}»`);
     const tn = texto(hTarjetaN);
-    if (!/UF 3\.080 publicado/.test(tn) || !/Al precio publicado − Ajustar/.test(tn) || !/Si consigues UF 2\.950 \(−4,2 %\) ✓ Comprar · 71/.test(tn) || !/Ver este depto a UF 2\.950/.test(tn)) F(`5 · la tarjeta del negociado no dice los dos precios y «Ver este depto a UF 2.950»: «${tn.slice(0, 220)}»`);
+    // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 7): antes fijaba «UF 3.080 publicado», «Al precio publicado − Ajustar»,
+    // «Si consigues UF 2.950 (−4,2 %) ✓ Comprar · 71» y el botón «Ver este depto a UF 2.950»; ahora la tarjeta dice los dos precios
+    // así: «Publicado UF 3.080» en la franja, el chip − Ajustar y «Conviene desde UF 2.950 · 4,2 % menos»; el botón es «Ver este
+    // depto» (también en un Ajustar). El informe se sigue pidiendo al precio negociado (el cuerpo de `analizar`, arriba).
+    if (!/Publicado UF 3\.080 /.test(tn) || !/data-veredicto="AJUSTA SUPUESTOS"/.test(hTarjetaN) || !/Conviene desde UF 2\.950 · 4,2 % menos/.test(tn) || !/data-explorar="analizar"[^>]*>Ver este depto</.test(hTarjetaN) || /Ver este depto a UF/.test(tn)) F(`5 · la tarjeta del negociado no dice los dos precios («Publicado UF 3.080» y «Conviene desde UF 2.950 · 4,2 % menos») con «Ver este depto»: «${tn.slice(0, 220)}»`);
   }
 
   // ── 6 · EL SLIDER DE LA TASA ──
@@ -384,17 +403,20 @@ export async function runExplorarNegociarTier(): Promise<{ hard: number }> {
   {
     const grilla = Array.from({ length: 13 }, (_, i) => 3 + i * 0.25);
     if (JSON.stringify([...TASAS_ELEGIBLES]) !== JSON.stringify(grilla)) F(`6 · las tasas elegibles no son 3,0 a 6,0 de a 0,25: ${JSON.stringify(TASAS_ELEGIBLES)}`);
-    const rango = hFiltros.match(/<input[^>]*type="range"[^>]*>/)?.[0] ?? "";
-    if (!/min="3"/.test(rango) || !/max="6"/.test(rango) || !/step="0.25"/.test(rango)) F(`6 · el slider no va de 3 a 6 de a 0,25: ${rango || "sin slider"}`);
-    if (texto(hFiltros.match(/<span[^>]*data-explorar="tasa-valor"[^>]*>[\s\S]*?<\/span>\s*<\/span>/)?.[0] ?? "") !== "4,07 % · promedio del mes") F("6 · arriba no dice «4,07 % · promedio del mes»");
-    if (!/data-explorar="tasa-marca"/.test(hFiltros)) F("6 · el slider no lleva la marca de la tasa del mes");
-    if (!/<button[^>]*disabled=""[^>]*data-explorar="tasa-del-mes"/.test(hFiltros)) F("6 · «Usar la del mes» se puede tocar estando ya en la del mes");
-    const otra = filtros({ ...po.FILTROS_GLOBALES, tasa: 4.25, negociar: 5 });
-    if (!/data-explorar="tasa-valor"[^>]*>4,25 %</.test(otra) || /<button[^>]*disabled=""[^>]*data-explorar="tasa-del-mes"/.test(otra)) F("6 · con otra tasa, arriba no dice esa tasa o «Usar la del mes» no se puede tocar");
-    // ⚠ ACTA (04-nov-2026, la pasada de Fabrizio por /explorar, tier EXPLORAR-PASADA-0411) · con otra tasa hay − Ajustar (calculados por comuna): Filtros ofrece el descuento máximo y no dice que no
-    // se muestran; eso queda para la renta corta.
+    // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 8): antes el slider se dibujaba a la vista en «Tu financiamiento»; ahora
+    // vive en la edición que abre «Cambiar» (estado del navegador: no se dibuja de entrada), así que su rango, la marca, «promedio
+    // del mes» y «Usar la del mes» apagado en la del mes se fijan en el código del panel; la tasa elegida se ve dibujada en la línea
+    // de los supuestos. Y con la decisión 9 (renta corta con sus Ajustar) y la 2 (sin descuento máximo), «sin-capa» y los topes se
+    // fueron de Filtros en toda modalidad.
+    const sliderSrc = (filtrosSrc.match(/<input type="range" min=\{TASA_MIN\}[\s\S]*?data-explorar="tasa" \/>/) ?? [""])[0];
+    if (!/max=\{TASA_MAX\}/.test(sliderSrc) || !/const TASA_MIN = TASAS_ELEGIBLES\[0\];/.test(filtrosSrc) || !/const TASA_MAX = TASAS_ELEGIBLES\[TASAS_ELEGIBLES\.length - 1\];/.test(filtrosSrc)) F("6 · el slider no va de 3 a 6 de a 0,25");
+    if (!/data-explorar="tasa-valor">\s*\{b\.tasa == null \? <>\{delMes != null \? `\$\{tasaTexto\(delMes\)\} %` : PORTAL_COPY\.tasaHoy\(null\)\} <span className="ex-tasa-del-mes">· \{V\.tasa\.delMes\}<\/span><\/> : `\$\{tasaTexto\(b\.tasa\)\} %`\}/.test(filtrosSrc) || po.PORTAL_COPY.v2.tasa.delMes !== "promedio del mes") F("6 · arriba no dice «4,07 % · promedio del mes»");
+    if (!/\{marca != null && \(<><span className="ex-slider-marca" aria-hidden="true" data-explorar="tasa-marca" \/>/.test(filtrosSrc) || !/const marca = delMes != null \?/.test(filtrosSrc)) F("6 · el slider no lleva la marca de la tasa del mes");
+    if (!/disabled=\{b\.tasa == null\} data-explorar="tasa-del-mes"/.test(filtrosSrc)) F("6 · «Usar la del mes» se puede tocar estando ya en la del mes");
+    const otra = filtros({ ...po.FILTROS_GLOBALES, tasa: 4.25 });
+    if (!/tasa de <b>4,25 %<\/b>/.test(otra) || !/tasa de <b>4,07 %<\/b>/.test(hFiltros)) F("6 · con otra tasa, la línea de los supuestos no dice esa tasa (o sin ella, la del mes)");
     const corta = filtros({ ...po.FILTROS_GLOBALES, modalidad: "str" });
-    if (/data-explorar="sin-capa"/.test(otra) || /data-explorar="sin-capa"/.test(hFiltros) || !/data-explorar="sin-capa"/.test(corta) || !/data-explorar="tope-5"/.test(otra)) F("6 · con otra tasa, Filtros dice que la capa no se muestra (o en renta corta no lo dice)");
+    if ([otra, hFiltros, corta].some((h) => /data-explorar="sin-capa"|data-explorar="tope-/.test(h))) F("6 · Filtros dice que la capa no se muestra, u ofrece el descuento máximo");
     const usar = elemento(filtrosSrc, "tasa-del-mes");
     if (!/onClick=\{\(\) => poner\(\{ tasa: null \}\)\}/.test(usar)) F("6 · «Usar la del mes» no deja la tasa siguiendo al motor (null)");
     const slider = (filtrosSrc.match(/<input type="range"[\s\S]*?data-explorar="tasa" \/>/) ?? [""])[0];
@@ -407,11 +429,12 @@ export async function runExplorarNegociarTier(): Promise<{ hard: number }> {
   // Mutación: M23 la tarjeta del perfil sin el resumen.
   {
     if (po.resumenPerfil(PERFIL) !== "Providencia · 2D · UF 4.000–6.000 · pie 20 % · 30 años · tasa del mes") F(`7 · el resumen del perfil dice «${po.resumenPerfil(PERFIL)}»`);
-    const card = hFiltros.match(/<section[^>]*data-explorar="card-perfil"[\s\S]*?<\/section>/)?.[0] ?? "";
-    if (texto(card.match(/<span[^>]*data-explorar="perfil-resumen"[^>]*>[\s\S]*?<\/span>/)?.[0] ?? "") !== po.resumenPerfil(PERFIL)) F("7 · «Aplicar mi perfil de búsqueda» no muestra el resumen del perfil");
-    if (!/Aplicar mi perfil de búsqueda/.test(texto(card)) || !/>Aplicar</.test(card)) F("7 · la tarjeta del perfil no dice «Aplicar mi perfil de búsqueda» con su botón");
+    // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 8): se retira lo que fijaba la tarjeta «Aplicar mi perfil de búsqueda»
+    // en Filtros (su resumen, su botón y su tooltip): la tarjeta se fue del panel. Quedan resumenPerfil y el texto del tooltip, que
+    // son reglas puras, y el negativo: que la tarjeta no vuelva.
+    if (/data-explorar="card-perfil"|data-explorar="perfil-resumen"/.test(hFiltros)) F("7 · vuelve a Filtros la tarjeta «Aplicar mi perfil de búsqueda»");
     if (po.PORTAL_COPY.v2.perfil.tooltip !== "Es la búsqueda con la que Franco arma tu selección semanal. Al aplicarla, el mapa muestra solo lo que calza con ella. La editas en tu Dashboard.") F("7 · el tooltip del perfil cambió");
-    if (!/<Info [^>]*texto=\{V\.perfil\.tooltip\}/.test(elemento(filtrosSrc, "card-perfil"))) F("7 · la tarjeta del perfil no lleva su tooltip");
+
   }
 
   // ── 8 · LA MEDICIÓN DEL CHIP ──
@@ -432,7 +455,10 @@ export async function runExplorarNegociarTier(): Promise<{ hard: number }> {
     const g = po.FILTROS_GLOBALES;
     // ⚠ ACTA (04-nov-2026, la pasada de Fabrizio por /explorar, tier EXPLORAR-PASADA-0411) · la capa existe en arriendo tradicional con cualquier tasa, pie o plazo (la de la noche o la calculada por
     // comuna); la que GUARDA la noche sigue siendo solo pie 20 % o 30 % a 30 años con la tasa del motor (capaDeLaNoche).
-    const casos: Array<[Partial<po.FiltrosPortal>, boolean, boolean]> = [[{}, true, true], [{ pie: 30 }, true, true], [{ tasa: 4.5 }, true, false], [{ plazo: 25 }, true, false], [{ pie: 10 }, true, false], [{ modalidad: "str" }, false, false]];
+    const casos: Array<[Partial<po.FiltrosPortal>, boolean, boolean]> = [[{}, true, true], [{ pie: 30 }, true, true], [{ tasa: 4.5 }, true, false], [{ plazo: 25 }, true, false], [{ pie: 10 }, true, false], [{ modalidad: "str" }, true, false]];
+    // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 9): antes la capa no existía en renta corta ({ modalidad: "str" } → false);
+    // ahora renta corta trae las tres clases con «Conviene desde UF X» (negociarStrReal): capaNegociarDisponible da true; la que
+    // guarda la noche sigue siendo solo de renta larga.
     for (const [c, esperado, deLaNoche] of casos) {
       if (cn.capaNegociarDisponible({ ...g, ...c }) !== esperado) F(`9 · la capa con ${JSON.stringify(c)} da ${!esperado} (debía ser ${esperado})`);
       if (cn.capaDeLaNoche({ ...g, ...c }) !== deLaNoche) F(`9 · la capa de la noche con ${JSON.stringify(c)} da ${!deLaNoche} (debía ser ${deLaNoche})`);
@@ -447,9 +473,14 @@ export async function runExplorarNegociarTier(): Promise<{ hard: number }> {
     const pinAbierto = cn.descompactarNegociados(abierto)[0];
     const hAbierta = tarjeta([pinAbierto], "n1", true);
     const ta = texto(hAbierta);
-    if (/2\.950|4,2/.test(ta) || (hAbierta.match(/data-explorar="borroso"/g) ?? []).length < 2 || !/Si consigues/.test(ta) || !/✓ Comprar · 71/.test(ta)) F(`9 · la tarjeta sin cuenta no dibuja borrosos el precio y el descuento: «${ta.slice(0, 200)}»`);
-    const capaMapa = mapaSrc.slice(mapaSrc.indexOf("const negs ="), mapaSrc.indexOf("const e = sel ?"));
-    if (!/if \(sinCifrasRef\.current\) marcador\(\{ lat: p\.lat, lng: p\.lng \}, punto\("ajustar", elegido\)/.test(capaMapa)) F("9 · sin cuenta, el mapa dibuja el descuento en el pin negociado");
+    // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 7): antes la tarjeta sin cuenta decía «Si consigues [borroso] ✓ Comprar
+    // · 71»; ahora el Ajustar dice «Conviene desde UF X · N % menos» y sin cuenta el precio y el descuento van difuminados ahí.
+    const iCd = hAbierta.indexOf('data-explorar="conviene-desde"'), cd = iCd < 0 ? "" : hAbierta.slice(iCd, hAbierta.indexOf("</span>", iCd) + 7);
+    if (/2\.950|4,2/.test(ta) || (cd.match(/data-explorar="borroso"/g) ?? []).length !== 2 || !/^Conviene desde/.test(texto(cd.slice(cd.indexOf(">") + 1)).trim())) F(`9 · la tarjeta sin cuenta no dibuja borrosos el precio y el descuento: «${ta.slice(0, 200)}»`);
+    // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 6): antes, sin cuenta el pin negociado era solo un punto ciruela; ahora
+    // dice el precio publicado (lo único que viaja), nunca el descuento: el cliente le pasa `sinCuenta` a textoCifraPin.
+    const mtN = require(join(RAIZ, "src/lib/explorar/mapa-todos")) as typeof import("../../../src/lib/explorar/mapa-todos");
+    if (!/texto: textoCifraPin\(p, clase, filtros\.cifra, uf, sinCuenta\)/.test(codigo("src/app/explorar/explorar-cliente.tsx")) || mtN.textoCifraPin(pinAbierto, "ajustar", "flujo", 39000, true) !== "UF 3.080") F("9 · sin cuenta, el mapa dibuja el descuento en el pin negociado");
   }
 
   // ── 10 · EL PRECIO NEGOCIADO SE VERIFICA CON LOS DATOS DE HOY ANTES DE COBRAR ──

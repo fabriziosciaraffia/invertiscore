@@ -138,14 +138,19 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
   // para el desglose del primer pintado) y, sin cuenta, los de la vista global para la bienvenida (`negociadosGlobal`).
   // ⚠ ACTA (03-nov-2026, «una sola caché, con una sola edad») · y el sello de la noche que contó esas cifras (`sello`), para que la
   // API le traiga al navegador esa misma (EXPLORAR-PASADA §9).
-  if (!/const \{ filtros, orden \} = portalDeUrl\(sp\);/.test(conCuentaPag) || !/inicial=\{\{ filtros, orden, n, cuenta, tasa, convienen: null, negociadosGlobal: null, nAjustar, sello: noche\?\.sello \?\? null \}\}/.test(conCuentaPag) || asignaFiltros.length !== 0) F("1 · la página no abre con portalDeUrl(sp) tal cual (o reasigna los filtros)");
-  if (!/const filtros = filtrosAbiertos\(base\.filtros\);/.test(abiertaPag) || !/inicial=\{\{ filtros, orden, n, cuenta: null, tasa, convienen, negociadosGlobal, nAjustar, sello: noche\?\.sello \?\? null \}\}/.test(abiertaPag)) F("1 · sin cuenta la página no abre con el financiamiento por defecto (o le pasa una cuenta)");
+  // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 3): antes fijaba `inicial` sin `nNo`; ahora lleva además los No
+  // conviene que contó el servidor (el tercer chip del contador). La regla —la URL tal cual, sin perfil— no cambia.
+  if (!/const \{ filtros, orden \} = portalDeUrl\(sp\);/.test(conCuentaPag) || !/inicial=\{\{ filtros, orden, n, cuenta, tasa, convienen: null, negociadosGlobal: null, nAjustar, nNo, sello: noche\?\.sello \?\? null \}\}/.test(conCuentaPag) || asignaFiltros.length !== 0) F("1 · la página no abre con portalDeUrl(sp) tal cual (o reasigna los filtros)");
+  if (!/const filtros = filtrosAbiertos\(base\.filtros\);/.test(abiertaPag) || !/inicial=\{\{ filtros, orden, n, cuenta: null, tasa, convienen, negociadosGlobal, nAjustar, nNo, sello: noche\?\.sello \?\? null \}\}/.test(abiertaPag)) F("1 · sin cuenta la página no abre con el financiamiento por defecto (o le pasa una cuenta)");
   if (/filtrosDeLaCuenta|filtrosDePerfil|leerPerfilBusqueda|miBusqueda/.test(pag)) F("1 · la página lee el perfil para abrir");
   if (!/const \[filtros, setFiltros\] = useState\(inicial\.filtros\);/.test(cli)) F("1 · el cliente no arranca con los filtros que mandó el servidor");
   if (modCli) {
-    const html = dibujar(createElement(modCli.ExplorarCliente as FC<Record<string, unknown>>, { inicial: { filtros: G, orden: "puntaje", n: 4807, cuenta: cuentaBase(), tasa: { tasa: 4.07 }, convienen: null, negociadosGlobal: null, nAjustar: 0 } }));
+    // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisiones 3 y 5): antes fijaba «4.807 deptos» con el chip ✓ Comprar en la
+    // barra de abajo; ahora el primer pintado dice el contador «4.807 de N convienen» con lo que contó el servidor (n, nAjustar, nNo)
+    // y su chip «4.807 Comprar». La regla —el perfil guardado no decide el primer pintado— sigue (la línea de «Ñuñoa», abajo).
+    const html = dibujar(createElement(modCli.ExplorarCliente as FC<Record<string, unknown>>, { inicial: { filtros: G, orden: "puntaje", n: 4807, cuenta: cuentaBase(), tasa: { tasa: 4.07 }, convienen: null, negociadosGlobal: null, nAjustar: 0, nNo: 0 } }));
     const t = texto(html);
-    if (!t.includes("4.807 deptos") || !/data-veredicto="COMPRAR"/.test(html)) F("1 · el primer pintado no dice «4.807 deptos» con el chip ✓ Comprar (con una búsqueda guardada en la cuenta)");
+    if (!t.includes("4.807 de 4.807 convienen") || !/data-clase="comprar"[^>]*>(?:<i[^>]*><\/i>)?4\.807 Comprar</.test(html)) F("1 · el primer pintado no dice «4.807 de 4.807 convienen» con el chip «4.807 Comprar» (con una búsqueda guardada en la cuenta)");
     if (/Ñuñoa/.test(t) || /Filtros · \d/.test(t)) F("1 · el primer pintado trae los filtros del perfil");
     // ⚠ ACTA (30-oct-2026, goal del recorrido real de Fabrizio) · arriba, solo «Filtros» y «¿Cómo se calcula?»: «Ordenar» vive en la lista
     // y «Mi búsqueda», dentro de Filtros (decisión de Fabrizio).
@@ -153,9 +158,13 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
     // ⚠ ACTA (02-nov-2026, goal «Filtros v2 y negociar», tier EXPLORAR-NEGOCIAR) · abajo, el chip de Comprar va con «al precio publicado».
     // ⚠ ACTA (03-nov-2026, goal «la pasada real de /explorar») · abajo, el desglose, el mismo en el teléfono y en el PC (sin la
     // píldora): «4.807 deptos», «4.807 ✓ Comprar al precio publicado» y «Ver lista»; con − Ajustar contados por el servidor, su línea.
-    if (!t.includes("4.807 deptos 4.807 ✓ Comprar al precio publicado Ver lista") || /ex-pildora/.test(html)) F("1 · abajo no dice «4.807 deptos · 4.807 ✓ Comprar al precio publicado · Ver lista», o sigue la píldora del PC");
-    const conNeg = texto(dibujar(createElement(modCli.ExplorarCliente as FC<Record<string, unknown>>, { inicial: { filtros: G, orden: "puntaje", n: 4807, cuenta: cuentaBase(), tasa: { tasa: 4.07 }, convienen: null, negociadosGlobal: null, nAjustar: 1234 } })));
-    if (!conNeg.includes("6.041 deptos 4.807 ✓ Comprar al precio publicado 1.234 − Ajustar requieren negociar el precio Ver lista")) F("1 · con los − Ajustar que contó el servidor, el primer pintado no los desglosa");
+    // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 5): antes fijaba la barra de abajo con el desglose («4.807 deptos ·
+    // 4.807 ✓ Comprar al precio publicado · Ver lista») y su línea de − Ajustar; la barra de abajo ya no se monta (BarraAbajo) y en
+    // su lugar flota arriba el contador con los tres chips y «Ver lista». Se fija que no vuelva la barra (ni la píldora) y que el
+    // primer pintado cuente las tres clases que contó el servidor.
+    if (/data-explorar="hoja"|data-explorar="desglose"|ex-pildora/.test(html) || /<BarraAbajo\b/.test(cli)) F("1 · vuelve la barra de abajo con el desglose (o la píldora del PC)");
+    const conNeg = texto(dibujar(createElement(modCli.ExplorarCliente as FC<Record<string, unknown>>, { inicial: { filtros: G, orden: "puntaje", n: 4807, cuenta: cuentaBase(), tasa: { tasa: 4.07 }, convienen: null, negociadosGlobal: null, nAjustar: 1234, nNo: 9000 } })));
+    if (!conNeg.includes("4.807 de 15.041 convienen 4.807 Comprar 1.234 Ajustar 9.000 No conviene Ver lista")) F("1 · con los − Ajustar y los No conviene que contó el servidor, el contador del primer pintado no cuenta las tres clases");
   }
   const mb = po.filtrosDeMiBusqueda({ comunas: ["Ñuñoa", "Santiago"], dormitorios: [1, 2], precioMinUf: 1500, precioMaxUf: 3000, piePct: 30, plazoAnios: 30, modalidad: "str" });
   if (!mb || mb.comunas.join() !== "Ñuñoa,Santiago" || mb.tipologias.join() !== "1,2" || mb.ufMin !== 1500 || mb.ufMax !== 3000 || mb.pie !== 30 || mb.plazo !== 30 || mb.modalidad !== "str" || mb.zona || mb.flujoPositivo) F(`1 · «Mi búsqueda» no aplica comunas, tipología, rango, pie, plazo y modalidad de una vez: ${JSON.stringify(mb)}`);
@@ -164,7 +173,11 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
   // ⚠ ACTA (30-oct-2026, goal del recorrido real de Fabrizio) · el botón vive en Filtros: la hoja se cierra y aplica el perfil.
   // ⚠ ACTA (02-nov-2026, goal «Filtros v2 y negociar», tier EXPLORAR-NEGOCIAR) · el botón es «Aplicar» en la tarjeta «Aplicar mi perfil de búsqueda», que recibe además el perfil
   // para mostrar su resumen antes de tocarlo.
-  if (!/function miBusqueda\(\) \{\s*setHojaFiltros\(false\);\s*if \(!cuenta\.miBusqueda\) \{ setSinBusqueda\(true\); return; \}\s*aplicar\(cuenta\.miBusqueda, "mi_busqueda"\);/.test(cli) || !/miBusqueda=\{sinCuenta \? null : \{ activa: enMiBusqueda, alUsar: miBusqueda, perfil: cuenta\.miBusqueda \}\}/.test(cli) || !/onClick=\{miBusqueda\.alUsar\} data-explorar="mi-busqueda"/.test(codigo("src/app/explorar/hoja-filtros.tsx"))) F("1 · el botón «Mi búsqueda» no aplica el perfil de una vez");
+  // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 8): antes fijaba que «Aplicar mi perfil de búsqueda» vivía en Filtros y
+  // aplicaba el perfil de una vez; esa tarjeta se fue del panel (con las comunas, «Solo flujo positivo» y «Publicados»). Se retira
+  // el invariante y queda su negativo: ni el panel la dibuja ni el cliente le pasa el perfil. filtrosDeMiBusqueda (arriba) sigue
+  // siendo la regla pura que traduce un perfil, por si vuelve.
+  if (/data-explorar="mi-busqueda"|miBusqueda/.test(codigo("src/app/explorar/hoja-filtros.tsx")) || /miBusqueda=\{/.test(cli)) F("1 · vuelve «Aplicar mi perfil de búsqueda» al panel de Filtros");
 
   // ── 2 · la tarjeta del pin sin las líneas retiradas ──
   if (modTar) {
@@ -172,11 +185,15 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
     const t = texto(html);
     const una = html.slice(html.indexOf(`data-aviso="${PIN.avisoId}"`), html.indexOf('data-aviso="b2222222'));
     for (const [que, ok] of [
-      ["la línea «Providencia · 2D2B · 79 m² · Usado»", t.includes("Providencia · 2D2B · 79 m² · Usado")],
-      ["el precio «UF 4.591»", t.includes("UF 4.591")],
+      // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 7): antes fijaba la línea «Providencia · 2D2B · 79 m² · Usado», el
+      // flujo «+$142.264 al mes» y «Cap rate 5,8 % · 58 UF/m²»; ahora el título es la comuna en mayúsculas, debajo tipología y m²
+      // (sin «· Usado»), y la franja de cuatro cifras: Publicado, Arriendo est., Cap rate y Te sobran al mes. La UF por m² salió
+      // de la tarjeta (queda como barra del panel).
+      ["el título «PROVIDENCIA» y la línea «2D2B · 79 m²»", /data-explorar="comuna">PROVIDENCIA</.test(una) && /data-explorar="linea">2D2B · 79 m²</.test(una) && !/Usado/.test(una)],
+      ["el precio «UF 4.591»", /<span>Publicado<\/span><b data-explorar="precio">UF 4\.591<\/b>/.test(una)],
       ["el veredicto y el puntaje «Comprar · 84»", t.includes("Comprar · 84")],
-      ["el flujo «+$142.264 al mes»", /\+\$142\.264\s*al mes/.test(t)],
-      ["el cap rate y la UF por m² «Cap rate 5,8 % · 58 UF/m²»", t.includes("Cap rate 5,8 % · 58 UF/m²")],
+      ["el flujo «Te sobran al mes $142.264»", /<span>Te sobran al mes<\/span><b data-explorar="flujo">\$142\.264<\/b>/.test(una)],
+      ["el cap rate «5,8 %» y el arriendo «$865.000»", /<span>Cap rate<\/span><b data-explorar="cap-rate">5,8 %<\/b>/.test(una) && /<span>Arriendo est\.<\/span><b data-explorar="arriendo">\$865\.000<\/b>/.test(una)],
       ["«Ver este depto»", /data-explorar="analizar"[^>]*>\s*Ver este depto/.test(una)],
       ["el corazón", /data-explorar="corazon"/.test(una)],
       ["la imagen", /data-explorar="imagen"/.test(una) && /\/api\/explorar\/calle\//.test(una)],
@@ -274,9 +291,11 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
   // ── 4 · sin saldo se explora; el cobro sale al analizar ──
   if (modCli) {
     // (03-nov-2026) Con los − Ajustar que contó el servidor (`nAjustar`): sin ellos, la barra espera la capa.
-    const html = dibujar(createElement(modCli.ExplorarCliente as FC<Record<string, unknown>>, { inicial: { filtros: G, orden: "puntaje", n: 4807, cuenta: cuentaBase({ saldo: { tipo: "sin" } }), nAjustar: 0 } }));
+    // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisiones 3 y 5): antes la señal de «el mapa se ve» era «4.807 deptos» en la
+    // barra de abajo; ahora es el contador «4.807 de 4.807 convienen» (con los nAjustar y nNo que contó el servidor).
+    const html = dibujar(createElement(modCli.ExplorarCliente as FC<Record<string, unknown>>, { inicial: { filtros: G, orden: "puntaje", n: 4807, cuenta: cuentaBase({ saldo: { tipo: "sin" } }), nAjustar: 0, nNo: 0 } }));
     const t = texto(html);
-    if (!t.includes("4.807 deptos") || /disabled=""/.test(html.slice(0, html.indexOf("ex-cuerpo")))) F("4 · sin saldo el mapa o la fila de arriba quedan cerrados");
+    if (!t.includes("4.807 de 4.807 convienen") || /disabled=""/.test(html.slice(0, html.indexOf("ex-cuerpo")))) F("4 · sin saldo el mapa o la fila de arriba quedan cerrados");
     if (/necesitas análisis disponibles|Para explorar|data-explorar="cerrado"|data-hoja="cerrada"/.test(html)) F("4 · sin saldo aparece el aviso «Para explorar necesitas análisis disponibles» o el mapa cerrado");
   }
   if (existe("src/app/explorar/aviso-sin-saldo.tsx")) F("4 · el aviso sin saldo de Explorar sigue en el repo");
@@ -388,7 +407,11 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
   if (po.PORTAL_COPY.hoja.cortaNota !== "Estimado por zona; se mide al abrir sus detalles.") F("6 · la renta corta no dice «Estimado por zona; se mide al abrir sus detalles»");
   const hoja = codigo("src/app/explorar/hoja-filtros.tsx");
   // ⚠ ACTA (02-nov-2026, goal «Filtros v2 y negociar», tier EXPLORAR-NEGOCIAR) · el botón separa las dos cuentas («Ver 201 + 48 si negocias»); sin negociados es «Ver N deptos».
-  if (!/const n = contar\(b\);/.test(hoja) || !/const ver = botonVer\(n, m\);/.test(hoja) || !/b\.modalidad === "str" && <p className="ex-nota" data-explorar="nota-corta">\{H\.cortaNota\}<\/p>/.test(hoja)) F("6 · la hoja no cuenta «Ver N deptos» a cada toque, o la renta corta va sin su línea");
+  // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 8): antes fijaba `contar(b)` con botonVer (Comprar + Ajustar) y la nota
+  // de la renta corta solo al elegirla; ahora el panel cuenta las tres clases a cada toque (`contarTodos(b)`), el botón dice
+  // «Ver N deptos» (PANEL_COPY.ver) y bajo el tipo de arriendo va siempre «La renta corta se estima por zona, no por depto.».
+  if (!/const n = contarTodos\(b\);/.test(hoja) || !/data-explorar="ver-n" data-n=\{n \?\? undefined\}>\s*\{n == null \? PANEL_COPY\.contando : n === 0 \? PANEL_COPY\.ninguno : PANEL_COPY\.ver\(n\)\}/.test(hoja) || !/data-explorar="renta-corta">\{PANEL_COPY\.rentaCorta\}<\/button>\s*<\/div>\s*<p className="ex-nota" data-explorar="nota-corta">\{PANEL_COPY\.cortaPorZona\}<\/p>/.test(hoja)
+    || !/contarTodos=\{contarTodos\}/.test(cli) || !/const a = contar\(f\), b = contarNegociados\(f\), c = contarNo\(f\);\s*return a == null \|\| b == null \|\| c == null \? null : a \+ b \+ c;/.test(cli)) F("6 · la hoja no cuenta «Ver N deptos» (las tres clases) a cada toque, o la renta corta va sin su línea");
   if (!/return u \? filtrar\(u, f\)/.test(cli)) F("6 · el número de la hoja no sale del universo cargado (filtrar)");
 
   // ── 7 · el universo ──
@@ -449,7 +472,9 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
   } catch (e) {
     F(`7 · el universo explotó: ${(e as Error).message}`);
   }
-  if (!po.universoDeLaNoche({ modalidad: "ltr", pie: 30, plazo: 25 }) || po.universoDeLaNoche({ modalidad: "str", pie: 20, plazo: 25 }) || po.universoDeLaNoche({ modalidad: "ltr", pie: 15, plazo: 25 })) F("7 · qué sale de la noche y qué se calcula");
+  // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 10): antes fijaba que pie 30 a 25 años salía de la noche; ahora la noche
+  // es solo a 30 años (pie 20 o 30, explorar_mapa_todos) y pie 20/30 a 25 años va por el cálculo por comuna.
+  if (!po.universoDeLaNoche({ modalidad: "ltr", pie: 30, plazo: 30 }) || !po.universoDeLaNoche({ modalidad: "ltr", pie: 20, plazo: 30 }) || po.universoDeLaNoche({ modalidad: "ltr", pie: 30, plazo: 25 }) || po.universoDeLaNoche({ modalidad: "ltr", pie: 20, plazo: 25 }) || po.universoDeLaNoche({ modalidad: "str", pie: 20, plazo: 30 }) || po.universoDeLaNoche({ modalidad: "ltr", pie: 15, plazo: 30 })) F("7 · qué sale de la noche y qué se calcula");
   // ⚠ ACTA (03-nov-2026, goal «la pasada real de /explorar») · la noche sale de respuestaDeLaNoche (portal-cache.ts), que lee el
   // universo de la misma caché y, con capa, los − Ajustar en el mismo pedido (EXPLORAR-PASADA §3).
   // ⚠ ACTA (03-nov-2026, «una sola caché, con una sola edad») · respuestaDeLaNoche lee la noche con nocheExplorar (el universo y la
@@ -457,7 +482,11 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
   // entrada» sino un sello de diez minutos (sello-noche.ts) y su entrada, que no cambia mientras el sello vale.
   const cacheSrc = codigo("src/lib/explorar/portal-cache.ts");
   if (!/if \(esDeLaNoche\(q\)\) \{\s*return NextResponse\.json\(await respuestaDeLaNoche\(pie, plazo, \{ sello: sp\.get\("s"\) \}\)/.test(ruta) || !/= \(p, z, s\) => nocheExplorar\(p, z, s\),/.test(cacheSrc) || !/comunas\.length === 0 \|\| comunas\.length > MAX_COMUNAS_POR_PEDIDO/.test(ruta)) F("7 · la API no sirve la noche de la caché, o calcula sin acotar por comuna");
-  if (!/\["explorar-noche-v2"\],/.test(cacheSrc) || !/export const VENTANA_SELLO_S = 600;/.test(codigo("src/lib/explorar/sello-noche.ts"))) F("7 · el universo de la noche no queda en caché diez minutos");
+  // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 11): antes fijaba UNA entrada («explorar-noche-v2»); ahora la noche va
+  // en dos entradas de unstable_cache —nocheDeSello sin los No conviene y noConvieneDeSello— porque juntas pasaban de 2 MB. Las dos
+  // con la vida del sello, y nocheCompleta las lee juntas.
+  if (!/const nocheDeSello = unstable_cache\([\s\S]*?\["explorar-noche-v\d+"\],\s*\{ revalidate: VIDA_SELLO_S \* 2 \},\s*\);/.test(cacheSrc) || !/const noConvieneDeSello = unstable_cache\([\s\S]*?\["explorar-noche-no-v\d+"\],\s*\{ revalidate: VIDA_SELLO_S \* 2 \},\s*\);/.test(cacheSrc)
+    || !/Promise\.all\(\[nocheDeSello\(n, pie, plazo\), plazo >= 30 \? noConvieneDeSello\(n, pie\)/.test(cacheSrc) || !/export const VENTANA_SELLO_S = 600;/.test(codigo("src/lib/explorar/sello-noche.ts"))) F("7 · el universo de la noche no queda en caché diez minutos (en sus dos entradas)");
   // LA FORMA DE LA RESPUESTA (28-oct-2026, cazado en el QA: la noche esparcía el universo en la raíz y pisaba su tabla de
   // comunas; el navegador leía `universo` y el mapa decía «0 convienen»). Las dos ramas arman RespuestaUniverso y el
   // navegador lee eso; y lo compacto ida y vuelta por JSON da los mismos pines.
@@ -486,8 +515,16 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
   // ⚠ ACTA (03-nov-2026, goal «la pasada real de /explorar», «Rojo en ningún pin») · con zoom, el texto del pin sobre el color de su
   // clase: tinta el analizado, azul ✓ Comprar el resto; el elegido, el mismo color más grande (EXPLORAR-PASADA §5). Antes: el
   // analizado en azul, el resto en rojo y el elegido en tinta.
-  if (!/if \(zoom >= ZOOM_ETIQUETAS \|\| elegido\) \{\s*const t = textoPin\(p, \{ analizado: an\.has\(id\), ahora \}\);\s*marcador\(\{ lat: p\.lat, lng: p\.lng \}, etiqueta\(t\.tipo === "analizado" \? "analizado" : "comprar", t\.texto, elegido\)/.test(mapa) || !/const icono = grupo\(/.test(mapa)) F("8 · el mapa no muestra grupos lejos y el texto del pin con zoom (en tinta el analizado)");
-  if (!/map\.addListener\("idle", \(\) => \{\s*dibujarRef\.current\(\);\s*if \(tocado\.current && !propio\.current\)/.test(mapa) || !/onMovido=\{\(c\) => setZonaPendiente\(c\)\}/.test(cli) || !/data-explorar="buscar-zona" onClick=\{\(\) => aplicar\(\{ \.\.\.filtros, zona: zonaPendiente \}, "zona"\)\}/.test(cli)) F("8 · al mover el mapa no aparece «Buscar en esta zona» (o no aplica la zona)");
+  // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 6): antes fijaba marcadores de Google con textoPin («✓ En tu cuenta»,
+  // «Nuevo hoy», el flujo) y el analizado en tinta; ahora la capa es un canvas: lejos (zoom < ZOOM_CIFRAS) grupos y puntos, cerca
+  // la cifra de cada depto, que el cliente arma con textoCifraPin (el precio por defecto, o la barra que se movió) y el mapa compone
+  // con el zoom de Google. Sin «✓ En tu cuenta» ni «Nuevo hoy» como etiqueta.
+  const capaSrc = codigo("src/lib/explorar/capa-canvas.ts");
+  if (!/texto: textoCifraPin\(p, clase, filtros\.cifra, uf, sinCuenta\)/.test(cli) || !/items=\{items\}/.test(cli) || !/componerCapa\(itemsRef\.current, \{\s*zoom, elegido: selRef\.current,/.test(mapa)
+    || !/if \(o\.zoom < ZOOM_CIFRAS\) \{/.test(capaSrc) || !/export const ZOOM_CIFRAS = 15;/.test(capaSrc) || /textoPin\(/.test(cli + mapa)) F("8 · el mapa no muestra grupos lejos y la cifra de cada pin con zoom (textoCifraPin)");
+  // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 6): antes la marca era `tocado.current`; con el canvas `tocado` es la
+  // función de capa-canvas.ts que dice qué se tocó, y la marca de «la persona movió el mapa» pasó a `tocadoRef`. Misma regla.
+  if (!/map\.addListener\("idle", \(\) => \{\s*dibujarRef\.current\(\);\s*if \(tocadoRef\.current && !propio\.current\)/.test(mapa) || !/map\.addListener\("dragstart", \(\) => \{ tocadoRef\.current = true; \}\);/.test(mapa) || !/onMovido=\{\(c\) => setZonaPendiente\(c\)\}/.test(cli) || !/data-explorar="buscar-zona" onClick=\{\(\) => aplicar\(\{ \.\.\.filtros, zona: zonaPendiente \}, "zona"\)\}/.test(cli)) F("8 · al mover el mapa no aparece «Buscar en esta zona» (o no aplica la zona)");
 
   // ── 9 · el plan donde se usa ──
   const lp = po.lineaPlan(3, false);
@@ -574,7 +611,9 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
     // ⚠ ACTA (03-nov-2026, la pasada real, cazado en producción al cerrar) · el esqueleto lleva la fila de arriba de hoy: «Filtros»,
     // «Ver solo [✓ Comprar]» y el botón de «¿Cómo se calcula?» con sus dos caras (la ⓘ del PC y la «i» del botón redondo del
     // teléfono). Que sean las clases del cliente lo fija EXPLORAR-PASADA §8; acá, el texto.
-    if (/ex-mapa-quieto|data:image/.test(e) || !/Filtros Ver solo ✓ Comprar ⓘ i ¿Cómo se calcula\?/.test(texto(e)) || /Ordenar|Con pie/.test(texto(e)) || !/class="ex-mapa-wrap"/.test(e) || !/class="ex-barra"/.test(e)) F("12 · el esqueleto no trae la fila de arriba de hoy, «Filtros» y «¿Cómo se calcula?» (o repite el mapa quieto)");
+    // ACTA 25-nov-2026 (mapa con todos los deptos, decisiones 4 y 5): antes fijaba «Filtros Ver solo ✓ Comprar ⓘ i ¿Cómo se calcula?»;
+    // ahora la fila de arriba es «Usados» y «Filtros», y la (i) de «¿Cómo se calcula?» va en la tarjeta del contador, calculando.
+    if (/ex-mapa-quieto|data:image/.test(e) || !/Usados Filtros/.test(texto(e)) || /Ver solo/.test(texto(e)) || !/data-explorar="como-se-calcula"/.test(e) || !/Calculando…/.test(texto(e)) || /Ordenar|Con pie/.test(texto(e)) || !/class="ex-mapa-wrap"/.test(e) || !/class="ex-barra"/.test(e)) F("12 · el esqueleto no trae la fila de arriba de hoy, «Filtros» y «¿Cómo se calcula?» (o repite el mapa quieto)");
   } catch (err) {
     F(`12 · el esqueleto explotó: ${(err as Error).message}`);
   }

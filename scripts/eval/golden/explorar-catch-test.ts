@@ -204,7 +204,15 @@ export async function runExplorarTier(): Promise<{ hard: number }> {
   // en el azul del chip ✓ Comprar y los ya analizados en tinta con un ✓ (colores-pin.ts, dibujados por iconos-pin.ts). Hasta el
   // 03-nov este predicado exigía los que convienen en Signal Red y los analizados en azul. Los colores los fija EXPLORAR-PASADA §5;
   // acá, que el mapa agrupe y que cada clase vaya con la suya.
-  if (!/for \(const gr of agruparPines\(visibles, zoom, an,/.test(mapa) || !/punto\(an\.has\(id\) \? "analizado" : "comprar"\)/.test(mapa) || !/grupo\(gr\.analizados === gr\.n \? "analizado" : "comprar", gr\.n\)/.test(mapa)) F("6 · el mapa no agrupa, o no pinta en tinta los ya analizados y de azul los que convienen");
+  // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 6): antes fijaba que el mapa agrupaba con agruparPines y pintaba en
+  // tinta los ya analizados y de azul los que convienen (marcadores de Google); ahora los pines van en un canvas propio: el mapa
+  // compone la capa con componerCapa (capa-canvas.ts, que agrupa lejos) sobre los deptos que se ven y la pinta; cada punto va con el
+  // color de su clase (eso lo fija EXPLORAR-TODOS §1), los GRUPOS van en tinta con su número, y ya no hay pin «✓ Analizado».
+  const pintarSrc = mapa.slice(mapa.indexOf("function pintar("), mapa.indexOf("export default function MapaExplorar"));
+  const ramaGrupo = pintarSrc.slice(pintarSrc.indexOf('d.tipo === "grupo"'), pintarSrc.indexOf("} else {", pintarSrc.indexOf('d.tipo === "grupo"')));
+  if (!/const dibujos = componerCapa\(itemsRef\.current, \{/.test(mapa) || !/dibujosRef\.current = dibujos;\s*pintar\(ctx, dibujos, temaPin\(\)\);/.test(mapa)
+    || !/circulo\(d\.x, d\.y, d\.r - ANILLO_PIN_PX, GRUPO\.fondo, ANILLO_PIN_PX\);/.test(ramaGrupo) || !/ctx\.fillText\(d\.texto, d\.x, d\.y \+ 0\.5\);/.test(ramaGrupo)
+    || !/const GRUPO = \{ fondo: "#1[0-4]1[0-4]1[0-4]", texto: "#FFFFFF" \} as const;/.test(mapa) || /"analizado"/.test(mapa)) F("6 · el mapa no compone la capa (componerCapa, que agrupa lejos), o los grupos no van en tinta con su número, o vuelve el pin «✓ Analizado»");
   {
     const cp = require(join(RAIZ, "src/lib/explorar/colores-pin")) as typeof import("../../../src/lib/explorar/colores-pin");
     if (cp.COLORES_PIN.claro.comprar.fondo !== "#2B558F" || cp.COLORES_PIN.claro.analizado.fondo !== "#0F0F0F" || /C8323C|ROJO|signal-red/i.test(mapa)) F("6 · los colores de los pines no son el azul de Comprar y la tinta de los analizados, o el mapa usa el rojo");

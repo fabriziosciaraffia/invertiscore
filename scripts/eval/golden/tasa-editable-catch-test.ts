@@ -75,18 +75,24 @@ export async function runTasaEditableTier(): Promise<{ hard: number }> {
   if (TASAS_ELEGIBLES.length !== 13 || TASAS_ELEGIBLES[0] !== 3 || TASAS_ELEGIBLES[12] !== 6 || TASAS_ELEGIBLES[1] !== 3.25 || !esTasaElegible(4.75) || esTasaElegible(4.3) || esTasaElegible(6.25)) F("1 · las tasas elegibles no son de 3,0 % a 6,0 %, de a 0,25");
   const modFil = cargar<{ HojaFiltros: FC<Record<string, unknown>> }>("src/app/explorar/hoja-filtros", F);
   if (modFil) {
-    const con = dibujar(createElement(modFil.HojaFiltros, { filtros: { ...G, tasa: 4.5 }, tasa: { tasa: 4.07 }, miBusqueda: { activa: false, alUsar() {} }, contar: () => 10, asegurar() {}, alAplicar() {}, alCerrar() {}, alPedirRegistro: null }));
-    const fin = con.slice(con.indexOf('data-explorar="bloque-financiamiento"'));
-    // ⚠ ACTA (02-nov-2026, goal «Filtros v2 y negociar», tier EXPLORAR-NEGOCIAR) · la tasa de Filtros es un slider de 3 % a 6 % de a 0,25 con la del mes marcada y «Usar la del
-    // mes» (el paso y la marca, en EXPLORAR-NEGOCIAR §6); «La de hoy» es «4,07 % · promedio del mes» arriba.
-    const rango = fin.match(/<input[^>]*type="range"[^>]*>/)?.[0] ?? "";
-    const hoyF = dibujar(createElement(modFil.HojaFiltros, { filtros: G, tasa: { tasa: 4.07 }, miBusqueda: { activa: false, alUsar() {} }, contar: () => 10, asegurar() {}, alAplicar() {}, alCerrar() {}, alPedirRegistro: null }));
-    if (!/min="3"/.test(rango) || !/max="6"/.test(rango) || !/step="0.25"/.test(rango) || !texto(hoyF).includes("Tasa 4,07 % · promedio del mes")) F(`1 · Filtros no ofrece «la del mes (4,07 %)» y de 3 % a 6 % de a 0,25: ${rango || "sin slider"}`);
-    if (!/value="4\.5"/.test(rango) || !/data-explorar="tasa-valor">4,5 %</.test(fin)) F("1 · Filtros no muestra la tasa elegida (4,5 %)");
-    const sin = dibujar(createElement(modFil.HojaFiltros, { filtros: G, tasa: { tasa: 4.07 }, miBusqueda: null, contar: () => 10, asegurar() {}, alAplicar() {}, alCerrar() {}, alPedirRegistro: () => {} }));
-    if (/<select[^>]*data-explorar="tasa"|type="range"/.test(sin) || !/<button type="button" class="ex-campo ex-campo-cerrado ex-campo-fijo" data-explorar="tasa"><span>Tasa<\/span><b>4,07 % · promedio del mes<\/b><\/button>/.test(sin)) F("1 · sin cuenta la tasa no va cerrada, con la de hoy");
+    const con = dibujar(createElement(modFil.HojaFiltros, { filtros: { ...G, tasa: 4.5 }, tasa: { tasa: 4.07 }, contarTodos: () => 10, distribucion: () => null, alMoverTasa() {}, asegurar() {}, alAplicar() {}, alCerrar() {}, alPedirRegistro: null }));
+    // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 8): antes la tasa vivía en el bloque «Tu financiamiento», a la vista,
+    // como slider (con cuenta) o campo cerrado (sin cuenta); ahora los supuestos van en UNA línea («Con pie de 20 %, crédito a 30
+    // años y tasa de 4,07 %») y «Cambiar» abre pie, plazo y el slider de la tasa (3,0 a 6,0 de a 0,25, con la marca en la del mes).
+    // El slider solo se dibuja con la edición abierta (estado del navegador), así que su rango y su valor se fijan en el código; lo
+    // que se dibuja es la línea, que dice la tasa elegida o, sin ella, la del motor.
+    const hoyF = dibujar(createElement(modFil.HojaFiltros, { filtros: G, tasa: { tasa: 4.07 }, contarTodos: () => 10, distribucion: () => null, alMoverTasa() {}, asegurar() {}, alAplicar() {}, alCerrar() {}, alPedirRegistro: null }));
+    const hojaSrc = codigo("src/app/explorar/hoja-filtros.tsx");
+    const sliderOk = /const TASA_MIN = TASAS_ELEGIBLES\[0\];/.test(hojaSrc) && /const TASA_MAX = TASAS_ELEGIBLES\[TASAS_ELEGIBLES\.length - 1\];/.test(hojaSrc) && /const TASA_PASO = TASAS_ELEGIBLES\[1\] - TASAS_ELEGIBLES\[0\];/.test(hojaSrc)
+      && /<input type="range" min=\{TASA_MIN\} max=\{TASA_MAX\} step=\{TASA_PASO\} value=\{valorTasa\}[\s\S]*?data-explorar="tasa" \/>/.test(hojaSrc) && /const valorTasa = b\.tasa \?\? delMes \?\? /.test(hojaSrc) && /const delMes = tasa\?\.tasa \?\? null;/.test(hojaSrc);
+    if (!sliderOk || !/tasa de <b>4,07 %<\/b>/.test(hoyF)) F("1 · Filtros no ofrece «la del mes (4,07 %)» y de 3 % a 6 % de a 0,25 (o la línea no dice la del motor)");
+    if (!/tasa de <b>4,5 %<\/b>/.test(con) || !/const tasaLinea = b\.tasa != null \? `\$\{tasaTexto\(b\.tasa\)\} %` : delMes != null \? `\$\{tasaTexto\(delMes\)\} %`/.test(hojaSrc)) F("1 · Filtros no muestra la tasa elegida (4,5 %)");
+    const sin = dibujar(createElement(modFil.HojaFiltros, { filtros: G, tasa: { tasa: 4.07 }, contarTodos: () => 10, distribucion: () => null, alMoverTasa() {}, asegurar() {}, alAplicar() {}, alCerrar() {}, alPedirRegistro: () => {} }));
+    if (/data-explorar="tasa"/.test(sin) || !/tasa de <b>4,07 %<\/b>/.test(sin)) F("1 · sin cuenta la tasa no va cerrada, con la de hoy");
   }
-  if (!/onClick=\{\(\) => alPedirRegistro\("pie-plazo", b\)\} data-explorar="tasa"/.test(codigo("src/app/explorar/hoja-filtros.tsx"))) F("1 · sin cuenta, tocar la tasa no abre el registro");
+  // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 8): antes tocar el campo cerrado de la tasa abría el registro; ahora sin
+  // cuenta «Cambiar» pide crear la cuenta y la edición (donde está el slider) no se abre.
+  if (!/onClick=\{\(\) => \(alPedirRegistro \? alPedirRegistro\("pie-plazo", b\) : setEditando\(\(x\) => !x\)\)\} data-explorar="cambiar-supuestos"/.test(codigo("src/app/explorar/hoja-filtros.tsx")) || !/\{editando && !alPedirRegistro && \(/.test(codigo("src/app/explorar/hoja-filtros.tsx"))) F("1 · sin cuenta, tocar la tasa no abre el registro");
   const modCal = cargar<{ HojaCalculo: FC<Record<string, unknown>> }>("src/app/explorar/hoja-calculo", F);
   if (modCal) {
     const t = (elegida: number | null, sinCuenta = false) => texto(dibujar(createElement(modCal.HojaCalculo, { tasa: { tasa: 4.07 }, elegida, sinCuenta, alCerrar() {} }))).replace(/ ([.,;])/g, "$1");

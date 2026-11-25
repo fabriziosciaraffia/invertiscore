@@ -129,11 +129,18 @@ export async function runNuevoUsadoTier(): Promise<{ hard: number }> {
       const ojosDe = (html: string) => Array.from(html.matchAll(/<span class="ex-ojo"[^>]*>([^<]*)<\/span>/g)).map((m) => m[1]);
       const nada = () => {};
       const ojos = ojosDe(dibujar(createElement(TarjetaPin as unknown as FC<Record<string, unknown>>, { pines: [p1, p2], seleccionado: "a1", uf: 39000, analizados: {}, guardados: new Set(), generando: null, error: null, alCambiar: nada, alCerrar: nada, alGuardar: nada, alAnalizar: nada })));
-      if (!ojos.includes("Las Condes · 2D2B · 77 m² · Usado")) F(`3 · la tarjeta de Explorar no dice «· Usado»: ${JSON.stringify(ojos)}`);
-      if (!ojos.includes("Las Condes · 2D2B · 77 m²")) F(`3 · en Explorar, el que no dice su condición igual lleva una: ${JSON.stringify(ojos)}`);
+      // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 7): antes la tarjeta del pin decía la línea del depto con su condición
+      // («Las Condes · 2D2B · 77 m² · Usado»); la tarjeta nueva lleva la comuna en mayúsculas como título y debajo el lugar (metro,
+      // barrio o avenida, si lo hay), la tipología y los m², sin la condición: el mapa con todos los deptos es solo de usados. Así
+      // que en la tarjeta se fija que la línea no diga «Usado» ni «Nuevo» y sea igual con o sin condición; la lista, abajo, sigue
+      // con la línea del depto y su «· Usado».
+      if (ojos.join("|") !== "2D2B · 77 m²|2D2B · 77 m²") F(`3 · la línea de la tarjeta de Explorar no es tipología y m² (sin la condición): ${JSON.stringify(ojos)}`);
+      if (ojos.some((o) => /Usado|Nuevo|Las Condes/.test(o))) F(`3 · la tarjeta de Explorar repite la comuna o dice la condición en su línea: ${JSON.stringify(ojos)}`);
       const lista = ojosDe(dibujar(createElement(ListaPortal as unknown as FC<Record<string, unknown>>, { pines: [p1, p2], total: 2, calculando: false, orden: "puntaje", uf: 39000, analizados: {}, guardados: new Set(), alOrden: nada, alAbrir: nada, alGuardar: nada, alAvisame: nada, alMapa: nada })));
       if (!lista.includes("Las Condes · 2D2B · 77 m² · Usado") || !lista.includes("Las Condes · 2D2B · 77 m²")) F(`3 · la lista de Explorar no dice «· Usado» (o se lo pone al que no lo dice): ${JSON.stringify(lista)}`);
-      if (!/\{lineaDepto\(p\)\}/.test(codigo("src/app/explorar/tarjeta-pin.tsx")) || !/\{lineaDepto\(p\)\}/.test(codigo("src/app/explorar/lista-portal.tsx"))) F("3 · la tarjeta o la lista de Explorar no usan la línea del depto");
+      // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 7): la tarjeta del pin ya no usa lineaDepto (arma su línea con el lugar,
+      // la tipología y los m²); la lista sí.
+      if (/lineaDepto\(/.test(codigo("src/app/explorar/tarjeta-pin.tsx")) || !/\{lineaDepto\(p\)\}/.test(codigo("src/app/explorar/lista-portal.tsx"))) F("3 · la lista de Explorar no usa la línea del depto (o la tarjeta vuelve a ella)");
       // El correo: la tarjeta (semanal, del día, la selección diaria) y «los que casi».
       const d = (condicion?: "usado" | "nuevo") => ({ ...depto, veredicto: "COMPRAR", score: 80, flujo: 1000, url: "https://x/u", ...(condicion ? { condicion } : {}) });
       const correo = correoSemanal({ variante: "tarjetas", nombre: "Ana", busca: "2D", piePct: 20, plazoAnios: 25, deptos: [d("usado"), d()], saldo: 1, conRegalo: false, presentacion: false, urlBoton: "u", urlTres: "c", urlBaja: "b" });

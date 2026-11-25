@@ -103,7 +103,10 @@ export async function runPuertaETier(): Promise<{ hard: number }> {
     const cacheSrc = codigo("src/lib/explorar/portal-cache.ts");
     // ⚠ ACTA (03-nov-2026, «una sola caché, con una sola edad») · la noche lleva además el sello del pedido, y el universo sale de la
     // noche leída (`noche.universo`, EXPLORAR-PASADA §9); quitar las cifras es lo mismo.
-    if ((ruta.match(/sinCifras\(/g) ?? []).length !== 1 || !/respuestaDeLaNoche\(PIE_ABIERTO, PLAZO_ABIERTO, \{ sinCifras: true, sello: sp\.get\("s"\) \}\)/.test(ruta) || !/universo: o\.sinCifras \? universoSinCifras\(noche\.universo\) : noche\.universo,/.test(cacheSrc) || /createClient\(\)|auth\.getUser/.test(ruta) || !/const q = \{ modalidad, pie: PIE_ABIERTO, plazo: PLAZO_ABIERTO \} as const;/.test(ruta)) F("2 · la ruta sin cuenta no quita las cifras en las dos ramas (o mira la sesión, o deja elegir pie y plazo)");
+    // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 9): antes fijaba UN sinCifras en la ruta (el universo de renta
+    // corta); ahora la renta corta trae las tres clases, así que la rama calculada quita las cifras del universo Y de los No conviene
+    // (dos sinCifras, uno por cada uno) y los Ajustar van con sinCifrasNegociados. La de la noche sigue por respuestaDeLaNoche.
+    if ((ruta.match(/sinCifras\(/g) ?? []).length !== 2 || !/universo: sinCifras\(r\.universo\)/.test(ruta) || !/noConviene: sinCifras\(r\.noConviene\)/.test(ruta) || !/negociados: sinCifrasNegociados\(r\.negociados\)/.test(ruta) || !/noConviene: o\.sinCifras \? universoSinCifras\(noche\.noConviene\) : noche\.noConviene/.test(cacheSrc) || !/respuestaDeLaNoche\(PIE_ABIERTO, PLAZO_ABIERTO, \{ sinCifras: true, sello: sp\.get\("s"\) \}\)/.test(ruta) || !/universo: o\.sinCifras \? universoSinCifras\(noche\.universo\) : noche\.universo,/.test(cacheSrc) || /createClient\(\)|auth\.getUser/.test(ruta) || !/const q = \{ modalidad, pie: PIE_ABIERTO, plazo: PLAZO_ABIERTO \} as const;/.test(ruta)) F("2 · la ruta sin cuenta no quita las cifras en las dos ramas (o mira la sesión, o deja elegir pie y plazo)");
     if (!/const CACHE = "public, /.test(ruta)) F("2 · la ruta sin cuenta no es pública (no queda en el CDN)");
     if (/sinCifras|PIE_ABIERTO/.test(codigo("src/app/api/explorar/route.ts")) || !/if \(!user\) return NextResponse\.json\(\{ error: "sin-sesion" \}, \{ status: 401 \}\);/.test(codigo("src/app/api/explorar/route.ts"))) F("2 · la ruta con cifras se abrió sin sesión");
     const cli = codigo("src/app/explorar/explorar-cliente.tsx");
@@ -118,8 +121,21 @@ export async function runPuertaETier(): Promise<{ hard: number }> {
       if (cifras.some((c) => sin.includes(c))) F("2 · la tarjeta sin cuenta dibuja el flujo, el cap rate o la UF por m²");
       if (!con.includes("142.264")) F("2 · la tarjeta con cuenta perdió el flujo (el fixture no mide)");
       if ((sin.match(/data-explorar="borroso"/g) ?? []).length !== 3 || !sin.includes(ab.BORROSO.flujo) || !/aria-hidden="true" data-explorar="borroso"/.test(sin)) F("2 · la tarjeta sin cuenta no muestra el flujo, el cap rate y la UF por m² borrosos");
-      if (!/data-explorar="registrate">Regístrate gratis para ver este depto</.test(sin) || /data-explorar="analizar"/.test(sin) || !/class="ex-cta ex-cta-triada"/.test(sin)) F("2 · el botón sin cuenta no es «Regístrate gratis para ver este depto» en el material de la tríada");
-      if (!texto(sin).includes("Providencia · 2D2B · 79 m² · Usado") || !texto(sin).includes("UF 4.591") || !texto(sin).includes("Comprar · 84")) F("2 · sin cuenta la tarjeta pierde la línea, el precio o «Comprar · 84»");
+      // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 7): antes fijaba el texto «Regístrate gratis para ver este depto»;
+      // ahora el botón sin cuenta dice «Ver gratis con tu cuenta» (sigue sin «Ver este depto»). El material de la tríada
+      // (ex-cta-triada) NO lo cambia ninguna decisión: se deja como estaba, en su propio predicado.
+      if (!/data-explorar="registrate">Ver gratis con tu cuenta</.test(sin) || /data-explorar="analizar"/.test(sin)) F("2 · el botón sin cuenta no es «Ver gratis con tu cuenta»");
+      // ACTA 25-nov-2026 (mapa con todos los deptos, lámina 7 «Sin cuenta»): antes fijaba el material de la tríada (ex-cta-triada);
+      // ahora el botón sin cuenta es el principal de la tarjeta, en tinta (`ex-cta`, como «Ver este depto»), como lo dibuja la lámina.
+      if (!/class="ex-cta"[^>]*data-explorar="registrate"/.test(sin) || /ex-cta-triada[^>]*data-explorar="registrate"/.test(sin)) F("2 · el botón sin cuenta no es el principal de la tarjeta (ex-cta, en tinta)");
+      // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 7): antes fijaba la línea «Providencia · 2D2B · 79 m² · Usado»; ahora
+      // el título es la comuna en mayúsculas y debajo tipología y m², sin «· Usado»; el publicado, nítido. «Comprar · 84» sin cuenta
+      // no lo cambia ninguna decisión: queda en su propio predicado, como estaba.
+      if (!/data-explorar="comuna">PROVIDENCIA</.test(sin) || !/data-explorar="linea">2D2B · 79 m²</.test(sin) || !/data-explorar="precio">UF 4\.591</.test(sin)) F("2 · sin cuenta la tarjeta pierde la comuna, la línea o el publicado nítido");
+      // ACTA 25-nov-2026 (lámina 7 «Sin cuenta», decisión 8): antes fijaba «Comprar · 84» sin cuenta; ahora sin cuenta el chip va sin
+      // puntaje («✓ Comprar»), como en la lámina: el puntaje queda con las cifras, dentro de la cuenta. Con cuenta sigue el puntaje.
+      if (!/data-veredicto="COMPRAR"/.test(sin) || /data-puntaje=/.test(sin) || texto(sin).includes("· 84")) F("2 · sin cuenta el chip no es «✓ Comprar» sin puntaje");
+      if (!/data-veredicto="COMPRAR" data-puntaje="84"/.test(con)) F("2 · con cuenta el chip perdió su puntaje");
       if (!/\.ex-borroso \{ filter: blur\(5px\); user-select: none;/.test(leer("src/app/explorar/explorar.css"))) F("2 · lo borroso no está desenfocado");
     } else F("2 · la tarjeta no carga");
     if (modLista) {
@@ -129,11 +145,17 @@ export async function runPuertaETier(): Promise<{ hard: number }> {
     const mapa = codigo("src/app/explorar/mapa-explorar.tsx");
     // ⚠ ACTA (03-nov-2026, goal «la pasada real de /explorar», «Rojo en ningún pin») · el punto sin cuenta va en el azul de ✓
     // Comprar (el elegido, el mismo azul más grande); antes, rojo (y el elegido en tinta).
-    if (!/if \(sinCifrasRef\.current\) \{\s*(?:\/\/[^\n]*\n\s*)?marcador\(\{ lat: p\.lat, lng: p\.lng \}, punto\("comprar", elegido\)/.test(mapa) || !/sinCifras=\{sinCuenta\}/.test(cli)) F("2 · sin cuenta, con zoom, el pin dice algo más que el punto");
+    // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 6): antes fijaba que sin cuenta el pin era solo un punto azul; ahora
+    // sin cuenta los pines van con su color y el PRECIO (lo único que viaja), nunca otra cifra aunque se mueva una barra: el cliente
+    // le pasa `sinCuenta` a textoCifraPin y textoCifraPin, sin cuenta, devuelve el precio.
+    const mtE = cargar<typeof import("../../../src/lib/explorar/mapa-todos")>("src/lib/explorar/mapa-todos");
+    if (!/texto: textoCifraPin\(p, clase, filtros\.cifra, uf, sinCuenta\)/.test(cli) || /sinCifras/.test(mapa) || !mtE || mtE.textoCifraPin(PIN, "comprar", "flujo", 39500, true) !== "UF 4.591" || mtE.textoCifraPin(PIN, "comprar", "flujo", 39500, false) === "UF 4.591") F("2 · sin cuenta, el pin dice otra cifra que el precio (o el fixture no distingue)");
     // ⚠ ACTA (30-oct-2026, goal del recorrido real de Fabrizio) · «Mi búsqueda» se mudó adentro de Filtros (decisión de Fabrizio): sin
     // cuenta la hoja la recibe en null y no la dibuja; el esqueleto ya no la tiene.
     // ⚠ ACTA (02-nov-2026, goal «Filtros v2 y negociar», tier EXPLORAR-NEGOCIAR) · «Mi búsqueda» es la tarjeta «Aplicar mi perfil de búsqueda»: sin cuenta, igual en null y sin dibujarse.
-    if (!/miBusqueda=\{sinCuenta \? null : \{ activa: enMiBusqueda, alUsar: miBusqueda, perfil: cuenta\.miBusqueda \}\}/.test(cli) || !/\{miBusqueda && \(\s*<section className="ex-card ex-card-perfil" data-explorar="card-perfil">/.test(codigo("src/app/explorar/hoja-filtros.tsx")) || /mi-busqueda|miBusqueda/.test(codigo("src/app/explorar/esqueleto.tsx"))) F("2 · sin cuenta aparece «Mi búsqueda»");
+    // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 8): antes fijaba que la tarjeta «Aplicar mi perfil» llegaba en null sin
+    // cuenta; esa tarjeta se fue del panel para todos, así que se fija que no exista en ninguna rama (ni en el esqueleto).
+    if (/miBusqueda|card-perfil|mi-busqueda/.test(codigo("src/app/explorar/hoja-filtros.tsx")) || /miBusqueda=\{/.test(cli) || /mi-busqueda|miBusqueda/.test(codigo("src/app/explorar/esqueleto.tsx"))) F("2 · aparece «Mi búsqueda» (sin cuenta o con ella)");
     // Pie y plazo en el financiamiento por defecto; lo que depende del flujo pide registro.
     // ⚠ ACTA (30-oct-2026, goal del recorrido real de Fabrizio) · el financiamiento por defecto pasó a pie 20 % y 30 años.
     const f30 = ab.filtrosAbiertos({ ...po.FILTROS_GLOBALES, pie: 30, plazo: 20, flujoPositivo: true, modalidad: "str" } as po.FiltrosPortal);
@@ -142,7 +164,11 @@ export async function runPuertaETier(): Promise<{ hard: number }> {
     // ⚠ ACTA (30-oct-2026, goal del recorrido real de Fabrizio) · «Ordenar» vive en la lista (un select), sin menú que cerrar.
     if (!/if \(sinCuenta && ORDENES_CON_CIFRAS\.includes\(o\)\) \{ pedirRegistro\("orden"/.test(cli) || !/alOrden=\{cambiarOrden\}/.test(cli) || !/const f = sinCuenta \? filtrosAbiertos\(f0\) : f0;/.test(cli)) F("2 · sin cuenta, ordenar por el flujo o cambiar pie y plazo no pide registro");
     const hojaF = codigo("src/app/explorar/hoja-filtros.tsx");
-    if (!/\{alPedirRegistro \? \(\s*<div className="ex-dos">\s*<button type="button" className="ex-campo ex-campo-cerrado" onClick=\{\(\) => alPedirRegistro\("pie-plazo", b\)\}/.test(hojaF) || !/if \(alPedirRegistro && e\.target\.checked\) \{ alPedirRegistro\("flujo", b\); return; \}/.test(hojaF)) F("2 · sin cuenta, pie, plazo o «Solo flujo positivo» se cambian sin registro");
+    // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 8): antes fijaba los campos cerrados de pie y plazo y la casilla
+    // «Solo flujo positivo»; ahora sin cuenta «Cambiar» (los supuestos) pide crear la cuenta y la edición no se abre, y de las cinco
+    // barras solo la del precio se mueve: las otras (la del flujo entre ellas) piden la cuenta.
+    if (!/onClick=\{\(\) => \(alPedirRegistro \? alPedirRegistro\("pie-plazo", b\) : setEditando\(\(x\) => !x\)\)\} data-explorar="cambiar-supuestos"/.test(hojaF) || !/\{editando && !alPedirRegistro && \(/.test(hojaF)
+      || !/bloqueada=\{alPedirRegistro && !BARRAS_SIN_CUENTA\.includes\(barra\) \? \(\) => alPedirRegistro\("flujo", b\) : null\}/.test(hojaF)) F("2 · sin cuenta, pie, plazo o las barras con cifras se cambian sin registro");
   }
 
   // ── 3 · EL REGISTRO DESDE UN PIN VUELVE A ESE PIN CON EL REGALO ──

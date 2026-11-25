@@ -94,7 +94,10 @@ export async function runConvienenUnoTier(): Promise<{ hard: number }> {
   const conCuenta = pag.slice(pag.indexOf("async function ExplorarConDatos"));
   // ⚠ ACTA (03-nov-2026) · `inicial` lleva además los − Ajustar (nAjustar; sin cuenta, negociadosGlobal para la bienvenida).
   // ⚠ ACTA (03-nov-2026, «una sola caché, con una sola edad») · y el sello de la noche que contó esas cifras (EXPLORAR-PASADA §9).
-  if (!/tasaDelMotor\(\),/.test(abierta) || !/tasaDelMotor\(\),/.test(conCuenta) || !/inicial=\{\{ filtros, orden, n, cuenta: null, tasa, convienen, negociadosGlobal, nAjustar, sello: noche\?\.sello \?\? null \}\}/.test(abierta) || !/inicial=\{\{ filtros, orden, n, cuenta, tasa, convienen: null, negociadosGlobal: null, nAjustar, sello: noche\?\.sello \?\? null \}\}/.test(conCuenta))
+  // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 3): antes fijaba `inicial` con n, convienen, negociadosGlobal y
+  // nAjustar; ahora lleva además `nNo` (los No conviene que contó el servidor, para el chip del contador «X de Y convienen»). La tasa
+  // del motor se sigue bajando igual en las dos ramas.
+  if (!/tasaDelMotor\(\),/.test(abierta) || !/tasaDelMotor\(\),/.test(conCuenta) || !/inicial=\{\{ filtros, orden, n, cuenta: null, tasa, convienen, negociadosGlobal, nAjustar, nNo, sello: noche\?\.sello \?\? null \}\}/.test(abierta) || !/inicial=\{\{ filtros, orden, n, cuenta, tasa, convienen: null, negociadosGlobal: null, nAjustar, nNo, sello: noche\?\.sello \?\? null \}\}/.test(conCuenta))
     F("1 · la página no baja la tasa del motor con y sin cuenta");
   // ⚠ ACTA (30-oct-2026, goal «la tasa editable en Filtros») · la hoja recibe además la tasa elegida (`elegida`).
   if (!/\{calculo && <HojaCalculo tasa=\{inicial\.tasa\} elegida=\{filtros\.tasa\} sinCuenta=\{sinCuenta\} alCerrar=\{\(\) => setCalculo\(false\)\} \/>\}/.test(cli) || !/<HojaFiltros\s+filtros=\{filtros\}\s+tasa=\{inicial\.tasa\}/.test(cli)) F("1 · la hoja o Filtros no reciben la tasa que bajó la página");
@@ -102,10 +105,15 @@ export async function runConvienenUnoTier(): Promise<{ hard: number }> {
   const modCli = (() => { try { return require(join(RAIZ, "src/app/explorar/explorar-cliente")) as { ExplorarCliente: FC<Record<string, unknown>> }; } catch (e) { F(`0 · no carga explorar-cliente: ${(e as Error).message}`); return null; } })();
   const pintar = (cuenta: unknown, tasa: po.TasaDelMotor | null) =>
     modCli ? dibujar(createElement(modCli.ExplorarCliente, { inicial: { filtros: G, orden: "puntaje", n: 3, cuenta, tasa, convienen: cuenta ? null : 3 } })) : "";
+  // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 4): antes fijaba el botón «¿Cómo se calcula?» en la barra de arriba;
+  // ahora la barra lleva solo «Usados» y «Filtros», y la (i) vive en la tarjeta del contador: un botón con el nombre accesible
+  // «¿Cómo se calcula?» DENTRO de la sección del contador (no en otra parte de la página), con y sin cuenta, que abre la hoja.
   for (const [cuenta, que] of [[cuentaBase(), "con cuenta"], [null, "sin cuenta"]] as const) {
-    // (03-nov-2026) El botón trae antes la ⓘ del PC y la redonda del teléfono: el texto queda a menos de 200 caracteres.
-    if (!/data-explorar="como-se-calcula"[^>]*>[\s\S]{0,200}¿Cómo se calcula\?/.test(pintar(cuenta, { tasa: 4.07 }))) F(`2 · ${que}, no hay «¿Cómo se calcula?» arriba`);
+    const h = pintar(cuenta, { tasa: 4.07 });
+    const iC = h.indexOf('data-explorar="contador"'), contador = iC < 0 ? "" : h.slice(iC, h.indexOf("</section>", iC));
+    if (!/<button type="button" class="ex-contador-i" aria-label="¿Cómo se calcula\?"[^>]*data-explorar="como-se-calcula"/.test(contador) || (h.match(/data-explorar="como-se-calcula"/g) ?? []).length !== 1) F(`2 · ${que}, la tarjeta del contador no trae la (i) de «¿Cómo se calcula?» (o hay otra fuera de ella)`);
   }
+  if (!/alComo=\{abrirCalculo\}/.test(cli) || !/data-explorar="como-se-calcula" onClick=\{alComo\}/.test(codigo("src/app/explorar/contador.tsx"))) F("2 · la (i) del contador no abre «¿Cómo se calcula?»");
 
   // ── 2 · LA HOJA «¿CÓMO SE CALCULA?», CON Y SIN CUENTA ──
   const modHoja = (() => { try { return require(join(RAIZ, "src/app/explorar/hoja-calculo")) as { HojaCalculo: FC<Record<string, unknown>> }; } catch (e) { F(`2 · no carga la hoja: ${(e as Error).message}`); return null; } })();
@@ -152,23 +160,28 @@ export async function runConvienenUnoTier(): Promise<{ hard: number }> {
     if (modCache.convienenMapaGuardado(JSON.stringify({ convienenMapa: 6698, calculadoAt: "2026-11-02T04:31:00Z" })) !== 6698
       || modCache.convienenMapaGuardado(JSON.stringify({ convienenMapa: 0 })) !== null || modCache.convienenMapaGuardado("no-json") !== null || modCache.convienenMapaGuardado(null) !== null)
       F("3 · el número guardado se lee mal (o un cero o un valor roto se leen como número)");
-    const fila = (id: string) => [id, "Santiago", -33.44, -70.65, 50, 2, 1, 3200, 74, -24804, 520000, "usado", 1_700_000_000];
+    // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 3): antes la base falsa respondía filas de explorar_mapa (solo
+    // Comprar) y el predicado exigía ese nombre con pie y plazo de la vista global; ahora el universo a 30 años sale de
+    // explorar_mapa_todos (las tres clases en un pedido, sin plazo: es siempre 30), así que las filas son las de esa RPC
+    // ([8] = clase 0 Comprar, 1 Ajustar, 2 No conviene) y el número cuenta SOLO los Comprar: dos Comprar, un Ajustar con su descuento
+    // y un No conviene dan 2. La lectura de los Ajustar (explorar_negociar) va en paralelo y no entra a la cuenta.
+    const fila = (id: string, clase: number) => [id, "Santiago", -33.44, -70.65, 50, 2, 1, 3200, clase, clase === 2 ? null : 74, clase === 2 ? null : -24804, clase === 2 ? null : 520000, 1_700_000_000, clase === 1 ? 5 : null, clase === 1 ? 3040 : null, 6, 10, 12];
     const falsa = (rpc: { data: unknown; error: unknown }) => {
       const pedidos: Array<Record<string, unknown>> = [];
       const escritos: Array<Record<string, unknown>> = [];
       const admin = {
-        rpc: async (n: string, a: Record<string, unknown>) => { pedidos.push({ n, ...a }); return rpc; },
+        rpc: async (n: string, a: Record<string, unknown>) => { pedidos.push({ n, ...a }); return n === "explorar_negociar" ? { data: [], error: null } : rpc; },
         from: (t: string) => ({ upsert: async (v: Record<string, unknown>) => { escritos.push({ t, ...v }); return { error: null }; } }),
       };
       return { admin, pedidos, escritos };
     };
-    const ok = falsa({ data: [fila("a1"), fila("a2"), fila("a3")], error: null });
+    const ok = falsa({ data: [fila("a1", 0), fila("a2", 0), fila("a3", 1), fila("a4", 2)], error: null });
     const nOk = await modCache.guardarConvienenMapa(ok.admin as never, new Date("2026-11-02T04:30:00Z"));
-    const p0 = ok.pedidos[0] as { n?: string; comunas?: string[]; pie?: number; plazo?: number } | undefined;
+    const p0 = ok.pedidos.find((p) => p.n !== "explorar_negociar") as { n?: string; comunas?: string[]; pie?: number; plazo?: number } | undefined;
     const e0 = ok.escritos[0] as { t?: string; key?: string; value?: string } | undefined;
-    if (nOk !== 3 || p0?.n !== "explorar_mapa" || p0.pie !== G.pie || p0.plazo !== G.plazo || p0.comunas?.length !== COMUNAS_DISPONIBLES.length)
-      F(`3 · el cron no cuenta el universo del mapa de la vista global (${JSON.stringify({ nOk, p0: p0 && { ...p0, comunas: p0.comunas?.length } })})`);
-    if (e0?.t !== "config" || e0.key !== modCache.CLAVE_CONVIENEN_MAPA || modCache.convienenMapaGuardado(e0.value) !== 3) F("3 · el cron no guarda en config el número que contó");
+    if (G.plazo !== 30 || nOk !== 2 || p0?.n !== "explorar_mapa_todos" || p0.pie !== G.pie || p0.comunas?.length !== COMUNAS_DISPONIBLES.length || ok.pedidos.some((p) => p.n === "explorar_mapa"))
+      F(`3 · el cron no cuenta los Comprar del universo del mapa de la vista global (${JSON.stringify({ nOk, p0: p0 && { ...p0, comunas: p0.comunas?.length } })})`);
+    if (e0?.t !== "config" || e0.key !== modCache.CLAVE_CONVIENEN_MAPA || modCache.convienenMapaGuardado(e0.value) !== 2) F("3 · el cron no guarda en config el número que contó");
     for (const [rpc, que] of [[{ data: null, error: { message: "canceling statement due to statement timeout", code: "57014" } }, "la consulta falla"], [{ data: [], error: null }, "el mapa sale vacío"]] as const) {
       const f = falsa(rpc);
       if ((await modCache.guardarConvienenMapa(f.admin as never)) !== null || f.escritos.length) F(`3 · si ${que}, se pisa el número guardado`);
@@ -209,7 +222,9 @@ export async function runConvienenUnoTier(): Promise<{ hard: number }> {
   if (!/const \[noche(?:, \w+)*\] = await Promise\.all\(\[\s*nocheExplorar\(PIE_ABIERTO, PLAZO_ABIERTO\)\.catch\(\(\) => null\),/.test(abierta)
     || (abierta.match(/nocheExplorar\(/g) ?? []).length !== 1
     || !/const deLaNoche = !!noche && universoDeLaNoche\(filtros\);/.test(cifrasSrc) || !/convienen: noche \? cuantosConvienen\(noche\.universo\) : null,/.test(cifrasSrc)
-    || !/const \{ n, convienen, negociadosGlobal, nAjustar \} = cifrasDeLaNoche\(noche, filtros\);/.test(abierta)
+    // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 3): antes fijaba la desestructuración sin `nNo`; ahora la página
+    // toma también los No conviene de la noche (el chip del contador). `convienen` sigue siendo cuantosConvienen del universo.
+    || !/const \{ n, convienen, negociadosGlobal, nAjustar, nNo \} = cifrasDeLaNoche\(noche, filtros\);/.test(abierta)
     || !/<Bienvenida n=\{inicial\.convienen \?\? inicial\.n \?\? total\}/.test(cli)) F("3 · la bienvenida de /explorar no dice el número de todo el sitio");
   if ((abierta.match(/nocheExplorar\(|universoDeLaNoche\w+\(|negociabl\w*\(/g) ?? []).length !== 1) F("3 · /explorar sin cuenta lee el universo más de una vez");
   // Nadie más lee el «convienen» del resumen de la noche ni arma un total propio (los correos tampoco).

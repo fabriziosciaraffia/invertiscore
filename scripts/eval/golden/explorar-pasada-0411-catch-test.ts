@@ -102,7 +102,9 @@ export async function runExplorarPasada0411Tier(): Promise<{ hard: number }> {
 
     // La capa con cualquier combinación de arriendo tradicional; la de la noche, solo con la suya.
     const ltr5 = { modalidad: "ltr" as const, pie: 20, plazo: 30, tasa: 5 };
-    if (!cn.capaNegociarDisponible((ltr5) as never) || !cn.capaNegociarDisponible(({ ...ltr5, pie: 10, plazo: 20, tasa: null }) as never) || cn.capaNegociarDisponible(({ ...ltr5, modalidad: "str" as never }) as never)) F("1 · con otra tasa, pie o plazo no hay − Ajustar (o hay en renta corta)");
+    // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 9): antes fijaba que en renta corta no había − Ajustar; ahora renta corta
+    // trae las tres clases con «Conviene desde UF X» (negociarStrReal): capaNegociarDisponible da true también ahí.
+    if (!cn.capaNegociarDisponible((ltr5) as never) || !cn.capaNegociarDisponible(({ ...ltr5, pie: 10, plazo: 20, tasa: null }) as never) || !cn.capaNegociarDisponible(({ ...ltr5, modalidad: "str" as never }) as never)) F("1 · con otra tasa, pie o plazo (o en renta corta) no hay − Ajustar");
     if (!cn.capaDeLaNoche(({ ...ltr5, tasa: null }) as never) || cn.capaDeLaNoche((ltr5) as never) || cn.capaDeLaNoche(({ ...ltr5, tasa: null, plazo: 25 }) as never)) F("1 · la capa de la noche no es la de pie 20 % o 30 % a 30 años con la tasa del motor");
     if (!cn.capaVisible(({ ...ltr5, soloComprar: false }) as never) || cn.capaVisible(({ ...ltr5, soloComprar: true }) as never)) F("1 · con tasa elegida, «Ver solo ✓ Comprar» no gobierna la capa");
 
@@ -140,12 +142,17 @@ export async function runExplorarPasada0411Tier(): Promise<{ hard: number }> {
     }
     const ruta = codigo("src/app/api/explorar/route.ts");
     // ⚠ ACTA (04-nov-2026, después de la caída de la base; tier EXPLORAR-TURNOS) · sin `diferir`: la ruta pasa los turnos del sitio.
-    if (!/const conCapa = modalidad === "ltr";\s*const turnos = new TurnosRecalculo\(almacenDeConfig\(admin\)\);\s*const \{ pines, negociados \} = await universoYCapaCalculados\(admin, \{ \.\.\.q, comunas \}, new Date\(\), cuenta, \{ conCapa, turnos, quien: user\.id \}\);\s*return NextResponse\.json\(respuestaUniverso\(pines, \{ \.\.\.q, comunas \}, cuenta, conCapa \? negociados : null\)/.test(ruta)) F("1 · GET /api/explorar no devuelve los − Ajustar de la comuna calculada");
+    // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 9): antes la capa se calculaba solo en arriendo tradicional
+    // (`conCapa = modalidad === "ltr"`) y la respuesta llevaba dos clases; ahora se calcula siempre (renta corta también) y la
+    // respuesta lleva las tres: los Comprar, los − Ajustar y los No conviene.
+    if (!/const conCapa = true;\s*const turnos = new TurnosRecalculo\(almacenDeConfig\(admin\)\);\s*const \{ pines, negociados, noConviene \} = await universoYCapaCalculados\(admin, \{ \.\.\.q, comunas \}, new Date\(\), cuenta, \{ conCapa, turnos, quien: user\.id \}\);\s*return NextResponse\.json\(respuestaUniverso\(pines, \{ \.\.\.q, comunas \}, cuenta, negociados, noConviene\)/.test(ruta)) F("1 · GET /api/explorar no devuelve los − Ajustar (y los No conviene) de la comuna calculada");
     const rutaNeg = codigo("src/app/api/explorar/negociar/route.ts");
     if (!/if \(plazo !== PLAZO_POR_DEFECTO \|\| tasa != null \|\| !\(PIES_NEGOCIAR as readonly number\[\]\)\.includes\(pie\)\) \{/.test(rutaNeg) || !/universoYCapaCalculados\(admin, \{ modalidad: "ltr", pie, plazo, tasa, comunas \}, new Date\(\), cuenta, \{ conCapa: true, turnos, quien: user\.id \}\)/.test(rutaNeg)) F("1 · la capa de pie 20 % o 30 % a 25 años (o con tasa) no se calcula por comuna");
     // El navegador: la junta por comuna, la elige con otra combinación y la pide aparte para la noche a 25 años.
     if (!/if \(vivo\.current && negs\) setCapasCalc\(\(cs\) => agregarCapa\(cs, clave, comuna, negs\)\);/.test(cli) || (cli.match(/setCapasCalc\(\(cs\) => agregarCapa\(cs, clave, comuna, negs\)\)/g) ?? []).length !== 2) F("1 · el navegador no junta los − Ajustar que llegan por comuna");
-    if (!/: capaDeLaNoche\(filtros\) \? negociados\[filtros\.pie\]\s*: capaCalculadaPara\(filtros, capasCalc\)/.test(cli)) F("1 · con otra combinación el mapa no usa la capa calculada");
+    // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 9): la capa de la noche se lee por el pie de los filtros o, sin cuenta,
+    // por el pie de la vista abierta (PIE_ABIERTO: sin cuenta solo se pide esa noche). Con otra combinación, la calculada, igual que antes.
+    if (!/= capaDeLaNoche\(filtros\) \? negociados\[sinCuenta \? PIE_ABIERTO : filtros\.pie\]\s*: capaCalculadaPara\(filtros, capasCalc\)/.test(cli)) F("1 · con otra combinación el mapa no usa la capa calculada");
     if (!/if \(capaVisible\(f\) && !capaDeLaNoche\(f\)\) void asegurarCapaCalculada\(f\);/.test(cli)) F("1 · con pie 20 % o 30 % a 25 años no se piden los − Ajustar");
     const neg = codigo("src/lib/avisos/negociar.ts");
     if (!/respuestasDeAviso\(avisoDeCandidato\(c\), piePct, combo\.tasa \?\? cfg\.tasa, c\.arriendo\.monto, \{ plazo: combo\.plazo \?\? PLAZO_NEGOCIAR, tasaMercado: cfg\.tasa \}\)/.test(neg) || !/negociar_20: veredictos\.veredicto_20 === "AJUSTA SUPUESTOS" \? negociarCandidato\(c, 20, cfg, asOf\) : null,/.test(neg)) F("1 · el descuento no usa el plazo y la tasa elegidos (o la noche dejó de usar los suyos)");

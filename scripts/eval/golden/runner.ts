@@ -178,6 +178,7 @@ import { runRecorrido22OctTier } from "./recorrido-22oct-catch-test";
 import { runCargaTier } from "./carga-catch-test";
 import { runExplorarTier } from "./explorar-catch-test";
 import { runExplorarPortalTier } from "./explorar-portal-catch-test";
+import { runExplorarTodosTier } from "./explorar-todos-catch-test";
 import { runPuertaETier } from "./puerta-e-catch-test";
 import { runLandingMapaTier } from "./landing-mapa-catch-test";
 import { runConvienenUnoTier } from "./convienen-uno-catch-test";
@@ -817,6 +818,11 @@ function printSeed(r: SeedReport) {
   // Tier EXPLORAR-TURNOS (04-nov-2026, 0 tokens, después de la caída de la base del 04-nov): de a una comuna, dos recálculos a la vez
   // en todo el sitio y el tercero en cola, el guardado en tandas con tope dentro del turno, y el fusible con la tasa del mes.
   totalHard += (await runExplorarTurnosTier()).hard;
+  // Tier EXPLORAR-TODOS (25-nov-2026, 0 tokens + 4 lecturas): el mapa con todos los deptos —tres colores (el rojo, el del chip BUSCAR
+  // OTRA), el Ajustar con su «Conviene desde UF X» o No conviene, el contador «X de Y» con el número único, la barra con Usados y
+  // Filtros, los chips que se apagan, los pines con su cifra y los choques por puntaje, la tarjeta con el lugar y la franja, sin cuenta,
+  // el panel con la distribución, renta corta con tres veredictos, «Nuevo hoy» sin republicados y los tramos iguales a los de la base—. ──
+  totalHard += (await runExplorarTodosTier()).hard;
   // Tier EDAD-EDIFICIO (03-nov-2026, 0 tokens): con el año de la ficha o de otro aviso del edificio, el motor recibe la edad real
   // (un edificio de 1951 entra con 75 años y usa el tramo de más de 25) y el informe la dice con el año y la fuente; sin año, la
   // nota distingue «La publicación no dice la antigüedad» de «No pudimos leer la antigüedad». ──

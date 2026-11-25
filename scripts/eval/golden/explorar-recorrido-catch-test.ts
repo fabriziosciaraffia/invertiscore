@@ -109,6 +109,10 @@ const VEINTICINCO_PERMITIDO: Record<string, { patron: RegExp; razon: string }> =
   "src/components/formulario-v4/screenResumen.tsx": { patron: /\{ value: "25", label: "25 años" \}/, razon: "una de las opciones del plazo, no el supuesto" },
   "src/components/formulario-v4/screensActo2.tsx": { patron: /const PLAZOS = \["15", "20", "25", "30"\];/, razon: "las opciones del plazo, no el supuesto" },
   "src/lib/guia/copy.ts": { patron: /antigüedad prudente de 25 años|supuso 25 años/, razon: "la antigüedad supuesta del edificio, no el plazo" },
+  // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 10): universoDeLaNoche (servidor) a 30 años sale de explorar_mapa_todos;
+  // la rama de explorar_mapa quedó SOLO para el plazo de 25 años elegido (pie 20/30 a 25), así que ese 25 es la opción elegida, no
+  // un supuesto por defecto. La guarda que manda los 30 años a la otra rama la exige §4 aparte.
+  "src/lib/explorar/portal-servidor.ts": { patron: /await admin\.rpc\("explorar_mapa", \{ comunas: [^\n]*pie: pie >= 30 \? 30 : 20, plazo: 25 \}\);/, razon: "la rama de los 25 años elegidos de universoDeLaNoche (a 30 años va explorar_mapa_todos)" },
 };
 const VEINTICINCO = /25 años|plazo de 25|plazoAnios: 25|plazo_anios: 25|plazoCredito: "25"|\|\| 25\b|\?\? 25\b|plazo: 25\b|plazo = 25\b|"25"/;
 
@@ -176,23 +180,31 @@ export async function runExplorarRecorridoTier(): Promise<{ hard: number }> {
     if (malas.length) F(`4 · ${f} dice 25 como supuesto: «${malas[0].trim().slice(0, 110)}»`);
   }
   for (const [f, ok] of Object.entries(VEINTICINCO_PERMITIDO)) if (!ok.patron.test(codigo(f))) F(`4 · la excepción de ${f} ya no existe (sácala de la lista: ${ok.razon})`);
+  // La excepción de portal-servidor.ts solo vale si el plazo por defecto (30) NO llega a esa rama.
+  if (!/if \(plazo >= 30\) return \(await todosDeLaNoche\(admin, pie, ahora\)\)\.pines;\s*const \{ data, error \} = await admin\.rpc\("explorar_mapa",/.test(codigo("src/lib/explorar/portal-servidor.ts"))) F("4 · el plazo por defecto (30 años) llega a la rama de explorar_mapa con 25");
   if (/25 años/.test(JSON.stringify([po.COMO_SE_CALCULA.estandar, ...po.COMO_SE_CALCULA.perfil(4.07)]) + po.PORTAL_COPY.tasaFija(4.07))) F("4 · «¿Cómo se calcula?» dice 25 años");
 
   // ── 5 · LA BARRA, ABAJO Y LA LISTA ──
   const modCli = cargar<{ ExplorarCliente: FC<Record<string, unknown>> }>("src/app/explorar/explorar-cliente", F);
   if (modCli) {
     for (const [cuenta, que] of [[cuentaBase(), "con cuenta"], [null, "sin cuenta"]] as const) {
-      const html = dibujar(createElement(modCli.ExplorarCliente, { inicial: { filtros: G, orden: "puntaje", n: 4807, cuenta, tasa: { tasa: 4.07 }, convienen: cuenta ? null : 4807, negociadosGlobal: null, nAjustar: 0 } }));
+      // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 3): `inicial` lleva además `nNo` (los No conviene del contador).
+      const html = dibujar(createElement(modCli.ExplorarCliente, { inicial: { filtros: G, orden: "puntaje", n: 4807, cuenta, tasa: { tasa: 4.07 }, convienen: cuenta ? null : 4807, negociadosGlobal: null, nAjustar: 0, nNo: 0 } }));
       const barra = html.slice(html.indexOf('class="ex-barra"'), html.indexOf('class="ex-cuerpo"'));
       const botones = barra.match(/data-explorar="[a-z-]+"/g) ?? [];
       // ⚠ ACTA (03-nov-2026, goal «la pasada real de /explorar») · la barra es «Filtros», el chip «Ver solo ✓ Comprar» y «¿Cómo se
       // calcula?», UN botón que abre la hoja directo en el teléfono y en el PC (la ⓘ con tooltip del teléfono se retiró).
-      if (botones.join() !== 'data-explorar="filtros",data-explorar="solo-comprar",data-explorar="como-se-calcula"') F(`5 · ${que}, la fila de arriba no es «Filtros», el chip «Ver solo ✓ Comprar» y «¿Cómo se calcula?»: ${botones.join(" ")}`);
-      if (!/<button type="button" class="ex-como" data-explorar="como-se-calcula"/.test(barra)) F(`5 · ${que}, «¿Cómo se calcula?» no es un enlace de texto (va como chip)`);
+      // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 4): antes fijaba la barra «Filtros», «Ver solo ✓ Comprar» y «¿Cómo se
+      // calcula?»; ahora la barra lleva solo el selector con «Usados» (Proyectos escondido por PROYECTOS_VISIBLE) y «Filtros». La (i)
+      // de «¿Cómo se calcula?» vive en la tarjeta del contador (CONVIENEN-UNO §2): en la barra ya no va.
+      if (botones.join() !== 'data-explorar="selector",data-explorar="usados",data-explorar="filtros"') F(`5 · ${que}, la fila de arriba no es «Usados» y «Filtros»: ${botones.join(" ")}`);
+      if (/como-se-calcula|solo-comprar/.test(barra)) F(`5 · ${que}, la barra de arriba sigue con «¿Cómo se calcula?» o «Ver solo ✓ Comprar»`);
       if (/data-explorar="ordenar"/.test(html)) F(`5 · ${que}, «Ordenar» aparece en la vista de mapa`);
       if (/ex-numero|data-explorar="numero"/.test(html)) F(`5 · ${que}, la tarjeta del número sigue sobre el mapa`);
       // ⚠ ACTA (03-nov-2026) · abajo, el desglose, el mismo en el teléfono y en el PC (la píldora negra del PC se retiró).
-      if (!texto(html).includes("4.807 deptos 4.807 ✓ Comprar al precio publicado Ver lista") || /ex-pildora/.test(html)) F(`5 · ${que}, abajo no dice «4.807 deptos · 4.807 ✓ Comprar al precio publicado · Ver lista» en el teléfono y en el PC`);
+      // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 5): antes fijaba la barra de abajo con el desglose; esa barra ya no se
+      // monta: el contador flota arriba («4.807 de 4.807 convienen», los tres chips y «Ver lista»), igual en el teléfono y en el PC.
+      if (!texto(html).includes("4.807 de 4.807 convienen 4.807 Comprar 0 Ajustar 0 No conviene Ver lista") || /ex-pildora|data-explorar="desglose"/.test(html)) F(`5 · ${que}, el contador no dice «4.807 de 4.807 convienen · los tres chips · Ver lista» (o vuelve la barra de abajo)`);
     }
   }
   if (/ex-numero/.test(css + cli + codigo("src/app/explorar/esqueleto.tsx")) || "numeroDelMapa" in po || "lineaSupuestos" in po) F("5 · quedan la tarjeta del número o la línea de los supuestos (CSS, cliente, esqueleto o portal.ts)");
@@ -222,30 +234,24 @@ export async function runExplorarRecorridoTier(): Promise<{ hard: number }> {
     F("5 · la lista no es casi a pantalla completa en el teléfono y un panel de 480 px a la derecha en el PC (con el mapa usable)");
   if (!/vista === "lista" && \(\s*<ListaPortal/.test(cli) || !/alCerrar=\{\(\) => setVista\("mapa"\)\}/.test(cli)) F("5 · la lista no se monta sobre el mapa o no vuelve al mapa al cerrarse");
 
-  // ── 6 · FILTROS EN DOS BLOQUES, CON LA TASA DEL MOTOR ──
+  // ── 6 · FILTROS, CON LA TASA DEL MOTOR ──
+  // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 8): antes fijaba Filtros en dos bloques («El depto» con comunas, tipología,
+  // precio, tipo de arriendo y «Solo flujo positivo»; «Tu financiamiento» con pie, plazo y la tasa; «Otros» con publicados) y la
+  // tarjeta «Aplicar mi perfil». El panel se reescribió: arriba el tipo de arriendo (con «La renta corta se estima por zona, no por
+  // depto.»), después los supuestos en UNA línea con «Cambiar» (pie, plazo y tasa: la del motor, 4,07 %), las cinco barras y los
+  // dormitorios como botones. Se fueron las comunas, «Solo flujo positivo», «Publicados» y «Aplicar mi perfil». Lo que este tier
+  // vigila sigue: la tasa del motor llega a Filtros, con y sin cuenta.
   const modFil = cargar<{ HojaFiltros: FC<Record<string, unknown>> }>("src/app/explorar/hoja-filtros", F);
   if (modFil) {
     for (const sinCuenta of [false, true]) {
       const que = sinCuenta ? "sin cuenta" : "con cuenta";
-      const h = dibujar(createElement(modFil.HojaFiltros, { filtros: G, tasa: { tasa: 4.07 }, miBusqueda: sinCuenta ? null : { activa: false, alUsar() {} }, contar: () => 10, asegurar() {}, alAplicar() {}, alCerrar() {}, alPedirRegistro: sinCuenta ? () => {} : null }));
-      const iD = h.indexOf('data-explorar="bloque-depto"'), iF = h.indexOf('data-explorar="bloque-financiamiento"');
-      if (iD < 0 || iF < 0 || iD > iF) { F(`6 · ${que}, Filtros no va en dos bloques («El depto» y después «Tu financiamiento»)`); continue; }
-      const depto = h.slice(iD, iF), fin = h.slice(iF);
-      if (!/<h3[^>]*>El depto<\/h3>/.test(depto) || !/<h3[^>]*>Tu financiamiento<\/h3>/.test(fin)) F(`6 · ${que}, los bloques no llevan sus títulos`);
-      // ⚠ ACTA (02-nov-2026, goal «Filtros v2 y negociar», tier EXPLORAR-NEGOCIAR) · «Publicados» se mudó a «Otros», la última tarjeta (mockup 8).
-      for (const [cosa, ok] of [["las comunas", />Comunas</.test(depto)], ["la tipología", />Tipología</.test(depto)], ["el precio", />Precio</.test(depto)], ["tradicional o renta corta", /data-explorar="tradicional"/.test(depto) && /data-explorar="renta-corta"/.test(depto)], ["solo con flujo positivo", /data-explorar="flujo-positivo"/.test(depto)]] as const)
-        if (!ok) F(`6 · ${que}, «El depto» no tiene ${cosa}`);
-      if (!/data-explorar="bloque-otros"[\s\S]*>Publicados</.test(fin)) F(`6 · ${que}, «Otros» no tiene publicados`);
-      if (/data-explorar="(pie|plazo|tasa)"/.test(depto) || !/data-explorar="pie"/.test(fin) || !/data-explorar="plazo"/.test(fin)) F(`6 · ${que}, pie y plazo no van en «Tu financiamiento»`);
-      // ⚠ ACTA (30-oct-2026, goal «la tasa editable en Filtros») · con cuenta la tasa se elige: «La de hoy (4,07 %)» —la del motor— y
-      // la lista (TASA-EDITABLE); sin cuenta, cerrada con la del motor, y tocarla pide registro.
-      // ⚠ ACTA (02-nov-2026, goal «Filtros v2 y negociar», tier EXPLORAR-NEGOCIAR) · con cuenta la tasa es un slider que parte en la del motor («4,07 % · promedio del mes»); sin cuenta,
-      // cerrada con la del motor. «Usar mi búsqueda» es la tarjeta «Aplicar mi perfil de búsqueda».
-      const tasaOk = sinCuenta
-        ? /<button type="button" class="ex-campo ex-campo-cerrado ex-campo-fijo" data-explorar="tasa"><span>Tasa<\/span><b>4,07 % · promedio del mes<\/b><\/button>/.test(fin)
-        : /<input type="range"[^>]*data-explorar="tasa"[^>]*value="4\.07"/.test(fin) && texto(fin).includes("Tasa 4,07 % · promedio del mes");
-      if (!tasaOk) F(`6 · ${que}, la tasa de «Tu financiamiento» no parte de la del motor (4,07 %)`);
-      if (sinCuenta === /data-explorar="card-perfil"/.test(h)) F(`6 · ${que}, «Aplicar mi perfil de búsqueda» ${sinCuenta ? "aparece" : "no está dentro de Filtros"}`);
+      const h = dibujar(createElement(modFil.HojaFiltros, { filtros: G, tasa: { tasa: 4.07 }, contarTodos: () => 10, distribucion: () => null, alMoverTasa() {}, asegurar() {}, alAplicar() {}, alCerrar() {}, alPedirRegistro: sinCuenta ? () => {} : null }));
+      const orden = ['data-explorar="tipo-arriendo"', 'data-explorar="supuestos"', 'data-explorar="barra-precio"', 'data-explorar="dormitorios"', 'data-explorar="ver-n"'].map((m) => h.indexOf(m));
+      if (orden.some((x) => x < 0) || orden.some((x, k) => k > 0 && x < orden[k - 1])) { F(`6 · ${que}, Filtros no va en el orden tipo de arriendo, supuestos, barras, dormitorios y «Ver N deptos»`); continue; }
+      const sup = h.slice(orden[1], orden[2]);
+      if (!/<span>Con pie de <b>20 %<\/b>, crédito a <b>30 años<\/b> y tasa de <b>4,07 %<\/b><\/span>/.test(sup) || !/data-explorar="cambiar-supuestos">Cambiar</.test(sup)) F(`6 · ${que}, los supuestos no dicen el pie, el plazo y la tasa del motor (4,07 %) en una línea con «Cambiar»`);
+      if (/>Comunas<|data-explorar="flujo-positivo"|>Publicados<|data-explorar="card-perfil"|data-explorar="bloque-/.test(h)) F(`6 · ${que}, vuelven al panel las comunas, «Solo flujo positivo», «Publicados», «Aplicar mi perfil» o los bloques viejos`);
+      if (/data-explorar="(pie|plazo|tasa)"/.test(h)) F(`6 · ${que}, pie, plazo o tasa se ven sin tocar «Cambiar»`);
     }
   }
   if (!/\.ex-filtros \{ pointer-events: auto; width: 480px;/.test(cssPC) || !/\.ex-filtros-velo \{ position: absolute; inset: 52px 0 0 0; background: none; pointer-events: none;/.test(cssPC)) F("6 · en el PC, Filtros no es un panel como el de la lista (con el mapa a la vista)");
@@ -311,7 +317,12 @@ export async function runExplorarRecorridoTier(): Promise<{ hard: number }> {
   // ⚠ ACTA (03-nov-2026, goal «la pasada real de /explorar», «Rojo en ningún pin») · los pines van en el color de su clase y de su
   // tema (colores-pin.ts, por iconoPin): azul ✓ Comprar, tinta con ✓ el analizado; en oscuro, los del chip aclarados. Antes: rojos
   // y azules los analizados. Lo que se dibuja lo mide EXPLORAR-PASADA §5; acá, que el tema decida el color.
-  if (!/const tema = temaPin\(\);/.test(mapa) || !/const temaPin = \(\): TemaPin => \(esClaro\(\) \? "claro" : "oscuro"\);/.test(mapa) || !/etiqueta\(t\.tipo === "analizado" \? "analizado" : "comprar", t\.texto, elegido\)/.test(mapa)) F("9 · los pines no siguen el color de su clase y del tema");
+  // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 6): antes fijaba `const tema = temaPin()` y la etiqueta del analizado
+  // (marcadores de Google); ahora el canvas se pinta con el tema del momento (`pintar(ctx, dibujos, temaPin())`) y cada punto y cada
+  // cifra toman el color de su clase EN ese tema (colorPin(d.clase, tema)). Sin pin analizado.
+  const pintarFn = mapa.slice(mapa.indexOf("function pintar("), mapa.indexOf("export default function MapaExplorar"));
+  if (!/pintar\(ctx, dibujos, temaPin\(\)\);/.test(mapa) || !/const temaPin = \(\): TemaPin => \(esClaro\(\) \? "claro" : "oscuro"\);/.test(mapa) || !/^function pintar\(ctx: CanvasRenderingContext2D, dibujos: readonly Dibujo\[\], tema: TemaPin\)/.test(pintarFn)
+    || (pintarFn.match(/colorPin\(d\.clase, tema\)/g) ?? []).length !== 2) F("9 · los pines no siguen el color de su clase y del tema");
   // La imagen quieta: su versión oscura, mismo tamaño que la clara, de fondo solo en oscuro.
   try {
     const sharp = require("sharp") as (p: string) => { metadata(): Promise<{ width?: number; height?: number }> };

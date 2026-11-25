@@ -162,10 +162,14 @@ export async function runExplorarPasadaTier(): Promise<{ hard: number }> {
   {
     if ("tooltip" in po.COMO_SE_CALCULA) F("1 · el tooltip de «¿Cómo se calcula?» sigue en el copy");
     if (/alTocarTooltip/.test(codigo("src/app/explorar/info.tsx"))) F("1 · la ⓘ todavía sabe abrir algo al tocar su tooltip");
-    if ((cliente.match(/data-explorar="como-se-calcula"/g) ?? []).length !== 1) F("1 · «¿Cómo se calcula?» no es UN botón (el del PC y el del teléfono tienen que ser el mismo)");
-    const boton = elemento(cliente, "como-se-calcula");
-    if (!/^<button\b/.test(boton) || !/onClick=\{abrirCalculo\}/.test(boton)) F("1 · el botón de «¿Cómo se calcula?» no llama a abrirCalculo al tocarlo");
-    if (!/className="ex-como-i"/.test(boton) || !/className="ex-como-t ex-como-t-pc"/.test(boton) || !/COMO_SE_CALCULA\.enlaceCorto/.test(boton)) F("1 · el botón no trae la ⓘ redonda y los dos textos (PC y teléfono)");
+    // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 4): antes fijaba UN botón en la barra del cliente con la ⓘ redonda del
+    // teléfono y el texto del PC; ahora la (i) vive en la tarjeta del contador (contador.tsx): UN botón, el mismo en el teléfono y en
+    // el PC, con el nombre accesible «¿Cómo se calcula?» y el ícono, que llama a `alComo` = abrirCalculo. La barra ya no lo trae.
+    const contadorSrc = codigo("src/app/explorar/contador.tsx");
+    if ((contadorSrc.match(/data-explorar="como-se-calcula"/g) ?? []).length !== 1 || /data-explorar="como-se-calcula"/.test(cliente)) F("1 · «¿Cómo se calcula?» no es UN botón, en la tarjeta del contador");
+    const boton = elemento(contadorSrc, "como-se-calcula");
+    if (!/^<button\b/.test(boton) || !/onClick=\{alComo\}/.test(boton) || !/alComo=\{abrirCalculo\}/.test(cliente)) F("1 · el botón de «¿Cómo se calcula?» no llama a abrirCalculo al tocarlo");
+    if (!/aria-label=\{COMO_SE_CALCULA\.enlace\}/.test(boton) || !/<svg\b/.test(boton)) F("1 · el botón no trae el ícono con el nombre «¿Cómo se calcula?»");
     if (!/setCalculo\(true\)/.test(cuerpo(cliente, "const abrirCalculo = () =>"))) F("1 · abrirCalculo no abre la hoja");
     if (!/\{calculo && <HojaCalculo\b/.test(cliente)) F("1 · la hoja no se monta con `calculo`");
     const barraIni = cliente.indexOf('className="ex-barra"');
@@ -222,8 +226,13 @@ export async function runExplorarPasadaTier(): Promise<{ hard: number }> {
     if (deUrl("").negociar !== 10 || deUrl("").soloComprar) F("3 · /explorar sin nada en la URL no abre con las dos clases");
     if (po.urlDePortal(g) !== "") F(`3 · la vista de entrada deja algo en la URL: «${po.urlDePortal(g)}»`);
     const solo = { ...g, soloComprar: true };
-    if (!/(^|&)solo=1(&|$)/.test(po.urlDePortal(solo)) || !deUrl(po.urlDePortal(solo)).soloComprar) F("3 · el parámetro de la URL no dice si está «solo Comprar»");
-    if (deUrl("n=5").negociar !== 5 || po.urlDePortal({ ...g, negociar: 5 }) !== "n=5" || deUrl("n=10").negociar !== 10 || deUrl("n=7").negociar !== 10) F("3 · el descuento máximo no va y vuelve de la URL (5, 10 por defecto)");
+    // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisiones 4 y 5): antes fijaba que `solo=1` iba y volvía de la URL como
+    // «solo Comprar»; el chip «Ver solo ✓ Comprar» se fue y lo reemplazan los chips del contador, que se apagan (`ocultar`). Un enlace
+    // viejo con `solo=1` abre con Ajustar y No conviene apagados, y `soloComprar` ya no queda prendido.
+    { const v = deUrl("solo=1"); if (v.soloComprar || v.ocultar.join() !== "ajustar,no") F(`3 · un enlace viejo con solo=1 no abre con Ajustar y No conviene apagados (${v.ocultar.join()})`); }
+    // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 2): antes fijaba que el descuento máximo iba y volvía de la URL (5 o
+    // 10); ahora es siempre 10 %: un enlace con n=5 o n=7 abre con 10.
+    if (deUrl("n=5").negociar !== 10 || deUrl("n=10").negociar !== 10 || deUrl("n=7").negociar !== 10) F("3 · el descuento máximo no es siempre 10 % (un enlace con n=5 lo cambia)");
     const negs = [NEG("n1", 4.2), NEG("n2", 8), NEG("n3", 3)];
     const ids = (xs: cn.PinNegociado[]) => xs.map((p) => p.avisoId).sort().join();
     const comprar = new Set(["n3"]);
@@ -232,7 +241,9 @@ export async function runExplorarPasadaTier(): Promise<{ hard: number }> {
     if (ids(cn.negociadosVisibles(negs, { ...g, negociar: 5 }, comprar)) !== "n1") F("3 · el descuento máximo de 5 % no deja fuera a los que necesitan más");
     // ⚠ ACTA (04-nov-2026, la pasada de Fabrizio por /explorar, tier EXPLORAR-PASADA-0411) · con otro plazo la capa se ve (calculada por comuna en el navegador; la noche sigue sin traerla, abajo, r3);
     // en renta corta, no.
-    if (ids(cn.negociadosVisibles(negs, { ...g, plazo: 25 }, comprar)) !== "n1,n2" || cn.negociadosVisibles(negs, { ...g, modalidad: "str" }, comprar).length !== 0) F("3 · la capa no se ve con otro plazo de arriendo tradicional (o se ve en renta corta)");
+    // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 9): antes fijaba que en renta corta no había − Ajustar; ahora renta
+    // corta trae las tres clases con «Conviene desde UF X», así que la capa se ve también ahí.
+    if (ids(cn.negociadosVisibles(negs, { ...g, plazo: 25 }, comprar)) !== "n1,n2" || ids(cn.negociadosVisibles(negs, { ...g, modalidad: "str" }, comprar)) !== "n1,n2") F("3 · la capa no se ve con otro plazo de arriendo tradicional o en renta corta");
     // EL MISMO PEDIDO: el armado de la respuesta de la noche, con una lectura de mentira.
     // ⚠ ACTA (03-nov-2026, «una sola caché, con una sola edad») · la noche se lee en UNA lectura (portal-cache.ts › nocheExplorar: el
     // universo y la capa juntos, por sello); `leer` es esa lectura. Que a 25 años no se lea la capa y que su falla no tumbe la noche
@@ -261,13 +272,13 @@ export async function runExplorarPasadaTier(): Promise<{ hard: number }> {
     const asegurar = cuerpo(cliente, "const asegurar = useCallback(");
     if (!/if \(conCapa && d\.negociados\) \{[\s\S]*?setNegociados\(/.test(asegurar)) F("3 · el navegador no toma la capa del pedido del universo");
     if (!/const capa = capaVisible\(filtros\);/.test(cliente) || !/negociadosVisibles\(negociadosDelPie, filtros, idsComprar\)/.test(cliente)) F("3 · el navegador no decide las dos clases con capaVisible y negociadosVisibles");
-    if (!/negociados=\{visiblesNeg\}/.test(elementoDesde(cliente, cliente.indexOf("<MapaExplorar")))) F("3 · el mapa no recibe los − Ajustar");
-    // El chip de la barra: el filtro «Ver solo ✓ Comprar», con el chip de la casa adentro; se mide al prenderlo, con el tope.
-    const chip = elemento(cliente, "solo-comprar");
-    if (!/aria-checked=\{filtros\.soloComprar\}/.test(chip) || !/onClick=\{alternarSoloComprar\}/.test(chip) || !/NEGOCIAR_COPY\.soloComprar\} <ChipVeredicto v="COMPRAR" \/>/.test(chip)) F("3 · el chip de la barra no es «Ver solo [✓ Comprar]» con su estado");
-    if (cn.NEGOCIAR_COPY.soloComprar !== "Ver solo") F(`3 · el chip dice «${cn.NEGOCIAR_COPY.soloComprar}»`);
-    const alt = cuerpo(cliente, "function alternarSoloComprar()");
-    if (!/soloComprar: !filtros\.soloComprar/.test(alt) || !/if \(f\.soloComprar\) posthog\?\.capture\(EVENTO_SOLO_COMPRAR, propsSoloComprar\(filtros\.negociar,/.test(alt)) F("3 · «explorar_solo_comprar» no se mide al prender el filtro, con el tope");
+    // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 6): antes el mapa recibía los − Ajustar aparte (`negociados=`); ahora
+    // recibe una sola lista de pines del canvas (`items`), armada sobre `todos`, que suma los − Ajustar visibles a los ✓ Comprar.
+    if (!/items=\{items\}/.test(elementoDesde(cliente, cliente.indexOf("<MapaExplorar"))) || !/\.\.\.\(seVe\("ajustar"\) \? visiblesNeg : \[\]\)/.test(cliente) || !/const items = useMemo\(\(\): ItemCapa\[\] => todos\.map\(/.test(cliente)) F("3 · el mapa no recibe los − Ajustar");
+    // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 4): se retira lo que fijaba el chip «Ver solo [✓ Comprar]» de la barra
+    // (su estado, su texto y «explorar_solo_comprar» al prenderlo): el chip se fue de la barra y lo reemplazan los chips del contador
+    // que se apagan (EXPLORAR-TODOS §4 y §5). Queda el negativo: la barra no lo vuelve a dibujar.
+    if (/data-explorar="solo-comprar"|function alternarSoloComprar/.test(cliente)) F("3 · vuelve el chip «Ver solo ✓ Comprar» a la barra");
     if (cn.EVENTO_SOLO_COMPRAR !== "explorar_solo_comprar" || cn.propsSoloComprar(10, 6802, 3238, false).tope !== 10) F("3 · el evento no se llama explorar_solo_comprar o no lleva el tope");
     // La bienvenida: el número de «convienen» y, aparte, los que llegan negociando.
     if (modBien) {
@@ -282,20 +293,21 @@ export async function runExplorarPasadaTier(): Promise<{ hard: number }> {
     const cifras = codigo("src/lib/explorar/cifras-noche.ts");
     const abierta = cuerpo(codigo("src/app/explorar/page.tsx"), "async function ExplorarAbierto(");
     if (!/convienen: noche \? cuantosConvienen\(noche\.universo\) : null,/.test(cifras) || /\bconvienen\s*(?:=|:)[^,;}]*negociad/i.test(cifras + abierta)
-      || !/const \{ n, convienen, negociadosGlobal, nAjustar \} = cifrasDeLaNoche\(noche, filtros\);/.test(abierta)) F("3 · la página suma los negociados al número de «convienen»");
+      // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 3): la desestructuración lleva además `nNo` (el chip No conviene).
+      || !/const \{ n, convienen, negociadosGlobal, nAjustar, nNo \} = cifrasDeLaNoche\(noche, filtros\);/.test(abierta)) F("3 · la página suma los negociados al número de «convienen»");
     // Filtros: «Descuento máximo para − Ajustar» con 5 % y 10 %, y el botón con las dos cuentas y sus chips.
     if (modFil) {
-      const fil = (contarNegociados: () => number) => dibujar(createElement(modFil.HojaFiltros, { filtros: g, tasa: { tasa: 4.07 }, miBusqueda: null, contar: () => 6802, contarNegociados, asegurar: NADA, alAplicar: NADA, alCerrar: NADA, alPedirRegistro: null }));
+      const fil = (contarNegociados: () => number) => dibujar(createElement(modFil.HojaFiltros, { filtros: g, tasa: { tasa: 4.07 }, contarTodos: () => 6802 + contarNegociados(), distribucion: () => null, alMoverTasa: NADA, asegurar: NADA, alAplicar: NADA, alCerrar: NADA, alPedirRegistro: null }));
       const h = fil(() => 3238);
-      const grupo = h.match(/<section[^>]*data-explorar="bloque-negociar"[\s\S]*?<\/section>/)?.[0] ?? "";
-      if (!textoPlano(grupo).startsWith("Descuento máximo para − Ajustar")) F(`3 · el grupo de Filtros no se llama «Descuento máximo para − Ajustar»: «${textoPlano(grupo).slice(0, 50)}»`);
-      if (/type="checkbox"/.test(grupo)) F("3 · el grupo de Filtros todavía tiene un interruptor");
-      const radios = Array.from(grupo.matchAll(/<button[^>]*role="radio"[^>]*aria-checked="(true|false)"[^>]*>([^<]*)<\/button>/g), (m) => `${m[2]}:${m[1]}`).join("|");
-      if (radios !== "5 %:false|10 %:true") F(`3 · los topes de Filtros no son 5 % y 10 % con 10 % de entrada: ${radios}`);
+      // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 2): se retira lo que fijaba el grupo «Descuento máximo para − Ajustar»
+      // (su nombre y los topes 5 % / 10 %): el descuento máximo se fue del panel, siempre 10 %. Queda el negativo.
+      if (/data-explorar="bloque-negociar"|data-explorar="tope-/.test(h)) F("3 · vuelve a Filtros el descuento máximo para − Ajustar");
+      // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 8): antes el botón separaba «Ver 6.802 ✓ Comprar + 3.238 − Ajustar»;
+      // ahora dice «Ver N deptos» con lo que da contarTodos (las tres clases): 6.802 + 3.238 = 10.040.
       const ver = textoPlano(h.match(/<button[^>]*data-explorar="ver-n"[\s\S]*?<\/button>/)?.[0] ?? "");
-      if (ver !== "Ver 6.802 ✓ Comprar + 3.238 − Ajustar") F(`3 · el botón de Filtros dice «${ver}»`);
+      if (ver !== "Ver 10.040 deptos") F(`3 · el botón de Filtros dice «${ver}»`);
       const ver0 = textoPlano(fil(() => 0).match(/<button[^>]*data-explorar="ver-n"[\s\S]*?<\/button>/)?.[0] ?? "");
-      if (ver0 !== "Ver 6.802 ✓ Comprar") F(`3 · sin − Ajustar el botón de Filtros dice «${ver0}»`);
+      if (ver0 !== "Ver 6.802 deptos") F(`3 · sin − Ajustar el botón de Filtros dice «${ver0}»`);
     }
     // CON DATOS DE HOY (dos lecturas): de entrada hay de las dos clases.
     try {
@@ -343,7 +355,9 @@ export async function runExplorarPasadaTier(): Promise<{ hard: number }> {
       if (/<span class="chip-v a"[^>]*>[^<]*<\/span>(?:<\/span>)?,/.test(h)) F("4 · la barra pone una coma después del chip − Ajustar");
     }
     // El navegador: la barra es el desglose de los que se ven, en los dos tamaños; la píldora negra se retiró.
-    if (!/<BarraAbajo desglose=\{desglose\}/.test(cliente)) F("4 · la barra de abajo no es el desglose");
+    // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 5): antes fijaba que la barra de abajo era el desglose (BarraAbajo); esa
+    // barra ya no se monta: el contador flota arriba con los tres chips. desglose.tsx sigue para la cabecera de la lista (abajo).
+    if (/<BarraAbajo\b/.test(cliente) || !/<Contador conteo=\{conteo\}/.test(cliente)) F("4 · vuelve la barra de abajo (o falta el contador)");
     if (!/desgloseBarra\(total, nAjustar, capa \? filtros\.negociar : null\)/.test(cliente) || !/const nAjustar = !capa \? 0 : negociadosDelPie \? visiblesNeg\.length :/.test(cliente) || !/const total = universo \? visibles\.length :/.test(cliente)) F("4 · el desglose no cuenta lo que se ve en el mapa");
     if (/ex-pildora/.test(cliente) || reglas.some((r) => r.sel.some((s) => /\.ex-pildora/.test(s)))) F("4 · la píldora negra del PC sigue");
     if (reglas.some((r) => r.sel.includes(".ex-hoja") && /display\s*:\s*none/.test(r.decl))) F("4 · una regla esconde la barra de abajo (en el PC o en el teléfono)");
@@ -388,17 +402,18 @@ export async function runExplorarPasadaTier(): Promise<{ hard: number }> {
     }
     // El mapa de Explorar arma todo marcador con iconoPin, sin un color propio (salvo el fondo del mapa).
     const mapa = codigo("src/app/explorar/mapa-explorar.tsx");
-    const propios = hexes(mapa).filter((h) => !["#F6F6F7", "#1A1A1A"].includes(h));
-    if (propios.length || PALABRAS_ROJAS.test(mapa) || /svgUrl|<circle|<rect/.test(mapa)) F(`5 · el mapa de Explorar dibuja pines con colores propios: ${propios.join(", ") || "(svg propio)"}`);
-    for (const c of ['punto("comprar"', 'punto("ajustar"', 'grupo("ajustar"', 'etiqueta("ajustar"', 'grupo(gr.analizados === gr.n ? "analizado" : "comprar"', 'punto(an.has(id) ? "analizado" : "comprar")']) if (!mapa.includes(c)) F(`5 · el mapa de Explorar no dibuja ${c}…)`);
-    if (!/const punto = \(c: ClasePin, elegido = false\) => iconoPin\(c, tema,/.test(mapa)) F("5 · el mapa de Explorar no saca sus íconos de iconoPin");
-    // Los − Ajustar se dibujan solo en su clase: en su bucle (y en el elegido de su capa) no aparece otra.
-    const bucleNeg = mapa.slice(mapa.indexOf("for (const gr of gruposNeg)"), mapa.indexOf("const e = sel ?"));
-    const elegidoNeg = mapa.slice(mapa.indexOf("const en = sel && !e ?"), mapa.indexOf("encuadrarRef.current = () =>"));
-    if (!bucleNeg || !elegidoNeg || /"comprar"|"analizado"/.test(bucleNeg + elegidoNeg) || (bucleNeg.match(/"ajustar"/g) ?? []).length < 4) F("5 · algún − Ajustar del mapa se dibuja con el color de otra clase");
-    // La etiqueta con zoom de un − Ajustar.
-    if (cn.NEGOCIAR_COPY.pin(4.2) !== "−4,2 % dcto.") F(`5 · la etiqueta de un − Ajustar dice «${cn.NEGOCIAR_COPY.pin(4.2)}»`);
-    if (!/const texto = NEGOCIAR_COPY\.pin\(p\.neg\.d\);/.test(mapa)) F("5 · el mapa no usa la etiqueta del descuento");
+    // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisiones 1 y 6): antes fijaba que el mapa armaba cada marcador de Google con
+    // iconoPin (punto, grupo y etiqueta por clase, el analizado en tinta, la etiqueta «−4,2 % dcto.» de un − Ajustar) y sin un color
+    // propio. Ahora los pines van en un canvas: cada punto y cada cifra con colorPin(d.clase, tema) —la clase la da claseDePin, el
+    // − Ajustar en su ciruela y el No conviene en el rojo del chip BUSCAR OTRA (decisión 1, solo en /explorar)— y los grupos en
+    // tinta con su número (GRUPO, los únicos colores propios del archivo). Sin pin analizado y sin la etiqueta del descuento: la
+    // cifra la arma textoCifraPin (EXPLORAR-TODOS §6). Los colores de los otros mapas siguen fijados abajo, sin rojo.
+    const propios = hexes(mapa).filter((h) => !["#F6F6F7", "#1A1A1A"].includes(h)).sort().join();
+    if (propios !== "#141414,#FFFFFF" || !/const GRUPO = \{ fondo: "#141414", texto: "#FFFFFF" \} as const;/.test(mapa) || PALABRAS_ROJAS.test(mapa) || /svgUrl|<circle|<rect/.test(mapa)) F(`5 · el mapa de Explorar dibuja pines con colores propios fuera de los grupos en tinta: ${propios || "(ninguno)"}`);
+    const pintarMapa = cuerpo(mapa, "function pintar(");
+    if ((pintarMapa.match(/colorPin\(d\.clase, tema\)/g) ?? []).length !== 2 || /colorPin\("/.test(pintarMapa)) F("5 · el canvas no pinta cada punto y cada cifra con el color de su clase");
+    if (/iconoPin|NEGOCIAR_COPY\.pin|"analizado"/.test(mapa)) F("5 · el mapa de Explorar vuelve a los íconos de iconoPin, a la etiqueta del descuento o al pin analizado");
+    if (cn.claseDePin(NEG("x", 4.2)) !== "ajustar" || !/const clase = claseDePin\(p\);/.test(cliente)) F("5 · algún − Ajustar del mapa se dibuja con el color de otra clase");
     // El mapa chico (tarjeta, lista, pop-up y vista previa): el marcador de Static Maps.
     const pt = { lat: -33.4, lng: -70.6 };
     const marcador = (u: string) => u.match(/markers=color:(0x[0-9A-F]{6})/)?.[1];
@@ -469,7 +484,11 @@ export async function runExplorarPasadaTier(): Promise<{ hard: number }> {
     if (decl(tip?.decl ?? "", "position") !== "fixed") F("6 · el tooltip no va con position: fixed");
     if (reglas.some((r) => r.sel.some((s) => /\.ex-tip-(der|izq)/.test(s)))) F("6 · quedan los lados fijos del tooltip (.ex-tip-der / .ex-tip-izq)");
     const filtrosSrc = codigo("src/app/explorar/hoja-filtros.tsx");
-    for (const m of ["info-depto", "info-financiamiento", "info-tasa", "info-perfil"]) if (!new RegExp(`<Info [^>]*marca="${m}"`).test(filtrosSrc)) F(`6 · la ⓘ ${m} de Filtros no es la de la casa`);
+    // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 8): antes Filtros tenía cuatro ⓘ (el depto, el financiamiento, la tasa y
+    // el perfil); con el panel nuevo los bloques del depto y del financiamiento y la tarjeta del perfil se fueron, y queda la de la
+    // tasa (la fuente del promedio del mes). La regla —toda ⓘ es la de la casa— sigue.
+    for (const m of ["info-tasa"]) if (!new RegExp(`<Info [^>]*marca="${m}"`).test(filtrosSrc)) F(`6 · la ⓘ ${m} de Filtros no es la de la casa`);
+    if (/marca="info-(depto|financiamiento|perfil)"/.test(filtrosSrc)) F("6 · vuelven a Filtros las ⓘ de los bloques retirados");
     for (const f of ["src/app/explorar/hoja-filtros.tsx", "src/app/explorar/explorar-cliente.tsx", "src/app/explorar/tarjeta-pin.tsx", "src/app/explorar/lista-portal.tsx"]) if (/role="tooltip"/.test(codigo(f))) F(`6 · ${f} arma un tooltip propio`);
   }
 
@@ -527,13 +546,16 @@ export async function runExplorarPasadaTier(): Promise<{ hard: number }> {
       const cli = codigo("src/app/explorar/explorar-cliente.tsx");
       // Arriba: «Filtros», el chip «Ver solo [✓ Comprar]» con su interruptor y el botón de «¿Cómo se calcula?» con las caras del
       // cliente (salvo el texto del teléfono, que se mide en el navegador y a 390 no cabe).
-      const chipCli = clasesJsx(elemento(cli, "solo-comprar")).filter((c) => c.startsWith("ex-"));
-      const comoCli = clasesJsx(elemento(cli, "como-se-calcula")).filter((c) => c !== "ex-como-t-movil");
-      if (chipCli.length < 3 || comoCli.length < 4 || !enOrden(clasesHtml(arriba), ["ex-boton", ...chipCli, ...comoCli])) F("8 · la barra de arriba del esqueleto no es la del cliente (Filtros, «Ver solo ✓ Comprar», la ⓘ redonda y el texto del PC)");
-      if (!/Filtros\s*Ver solo ✓ Comprar\s*ⓘ\s*i\s*¿Cómo se calcula\?/.test(textoPlano(html)) || !/class="chip-v c"/.test(arriba) || !html.includes(CSS_CHIP_VEREDICTO.slice(0, 60))) F("8 · el esqueleto no dice «Filtros», «Ver solo [✓ Comprar]» con el chip de la casa y «¿Cómo se calcula?»");
-      // Abajo: la barra del cliente (BarraAbajo), calculando, con «Ver lista» a la derecha; sin la píldora en ninguna parte.
-      const barraCli = clasesJsx(cuerpo(codigo("src/app/explorar/desglose.tsx"), "export function BarraAbajo"));
-      if (barraCli.length < 4 || !enOrden(clasesHtml(abajo), barraCli) || !/Calculando…\s*Ver lista/.test(textoPlano(abajo))) F("8 · la barra de abajo del esqueleto no es la del cliente («Calculando…» y «Ver lista» a la derecha)");
+      // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisiones 4 y 5): la regla —el esqueleto es la pantalla de hoy, con las clases
+      // del cliente— sigue; lo que cambió es la pantalla. Antes fijaba arriba «Filtros», «Ver solo [✓ Comprar]» y la ⓘ, y abajo la
+      // BarraAbajo; ahora arriba van el selector con «Usados» y «Filtros» (sin el chip ni la ⓘ), y en lugar de la barra de abajo,
+      // el contador (ex-contador) calculando, con sus chips y «Ver lista».
+      const selCli = clasesJsx(elemento(cli, "selector")).filter((c) => c.startsWith("ex-"));
+      if (selCli.length < 2 || !enOrden(clasesHtml(arriba), [...selCli, "ex-boton"]) || /ex-chip-neg|ex-como/.test(arriba)) F("8 · la barra de arriba del esqueleto no es la del cliente (el selector con «Usados» y «Filtros», sin «Ver solo ✓ Comprar» ni la ⓘ)");
+      if (!/Usados\s*☰?\s*Filtros/.test(textoPlano(arriba))) F("8 · el esqueleto no dice «Usados» y «Filtros»");
+      // En lugar de la barra de abajo, el contador del cliente (contador.tsx), calculando, con «Ver lista»; sin la píldora en ninguna parte.
+      const contCli = clasesJsx(codigo("src/app/explorar/contador.tsx")).filter((c) => /^ex-contador/.test(c));
+      if (contCli.length < 4 || !enOrden(clasesHtml(html), contCli) || /class="ex-hoja"/.test(html) || !/Calculando…[\s\S]*Ver lista/.test(textoPlano(html))) F("8 · el esqueleto no lleva el contador del cliente («Calculando…» y «Ver lista»), o sigue con la barra de abajo");
       if (/pildora/.test(html) || /pildora/.test(cli) || /pildora/.test(leer("src/app/explorar/explorar.css").replace(/\/\*[\s\S]*?\*\//g, ""))) F("8 · la píldora del PC sigue en /explorar (el esqueleto, el cliente o su CSS)");
     }
   }
@@ -599,7 +621,10 @@ export async function runExplorarPasadaTier(): Promise<{ hard: number }> {
     // Lo que no se prueba con fuentes de mentira: una sola entrada por sello, y el sello que viaja en cada pedido.
     const cache = codigo("src/lib/explorar/portal-cache.ts");
     const llaves = Array.from(cache.matchAll(/\["(explorar-[\w-]+)"\]/g)).map((m) => m[1]).sort().join();
-    if (llaves !== "explorar-noche-v2,explorar-sello-v1,explorar-tasa-motor-v2") F(`9 · la noche no vive en una sola entrada por sello (llaves de caché: ${llaves})`);
+    // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 11): antes fijaba UNA entrada de la noche («explorar-noche-v2»); ahora
+    // son dos —nocheDeSello sin los No conviene y noConvieneDeSello— porque juntas pasaban de los 2 MB de unstable_cache. Las dos
+    // se leen con el MISMO sello (`n`) en nocheCompleta, así que la regla de una sola edad sigue.
+    if (!/^explorar-noche-no-v\d+,explorar-noche-v\d+,explorar-sello-v1,explorar-tasa-motor-v2$/.test(llaves) || !/Promise\.all\(\[nocheDeSello\(n, pie, plazo\), plazo >= 30 \? noConvieneDeSello\(n, pie\)/.test(cache)) F(`9 · la noche no vive en sus dos entradas leídas con el mismo sello (llaves de caché: ${llaves})`);
     if (!/async \(n: number, pie: number, plazo: number\): Promise<NocheGuardada> =>/.test(cache) || !/\{ revalidate: VIDA_SELLO_S \* 2 \}/.test(cache)) F("9 · la entrada de la noche no es por sello, o se vuelve a leer mientras su sello vale");
     const pag = codigo("src/app/explorar/page.tsx");
     if ((pag.match(/nocheExplorar\(/g) ?? []).length !== 2 || /universoDeLaNoche\w*\(\w|negociabl/i.test(pag.replace(/universoDeLaNoche\(filtros\)/g, "")) || (pag.match(/sello: noche\?\.sello \?\? null/g) ?? []).length !== 2) F("9 · la página no lee la noche una sola vez por rama, o no le pasa su sello al navegador");
