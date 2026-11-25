@@ -60,7 +60,7 @@ import { bloqueOfertaCifras, cifrasAPrecio, cifrasDeDepto } from "../../../src/l
 import { MOTOR_MUESTRA } from "../../../src/lib/invierte-v2/muestra-motor";
 import { sondaConPatch } from "../../../src/lib/analysis";
 import { numerosDe as numerosLectura } from "../../../src/lib/invierte-v2/lectura-franco";
-import { B4_COPY, OFERTAS_VIVAS, RETIRABLES, cierreDe, esRetirable, sePuedeRetirar, textoOtraFirme, insistirDesde, lineaVence, sugerenciaFranco, sugerenciaValida, venceAlTerminar as venceAlTerminar28 } from "../../../src/lib/invierte-v2/b4";
+import { B4_COPY, OFERTAS_VIVAS, RETIRABLES, cierreDe, esRetirable, sePuedeRetirar, textoOtraFirme, ETAPAS_CON_ACUERDO, TEXTO_ESTADO_OFERTA, TEXTO_ETAPA, insistirDesde, lineaVence, sugerenciaFranco, sugerenciaValida, venceAlTerminar as venceAlTerminar28 } from "../../../src/lib/invierte-v2/b4";
 import { ACCIONES_OFERTA_ADMIN, accionOfertaAdmin, avisarPersona, pasadaDeUnaOferta, pasadaManualPermitida, rondaDesde, registrarRespuesta } from "../../../src/lib/invierte-v2/b4-servidor";
 import { MOTIVOS_ADMIN_OFERTA, motivoAdminOferta, venceAlTerminarTexto } from "../../../src/lib/invierte-v2/b4";
 import { cuandoNoHayAcuerdo } from "../../../src/lib/invierte-v2/depto-flujo";
@@ -68,7 +68,7 @@ import { CORREO_OFERTA, WHATSAPP_OFERTA } from "../../../src/lib/invierte-v2/b4-
 import { BarraRango } from "../../../src/components/invierte-v2/BarraRango";
 import { VISITA_COPY, ajusteSugerido, conArreglo, naceEnFirme, puntosVisita, rangoTrasVisita } from "../../../src/lib/invierte-v2/visita";
 import { VERSION_TEXTO_OFERTA_EN_FIRME, textoOferta as textoOferta34 } from "../../../src/lib/invierte-v2/oferta-documento";
-import { marcarComunicada } from "../../../src/lib/invierte-v2/b4-servidor";
+import { marcarComunicada, promoverCola } from "../../../src/lib/invierte-v2/b4-servidor";
 import { visitaMuestra } from "../../../src/lib/invierte-v2/muestra-visita";
 import { confirmarEnFirme, lineaPorDefecto, limpiarFotos, limpiarPuntos, ACCIONES_VISITA_ADMIN } from "../../../src/lib/invierte-v2/visita-servidor";
 import { MAX_FOTOS_VISITA, carpetaFotosVisita, rutaFotoVisita, validarFotoVisita } from "../../../src/lib/invierte-v2/visita";
@@ -81,7 +81,7 @@ function stubB4(fila: Record<string, unknown> | null, email: string) {
   const cadena = (t: string, op: "select" | "escribe"): unknown => {
     const c: unknown = new Proxy({}, { get(_o, k) {
       if (k === "then") return (ok: (x: unknown) => void) => ok({ data: op === "select" ? [] : null, error: null });
-      if (k === "maybeSingle" || k === "single") return async () => ({ data: op === "select" && t === "inv_ofertas" ? fila : null, error: null });
+      if (k === "maybeSingle" || k === "single") return async () => ({ data: op === "select" && t === "inv_ofertas" ? fila : op === "select" && t === "inv_deptos" && fila ? { user_id: fila.user_id, aviso_id: fila.aviso_id, etapa: "listo", es_prueba: fila.es_prueba } : null, error: null });
       return () => c;
     } });
     return c;
@@ -1239,7 +1239,7 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       // 22h · La base: la tarjeta abre la página del depto y su estado sale de la etapa.
       if (urlDepto("abc") !== "/invierte/depto/abc") F("22h · la página del depto cambió de dirección");
       if (estadoEnBase("listo", "aprobada", null).chip !== "Te toca a ti" || estadoEnBase("confirmando", "subir", null).titulo !== "Confirmando el depto" || estadoEnBase("confirmando", "subir", null).linea !== "Con quien lo vende" || estadoEnBase("no_avanza", "subir", "dejo_de_convenir").linea !== "Al confirmar dónde está, dejó de convenir") F("22h · la línea de estado de la tarjeta de la base no sale de la etapa");
-      if (!/const estado = estadoEnBase\(d\.etapa, base\.preaprobacion, d\.noAvanzaMotivo, d\.oferta\);/.test(codigo("src/components/invierte-v2/VistaBase.tsx")) || !/estado=\{estado\} camino=\{caminoDepto\(d\.etapa, d\.oferta\)\} \/>/.test(codigo("src/components/invierte-v2/VistaBase.tsx"))) F("22h · la base no dibuja el estado de cada depto (con su oferta)");
+      if (!/const estado = estadoEnBase\(d\.etapa, base\.preaprobacion, d\.noAvanzaMotivo, d\.oferta, undefined, d\.pausaAcuerdo === true\);/.test(codigo("src/components/invierte-v2/VistaBase.tsx")) || !/estado=\{estado\} camino=\{caminoDepto\(d\.etapa, d\.oferta, d\.pausaAcuerdo === true\)\} \/>/.test(codigo("src/components/invierte-v2/VistaBase.tsx"))) /* ⚠ ACTA (25-nov-2026, Fabrizio): con un acuerdo en otro depto, en pausa. */ F("22h · la base no dibuja el estado de cada depto (con su oferta)");
       // 22i · «Lo que sigue»: a lo más un botón, rojo solo cuando le toca a la persona; la página entera cambia en «no avanza».
       const ls = (e: Parameters<typeof loQueSigue>[0], pr: Parameters<typeof loQueSigue>[1]) => loQueSigue(e, pr, "/invierte/preaprobacion");
       if (ls("confirmando", "subir")?.boton !== null || ls("sin_preaprobacion", "en_revision")?.boton !== null || ls("sin_preaprobacion", "subir")?.boton?.href !== "/invierte/preaprobacion" || ls("no_avanza", "subir") !== null) F("22i · «Lo que sigue» pone un botón cuando no le toca a la persona (o no lo pone cuando sí)");
@@ -1521,7 +1521,7 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (o26b !== "ofer,conf,noav,pausa") F(`26b · en pausa y no avanzó no van al final de «Recién partiendo» (${o26b})`);
       // 26c · EL CAMINO CHICO sale de la misma fuente que el de la página: las dos llaman a caminoDepto con la misma oferta.
       const vb26 = codigo("src/components/invierte-v2/VistaBase.tsx"), vd26 = codigo("src/components/invierte-v2/VistaDepto.tsx");
-      if (!/camino=\{caminoDepto\(d\.etapa, d\.oferta\)\}/.test(vb26) || !/const c = caminoDepto\(p\.etapa, p\.oferta \?\? p\.cierre \?\? null\);/.test(vd26) /* ⚠ ACTA (23-nov-2026, B4): la oferta entera, o su cierre (la base ya trae la última ronda) */ || /function caminoChico|const PASOS\b/.test(codigo("src/components/invierte-v2/TarjetaDepto.tsx"))) F("26c · el camino chico de la base no sale de caminoDepto, como el de la página del depto");
+      if (!/camino=\{caminoDepto\(d\.etapa, d\.oferta, d\.pausaAcuerdo === true\)\}/.test(vb26) || !/const c = caminoDepto\(p\.etapa, p\.oferta \?\? p\.cierre \?\? null, p\.pausaAcuerdo === true\);/.test(vd26) /* ⚠ ACTA (23-nov-2026, B4): la oferta entera, o su cierre (la base ya trae la última ronda) */ || /function caminoChico|const PASOS\b/.test(codigo("src/components/invierte-v2/TarjetaDepto.tsx"))) F("26c · el camino chico de la base no sale de caminoDepto, como el de la página del depto");
       const cam26 = caminoDepto("listo", { estado: "presentada" });
       const cc26 = renderToStaticMarkup(createElement(CaminoChico, { camino: cam26 }));
       if ((cc26.match(/class="iv2-cc-p /g) ?? []).length !== 6 || !/Paso 2 de 6 · Oferta/.test(cc26) || cam26.pasos.map((x) => x.estado).join() !== (cc26.match(/data-estado="(\w+)"/g) ?? []).map((x) => x.slice(13, -1)).join()) F("26c · el camino chico no dibuja los seis puntos del camino de la página con su paso");
@@ -2027,14 +2027,14 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
           F(`38d · fuera de plazo con la otra a firme deja reactivar (o perdió el texto), o le quitó el botón a la otra que se retira: ${JSON.stringify({ tardF38, tardV38 })}`);
         // 38e · La contraoferta fuera de plazo con la otra a firme: el texto y ningún botón que firme (aceptar, proponer ni otro monto).
         const rc38 = codigo("src/components/invierte-v2/ResponderContraoferta.tsx");
-        if (!/\{d\.otraViva\.firme \? textoOtraFirme\(d\.otraViva\.firme\.venceAt\) : B\.tardiaOtra\(d\.otraViva\.titulo\)\}/.test(rc38) || !/\) : d\.otraViva\?\.firme \? null : \(\s*<>\s*<Link href=\{proponer \? firmaSug : firmaEllos\}/.test(rc38) || !/\{!d\.otraViva\?\.firme && <p className="iv2-co-nota">\{B\.firmaNota\}<\/p>\}/.test(rc38))
+        if (!/\{d\.otraViva\.firme \? textoOtraFirme\(d\.otraViva\.firme\.venceAt\) : B\.tardiaOtra\(d\.otraViva\.titulo\)\}/.test(rc38) || !/\) : d\.otraViva\?\.firme \|\| d\.pausaAcuerdo \? null : \(\s*<>\s*<Link href=\{proponer \? firmaSug : firmaEllos\}/.test(rc38) || !/\{!d\.otraViva\?\.firme && !d\.pausaAcuerdo && <p className="iv2-co-nota">\{B\.firmaNota\}<\/p>\}/.test(rc38))
           F("38e · la contraoferta con la otra a firme muestra botones para firmar (o perdió el texto)");
         // 38f · El servidor: firmarRonda devuelve la fecha de la que bloquea; la ruta la pasa; la firma muestra el texto propio; la página del
         // depto prefiere la a firme entre las otras vivas.
         const b4s38 = codigo("src/lib/invierte-v2/b4-servidor.ts"), ruta38 = codigo("src/app/api/invierte-v2/oferta/route.ts"), fof38 = codigo("src/components/invierte-v2/FirmaOfertaForm.tsx"), pag38 = codigo("src/lib/invierte-v2/depto-pagina-servidor.ts");
         if (!/if \(firme\) return \{ ok: false, error: "otra_firme", venceAt: firme\.vigente_hasta \};\s*for \(const o of otrasVivas\) await retirarOferta/.test(b4s38) || !/select\("id, aviso_id, estado, sujeta_a_visita, vigente_hasta"\)/.test(b4s38))
           F("38f · firmarRonda no rechaza con la fecha de la oferta a firme que bloquea");
-        if (!/error: r\.error, \.\.\.\(r\.venceAt !== undefined \? \{ venceAt: r\.venceAt \} : \{\}\)/.test(ruta38) || !/setError\(d\?\.error === "otra_firme" \? textoOtraFirme\(d\.venceAt \?\? null\) : F\.error\)/.test(fof38) || !/<div className="iv2-acciones iv2-fo-acciones">\s*\{error && <p className="inv-error" role="alert" data-inv2="firma-error">\{error\}<\/p>\}/.test(fof38))
+        if (!/error: r\.error, \.\.\.\(r\.venceAt !== undefined \? \{ venceAt: r\.venceAt \} : \{\}\)/.test(ruta38) || !/setError\(d\?\.error === "otra_firme" \? textoOtraFirme\(d\.venceAt \?\? null\) : d\?\.error === "acuerdo" \? B4_COPY\.pausaDeptoT : F\.error\)/.test(fof38) || !/<div className="iv2-acciones iv2-fo-acciones">\s*\{error && <p className="inv-error" role="alert" data-inv2="firma-error">\{error\}<\/p>\}/.test(fof38))
           F("38f · la firma no muestra el texto propio de otra_firme con su fecha");
         if (!/const otra = otraFirme \?\? filasOtras\[0\] \?\? null;/.test(pag38) || !/firme: otraFirme \? \{ venceAt: otraFirme\.vigente_hasta \} : null/.test(pag38) || /\.limit\(1\)\.maybeSingle\(\) : \{ data: null \}/.test(pag38))
           F("38f · la página del depto no prefiere la oferta a firme entre las otras vivas");
@@ -2044,6 +2044,71 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
         if ((vis38.match(/onLoad=\{\(e\) => \{ if \(!fotoSana\(e\.currentTarget\.naturalWidth\)\) romper\([ik]\); \}\}/g) ?? []).length !== 2 || /naturalWidth <= 1/.test(vis38)
           || !/const ruta = rutaFotoVisita\(v, user\.id, visitaId, i, q\.get\("mini"\) === "1"\);\s*if \(!ruta\) return NO_EXISTE\(\);/.test(rfv38) || /\.fotos \?\? \[\]\)\[i\]/.test(rfv38))
           F("38g · el visor o la ruta de las fotos de la visita no usan fotoSana / rutaFotoVisita (el gate B4 probaría una copia)");
+        // ── 39 · CON UN ACUERDO EN OTRO DEPTO, LOS DEMÁS QUEDAN EN PAUSA (25-nov-2026, Fabrizio). La regla de la promesa adelantada al acuerdo.
+        // 39a · Lo que sigue: la oferta en espera en pausa (los textos de Fabrizio, sin botón, con «Retirarla»); el depto sin oferta en curso
+        // (borrador, sin oferta o cerrado, también fuera de plazo) en pausa y sin botón para firmar; con una oferta en curso, como antes.
+        const cola39 = loQueSigue("listo", "aprobada", "/pre", o30({ estado: "en_cola" }), "/oferta", { avisoId: "a39", ahora: ah30, pausaAcuerdo: true });
+        if (cola39?.titulo !== "Tienes un acuerdo por otro depto. Esta oferta queda en pausa." || cola39.texto !== "Si ese negocio no sigue, Franco te va a preguntar antes de presentarla." || cola39.boton || !cola39.acciones?.includes("retirar"))
+          F(`39a · la oferta en espera con un acuerdo en otro depto no dice que queda en pausa: ${JSON.stringify(cola39)}`);
+        const sinPausa39 = loQueSigue("listo", "aprobada", "/pre", o30({ estado: "en_cola" }), "/oferta", { avisoId: "a39", ahora: ah30 });
+        if (sinPausa39?.titulo !== B4_COPY.enColaT) F("39a · sin acuerdo, la oferta en espera perdió su texto de siempre");
+        const tard39 = o30({ estado: "sin_acuerdo", sinAcuerdoMotivo: "vencida", vigenteHasta: "2026-11-24T03:00:00Z", respuestaTardia: "aceptada_sujeta", respuestaTardiaUF: 2936 });
+        const casos39 = [
+          ["borrador", loQueSigue("listo", "aprobada", "/pre", o30({ estado: "borrador", pisoUF: 2850, altoUF: 2950, publicadoUF: 3090 }), "/oferta", { avisoId: "a39", ahora: ah30, pausaAcuerdo: true })],
+          ["fuera de plazo", loQueSigue("listo", "aprobada", "/pre", null, "/oferta", { avisoId: "a39", ahora: ah30, cierre: tard39, pausaAcuerdo: true })],
+          ["vencida", loQueSigue("listo", "aprobada", "/pre", null, "/oferta", { avisoId: "a39", ahora: ah30, cierre: o30({ estado: "sin_acuerdo", sinAcuerdoMotivo: "vencida", vigenteHasta: "2026-11-24T03:00:00Z" }), pausaAcuerdo: true })],
+          ["sin rango", loQueSigue("listo", "aprobada", "/pre", null, "/oferta", { avisoId: "a39", ahora: ah30, pausaAcuerdo: true })],
+        ] as const;
+        for (const [nom, x] of casos39) if (x?.titulo !== B4_COPY.pausaDeptoT || x.boton || x.secundario || x.acciones?.length) F(`39a · con un acuerdo en otro depto, el depto (${nom}) no queda en pausa o deja firmar: ${JSON.stringify(x)}`);
+        const curso39 = loQueSigue("listo", "aprobada", "/pre", o30({ estado: "presentada", presentadaAt: "2026-11-23T15:00:00Z", vigenteHasta: "2026-11-29T03:00:00Z" }), "/oferta", { avisoId: "a39", ahora: ah30, pausaAcuerdo: true });
+        if (curso39?.titulo === B4_COPY.pausaDeptoT || curso39?.titulo === B4_COPY.pausaT) F("39a · una oferta en curso quedó «en pausa»");
+        // 39b · La tarjeta de la base y el camino chico dicen lo mismo; el depto con el acuerdo, no.
+        const bCola39 = estadoEnBase("listo", "aprobada", null, { estado: "en_cola", pisoUF: 2850, altoUF: 2950, montoUF: 2900 }, ah30, true);
+        const bDepto39 = estadoEnBase("listo", "aprobada", null, { estado: "borrador", pisoUF: 2850, altoUF: 2950 }, ah30, true);
+        const cam39 = caminoDepto("listo", { estado: "en_cola", montoUF: 2900, enFirmeComo: null }, true), camB39 = caminoDepto("listo", null, true);
+        if (bCola39.titulo !== "Tienes un acuerdo por otro depto" || bCola39.linea !== "Esta oferta queda en pausa" || bDepto39.linea !== "Este depto queda en pausa" || bCola39.chip !== "En pausa"
+          || cam39.pasos[1].s !== "En pausa · tienes un acuerdo por otro depto" || camB39.pasos[1].s !== "En pausa · tienes un acuerdo por otro depto" || estadoEnBase("en_firme", "aprobada", null, { estado: "en_firme", pisoUF: 1, altoUF: 1, montoUF: 2900 }, ah30, true).titulo !== "Hay acuerdo por UF 2.900")
+          F(`39b · la base o el camino chico no dicen que queda en pausa: ${JSON.stringify({ bCola39, bDepto39, c: cam39.pasos[1], cb: camB39.pasos[1] })}`);
+        const bs39 = codigo("src/lib/invierte-v2/base-servidor.ts"), pag39 = codigo("src/lib/invierte-v2/depto-pagina-servidor.ts"), vd39 = codigo("src/components/invierte-v2/VistaDepto.tsx");
+        if (!/const conAcuerdo = elegidos\.filter\(\(d\) => \(ETAPAS_CON_ACUERDO as readonly string\[\]\)\.includes\(d\.etapa\)\);\s*for \(const d of elegidos\) d\.pausaAcuerdo = conAcuerdo\.some\(\(x\) => x\.avisoId !== d\.avisoId\);/.test(bs39)
+          || !/etapa === "listo" \? deptoConAcuerdo\(admin, userId, f\.id as string\) : Promise\.resolve\(null\)/.test(pag39) || !/pausaAcuerdo: !!conAcuerdo/.test(pag39) || !/pausaAcuerdo: p\.pausaAcuerdo === true \}\);/.test(vd39))
+          F("39b · la base o la página del depto no saben que hay un acuerdo en otro depto");
+        // 39c · La contraoferta fuera de plazo en pausa: el texto y ningún botón para firmar ni la nota.
+        const rc39 = codigo("src/components/invierte-v2/ResponderContraoferta.tsx"), cop39 = codigo("src/app/invierte/depto/[avisoId]/contraoferta/page.tsx");
+        if (!/\{d\.pausaAcuerdo && <p className="iv2-dp-sigue-aviso" data-inv2="co-pausa">\{B\.pausaDeptoT\} \{B\.pausaDeptoTxt\}<\/p>\}/.test(rc39) || !/pausaAcuerdo: p\.pausaAcuerdo === true,/.test(cop39))
+          F("39c · la contraoferta con un acuerdo en otro depto no queda en pausa");
+        // 39d · EL SERVIDOR: firmar (la primera y las rondas, también aceptar fuera de plazo) se rechaza con «acuerdo»; presentar una firmada,
+        // también; y la cola no avanza sola. deptoConAcuerdo mira las etapas con acuerdo de los otros deptos elegidos.
+        const b4s39 = codigo("src/lib/invierte-v2/b4-servidor.ts"), rs39 = codigo("src/lib/invierte-v2/rango-servidor.ts"), ac39 = codigo("src/lib/invierte-v2/acuerdo-servidor.ts");
+        const guarda39 = /if \(p\.etapa !== "listo"\) return \{ ok: false, error: "etapa" \};\s*if \(p\.pausaAcuerdo\) return \{ ok: false, error: "acuerdo" \};/;
+        if (!guarda39.test(rs39)) F("39d · firmar la primera oferta con un acuerdo en otro depto no se rechaza");
+        if (!guarda39.test(b4s39)) F("39d · firmar una ronda (aceptar, proponer, reactivar fuera de plazo) con un acuerdo en otro depto no se rechaza");
+        if (!/export async function promoverCola\(admin: SupabaseClient, userId: string\): Promise<string \| null> \{\s*if \(await deptoConAcuerdo\(admin, userId, null\)\) return null;/.test(b4s39)) F("39d · la oferta en espera avanza sola con un acuerdo vigente");
+        if (!/return \{ ok: false, error: "estado" \};\s*if \(await deptoConAcuerdo\(admin, f\.user_id as string, f\.depto_id as string\)\) return \{ ok: false, error: "acuerdo" \};\s*const venceAt = venceAlTerminar\(ahora\);/.test(b4s39)) F("39d · el admin puede presentar una oferta con un acuerdo en otro depto");
+        if (!/\.eq\("estado", "elegido"\)\.in\("etapa", ETAPAS_CON_ACUERDO as unknown as string\[\]\)/.test(ac39) || !/if \(exceptoDeptoId\) q = q\.neq\("id", exceptoDeptoId\);/.test(ac39) || ETAPAS_CON_ACUERDO.join("|") !== "en_firme|promesa|escritura|inscrito")
+          F("39d · deptoConAcuerdo no mira las etapas con acuerdo de los otros deptos");
+        {
+          // La cola, ejercida: con un acuerdo, promoverCola no escribe nada.
+          const stCola39 = stubB4({ id: "c39", aviso_id: "a39", monto_uf: 2900, es_prueba: true }, "x@x"); const sbCola39 = stCola39.sb as unknown as { from: (t: string) => unknown };
+          const fromOrig39 = sbCola39.from;
+          (stCola39.sb as unknown as { from: (t: string) => unknown }).from = (t: string) => t === "inv_deptos" ? { select: () => { const c: unknown = new Proxy({}, { get(_o, k) { if (k === "then") return (ok: (x: unknown) => void) => ok({ data: [{ id: "d-acuerdo" }], error: null }); return () => c; } }); return c; } } : fromOrig39(t);
+          const prom39 = await promoverCola(stCola39.sb, "u39");
+          if (prom39 !== null || stCola39.escrito.length) F(`39d · con un acuerdo, la cola avanzó sola (${JSON.stringify(stCola39.escrito)})`);
+        }
+        // 39e · El paso a «acuerdo» deja la fecha de la etapa y la línea de la bitácora, en los tres caminos (aceptada por quien vende,
+        // aceptar su precio comunicada y confirmar después de visitar): los tres pasan por pasarAAcuerdo.
+        const deptoF39 = stF.escrito.find((x) => x.t === "inv_deptos" && x.op === "update")?.v ?? {}, bit39 = stF.escrito.find((x) => x.t === "inv_bitacora" && x.op === "insert" && (x.v as { accion?: string }).accion === "depto_etapa")?.v as { detalle?: Record<string, unknown> } | undefined;
+        if (deptoF39.etapa !== "en_firme" || !deptoF39.etapa_at || bit39?.detalle?.de !== "listo" || bit39?.detalle?.a !== "en_firme")
+          F(`39e · aceptar no deja la fecha de la etapa o la línea de la bitácora: ${JSON.stringify({ deptoF39, bit39 })}`);
+        const vs39 = codigo("src/lib/invierte-v2/visita-servidor.ts");
+        if ((b4s39.match(/await pasarAAcuerdo\(admin, f\.depto_id as string, \{ tipo: "admin", email: quien\.email \}, iso\);/g) ?? []).length !== 2 || !/await pasarAAcuerdo\(admin, x\.depto\.id, \{ tipo: "persona", email: user\.email \}, iso\);/.test(vs39)
+          || /from\("inv_deptos"\)\.update\(\{ etapa: "en_firme"/.test(b4s39 + vs39) || !/update\(\{ etapa: "en_firme", etapa_at: iso, updated_at: iso \}\)/.test(ac39) || !/accion: "depto_etapa", detalle: \{ aviso_id: d\.aviso_id, de: d\.etapa, a: "en_firme", motivo: "oferta_aceptada" \}/.test(ac39))
+          F("39e · algún camino pasa a «acuerdo» sin la fecha de la etapa o sin la bitácora");
+        // 39f · El admin muestra el texto que ve la persona, no los códigos internos.
+        const ctl39 = codigo("src/app/admin/invierte-v2/controles.tsx");
+        if (TEXTO_ESTADO_OFERTA.en_firme !== "Acuerdo" || TEXTO_ETAPA.en_firme !== "Acuerdo" || !/<b>Etapa:<\/b> \{textoAdmin\(TEXTO_ETAPA, etapa\)\}/.test(ctl39) || !/ · ronda \{o\.ronda \?\? 1\} · \{textoAdmin\(TEXTO_ESTADO_OFERTA, o\.estado\)\}/.test(ctl39)
+          || !/respuesta: \$\{textoAdmin\(TEXTO_ESTADO_OFERTA, o\.respuesta\)\.toLowerCase\(\)\}/.test(ctl39) || !/Correo «\{\(CORREO_OFERTA as Record<string, \{ asunto: string \}>\)\[a\.evento\]\?\.asunto \?\? a\.evento\}»/.test(ctl39) || /\{o\.estado\}|\{etapa\}|Correo «\{a\.evento\}»/.test(ctl39))
+          F("39f · el admin muestra códigos internos (en_firme, aceptada_en_firme) en vez del texto que ve la persona");
         // 32h · El reporte del admin: los puntos se limpian; la línea por defecto es el primer arreglo nuevo o «coincide».
         const lp32 = limpiarPuntos([{ tema: " Baños ", texto: "Filtración en el cielo: hay que repararla.", arreglo: true, enFotos: false }, { tema: "", texto: "x" }, { tema: "Ruido", texto: "Silencioso", arreglo: false, enFotos: true }]);
         if (!lp32 || lp32.length !== 2 || lp32[0].tema !== "Baños" || lp32[1].enFotos || lineaPorDefecto(lp32, "arreglos_menores") !== "Filtración en el cielo" || lineaPorDefecto(lp32, "coincide") !== "El estado coincide con las fotos" || limpiarPuntos([]) !== null) F("32h · los puntos del reporte o su línea por defecto no se arman bien");

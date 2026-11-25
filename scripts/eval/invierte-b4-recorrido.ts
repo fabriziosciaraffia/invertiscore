@@ -31,6 +31,7 @@ import { accionVisitaAdmin, borrarFotosVisitas, confirmarEnFirme, pedirVisita } 
 import { rondaDesde } from "../../src/lib/invierte-v2/b4-servidor";
 import { ofertaDeFila } from "../../src/lib/invierte-v2/rango-servidor";
 import { visitaParaRonda } from "../../src/lib/invierte-v2/visita-lectura";
+import { deptoConAcuerdo } from "../../src/lib/invierte-v2/acuerdo-servidor";
 import { fotoSana, rutaFotoVisita, urlFotoVisita } from "../../src/lib/invierte-v2/visita";
 
 /** El ancho de un JPEG, leído de su encabezado SOF (sin decodificar la imagen); 0 si no es un JPEG. */
@@ -55,7 +56,7 @@ const USER = { id: QA, email: null };
 const admin = createServiceClient();
 export const MARCA = "invierte_recorrido_b4_en_curso";
 const BANCO_PRUEBA = "Banco de prueba (recorrido B4)";
-interface Marca { t0: string; deptoId: string; etapa: string | null; docId: string | null }
+interface Marca { t0: string; deptoId: string; etapa: string | null; docId: string | null; /** La fecha de la etapa de antes (el paso a acuerdo la cambia, 25-nov-2026). */ etapaAt?: string | null }
 let marcaActual: Marca | null = null;
 let limpiando: Promise<void> | null = null;
 
@@ -97,7 +98,7 @@ function limpiar(m: Marca | null = marcaActual): Promise<void> {
     await admin.from("inv_bitacora").delete().eq("user_id", QA).gte("created_at", m.t0);
     await admin.from("inv_documentos").delete().eq("user_id", QA).eq("banco", BANCO_PRUEBA);
     if (m.docId) await admin.from("inv_documentos").delete().eq("id", m.docId);
-    if (m.etapa != null) await admin.from("inv_deptos").update({ etapa: m.etapa }).eq("id", m.deptoId);
+    if (m.etapa != null) await admin.from("inv_deptos").update({ etapa: m.etapa, ...(m.etapaAt !== undefined ? { etapa_at: m.etapaAt } : {}) }).eq("id", m.deptoId);
     await admin.from("config").delete().eq("key", MARCA);
   })();
   return limpiando;
@@ -184,7 +185,7 @@ async function main(): Promise<number> {
   if ((vivas0 ?? []).length) { console.log("  ✗ se niega: la cuenta de QA ya tiene ofertas (alguien la está usando)"); return 1; }
   const deptoId = d0.id as string;
   const t0 = new Date(Date.now() - 1000).toISOString();
-  marcaActual = { t0, deptoId, etapa: (d0.etapa as string | null) ?? null, docId: null };
+  marcaActual = { t0, deptoId, etapa: (d0.etapa as string | null) ?? null, docId: null, etapaAt: (d0.etapa_at as string | null) ?? null };
   await guardarMarca(marcaActual);
   try {
     // ── Preparación: una preaprobación aprobada de prueba y el depto en «listo» (se restaura al final) ──
@@ -357,10 +358,17 @@ async function main(): Promise<number> {
     await accionOfertaAdmin(admin, ADMIN, { accion: "oferta_presentar", ofertaId: o9.id }, null);
     const ac18 = await accionOfertaAdmin(admin, ADMIN, { accion: "oferta_respuesta", ofertaId: o9.id, tipo: "aceptada" }, null);
     const o9b = await oferta(o9.id as string);
-    const { data: d18 } = await admin.from("inv_deptos").select("etapa").eq("id", deptoId).single();
+    const { data: d18 } = await admin.from("inv_deptos").select("etapa, etapa_at").eq("id", deptoId).single();
     const rt18 = await retirarOferta(admin, USER, AVISO, null);
     const o9c = await oferta(o9.id as string);
     espera(ac18.ok && o9b.estado === "en_firme" && o9b.en_firme_como === "tras_visita" && !!o9b.en_firme_at && d18?.etapa === "en_firme" && !rt18.ok && o9c.estado === "en_firme", "18 · aceptada, la oferta en firme queda en firme directo (no vuelve a «Aceptaron, falta la visita») y ya no se retira", { ac18, e: o9b.estado, etapa: d18?.etapa, rt18 });
+    // 18 · El paso a «acuerdo» deja la fecha de la etapa y su línea en la bitácora (como el cambio a mano), y el depto cuenta como acuerdo:
+    // con él, los otros deptos de la persona quedan en pausa (25-nov-2026).
+    const { data: bit18 } = await admin.from("inv_bitacora").select("accion, detalle").eq("user_id", QA).eq("accion", "depto_etapa").gte("created_at", t0);
+    const lineaAcuerdo = (bit18 ?? []).find((b) => (b.detalle as { a?: string } | null)?.a === "en_firme" && (b.detalle as { aviso_id?: string } | null)?.aviso_id === AVISO);
+    const conAcuerdo18 = await deptoConAcuerdo(admin, QA, null), sinEste18 = await deptoConAcuerdo(admin, QA, deptoId);
+    espera(!!d18?.etapa_at && new Date(d18.etapa_at as string).getTime() >= new Date(t0).getTime() && !!lineaAcuerdo && conAcuerdo18 === deptoId && sinEste18 === null,
+      "18 · el paso a acuerdo deja la fecha de la etapa y su línea en la bitácora, y el depto cuenta como acuerdo para los otros", { etapaAt: d18?.etapa_at, lineaAcuerdo, conAcuerdo18, sinEste18 });
 
     // ── Otra vuelta, desde cero: la visita pedida con la oferta ya aceptada (sujeta, firmada antes de visitar) ──
     await otraVuelta();
