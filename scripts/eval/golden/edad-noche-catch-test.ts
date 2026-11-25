@@ -145,7 +145,8 @@ export async function runEdadNocheTier(): Promise<{ hard: number }> {
     if (!re.test(lec)) F(`5 · ${tabla} no se lee paginada (PostgREST corta en 1.000 sin avisar)`);
   }
   const carga = sc("scripts/cargar-avisos-evaluados.ts");
-  if (!/conEdadConocida\(sinDespublicados\(avisosEvaluables\(filas, cfg\.uf\)[^;]*await leerEdadesConocidas\(sb\)\)/.test(carga) || !/antiguedad_anios, antiguedad_origen"\)/.test(carga)) F("5 · la carga de una vez no evalúa con la edad conocida");
+  // ⚠ ACTA (25-nov-2026, Fabrizio: «primero se sacan los despublicados y después los repetidos») · la carga elige con evaluablesDeLaNoche, la misma regla de la noche; la edad conocida, igual.
+  if (!/conEdadConocida\(evaluablesDeLaNoche\(filas, cfg\.uf, new Set\(despublicados\.map\(\(d\) => d\.aviso_id\)\)\), await leerEdadesConocidas\(sb\)\)/.test(carga) || !/antiguedad_anios, antiguedad_origen"\)/.test(carga)) F("5 · la carga de una vez no evalúa con la edad conocida");
   const ev2 = sc("src/lib/avisos/evaluar-aviso.ts");
   if (!/antiguedad_anios: a\.condicion === "nuevo" \? 0 : a\.antiguedadAnios \?\? ANIOS_ANTIGUEDAD_SUPUESTA,/.test(ev2) || !/antiguedad_origen: \(a\.condicion === "nuevo" \? "nuevo" : a\.antiguedadAnios != null \? "ficha" : "supuesta"\)/.test(ev2)) F("5 · la fila evaluada no guarda la edad con que se evaluó");
 

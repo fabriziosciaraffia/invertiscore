@@ -10,7 +10,7 @@ import { VERSION_EVALUACION } from "@/lib/avisos/evaluar-aviso";
 import { filaEvaluadaCompleta } from "@/lib/avisos/fila-evaluada";
 import { guardarConteosDeLaNoche, guardarResumenDeLaNoche } from "@/lib/deptos/servidor";
 import { guardarConvienenMapa } from "@/lib/explorar/convienen-guardado";
-import { avisosDeOtraVersion, avisosEvaluables, avisosPendientes, sinDespublicados, VENTANA_VISTOS_DIAS, type EvaluacionGuardada, type FilaAviso } from "@/lib/avisos/depurar";
+import { avisosDeOtraVersion, avisosEvaluables, avisosPendientes, evaluablesDeLaNoche, VENTANA_VISTOS_DIAS, type EvaluacionGuardada, type FilaAviso } from "@/lib/avisos/depurar";
 import { conEdadConocida, leerEdadesConocidas } from "@/lib/avisos/edad-conocida";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -101,7 +101,8 @@ export async function GET(request: Request) {
     const despublicados = await paginar<{ aviso_id: string }>((a, b) =>
       sb.from("publicacion_avisos").select("aviso_id").eq("estado", "despublicado").order("aviso_id", { ascending: true }).range(a, b),
     );
-    const evaluables = sinDespublicados(avisosEvaluables(filas, cfg.uf), new Set(despublicados.map((d) => d.aviso_id)));
+    // Primero los despublicados, después los repetidos (25-nov-2026): el gemelo publicado de un despublicado entra.
+    const evaluables = evaluablesDeLaNoche(filas, cfg.uf, new Set(despublicados.map((d) => d.aviso_id)));
     // La edad conocida de cada usado (05-nov-2026): la de su ficha o la del edificio, la misma que usa el informe.
     const conEdad = conEdadConocida(evaluables, await leerEdadesConocidas(sb));
     pendientes = avisosPendientes(conEdad, guardadas);

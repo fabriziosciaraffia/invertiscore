@@ -68,6 +68,15 @@ export function avisosEvaluables(filas: FilaAviso[], uf: number): Array<AvisoPar
   return out;
 }
 
+/**
+ * LOS EVALUABLES DE LA NOCHE (25-nov-2026, Fabrizio): primero salen los despublicados y DESPUÉS los repetidos. Al revés,
+ * `avisosEvaluables` se quedaba con el primero de cada clave aunque estuviera despublicado, y el filtro de despublicados lo
+ * sacaba después: el gemelo que seguía publicado quedaba afuera de la evaluación (66 avisos el 25-nov-2026).
+ */
+export function evaluablesDeLaNoche(filas: FilaAviso[], uf: number, despublicados: Set<string>): Array<AvisoParaEvaluar & { scrapedAt: string }> {
+  return avisosEvaluables(sinDespublicados(filas, despublicados), uf);
+}
+
 export interface EvaluacionGuardada {
   aviso_id: string;
   precio_uf: number | string;

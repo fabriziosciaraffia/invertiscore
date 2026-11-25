@@ -16,7 +16,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import { createClient } from "@supabase/supabase-js";
 import { evaluarAviso, VERSION_EVALUACION } from "../src/lib/avisos/evaluar-aviso";
-import { avisosEvaluables, avisosPendientes, sinDespublicados, VENTANA_VISTOS_DIAS, type EvaluacionGuardada, type FilaAviso } from "../src/lib/avisos/depurar";
+import { avisosPendientes, evaluablesDeLaNoche, VENTANA_VISTOS_DIAS, type EvaluacionGuardada, type FilaAviso } from "../src/lib/avisos/depurar";
 import { conEdadConocida, leerEdadesConocidas } from "../src/lib/avisos/edad-conocida";
 
 const CONC = Number(process.env.CONC ?? 6);
@@ -60,7 +60,8 @@ async function main() {
     sb.from("publicacion_avisos").select("aviso_id").eq("estado", "despublicado").order("aviso_id", { ascending: true }).range(a, b),
   );
   // Con la edad conocida de cada usado, como el cron (05-nov-2026, avisos/edad-conocida.ts).
-  const evaluables = conEdadConocida(sinDespublicados(avisosEvaluables(filas, cfg.uf), new Set(despublicados.map((d) => d.aviso_id))), await leerEdadesConocidas(sb));
+  // Primero los despublicados, después los repetidos (25-nov-2026): la misma regla que la noche.
+  const evaluables = conEdadConocida(evaluablesDeLaNoche(filas, cfg.uf, new Set(despublicados.map((d) => d.aviso_id))), await leerEdadesConocidas(sb));
   const vigentes = guardadas.filter((g) => {
     if (MOTOR && g.motor_version !== VERSION_EVALUACION) return false;
     if (REEVALUAR_ANTES !== null && new Date(g.evaluado_at).getTime() < REEVALUAR_ANTES && (!CONDICION || g.condicion === CONDICION)) return false;

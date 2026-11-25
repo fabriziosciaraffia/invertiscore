@@ -24,7 +24,7 @@ import { join } from "node:path";
 import { parsearFechaEntrega } from "../../../src/lib/avisos/fecha-entrega";
 import { arriendoSegmentado } from "../../../src/lib/avisos/arriendo-segmentado";
 import { ANIOS_ANTIGUEDAD_SUPUESTA, ANTIGUEDAD_SUPUESTA, PERFILES_ESTANDAR, PLAZO_ESTANDAR, respuestasDeAviso, type AvisoParaEvaluar } from "../../../src/lib/avisos/evaluar-aviso";
-import { avisosDeOtraVersion, avisosEvaluables, avisosPendientes, VENTANA_VISTOS_DIAS } from "../../../src/lib/avisos/depurar";
+import { avisosDeOtraVersion, avisosEvaluables, avisosPendientes, evaluablesDeLaNoche, VENTANA_VISTOS_DIAS } from "../../../src/lib/avisos/depurar";
 import { parsearProyecto } from "../../../src/lib/services/scraper/toctoc-unidades";
 import { propertyToRow } from "../../../src/lib/services/scraper/property-row";
 import { antiguedadToNumber } from "../../../src/components/formulario-v4/helpers-wizard";
@@ -103,6 +103,12 @@ export function runAvisosTier(): { hard: number } {
   const fila = (id: string, extra: Record<string, unknown> = {}) => ({ id, comuna: "Ñuñoa", lat: -33.45, lng: -70.6, precio: 120000000, moneda: "CLP", superficie_m2: 50, dormitorios: 2, banos: 1, condicion: "usado", direccion: null, scraped_at: "2026-09-29T12:00:00Z", ...extra });
   const ev1 = avisosEvaluables([fila("a"), fila("b", { lat: -33.4501 }), fila("c", { lat: -33.47 }), fila("d", { precio: 1000 }), fila("e", { superficie_m2: null }), fila("f", { scraped_at: "2026-09-26T00:00:00Z", lat: -33.49 })], 40000);
   if (ev1.map((x) => x.id).join(",") !== "a,c,f") F(`5 · la depuración no saca duplicados, implausibles e incompletos (${ev1.map((x) => x.id).join(",")})`);
+  // EL GEMELO PUBLICADO (25-nov-2026, Fabrizio): «a» y «b» son el mismo aviso (misma clave) y «a», el primero, está despublicado.
+  // Primero salen los despublicados y después los repetidos: entra «b». Con el orden de antes no entraba ninguno de los dos.
+  const gem = evaluablesDeLaNoche([fila("a"), fila("b", { lat: -33.4501 }), fila("c", { lat: -33.47 })], 40000, new Set(["a"])).map((x) => x.id).join(",");
+  if (gem !== "b,c") F(`5 · el gemelo publicado de un despublicado queda fuera de la noche (${gem})`);
+  const sinDesp = evaluablesDeLaNoche([fila("a"), fila("b", { lat: -33.4501 })], 40000, new Set()).map((x) => x.id).join(",");
+  if (sinDesp !== "a") F(`5 · sin despublicados, los repetidos ya no se sacan (${sinDesp})`);
   const g = (id: string, precio: number, dias: number, v = "v3") => ({ aviso_id: id, precio_uf: precio, evaluado_at: new Date(ahora.getTime() - dias * 864e5).toISOString(), motor_version: v });
   // 30-sep-2026: la carga inicial la hace un script; el cron solo sigue lo nunca evaluado y lo que cambió de
   // precio, en una ventana de 7 días. h (evaluado hace 8 días) y k (otra versión del motor) ya no vuelven.

@@ -469,7 +469,8 @@ export async function runGuiaBusquedaTier(): Promise<{ hard: number }> {
     if (m7.estado !== "sin-chequeo" || alertas !== 1) F("9 · un bloqueo no alerta, o el aviso bloqueado se da por publicado");
     if (sinDespublicados([{ id: "x" }, { id: "y" }], new Set(["x"])).map((a) => a.id).join() !== "y") F("9 · el cron vuelve a evaluar los despublicados");
     const cron = sinComentarios(leer("src/app/api/cron/evaluar-avisos/route.ts"));
-    if (!/const evaluables = sinDespublicados\(avisosEvaluables\(filas, cfg\.uf\), new Set\(despublicados\.map/.test(cron)) F("9 · el cron de evaluación no deja fuera a los despublicados");
+    // ⚠ ACTA (25-nov-2026, Fabrizio: «primero se sacan los despublicados y después los repetidos») · el cron elige con evaluablesDeLaNoche, que saca los despublicados antes que los repetidos.
+    if (!/const evaluables = evaluablesDeLaNoche\(filas, cfg\.uf, new Set\(despublicados\.map\(\(d\) => d\.aviso_id\)\)\);/.test(cron) || !/return avisosEvaluables\(sinDespublicados\(filas, despublicados\), uf\);/.test(sinComentarios(leer("src/lib/avisos/depurar.ts")))) F("9 · el cron de evaluación no deja fuera a los despublicados");
   }
   {
     // 9b · un despublicado nunca descuenta crédito.
