@@ -168,7 +168,11 @@ export async function runPuertaETier(): Promise<{ hard: number }> {
     // «Solo flujo positivo»; ahora sin cuenta «Cambiar» (los supuestos) pide crear la cuenta y la edición no se abre, y de las cinco
     // barras solo la del precio se mueve: las otras (la del flujo entre ellas) piden la cuenta.
     if (!/onClick=\{\(\) => \(alPedirRegistro \? alPedirRegistro\("pie-plazo", b\) : setEditando\(\(x\) => !x\)\)\} data-explorar="cambiar-supuestos"/.test(hojaF) || !/\{editando && !alPedirRegistro && \(/.test(hojaF)
-      || !/bloqueada=\{alPedirRegistro && !BARRAS_SIN_CUENTA\.includes\(barra\) \? \(\) => alPedirRegistro\("flujo", b\) : null\}/.test(hojaF)) F("2 · sin cuenta, pie, plazo o las barras con cifras se cambian sin registro");
+      // ⚠ ACTA 26-nov-2026 (revisión del preview, cambio 5): antes sin cuenta las cuatro barras con cifras se dibujaban cerradas, cada
+      // una pidiendo la cuenta; ahora sin cuenta solo se dibujan las barras sin cifras (BARRAS_SIN_CUENTA: el precio) y, en lugar de
+      // las otras, UNA línea (barras-con-cuenta) que abre el registro.
+      || !/\{\(alPedirRegistro \? BARRAS_SIN_CUENTA : BARRAS_PANEL\)\.map\(\(barra\) =>/.test(hojaF) || /bloqueada=\{alPedirRegistro/.test(hojaF)
+      || !/\{alPedirRegistro && \(\s*<button type="button" className="ex-barra-cerrada" onClick=\{\(\) => alPedirRegistro\("flujo", b\)\} data-explorar="barras-con-cuenta">/.test(hojaF)) F("2 · sin cuenta, pie, plazo o las barras con cifras se cambian sin registro");
   }
 
   // ── 3 · EL REGISTRO DESDE UN PIN VUELVE A ESE PIN CON EL REGALO ──

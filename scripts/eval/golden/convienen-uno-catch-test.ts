@@ -105,39 +105,46 @@ export async function runConvienenUnoTier(): Promise<{ hard: number }> {
   const modCli = (() => { try { return require(join(RAIZ, "src/app/explorar/explorar-cliente")) as { ExplorarCliente: FC<Record<string, unknown>> }; } catch (e) { F(`0 · no carga explorar-cliente: ${(e as Error).message}`); return null; } })();
   const pintar = (cuenta: unknown, tasa: po.TasaDelMotor | null) =>
     modCli ? dibujar(createElement(modCli.ExplorarCliente, { inicial: { filtros: G, orden: "puntaje", n: 3, cuenta, tasa, convienen: cuenta ? null : 3 } })) : "";
-  // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 4): antes fijaba el botón «¿Cómo se calcula?» en la barra de arriba;
-  // ahora la barra lleva solo «Usados» y «Filtros», y la (i) vive en la tarjeta del contador: un botón con el nombre accesible
-  // «¿Cómo se calcula?» DENTRO de la sección del contador (no en otra parte de la página), con y sin cuenta, que abre la hoja.
+  // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 4): la (i) se había mudado a la tarjeta del contador.
+  // ⚠ ACTA 26-nov-2026 (revisión del preview, cambio 7): antes fijaba la (i) dentro de la tarjeta del contador; ahora «¿Cómo se
+  // calcula?» volvió a la barra de arriba, junto a Filtros: UN botón ex-como2 con el nombre accesible y el ícono (el texto visible
+  // solo desde 768 px), con y sin cuenta, que abre la hoja (abrirCalculo). El contador ya no lo trae.
   for (const [cuenta, que] of [[cuentaBase(), "con cuenta"], [null, "sin cuenta"]] as const) {
     const h = pintar(cuenta, { tasa: 4.07 });
+    const barra = h.slice(h.indexOf('class="ex-barra"'), h.indexOf('class="ex-cuerpo"'));
     const iC = h.indexOf('data-explorar="contador"'), contador = iC < 0 ? "" : h.slice(iC, h.indexOf("</section>", iC));
-    if (!/<button type="button" class="ex-contador-i" aria-label="¿Cómo se calcula\?"[^>]*data-explorar="como-se-calcula"/.test(contador) || (h.match(/data-explorar="como-se-calcula"/g) ?? []).length !== 1) F(`2 · ${que}, la tarjeta del contador no trae la (i) de «¿Cómo se calcula?» (o hay otra fuera de ella)`);
+    if (!/<button type="button" class="ex-como2" data-explorar="como-se-calcula" aria-label="¿Cómo se calcula\?"><svg\b[\s\S]*?<\/svg><span class="ex-como2-t">¿Cómo se calcula\?<\/span><\/button>/.test(barra) || (h.match(/data-explorar="como-se-calcula"/g) ?? []).length !== 1 || /como-se-calcula/.test(contador)) F(`2 · ${que}, la barra de arriba no trae «¿Cómo se calcula?» junto a Filtros (o hay otro, o sigue en el contador)`);
   }
-  if (!/alComo=\{abrirCalculo\}/.test(cli) || !/data-explorar="como-se-calcula" onClick=\{alComo\}/.test(codigo("src/app/explorar/contador.tsx"))) F("2 · la (i) del contador no abre «¿Cómo se calcula?»");
+  if (!/data-explorar="como-se-calcula" aria-label=\{COMO_SE_CALCULA\.enlace\} onClick=\{abrirCalculo\}>/.test(cli)) F("2 · «¿Cómo se calcula?» de la barra no abre la hoja");
 
   // ── 2 · LA HOJA «¿CÓMO SE CALCULA?», CON Y SIN CUENTA ──
+  // ⚠ ACTA 26-nov-2026 (revisión del preview, cambio 9): antes fijaba cuatro párrafos, el perfil en tres viñetas, «Filtros» en
+  // negrita, «registrándote gratis» y el párrafo con los chips ✓ Comprar y − Ajustar; ahora el texto sale de textoComoSeCalcula
+  // (mapa-todos.ts): el primer párrafo dice la noche, pie, plazo y la tasa del motor con UN decimal (el promedio del Banco Central)
+  // y cierra con «Con tu cuenta gratis cambias eso en Filtros.» (sin cuenta) o «Cambias eso en Filtros.»; luego una lista de tres
+  // líneas, una por clase con el punto de su color; el párrafo chico del cap rate bruto y la renta corta, y la metodología enlazada.
+  // Sin viñetas del perfil, sin «Filtros» en negrita y sin ChipVeredicto. Lo que este tier vigila sigue: la tasa es la del motor.
   const modHoja = (() => { try { return require(join(RAIZ, "src/app/explorar/hoja-calculo")) as { HojaCalculo: FC<Record<string, unknown>> }; } catch (e) { F(`2 · no carga la hoja: ${(e as Error).message}`); return null; } })();
   if (modHoja) {
     for (const sinCuenta of [false, true]) {
       const h = dibujar(createElement(modHoja.HojaCalculo, { tasa: { tasa: 4.07 }, sinCuenta, alCerrar: () => {} }));
-      // texto() deja un espacio donde cerraba un elemento en línea: se junta con su puntuación antes de comparar.
       const t = texto(h).replace(/ ([.,:])/g, "$1");
       const que = sinCuenta ? "sin cuenta" : "con cuenta";
       if (!/role="dialog"/.test(h) || !t.startsWith("¿Cómo se calcula?")) F(`2 · ${que}, la hoja no es un diálogo con su título`);
-      // ⚠ ACTA (03-nov-2026, goal «la pasada real de /explorar», el texto de Fabrizio) · cuatro párrafos —la noche y el perfil, dónde
-      // se cambia, los dos chips del mapa y la metodología— y el perfil en tres viñetas; la regla del veredicto (la nota de 70, las
-      // señales graves, «cada tarjeta te dice cuánto») salió de la hoja: vive en la metodología. El texto exacto, en EXPLORAR-PASADA §2.
-      if ((h.match(/<p\b/g) ?? []).length !== 4 || (h.match(/<li\b/g) ?? []).length !== 3) F(`2 · ${que}, la hoja no lleva cuatro párrafos y el perfil en tres viñetas`);
+      if ((h.match(/<p\b/g) ?? []).length !== 3 || (h.match(/<li\b/g) ?? []).length !== 3) F(`2 · ${que}, la hoja no lleva tres párrafos y la lista de las tres clases`);
       if ((h.match(/<button\b/g) ?? []).length !== 1 || !/data-explorar="calculo-ok"[^>]*>Entendido<\/button>/.test(h)) F(`2 · ${que}, la hoja no tiene un solo botón, «Entendido»`);
-      if (!t.includes("Cada noche Franco revisa todos los deptos en venta de Santiago y calcula cuáles convienen al precio publicado, con un perfil de búsqueda estándar: pie de 20 % crédito a 30 años tasa de 4,07 %, el promedio mensual de los créditos hipotecarios según el Banco Central"))
-        F(`2 · ${que}, el primer párrafo no es el pedido (la noche, el perfil estándar y la tasa del motor)`);
-      const cambiar = sinCuenta ? "Puedes cambiar ese perfil en Filtros, registrándote gratis." : "Puedes cambiar ese perfil en Filtros.";
-      if (!t.includes(cambiar) || !/<strong>Filtros<\/strong>/.test(h)) F(`2 · ${que}, no dice dónde se cambia el perfil (Filtros en negrita${sinCuenta ? ", registrándose" : ""})`);
-      if (!/data-explorar="calculo-chips">En el mapa, los deptos que convienen al precio publicado llevan <span class="chip-v c"[^>]*data-veredicto="COMPRAR"/.test(h) || !/<span class="chip-v a"[^>]*data-veredicto="AJUSTA SUPUESTOS"/.test(h)) F(`2 · ${que}, el párrafo de los chips no lleva los chips ✓ Comprar y − Ajustar de siempre`);
+      const cierre = sinCuenta ? "Con tu cuenta gratis cambias eso en Filtros." : "Cambias eso en Filtros.";
+      if (!new RegExp(`data-explorar="calculo-estandar">Cada noche Franco revisa los deptos usados en venta en Gran Santiago y calcula si convienen como inversión, con pie de 20 %, crédito a 30 años y tasa de 4,1 % \\(el promedio del Banco Central\\)\\. ${cierre}</p>`).test(h))
+        F(`2 · ${que}, el primer párrafo no es el pedido (la noche, el perfil estándar, la tasa del motor y dónde se cambia)`);
+      const clases = Array.from(h.matchAll(/<li data-clase="(\w+)"><i aria-hidden="true"><\/i><span><b>([^<]+):<\/b>/g), (m) => `${m[1]}:${m[2]}`).join("|");
+      if (clases !== "comprar:Comprar|ajustar:Ajustar|no:No conviene") F(`2 · ${que}, la lista no son las tres clases con el punto de su color: ${clases}`);
+      if (/chip-v|<strong>Filtros<\/strong>|registrándote/.test(h)) F(`2 · ${que}, la hoja sigue con los chips, «Filtros» en negrita o «registrándote»`);
       if (/revisa cada mañana|la última vez|25 años|señales graves|\b70\b/.test(t)) F(`2 · ${que}, la hoja trae la fecha de la tasa, los 25 años o la regla del veredicto`);
     }
-    if (!texto(dibujar(createElement(modHoja.HojaCalculo, { tasa: { tasa: 5.3 }, sinCuenta: false, alCerrar: () => {} }))).includes("tasa de 5,3 %, el promedio")) F("2 · con otra tasa la hoja dice la misma");
+    if (!texto(dibujar(createElement(modHoja.HojaCalculo, { tasa: { tasa: 5.3 }, sinCuenta: false, alCerrar: () => {} }))).includes("tasa de 5,3 % (el promedio")) F("2 · con otra tasa la hoja dice la misma");
   }
+  // Pie y plazo del primer párrafo salen de las constantes, no escritos a mano.
+  if (!/con pie de \$\{PIE_POR_DEFECTO\} %, crédito a \$\{PLAZO_POR_DEFECTO\} años y \$\{t\}/.test(codigo("src/lib/explorar/mapa-todos.ts"))) F("2 · el pie o el plazo de la hoja no salen de la constante del financiamiento por defecto");
   // La monta el cliente sin depender de la cuenta, y al abrirla se mide.
   if (/(!sinCuenta|sinCuenta) &&[^\n]*<HojaCalculo/.test(cli)) F("2 · la hoja no se monta igual con y sin cuenta");
   if (po.EVENTOS_PORTAL.comoSeCalcula !== "explorar_como_se_calcula" || !/setCalculo\(true\);\s*posthog\?\.capture\(EVENTOS_PORTAL\.comoSeCalcula, \{ sin_cuenta: sinCuenta,/.test(cli)) F("3 · abrir la hoja no deja «explorar_como_se_calcula»");

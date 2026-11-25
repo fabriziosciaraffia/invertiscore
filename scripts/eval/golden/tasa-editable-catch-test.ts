@@ -96,7 +96,9 @@ export async function runTasaEditableTier(): Promise<{ hard: number }> {
   const modCal = cargar<{ HojaCalculo: FC<Record<string, unknown>> }>("src/app/explorar/hoja-calculo", F);
   if (modCal) {
     const t = (elegida: number | null, sinCuenta = false) => texto(dibujar(createElement(modCal.HojaCalculo, { tasa: { tasa: 4.07 }, elegida, sinCuenta, alCerrar() {} }))).replace(/ ([.,;])/g, "$1");
-    if (!t(4.5).includes("Puedes cambiar ese perfil en Filtros. Ahora el mapa calcula con tu tasa, 4,5 %; la de hoy es 4,07 %.")) F("1 · «¿Cómo se calcula?» no dice la tasa elegida y la de hoy");
+    // ⚠ ACTA 26-nov-2026 (revisión del preview, cambio 9): antes el primer párrafo cerraba con «Puedes cambiar ese perfil en Filtros.»;
+    // ahora con «Cambias eso en Filtros.», y la tasa elegida sigue igual, a continuación.
+    if (!t(4.5).includes("Cambias eso en Filtros. Ahora el mapa calcula con tu tasa, 4,5 %; la de hoy es 4,07 %.")) F("1 · «¿Cómo se calcula?» no dice la tasa elegida y la de hoy");
     if (/tu tasa|la de hoy es/.test(t(null)) || /tu tasa/.test(t(4.5, true))) F("1 · «¿Cómo se calcula?» habla de una tasa elegida sin que la haya");
   }
   if (!/elegida=\{filtros\.tasa\}/.test(codigo("src/app/explorar/explorar-cliente.tsx"))) F("1 · la hoja no recibe la tasa de los filtros");

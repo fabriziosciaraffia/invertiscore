@@ -40,6 +40,7 @@ import { claseDeImagen, rutaImagenCalle, urlMapaChico } from "../../../src/lib/e
 import { clasePinDeItem, MAPA_CASA, MAPA_CASA_PC, MAPA_DENTRO_PC } from "../../../src/lib/casa/mapa-casa";
 import { CSS_CHIP_VEREDICTO } from "../../../src/components/analysis/shared/ChipVeredicto";
 import { PIE_POR_DEFECTO, PLAZO_POR_DEFECTO } from "../../../src/lib/deptos/estandar";
+import { TOPE_NEGOCIAR_PCT } from "../../../src/lib/avisos/negociar-tope";
 
 (globalThis as { React?: unknown }).React = React;
 (require as unknown as { extensions: Record<string, (m: { exports: unknown }) => void> }).extensions[".css"] = (m) => { m.exports = {}; };
@@ -165,11 +166,14 @@ export async function runExplorarPasadaTier(): Promise<{ hard: number }> {
     // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 4): antes fijaba UN botón en la barra del cliente con la ⓘ redonda del
     // teléfono y el texto del PC; ahora la (i) vive en la tarjeta del contador (contador.tsx): UN botón, el mismo en el teléfono y en
     // el PC, con el nombre accesible «¿Cómo se calcula?» y el ícono, que llama a `alComo` = abrirCalculo. La barra ya no lo trae.
+    // ⚠ ACTA 26-nov-2026 (revisión del preview, cambios 6 y 7): antes la (i) vivía en la tarjeta del contador; ahora «¿Cómo se
+    // calcula?» volvió a la barra de arriba, junto a Filtros: UN botón ex-como2 en el cliente (el mismo en el teléfono y en el PC),
+    // con el nombre accesible, el ícono y el texto ex-como2-t (visible desde 768 px), que llama a abrirCalculo. El contador no lo trae.
     const contadorSrc = codigo("src/app/explorar/contador.tsx");
-    if ((contadorSrc.match(/data-explorar="como-se-calcula"/g) ?? []).length !== 1 || /data-explorar="como-se-calcula"/.test(cliente)) F("1 · «¿Cómo se calcula?» no es UN botón, en la tarjeta del contador");
-    const boton = elemento(contadorSrc, "como-se-calcula");
-    if (!/^<button\b/.test(boton) || !/onClick=\{alComo\}/.test(boton) || !/alComo=\{abrirCalculo\}/.test(cliente)) F("1 · el botón de «¿Cómo se calcula?» no llama a abrirCalculo al tocarlo");
-    if (!/aria-label=\{COMO_SE_CALCULA\.enlace\}/.test(boton) || !/<svg\b/.test(boton)) F("1 · el botón no trae el ícono con el nombre «¿Cómo se calcula?»");
+    if ((cliente.match(/data-explorar="como-se-calcula"/g) ?? []).length !== 1 || /como-se-calcula/.test(contadorSrc)) F("1 · «¿Cómo se calcula?» no es UN botón, en la barra de arriba");
+    const boton = elemento(cliente, "como-se-calcula");
+    if (!/^<button type="button" className="ex-como2"/.test(boton) || !/onClick=\{abrirCalculo\}/.test(boton)) F("1 · el botón de «¿Cómo se calcula?» no llama a abrirCalculo al tocarlo");
+    if (!/aria-label=\{COMO_SE_CALCULA\.enlace\}/.test(boton) || !/<svg\b/.test(boton) || !/<span className="ex-como2-t">\{COMO_SE_CALCULA\.enlace\}<\/span>/.test(boton)) F("1 · el botón no trae el ícono con el nombre «¿Cómo se calcula?» y su texto");
     if (!/setCalculo\(true\)/.test(cuerpo(cliente, "const abrirCalculo = () =>"))) F("1 · abrirCalculo no abre la hoja");
     if (!/\{calculo && <HojaCalculo\b/.test(cliente)) F("1 · la hoja no se monta con `calculo`");
     const barraIni = cliente.indexOf('className="ex-barra"');
@@ -194,27 +198,34 @@ export async function runExplorarPasadaTier(): Promise<{ hard: number }> {
   // ══ §2 · EL TEXTO DE LA HOJA ═══════════════════════════════════════════════
   if (modHoja) {
     const hoja = (sinCuenta: boolean, tasa: number | null = 4.07) => dibujar(createElement(modHoja.HojaCalculo, { tasa: tasa != null ? { tasa } : null, sinCuenta, alCerrar: NADA }));
+    // ⚠ ACTA 26-nov-2026 (revisión del preview, cambio 9): antes fijaba el texto del 03-nov (el perfil estándar en tres viñetas,
+    // «Puedes cambiar ese perfil en Filtros» con Filtros en negrita, el párrafo con los chips ✓ Comprar y − Ajustar y «ver la
+    // metodología»). Ahora el texto es el de la lámina 5d (textoComoSeCalcula): el primer párrafo con la noche, pie, plazo y la tasa
+    // del motor con UN decimal y dónde se cambia; la lista de las tres clases, cada una con el punto de su color (sin ChipVeredicto);
+    // el párrafo chico del cap rate bruto y la renta corta, y «Cómo decide Franco: la metodología». Pie, plazo y el tope del
+    // descuento salen de sus constantes.
     const base = (cambiar: string) => [
       "¿Cómo se calcula?",
-      "Cada noche Franco revisa todos los deptos en venta de Santiago y calcula cuáles convienen al precio publicado, con un perfil de búsqueda estándar:",
-      `pie de ${PIE_POR_DEFECTO} %`, `crédito a ${PLAZO_POR_DEFECTO} años`, "tasa de 4,07 %, el promedio mensual de los créditos hipotecarios según el Banco Central",
-      cambiar,
-      "En el mapa, los deptos que convienen al precio publicado llevan ✓ Comprar. Los que convienen solo con un descuento llevan − Ajustar, y su tarjeta te dice a qué precio.",
-      "Cómo decide Franco: ver la metodología",
+      `Cada noche Franco revisa los deptos usados en venta en Gran Santiago y calcula si convienen como inversión, con pie de ${PIE_POR_DEFECTO} %, crédito a ${PLAZO_POR_DEFECTO} años y tasa de 4,1 % (el promedio del Banco Central). ${cambiar}`,
+      "Comprar: conviene al precio publicado.",
+      `Ajustar: conviene negociando hasta ${TOPE_NEGOCIAR_PCT} % menos. La tarjeta dice desde qué precio.`,
+      `No conviene: ni al precio publicado ni con ${TOPE_NEGOCIAR_PCT} % menos.`,
+      "Cap rate bruto: el arriendo de un año dividido por el precio. En los detalles del depto ves también el neto, que descuenta gastos. Renta corta: se estima por zona, no por depto.",
+      "Cómo decide Franco: la metodología",
       "Entendido",
     ].join(" ");
     const con = hoja(false), sin = hoja(true);
-    if (textoPlano(con) !== base("Puedes cambiar ese perfil en Filtros.")) F(`2 · la hoja con cuenta dice «${textoPlano(con)}»`);
-    if (textoPlano(sin) !== base("Puedes cambiar ese perfil en Filtros, registrándote gratis.")) F(`2 · la hoja sin cuenta dice «${textoPlano(sin)}»`);
+    if (textoPlano(con) !== base("Cambias eso en Filtros.")) F(`2 · la hoja con cuenta dice «${textoPlano(con)}»`);
+    if (textoPlano(sin) !== base("Con tu cuenta gratis cambias eso en Filtros.")) F(`2 · la hoja sin cuenta dice «${textoPlano(sin)}»`);
     for (const [h, quien] of [[con, "con"], [sin, "sin"]] as const) {
-      if ((h.match(/<li\b/g) ?? []).length !== 3) F(`2 · (${quien} cuenta) el perfil no va en tres viñetas`);
-      if (!/<strong>Filtros<\/strong>/.test(h)) F(`2 · (${quien} cuenta) «Filtros» no va en negrita`);
-      if (!/<a [^>]*href="\/metodologia"[^>]*><strong>ver la metodología<\/strong><\/a>/.test(h)) F(`2 · (${quien} cuenta) el enlace a la metodología no va en negrita o no lleva a /metodologia`);
-      if (!/<span class="chip-v c"[^>]*data-veredicto="COMPRAR"/.test(h) || !/<span class="chip-v a"[^>]*data-veredicto="AJUSTA SUPUESTOS"/.test(h)) F(`2 · (${quien} cuenta) los chips no son los de la casa`);
+      const clases = Array.from(h.matchAll(/<li data-clase="(\w+)"><i aria-hidden="true"><\/i>/g), (m) => m[1]).join();
+      if (clases !== "comprar,ajustar,no") F(`2 · (${quien} cuenta) la lista no son las tres clases con el punto de su color: ${clases}`);
+      if (/<strong>Filtros<\/strong>|chip-v/.test(h)) F(`2 · (${quien} cuenta) la hoja sigue con «Filtros» en negrita o con los chips`);
+      if (!/<a [^>]*href="\/metodologia"[^>]*><strong>la metodología<\/strong><\/a>/.test(h)) F(`2 · (${quien} cuenta) el enlace a la metodología no va en negrita o no lleva a /metodologia`);
       if (/\b70\b|señales graves|1 a 100/i.test(textoPlano(h))) F(`2 · (${quien} cuenta) la hoja todavía habla de la nota de 70 o de las señales graves`);
     }
-    // Los números del motor: la tasa que llega, nunca escrita a mano.
-    if (!textoPlano(hoja(false, 5.12)).includes("tasa de 5,12 %, el promedio mensual")) F("2 · la tasa de la hoja no es la del motor");
+    // Los números del motor: la tasa que llega (con un decimal), nunca escrita a mano.
+    if (!textoPlano(hoja(false, 5.26)).includes("tasa de 5,3 % (el promedio del Banco Central)")) F("2 · la tasa de la hoja no es la del motor");
     if (!existe("src/app/metodologia/page.tsx")) F("2 · no existe la página de metodología a la que lleva la hoja");
   }
 
@@ -550,12 +561,20 @@ export async function runExplorarPasadaTier(): Promise<{ hard: number }> {
       // del cliente— sigue; lo que cambió es la pantalla. Antes fijaba arriba «Filtros», «Ver solo [✓ Comprar]» y la ⓘ, y abajo la
       // BarraAbajo; ahora arriba van el selector con «Usados» y «Filtros» (sin el chip ni la ⓘ), y en lugar de la barra de abajo,
       // el contador (ex-contador) calculando, con sus chips y «Ver lista».
+      // ⚠ ACTA 26-nov-2026 (revisión del preview, cambios 7, 8 y 10): antes la barra del esqueleto era solo el selector y «Filtros», y
+      // «Ver lista» iba dentro del contador; ahora la barra lleva además «¿Cómo se calcula?» (ex-como2, como el cliente), y «Ver lista»
+      // flota aparte (ex-ver-lista, como el cliente), fuera del contador.
       const selCli = clasesJsx(elemento(cli, "selector")).filter((c) => c.startsWith("ex-"));
-      if (selCli.length < 2 || !enOrden(clasesHtml(arriba), [...selCli, "ex-boton"]) || /ex-chip-neg|ex-como/.test(arriba)) F("8 · la barra de arriba del esqueleto no es la del cliente (el selector con «Usados» y «Filtros», sin «Ver solo ✓ Comprar» ni la ⓘ)");
-      if (!/Usados\s*☰?\s*Filtros/.test(textoPlano(arriba))) F("8 · el esqueleto no dice «Usados» y «Filtros»");
-      // En lugar de la barra de abajo, el contador del cliente (contador.tsx), calculando, con «Ver lista»; sin la píldora en ninguna parte.
-      const contCli = clasesJsx(codigo("src/app/explorar/contador.tsx")).filter((c) => /^ex-contador/.test(c));
-      if (contCli.length < 4 || !enOrden(clasesHtml(html), contCli) || /class="ex-hoja"/.test(html) || !/Calculando…[\s\S]*Ver lista/.test(textoPlano(html))) F("8 · el esqueleto no lleva el contador del cliente («Calculando…» y «Ver lista»), o sigue con la barra de abajo");
+      const comoCli = clasesJsx(elemento(cli, "como-se-calcula")).filter((c) => c.startsWith("ex-"));
+      if (selCli.length < 2 || comoCli.length < 2 || !enOrden(clasesHtml(arriba), [...selCli, "ex-boton", ...comoCli]) || /ex-chip-neg|ex-como-i|ex-como-t/.test(arriba)) F("8 · la barra de arriba del esqueleto no es la del cliente (el selector con «Usados», «Filtros» y «¿Cómo se calcula?», sin «Ver solo ✓ Comprar»)");
+      if (!/Usados\s*☰?\s*Filtros\s*¿Cómo se calcula\?/.test(textoPlano(arriba))) F("8 · el esqueleto no dice «Usados», «Filtros» y «¿Cómo se calcula?»");
+      // En lugar de la barra de abajo, el contador del cliente (contador.tsx), calculando, y «Ver lista» aparte; sin la píldora.
+      // (El número grande, ex-contador-big, solo se dibuja con la cuenta hecha: calculando no está, en el esqueleto ni en el cliente.)
+      const contCli = clasesJsx(codigo("src/app/explorar/contador.tsx")).filter((c) => /^ex-contador/.test(c) && c !== "ex-contador-big");
+      const verCli = clasesJsx(elemento(cli, "ver-lista")).filter((c) => c.startsWith("ex-"));
+      const iCont = html.indexOf('data-explorar="contador"'), cont = iCont < 0 ? "" : html.slice(iCont, html.indexOf("</section>", iCont));
+      if (contCli.length < 4 || !enOrden(clasesHtml(html), contCli) || /class="ex-hoja"/.test(html) || !/Calculando…/.test(textoPlano(cont)) || /Ver lista/.test(cont)
+        || verCli.join() !== "ex-ver-lista" || !new RegExp(`<span class="${verCli[0]}">Ver lista</span>`).test(html.slice(html.indexOf("</section>", iCont)))) F("8 · el esqueleto no lleva el contador del cliente («Calculando…») y «Ver lista» aparte, o sigue con la barra de abajo");
       if (/pildora/.test(html) || /pildora/.test(cli) || /pildora/.test(leer("src/app/explorar/explorar.css").replace(/\/\*[\s\S]*?\*\//g, ""))) F("8 · la píldora del PC sigue en /explorar (el esqueleto, el cliente o su CSS)");
     }
   }

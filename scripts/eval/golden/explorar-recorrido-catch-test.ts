@@ -197,14 +197,21 @@ export async function runExplorarRecorridoTier(): Promise<{ hard: number }> {
       // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 4): antes fijaba la barra «Filtros», «Ver solo ✓ Comprar» y «¿Cómo se
       // calcula?»; ahora la barra lleva solo el selector con «Usados» (Proyectos escondido por PROYECTOS_VISIBLE) y «Filtros». La (i)
       // de «¿Cómo se calcula?» vive en la tarjeta del contador (CONVIENEN-UNO §2): en la barra ya no va.
-      if (botones.join() !== 'data-explorar="selector",data-explorar="usados",data-explorar="filtros"') F(`5 · ${que}, la fila de arriba no es «Usados» y «Filtros»: ${botones.join(" ")}`);
-      if (/como-se-calcula|solo-comprar/.test(barra)) F(`5 · ${que}, la barra de arriba sigue con «¿Cómo se calcula?» o «Ver solo ✓ Comprar»`);
+      // ⚠ ACTA 26-nov-2026 (revisión del preview, cambio 7): antes fijaba la barra con solo «Usados» y «Filtros»; ahora «¿Cómo se
+      // calcula?» volvió a la barra, junto a Filtros (un botón ex-como2 con su ícono y el texto visible desde 768 px). «Ver solo
+      // ✓ Comprar» sigue fuera.
+      if (botones.join() !== 'data-explorar="selector",data-explorar="usados",data-explorar="filtros",data-explorar="como-se-calcula"') F(`5 · ${que}, la fila de arriba no es «Usados», «Filtros» y «¿Cómo se calcula?»: ${botones.join(" ")}`);
+      if (/solo-comprar/.test(barra) || !/<button type="button" class="ex-como2" data-explorar="como-se-calcula"/.test(barra)) F(`5 · ${que}, la barra de arriba sigue con «Ver solo ✓ Comprar» (o «¿Cómo se calcula?» no es el botón ex-como2)`);
       if (/data-explorar="ordenar"/.test(html)) F(`5 · ${que}, «Ordenar» aparece en la vista de mapa`);
       if (/ex-numero|data-explorar="numero"/.test(html)) F(`5 · ${que}, la tarjeta del número sigue sobre el mapa`);
       // ⚠ ACTA (03-nov-2026) · abajo, el desglose, el mismo en el teléfono y en el PC (la píldora negra del PC se retiró).
       // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 5): antes fijaba la barra de abajo con el desglose; esa barra ya no se
       // monta: el contador flota arriba («4.807 de 4.807 convienen», los tres chips y «Ver lista»), igual en el teléfono y en el PC.
-      if (!texto(html).includes("4.807 de 4.807 convienen 4.807 Comprar 0 Ajustar 0 No conviene Ver lista") || /ex-pildora|data-explorar="desglose"/.test(html)) F(`5 · ${que}, el contador no dice «4.807 de 4.807 convienen · los tres chips · Ver lista» (o vuelve la barra de abajo)`);
+      // ⚠ ACTA 26-nov-2026 (revisión del preview, cambios 6 y 8): antes fijaba en la tarjeta del contador «4.807 de 4.807 convienen»,
+      // los chips «4.807 Comprar» y «Ver lista»; ahora la tarjeta dice el número grande y «de 4.807 deptos convienen», las casillas
+      // «Comprar · 4.807» (sin «Ver lista»), y «Ver lista» flota aparte, abajo al centro (ex-ver-lista), fuera de la tarjeta.
+      const iCont = html.indexOf('data-explorar="contador"'), cont = iCont < 0 ? "" : html.slice(iCont, html.indexOf("</section>", iCont));
+      if (!texto(cont).includes("4.807 de 4.807 deptos convienen Comprar · 4.807 Ajustar · 0 No conviene · 0") || /ver-lista/.test(cont) || !/<button type="button" class="ex-ver-lista" data-explorar="ver-lista"/.test(html.slice(html.indexOf("</section>", iCont))) || /ex-pildora|data-explorar="desglose"/.test(html)) F(`5 · ${que}, el contador no dice «4.807 de 4.807 deptos convienen» con las tres casillas, o «Ver lista» no flota aparte (o vuelve la barra de abajo)`);
     }
   }
   if (/ex-numero/.test(css + cli + codigo("src/app/explorar/esqueleto.tsx")) || "numeroDelMapa" in po || "lineaSupuestos" in po) F("5 · quedan la tarjeta del número o la línea de los supuestos (CSS, cliente, esqueleto o portal.ts)");

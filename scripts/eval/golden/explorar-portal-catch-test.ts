@@ -150,7 +150,9 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
     // y su chip «4.807 Comprar». La regla —el perfil guardado no decide el primer pintado— sigue (la línea de «Ñuñoa», abajo).
     const html = dibujar(createElement(modCli.ExplorarCliente as FC<Record<string, unknown>>, { inicial: { filtros: G, orden: "puntaje", n: 4807, cuenta: cuentaBase(), tasa: { tasa: 4.07 }, convienen: null, negociadosGlobal: null, nAjustar: 0, nNo: 0 } }));
     const t = texto(html);
-    if (!t.includes("4.807 de 4.807 convienen") || !/data-clase="comprar"[^>]*>(?:<i[^>]*><\/i>)?4\.807 Comprar</.test(html)) F("1 · el primer pintado no dice «4.807 de 4.807 convienen» con el chip «4.807 Comprar» (con una búsqueda guardada en la cuenta)");
+    // ⚠ ACTA 26-nov-2026 (revisión del preview, cambio 6): antes «4.807 de 4.807 convienen» y el chip «4.807 Comprar»; ahora el número
+    // grande y «de 4.807 deptos convienen», y la casilla «Comprar · 4.807» (con su check, prendida).
+    if (!t.includes("4.807 de 4.807 deptos convienen") || !/<button[^>]*data-clase="comprar"[^>]*><span class="ex-ck"[^>]*>(?:<svg[\s\S]*?<\/svg>)?<\/span>Comprar · 4\.807<\/button>/.test(html)) F("1 · el primer pintado no dice «4.807 de 4.807 deptos convienen» con la casilla «Comprar · 4.807» (con una búsqueda guardada en la cuenta)");
     if (/Ñuñoa/.test(t) || /Filtros · \d/.test(t)) F("1 · el primer pintado trae los filtros del perfil");
     // ⚠ ACTA (30-oct-2026, goal del recorrido real de Fabrizio) · arriba, solo «Filtros» y «¿Cómo se calcula?»: «Ordenar» vive en la lista
     // y «Mi búsqueda», dentro de Filtros (decisión de Fabrizio).
@@ -163,8 +165,13 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
     // su lugar flota arriba el contador con los tres chips y «Ver lista». Se fija que no vuelva la barra (ni la píldora) y que el
     // primer pintado cuente las tres clases que contó el servidor.
     if (/data-explorar="hoja"|data-explorar="desglose"|ex-pildora/.test(html) || /<BarraAbajo\b/.test(cli)) F("1 · vuelve la barra de abajo con el desglose (o la píldora del PC)");
-    const conNeg = texto(dibujar(createElement(modCli.ExplorarCliente as FC<Record<string, unknown>>, { inicial: { filtros: G, orden: "puntaje", n: 4807, cuenta: cuentaBase(), tasa: { tasa: 4.07 }, convienen: null, negociadosGlobal: null, nAjustar: 1234, nNo: 9000 } })));
-    if (!conNeg.includes("4.807 de 15.041 convienen 4.807 Comprar 1.234 Ajustar 9.000 No conviene Ver lista")) F("1 · con los − Ajustar y los No conviene que contó el servidor, el contador del primer pintado no cuenta las tres clases");
+    const conNegHtml = dibujar(createElement(modCli.ExplorarCliente as FC<Record<string, unknown>>, { inicial: { filtros: G, orden: "puntaje", n: 4807, cuenta: cuentaBase(), tasa: { tasa: 4.07 }, convienen: null, negociadosGlobal: null, nAjustar: 1234, nNo: 9000 } }));
+    const conNeg = texto(conNegHtml);
+    // «Ver lista» es el botón flotante (ex-ver-lista), fuera de la tarjeta del contador.
+    { const iC = conNegHtml.indexOf('data-explorar="contador"'), fin = conNegHtml.indexOf("</section>", iC); if (iC < 0 || /ver-lista/.test(conNegHtml.slice(iC, fin)) || !/<button type="button" class="ex-ver-lista" data-explorar="ver-lista">/.test(conNegHtml.slice(fin))) F("1 · «Ver lista» no es el botón flotante fuera de la tarjeta del contador"); }
+    // ⚠ ACTA 26-nov-2026 (revisión del preview, cambios 6 y 8): el texto del contador y de sus casillas cambió de orden («Comprar ·
+    // 4.807»); «Ver lista» flota aparte, a continuación de la tarjeta.
+    if (!conNeg.includes("4.807 de 15.041 deptos convienen Comprar · 4.807 Ajustar · 1.234 No conviene · 9.000 Ver lista")) F("1 · con los − Ajustar y los No conviene que contó el servidor, el contador del primer pintado no cuenta las tres clases");
   }
   const mb = po.filtrosDeMiBusqueda({ comunas: ["Ñuñoa", "Santiago"], dormitorios: [1, 2], precioMinUf: 1500, precioMaxUf: 3000, piePct: 30, plazoAnios: 30, modalidad: "str" });
   if (!mb || mb.comunas.join() !== "Ñuñoa,Santiago" || mb.tipologias.join() !== "1,2" || mb.ufMin !== 1500 || mb.ufMax !== 3000 || mb.pie !== 30 || mb.plazo !== 30 || mb.modalidad !== "str" || mb.zona || mb.flujoPositivo) F(`1 · «Mi búsqueda» no aplica comunas, tipología, rango, pie, plazo y modalidad de una vez: ${JSON.stringify(mb)}`);
@@ -296,7 +303,8 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
     // barra de abajo; ahora es el contador «4.807 de 4.807 convienen» (con los nAjustar y nNo que contó el servidor).
     const html = dibujar(createElement(modCli.ExplorarCliente as FC<Record<string, unknown>>, { inicial: { filtros: G, orden: "puntaje", n: 4807, cuenta: cuentaBase({ saldo: { tipo: "sin" } }), nAjustar: 0, nNo: 0 } }));
     const t = texto(html);
-    if (!t.includes("4.807 de 4.807 convienen") || /disabled=""/.test(html.slice(0, html.indexOf("ex-cuerpo")))) F("4 · sin saldo el mapa o la fila de arriba quedan cerrados");
+    // ⚠ ACTA 26-nov-2026 (revisión del preview, cambio 6): «4.807 de 4.807 deptos convienen».
+    if (!t.includes("4.807 de 4.807 deptos convienen") || /disabled=""/.test(html.slice(0, html.indexOf("ex-cuerpo")))) F("4 · sin saldo el mapa o la fila de arriba quedan cerrados");
     if (/necesitas análisis disponibles|Para explorar|data-explorar="cerrado"|data-hoja="cerrada"/.test(html)) F("4 · sin saldo aparece el aviso «Para explorar necesitas análisis disponibles» o el mapa cerrado");
   }
   if (existe("src/app/explorar/aviso-sin-saldo.tsx")) F("4 · el aviso sin saldo de Explorar sigue en el repo");
@@ -522,10 +530,30 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
   // con el zoom de Google. Sin «✓ En tu cuenta» ni «Nuevo hoy» como etiqueta.
   const capaSrc = codigo("src/lib/explorar/capa-canvas.ts");
   if (!/texto: textoCifraPin\(p, clase, filtros\.cifra, uf, sinCuenta\)/.test(cli) || !/items=\{items\}/.test(cli) || !/componerCapa\(itemsRef\.current, \{\s*zoom, elegido: selRef\.current,/.test(mapa)
-    || !/if \(o\.zoom < ZOOM_CIFRAS\) \{/.test(capaSrc) || !/export const ZOOM_CIFRAS = 15;/.test(capaSrc) || /textoPin\(/.test(cli + mapa)) F("8 · el mapa no muestra grupos lejos y la cifra de cada pin con zoom (textoCifraPin)");
+    // ⚠ ACTA 26-nov-2026 (revisión del preview, cambio 1): antes fijaba dos distancias (grupos bajo ZOOM_CIFRAS = 15, cifras desde 15);
+    // ahora son tres: hasta 12 grupos negros con número, de 13 a 15 puntos de color sin precio (ZOOM_PUNTOS = 13) y desde 16 el precio
+    // (ZOOM_CIFRAS = 16). Se fija en el código y en la función pura: a zoom 14 todo es punto, a 12 los cercanos van en un grupo.
+    || !/if \(o\.zoom >= ZOOM_PUNTOS && o\.zoom < ZOOM_CIFRAS\) \{/.test(capaSrc) || !/\} else if \(o\.zoom < ZOOM_PUNTOS\) \{/.test(capaSrc) || !/export const ZOOM_PUNTOS = 13;/.test(capaSrc) || !/export const ZOOM_CIFRAS = 16;/.test(capaSrc) || /textoPin\(/.test(cli + mapa)) F("8 · el mapa no muestra grupos lejos, puntos a media distancia y la cifra de cada pin de cerca (textoCifraPin)");
+  try {
+    const cc = require(join(RAIZ, "src/lib/explorar/capa-canvas")) as typeof import("../../../src/lib/explorar/capa-canvas");
+    const items = Array.from({ length: 12 }, (_, i) => ({ id: `z${i}`, lat: -33.43 + i * 0.00002, lng: -70.61, clase: "comprar" as const, texto: "UF 2.800", puntaje: 70 }));
+    const comp = (zoom: number) => cc.componerCapa(items, { zoom, elegido: null, aPixel: (lat, lng) => { const w = (require(join(RAIZ, "src/lib/explorar/explorar")) as typeof import("../../../src/lib/explorar/explorar")).proyectar(lat, lng, zoom); const o = (require(join(RAIZ, "src/lib/explorar/explorar")) as typeof import("../../../src/lib/explorar/explorar")).proyectar(-33.43, -70.61, zoom); return { x: 200 + w.x - o.x, y: 200 + w.y - o.y }; }, ancho: (t) => t.length * 7, vista: { w: 400, h: 400 } });
+    const z14 = comp(14), z12 = comp(12), z16 = comp(16);
+    if (z14.length !== 12 || z14.some((d) => d.tipo !== "punto") || !z12.some((d) => d.tipo === "grupo") || !z16.some((d) => d.tipo === "etiqueta")) F(`8 · las tres distancias no dibujan grupos (12), puntos (14) y cifras (16): ${[z12, z14, z16].map((z) => z.map((d) => d.tipo[0]).join("")).join(" / ")}`);
+  } catch (e) {
+    F(`8 · la capa explotó: ${(e as Error).message}`);
+  }
   // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 6): antes la marca era `tocado.current`; con el canvas `tocado` es la
   // función de capa-canvas.ts que dice qué se tocó, y la marca de «la persona movió el mapa» pasó a `tocadoRef`. Misma regla.
-  if (!/map\.addListener\("idle", \(\) => \{\s*dibujarRef\.current\(\);\s*if \(tocadoRef\.current && !propio\.current\)/.test(mapa) || !/map\.addListener\("dragstart", \(\) => \{ tocadoRef\.current = true; \}\);/.test(mapa) || !/onMovido=\{\(c\) => setZonaPendiente\(c\)\}/.test(cli) || !/data-explorar="buscar-zona" onClick=\{\(\) => aplicar\(\{ \.\.\.filtros, zona: zonaPendiente \}, "zona"\)\}/.test(cli)) F("8 · al mover el mapa no aparece «Buscar en esta zona» (o no aplica la zona)");
+  // ⚠ ACTA 26-nov-2026 (revisión del preview, cambio 4): se retira «Buscar en esta zona» (el botón que aparecía al mover el mapa): no
+  // hay zonaPendiente ni data-explorar="buscar-zona", y nadie le pasa onMovido al mapa. Queda el negativo, y que la zona que llega
+  // en la URL siga filtrando.
+  if (/zonaPendiente|buscar-zona|onMovido=/.test(cli)) F("8 · vuelve «Buscar en esta zona» (o el cliente vuelve a escuchar el movimiento del mapa)");
+  {
+    const conZona = po.portalDeUrl(new URLSearchParams(po.urlDePortal({ ...G, zona: [-33.45, -70.62, -33.42, -70.6] }))).filtros;
+    const dentroZ = { ...PIN, avisoId: "zd", lat: -33.43, lng: -70.61 }, fueraZ = { ...PIN, avisoId: "zf", lat: -33.5, lng: -70.7 };
+    if (po.filtrar([dentroZ, fueraZ], conZona).map((p) => p.avisoId).join() !== "zd") F("8 · la zona que viene en la URL ya no filtra");
+  }
 
   // ── 9 · el plan donde se usa ──
   const lp = po.lineaPlan(3, false);
@@ -614,7 +642,9 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
     // teléfono). Que sean las clases del cliente lo fija EXPLORAR-PASADA §8; acá, el texto.
     // ACTA 25-nov-2026 (mapa con todos los deptos, decisiones 4 y 5): antes fijaba «Filtros Ver solo ✓ Comprar ⓘ i ¿Cómo se calcula?»;
     // ahora la fila de arriba es «Usados» y «Filtros», y la (i) de «¿Cómo se calcula?» va en la tarjeta del contador, calculando.
-    if (/ex-mapa-quieto|data:image/.test(e) || !/Usados Filtros/.test(texto(e)) || /Ver solo/.test(texto(e)) || !/data-explorar="como-se-calcula"/.test(e) || !/Calculando…/.test(texto(e)) || /Ordenar|Con pie/.test(texto(e)) || !/class="ex-mapa-wrap"/.test(e) || !/class="ex-barra"/.test(e)) F("12 · el esqueleto no trae la fila de arriba de hoy, «Filtros» y «¿Cómo se calcula?» (o repite el mapa quieto)");
+    // ⚠ ACTA 26-nov-2026 (revisión del preview, cambios 7, 8 y 10): antes la (i) iba en el contador; ahora la fila de arriba es
+    // «Usados», «Filtros» y «¿Cómo se calcula?» (span.ex-como2), y sobre el mapa el contador calculando y «Ver lista» flotante.
+    if (/ex-mapa-quieto|data:image/.test(e) || !/Usados Filtros ¿Cómo se calcula\?/.test(texto(e)) || !/<span class="ex-como2">/.test(e) || /Ver solo/.test(texto(e)) || !/Calculando…/.test(texto(e)) || !/<span class="ex-ver-lista">Ver lista<\/span>/.test(e) || /Ordenar|Con pie/.test(texto(e)) || !/class="ex-mapa-wrap"/.test(e) || !/class="ex-barra"/.test(e)) F("12 · el esqueleto no trae la fila de arriba de hoy, «Filtros» y «¿Cómo se calcula?» (o repite el mapa quieto)");
   } catch (err) {
     F(`12 · el esqueleto explotó: ${(err as Error).message}`);
   }

@@ -79,7 +79,8 @@ export async function runExplorarTodosTier(): Promise<{ hard: number }> {
 
   // ── 3 · el contador «X de Y convienen» y la función única ──
   const t3 = mt.textoContador({ comprar: 4513, ajustar: 3016, no: 11527 });
-  if (t3.cifra !== "4.513 de 19.056" || t3.resto !== "convienen") F(`3 · el contador no dice «4.513 de 19.056 convienen»: «${t3.cifra} ${t3.resto}»`);
+  // ACTA 26-nov-2026 (lámina 5d): antes «4.513 de 19.056» + «convienen»; ahora el número aparte, grande, y «de 19.056 deptos convienen».
+  if (t3.numero !== "4.513" || t3.resto !== "de 19.056 deptos convienen") F(`3 · el contador no dice «4.513» y «de 19.056 deptos convienen»: «${t3.numero} ${t3.resto}»`);
   const guardado = codigo("src/lib/explorar/convienen-guardado.ts");
   if (!/cuantosConvienen\(compactar\(await universoDeLaNoche\(/.test(guardado)) F("3 · el número guardado (landing y /deptos) ya no sale de cuantosConvienen sobre universoDeLaNoche");
   const serv = codigo("src/lib/explorar/portal-servidor.ts");
@@ -95,12 +96,27 @@ export async function runExplorarTodosTier(): Promise<{ hard: number }> {
   // ── 5 · la tarjeta del contador: tres chips con su número, apagables, fila deslizable en el teléfono ──
   const modCont = cargar<{ Contador: FC<Record<string, unknown>> }>("src/app/explorar/contador", F);
   if (modCont) {
-    const html = renderToStaticMarkup(createElement(modCont.Contador, { conteo: { comprar: 4513, ajustar: 3016, no: 11527 }, ocultar: ["no"], alAlternar: () => {}, alComo: () => {}, alVerLista: () => {} }));
-    if (!/4\.513 de 19\.056/.test(html)) F("5 · la tarjeta del contador no dice «4.513 de 19.056»");
-    for (const [c, txt] of [["comprar", "4.513 Comprar"], ["ajustar", "3.016 Ajustar"], ["no", "11.527 No conviene"]]) if (!html.includes(txt) || !new RegExp(`data-clase="${c}"`).test(html)) F(`5 · falta el chip «${txt}»`);
-    if (!/data-clase="no"[^>]*data-off="1"[^>]*aria-pressed="false"/.test(html)) F("5 · el chip apagado no se marca apagado (data-off, aria-pressed=false)");
-    if (!/data-explorar="como-se-calcula"/.test(html)) F("5 · falta la (i) de «¿Cómo se calcula?» en la tarjeta del contador");
-    if (!/data-explorar="ver-lista"/.test(html)) F("5 · falta «Ver lista» (teclado y lector de pantalla)");
+    // ACTA 26-nov-2026 (lámina 5d «La tarjeta del contador»): el número grande y en azul, la barra de proporción, las casillas con su
+    // número («Comprar · 4.513») y la flecha que pliega; la (i) y «Ver lista» salieron de la tarjeta.
+    const html = renderToStaticMarkup(createElement(modCont.Contador, { conteo: { comprar: 4513, ajustar: 3016, no: 11527 }, ocultar: ["no"], alAlternar: () => {} }));
+    if (!/<b class="ex-contador-big" data-explorar="contador-numero">4\.513<\/b> <span>de 19\.056 deptos convienen<\/span>/.test(html)) F("5 · la tarjeta no dice «4.513» grande y «de 19.056 deptos convienen»");
+    if (!/\.ex-contador-big \{[^}]*font-size: 28px;[^}]*color: var\(--chip-v-c/.test(leer("src/app/explorar/explorar.css"))) F("5 · el número de los que convienen no va grande y en azul");
+    if (!/data-explorar="contador-proporcion"[^>]*><span data-clase="comprar" style="width:23\.7%"><\/span><span data-clase="ajustar" style="width:15\.8%"><\/span><span data-clase="no" style="width:60\.5%"><\/span>/.test(html)) F("5 · falta la barra fina con la proporción de Comprar, Ajustar y No conviene");
+    for (const [c, txt] of [["comprar", "Comprar · 4.513"], ["ajustar", "Ajustar · 3.016"], ["no", "No conviene · 11.527"]]) if (!html.includes(txt) || !new RegExp(`data-clase="${c}"`).test(html)) F(`5 · falta la casilla «${txt}»`);
+    if (!/data-clase="no"[^>]*data-off="1"[^>]*aria-pressed="false"[^>]*><span class="ex-ck" aria-hidden="true"><\/span>/.test(html)) F("5 · la casilla apagada no queda apagada y vacía (data-off, aria-pressed=false, sin check)");
+    if (!/data-clase="comprar"[^>]*aria-pressed="true"[^>]*><span class="ex-ck" aria-hidden="true"><svg/.test(html)) F("5 · la casilla prendida no lleva su check");
+    if (/data-explorar="como-se-calcula"|data-explorar="ver-lista"/.test(html)) F("5 · la (i) o «Ver lista» siguen dentro de la tarjeta del contador");
+    // §12 · PLEGABLE: la flecha con nombre («Plegar»/«Desplegar»), botón (teclado), y el navegador lo recuerda.
+    if (!/<button type="button" class="ex-contador-pliegue" aria-expanded="true" aria-label="Plegar"/.test(html)) F("12 · falta la flecha «Plegar» como botón con nombre accesible");
+    const cont = codigo("src/app/explorar/contador.tsx");
+    if (!/localStorage\.getItem\(CLAVE_CONTADOR_PLEGADO\) === "1"\) setPlegada\(true\)/.test(cont) || !/localStorage\.setItem\(CLAVE_CONTADOR_PLEGADO, x \? "0" : "1"\)/.test(cont)) F("12 · el navegador no recuerda si la tarjeta quedó plegada");
+    if (!/\{!plegada && \(/.test(cont) || !/aria-label=\{plegada \? CONTADOR_COPY\.desplegar : CONTADOR_COPY\.plegar\}/.test(cont)) F("12 · plegada no deja solo la línea del número, o la flecha no cambia a «Desplegar»");
+  }
+  // §9 y §10 · la (i) vuelve a la barra de arriba (texto en el PC, ícono en el teléfono) y «Ver lista» flota abajo al centro.
+  if (!/data-explorar="filtros"[\s\S]{0,600}?<button type="button" className="ex-como2" data-explorar="como-se-calcula"/.test(cli)) F("9 · «¿Cómo se calcula?» no está en la barra, junto a Filtros");
+  if (!/\.ex-como2-t \{ display: none; \}/.test(leer("src/app/explorar/explorar.css")) || !/@media \(min-width: 768px\) \{ \.ex-como2-t \{ display: inline; \} \}/.test(leer("src/app/explorar/explorar.css"))) F("9 · en el teléfono «¿Cómo se calcula?» no queda solo con el ícono");
+  if (!/<button type="button" className="ex-ver-lista" data-explorar="ver-lista" onClick=\{\(\) => setVista\("lista"\)\}>/.test(cli) || !/\.ex-ver-lista \{ position: absolute; left: 50%;[^}]*background: #141414;/.test(leer("src/app/explorar/explorar.css"))) F("10 · «Ver lista» no flota abajo al centro como botón negro");
+  {
   }
   const f5 = po.validarPortal({ ocultar: ["ajustar"] });
   if (f5.ocultar.join() !== "ajustar" || po.portalDeUrl(new URLSearchParams(po.urlDePortal(f5))).filtros.ocultar.join() !== "ajustar") F("5 · apagar un chip no viaja en la URL");
@@ -127,7 +143,33 @@ export async function runExplorarTodosTier(): Promise<{ hard: number }> {
     { id: "no", lat: -33.45001, lng: -70.65, clase: "no", texto: "UF 3.000", puntaje: null },
   ], { zoom: 16, elegido: null, aPixel: aPx, ancho: () => 50, vista: { w: 400, h: 400 } });
   const etq = dib.filter((d) => d.tipo === "etiqueta").map((d) => (d as { id: string }).id);
-  if (etq.join() !== "alto") F(`6 · al chocar, la cifra no la conserva el de mejor puntaje (etiquetas: ${etq.join() || "ninguna"})`);
+  // ACTA 26-nov-2026 (cambio 2 de la revisión): antes la etiqueta la conservaba el de mejor puntaje sin importar la clase; ahora primero
+  // Comprar, después Ajustar (y dentro de cada clase, el mejor puntaje); No conviene solo si hay espacio.
+  if (etq.join() !== "bajo") F(`2 · al chocar, la etiqueta no la lleva el Comprar antes que el Ajustar (etiquetas: ${etq.join() || "ninguna"})`);
+  const solo = cc.componerCapa([{ id: "no", lat: -33.45, lng: -70.65, clase: "no", texto: "UF 3.000", puntaje: null }], { zoom: 16, elegido: null, aPixel: aPx, ancho: () => 50, vista: { w: 400, h: 400 } });
+  if (!solo.some((d) => d.tipo === "etiqueta")) F("2 · un No conviene sin choques no lleva su precio aunque haya espacio");
+  // §1 · A MEDIA DISTANCIA, PUNTOS DE COLOR SIN PRECIO (los rojos abajo): ni grupos negros ni etiquetas.
+  const media = cc.componerCapa([
+    { id: "c", lat: -33.45, lng: -70.65, clase: "comprar", texto: "x", puntaje: 1 },
+    { id: "n", lat: -33.45, lng: -70.65, clase: "no", texto: "x", puntaje: null },
+  ], { zoom: 14, elegido: null, aPixel: aPx, ancho: () => 20, vista: { w: 400, h: 400 } });
+  if (media.length !== 2 || media.some((d) => d.tipo !== "punto") || (media[1] as { id: string }).id !== "c") F("1 · a media distancia no van puntos de color sin precio, con los Comprar encima");
+  if (cc.ZOOM_PUNTOS !== 13 || cc.ZOOM_CIFRAS !== 16) F("1 · las tres distancias no son grupos ≤ 12, puntos 13-15 y precio desde 16");
+  // §3 · ABRE ENCUADRADO EN GRAN SANTIAGO: la caja sin el 2 % más extremo de cada lado.
+  const muchos = [...Array.from({ length: 98 }, (_, i) => ({ lat: -33.45 + i * 1e-3, lng: -70.65 })), { lat: -33.7, lng: -71.2 }, { lat: -33.2, lng: -70.3 }];
+  const caja3 = cc.cajaRecortada(muchos);
+  if (!caja3 || caja3.w < -70.7 || caja3.s < -33.5) F("3 · el encuadre incluye los avisos sueltos (Melipilla, la cordillera)");
+  if (!/const caja = cajaRecortada\(ps\) \?\? CAJA_GRAN_SANTIAGO;/.test(codigo("src/app/explorar/mapa-explorar.tsx"))) F("3 · el mapa no abre con la caja recortada de Gran Santiago");
+  // §11 · EL TEXTO DE «¿CÓMO SE CALCULA?» (26-nov-2026): el pedido, con pie, plazo, tasa y el 10 % de la misma fuente que el mapa.
+  const tc = mt.textoComoSeCalcula(4.07, true);
+  if (tc.intro !== "Cada noche Franco revisa los deptos usados en venta en Gran Santiago y calcula si convienen como inversión, con pie de 20 %, crédito a 30 años y tasa de 4,1 % (el promedio del Banco Central). Con tu cuenta gratis cambias eso en Filtros.") F(`11 · el texto de «¿Cómo se calcula?» no es el pedido: «${tc.intro}»`);
+  if (tc.clases.map((k) => `${k.nombre}: ${k.texto}`).join(" | ") !== "Comprar: conviene al precio publicado. | Ajustar: conviene negociando hasta 10 % menos. La tarjeta dice desde qué precio. | No conviene: ni al precio publicado ni con 10 % menos.") F("11 · las tres líneas de los veredictos no son las pedidas");
+  if (`${tc.capRate.nombre}: ${tc.capRate.texto} ${tc.rentaCorta.nombre}: ${tc.rentaCorta.texto}` !== "Cap rate bruto: el arriendo de un año dividido por el precio. En los detalles del depto ves también el neto, que descuenta gastos. Renta corta: se estima por zona, no por depto.") F("11 · la línea del cap rate bruto y la renta corta no es la pedida");
+  const fuenteCalc = codigo("src/lib/explorar/mapa-todos.ts");
+  if (!/con pie de \$\{PIE_POR_DEFECTO\} %, crédito a \$\{PLAZO_POR_DEFECTO\} años y \$\{t\}/.test(fuenteCalc) || !/hasta \$\{TOPE_NEGOCIAR_PCT\} % menos/.test(fuenteCalc)) F("11 · pie, plazo o el 10 % del texto están escritos a mano (no salen de las constantes del mapa)");
+  if (!/const t = textoComoSeCalcula\(tasa\?\.tasa \?\? null, sinCuenta\);/.test(codigo("src/app/explorar/hoja-calculo.tsx"))) F("11 · la hoja no usa el texto con la tasa del motor");
+  // §4 · «Buscar en esta zona» se fue.
+  if (/data-explorar="buscar-zona"/.test(cli)) F("4 · sigue el botón «Buscar en esta zona»");
   if (dib.filter((d) => d.tipo === "punto").length !== 2) F("6 · los que chocan no quedan como punto");
   const lejos = cc.componerCapa(Array.from({ length: 30 }, (_, i) => ({ id: `g${i}`, lat: -33.45 + i * 1e-6, lng: -70.65, clase: "comprar" as const, texto: "x", puntaje: 1 })), { zoom: 12, elegido: null, aPixel: aPx, ancho: () => 20, vista: { w: 400, h: 400 } });
   if (!lejos.some((d) => d.tipo === "grupo" && d.n === 30)) F("6 · lejos, los muchos no van en un grupo con su número");
@@ -179,7 +221,8 @@ export async function runExplorarTodosTier(): Promise<{ hard: number }> {
     if (!h9.includes(mt.PANEL_COPY.cortaPorZona) || !/data-explorar="renta-corta"/.test(h9)) F("9 · falta renta corta con «se estima por zona»");
     if (!/Ver 19\.056 deptos/.test(h9)) F("9 · el botón no dice «Ver N deptos»");
     const h8 = renderToStaticMarkup(createElement(modHoja.HojaFiltros, { ...props, alPedirRegistro: () => {} }));
-    if ((h8.match(/-cuenta"/g) ?? []).length !== 4 || !/data-explorar="barra-precio-min"/.test(h8)) F("8 · sin cuenta, el panel no deja solo precio (y dormitorios) y pide la cuenta en las otras cuatro");
+    // ACTA 26-nov-2026 (cambio 5): antes cuatro «Crea tu cuenta gratis para filtrar por…»; ahora una sola línea.
+    if ((h8.match(/data-explorar="barras-con-cuenta"/g) ?? []).length !== 1 || !h8.includes("Con tu cuenta gratis filtras también por arriendo, cap rate, lo que te sobra y UF por m²") || /data-explorar="barra-[a-z0-9]+-cuenta"/.test(h8) || !/data-explorar="barra-precio-min"/.test(h8) || /data-explorar="barra-arriendo"/.test(h8)) F("8 · sin cuenta, el panel no deja solo precio (y dormitorios) con una sola línea que pide la cuenta");
   }
   const f9 = po.validarPortal({ rangos: { arriendo: [5, 23] }, cifra: "arriendo" });
   if (!po.pasaRangos({ tramos: [6, 0, 0], precioUF: 2000, m2: 50 }, f9.rangos) || po.pasaRangos({ tramos: [4, 0, 0], precioUF: 2000, m2: 50 }, f9.rangos)) F("9 · la barra del arriendo no filtra por tramo");
