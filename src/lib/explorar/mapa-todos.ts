@@ -12,6 +12,8 @@
 //   · LA CIFRA DEL PIN: por defecto el precio con su unidad; al mover una barra, Comprar y Ajustar pasan a esa cifra, con su unidad;
 //     No conviene siempre muestra el precio (decisión 6).
 // ─────────────────────────────────────────────────────────────────────────────
+import { PIE_POR_DEFECTO, PLAZO_POR_DEFECTO } from "@/lib/deptos/estandar";
+import { TOPE_NEGOCIAR_PCT } from "@/lib/avisos/negociar-tope";
 
 /** Las tres clases del mapa, en el orden de la base (campo 8 de explorar_mapa_todos). */
 export type ClaseMapa = "comprar" | "ajustar" | "no";
@@ -122,13 +124,47 @@ export function textoCifraPin(p: { precioUF: number; m2: number; arriendo: numbe
 // ── EL CONTADOR ──────────────────────────────────────────────────────────────
 export interface ConteoClases { comprar: number; ajustar: number; no: number }
 export const totalConteo = (c: ConteoClases) => c.comprar + c.ajustar + c.no;
-/** «4.513 de 19.056» y «convienen». El número de convienen es el de los Comprar: el mismo de todo el sitio. */
-export function textoContador(c: ConteoClases): { cifra: string; resto: string } {
-  return { cifra: `${miles(c.comprar)} de ${miles(totalConteo(c))}`, resto: "convienen" };
+/** «4.513» (grande y en azul) y «de 19.056 deptos convienen» (lámina 5d, 26-nov-2026). El número de convienen es el de los Comprar: el
+ *  mismo de todo el sitio. */
+export function textoContador(c: ConteoClases): { numero: string; resto: string } {
+  return { numero: miles(c.comprar), resto: `de ${miles(totalConteo(c))} deptos convienen` };
 }
+/** La proporción de cada veredicto, en % (la barra fina del contador); los tres suman 100 (0 sin deptos). */
+export function proporcionClases(c: ConteoClases): Record<ClaseMapa, number> {
+  const t = totalConteo(c);
+  if (!t) return { comprar: 0, ajustar: 0, no: 0 };
+  const comprar = Math.round((c.comprar / t) * 1000) / 10, ajustar = Math.round((c.ajustar / t) * 1000) / 10;
+  return { comprar, ajustar, no: Math.max(0, Math.round((100 - comprar - ajustar) * 10) / 10) };
+}
+/** «¿CÓMO SE CALCULA?» (26-nov-2026, lámina 5d, texto de Claude y Fabrizio). Pie, plazo y el tope del descuento salen de las mismas
+ *  constantes que usa el mapa (deptos/estandar.ts, avisos/negociar-tope.ts) y la tasa, de la del motor (config.tasa_hipotecaria): nunca
+ *  escritos a mano. `sinCuenta`: «Con tu cuenta gratis cambias eso en Filtros.»; con cuenta, «Cambias eso en Filtros.». */
+export function textoComoSeCalcula(tasa: number | null, sinCuenta: boolean) {
+  const t = tasa != null && tasa > 0 ? `tasa de ${tasa.toLocaleString("es-CL", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} % (el promedio del Banco Central)` : "la tasa promedio del Banco Central";
+  return {
+    titulo: "¿Cómo se calcula?",
+    intro: `Cada noche Franco revisa los deptos usados en venta en Gran Santiago y calcula si convienen como inversión, con pie de ${PIE_POR_DEFECTO} %, crédito a ${PLAZO_POR_DEFECTO} años y ${t}. ${sinCuenta ? "Con tu cuenta gratis cambias eso en Filtros." : "Cambias eso en Filtros."}`,
+    clases: [
+      { clase: "comprar" as const, nombre: "Comprar", texto: "conviene al precio publicado." },
+      { clase: "ajustar" as const, nombre: "Ajustar", texto: `conviene negociando hasta ${TOPE_NEGOCIAR_PCT} % menos. La tarjeta dice desde qué precio.` },
+      { clase: "no" as const, nombre: "No conviene", texto: `ni al precio publicado ni con ${TOPE_NEGOCIAR_PCT} % menos.` },
+    ],
+    capRate: { nombre: "Cap rate bruto", texto: "el arriendo de un año dividido por el precio. En los detalles del depto ves también el neto, que descuenta gastos." },
+    rentaCorta: { nombre: "Renta corta", texto: "se estima por zona, no por depto." },
+    metodologia: { antes: "Cómo decide Franco: ", enlace: "la metodología", href: "/metodologia" },
+    boton: "Entendido",
+  };
+}
+
+export const CONTADOR_COPY = {
+  region: "Cuántos convienen",
+  grupo: "Qué veredictos se ven en el mapa",
+  plegar: "Plegar",
+  desplegar: "Desplegar",
+} as const;
 export const CHIP_CLASE_COPY: Record<ClaseMapa, string> = { comprar: "Comprar", ajustar: "Ajustar", no: "No conviene" };
-/** El chip de una clase en la tarjeta del contador: «4.513 Comprar». */
-export const textoChipClase = (clase: ClaseMapa, n: number) => `${miles(n)} ${CHIP_CLASE_COPY[clase]}`;
+/** La casilla de una clase en la tarjeta del contador: «Comprar · 4.513» (lámina 5d). */
+export const textoChipClase = (clase: ClaseMapa, n: number) => `${CHIP_CLASE_COPY[clase]} · ${miles(n)}`;
 
 // ── LA TARJETA DEL DEPTO (lámina 7) ─────────────────────────────────────────
 export const TARJETA_COPY = {
@@ -204,8 +240,8 @@ export const PANEL_COPY = {
   dormitorios: "Dormitorios",
   minimo: "Mínimo",
   maximo: "Máximo",
-  /** Sin cuenta, las barras de cifras piden crear la cuenta (decisión 8). */
-  conCuenta: (barra: BarraPanel) => `Crea tu cuenta gratis para filtrar por ${({ precio: "precio", arriendo: "arriendo estimado", cap: "cap rate bruto", flujo: "lo que te sobra o pones al mes", ufm2: "UF por m²" } as const)[barra]}`,
+  /** Sin cuenta, UNA línea para las cuatro barras de cifras (26-nov-2026; antes una por barra), que abre el registro. */
+  conCuenta: "Con tu cuenta gratis filtras también por arriendo, cap rate, lo que te sobra y UF por m²",
   ver: (n: number) => (n === 1 ? "Ver 1 depto" : `Ver ${miles(n)} deptos`),
   contando: "Ver deptos",
   ninguno: "Ninguno con estos filtros",

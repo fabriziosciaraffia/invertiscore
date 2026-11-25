@@ -12,9 +12,15 @@
 import { proyectar } from "./explorar";
 import type { ClaseMapa } from "./mapa-todos";
 
-export const ZOOM_CIFRAS = 15;
+// TRES DISTANCIAS (26-nov-2026, revisión de Claude y Fabrizio del preview): LEJOS (zoom ≤ 12) grupos negros con número; A MEDIA
+// DISTANCIA (13 a 15) puntos de color sin precio, para que se vea dónde hay azules entre los rojos; CERCA (16 o más) el precio. Antes
+// pasaba de grupos negros a la alfombra de etiquetas sin paso intermedio.
+export const ZOOM_PUNTOS = 13;
+export const ZOOM_CIFRAS = 16;
 export const CELDA_LEJOS_PX = 56;
 export const RADIO_PUNTO = 6;
+/** A media distancia los puntos son más chicos: hay miles en la pantalla y tienen que leerse como manchas de color. */
+export const RADIO_PUNTO_MEDIO = 4;
 export const RADIO_GRUPO = 17;
 export const ALTO_ETIQUETA = 24;
 export const PADDING_ETIQUETA = 9;
@@ -26,7 +32,7 @@ export interface ItemCapa { id: string; lat: number; lng: number; clase: ClaseMa
 
 export type Dibujo =
   | { tipo: "grupo"; x: number; y: number; n: number; ids: string[]; lat: number; lng: number; texto: string; r: number }
-  | { tipo: "punto"; x: number; y: number; id: string; clase: ClaseMapa; elegido: boolean }
+  | { tipo: "punto"; x: number; y: number; id: string; clase: ClaseMapa; elegido: boolean; r?: number }
   | { tipo: "etiqueta"; x: number; y: number; w: number; h: number; id: string; clase: ClaseMapa; texto: string; elegido: boolean };
 
 /** Lo que dibuja la capa, en orden (de abajo hacia arriba). `aPixel` lleva lat/lng a píxeles del contenedor; `ancho` mide un texto. */
@@ -39,7 +45,15 @@ export function componerCapa(items: readonly ItemCapa[], o: { zoom: number; eleg
   const sel = o.elegido ? items.find((it) => it.id === o.elegido) ?? null : null;
   const out: Dibujo[] = [];
 
-  if (o.zoom < ZOOM_CIFRAS) {
+  if (o.zoom >= ZOOM_PUNTOS && o.zoom < ZOOM_CIFRAS) {
+    // A MEDIA DISTANCIA: cada depto, un punto de su color, sin precio. Los rojos abajo y los azules arriba: se ve dónde hay Comprar.
+    const puntos = items
+      .filter((it) => it.id !== o.elegido)
+      .map((it) => ({ it, p: o.aPixel(it.lat, it.lng) }))
+      .filter(({ p }) => dentro(p.x, p.y))
+      .sort((a, b) => rangoClase(b.it.clase) - rangoClase(a.it.clase) || a.it.id.localeCompare(b.it.id));
+    out.push(...puntos.map(({ it, p }): Dibujo => ({ tipo: "punto", x: p.x, y: p.y, id: it.id, clase: it.clase, elegido: false, r: RADIO_PUNTO_MEDIO })));
+  } else if (o.zoom < ZOOM_PUNTOS) {
     // LEJOS: celdas en la proyección del mapa (fijas al mundo, no a la pantalla: un grupo no salta al mover el mapa).
     const celdas = new Map<string, { sLat: number; sLng: number; ids: string[]; uno: ItemCapa }>();
     for (const it of items) {
@@ -63,12 +77,13 @@ export function componerCapa(items: readonly ItemCapa[], o: { zoom: number; eleg
     }
     out.push(...puntos, ...grupos);
   } else {
-    // CERCA: cifras; si chocan, el de mejor puntaje la conserva y el otro queda como punto.
+    // CERCA: cifras. LA ETIQUETA VA PRIMERO PARA COMPRAR, DESPUÉS PARA AJUSTAR (26-nov-2026), y dentro de cada clase para el de mejor
+    // puntaje; los No conviene llevan su precio solo si queda espacio. Si chocan, el otro queda como punto (todos siguen apareciendo).
     const orden = items
       .filter((it) => it.id !== o.elegido)
       .map((it) => ({ it, p: o.aPixel(it.lat, it.lng) }))
       .filter(({ p }) => dentro(p.x, p.y))
-      .sort((a, b) => (b.it.puntaje ?? -1) - (a.it.puntaje ?? -1) || rangoClase(a.it.clase) - rangoClase(b.it.clase) || a.it.id.localeCompare(b.it.id));
+      .sort((a, b) => rangoClase(a.it.clase) - rangoClase(b.it.clase) || (b.it.puntaje ?? -1) - (a.it.puntaje ?? -1) || a.it.id.localeCompare(b.it.id));
     const puestas: Array<Dibujo & { tipo: "etiqueta" }> = [];
     const choca = (e: { x: number; y: number; w: number; h: number }) => puestas.some((q) => Math.abs(q.x - e.x) * 2 < q.w + e.w && Math.abs(q.y - e.y) * 2 < q.h + e.h);
     // El elegido reserva su lugar primero (se dibuja al final, encima).
@@ -80,6 +95,8 @@ export function componerCapa(items: readonly ItemCapa[], o: { zoom: number; eleg
       if (choca(e)) puntos.push({ tipo: "punto", x: p.x, y: p.y, id: it.id, clase: it.clase, elegido: false });
       else puestas.push(e);
     }
+    // Los puntos, con los rojos abajo; las etiquetas encima.
+    puntos.sort((a, b) => rangoClase((b as { clase: ClaseMapa }).clase) - rangoClase((a as { clase: ClaseMapa }).clase));
     out.push(...puntos, ...puestas.filter((e) => !e.elegido));
   }
   if (sel) {
@@ -89,7 +106,16 @@ export function componerCapa(items: readonly ItemCapa[], o: { zoom: number; eleg
   return out;
 }
 
-/** El orden de las clases a igual puntaje: Comprar, Ajustar, No conviene. */
+/** EL ENCUADRE AL ABRIR (26-nov-2026): la caja de los deptos sin el 2 % más extremo de cada lado, así el mapa abre en Gran Santiago y
+ *  no en Melipilla y la cordillera por unos pocos avisos sueltos. null sin deptos. */
+export function cajaRecortada(items: ReadonlyArray<{ lat: number; lng: number }>, recorte = 0.02): { s: number; w: number; n: number; e: number } | null {
+  if (!items.length) return null;
+  const lats = items.map((i) => i.lat).sort((a, b) => a - b), lngs = items.map((i) => i.lng).sort((a, b) => a - b);
+  const k = Math.min(Math.floor(items.length * recorte), Math.floor((items.length - 1) / 2));
+  return { s: lats[k], n: lats[items.length - 1 - k], w: lngs[k], e: lngs[items.length - 1 - k] };
+}
+
+/** El orden de las clases: Comprar, Ajustar, No conviene. */
 const rangoClase = (c: ClaseMapa) => (c === "comprar" ? 0 : c === "ajustar" ? 1 : 2);
 
 /** Qué se tocó en (x, y): lo de más arriba primero. null si nada. */
@@ -99,7 +125,7 @@ export function tocado(dibujos: readonly Dibujo[], x: number, y: number): Dibujo
     if (d.tipo === "etiqueta") {
       if (Math.abs(d.x - x) <= d.w / 2 + HOLGURA_TOQUE && Math.abs(d.y - y) <= d.h / 2 + HOLGURA_TOQUE) return d;
     } else {
-      const r = (d.tipo === "grupo" ? d.r : RADIO_PUNTO) + HOLGURA_TOQUE;
+      const r = (d.tipo === "grupo" ? d.r : d.r ?? RADIO_PUNTO) + HOLGURA_TOQUE;
       if ((d.x - x) ** 2 + (d.y - y) ** 2 <= r * r) return d;
     }
   }

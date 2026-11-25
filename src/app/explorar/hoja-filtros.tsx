@@ -57,7 +57,7 @@ function Barra({ barra, rango, distribucion, alCambiar, bloqueada }: {
     <fieldset className="ex-barra-f" data-explorar={`barra-${barra}`} data-desde={rango[0]} data-hasta={rango[1]}>
       <legend className="ex-grupo-t">{titulo}</legend>
       {bloqueada ? (
-        <button type="button" className="ex-barra-cerrada" onClick={bloqueada} data-explorar={`barra-${barra}-cuenta`}>{PANEL_COPY.conCuenta(barra)}</button>
+        <button type="button" className="ex-barra-cerrada" onClick={bloqueada} data-explorar={`barra-${barra}-cuenta`}>{PANEL_COPY.conCuenta}</button>
       ) : (
         <>
           <div className="ex-histo" aria-hidden="true">
@@ -196,11 +196,14 @@ export function HojaFiltros({ filtros, tasa, contarTodos, distribucion, asegurar
             </div>
           )}
 
-          {BARRAS_PANEL.map((barra) => (
+          {(alPedirRegistro ? BARRAS_SIN_CUENTA : BARRAS_PANEL).map((barra) => (
             <Barra key={barra} barra={barra} rango={rangoDe(b, barra)} distribucion={distribucion(b, barra)}
-              alCambiar={(r) => setB((x) => conRango(x, barra, r))}
-              bloqueada={alPedirRegistro && !BARRAS_SIN_CUENTA.includes(barra) ? () => alPedirRegistro("flujo", b) : null} />
+              alCambiar={(r) => setB((x) => conRango(x, barra, r))} bloqueada={null} />
           ))}
+          {/* SIN CUENTA, UNA SOLA LÍNEA (26-nov-2026; antes cuatro «Crea tu cuenta gratis para filtrar por…»): abre el registro. */}
+          {alPedirRegistro && (
+            <button type="button" className="ex-barra-cerrada" onClick={() => alPedirRegistro("flujo", b)} data-explorar="barras-con-cuenta">{PANEL_COPY.conCuenta}</button>
+          )}
 
           <fieldset className="ex-grupo" data-explorar="dormitorios">
             <legend className="ex-grupo-t">{PANEL_COPY.dormitorios}</legend>

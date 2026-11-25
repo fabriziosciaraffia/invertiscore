@@ -52,9 +52,9 @@ import type { EstadoSaldo } from "@/lib/casa-saldo";
 import { botonAnalizar, type Recalculo } from "@/lib/explorar/explorar";
 import { textoAnalizarIgual } from "@/lib/guia/semanal-str";
 import {
-  cercanos, claveUniverso, comunasACalcular, descompactar, desgloseBarra, EVENTOS_PORTAL, etiquetaFiltros, filtrar, filtrosCambiados, lineaPlan, propsDeTasa,
+  cercanos, claveUniverso, COMO_SE_CALCULA, comunasACalcular, descompactar, desgloseBarra, EVENTOS_PORTAL, etiquetaFiltros, filtrar, filtrosCambiados, lineaPlan, propsDeTasa,
   lineaBusqueda, ordenar, perfilDeFiltros, PORTAL_COPY, propsDeFiltros, textoRecalculo, universoDeLaNoche, urlDePortal, validarPortal,
-  type Caja, type FiltrosPortal, type OrdenPortal, type PinMapa, type TasaDelMotor,
+  type FiltrosPortal, type OrdenPortal, type PinMapa, type TasaDelMotor,
 } from "@/lib/explorar/portal";
 // Solo el tipo (se borra al compilar): la forma de GET /api/explorar, la misma que arma la ruta.
 import type { RespuestaUniverso } from "@/lib/explorar/portal-servidor";
@@ -269,7 +269,7 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
   const [sel, setSel] = useState<string | null>(abrirProp);
   const [carrusel, setCarrusel] = useState<string[]>([]);
   const [hojaFiltros, setHojaFiltros] = useState(false);
-  const [zonaPendiente, setZonaPendiente] = useState<Caja | null>(null);
+  // «Buscar en esta zona» se fue (26-nov-2026): el mapa ya trae todos los deptos. Una zona que venga en la URL sigue filtrando.
   const [sinBusqueda, setSinBusqueda] = useState(false);
   const [guardados, setGuardados] = useState<Set<string>>(() => new Set(cuenta.guardados));
   const [confirmar, setConfirmar] = useState<{ it: PinMapa; sin: boolean; analizando?: boolean; movido?: string } | null>(null);
@@ -624,7 +624,6 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
     if (fuente === "filtros" && f.negociar !== filtros.negociar) posthog?.capture(EVENTO_NEGOCIAR, propsNegociar(f.negociar, "filtros", contarNegociados(f)));
     setFiltros(f);
     setSel(null);
-    setZonaPendiente(null);
     ponerEnUrl(f, orden);
     void asegurar(f);
     const n = contar(f);
@@ -1112,6 +1111,11 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
         <button type="button" className="ex-boton" data-activo={etiquetaFiltros(filtros) !== PORTAL_COPY.filtros ? "1" : undefined} data-explorar="filtros" onClick={() => setHojaFiltros(true)}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4" /></svg> {etiquetaFiltros(filtros)}
         </button>
+        {/* «¿CÓMO SE CALCULA?» VUELVE A LA BARRA (26-nov-2026, lámina 5d): con el ícono en el PC; en el teléfono, solo el ícono. */}
+        <button type="button" className="ex-como2" data-explorar="como-se-calcula" aria-label={COMO_SE_CALCULA.enlace} onClick={abrirCalculo}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" /></svg>
+          <span className="ex-como2-t">{COMO_SE_CALCULA.enlace}</span>
+        </button>
 
       </div>
       {toast && <p className="ex-toast" role="status" data-explorar="toast">{toast}</p>}
@@ -1147,7 +1151,6 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
               conZona={!!filtros.zona}
               onSeleccionar={tocarPin}
               onTocarMapa={() => setSel(null)}
-              onMovido={(c) => setZonaPendiente(c)}
               onEstado={setMapa}
               foco={foco}
               onFoco={() => setFocoUsado(true)}
@@ -1155,11 +1158,7 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
           )}
           {mapa === "fallo" && <p className="ex-mapa-vacio" data-explorar="sin-mapa">{PORTAL_COPY.sinMapa}</p>}
           {vista === "mapa" && (
-            <Contador conteo={conteo} ocultar={filtros.ocultar} calculando={progreso == null && conteo == null ? enCalculo : null}
-              alAlternar={alternarClase} alComo={abrirCalculo} alVerLista={() => setVista("lista")} />
-          )}
-          {zonaPendiente && (
-            <button type="button" className="ex-zona" data-explorar="buscar-zona" onClick={() => aplicar({ ...filtros, zona: zonaPendiente }, "zona")}>{PORTAL_COPY.buscarZona}</button>
+            <Contador conteo={conteo} ocultar={filtros.ocultar} calculando={progreso == null && conteo == null ? enCalculo : null} alAlternar={alternarClase} />
           )}
           {fallo && (
             <p className="ex-error ex-error-mapa" role="alert" data-explorar="error">
@@ -1200,7 +1199,14 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
                 setInvierte({ pin: p, retomar: false });
               }}
             />
-          ) : null}
+          ) : vista === "mapa" && (
+            // «VER LISTA» FLOTA ABAJO AL CENTRO (26-nov-2026, lámina 5d): botón negro con el ícono de lista. Es la vía del teclado y del
+            // lector de pantalla al mapa (un canvas). Con la tarjeta de un depto abierta, no va: la tarjeta ocupa ese lugar.
+            <button type="button" className="ex-ver-lista" data-explorar="ver-lista" onClick={() => setVista("lista")}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" /></svg>
+              {PORTAL_COPY.verLista}
+            </button>
+          )}
         </div>
 
         {/* ── la lista ── */}

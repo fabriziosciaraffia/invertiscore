@@ -10,8 +10,8 @@
 // EXPLORAR-PASADA la renderiza en el servidor y lee su texto.
 // ─────────────────────────────────────────────────────────────────────────────
 import { useEffect, useRef } from "react";
-import { ChipVeredicto } from "@/components/analysis/shared/ChipVeredicto";
 import { COMO_SE_CALCULA, type TasaDelMotor } from "@/lib/explorar/portal";
+import { textoComoSeCalcula } from "@/lib/explorar/mapa-todos";
 
 export function HojaCalculo({ tasa, elegida = null, sinCuenta, alCerrar }: {
   tasa: TasaDelMotor | null;
@@ -31,20 +31,19 @@ export function HojaCalculo({ tasa, elegida = null, sinCuenta, alCerrar }: {
     return () => window.removeEventListener("keydown", esc, true);
   }, []);
   const c = COMO_SE_CALCULA;
+  // EL TEXTO DEL 26-NOV-2026 (lámina 5d): pie, plazo, tasa y el 10 % de la misma fuente que usa el mapa (mapa-todos.ts › textoComoSeCalcula).
+  const t = textoComoSeCalcula(tasa?.tasa ?? null, sinCuenta);
   return (
     <div className="ex-calculo-velo" data-explorar="calculo" onClick={(e) => { if (e.target === e.currentTarget) alCerrar(); }}>
       <section className="ex-calculo" role="dialog" aria-modal="true" aria-labelledby="ex-calculo-t">
-        <h2 id="ex-calculo-t" className="ex-calculo-t">{c.titulo}</h2>
-        <div className="ex-calculo-bloque">
-          <p className="ex-calculo-p" data-explorar="calculo-estandar">{c.estandar}</p>
-          <ul className="ex-calculo-lista" data-explorar="calculo-perfil">
-            {c.perfil(tasa?.tasa ?? null).map((v) => <li key={v}>{v}</li>)}
-          </ul>
-        </div>
-        <p className="ex-calculo-p" data-explorar="calculo-cambiar">{c.cambiar.antes}<strong>{c.cambiar.fuerte}</strong>{c.cambiar.despues(sinCuenta)}{!sinCuenta && elegida != null && <span data-explorar="calculo-tasa">{c.tuTasa(elegida, tasa?.tasa ?? null)}</span>}</p>
-        <p className="ex-calculo-p" data-explorar="calculo-chips">{c.chips.comprarAntes}<ChipVeredicto v="COMPRAR" />{c.chips.comprarDespues}{c.chips.ajustarAntes}<span className="ex-pegado"><ChipVeredicto v="AJUSTA SUPUESTOS" />{c.chips.ajustarComa}</span>{c.chips.ajustarDespues}</p>
-        <p className="ex-calculo-p" data-explorar="calculo-metodologia">{c.metodologia.antes}<a className="ex-calculo-enlace" href={c.metodologia.href} data-explorar="calculo-metodologia-enlace"><strong>{c.metodologia.enlace}</strong></a></p>
-        <button ref={boton} type="button" className="ex-cta ex-calculo-ok" onClick={alCerrar} data-explorar="calculo-ok">{c.boton}</button>
+        <h2 id="ex-calculo-t" className="ex-calculo-t">{t.titulo}</h2>
+        <p className="ex-calculo-p" data-explorar="calculo-estandar">{t.intro}{!sinCuenta && elegida != null && <span data-explorar="calculo-tasa">{c.tuTasa(elegida, tasa?.tasa ?? null)}</span>}</p>
+        <ul className="ex-calculo-clases" data-explorar="calculo-clases">
+          {t.clases.map((k) => <li key={k.clase} data-clase={k.clase}><i aria-hidden="true" /><span><b>{k.nombre}:</b> {k.texto}</span></li>)}
+        </ul>
+        <p className="ex-calculo-p ex-calculo-chico" data-explorar="calculo-cap-rate"><b>{t.capRate.nombre}:</b> {t.capRate.texto} <b>{t.rentaCorta.nombre}:</b> {t.rentaCorta.texto}</p>
+        <p className="ex-calculo-p" data-explorar="calculo-metodologia">{t.metodologia.antes}<a className="ex-calculo-enlace" href={t.metodologia.href} data-explorar="calculo-metodologia-enlace"><strong>{t.metodologia.enlace}</strong></a></p>
+        <button ref={boton} type="button" className="ex-cta ex-calculo-ok" onClick={alCerrar} data-explorar="calculo-ok">{t.boton}</button>
       </section>
     </div>
   );

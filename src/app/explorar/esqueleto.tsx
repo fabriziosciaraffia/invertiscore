@@ -10,9 +10,10 @@
 // la píldora negra del PC. Lo fija el tier EXPLORAR-PASADA §8.
 // DESDE EL 25-NOV-2026 (el mapa con todos los deptos, lámina 5): arriba el selector con «Usados» y «Filtros»; sobre el mapa, la tarjeta
 // del contador calculando, con sus tres chips y «Ver lista». Ya no hay «Ver solo ✓ Comprar», ni la ⓘ en la barra, ni barra de abajo.
+// DESDE EL 26-NOV-2026 (lámina 5d): «¿Cómo se calcula?» volvió a la barra y «Ver lista» flota abajo al centro, fuera de la tarjeta.
 // ─────────────────────────────────────────────────────────────────────────────
 import { ChipVeredictoTokens } from "@/components/analysis/shared/ChipVeredicto";
-import { PORTAL_COPY } from "@/lib/explorar/portal";
+import { COMO_SE_CALCULA, PORTAL_COPY } from "@/lib/explorar/portal";
 import { SELECTOR_COPY } from "@/lib/explorar/mapa-todos";
 import { Contador } from "./contador";
 import "./explorar.css";
@@ -24,10 +25,12 @@ export function EsqueletoExplorar() {
       <div className="ex-barra" aria-hidden="true">
         <span className="ex-selector"><span className="ex-selector-op" data-on="1">{SELECTOR_COPY.usados}</span></span>
         <span className="ex-boton">{PORTAL_COPY.filtros}</span>
+        <span className="ex-como2"><span className="ex-como2-t">{COMO_SE_CALCULA.enlace}</span></span>
       </div>
       <div className="ex-cuerpo">
         <div className="ex-mapa-wrap" data-mapa="cargando">
           <Contador conteo={null} ocultar={[]} calculando={PORTAL_COPY.calculando} />
+          <span className="ex-ver-lista">{PORTAL_COPY.verLista}</span>
         </div>
       </div>
     </div>

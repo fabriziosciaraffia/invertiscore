@@ -18,7 +18,7 @@ import { createPortal } from "react-dom";
 import { loadGoogleMaps } from "@/lib/loadGoogleMaps";
 import { CAPA_MAPA_COPY, CAPAS_MAPA, guardarCapaMapa, leerCapaMapa, opcionesDeCapa, type CapaMapa } from "@/lib/explorar/capa-mapa";
 import type { Caja } from "@/lib/explorar/portal";
-import { componerCapa, RADIO_PUNTO, tocado, type Dibujo, type ItemCapa } from "@/lib/explorar/capa-canvas";
+import { cajaRecortada, componerCapa, RADIO_PUNTO, tocado, type Dibujo, type ItemCapa } from "@/lib/explorar/capa-canvas";
 import { ANILLO_ELEGIDO_PX, ANILLO_PIN, ANILLO_PIN_PX, colorPin, type TemaPin } from "@/lib/explorar/colores-pin";
 import { CREDITO_OSM } from "@/lib/explorar/lugar";
 
@@ -29,6 +29,8 @@ export const ZOOM_FOCO = 16;
 export { ZOOM_CIFRAS as ZOOM_ETIQUETAS } from "@/lib/explorar/capa-canvas";
 const TOPE_CARGA_MS = 12000;
 const CENTRO_SANTIAGO = { lat: -33.4489, lng: -70.6393 };
+/** Gran Santiago (las 25 comunas del mapa), para encuadrar antes de que lleguen los deptos. */
+const CAJA_GRAN_SANTIAGO = { s: -33.62, w: -70.8, n: -33.34, e: -70.5 };
 /** La letra de las cifras de los pines (la del sitio, Inter). */
 const FUENTE_PIN = "700 12px Inter, system-ui, sans-serif";
 const FUENTE_GRUPO = "700 12px Inter, system-ui, sans-serif";
@@ -61,8 +63,9 @@ export interface MapaExplorarProps {
   onSeleccionar: (avisoId: string) => void;
   /** Tocar el mapa (fuera de un pin): cierra la tarjeta. */
   onTocarMapa?: () => void;
-  /** La persona movió el mapa: la caja a la vista, para «Buscar en esta zona». */
-  onMovido: (caja: Caja) => void;
+  /** La persona movió el mapa: la caja a la vista. Desde el 26-nov-2026 nadie la usa («Buscar en esta zona» se fue: el mapa ya trae
+   *  todos los deptos); queda opcional. */
+  onMovido?: (caja: Caja) => void;
   /** «listo»: el mapa existe; «teselas»: ya dibujó sus teselas (el mapa quieto se puede ir); «fallo»: no cargó. */
   onEstado: (estado: "listo" | "teselas" | "fallo") => void;
   /** El punto donde centrarse en el próximo encuadre (el depto de un enlace compartido); `onFoco` avisa que se usó. */
@@ -84,7 +87,7 @@ function pintar(ctx: CanvasRenderingContext2D, dibujos: readonly Dibujo[], tema:
   };
   for (const d of dibujos) {
     if (d.tipo === "punto") {
-      circulo(d.x, d.y, RADIO_PUNTO, colorPin(d.clase, tema).fondo, ANILLO_PIN_PX);
+      circulo(d.x, d.y, d.r ?? RADIO_PUNTO, colorPin(d.clase, tema).fondo, d.r ? 1.5 : ANILLO_PIN_PX);
     } else if (d.tipo === "grupo") {
       ctx.shadowColor = "rgba(20,20,20,0.25)"; ctx.shadowBlur = 6; ctx.shadowOffsetY = 2;
       circulo(d.x, d.y, d.r - ANILLO_PIN_PX, GRUPO.fondo, ANILLO_PIN_PX);
@@ -211,10 +214,10 @@ export default function MapaExplorar({ items, seleccionado, encuadre, conZona, o
         propio.current = true;
         const f = focoRef.current;
         if (f) { map.setCenter(f); map.setZoom(ZOOM_FOCO); focoRef.current = null; cb.current.onFoco?.(); return; }
-        if (ps.length === 0) { map.setCenter(CENTRO_SANTIAGO); map.setZoom(11); return; }
-        const b = new g.maps.LatLngBounds();
-        for (const p of ps) b.extend({ lat: p.lat, lng: p.lng });
-        map.fitBounds(b, 40);
+        // ENCUADRADO EN GRAN SANTIAGO (26-nov-2026): la caja de los deptos sin el 2 % más extremo de cada lado (unos pocos avisos sueltos
+        // abrían el mapa en Melipilla y la cordillera); sin deptos todavía, la caja fija de Gran Santiago.
+        const caja = cajaRecortada(ps) ?? CAJA_GRAN_SANTIAGO;
+        map.fitBounds(new g.maps.LatLngBounds({ lat: caja.s, lng: caja.w }, { lat: caja.n, lng: caja.e }), 24);
         g.maps.event.addListenerOnce(map, "idle", () => { if ((map.getZoom() ?? 0) > ZOOM_MAX_ENCUADRE) { propio.current = true; map.setZoom(ZOOM_MAX_ENCUADRE); } });
       };
       // EL TOQUE: el mapa recibe el clic (el canvas no captura nada) y la capa dice qué se tocó.
@@ -242,7 +245,7 @@ export default function MapaExplorar({ items, seleccionado, encuadre, conZona, o
         dibujarRef.current();
         if (tocadoRef.current && !propio.current) {
           const c = map.getBounds();
-          if (c) { const s = c.getSouthWest(), n = c.getNorthEast(); cb.current.onMovido([s.lat(), s.lng(), n.lat(), n.lng()]); }
+          if (c) { const s = c.getSouthWest(), n = c.getNorthEast(); cb.current.onMovido?.([s.lat(), s.lng(), n.lat(), n.lng()]); }
         }
         propio.current = false;
         tocadoRef.current = false;

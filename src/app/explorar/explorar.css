@@ -570,4 +570,44 @@
 .ex-caja { flex: 1; display: flex; flex-direction: column; gap: 1px; padding: 6px 10px; border: 1px solid var(--franco-border); border-radius: 10px; min-width: 0; }
 .ex-caja span { font-size: 10px; color: var(--franco-text-secondary); }
 .ex-caja b { font-size: 13px; font-weight: 600; color: var(--franco-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* ── LA TARJETA DEL CONTADOR, LÁMINA 5d (26-nov-2026) ── */
+.ex-contador-big { font-size: 28px; font-weight: 700; line-height: 1; letter-spacing: -0.01em; color: var(--chip-v-c, #2B558F); }
+.ex-contador-n span { font-size: 14px; color: var(--franco-text); }
+.ex-contador-pliegue { flex: none; width: 40px; height: 40px; margin: -8px -6px -8px auto; display: flex; align-items: center; justify-content: center; border: 0; border-radius: 999px; background: transparent; color: var(--franco-text-secondary); cursor: pointer; }
+.ex-contador-pliegue:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; }
+.ex-contador[data-plegada="1"] { padding: 8px 8px 8px 12px; }
+.ex-contador[data-plegada="1"] .ex-contador-big { font-size: 20px; }
+.ex-contador[data-plegada="1"] .ex-contador-n span { font-size: 13px; }
+.ex-proporcion { display: flex; gap: 2px; height: 8px; border-radius: 999px; overflow: hidden; background: var(--franco-border); }
+.ex-proporcion span { display: block; height: 100%; }
+.ex-proporcion span[data-clase="comprar"] { background: var(--chip-v-c, #2B558F); }
+.ex-proporcion span[data-clase="ajustar"] { background: var(--chip-v-a, #6E4560); }
+.ex-proporcion span[data-clase="no"] { background: var(--chip-v-b, #C8323C); }
+/* Las casillas: prendida con fondo suave, borde del color y un check; apagada, blanca, gris y vacía. */
+.ex-vc { gap: 6px; min-height: 36px; padding: 0 11px 0 8px; border-width: 1.5px; }
+.ex-vc .ex-ck { width: 16px; height: 16px; border-radius: 5px; display: flex; align-items: center; justify-content: center; flex: none; color: #FFFFFF; }
+.ex-vc i { display: none; }
+.ex-vc[data-clase="comprar"]:not([data-off="1"]) { background: color-mix(in srgb, var(--chip-v-c, #2B558F) 12%, var(--franco-card)); border-color: var(--chip-v-c, #2B558F); }
+.ex-vc[data-clase="ajustar"]:not([data-off="1"]) { background: color-mix(in srgb, var(--chip-v-a, #6E4560) 12%, var(--franco-card)); border-color: var(--chip-v-a, #6E4560); }
+.ex-vc[data-clase="no"]:not([data-off="1"]) { background: color-mix(in srgb, var(--chip-v-b, #C8323C) 12%, var(--franco-card)); border-color: var(--chip-v-b, #C8323C); }
+.ex-vc[data-clase="comprar"]:not([data-off="1"]) .ex-ck { background: var(--chip-v-c, #2B558F); }
+.ex-vc[data-clase="ajustar"]:not([data-off="1"]) .ex-ck { background: var(--chip-v-a, #6E4560); }
+.ex-vc[data-clase="no"]:not([data-off="1"]) .ex-ck { background: var(--chip-v-b, #C8323C); }
+.ex-vc[data-off="1"] { background: var(--franco-card); border-color: var(--franco-border); color: var(--franco-text-muted); }
+.ex-vc[data-off="1"] .ex-ck { border: 1.5px solid var(--franco-border); background: var(--franco-card); }
+/* «¿Cómo se calcula?» en la barra: con el ícono en el PC, solo el ícono en el teléfono. */
+.ex-como2 { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; min-height: 40px; min-width: 40px; justify-content: center; padding: 0 6px; border: 0; border-radius: 999px; background: transparent; color: var(--franco-text-secondary); font-family: var(--font-body); font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.ex-como2:focus-visible, .ex-ver-lista:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; }
+.ex-como2-t { display: none; }
+@media (min-width: 768px) { .ex-como2-t { display: inline; } }
+/* «Ver lista» flota abajo al centro del mapa. */
+.ex-ver-lista { position: absolute; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 4; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 18px; border: 0; border-radius: 999px; background: #141414; color: #FFFFFF; font-family: var(--font-body); font-size: 14px; font-weight: 600; box-shadow: 0 6px 16px rgba(20, 20, 20, 0.25); cursor: pointer; white-space: nowrap; }
+/* La hoja de «¿Cómo se calcula?» (texto del 26-nov-2026). */
+.ex-calculo-clases { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 7px; font-size: 15px; line-height: 1.5; }
+.ex-calculo-clases li { display: flex; gap: 8px; }
+.ex-calculo-clases i { width: 10px; height: 10px; border-radius: 999px; flex: none; margin-top: 7px; }
+.ex-calculo-clases li[data-clase="comprar"] i { background: var(--chip-v-c, #2B558F); }
+.ex-calculo-clases li[data-clase="ajustar"] i { background: var(--chip-v-a, #6E4560); }
+.ex-calculo-clases li[data-clase="no"] i { background: var(--chip-v-b, #C8323C); }
+.ex-calculo-chico { font-size: 13px; color: var(--franco-text-secondary); }
 .ex-barra-cerrada { min-height: 44px; padding: 0 14px; border: 1px dashed var(--franco-border); border-radius: 12px; background: transparent; color: var(--franco-text); font-family: var(--font-body); font-size: 13px; font-weight: 600; text-align: left; cursor: pointer; }
