@@ -208,9 +208,11 @@ export async function runExplorarTier(): Promise<{ hard: number }> {
   // tinta los ya analizados y de azul los que convienen (marcadores de Google); ahora los pines van en un canvas propio: el mapa
   // compone la capa con componerCapa (capa-canvas.ts, que agrupa lejos) sobre los deptos que se ven y la pinta; cada punto va con el
   // color de su clase (eso lo fija EXPLORAR-TODOS §1), los GRUPOS van en tinta con su número, y ya no hay pin «✓ Analizado».
+  // ⚠ ACTA 26-nov-2026 (entrega 2, centro saturado): la capa se pinta en DOS pasadas —los puntos chicos, las estaciones encima, y
+  // las etiquetas, los grupos y el elegido arriba—; entre las dos pasadas están TODOS los dibujos (un filtro y su negación).
   const pintarSrc = mapa.slice(mapa.indexOf("function pintar("), mapa.indexOf("export default function MapaExplorar"));
   const ramaGrupo = pintarSrc.slice(pintarSrc.indexOf('d.tipo === "grupo"'), pintarSrc.indexOf("} else {", pintarSrc.indexOf('d.tipo === "grupo"')));
-  if (!/const dibujos = componerCapa\(itemsRef\.current, \{/.test(mapa) || !/dibujosRef\.current = dibujos;\s*pintar\(ctx, dibujos, temaPin\(\)\);/.test(mapa)
+  if (!/const dibujos = componerCapa\(itemsRef\.current, \{/.test(mapa) || !/dibujosRef\.current = dibujos;(?:\s*\/\/[^\n]*)*\s*pintar\(ctx, dibujos\.filter\(esPuntoDeFondo\), temaPin\(\)\);\s*if \(dRefPintar\) pintarReferencias\([^\n]*\);\s*pintar\(ctx, dibujos\.filter\(\(d\) => !esPuntoDeFondo\(d\)\), temaPin\(\)\);/.test(mapa)
     || !/circulo\(d\.x, d\.y, d\.r - ANILLO_PIN_PX, GRUPO\.fondo, ANILLO_PIN_PX\);/.test(ramaGrupo) || !/ctx\.fillText\(d\.texto, d\.x, d\.y \+ 0\.5\);/.test(ramaGrupo)
     || !/const GRUPO = \{ fondo: "#1[0-4]1[0-4]1[0-4]", texto: "#FFFFFF" \} as const;/.test(mapa) || /"analizado"/.test(mapa)) F("6 · el mapa no compone la capa (componerCapa, que agrupa lejos), o los grupos no van en tinta con su número, o vuelve el pin «✓ Analizado»");
   {

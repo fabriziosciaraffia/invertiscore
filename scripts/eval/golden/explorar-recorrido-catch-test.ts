@@ -329,8 +329,10 @@ export async function runExplorarRecorridoTier(): Promise<{ hard: number }> {
   // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 6): antes fijaba `const tema = temaPin()` y la etiqueta del analizado
   // (marcadores de Google); ahora el canvas se pinta con el tema del momento (`pintar(ctx, dibujos, temaPin())`) y cada punto y cada
   // cifra toman el color de su clase EN ese tema (colorPin(d.clase, tema)). Sin pin analizado.
+  // ⚠ ACTA 26-nov-2026 (entrega 2, centro saturado): dos pasadas (los puntos chicos y, encima de las estaciones, el resto), las dos
+  // con el tema del momento.
   const pintarFn = mapa.slice(mapa.indexOf("function pintar("), mapa.indexOf("export default function MapaExplorar"));
-  if (!/pintar\(ctx, dibujos, temaPin\(\)\);/.test(mapa) || !/const temaPin = \(\): TemaPin => \(esClaro\(\) \? "claro" : "oscuro"\);/.test(mapa) || !/^function pintar\(ctx: CanvasRenderingContext2D, dibujos: readonly Dibujo\[\], tema: TemaPin\)/.test(pintarFn)
+  if (!/pintar\(ctx, dibujos\.filter\(esPuntoDeFondo\), temaPin\(\)\);/.test(mapa) || !/pintar\(ctx, dibujos\.filter\(\(d\) => !esPuntoDeFondo\(d\)\), temaPin\(\)\);/.test(mapa) || !/const temaPin = \(\): TemaPin => \(esClaro\(\) \? "claro" : "oscuro"\);/.test(mapa) || !/^function pintar\(ctx: CanvasRenderingContext2D, dibujos: readonly Dibujo\[\], tema: TemaPin\)/.test(pintarFn)
     || (pintarFn.match(/colorPin\(d\.clase, tema\)/g) ?? []).length !== 2) F("9 · los pines no siguen el color de su clase y del tema");
   // La imagen quieta: su versión oscura, mismo tamaño que la clara, de fondo solo en oscuro.
   try {
