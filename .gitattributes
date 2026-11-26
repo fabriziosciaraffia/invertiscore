@@ -1,2 +1,4 @@
 # El candado del push lo ejecuta sh: siempre LF (24-nov-2026).
 scripts/hooks/pre-push text eol=lf
+# El logo de Metro va byte por byte como en Wikimedia Commons (26-nov-2026): sin convertir fines de línea al sacarlo en Windows.
+public/explorar/metro-logo.svg -text
