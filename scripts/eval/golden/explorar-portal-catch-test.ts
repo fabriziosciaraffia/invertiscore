@@ -171,7 +171,9 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
     { const iC = conNegHtml.indexOf('data-explorar="contador"'), fin = conNegHtml.indexOf("</section>", iC); if (iC < 0 || /ver-lista/.test(conNegHtml.slice(iC, fin)) || !/<button type="button" class="ex-ver-lista" data-explorar="ver-lista">/.test(conNegHtml.slice(fin))) F("1 · «Ver lista» no es el botón flotante fuera de la tarjeta del contador"); }
     // ⚠ ACTA 26-nov-2026 (revisión del preview, cambios 6 y 8): el texto del contador y de sus casillas cambió de orden («Comprar ·
     // 4.807»); «Ver lista» flota aparte, a continuación de la tarjeta.
-    if (!conNeg.includes("4.807 de 15.041 deptos convienen Comprar · 4.807 Ajustar · 1.234 No conviene · 9.000 Ver lista")) F("1 · con los − Ajustar y los No conviene que contó el servidor, el contador del primer pintado no cuenta las tres clases");
+    // ⚠ ACTA 26-nov-2026 (que se note que las casillas se tocan): bajo las casillas va la línea de ayuda hasta el primer toque, así
+    // que en el primer pintado (nadie tocó nada todavía) queda entre los chips y «Ver lista». La línea misma la fija EXPLORAR-TODOS § 8.
+    if (!conNeg.includes("4.807 de 15.041 deptos convienen Comprar · 4.807 Ajustar · 1.234 No conviene · 9.000 Toca un veredicto para mostrarlo u ocultarlo en el mapa Ver lista")) F("1 · con los − Ajustar y los No conviene que contó el servidor, el contador del primer pintado no cuenta las tres clases");
   }
   const mb = po.filtrosDeMiBusqueda({ comunas: ["Ñuñoa", "Santiago"], dormitorios: [1, 2], precioMinUf: 1500, precioMaxUf: 3000, piePct: 30, plazoAnios: 30, modalidad: "str" });
   if (!mb || mb.comunas.join() !== "Ñuñoa,Santiago" || mb.tipologias.join() !== "1,2" || mb.ufMin !== 1500 || mb.ufMax !== 3000 || mb.pie !== 30 || mb.plazo !== 30 || mb.modalidad !== "str" || mb.zona || mb.flujoPositivo) F(`1 · «Mi búsqueda» no aplica comunas, tipología, rango, pie, plazo y modalidad de una vez: ${JSON.stringify(mb)}`);
