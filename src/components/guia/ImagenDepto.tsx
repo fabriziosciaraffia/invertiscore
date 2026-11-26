@@ -6,7 +6,7 @@
 // la tarjeta del pin y la lista de Explorar, y el pop-up de «Analizar este» en todas partes. EL MAPA CHICO SIGUE EL TEMA: en
 // oscuro, su versión oscura (`?tema=oscuro`, guardada en caché aparte); cambia al momento si la persona cambia el tema.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CALLE_COPY, rutaImagenCalle } from "@/lib/explorar/calle";
 import { useTemaOscuro } from "@/lib/tema-vivo";
 
@@ -31,10 +31,17 @@ export function useCalle(ids: string[]): Record<string, "foto" | "mapa"> {
  *  − Ajustar, con el pin del mapa chico en la ciruela del chip (si no, el azul de ✓ Comprar). */
 export function ImagenDepto({ avisoId, tipo, clase, carga = "eager", ajustar = false }: { avisoId: string; tipo: "foto" | "mapa" | undefined; clase: string; carga?: "eager" | "lazy"; ajustar?: boolean }) {
   const oscuro = useTemaOscuro();
+  const src = rutaImagenCalle(avisoId, oscuro, ajustar);
+  // MIENTRAS CARGA, UN ESPACIO GRIS DEL MISMO TAMAÑO (26-nov-2026): la caja tiene su tamaño y su gris desde el primer momento, y la
+  // imagen aparece recién cargada (data-cargada), sin pintarse a medias. Una imagen que ya estaba en la caché del navegador puede
+  // terminar antes de que React escuche `onLoad`: por eso también se mira `complete` al montar.
+  const img = useRef<HTMLImageElement>(null);
+  const [cargada, setCargada] = useState<string | null>(null);
+  useEffect(() => { const el = img.current; if (el?.complete && el.naturalWidth > 0) setCargada(src); }, [src]);
   return (
-    <span className={clase} data-explorar="imagen" data-calle={tipo ?? undefined}>
+    <span className={clase} data-explorar="imagen" data-calle={tipo ?? undefined} data-cargada={cargada === src ? "1" : undefined}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={rutaImagenCalle(avisoId, oscuro, ajustar)} alt={tipo === "foto" ? CALLE_COPY.etiqueta : tipo === "mapa" ? CALLE_COPY.mapa : ""} loading={carga} decoding="async" width={96} height={96} />
+      <img ref={img} onLoad={() => setCargada(src)} src={src} alt={tipo === "foto" ? CALLE_COPY.etiqueta : tipo === "mapa" ? CALLE_COPY.mapa : ""} loading={carga} decoding="async" width={96} height={96} />
       {tipo === "foto" && <span className="ex-img-etq" data-explorar="vista-calle">{CALLE_COPY.etiqueta}</span>}
     </span>
   );

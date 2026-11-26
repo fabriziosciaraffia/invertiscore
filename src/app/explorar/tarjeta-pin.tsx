@@ -19,8 +19,9 @@
 // «PRONTO: INVIERTE CON FRANCO» (11-nov-2026): en un usado o un nuevo de inmobiliaria que da ✓ Comprar o − Ajustar negociable, debajo de lo que la tarjeta
 // ya tiene, el botón secundario «Invierte con Franco» (con y sin cuenta); inscrito, la etiqueta. «Analizar este» sigue primero.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { EnlaceCarga } from "@/components/chrome/EnlaceCarga";
+import { metroCercano, textoLugar } from "@/lib/explorar/lugar";
 import { botonOcupado } from "@/lib/carga-global";
 import { etiquetaVeredicto } from "@/lib/veredicto-etiqueta";
 import { GUIA } from "@/lib/guia/copy";
@@ -109,11 +110,16 @@ export function VeredictosNegociado({ p }: { p: PinNegociado }) {
   );
 }
 
-/** EL LUGAR DE CADA DEPTO (25-nov-2026, lugar.ts): lo pide a POST /api/explorar/lugar para los cercanos del carrusel, una vez por
- *  aviso en esta visita. Mientras llega, la línea va sin lugar. */
+/** EL LUGAR DE CADA DEPTO (25-nov-2026, lugar.ts): el barrio o sector, o la avenida, que guarda el servidor; lo pide a POST
+ *  /api/explorar/lugar para los cercanos del carrusel SIN metro (el metro sale de la lista del repo, al instante: TarjetaPin), una vez
+ *  por aviso en esta visita. Devuelve `undefined` mientras llega (la línea le reserva el espacio) y `null` sin lugar o si el pedido
+ *  falló (26-nov-2026: la tarjeta se completaba uno o dos segundos después y la línea saltaba). */
 const lugaresVistos = new Map<string, string | null>();
 const lugaresPedidos = new Set<string>();
-export function useLugares(ids: readonly string[]): Record<string, string | null> {
+const lugaresFallidos = new Set<string>();
+/** Cuánto espera la tarjeta el barrio o la avenida antes de soltar la reserva (el pedido tarda 0,2 s; el primero en frío, ~1,5 s). */
+export const TOPE_LUGAR_MS = 8000;
+export function useLugares(ids: readonly string[]): Record<string, string | null | undefined> {
   const [, setTick] = useState(0);
   const clave = ids.join(",");
   // Redibuja mientras la tarjeta siga montada, aunque entretanto cambien los cercanos (un pedido lento no se pierde).
@@ -123,15 +129,19 @@ export function useLugares(ids: readonly string[]): Record<string, string | null
     const faltan = ids.filter((id) => !lugaresVistos.has(id) && !lugaresPedidos.has(id)).slice(0, 40);
     if (!faltan.length) return;
     for (const id of faltan) lugaresPedidos.add(id);
-    fetch("/api/explorar/lugar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids: faltan }) })
+    // Un pedido que no vuelve no deja la reserva gris para siempre: a los TOPE_LUGAR_MS se corta y la línea sigue sin lugar.
+    const corte = new AbortController();
+    const tope = window.setTimeout(() => corte.abort(), TOPE_LUGAR_MS);
+    fetch("/api/explorar/lugar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids: faltan }), signal: corte.signal })
       // Una respuesta mala no se recuerda: el próximo carrusel lo vuelve a pedir.
       .then((r) => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
-      .then((d: Record<string, string | null>) => { for (const id of faltan) lugaresVistos.set(id, typeof d[id] === "string" ? d[id] : null); if (montada.current) setTick((n) => n + 1); })
-      .catch(() => { /* sin lugar: la línea sigue con tipología y m² */ })
-      .finally(() => { for (const id of faltan) lugaresPedidos.delete(id); });
+      .then((d: Record<string, string | null>) => { for (const id of faltan) { lugaresVistos.set(id, typeof d[id] === "string" ? d[id] : null); lugaresFallidos.delete(id); } if (montada.current) setTick((n) => n + 1); })
+      // Sin lugar: la reserva se va y la línea sigue con tipología y m² (el próximo carrusel lo vuelve a pedir).
+      .catch(() => { for (const id of faltan) lugaresFallidos.add(id); if (montada.current) setTick((n) => n + 1); })
+      .finally(() => { window.clearTimeout(tope); for (const id of faltan) lugaresPedidos.delete(id); });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clave]);
-  return Object.fromEntries(ids.map((id) => [id, lugaresVistos.get(id) ?? null]));
+  return Object.fromEntries(ids.map((id) => [id, lugaresVistos.has(id) ? lugaresVistos.get(id) ?? null : lugaresFallidos.has(id) ? null : undefined]));
 }
 
 export function TarjetaPin({ pines, seleccionado, uf, analizados, resumenes = {}, guardados, generando, error, alCambiar, alCerrar, alGuardar, alAnalizar, alCompartir, alPrepararCompartir, alVerInforme, sinCuenta = false, recien = null, inscritos, alInvertir, etiquetaInvertir }: {
@@ -167,7 +177,11 @@ export function TarjetaPin({ pines, seleccionado, uf, analizados, resumenes = {}
 }) {
   const fila = useRef<HTMLDivElement>(null);
   const tipos = useCalle(pines.map((p) => p.avisoId));
-  const lugares = useLugares(pines.map((p) => p.avisoId));
+  // EL METRO, AL INSTANTE (26-nov-2026): sale de la lista de estaciones del repo (lugar.ts › metroCercano), sin esperar al servidor; al
+  // servidor solo se le pide el barrio o la avenida de los que no tienen metro a menos de 1 km.
+  const metros = useMemo(() => new Map(pines.map((p) => [p.avisoId, Number.isFinite(p.lat) && Number.isFinite(p.lng) ? metroCercano(p.lat, p.lng) : null])), [pines]);
+  const lugares = useLugares(pines.filter((p) => !metros.get(p.avisoId)).map((p) => p.avisoId));
+  const lugarDe = (id: string): string | null | undefined => { const m = metros.get(id); return m ? textoLugar(m, null) : lugares[id]; };
   const i = Math.max(0, pines.findIndex((p) => p.avisoId === seleccionado));
   const desdeAfuera = useRef(true);
 
@@ -241,7 +255,18 @@ export function TarjetaPin({ pines, seleccionado, uf, analizados, resumenes = {}
                   <div className="ex-tarjeta-cab">
                     <div className="ex-tarjeta-titulo">
                       <b className="ex-comuna" data-explorar="comuna">{p.comuna.toLocaleUpperCase("es-CL")}</b>
-                      <span className="ex-ojo" data-explorar="linea">{[lugares[p.avisoId] ?? null, p.tipologia, `${miles(p.m2)} m²`].filter(Boolean).join(" · ")}</span>
+                      {/* Una sola línea que no salta: el lugar (o, mientras llega del servidor, un espacio gris de su tamaño) y, siempre
+                          enteros, la tipología y los m²; un lugar largo se corta con «…». */}
+                      {(() => {
+                        const lugar = lugarDe(p.avisoId);
+                        const resto = [p.tipologia, `${miles(p.m2)} m²`].filter(Boolean).join(" · ");
+                        return (
+                          <span className="ex-ojo ex-linea-lugar" data-explorar="linea">
+                            {lugar === undefined ? <span className="ex-lugar ex-lugar-carga" aria-hidden="true" data-explorar="lugar-carga" /> : lugar ? <span className="ex-lugar" data-explorar="lugar">{lugar}</span> : null}
+                            <span className="ex-linea-resto">{lugar !== null ? ` · ${resto}` : resto}</span>
+                          </span>
+                        );
+                      })()}
                     </div>
                     <span className="ex-iconos">
                       <BotonCompartir alTocar={() => alCompartir(p)} alPreparar={alPrepararCompartir ? () => alPrepararCompartir(p) : undefined} />

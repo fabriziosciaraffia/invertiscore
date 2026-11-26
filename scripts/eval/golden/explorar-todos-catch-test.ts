@@ -124,6 +124,14 @@ export async function runExplorarTodosTier(): Promise<{ hard: number }> {
     if (!/onClick=\{alAlternar \? \(\) => alAlternar\(c\) : undefined\}/.test(contA) || /CASILLAS_USADAS|usadas/.test(contA)) F("8 · la casilla no alterna directo (o vuelve el recuerdo de «ya las usó» de la línea de ayuda)");
     const cssA = leer("src/app/explorar/explorar.css");
     if (!/@media \(hover: hover\) \{ \.ex-vc:hover \{ box-shadow: [^;]+; transform: translateY\(-1px\); \}/.test(cssA) || !/\.ex-vc:active \{ transform: scale\(0\.96\);/.test(cssA)) F("8 · las casillas no reaccionan al pasar el mouse y al presionar");
+    // §7 bis · LA CIFRA ES LA PROTAGONISTA (26-nov-2026, lámina 5d): 28 px en el PC, 26 en el teléfono, 20 plegada. El defecto que se fija
+    // es la CASCADA: `.ex-contador-n b { font-size: 17px }` le ganaba a `.ex-contador-big` sola y la cifra quedaba del tamaño del texto.
+    // Sin comentarios: el acta del CSS nombra la regla vieja, y un regex sobre el archivo crudo la confundiría con una regla viva.
+    { const cssN = leer("src/app/explorar/explorar.css").replace(/\/\*[\s\S]*?\*\//g, "");
+      if (/\.ex-contador-n b \{[^}]*font-size/.test(cssN) || !/\.ex-contador-n \.ex-contador-big \{ font-size: 28px;[^}]*color: var\(--chip-v-c/.test(cssN)) F("7 · la cifra del contador no queda a 28 px en azul (una regla más específica le gana)");
+      const i26 = cssN.indexOf("@media (max-width: 767px) { .ex-contador-n .ex-contador-big { font-size: 26px; } }"), i20 = cssN.indexOf('.ex-contador[data-plegada="1"] .ex-contador-n .ex-contador-big { font-size: 20px; }');
+      if (i26 < 0 || i20 < 0 || i26 > i20) F("7 · la cifra no baja a 26 px en el teléfono o a 20 px plegada (o el teléfono le gana a la plegada)");
+      if (!/\.ex-contador-n span \{ font-size: 14px; color: var\(--franco-text\); \}/.test(cssN)) F("7 · «de N deptos convienen» no va en el tamaño de texto normal"); }
     // §12 · PLEGABLE: la flecha con nombre («Plegar»/«Desplegar»), botón (teclado), y el navegador lo recuerda.
     if (!/<button type="button" class="ex-contador-pliegue" aria-expanded="true" aria-label="Plegar"/.test(html)) F("12 · falta la flecha «Plegar» como botón con nombre accesible");
     const cont = codigo("src/app/explorar/contador.tsx");
@@ -204,7 +212,24 @@ export async function runExplorarTodosTier(): Promise<{ hard: number }> {
   const hC = tarjeta(pin());
   if (modTar) {
     if (!/data-explorar="comuna">SANTIAGO</.test(hC)) F("7 · el título no es la comuna en mayúsculas");
-    if (!/data-explorar="linea">2D1B · 50 m²</.test(hC)) F("7 · la línea no lleva tipología y m²");
+    // ⚠ ACTA 26-nov-2026 (la tarjeta se arma de una vez): antes fijaba la línea «2D1B · 50 m²» sola, porque el lugar llegaba del servidor
+    // uno o dos segundos después (y la línea saltaba). Ahora el metro sale de la lista del repo AL INSTANTE: el primer pintado (este
+    // render del servidor, sin pedido alguno) ya dice «Metro Parque Almagro» —el pin está a 163 m—; sin metro, un espacio gris del
+    // tamaño del lugar mientras el barrio o la avenida llegan, y la tipología y los m² enteros en la misma fila.
+    if (!/data-explorar="linea"><span class="ex-lugar" data-explorar="lugar">Metro Parque Almagro<\/span><span class="ex-linea-resto"> · 2D1B · 50 m²<\/span><\/span>/.test(hC)) F("7 · el primer pintado de la tarjeta no trae el metro (o la línea no lleva tipología y m²)");
+    const hSinMetro = tarjeta(pin({ lat: -33.37, lng: -70.5 }));
+    if (!/data-explorar="linea"><span class="ex-lugar ex-lugar-carga" aria-hidden="true" data-explorar="lugar-carga"><\/span><span class="ex-linea-resto"> · 2D1B · 50 m²<\/span><\/span>/.test(hSinMetro) || /data-explorar="lugar">/.test(hSinMetro)) F("7 · sin metro, la línea no le reserva el espacio al barrio o la avenida mientras llegan");
+    const tarA = codigo("src/app/explorar/tarjeta-pin.tsx");
+    if (!/const lugares = useLugares\(pines\.filter\(\(p\) => !metros\.get\(p\.avisoId\)\)\.map\(\(p\) => p\.avisoId\)\);/.test(tarA) || !/metroCercano\(p\.lat, p\.lng\)/.test(tarA)) F("7 · el metro no sale de la lista del repo (o se le sigue pidiendo al servidor a los que tienen metro)");
+    // La reserva no queda para siempre: un pedido fallido o cortado por el tope suelta el espacio (null, no undefined).
+    if (!/signal: corte\.signal/.test(tarA) || !/window\.setTimeout\(\(\) => corte\.abort\(\), TOPE_LUGAR_MS\)/.test(tarA) || !/\.catch\(\(\) => \{ for \(const id of faltan\) lugaresFallidos\.add\(id\);/.test(tarA) || !/lugaresFallidos\.has\(id\) \? null : undefined/.test(tarA)) F("7 · un pedido del lugar que falla o no vuelve deja la reserva gris para siempre");
+    const cssT = leer("src/app/explorar/explorar.css").replace(/\/\*[\s\S]*?\*\//g, "");
+    if (!/\.ex-linea-lugar \{ display: flex; align-items: baseline; min-width: 0; white-space: nowrap; \}/.test(cssT) || !/\.ex-linea-resto \{ flex: none;/.test(cssT) || !/\.ex-lugar-carga \{ display: inline-block; flex: none; width: 8em;/.test(cssT)) F("7 · la línea del lugar puede saltar (no es una sola fila con la tipología entera y el espacio reservado)");
+    // LA FOTO: mientras carga, un gris del mismo tamaño que se ve en los dos temas, y la imagen aparece recién cargada.
+    if (!/<span class="ex-img" data-explorar="imagen"><img /.test(hC)) F("7 · la imagen se pinta marcada como cargada antes de cargar");
+    const imgA = codigo("src/components/guia/ImagenDepto.tsx");
+    if (!/onLoad=\{\(\) => setCargada\(src\)\}/.test(imgA) || !/if \(el\?\.complete && el\.naturalWidth > 0\) setCargada\(src\);/.test(imgA) || !/data-cargada=\{cargada === src \? "1" : undefined\}/.test(imgA)) F("7 · la imagen no avisa cuándo cargó (ni mira la que ya estaba en la caché)");
+    if (!/\[data-explorar="imagen"\]:not\(\[data-cargada="1"\]\) img \{ opacity: 0; \}/.test(cssT) || !/\.ex-img \{[^}]*width: 96px; height: 96px;[^}]*background: color-mix\(in srgb, var\(--franco-text\) 12%, var\(--franco-card\)\); \}/.test(cssT)) F("7 · mientras carga la foto no hay un gris visible del mismo tamaño");
     for (const [k, v] of [["precio", "UF 2.800"], ["arriendo", "\\$520\\.000"], ["cap-rate", "5,9 %"], ["flujo", "\\$20\\.457"]]) if (!new RegExp(`data-explorar="${k}"[^>]*>${v}<`).test(hC)) F(`7 · la franja no trae ${k} = ${v}`);
     if (!/data-explorar="analizar"[^>]*>Ver este depto</.test(hC)) F("7 · el botón principal no dice «Ver este depto»");
     // «Cap rate bruto» (26-nov-2026): la tarjeta dice el bruto con su nombre (el informe muestra el neto), con y sin cuenta.
