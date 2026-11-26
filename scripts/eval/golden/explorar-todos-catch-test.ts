@@ -106,12 +106,16 @@ export async function runExplorarTodosTier(): Promise<{ hard: number }> {
     if (!/data-clase="no"[^>]*data-off="1"[^>]*aria-pressed="false"[^>]*><span class="ex-ck" aria-hidden="true"><\/span>/.test(html)) F("5 · la casilla apagada no queda apagada y vacía (data-off, aria-pressed=false, sin check)");
     if (!/data-clase="comprar"[^>]*aria-pressed="true"[^>]*><span class="ex-ck" aria-hidden="true"><svg/.test(html)) F("5 · la casilla prendida no lleva su check");
     if (/data-explorar="como-se-calcula"|data-explorar="ver-lista"/.test(html)) F("5 · la (i) o «Ver lista» siguen dentro de la tarjeta del contador");
-    // §8 bis · QUE SE NOTE QUE SE TOCAN (26-nov-2026, pedido de Fabrizio): cada casilla dice lo que hace al pasar el mouse, la línea de
-    // ayuda está hasta el primer toque (y se recuerda), y la casilla reacciona al pasar y al presionar.
+    // §8 bis · QUE SE NOTE QUE SE TOCAN (26-nov-2026, pedido de Fabrizio): cada casilla dice lo que hace al pasar el mouse y reacciona
+    // al pasar y al presionar.
+    // ⚠ ACTA 26-nov-2026 (segunda vuelta): la línea de ayuda «Toca un veredicto…» se SACA — agregaba texto a la tarjeta que se está
+    // achicando, y las casillas del punto 8 (prendida con color y check, apagada gris y vacía) ya se leen solas. Antes se exigía la
+    // línea y que se fuera tras el primer toque; ahora se exige lo contrario, en positivo: el grupo de casillas CIERRA la tarjeta
+    // (después de su </div> viene el </section>, nada en el medio) y cada casilla alterna directo, sin envoltorio que recuerde nada.
     if (!/data-clase="comprar"[^>]*title="Ocultar Comprar en el mapa"/.test(html) || !/data-clase="no"[^>]*title="Mostrar No conviene en el mapa"/.test(html)) F("8 · las casillas no dicen lo que hacen al pasar el mouse («Ocultar…» / «Mostrar…»)");
-    if (!/<p class="ex-contador-ayuda" data-explorar="contador-ayuda">Toca un veredicto para mostrarlo u ocultarlo en el mapa<\/p>/.test(html)) F("8 · falta la línea de ayuda bajo las casillas");
+    if (/Toca un veredicto|ex-contador-ayuda/.test(html) || !/data-clase="no"[^>]*>(?:(?!<\/button>)[^])*<\/button><\/div><\/section>/.test(html)) F("8 · vuelve una línea bajo las casillas: el grupo de casillas ya no cierra la tarjeta del contador");
     const contA = codigo("src/app/explorar/contador.tsx");
-    if (!/\{!usadas && <p className="ex-contador-ayuda"/.test(contA) || !/localStorage\.setItem\(CLAVE_CASILLAS_USADAS, "1"\)/.test(contA) || !/onClick=\{alAlternar \? \(\) => tocarCasilla\(c\) : undefined\}/.test(contA)) F("8 · la línea de ayuda no se va (ni se recuerda) después del primer toque");
+    if (!/onClick=\{alAlternar \? \(\) => alAlternar\(c\) : undefined\}/.test(contA) || /CASILLAS_USADAS|usadas/.test(contA)) F("8 · la casilla no alterna directo (o vuelve el recuerdo de «ya las usó» de la línea de ayuda)");
     const cssA = leer("src/app/explorar/explorar.css");
     if (!/@media \(hover: hover\) \{ \.ex-vc:hover \{ box-shadow: [^;]+; transform: translateY\(-1px\); \}/.test(cssA) || !/\.ex-vc:active \{ transform: scale\(0\.96\);/.test(cssA)) F("8 · las casillas no reaccionan al pasar el mouse y al presionar");
     // §12 · PLEGABLE: la flecha con nombre («Plegar»/«Desplegar»), botón (teclado), y el navegador lo recuerda.
