@@ -17,7 +17,7 @@ import { flujoTexto } from "@/lib/explorar/explorar";
 import { PORTAL_COPY, type PinMapa } from "@/lib/explorar/portal";
 import { ABIERTO_COPY, BORROSO } from "@/lib/explorar/abierto";
 import { COMPARTIR_COPY, type DeptoCompartido, type EstadoCaido } from "@/lib/explorar/compartir";
-import { conCifrasNegociado, esNegociado, NEGOCIAR_COPY } from "@/lib/explorar/capa-negociar";
+import { claseDePin, conCifrasNegociado, esNegociado, NEGOCIAR_COPY } from "@/lib/explorar/capa-negociar";
 import { YA_ANALIZADO } from "@/lib/guia/semanal-str";
 import { Borroso, ImagenDepto, useCalle, VeredictoDelPin, VeredictosNegociado } from "./tarjeta-pin";
 import { CompartidoCaido } from "./compartido-caido";
@@ -67,7 +67,7 @@ export function HojaCompartida({ caso, tope = null, sinCuenta, informe = null, r
           <article className="ex-comp-tarjeta" data-explorar="compartido-tarjeta" data-aviso={p.avisoId}>
             {/* La imagen al costado, más grande que en la tarjeta del pin (la foto de la calle viene de 200 × 200: a todo el ancho se
                 vería borrosa). */}
-            <ImagenDepto avisoId={p.avisoId} tipo={tipos[p.avisoId]} clase="ex-img ex-comp-img" ajustar={esNegociado(p)} />
+            <ImagenDepto avisoId={p.avisoId} tipo={tipos[p.avisoId]} clase="ex-img ex-comp-img" veredicto={claseDePin(p)} />
             <div className="ex-comp-datos">
             <span className="ex-ojo" data-explorar="linea">{lineaDepto(p)}</span>
             <b className="ex-precio ex-comp-precio" data-explorar="precio">UF {miles(p.precioUF)}{esNegociado(p) && <span className="ex-publicado"> {NEGOCIAR_COPY.publicado}</span>}</b>

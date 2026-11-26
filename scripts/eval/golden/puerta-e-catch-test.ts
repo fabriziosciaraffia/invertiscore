@@ -133,7 +133,7 @@ export async function runPuertaETier(): Promise<{ hard: number }> {
       // no lo cambia ninguna decisión: queda en su propio predicado, como estaba.
       // ⚠ ACTA 26-nov-2026 (la tarjeta se arma de una vez): la línea trae el metro desde el primer pintado —el pin está a 311 m de Pedro de
       // Valdivia; sale de la lista del repo, también sin cuenta— y la tipología y los m² van en su propia pieza.
-      if (!/data-explorar="comuna">PROVIDENCIA</.test(sin) || !/data-explorar="linea"><span class="ex-lugar" data-explorar="lugar">Metro Pedro de Valdivia<\/span><span class="ex-linea-resto"> · 2D2B · 79 m²<\/span>/.test(sin) || !/data-explorar="precio">UF 4\.591</.test(sin)) F("2 · sin cuenta la tarjeta pierde la comuna, la línea o el publicado nítido");
+      if (!/data-explorar="comuna">PROVIDENCIA</.test(sin) || !/data-explorar="linea"><span class="ex-lugar" data-explorar="lugar">Metro Pedro de Valdivia<\/span><span class="ex-linea-resto"><span class="ex-sep"> · <\/span>2D2B · 79 m²<\/span>/.test(sin) || !/data-explorar="precio">UF 4\.591</.test(sin)) F("2 · sin cuenta la tarjeta pierde la comuna, la línea o el publicado nítido");
       // ACTA 25-nov-2026 (lámina 7 «Sin cuenta», decisión 8): antes fijaba «Comprar · 84» sin cuenta; ahora sin cuenta el chip va sin
       // puntaje («✓ Comprar»), como en la lámina: el puntaje queda con las cifras, dentro de la cuenta. Con cuenta sigue el puntaje.
       if (!/data-veredicto="COMPRAR"/.test(sin) || /data-puntaje=/.test(sin) || texto(sin).includes("· 84")) F("2 · sin cuenta el chip no es «✓ Comprar» sin puntaje");

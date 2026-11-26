@@ -216,9 +216,9 @@ export async function runExplorarTodosTier(): Promise<{ hard: number }> {
     // uno o dos segundos después (y la línea saltaba). Ahora el metro sale de la lista del repo AL INSTANTE: el primer pintado (este
     // render del servidor, sin pedido alguno) ya dice «Metro Parque Almagro» —el pin está a 163 m—; sin metro, un espacio gris del
     // tamaño del lugar mientras el barrio o la avenida llegan, y la tipología y los m² enteros en la misma fila.
-    if (!/data-explorar="linea"><span class="ex-lugar" data-explorar="lugar">Metro Parque Almagro<\/span><span class="ex-linea-resto"> · 2D1B · 50 m²<\/span><\/span>/.test(hC)) F("7 · el primer pintado de la tarjeta no trae el metro (o la línea no lleva tipología y m²)");
+    if (!/data-explorar="linea"><span class="ex-lugar" data-explorar="lugar">Metro Parque Almagro<\/span><span class="ex-linea-resto"><span class="ex-sep"> · <\/span>2D1B · 50 m²<\/span><\/span>/.test(hC)) F("7 · el primer pintado de la tarjeta no trae el metro (o la línea no lleva tipología y m²)");
     const hSinMetro = tarjeta(pin({ lat: -33.37, lng: -70.5 }));
-    if (!/data-explorar="linea"><span class="ex-lugar ex-lugar-carga" aria-hidden="true" data-explorar="lugar-carga"><\/span><span class="ex-linea-resto"> · 2D1B · 50 m²<\/span><\/span>/.test(hSinMetro) || /data-explorar="lugar">/.test(hSinMetro)) F("7 · sin metro, la línea no le reserva el espacio al barrio o la avenida mientras llegan");
+    if (!/data-explorar="linea"><span class="ex-lugar ex-lugar-carga" aria-hidden="true" data-explorar="lugar-carga"><\/span><span class="ex-linea-resto"><span class="ex-sep"> · <\/span>2D1B · 50 m²<\/span><\/span>/.test(hSinMetro) || /data-explorar="lugar">/.test(hSinMetro)) F("7 · sin metro, la línea no le reserva el espacio al barrio o la avenida mientras llegan");
     const tarA = codigo("src/app/explorar/tarjeta-pin.tsx");
     if (!/const lugares = useLugares\(pines\.filter\(\(p\) => !metros\.get\(p\.avisoId\)\)\.map\(\(p\) => p\.avisoId\)\);/.test(tarA) || !/metroCercano\(p\.lat, p\.lng\)/.test(tarA)) F("7 · el metro no sale de la lista del repo (o se le sigue pidiendo al servidor a los que tienen metro)");
     // La reserva no queda para siempre: un pedido fallido o cortado por el tope suelta el espacio (null, no undefined).
@@ -227,9 +227,32 @@ export async function runExplorarTodosTier(): Promise<{ hard: number }> {
     // apagaba para siempre dejaba la línea sin lugar o con la reserva gris tras el doble montaje de React o un cierre y reapertura.
     if (/montada\.current/.test(tarA) || !/lugaresOyentes\.add\(f\); return \(\) => \{ lugaresOyentes\.delete\(f\); \};/.test(tarA) || (tarA.match(/avisarLugares\(\);/g) ?? []).length < 2) F("7 · la respuesta del lugar no redibuja a las tarjetas montadas (se pierde si la tarjeta se volvió a montar)");
     const cssT = leer("src/app/explorar/explorar.css").replace(/\/\*[\s\S]*?\*\//g, "");
-    if (!/\.ex-linea-lugar \{ display: flex; align-items: baseline; min-width: 0; white-space: nowrap; \}/.test(cssT) || !/\.ex-linea-resto \{ flex: none;/.test(cssT) || !/\.ex-lugar-carga \{ display: inline-block; flex: none; width: 8em;/.test(cssT)) F("7 · la línea del lugar puede saltar (no es una sola fila con la tipología entera y el espacio reservado)");
-    // Y la línea que no envuelve no ensancha la tarjeta: cada tarjeta del carrusel puede quedar en su 100 %, con el lugar cortado con «…».
-    if (!/\.ex-tarjeta \{ min-width: 0; \}/.test(cssT) || !/\.ex-lugar \{ min-width: 0; overflow: hidden; text-overflow: ellipsis; \}/.test(cssT)) F("7 · un lugar largo ensancha la tarjeta más allá de la pantalla (en vez de cortarse con «…»)");
+    // ⚠ ACTA 26-nov-2026 (revisión de Fabrizio en el celular: «Metro Cri…», «Sector Vati…»): antes se fijaba UNA sola fila con el lugar
+    // cortado con «…»; ahora el lugar va ENTERO y, si no cabe junto a la tipología y los m², ellos bajan a su propia línea. Se exige: la
+    // fila envuelve, el lugar no se encoge (solo se corta si ni en su propia línea cabe), y el « · » se recorta al envolver (mide 1em y
+    // el resto arranca 1em antes, dentro de una línea que recorta lo que se sale). La reserva gris del barrio sigue.
+    if (!/\.ex-linea-lugar \{ display: flex; flex-wrap: wrap; align-items: baseline; min-width: 0; overflow: hidden; white-space: nowrap; \}/.test(cssT) || !/\.ex-lugar \{ flex: none; max-width: 100%; overflow: hidden; text-overflow: ellipsis; margin-right: 1em; \}/.test(cssT) || !/\.ex-lugar-carga \{ display: inline-block; flex: none; width: 8em;/.test(cssT)) F("7 · el lugar se corta en vez de pasar a su propia línea (o se perdió la reserva gris del barrio)");
+    if (!/\.ex-lugar \+ \.ex-linea-resto \{ margin-left: -1em; \}/.test(cssT) || !/\.ex-sep \{ display: inline-block; width: 1em;/.test(cssT) || !/\.ex-linea-resto \{ flex: none; \}/.test(cssT)) F("7 · al bajar a su línea, la tipología arranca con « · » (o se parte)");
+    // Y la línea no ensancha la tarjeta: cada tarjeta del carrusel puede quedar en su 100 %.
+    if (!/\.ex-tarjeta \{ min-width: 0; \}/.test(cssT)) F("7 · un lugar largo ensancha la tarjeta más allá de la pantalla");
+    // LA MINIATURA CON EL COLOR DEL PIN (26-nov-2026: un No conviene salía azul). Los tres veredictos: la tarjeta pide la imagen con la
+    // letra de su clase, y el color que la ruta le da a esa letra es EL MISMO con que el canvas pinta el pin (colorPin ∘ claseDePin).
+    {
+      const calleM = cargar<{ claseDeImagen: (v: string | null) => string }>("src/lib/explorar/calle", F);
+      const coloresM = cargar<{ colorPin: (c: string, t: string) => { fondo: string } }>("src/lib/explorar/colores-pin", F);
+      const negM = cargar<{ claseDePin: (p: po.PinMapa) => string }>("src/lib/explorar/capa-negociar", F);
+      const casos: Array<[string, po.PinMapa, string | null]> = [
+        ["Comprar", pin(), null],
+        ["Ajustar", { ...pin({ veredicto: "AJUSTA SUPUESTOS", flujo: -45000 }), neg: { d: 3.2, p: 2810, s: 70, f: 1 } } as po.PinMapa, "a"],
+        ["No conviene", pin({ veredicto: "BUSCAR OTRA", score: null, flujo: null, arriendo: null }), "n"],
+      ];
+      if (calleM && coloresM && negM) for (const [nombre, p, letra] of casos) {
+        const src = /<img [^>]*src="([^"]+)"/.exec(tarjeta(p))?.[1]?.replace(/&amp;/g, "&") ?? "";
+        const v = new URLSearchParams(src.split("?")[1] ?? "").get("v");
+        const deLaImagen = coloresM.colorPin(calleM.claseDeImagen(v), "claro").fondo, delPin = coloresM.colorPin(negM.claseDePin(p), "claro").fondo;
+        if (!src || v !== letra || deLaImagen !== delPin) F(`7 · la miniatura de un ${nombre} no sale en el color de su pin (pide v=${v}: ${deLaImagen}, el pin es ${delPin})`);
+      }
+    }
     // LA FOTO: mientras carga, un gris del mismo tamaño que se ve en los dos temas, y la imagen aparece recién cargada.
     if (!/<span class="ex-img" data-explorar="imagen"><img /.test(hC)) F("7 · la imagen se pinta marcada como cargada antes de cargar");
     const imgA = codigo("src/components/guia/ImagenDepto.tsx");
@@ -349,6 +372,24 @@ export async function runExplorarTodosTier(): Promise<{ hard: number }> {
     const contM = codigo("src/app/explorar/contador.tsx");
     if (!/const plegada = plegarPorTarjeta \? !abiertaConTarjeta : elegida;/.test(contM) || !/const alternarPliegue = \(\) => plegarPorTarjeta \? setAbiertaConTarjeta\(\(x\) => !x\) : setPlegada\(/.test(contM)) F("13.5 · plegarse por la tarjeta cambia lo que eligió la persona (o la flecha no la abre mientras dure la tarjeta)");
     if (!/plegarPorTarjeta=\{!!tarjeta && esTelefono\}/.test(cli) || !/window\.matchMedia\("\(max-width: 767px\)"\)/.test(cli) || !/\{tarjeta \? \(\s*<TarjetaPin[\s\S]*?\) : vista === "mapa" && \([\s\S]{0,400}?<button type="button" className="ex-ver-lista"/.test(cli)) F("13.5 · el contador no se pliega con la tarjeta abierta en el teléfono, o «Ver lista» sigue con la tarjeta abierta");
+  }
+  // §14 · LA TARJETA ES UNA HOJA ABAJO EN EL TELÉFONO (26-nov-2026, revisión de Fabrizio en el celular: flotaba en la mitad, tapaba el
+  // mapa y costaba cerrarla). Pegada al borde inferior, sube desde abajo; se cierra con la X de 44 px «Cerrar», deslizándola hacia abajo
+  // o tocando el mapa; el pin elegido queda visible arriba de ella. En el PC, la tarjeta flotante de siempre.
+  {
+    const cssH = leer("src/app/explorar/explorar.css").replace(/\r\n/g, "\n").replace(/\/\*[\s\S]*?\*\//g, "");
+    const iH = cssH.indexOf("@media (max-width: 767px) {\n  .ex-tarjeta-wrap { left: 0;"), medH = iH < 0 ? "" : cssH.slice(iH, cssH.indexOf("\n}", iH));
+    const tarH = codigo("src/app/explorar/tarjeta-pin.tsx"), mapaH = codigo("src/app/explorar/mapa-explorar.tsx");
+    if (!/<div class="ex-hoja-cab"><span class="ex-hoja-asa" aria-hidden="true"><\/span><button type="button" class="ex-hoja-cerrar" aria-label="Cerrar" data-explorar="cerrar-tarjeta"><svg/.test(hC) || !/data-explorar="cerrar-tarjeta" onClick=\{alCerrar\}>/.test(tarH)) F("14 · la hoja no trae su asa y la X «Cerrar» que la cierra");
+    if (!/\.ex-hoja-cab \{ display: none; \}/.test(cssH) || !/\.ex-tarjeta-wrap \{ left: 0; right: 0; bottom: 0;[^}]*border-radius: 18px 18px 0 0;[^}]*touch-action: pan-x;[^}]*animation: ex-hoja-sube/.test(medH) || !/\.ex-hoja-cerrar \{[^}]*width: 44px; height: 44px;/.test(medH) || !/\.ex-hoja-cab \{[^}]*display: flex;[^}]*height: 44px; \}/.test(medH) || !/@keyframes ex-hoja-sube \{ from \{ transform: translateY\(100%\); \}/.test(cssH)) F("14 · en el teléfono la tarjeta no es una hoja pegada abajo que sube, con la X de 44 px (o en el PC aparece su cabecera)");
+    if (!/a\.vertical = Math\.abs\(dy\) > Math\.abs\(dx\);/.test(tarH) || !/soltar\(!!a\.vertical && a\.dy > CIERRE_DESLIZAR_PX\)/.test(tarH) || !/el\.style\.transform = `translateY\(\$\{a\.dy\}px\)`;/.test(tarH) || !/if \(esTelefonoAhora\(\)\) arrastre\.current = /.test(tarH)) F("14 · la hoja no se cierra deslizándola hacia abajo (o el deslizar choca con el carrusel, o corre en el PC)");
+    if (!/onTocarMapa=\{\(\) => setSel\(null\)\}/.test(cli)) F("14 · tocar el mapa no cierra la tarjeta");
+    // El pin elegido, arriba de la hoja: la tarjeta dice su alto, el mapa lo recibe en el teléfono y se corre si el pin queda tapado —ahora y
+    // al terminar cada movimiento mientras quede pendiente, también después de encuadrar—.
+    if (!/alMedir=\{setAltoTarjeta\}/.test(cli) || !/tapaAbajo=\{esTelefono && tarjeta \? altoTarjeta : 0\}/.test(cli)) F("14 · el mapa no sabe cuánto tapa la hoja");
+    if (!/const arriba = TAPA_ARRIBA_PX, abajo = div\.clientHeight - tapaRef\.current - AIRE_PIN_PX;/.test(mapaH) || !/map\.panBy\(0, Math\.round\(px\.y - \(arriba \+ abajo\) \/ 2\)\);/.test(mapaH) || !/if \(pendienteVisible\.current > 0\) \{ pendienteVisible\.current -= 1; if \(asegurarVisible\(\) === "ok"\) pendienteVisible\.current = 0; \}/.test(mapaH) || !/pendienteVisible\.current = INTENTOS_VISIBLE;\s*if \(f\) \{ map\.setCenter\(f\)/.test(mapaH)) F("14 · el pin elegido puede quedar tapado por la hoja (el mapa no se corre, o no vuelve a revisar después de encuadrar)");
+    // Y la hoja mide lo que la tarjeta elegida, no lo que la más alta del carrusel (sin hueco abajo).
+    if (!/el\.style\.height = `\$\{elegida\.offsetHeight\}px`;/.test(tarH) || !/\.ex-tarjeta-wrap \.ex-tarjetas \{ align-items: flex-start; overflow-y: hidden;/.test(medH)) F("14 · la hoja queda con un hueco abajo (el carrusel mide lo que la tarjeta más alta)");
   }
   // El cap rate del tramo es el de la tarjeta.
   const capT = mt.capParaTramo(520000, 2800, 38000), capC = capRatePct(520000, 2800, 38000);

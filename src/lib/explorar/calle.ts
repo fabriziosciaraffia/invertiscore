@@ -92,19 +92,26 @@ export function urlFotoCalle(d: { panoId: string; rumbo: number }, key: string, 
 }
 
 /** El mapa chico: la cuadra, con el pin del aviso, en el estilo claro de Franco (`estilo`: los parámetros de map-styles). EL PIN
- *  (03-nov-2026, colores-pin.ts) va en el color de su clase y su tema: el azul de ✓ Comprar o la ciruela de − Ajustar, nunca el
- *  rojo (hasta el 03-nov era rojo). */
+ *  (03-nov-2026, colores-pin.ts) va en el color de su clase y su tema (colores-pin.ts): el azul de ✓ Comprar, la ciruela de − Ajustar o, desde el 26-nov-2026,
+ *  el rojo de No conviene (el mapa con todos los deptos lo pinta así; antes la miniatura de un No conviene salía azul). */
 export function urlMapaChico(punto: Punto, key: string, estilo: readonly string[] = [], lado: number = LADO_IMAGEN / 2, pin: string = colorPin("comprar", "claro").fondo): string {
   const partes = [`center=${coord(punto)}`, "zoom=17", `size=${lado}x${lado}`, "scale=2", "maptype=roadmap", ...estilo, `markers=color:${colorStaticMaps(pin)}%7Csize:mid%7C${coord(punto)}`, `key=${encodeURIComponent(key)}`];
   return `https://maps.googleapis.com/maps/api/staticmap?${partes.join("&")}`;
 }
 
+/** El veredicto del pin del mapa chico: los tres del mapa (la clase de `claseDePin`, la misma con que el canvas pinta el pin). */
+export type VeredictoImagen = "comprar" | "ajustar" | "no";
+/** La letra de cada veredicto en la dirección de la imagen (sin letra, ✓ Comprar). */
+const LETRA_IMAGEN: Readonly<Record<VeredictoImagen, string | null>> = { comprar: null, ajustar: "a", no: "n" };
+
 /** La dirección de la imagen de un aviso en Franco (la ruta la sirve desde la caché del CDN). En oscuro, `tema=oscuro`: el mapa
- *  chico en el estilo oscuro, con su propia entrada en la caché (la foto de la calle es la misma). Un − Ajustar (03-nov-2026),
- *  `v=a`: el pin del mapa chico en la ciruela del chip; sin `v`, el azul de ✓ Comprar. */
-export const rutaImagenCalle = (avisoId: string, oscuro = false, ajustar = false): string => {
-  const q = [oscuro ? "tema=oscuro" : null, ajustar ? "v=a" : null].filter(Boolean).join("&");
+ *  chico en el estilo oscuro, con su propia entrada en la caché (la foto de la calle es la misma). EL PIN EN EL COLOR DE SU VEREDICTO
+ *  (26-nov-2026; hasta entonces solo `v=a`, − Ajustar, y todo lo demás salía en el azul de ✓ Comprar —también los No conviene—):
+ *  `v=a` la ciruela de − Ajustar, `v=n` el rojo de No conviene, sin `v` el azul de ✓ Comprar. */
+export const rutaImagenCalle = (avisoId: string, oscuro = false, veredicto: VeredictoImagen = "comprar"): string => {
+  const letra = LETRA_IMAGEN[veredicto];
+  const q = [oscuro ? "tema=oscuro" : null, letra ? `v=${letra}` : null].filter(Boolean).join("&");
   return `/api/explorar/calle/${encodeURIComponent(avisoId)}${q ? `?${q}` : ""}`;
 };
-/** La clase del pin que pide la imagen (`v=a`: − Ajustar). */
-export const claseDeImagen = (v: string | null): ClasePin => (v === "a" ? "ajustar" : "comprar");
+/** La clase del pin que pide la imagen, para `colorPin` (la misma paleta de los pines del mapa): `v=a` − Ajustar, `v=n` No conviene. */
+export const claseDeImagen = (v: string | null): ClasePin => (v === "a" ? "ajustar" : v === "n" ? "no" : "comprar");

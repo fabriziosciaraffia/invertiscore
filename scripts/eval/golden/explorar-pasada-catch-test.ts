@@ -429,11 +429,16 @@ export async function runExplorarPasadaTier(): Promise<{ hard: number }> {
     const pt = { lat: -33.4, lng: -70.6 };
     const marcador = (u: string) => u.match(/markers=color:(0x[0-9A-F]{6})/)?.[1];
     if (marcador(urlMapaChico(pt, "k")) !== "0x2B558F" || marcador(urlMapaChico(pt, "k", [], 100, cp.colorPin("ajustar", "oscuro").fondo)) !== "0xD8AECA") F("5 · el pin del mapa chico no es el de su clase");
-    if (/0xC8323C/i.test(leer("src/lib/explorar/calle.ts"))) F("5 · el mapa chico todavía puede pedir el pin rojo");
-    if (rutaImagenCalle("a1", true, true) !== "/api/explorar/calle/a1?tema=oscuro&v=a" || claseDeImagen("a") !== "ajustar" || claseDeImagen(null) !== "comprar") F("5 · la imagen de un − Ajustar no pide su color");
+    // ⚠ ACTA 26-nov-2026 (mapa con todos los deptos): antes se fijaba «el mapa chico nunca pide el rojo» —el 03-nov el mapa solo tenía
+    // ✓ Comprar y − Ajustar—. Hoy el mapa pinta los No conviene en rojo y la miniatura de un No conviene salía azul (revisión de Fabrizio en
+    // el celular). Ahora: los tres veredictos, cada uno con su letra, y el color sale de `colorPin` —la paleta de los pines—, nunca de un
+    // hex escrito en calle.ts.
+    if (/0x[0-9A-F]{6}/i.test(leer("src/lib/explorar/calle.ts").replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, ""))) F("5 · el mapa chico tiene un color escrito a mano (no el de colores-pin)");
+    if (rutaImagenCalle("a1", true, "ajustar") !== "/api/explorar/calle/a1?tema=oscuro&v=a" || rutaImagenCalle("a1", false, "no") !== "/api/explorar/calle/a1?v=n" || rutaImagenCalle("a1") !== "/api/explorar/calle/a1" || claseDeImagen("a") !== "ajustar" || claseDeImagen("n") !== "no" || claseDeImagen(null) !== "comprar") F("5 · la imagen no pide el color de su veredicto (Comprar, Ajustar y No conviene)");
     if (!/const pin = colorPin\(claseDeImagen\(sp\.get\("v"\)\), tema === "dark" \? "oscuro" : "claro"\)\.fondo;/.test(codigo("src/app/api/explorar/calle/[avisoId]/route.ts"))) F("5 · la ruta de la imagen no pinta el pin con su clase");
     if (!/colorPin\(ajustar \? "ajustar" : "comprar", "claro"\)\.fondo/.test(codigo("src/app/api/og/depto/[avisoId]/route.tsx")) || !/imagenComoDato\(params\.avisoId\.toLowerCase\(\), tope != null\)/.test(codigo("src/app/api/og/depto/[avisoId]/route.tsx"))) F("5 · la vista previa del enlace no pinta el pin con su clase");
-    for (const [archivo, marca] of [["src/app/explorar/tarjeta-pin.tsx", "ajustar={esNegociado(p)}"], ["src/app/explorar/lista-portal.tsx", "ajustar={negociado}"], ["src/components/guia/AvisoAntesDeAnalizar.tsx", "ajustar={!!negociado}"]] as const) if (!codigo(archivo).includes(marca)) F(`5 · ${archivo} no pide la imagen con la clase del depto`);
+    // ACTA 26-nov-2026: la imagen se pide con el veredicto del pin (`claseDePin`, la misma clase con que el canvas lo pinta), no con «ajustar».
+    for (const [archivo, marca] of [["src/app/explorar/tarjeta-pin.tsx", "veredicto={clase}"], ["src/app/explorar/lista-portal.tsx", "veredicto={claseDePin(p)}"], ["src/app/explorar/compartido-hoja.tsx", "veredicto={claseDePin(p)}"], ["src/components/guia/AvisoAntesDeAnalizar.tsx", 'veredicto={veredictoImagen ?? (negociado ? "ajustar" : "comprar")}'], ["src/app/explorar/explorar-cliente.tsx", "veredictoImagen={claseDePin(confirmar.it)}"]] as const) if (!codigo(archivo).includes(marca)) F(`5 · ${archivo} no pide la imagen con el veredicto del depto`);
     // El dashboard y «Estás dentro» (el SVG sobre la imagen quieta) y el número de las tarjetas: CSS por clase y tema.
     for (const [archivo, sel, prop] of [["src/app/dashboard/casa.css", ".ca-mapa-pines", "fill"], ["src/app/deptos/deptos.css", ".sel-pin", "background"]] as const) {
       const rs = reglasCss(leer(archivo)).filter((r) => r.sel.some((s) => s.includes(sel)));

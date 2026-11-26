@@ -200,7 +200,7 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
       // de la tarjeta (queda como barra del panel).
       // ⚠ ACTA 26-nov-2026 (la tarjeta se arma de una vez): la línea trae el metro desde el primer pintado (el pin está a 311 m de
       // Pedro de Valdivia; sale de la lista del repo, no del servidor), con la tipología y los m² en su propia pieza.
-      ["el título «PROVIDENCIA» y la línea «Metro Pedro de Valdivia · 2D2B · 79 m²»", /data-explorar="comuna">PROVIDENCIA</.test(una) && /data-explorar="linea"><span class="ex-lugar" data-explorar="lugar">Metro Pedro de Valdivia<\/span><span class="ex-linea-resto"> · 2D2B · 79 m²<\/span>/.test(una) && !/Usado/.test(una)],
+      ["el título «PROVIDENCIA» y la línea «Metro Pedro de Valdivia · 2D2B · 79 m²»", /data-explorar="comuna">PROVIDENCIA</.test(una) && /data-explorar="linea"><span class="ex-lugar" data-explorar="lugar">Metro Pedro de Valdivia<\/span><span class="ex-linea-resto"><span class="ex-sep"> · <\/span>2D2B · 79 m²<\/span>/.test(una) && !/Usado/.test(una)],
       ["el precio «UF 4.591»", /<span>Publicado<\/span><b data-explorar="precio">UF 4\.591<\/b>/.test(una)],
       ["el veredicto y el puntaje «Comprar · 84»", t.includes("Comprar · 84")],
       ["el flujo «Te sobran al mes $142.264»", /<span>Te sobran al mes<\/span><b data-explorar="flujo">\$142\.264<\/b>/.test(una)],

@@ -338,6 +338,7 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
   // LA HOJA DEL COMPARTIDO (04-nov-2026, compartido-hoja.tsx): el pin del enlace (su tarjeta grande) o, si ya no está, lo que pasó.
   // El teléfono (bajo 768 px, el corte de explorar.css): lo usa el contador para plegarse con la tarjeta abierta. Sigue al ancho.
   const [esTelefono, setEsTelefono] = useState(false);
+  const [altoTarjeta, setAltoTarjeta] = useState(0);
   useEffect(() => {
     if (typeof window.matchMedia !== "function") return;
     const m = window.matchMedia("(max-width: 767px)");
@@ -1165,6 +1166,8 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
               onEstado={setMapa}
               foco={foco}
               onFoco={() => setFocoUsado(true)}
+              // En el teléfono la tarjeta es una hoja abajo: el pin elegido tiene que quedar visible arriba de ella (26-nov-2026).
+              tapaAbajo={esTelefono && tarjeta ? altoTarjeta : 0}
             />
           )}
           {mapa === "fallo" && <p className="ex-mapa-vacio" data-explorar="sin-mapa">{PORTAL_COPY.sinMapa}</p>}
@@ -1195,6 +1198,7 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
               alCompartir={(p) => void compartir(p, "tarjeta")}
               alVerInforme={recordarVuelta}
               alPrepararCompartir={prepararCompartir}
+              alMedir={setAltoTarjeta}
               sinCuenta={sinCuenta}
               recien={recien}
               inscritos={invierteV2 ? undefined : inscritos}
@@ -1323,6 +1327,7 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
       {confirmar && (
         <AvisoAntesDeAnalizar
           depto={{ comuna: confirmar.it.comuna, tipologia: confirmar.it.tipologia, m2: confirmar.it.m2, precioUF: confirmar.it.precioUF, condicion: confirmar.it.condicion }}
+          veredictoImagen={claseDePin(confirmar.it)}
           negociado={filtros.modalidad === "ltr" && esNegociado(confirmar.it) && conCifrasNegociado(confirmar.it) ? { precioUF: confirmar.it.neg.p, descuentoPct: confirmar.it.neg.d, score: confirmar.it.neg.s } : null}
           modalidad={filtros.modalidad}
           combinacion={{ piePct: filtros.pie, plazoAnios: filtros.plazo, tasaPct: filtros.tasa }}

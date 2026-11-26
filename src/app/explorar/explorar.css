@@ -113,6 +113,21 @@
 
 /* ── la tarjeta del pin (C), que se desliza entre los cercanos ── */
 .ex-tarjeta-wrap { position: absolute; left: 6px; right: 6px; bottom: calc(14px + env(safe-area-inset-bottom)); z-index: 5; display: flex; flex-direction: column; gap: 6px; }
+/* LA HOJA DE ABAJO EN EL TELÉFONO (26-nov-2026): pegada al borde inferior, sube desde abajo, con su asa y la X de 44 px; se desliza hacia
+   abajo para cerrarla (tarjeta-pin.tsx). En el PC, la tarjeta flotante de siempre: la cabecera de la hoja no se muestra. */
+.ex-hoja-cab { display: none; }
+@media (max-width: 767px) {
+  .ex-tarjeta-wrap { left: 0; right: 0; bottom: 0; gap: 2px; padding: 0 0 calc(10px + env(safe-area-inset-bottom)); border-radius: 18px 18px 0 0; background: var(--franco-card); box-shadow: 0 -6px 22px rgba(0, 0, 0, 0.18); touch-action: pan-x; transition: transform 0.2s ease; animation: ex-hoja-sube 0.22s ease-out; }
+  .ex-tarjeta-wrap[data-arrastre="1"] { transition: none; }
+  .ex-hoja-cab { position: relative; display: flex; align-items: center; justify-content: center; height: 44px; }
+  .ex-hoja-asa { width: 36px; height: 4px; border-radius: 999px; background: color-mix(in srgb, var(--franco-text) 25%, var(--franco-card)); }
+  .ex-hoja-cerrar { position: absolute; right: 4px; top: 0; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: 999px; background: transparent; color: var(--franco-text); cursor: pointer; }
+  .ex-hoja-cerrar:focus-visible { outline: 2px solid var(--franco-text); outline-offset: -2px; }
+  .ex-tarjeta-wrap .ex-tarjeta-caja { padding-top: 0; box-shadow: none; }
+  .ex-tarjeta-wrap .ex-tarjetas { align-items: flex-start; overflow-y: hidden; transition: height 0.2s ease; }
+}
+@keyframes ex-hoja-sube { from { transform: translateY(100%); } to { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .ex-tarjeta-wrap { animation: none; transition: none; } }
 .ex-tarjetas { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain; }
 .ex-tarjetas::-webkit-scrollbar { display: none; }
 .ex-tarjeta { flex: 0 0 100%; box-sizing: border-box; padding: 0 6px; scroll-snap-align: center; scroll-snap-stop: always; }
@@ -634,12 +649,17 @@
    barrio o la avenida llegan del servidor, un espacio gris de su tamaño. */
 [data-explorar="imagen"] img { transition: opacity 0.2s ease; }
 [data-explorar="imagen"]:not([data-cargada="1"]) img { opacity: 0; }
-.ex-linea-lugar { display: flex; align-items: baseline; min-width: 0; white-space: nowrap; }
+.ex-linea-lugar { display: flex; flex-wrap: wrap; align-items: baseline; min-width: 0; overflow: hidden; white-space: nowrap; }
 /* Sin esto, la línea que no envuelve ensancha la tarjeta del carrusel más allá de la pantalla (un ítem flex no baja de su contenido):
    a 390 se cortaban el corazón y el borde del botón. */
 .ex-tarjeta { min-width: 0; }
-.ex-lugar { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.ex-linea-resto { flex: none; white-space: pre; }
+/* EL LUGAR ENTERO (26-nov-2026): no se encoge (se corta con «…» solo si ni en una línea propia cabe); si no cabe junto a la
+   tipología y los m², ellos bajan a la línea de abajo. El separador « · » mide 1em y el resto arranca 1em antes: en la misma línea
+   queda justo después del lugar, y en la de abajo el separador cae fuera del borde y la línea lo recorta. */
+.ex-lugar { flex: none; max-width: 100%; overflow: hidden; text-overflow: ellipsis; margin-right: 1em; }
+.ex-linea-resto { flex: none; }
+.ex-lugar + .ex-linea-resto { margin-left: -1em; }
+.ex-sep { display: inline-block; width: 1em; text-align: center; white-space: pre; }
 .ex-lugar-carga { display: inline-block; flex: none; width: 8em; height: 0.9em; align-self: center; border-radius: 4px; background: color-mix(in srgb, var(--franco-text) 12%, var(--franco-card)); }
 @media (prefers-reduced-motion: reduce) { [data-explorar="imagen"] img { transition: none; } }
 /* «¿Cómo se calcula?» en la barra: con el ícono en el PC, solo el ícono en el teléfono. */

@@ -119,6 +119,8 @@ export interface MapaExplorarProps {
   /** El punto donde centrarse en el próximo encuadre (el depto de un enlace compartido); `onFoco` avisa que se usó. */
   foco?: { lat: number; lng: number } | null;
   onFoco?: () => void;
+  /** Los píxeles de abajo que tapa la hoja de la tarjeta en el teléfono (26-nov-2026): el pin elegido se corre arriba de ella. */
+  tapaAbajo?: number;
 }
 
 /** Dibuja la capa en el canvas: puntos, grupos y cifras, con los colores de su clase y del tema. */
@@ -168,7 +170,14 @@ function pintar(ctx: CanvasRenderingContext2D, dibujos: readonly Dibujo[], tema:
   }
 }
 
-export default function MapaExplorar({ items, seleccionado, encuadre, conZona, onSeleccionar, onTocarMapa, onMovido, onEstado, foco = null, onFoco }: MapaExplorarProps) {
+/** Lo de arriba que tapa el contador plegado, en el teléfono: el pin elegido no se corre debajo de él. */
+const TAPA_ARRIBA_PX = 72;
+/** El aire entre el pin elegido y el borde de la hoja. */
+const AIRE_PIN_PX = 28;
+/** Cuántos movimientos del mapa se revisa que el pin elegido quede a la vista. */
+const INTENTOS_VISIBLE = 3;
+
+export default function MapaExplorar({ items, seleccionado, encuadre, conZona, onSeleccionar, onTocarMapa, onMovido, onEstado, foco = null, onFoco, tapaAbajo = 0 }: MapaExplorarProps) {
   const divRef = useRef<HTMLDivElement>(null);
   const lienzoRef = useRef<HTMLCanvasElement | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -183,6 +192,27 @@ export default function MapaExplorar({ items, seleccionado, encuadre, conZona, o
   itemsRef.current = items; selRef.current = seleccionado; focoRef.current = foco;
   cb.current = { onSeleccionar, onTocarMapa, onMovido, onEstado, onFoco };
   const dibujarRef = useRef<() => void>(() => {});
+  const revisionRef = useRef<HTMLSpanElement>(null);
+  // EL PIN ELEGIDO, ARRIBA DE LA HOJA (26-nov-2026): en el teléfono la tarjeta es una hoja abajo; si el pin queda debajo de ella (o debajo
+  // del contador), el mapa se corre solo hasta dejarlo en el medio de lo que se ve. «ok»: ya se ve; «corrido»: se movió; «espera»: el
+  // mapa todavía no tiene proyección.
+  const tapaRef = useRef(tapaAbajo);
+  tapaRef.current = tapaAbajo;
+  const pendienteVisible = useRef(0);
+  const asegurarVisible = (): "ok" | "corrido" | "espera" => {
+    const map = mapRef.current, proy = proyRef.current?.getProjection?.(), div = divRef.current;
+    const p = selRef.current ? itemsRef.current.find((x) => x.id === selRef.current) : null;
+    if (!p || !tapaRef.current) return "ok";
+    if (!map || !proy || !div) return "espera";
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const g = (window as any).google;
+    const px = proy.fromLatLngToContainerPixel(new g.maps.LatLng(p.lat, p.lng));
+    const arriba = TAPA_ARRIBA_PX, abajo = div.clientHeight - tapaRef.current - AIRE_PIN_PX;
+    if (!px || abajo <= arriba || (px.y <= abajo && px.y >= arriba)) return "ok";
+    propio.current = true;
+    map.panBy(0, Math.round(px.y - (arriba + abajo) / 2));
+    return "corrido";
+  };
   const encuadrarRef = useRef<() => void>(() => {});
   // Los movimientos que hace el propio mapa (encuadrar, acercar a un grupo) no son «la persona movió el mapa».
   const propio = useRef(false);
@@ -263,6 +293,9 @@ export default function MapaExplorar({ items, seleccionado, encuadre, conZona, o
           aPixel: (lat, lng) => { const p = proy.fromLatLngToContainerPixel(new g.maps.LatLng(lat, lng)); return { x: p.x, y: p.y }; },
         });
         dibujosRef.current = dibujos;
+        // Para la revisión sin mirar el canvas: dónde quedó el pin elegido (alto en píxeles del contenedor del mapa).
+        const elegido = dibujos.find((d) => d.tipo !== "grupo" && d.elegido);
+        revisionRef.current?.setAttribute("data-elegido-y", elegido ? String(Math.round(elegido.y)) : "");
         pintar(ctx, dibujos, temaPin());
       };
       dibujarRef.current = () => { if (cuadro) return; cuadro = window.requestAnimationFrame(() => { cuadro = 0; pintarYa(); }); };
@@ -271,6 +304,9 @@ export default function MapaExplorar({ items, seleccionado, encuadre, conZona, o
         const ps = itemsRef.current;
         propio.current = true;
         const f = focoRef.current;
+        // Encuadrar mueve el mapa: si hay una tarjeta abierta en el teléfono, al terminar se vuelve a revisar que su pin quede arriba de la
+        // hoja (el centro del foco de un enlace caía justo debajo de ella).
+        pendienteVisible.current = INTENTOS_VISIBLE;
         if (f) { map.setCenter(f); map.setZoom(ZOOM_FOCO); focoRef.current = null; cb.current.onFoco?.(); return; }
         // ENCUADRADO EN GRAN SANTIAGO (26-nov-2026): la caja de los deptos sin el 2 % más extremo de cada lado (unos pocos avisos sueltos
         // abrían el mapa en Melipilla y la cordillera); sin deptos todavía, la caja fija de Gran Santiago.
@@ -301,6 +337,9 @@ export default function MapaExplorar({ items, seleccionado, encuadre, conZona, o
       map.addListener("zoom_changed", () => { if (!propio.current) tocadoRef.current = true; });
       map.addListener("idle", () => {
         dibujarRef.current();
+        // Pendiente de dejar el pin elegido arriba de la hoja: se revisa al terminar cada movimiento, hasta que se vea (o se agoten los
+        // intentos, para no pelear con nada).
+        if (pendienteVisible.current > 0) { pendienteVisible.current -= 1; if (asegurarVisible() === "ok") pendienteVisible.current = 0; }
         if (tocadoRef.current && !propio.current) {
           const c = map.getBounds();
           if (c) { const s = c.getSouthWest(), n = c.getNorthEast(); cb.current.onMovido?.([s.lat(), s.lng(), n.lat(), n.lng()]); }
@@ -346,7 +385,13 @@ export default function MapaExplorar({ items, seleccionado, encuadre, conZona, o
     const p = seleccionado ? items.find((x) => x.id === seleccionado) : null;
     const c = map.getBounds();
     if (p && c && !c.contains({ lat: p.lat, lng: p.lng })) { propio.current = true; map.panTo({ lat: p.lat, lng: p.lng }); }
-  }, [seleccionado, items]);
+    // EL PIN ELEGIDO, ARRIBA DE LA HOJA (26-nov-2026): se revisa ahora y, mientras quede pendiente, al terminar cada movimiento del mapa
+    // (el encuadre de entrada o el panTo de recién pueden moverlo después): así el pin no se pierde debajo de la hoja.
+    if (!p || !tapaAbajo) { pendienteVisible.current = 0; return; }
+    pendienteVisible.current = INTENTOS_VISIBLE;
+    if (asegurarVisible() === "ok") pendienteVisible.current = 0;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seleccionado, items, tapaAbajo]);
 
   return (
     <>
@@ -354,7 +399,7 @@ export default function MapaExplorar({ items, seleccionado, encuadre, conZona, o
       <p className="ex-credito-osm" data-explorar="credito-osm">{CREDITO_OSM}</p>
       {control && createPortal(<ConmutadorCapa capa={capa} alCambiar={cambiarCapa} />, control)}
       {/* Para revisar sin mirar el canvas: cuántos dibujos hay y de qué clase (lo lee la revisión con Playwright). */}
-      <span hidden data-explorar="pines-dibujados" data-n={items.length} />
+      <span hidden ref={revisionRef} data-explorar="pines-dibujados" data-n={items.length} />
 
     </>
   );

@@ -624,6 +624,8 @@ export const PORTAL_COPY = {
   /** La vuelta del registro desde un pin (30-oct-2026): la tarjeta desbloqueada con su banda, sin abrir el pop-up sola. */
   vuelta: { listo: "Listo, ya tienes tu cuenta.", regalo: "Tu regalo está listo para este depto.", analizarRegalo: "Ver este depto · usa tu regalo" },
   anterior: "Depto anterior",
+  /** La X de la hoja de la tarjeta en el teléfono (26-nov-2026). */
+  cerrarTarjeta: "Cerrar",
   siguiente: "Depto siguiente",
   /** La confirmación de «Avísame de nuevos». */
   aviso: {

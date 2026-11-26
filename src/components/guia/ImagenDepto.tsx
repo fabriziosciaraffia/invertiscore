@@ -7,7 +7,7 @@
 // oscuro, su versión oscura (`?tema=oscuro`, guardada en caché aparte); cambia al momento si la persona cambia el tema.
 // ─────────────────────────────────────────────────────────────────────────────
 import { useEffect, useRef, useState } from "react";
-import { CALLE_COPY, rutaImagenCalle } from "@/lib/explorar/calle";
+import { CALLE_COPY, rutaImagenCalle, type VeredictoImagen } from "@/lib/explorar/calle";
 import { useTemaOscuro } from "@/lib/tema-vivo";
 
 /** Foto o mapa de cada aviso (la etiqueta «Vista de la calle» va solo con la foto). Se pide una vez por grupo de ids. */
@@ -27,11 +27,11 @@ export function useCalle(ids: string[]): Record<string, "foto" | "mapa"> {
   return tipos;
 }
 
-/** La imagen de un depto: la de la calle o el mapa chico (la ruta decide y la sirve desde la caché). `ajustar` (03-nov-2026): un
- *  − Ajustar, con el pin del mapa chico en la ciruela del chip (si no, el azul de ✓ Comprar). */
-export function ImagenDepto({ avisoId, tipo, clase, carga = "eager", ajustar = false }: { avisoId: string; tipo: "foto" | "mapa" | undefined; clase: string; carga?: "eager" | "lazy"; ajustar?: boolean }) {
+/** La imagen de un depto: la de la calle o el mapa chico (la ruta decide y la sirve desde la caché). `veredicto` (26-nov-2026; antes
+ *  `ajustar`): el pin del mapa chico en el color de su veredicto —la clase de `claseDePin`, la misma del pin del mapa—. */
+export function ImagenDepto({ avisoId, tipo, clase, carga = "eager", veredicto = "comprar" }: { avisoId: string; tipo: "foto" | "mapa" | undefined; clase: string; carga?: "eager" | "lazy"; veredicto?: VeredictoImagen }) {
   const oscuro = useTemaOscuro();
-  const src = rutaImagenCalle(avisoId, oscuro, ajustar);
+  const src = rutaImagenCalle(avisoId, oscuro, veredicto);
   // MIENTRAS CARGA, UN ESPACIO GRIS DEL MISMO TAMAÑO (26-nov-2026): la caja tiene su tamaño y su gris desde el primer momento, y la
   // imagen aparece recién cargada (data-cargada), sin pintarse a medias. Una imagen que ya estaba en la caché del navegador puede
   // terminar antes de que React escuche `onLoad`: por eso también se mira `complete` al montar.

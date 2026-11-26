@@ -55,7 +55,7 @@ export interface EleccionAnalizar {
 
 // DESPUÉS DE «ANALIZAR» (03-nov-2026, InformeEnCamino): con `informe`, el mismo pop-up pasa a «Generando el informe de
 // [depto]…» con su barra, abre el informe solo, a los 10 s ofrece «Abrir informe» y, si falló o salió otro veredicto, lo dice.
-export function AvisoAntesDeAnalizar({ avisoId = null, depto, combinacion, finanzas, uso, rutaCompra, alAnalizar, alCancelar, modalidad = "ltr", analizando = false, compras = null, ticketConSaldo = null, cambio = null, ticketVence = null, planLinea = null, negociado = null, movido = null, informe = null, alCerrarInforme, alReintentarInforme = null, alAnalizarIgualInforme = null, inmediato = false }: {
+export function AvisoAntesDeAnalizar({ avisoId = null, depto, combinacion, finanzas, uso, rutaCompra, alAnalizar, alCancelar, modalidad = "ltr", analizando = false, compras = null, ticketConSaldo = null, cambio = null, ticketVence = null, planLinea = null, negociado = null, movido = null, informe = null, alCerrarInforme, alReintentarInforme = null, alAnalizarIgualInforme = null, inmediato = false, veredictoImagen }: {
   /** Lo que pasa después de «Analizar» (03-nov-2026): generando, listo, distinto o el fallo. Sin él, el aviso de siempre. */
   informe?: PasoInforme | null;
   /** Cerrar el pop-up del informe (solo cuando se puede): con el informe listo, quien lo monta deja el aviso de arriba. */
@@ -71,6 +71,9 @@ export function AvisoAntesDeAnalizar({ avisoId = null, depto, combinacion, finan
    *  dividendo y el retorno son a ese precio y el botón dice «Analizar a UF 2.950». Sin «Cambiar»: la noche lo calculó con este
    *  pie y este plazo. */
   negociado?: { precioUF: number; descuentoPct: number; score: number | null } | null;
+  /** El veredicto del pin de la miniatura (26-nov-2026): Explorar pasa el del pin del mapa (`claseDePin`); sin él, − Ajustar si viene
+   *  negociado y ✓ Comprar si no, como antes. */
+  veredictoImagen?: "comprar" | "ajustar" | "no";
   /** El precio negociado, verificado con los datos de hoy antes de cobrar (02-nov-2026): se movió o ya no llega. */
   movido?: string | null;
   /** El aviso (30-oct-2026, recorrido real de Fabrizio): su foto de la calle, o el mapa chico, va a la izquierda de la tarjeta
@@ -166,7 +169,7 @@ export function AvisoAntesDeAnalizar({ avisoId = null, depto, combinacion, finan
           cada uno». Sin ticket, la línea del pack de tres de siempre (el consumo). */}
       {sin && <h2 id="modal-plausibilidad-titulo" className="av-sin-titulo" data-aviso="sin-titulo">{AVISO_ANALIZAR.tituloSin}</h2>}
       <div className="av-tarjeta-fila">
-      {avisoId && <ImagenDepto avisoId={avisoId} tipo={tipos[avisoId]} clase="av-img" ajustar={!!negociado} />}
+      {avisoId && <ImagenDepto avisoId={avisoId} tipo={tipos[avisoId]} clase="av-img" veredicto={veredictoImagen ?? (negociado ? "ajustar" : "comprar")} />}
       <div className="av-tarjeta">
         {sin ? <p className="av-nombre" data-aviso="depto">{resumen.direccion}</p> : <h2 id="modal-plausibilidad-titulo" className="av-nombre" data-aviso="depto">{resumen.direccion}</h2>}
         {negociado && siConsigues ? (

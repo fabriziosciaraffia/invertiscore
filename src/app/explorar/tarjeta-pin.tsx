@@ -148,7 +148,11 @@ export function useLugares(ids: readonly string[]): Record<string, string | null
   return Object.fromEntries(ids.map((id) => [id, lugaresVistos.has(id) ? lugaresVistos.get(id) ?? null : lugaresFallidos.has(id) ? null : undefined]));
 }
 
-export function TarjetaPin({ pines, seleccionado, uf, analizados, resumenes = {}, guardados, generando, error, alCambiar, alCerrar, alGuardar, alAnalizar, alCompartir, alPrepararCompartir, alVerInforme, sinCuenta = false, recien = null, inscritos, alInvertir, etiquetaInvertir }: {
+/** Cuánto hay que deslizar la hoja hacia abajo para cerrarla (en el teléfono). */
+export const CIERRE_DESLIZAR_PX = 80;
+const esTelefonoAhora = () => typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(max-width: 767px)").matches;
+
+export function TarjetaPin({ pines, seleccionado, uf, analizados, resumenes = {}, guardados, generando, error, alCambiar, alCerrar, alGuardar, alAnalizar, alCompartir, alPrepararCompartir, alVerInforme, sinCuenta = false, recien = null, inscritos, alInvertir, etiquetaInvertir, alMedir }: {
   /** Los cercanos, el tocado primero. */
   pines: PinMapa[];
   seleccionado: string;
@@ -178,8 +182,58 @@ export function TarjetaPin({ pines, seleccionado, uf, analizados, resumenes = {}
   alInvertir?: (p: PinMapa) => void;
   /** El texto del botón cuando ya firmó la orden de Invierte con Franco (20-nov-2026), solo en los usados. */
   etiquetaInvertir?: (p: PinMapa) => string | undefined;
+  /** El alto de la tarjeta en pantalla (26-nov-2026): en el teléfono, el mapa se corre para que el pin elegido quede arriba de la hoja. */
+  alMedir?: (alto: number) => void;
 }) {
   const fila = useRef<HTMLDivElement>(null);
+  // LA HOJA DE ABAJO, EN EL TELÉFONO (26-nov-2026, revisión de Fabrizio en el celular: la tarjeta flotaba en la mitad y costaba cerrarla).
+  // Pegada al borde inferior y sube desde abajo (explorar.css); se cierra con la X de 44 px, tocando el mapa (explorar-cliente.tsx ›
+  // onTocarMapa) o deslizándola hacia abajo. El deslizar es vertical: el de lado sigue siendo el carrusel (touch-action: pan-x).
+  const hoja = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const el = hoja.current;
+    if (!el || !alMedir) return;
+    const medir = () => alMedir(el.getBoundingClientRect().height);
+    medir();
+    const ro = typeof ResizeObserver === "function" ? new ResizeObserver(medir) : null;
+    ro?.observe(el);
+    return () => { ro?.disconnect(); alMedir(0); };
+  }, [alMedir]);
+  // En el teléfono, el carrusel mide lo que la tarjeta elegida (no lo que la más alta): la hoja no queda con un hueco abajo.
+  useEffect(() => {
+    const el = fila.current;
+    const elegida = el?.querySelector<HTMLElement>('[data-explorar="tarjeta"][data-sel="1"]');
+    if (!el) return;
+    if (!elegida || !esTelefonoAhora()) { el.style.height = ""; return; }
+    const ajustar = () => { el.style.height = `${elegida.offsetHeight}px`; };
+    ajustar();
+    const ro = typeof ResizeObserver === "function" ? new ResizeObserver(ajustar) : null;
+    ro?.observe(elegida);
+    return () => ro?.disconnect();
+  }, [seleccionado, pines]);
+  const arrastre = useRef<{ id: number; x0: number; y0: number; vertical: boolean | null; dy: number } | null>(null);
+  const soltar = (cerrar: boolean) => {
+    const el = hoja.current;
+    arrastre.current = null;
+    if (el) { el.removeAttribute("data-arrastre"); el.style.transform = ""; }
+    if (cerrar) alCerrar();
+  };
+  const alBajar = (e: React.PointerEvent<HTMLElement>) => { if (esTelefonoAhora()) arrastre.current = { id: e.pointerId, x0: e.clientX, y0: e.clientY, vertical: null, dy: 0 }; };
+  const alMover = (e: React.PointerEvent<HTMLElement>) => {
+    const a = arrastre.current, el = hoja.current;
+    if (!a || !el || a.id !== e.pointerId) return;
+    const dy = e.clientY - a.y0, dx = e.clientX - a.x0;
+    if (a.vertical === null) {
+      if (Math.abs(dy) < 8 && Math.abs(dx) < 8) return;
+      a.vertical = Math.abs(dy) > Math.abs(dx);
+      if (!a.vertical) { arrastre.current = null; return; }
+      el.setPointerCapture?.(e.pointerId);
+      el.setAttribute("data-arrastre", "1");
+    }
+    a.dy = Math.max(0, dy);
+    el.style.transform = `translateY(${a.dy}px)`;
+  };
+  const alSoltar = (e: React.PointerEvent<HTMLElement>) => { const a = arrastre.current; if (a && a.id === e.pointerId) soltar(!!a.vertical && a.dy > CIERRE_DESLIZAR_PX); };
   const tipos = useCalle(pines.map((p) => p.avisoId));
   // EL METRO, AL INSTANTE (26-nov-2026): sale de la lista de estaciones del repo (lugar.ts › metroCercano), sin esperar al servidor; al
   // servidor solo se le pide el barrio o la avenida de los que no tienen metro a menos de 1 km.
@@ -224,7 +278,14 @@ export function TarjetaPin({ pines, seleccionado, uf, analizados, resumenes = {}
   }, [alCerrar, alCambiar, anterior, siguiente]);
 
   return (
-    <section className="ex-tarjeta-wrap" aria-label="Depto elegido" data-explorar="tarjeta-pin">
+    <section ref={hoja} className="ex-tarjeta-wrap" aria-label="Depto elegido" data-explorar="tarjeta-pin" onPointerDown={alBajar} onPointerMove={alMover} onPointerUp={alSoltar} onPointerCancel={() => soltar(false)}>
+      {/* En el teléfono: el asa de la hoja y la X para cerrarla (en el PC no se muestran). */}
+      <div className="ex-hoja-cab">
+        <span className="ex-hoja-asa" aria-hidden="true" />
+        <button type="button" className="ex-hoja-cerrar" aria-label={PORTAL_COPY.cerrarTarjeta} data-explorar="cerrar-tarjeta" onClick={alCerrar}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
+        </button>
+      </div>
       {pines.length > 1 && (
         <>
           <button type="button" className="ex-flecha ex-flecha-izq" aria-label={PORTAL_COPY.anterior} disabled={!anterior} onClick={() => anterior && alCambiar(anterior.avisoId)} data-explorar="flecha-anterior">‹</button>
@@ -252,22 +313,22 @@ export function TarjetaPin({ pines, seleccionado, uf, analizados, resumenes = {}
                 </p>
               )}
               <div className="ex-tarjeta-fila">
-                <ImagenDepto avisoId={p.avisoId} tipo={tipos[p.avisoId]} clase="ex-img" ajustar={esNegociado(p)} />
+                <ImagenDepto avisoId={p.avisoId} tipo={tipos[p.avisoId]} clase="ex-img" veredicto={clase} />
                 <div className="ex-tarjeta-datos">
                   {/* LA CABECERA (25-nov-2026, lámina 7): la comuna en mayúsculas y, debajo, el lugar —el metro a menos de 1 km, el
                       barrio o sector, o la avenida principal (lugar.ts)—, la tipología y los m². A la derecha, el chip del veredicto. */}
                   <div className="ex-tarjeta-cab">
                     <div className="ex-tarjeta-titulo">
                       <b className="ex-comuna" data-explorar="comuna">{p.comuna.toLocaleUpperCase("es-CL")}</b>
-                      {/* Una sola línea que no salta: el lugar (o, mientras llega del servidor, un espacio gris de su tamaño) y, siempre
-                          enteros, la tipología y los m²; un lugar largo se corta con «…». */}
+                      {/* El lugar ENTERO (26-nov-2026: «Metro Cri…» no se leía) y, si no cabe junto a la tipología y los m², ellos bajan a
+                          su propia línea (explorar.css › .ex-linea-lugar); mientras el barrio llega del servidor, un espacio gris de su tamaño. */}
                       {(() => {
                         const lugar = lugarDe(p.avisoId);
                         const resto = [p.tipologia, `${miles(p.m2)} m²`].filter(Boolean).join(" · ");
                         return (
                           <span className="ex-ojo ex-linea-lugar" data-explorar="linea">
                             {lugar === undefined ? <span className="ex-lugar ex-lugar-carga" aria-hidden="true" data-explorar="lugar-carga" /> : lugar ? <span className="ex-lugar" data-explorar="lugar">{lugar}</span> : null}
-                            <span className="ex-linea-resto">{lugar !== null ? ` · ${resto}` : resto}</span>
+                            <span className="ex-linea-resto">{lugar !== null && <span className="ex-sep"> · </span>}{resto}</span>
                           </span>
                         );
                       })()}

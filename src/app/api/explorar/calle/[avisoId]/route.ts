@@ -12,7 +12,8 @@ import { colorPin } from "@/lib/explorar/colores-pin";
 // vista pública de una cuadra de un aviso que existe.
 // EN OSCURO (30-oct-2026): `?tema=oscuro` sirve el mapa chico en el estilo oscuro de Franco; la URL distinta lo guarda aparte en
 // la caché del CDN. La foto de la calle es la misma en los dos temas.
-// EL PIN DEL MAPA CHICO (03-nov-2026, colores-pin.ts): el azul de ✓ Comprar, o con `v=a` la ciruela de − Ajustar; nunca el rojo.
+// EL PIN DEL MAPA CHICO (03-nov-2026, colores-pin.ts): el azul de ✓ Comprar, con `v=a` la ciruela de − Ajustar y, desde el
+// 26-nov-2026, con `v=n` el rojo de No conviene (la misma paleta de los pines del mapa; antes un No conviene salía azul).
 // ─────────────────────────────────────────────────────────────────────────────
 export const dynamic = "force-dynamic";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -25,7 +26,7 @@ export async function GET(req: Request, { params }: { params: { avisoId: string 
   if (!UUID.test(params.avisoId)) return new Response(null, { status: 404 });
   const sp = new URL(req.url).searchParams;
   const tema = sp.get("tema") === "oscuro" ? "dark" : "light";
-  // El pin del mapa chico en el color de su clase y su tema (03-nov-2026): `v=a`, − Ajustar; si no, ✓ Comprar.
+  // El pin del mapa chico en el color de su clase y su tema: `v=a` − Ajustar, `v=n` No conviene; si no, ✓ Comprar.
   const pin = colorPin(claseDeImagen(sp.get("v")), tema === "dark" ? "oscuro" : "claro").fondo;
   const img = await imagenDeCalle(createServiceClient(), params.avisoId, francoMapStaticStyleParams(tema), new Date(), {}, undefined, pin).catch(() => null);
   if (!img) return new Response(null, { status: 404, headers: { "Cache-Control": "no-store" } });

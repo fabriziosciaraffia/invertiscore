@@ -17,7 +17,7 @@ import { flujoTexto } from "@/lib/explorar/explorar";
 import { TARJETA_COPY } from "@/lib/explorar/mapa-todos";
 import { ORDENES, PORTAL_COPY, type DesgloseBarra, type OrdenPortal, type PinMapa } from "@/lib/explorar/portal";
 import { BORROSO } from "@/lib/explorar/abierto";
-import { esNegociado, NEGOCIAR_COPY, type PinNegociado } from "@/lib/explorar/capa-negociar";
+import { claseDePin, esNegociado, NEGOCIAR_COPY, type PinNegociado } from "@/lib/explorar/capa-negociar";
 import { LineasDesglose } from "./desglose";
 import { Borroso, BotonCompartir, Corazon, ImagenDepto, VeredictoDelPin, VeredictosNegociado } from "./tarjeta-pin";
 import { ChipInformePropio } from "@/components/guia/ChipInformePropio";
@@ -126,7 +126,7 @@ export function ListaPortal({ pines, negociados = [], noConviene = [], tope = nu
                   {negociado && i === pines.length && tope != null && <li className="ex-lista-sep" data-explorar="titulo-negociar">{NEGOCIAR_COPY.tituloLista(tope)}</li>}
                   <li className="ex-fila-l" data-explorar={negociado ? "fila-negociada" : "fila"} data-aviso={p.avisoId} data-analizado={analizados[p.avisoId] ? "1" : undefined}>
                     <button type="button" className="ex-fila-btn" onClick={() => alAbrir(p.avisoId)} aria-label={`${lineaDepto(p)} · UF ${miles(p.precioUF)}`}>
-                      <ImagenDepto avisoId={p.avisoId} tipo={undefined} clase="ex-mini" carga="lazy" ajustar={negociado} />
+                      <ImagenDepto avisoId={p.avisoId} tipo={undefined} clase="ex-mini" carga="lazy" veredicto={claseDePin(p)} />
                       <span className="ex-fila-datos">
                         <span className="ex-ojo">{lineaDepto(p)}</span>
                         <b className="ex-precio-l">UF {miles(p.precioUF)}{negociado && <span className="ex-publicado"> {NEGOCIAR_COPY.publicado}</span>}</b>
