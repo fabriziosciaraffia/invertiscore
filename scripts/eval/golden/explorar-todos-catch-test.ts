@@ -357,8 +357,12 @@ export async function runExplorarTodosTier(): Promise<{ hard: number }> {
     }
     if (!/\.ex-capa-movil \{ display: none;/.test(cssM) || !/\.ex-capa-boton \{ width: 40px; height: 40px;[^}]*border-radius: 999px;/.test(cssM) || !/\.ex-capa \{ display: none; \}/.test(medM) || !/\.ex-capa-movil \{ display: block; \}/.test(medM)) F("13.1 · bajo 768 px no se cambia la píldora por el botón redondo de 40 px (o en el PC se ven los dos)");
     if (!/onClick=\{\(\) => \{ alCambiar\(c\); cerrar\(true\); \}\}/.test(mapaC) || !/document\.addEventListener\("pointerdown", fuera, true\)/.test(mapaC) || !/if \(e\.key === "Escape"\) \{ e\.stopPropagation\(\); cerrar\(true\); \}/.test(mapaC) || !/e\.key !== "ArrowDown" && e\.key !== "ArrowUp"/.test(mapaC)) F("13.1 · las opciones no se cierran al elegir, al tocar fuera o con Escape (o no se recorren con las flechas)");
-    // 2 · sin Proyectos, el selector «Usados» (una sola opción) no se muestra en el teléfono; vuelve con los proyectos.
-    if (!/data-explorar="selector" data-una-opcion=\{PROYECTOS_VISIBLE \? undefined : "1"\}/.test(cli) || !/\.ex-selector\[data-una-opcion="1"\] \{ display: none; \}/.test(medM)) F("13.2 · sin Proyectos, el selector «Usados» se sigue mostrando en el teléfono");
+    // 2 · sin Proyectos, el selector «Usados» (una sola opción) no se muestra; vuelve con los proyectos.
+    // ⚠ ACTA 26-nov-2026 (segunda vuelta, pedido de Fabrizio): primero se sacaba solo en el teléfono (la regla iba dentro del bloque de
+    // bajo 768 px); ahora tampoco en el PC. Se exige la regla FUERA de todo @media —vale para los dos tamaños— y que no quede encerrada
+    // en el del teléfono.
+    { const sinMedia = cssM.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, "");
+      if (!/data-explorar="selector" data-una-opcion=\{PROYECTOS_VISIBLE \? undefined : "1"\}/.test(cli) || !/\.ex-selector\[data-una-opcion="1"\] \{ display: none; \}/.test(sinMedia) || /\.ex-selector\[data-una-opcion/.test(medM)) F("13.2 · sin Proyectos, el selector «Usados» se sigue mostrando (en el teléfono o en el PC)"); }
     // 3 · sin el más y el menos en el teléfono (se acerca con dos dedos), sí en el PC, siguiendo al ancho.
     if (!/const MEDIA_TELEFONO = "\(max-width: 767px\)";/.test(mapaC) || !/zoomControl: !esTelefono\(\)/.test(mapaC) || !/map\.setOptions\(\{ zoomControl: !telefono\.matches \}\)/.test(mapaC)) F("13.3 · el zoom del mapa no se va en el teléfono (o no vuelve en el PC)");
     // 4 · sin Street View ni pantalla completa, en los dos anchos: en el mapa y en la vista de calle que Google le monta adentro.

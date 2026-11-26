@@ -1115,7 +1115,7 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
         {/* LA BARRA (25-nov-2026, lámina 5, opción B): solo Usados o Proyectos, y Filtros. PROYECTOS QUEDA ESCONDIDO hasta que haya
             nuevos evaluados (hoy no hay precio por unidad): el selector lleva solo «Usados». La (i) de «¿Cómo se calcula?» pasó a la
             tarjeta del contador. */}
-        {/* Sin Proyectos, en el teléfono el selector no se muestra (26-nov-2026): una sola opción no elige nada. Vuelve con los proyectos. */}
+        {/* Sin Proyectos, el selector no se muestra en ningún tamaño (26-nov-2026): una sola opción no elige nada. Vuelve con los proyectos. */}
         <div className="ex-selector" role="radiogroup" aria-label={SELECTOR_COPY.grupo} data-explorar="selector" data-una-opcion={PROYECTOS_VISIBLE ? undefined : "1"}>
           <button type="button" role="radio" aria-checked="true" className="ex-selector-op" data-on="1" data-explorar="usados">{SELECTOR_COPY.usados}</button>
           {PROYECTOS_VISIBLE && <button type="button" role="radio" aria-checked="false" className="ex-selector-op" data-explorar="proyectos">{SELECTOR_COPY.proyectos}</button>}

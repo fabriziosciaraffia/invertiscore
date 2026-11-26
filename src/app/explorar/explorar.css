@@ -505,7 +505,10 @@
 .ex-capa-op[aria-checked="true"] { background: var(--franco-text); color: var(--franco-card); }
 .ex-capa-op:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; }
 /* EN EL TELÉFONO (26-nov-2026): «Mapa | Satélite» se vuelve un botón redondo de 40 px con el ícono de capas que abre las dos opciones;
-   en el PC queda la píldora. El selector «Usados» solo, sin Proyectos, no se muestra (una sola opción no elige nada). */
+   en el PC queda la píldora. */
+/* El selector «Usados» solo, sin Proyectos, no se muestra en NINGÚN tamaño (26-nov-2026; primero solo en el teléfono, después también
+   en el PC por pedido de Fabrizio): una sola opción no elige nada. Vuelve en los dos cuando se prenda PROYECTOS_VISIBLE. */
+.ex-selector[data-una-opcion="1"] { display: none; }
 .ex-capa-movil { display: none; position: relative; }
 .ex-capa-boton { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; padding: 0; border: 1px solid var(--franco-border); border-radius: 999px; background: var(--franco-card); color: var(--franco-text); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2); cursor: pointer; }
 .ex-capa-boton:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; }
@@ -517,7 +520,6 @@
   .ex-capa-movil { display: block; }
   /* Más arriba del centro: con la tarjeta de un depto abierta, el botón quedaba pegado a su borde de arriba. */
   .ex-capa-ctl { transform: translateY(-80px); }
-  .ex-selector[data-una-opcion="1"] { display: none; }
 }
 
 /* ── EL MAPA CON TODOS LOS DEPTOS (25-nov-2026, láminas 5, 6, 7 y 8 del canvas «La asesoría en el mapa») ── */
