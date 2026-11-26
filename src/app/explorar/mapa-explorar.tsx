@@ -342,7 +342,7 @@ export default function MapaExplorar({ items, seleccionado, encuadre, conZona, o
         pintar(ctx, dibujos, temaPin());
         // Para la revisión sin mirar el canvas: dónde quedó el pin elegido (alto en píxeles del contenedor del mapa).
         const elegido = dibujos.find((d) => d.tipo !== "grupo" && d.elegido);
-        revisionRef.current?.setAttribute("data-elegido-y", elegido ? String(Math.round(elegido.y)) : "");
+        revisionRef.current?.setAttribute("data-elegido-y", elegido ? String(Math.round(elegido.y)) : ""); revisionRef.current?.setAttribute("data-zoom", String(zoom));
       };
       dibujarRef.current = () => { if (cuadro) return; cuadro = window.requestAnimationFrame(() => { cuadro = 0; pintarYa(); }); };
 
