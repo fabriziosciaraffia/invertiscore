@@ -68,6 +68,8 @@ export interface DibujoReferencias {
   lineas: Array<{ color: string; eje: Pt[] }>;
   estaciones: Array<{ x: number; y: number; nombre: string; lineas: LineaDeEstacion[] }>;
   nombres: Array<{ texto: string; x: number; y: number; tipo: "comuna" | "estacion"; lineas?: LineaDeEstacion[] }>;
+  /** Cuántos nombres de las 17 combinaciones salieron (van siempre). */
+  combinaciones: number;
   anchoLinea: number;
 }
 
@@ -85,6 +87,9 @@ function dentroDe(x: number, y: number, anillo: ReadonlyArray<readonly [number, 
 
 interface Caja { x0: number; y0: number; x1: number; y1: number }
 const choca = (a: Caja, b: Caja) => a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
+/** ¿Es un pin que manda sobre las estaciones? Las etiquetas con precio y los grupos van ENCIMA de los logos y de los nombres de las
+ *  combinaciones; los puntos chicos, debajo (26-nov-2026, centro saturado). */
+const pinFuerte = (d: Dibujo): boolean => d.tipo !== "punto";
 /** La caja que ocupa un dibujo de los pines (los nombres de referencia les ceden el lugar). */
 function cajaDe(d: Dibujo): Caja {
   if (d.tipo === "etiqueta") return { x0: d.x - d.w / 2 - 2, y0: d.y - d.h / 2 - 2, x1: d.x + d.w / 2 + 2, y1: d.y + d.h / 2 + 2 };
@@ -93,22 +98,27 @@ function cajaDe(d: Dibujo): Caja {
 }
 
 /** Lo que se dibuja de las capas de referencia a este zoom: en píxeles del contenedor, solo lo que se ve, y los nombres que no
- *  chocan con los pines ni entre sí. */
+ *  chocan con los pines ni entre sí.
+ *  EL CENTRO SATURADO (26-nov-2026, decisión de Fabrizio): el logo de TODAS las estaciones va siempre (se pinta encima de los puntos
+ *  chicos); el nombre de las 17 COMBINACIONES va siempre —busca un lado libre de etiquetas y grupos y, si no hay, va igual a la
+ *  derecha, debajo de ellos—; el de las demás estaciones sale solo donde hay lugar, como antes. */
 export function componerReferencias(r: Pick<Referencias, "comunas" | "metro">, o: {
   zoom: number; telefono: boolean; vista: { w: number; h: number }; ocupados: readonly Dibujo[];
   aPixel: (lat: number, lng: number) => { x: number; y: number }; ancho: (texto: string, tipo: "comuna" | "estacion") => number;
 }): DibujoReferencias {
-  const out: DibujoReferencias = { limites: [], lineas: [], estaciones: [], nombres: [], anchoLinea: ESTILO_REFERENCIAS.lineaMetro.ancho };
+  const out: DibujoReferencias = { limites: [], lineas: [], estaciones: [], nombres: [], anchoLinea: ESTILO_REFERENCIAS.lineaMetro.ancho, combinaciones: 0 };
   const dentro = (x: number, y: number, m = 40) => x > -m && y > -m && x < o.vista.w + m && y < o.vista.h + m;
   const proyectar = (plano: number[]): Pt[] => { const pts: Pt[] = []; for (let i = 0; i + 1 < plano.length; i += 2) { const p = o.aPixel(plano[i], plano[i + 1]); pts.push([p.x, p.y]); } return pts; };
   const ocupadas: Caja[] = o.ocupados.map(cajaDe);
-  const ponerNombre = (texto: string, tipo: "comuna" | "estacion", x: number, y: number, alineado: "centro" | "derecha" | "izquierda", lineas?: LineaDeEstacion[]) => {
+  // Lo que un nombre de combinación respeta: las etiquetas, los grupos y lo de referencia ya puesto (no los puntos chicos).
+  const fuertes: Caja[] = o.ocupados.filter(pinFuerte).map(cajaDe);
+  const ponerNombre = (texto: string, tipo: "comuna" | "estacion", x: number, y: number, alineado: "centro" | "derecha" | "izquierda", lineas?: LineaDeEstacion[], modo: "libre" | "combinacion" | "siempre" = "libre") => {
     // El ancho incluye los círculos de las líneas que siguen al nombre de la estación (también ceden ante los pines).
     const w = o.ancho(texto, tipo) + anchoLineasDeNombre(lineas?.length ?? 0), h = lineas?.length ? 2 * LINEA_EN_NOMBRE.radio + 1 : 13;
     const x0 = alineado === "centro" ? x - w / 2 : alineado === "derecha" ? x : x - w;
     const caja = { x0: x0 - 2, y0: y - h / 2 - 1, x1: x0 + w + 2, y1: y + h / 2 + 1 };
-    if (!dentro(caja.x0, caja.y0, 0) || !dentro(caja.x1, caja.y1, 0) || ocupadas.some((c) => choca(c, caja))) return false;
-    ocupadas.push(caja);
+    if (modo !== "siempre" && (!dentro(caja.x0, caja.y0, 0) || !dentro(caja.x1, caja.y1, 0) || (modo === "libre" ? ocupadas : fuertes).some((c) => choca(c, caja)))) return false;
+    ocupadas.push(caja); fuertes.push(caja);
     out.nombres.push(lineas ? { texto, x: x0, y, tipo, lineas } : { texto, x: x0, y, tipo });
     return true;
   };
@@ -122,9 +132,17 @@ export function componerReferencias(r: Pick<Referencias, "comunas" | "metro">, o
       const p = o.aPixel(s.p[0], s.p[1]);
       if (!dentro(p.x, p.y, 12)) continue;
       out.estaciones.push({ x: p.x, y: p.y, nombre: s.n, lineas: s.l.map((ref) => ({ ref, color: colorDe(ref) })) });
-      ocupadas.push({ x0: p.x - 10, y0: p.y - 8, x1: p.x + 10, y1: p.y + 8 });
+      const logo = { x0: p.x - 10, y0: p.y - 8, x1: p.x + 10, y1: p.y + 8 };
+      ocupadas.push(logo); fuertes.push(logo);
     }
-    if (capaSeVe("nombresEstacion", o.zoom, o.telefono)) for (const s of out.estaciones) { if (!ponerNombre(s.nombre, "estacion", s.x + 12, s.y, "derecha", s.lineas)) ponerNombre(s.nombre, "estacion", s.x - 12, s.y, "izquierda", s.lineas); }
+    if (capaSeVe("nombresEstacion", o.zoom, o.telefono)) {
+      // Primero las combinaciones (van siempre), después las demás (solo con lugar).
+      for (const s of out.estaciones) {
+        if (s.lineas.length < 2) continue;
+        if (ponerNombre(s.nombre, "estacion", s.x + 12, s.y, "derecha", s.lineas, "combinacion") || ponerNombre(s.nombre, "estacion", s.x - 12, s.y, "izquierda", s.lineas, "combinacion") || ponerNombre(s.nombre, "estacion", s.x + 12, s.y, "derecha", s.lineas, "siempre")) out.combinaciones++;
+      }
+      for (const s of out.estaciones) { if (s.lineas.length > 1) continue; if (!ponerNombre(s.nombre, "estacion", s.x + 12, s.y, "derecha", s.lineas)) ponerNombre(s.nombre, "estacion", s.x - 12, s.y, "izquierda", s.lineas); }
+    }
   }
   const verLimites = capaSeVe("limites", o.zoom, o.telefono), verNombres = capaSeVe("nombresComuna", o.zoom, o.telefono);
   if (r.comunas && (verLimites || verNombres)) {

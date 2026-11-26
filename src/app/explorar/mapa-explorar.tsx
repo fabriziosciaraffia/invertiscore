@@ -130,8 +130,11 @@ export interface MapaExplorarProps {
  *  (los bordes compartidos no se oscurecen al repetirse); cada línea de Metro en UN trazo, con su color original y sin transparencia;
  *  las estaciones con su marcador (marcador-estacion.ts); los nombres con un halo para leerse sobre el mapa, y el de cada estación
  *  seguido de un círculo por cada una de sus líneas. */
-function pintarReferencias(ctx: CanvasRenderingContext2D, d: DibujoReferencias, claro: boolean, logo: HTMLImageElement | null) {
+function pintarReferencias(ctx: CanvasRenderingContext2D, d: DibujoReferencias, claro: boolean, logo: HTMLImageElement | null, capa: "fondo" | "estaciones") {
   const tema = claro ? "claro" : "oscuro";
+  // EN DOS CAPAS (26-nov-2026, centro saturado): el fondo (límites, líneas, nombres de comuna) va debajo de todos los pines; las
+  // estaciones (logos y nombres) van encima de los puntos chicos y debajo de las etiquetas con precio y de los grupos.
+  if (capa === "estaciones") { pintarEstaciones(ctx, d, tema, logo, claro); return; }
   const trazo = (anillos: ReadonlyArray<ReadonlyArray<readonly [number, number]>>, cerrar: boolean) => {
     ctx.beginPath();
     for (const a of anillos) { a.forEach(([x, y], i) => (i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y))); if (cerrar) ctx.closePath(); }
@@ -145,27 +148,36 @@ function pintarReferencias(ctx: CanvasRenderingContext2D, d: DibujoReferencias, 
     ctx.lineWidth = d.anchoLinea; ctx.lineCap = "round"; ctx.lineJoin = "round";
     for (const l of d.lineas) { trazo([l.eje], false); ctx.strokeStyle = l.color; ctx.stroke(); }
   }
+  for (const n of d.nombres) if (n.tipo === "comuna") pintarNombre(ctx, n, tema);
+}
+
+function pintarEstaciones(ctx: CanvasRenderingContext2D, d: DibujoReferencias, tema: "claro" | "oscuro", logo: HTMLImageElement | null, claro: boolean) {
   for (const s of d.estaciones) dibujarEstacion(ctx, s.x, s.y, logo, claro);
-  for (const n of d.nombres) {
-    const e = n.tipo === "comuna" ? ESTILO_REFERENCIAS.nombreComuna : ESTILO_REFERENCIAS.nombreEstacion;
-    ctx.font = e.fuente; ctx.textAlign = "left"; ctx.textBaseline = "middle";
-    ctx.lineWidth = 3; ctx.strokeStyle = e.halo[tema]; ctx.strokeText(n.texto, n.x, n.y);
-    ctx.fillStyle = e[tema]; ctx.fillText(n.texto, n.x, n.y);
-    if (!n.lineas?.length) continue;
-    // Las líneas de la estación: un círculo por línea con su número, después del nombre.
-    const r = LINEA_EN_NOMBRE.radio;
-    let cx = n.x + ctx.measureText(n.texto).width + LINEA_EN_NOMBRE.aireTexto + r;
-    ctx.textAlign = "center";
-    for (const l of n.lineas) {
-      ctx.beginPath(); ctx.arc(cx, n.y, r, 0, Math.PI * 2); ctx.fillStyle = l.color; ctx.fill();
-      ctx.lineWidth = 1; ctx.strokeStyle = e.halo[tema]; ctx.stroke();
-      const num = numeroDeLinea(l.ref);
-      ctx.font = num.length > 1 ? LINEA_EN_NOMBRE.fuenteLarga : LINEA_EN_NOMBRE.fuente;
-      ctx.fillStyle = textoSobreLinea(l.ref); ctx.fillText(num, cx, n.y + 0.5);
-      cx += 2 * r + LINEA_EN_NOMBRE.separacion;
-    }
+  for (const n of d.nombres) if (n.tipo === "estacion") pintarNombre(ctx, n, tema);
+}
+
+function pintarNombre(ctx: CanvasRenderingContext2D, n: DibujoReferencias["nombres"][number], tema: "claro" | "oscuro") {
+  const e = n.tipo === "comuna" ? ESTILO_REFERENCIAS.nombreComuna : ESTILO_REFERENCIAS.nombreEstacion;
+  ctx.font = e.fuente; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+  ctx.lineWidth = 3; ctx.strokeStyle = e.halo[tema]; ctx.strokeText(n.texto, n.x, n.y);
+  ctx.fillStyle = e[tema]; ctx.fillText(n.texto, n.x, n.y);
+  if (!n.lineas?.length) return;
+  // Las líneas de la estación: un círculo por línea con su número, después del nombre.
+  const r = LINEA_EN_NOMBRE.radio;
+  let cx = n.x + ctx.measureText(n.texto).width + LINEA_EN_NOMBRE.aireTexto + r;
+  ctx.textAlign = "center";
+  for (const l of n.lineas) {
+    ctx.beginPath(); ctx.arc(cx, n.y, r, 0, Math.PI * 2); ctx.fillStyle = l.color; ctx.fill();
+    ctx.lineWidth = 1; ctx.strokeStyle = e.halo[tema]; ctx.stroke();
+    const num = numeroDeLinea(l.ref);
+    ctx.font = num.length > 1 ? LINEA_EN_NOMBRE.fuenteLarga : LINEA_EN_NOMBRE.fuente;
+    ctx.fillStyle = textoSobreLinea(l.ref); ctx.fillText(num, cx, n.y + 0.5);
+    cx += 2 * r + LINEA_EN_NOMBRE.separacion;
   }
 }
+
+/** Un punto chico que va debajo de las estaciones (el elegido no: va arriba). */
+const esPuntoDeFondo = (d: Dibujo): boolean => d.tipo === "punto" && !d.elegido;
 
 function pintar(ctx: CanvasRenderingContext2D, dibujos: readonly Dibujo[], tema: TemaPin) {
   const circulo = (x: number, y: number, r: number, fondo: string, anillo: number) => {
@@ -341,11 +353,13 @@ export default function MapaExplorar({ items, seleccionado, encuadre, conZona, o
         // LAS CAPAS DE REFERENCIA, DEBAJO DE LOS PINES (26-nov-2026): se componen con los pines ya puestos (sus nombres les ceden el lugar)
         // y se piden recién después del primer dibujo con pines. No entran en el toque: `tocado` solo mira los dibujos de los pines.
         const refs = refsRef.current;
+        let dRefPintar: DibujoReferencias | null = null;
         if (refs.comunas || refs.metro) {
           const medidas = new Map<string, number>();
           const anchoRef = (t: string, tipo: "comuna" | "estacion") => { const k = `${tipo}|${t}`; let a = medidas.get(k); if (a == null) { ctx.font = tipo === "comuna" ? ESTILO_REFERENCIAS.nombreComuna.fuente : ESTILO_REFERENCIAS.nombreEstacion.fuente; a = ctx.measureText(t).width; medidas.set(k, a); } return a; };
           const dRef = componerReferencias(refs, { zoom, telefono: esTelefono(), vista: { w, h }, ocupados: dibujos, ancho: anchoRef, aPixel: (lat, lng) => { const p = proy.fromLatLngToContainerPixel(new g.maps.LatLng(lat, lng)); return { x: p.x, y: p.y }; } });
-          pintarReferencias(ctx, dRef, esClaro(), refs.logo);
+          pintarReferencias(ctx, dRef, esClaro(), refs.logo, "fondo");
+          dRefPintar = dRef;
           // Para la revisión sin mirar el canvas: cuánto dibuja cada capa (límites, líneas, estaciones, nombres) y si el logo cargó.
           revisionRef.current?.setAttribute("data-referencias", `${dRef.limites.length},${dRef.lineas.length},${dRef.estaciones.length},${dRef.nombres.length},${refs.logo ? "logo" : "sin-logo"}`);
         } else if (dibujos.length > 0 && !refsPedidas.current) {
@@ -353,7 +367,11 @@ export default function MapaExplorar({ items, seleccionado, encuadre, conZona, o
           window.setTimeout(() => { void cargarReferencias().then((r) => { refsRef.current = r; dibujarRef.current(); }); }, 0);
         }
         dibujosRef.current = dibujos;
-        pintar(ctx, dibujos, temaPin());
+        // Los puntos chicos, después las estaciones encima de ellos, y arriba de todo las etiquetas con precio y los grupos (el elegido
+        // también arriba). El toque sigue mirando solo los pines: un toque sobre un logo llega al pin que esté debajo.
+        pintar(ctx, dibujos.filter(esPuntoDeFondo), temaPin());
+        if (dRefPintar) pintarReferencias(ctx, dRefPintar, esClaro(), refsRef.current.logo, "estaciones");
+        pintar(ctx, dibujos.filter((d) => !esPuntoDeFondo(d)), temaPin());
         // Para la revisión sin mirar el canvas: dónde quedó el pin elegido (alto en píxeles del contenedor del mapa).
         const elegido = dibujos.find((d) => d.tipo !== "grupo" && d.elegido);
         revisionRef.current?.setAttribute("data-elegido-y", elegido ? String(Math.round(elegido.y)) : ""); revisionRef.current?.setAttribute("data-zoom", String(zoom));

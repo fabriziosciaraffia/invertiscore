@@ -476,7 +476,7 @@ export async function runExplorarTodosTier(): Promise<{ hard: number }> {
   // §18 · LAS CAPAS DE REFERENCIA (26-nov-2026, entrega 2 › B y C, lámina 5c): comunas de lejos, Metro de cerca, tenues, debajo de los
   // pines, sin toque y pedidas después de los primeros pines. Fuente: OpenStreetMap (ODbL), el crédito que ya está en el mapa.
   {
-    const cr = cargar<{ ZOOMS_REFERENCIA: Record<string, { pc: readonly number[]; telefono: readonly number[] }>; capaSeVe: (c: string, z: number, t: boolean) => boolean; componerReferencias: (r: unknown, o: unknown) => { limites: unknown[]; lineas: Array<{ color: string; eje: unknown[] }>; estaciones: Array<{ nombre: string; x: number; y: number }>; nombres: Array<{ texto: string; tipo: string; x: number; lineas?: Array<{ ref: string; color: string }> }>; anchoLinea: number }; ESTILO_REFERENCIAS: { lineaMetro: Record<string, unknown> }; numeroDeLinea: (r: string) => string; textoSobreLinea: (r: string) => string; anchoLineasDeNombre: (n: number) => number; ARCHIVO_METRO: string }>("src/lib/explorar/capas-referencia", F);
+    const cr = cargar<{ ZOOMS_REFERENCIA: Record<string, { pc: readonly number[]; telefono: readonly number[] }>; capaSeVe: (c: string, z: number, t: boolean) => boolean; componerReferencias: (r: unknown, o: unknown) => { limites: unknown[]; lineas: Array<{ color: string; eje: unknown[] }>; estaciones: Array<{ nombre: string; x: number; y: number }>; nombres: Array<{ texto: string; tipo: string; x: number; lineas?: Array<{ ref: string; color: string }> }>; anchoLinea: number; combinaciones: number }; ESTILO_REFERENCIAS: { lineaMetro: Record<string, unknown> }; numeroDeLinea: (r: string) => string; textoSobreLinea: (r: string) => string; anchoLineasDeNombre: (n: number) => number; ARCHIVO_METRO: string }>("src/lib/explorar/capas-referencia", F);
     if (cr) {
       // Los zooms de la tabla aprobada, como constantes.
       // ⚠ ACTA 26-nov-2026 (revisión del preview de Fabrizio): el logo de la estación aparece desde el mismo zoom que las líneas (13 PC /
@@ -488,7 +488,7 @@ export async function runExplorarTodosTier(): Promise<{ hard: number }> {
         for (const [t, [d, h]] of [[false, pc], [true, tel]] as const) if (!cr.capaSeVe(capa, d, t) || !cr.capaSeVe(capa, h, t) || cr.capaSeVe(capa, d - 1, t) || (h < 22 && cr.capaSeVe(capa, h + 1, t))) F(`18 · «${capa}» no aparece y desaparece en sus zooms (${t ? "teléfono" : "PC"})`);
       }
       // Lo que se compone a cada zoom, con datos chicos: una comuna, dos líneas, la estación Baquedano (combinación de la 1 y la 5).
-      const datos = { comunas: { fuente: "x", comunas: [{ n: "Providencia", e: [-33.43, -70.61], a: [[-33.40, -70.64, -33.40, -70.58, -33.46, -70.58, -33.46, -70.64]] }] }, metro: { fuente: "x", lineas: { L1: { color: "#cc0000", eje: [-33.437, -70.634, -33.437, -70.630] }, L5: { color: "#006633", eje: [-33.435, -70.632, -33.439, -70.632] } }, estaciones: [{ n: "Baquedano", l: ["L1", "L5"], p: [-33.437, -70.632] }] } };
+      const datos = { comunas: { fuente: "x", comunas: [{ n: "Providencia", e: [-33.43, -70.61], a: [[-33.40, -70.64, -33.40, -70.58, -33.46, -70.58, -33.46, -70.64]] }] }, metro: { fuente: "x", lineas: { L1: { color: "#cc0000", eje: [-33.437, -70.634, -33.437, -70.630] }, L5: { color: "#006633", eje: [-33.435, -70.632, -33.439, -70.632] } }, estaciones: [{ n: "Baquedano", l: ["L1", "L5"], p: [-33.437, -70.632] }, { n: "Salvador", l: ["L1"], p: [-33.441, -70.6345] }] } };
       const vista = { w: 1000, h: 800 };
       const aPixel = (lat: number, lng: number) => ({ x: 500 + (lng + 70.61) * 9000, y: 400 - (lat + 33.43) * 9000 });
       const comp = (zoom: number, telefono: boolean, ocupados: unknown[] = []) => cr.componerReferencias(datos, { zoom, telefono, vista, ocupados, aPixel, ancho: (t: string) => t.length * 7 });
@@ -505,12 +505,29 @@ export async function runExplorarTodosTier(): Promise<{ hard: number }> {
       const nomB = z14.nombres.find((n) => n.texto === "Baquedano");
       if (!nomB || nomB.lineas?.map((l) => `${l.ref}${l.color}`).join() !== "L1#cc0000,L5#006633") F("18 · el nombre de la estación no va seguido de sus líneas con su color (Baquedano (1)(5))");
       if (cr.numeroDeLinea("L4A") !== "4A" || cr.numeroDeLinea("L1") !== "1" || cr.textoSobreLinea("L2") !== "#0F0F0F" || ["L1", "L3", "L4", "L4A", "L5", "L6"].some((r) => cr.textoSobreLinea(r) !== "#FFFFFF")) F("18 · el número de la línea no es el de Metro (4A) o no se lee (negro en la L2, blanco en las demás)");
-      // Los círculos ocupan lugar: con un pin justo donde irían, el nombre se va al otro lado (no los tapa).
+      // ⚠ ACTA 26-nov-2026 (centro saturado, decisión de Fabrizio): el logo de TODAS las estaciones va encima de los puntos chicos; el
+      // nombre de las 17 combinaciones va SIEMPRE (respeta etiquetas y grupos si tiene un lado libre; si no, va igual, debajo de ellos);
+      // el de las demás, solo con lugar. Antes este guard probaba con un PUNTO sobre los círculos de Baquedano: hoy una combinación no
+      // le cede a un punto, así que la prueba de «los círculos ocupan lugar» pasa a una ETIQUETA, y se suman las demás reglas.
       const pB = aPixel(-33.437, -70.632);
       const finTexto = pB.x + 12 + "Baquedano".length * 7;
-      const conPinEnCirculos = comp(14, false, [{ tipo: "punto", x: finTexto + 14, y: pB.y, r: 4, id: "z", clase: "comprar", lat: 0, lng: 0 }]);
-      const nomC = conPinEnCirculos.nombres.find((n) => n.texto === "Baquedano");
-      if (!nomC || nomC.x > pB.x) F("18 · los círculos de las líneas no cuentan en el lugar del nombre (tapan un pin)");
+      const nomDe = (d: { nombres: Array<{ texto: string; x: number }> }, t: string) => d.nombres.find((n) => n.texto === t);
+      // Los círculos ocupan lugar: con una etiqueta justo donde irían, el nombre de la combinación se va al otro lado.
+      const nomC = nomDe(comp(14, false, [{ tipo: "etiqueta", x: finTexto + 14, y: pB.y, w: 10, h: 10, id: "z", clase: "comprar", texto: "UF 1", elegido: false }]), "Baquedano");
+      if (!nomC || nomC.x > pB.x) F("18 · los círculos de las líneas no cuentan en el lugar del nombre (tapan una etiqueta)");
+      // Una combinación NO le cede a un punto chico: con un punto sobre sus círculos, el nombre sigue a la derecha (encima del punto).
+      const nomP = nomDe(comp(14, false, [{ tipo: "punto", x: finTexto + 14, y: pB.y, r: 4, id: "z", clase: "comprar", elegido: false }]), "Baquedano");
+      if (!nomP || nomP.x < pB.x) F("18 · el nombre de una combinación le cede el lugar a un punto chico (debía ir encima)");
+      // Y va SIEMPRE: con etiquetas a los dos lados, sale igual.
+      const tapadaB = comp(14, false, [{ tipo: "etiqueta", x: pB.x, y: pB.y, w: 600, h: 40, id: "z", clase: "comprar", texto: "UF 1", elegido: false }]);
+      if (!nomDe(tapadaB, "Baquedano") || tapadaB.combinaciones !== 1) F("18 · el nombre de una combinación no sale cuando no tiene un lado libre (debía ir siempre)");
+      // La que no es combinación sale solo con lugar: con puntos a los dos lados no va, sin ellos sí. Y su logo va igual, encima del punto.
+      const pS = aPixel(-33.441, -70.6345);
+      const puntosS = [-1, 1].flatMap((lado) => [30, 60, 90].map((dx) => ({ tipo: "punto", x: pS.x + lado * dx, y: pS.y, r: 4, id: `s${lado}${dx}`, clase: "comprar", elegido: false })));
+      const conPuntosS = comp(14, false, puntosS);
+      if ((nomDe(comp(14, false), "Salvador") as { lineas?: Array<{ ref: string }> } | undefined)?.lineas?.map((l) => l.ref).join() !== "L1") F("18 · el nombre de una estación de una línea no va seguido de su círculo (Salvador (1))");
+      if (nomDe(conPuntosS, "Salvador") || !nomDe(comp(14, false), "Salvador")) F("18 · el nombre de una estación que no es combinación no cede ante los puntos (o no sale con lugar)");
+      if (!comp(14, false, [{ tipo: "punto", x: pS.x, y: pS.y, r: 4, id: "s0", clase: "comprar", elegido: false }]).estaciones.some((e) => e.nombre === "Salvador")) F("18 · el logo de una estación se va cuando hay un punto encima (debía ir siempre, encima del punto)");
       // Los nombres ceden ante los pines: con una etiqueta encima del nombre de la comuna, el nombre no va.
       const pEt = aPixel(-33.43, -70.61);
       // ⚠ ACTA 26-nov-2026 (revisión visual: en la mediana de los avisos siempre había un grupo y no salía ningún nombre): el nombre
@@ -559,14 +576,19 @@ export async function runExplorarTodosTier(): Promise<{ hard: number }> {
     // En el mapa: debajo de los pines (se pintan antes que ellos), pedidas después del primer dibujo con pines, y fuera del toque.
     const mpC = codigo("src/app/explorar/mapa-explorar.tsx");
     // ACTA 26-nov-2026 (revisión visual): lo compuesto pasa por `dRef` para dejar en el span de revisión cuánto dibuja cada capa.
-    if (!/const dRef = componerReferencias\(refs, [\s\S]{0,400}?pintarReferencias\(ctx, dRef, esClaro\(\), refs\.logo\);[\s\S]{0,400}?\} else if \(dibujos\.length > 0 && !refsPedidas\.current\) \{\s*refsPedidas\.current = true;\s*window\.setTimeout\(\(\) => \{ void cargarReferencias\(\)/.test(mpC) || !/window\.setTimeout\(\(\) => \{ void cargarReferencias\(\)[\s\S]{0,200}?\}, 0\);\s*\}\s*dibujosRef\.current = dibujos;\s*pintar\(ctx, dibujos, temaPin\(\)\);/.test(mpC)) F("18 · las capas no van debajo de los pines, o se piden antes del primer dibujo con pines");
+    // ⚠ ACTA 26-nov-2026 (centro saturado): el fondo (límites, líneas, nombres de comuna) se pinta antes que todos los pines; los puntos
+    // chicos, después; encima de ellos, las estaciones; y arriba de todo, las etiquetas, los grupos y el elegido.
+    if (!/const dRef = componerReferencias\(refs, [\s\S]{0,400}?pintarReferencias\(ctx, dRef, esClaro\(\), refs\.logo, "fondo"\);\s*dRefPintar = dRef;[\s\S]{0,400}?\} else if \(dibujos\.length > 0 && !refsPedidas\.current\) \{\s*refsPedidas\.current = true;\s*window\.setTimeout\(\(\) => \{ void cargarReferencias\(\)/.test(mpC) || !/window\.setTimeout\(\(\) => \{ void cargarReferencias\(\)[\s\S]{0,200}?\}, 0\);\s*\}\s*dibujosRef\.current = dibujos;(?:\s*\/\/[^\n]*)*\s*pintar\(ctx, dibujos\.filter\(esPuntoDeFondo\), temaPin\(\)\);\s*if \(dRefPintar\) pintarReferencias\(ctx, dRefPintar, esClaro\(\), refsRef\.current\.logo, "estaciones"\);\s*pintar\(ctx, dibujos\.filter\(\(d\) => !esPuntoDeFondo\(d\)\), temaPin\(\)\);/.test(mpC) || !/const esPuntoDeFondo = \(d: Dibujo\): boolean => d\.tipo === "punto" && !d\.elegido;/.test(mpC)) F("18 · las capas no van en su orden (fondo, puntos, estaciones, etiquetas y grupos), o se piden antes del primer dibujo con pines");
     { const ccS = codigo("src/lib/explorar/capa-canvas.ts"), iT = ccS.indexOf("export function tocado"), tc = iT < 0 ? "" : ccS.slice(iT, ccS.indexOf("\n}", iT));
       if (!tc || /[Rr]eferencia|limites|estacion|lineas/.test(tc) || !/tocado\(dibujosRef\.current/.test(mpC)) F("18 · el toque mira las capas de referencia (no se pueden tocar)"); }
-    if ((mpC.match(/pintarReferencias\(/g) ?? []).length !== 2) F("18 · las capas se pintan más de una vez (o encima de los pines)");
+    if ((mpC.match(/pintarReferencias\(/g) ?? []).length !== 3) F("18 · las capas se pintan más de dos veces (fondo y estaciones), o encima de las etiquetas");
     // Las líneas, sin transparencia; y el nombre de la estación, con sus círculos de línea pintados con el color y el número de cada una.
-    { const pr = mpC.match(/function pintarReferencias\([\s\S]*?\n\}/)?.[0] ?? "";
-      // (el salto a los círculos es SOLO para el nombre sin líneas —el de la comuna—; un `continue` suelto los deja sin pintar)
-      if (!pr || /globalAlpha/.test(pr) || !/\n\s*if \(!n\.lineas\?\.length\) continue;\n/.test(pr) || /\n\s*continue;\n/.test(pr) || !/trazo\(\[l\.eje\], false\); ctx\.strokeStyle = l\.color; ctx\.stroke\(\);/.test(pr) || !/for \(const l of n\.lineas\) \{[\s\S]{0,200}?ctx\.arc\(cx, n\.y, r, 0, Math\.PI \* 2\); ctx\.fillStyle = l\.color; ctx\.fill\(\);[\s\S]{0,300}?ctx\.fillStyle = textoSobreLinea\(l\.ref\); ctx\.fillText\(num, cx, n\.y \+ 0\.5\);/.test(pr)) F("18 · las líneas de Metro llevan transparencia, o el nombre de la estación no pinta sus círculos de línea"); }
+    { const iPr = mpC.indexOf("function pintarReferencias("), fPr = mpC.indexOf("\nfunction pintar(", iPr), pr = iPr < 0 || fPr < 0 ? "" : mpC.slice(iPr, fPr);
+      // (el salto a los círculos es SOLO para el nombre sin líneas —el de la comuna—; un `return` suelto los deja sin pintar)
+      // El fondo pinta solo los nombres de comuna; la capa de estaciones, los logos y los nombres de estación.
+      if (!/if \(capa === "estaciones"\) \{ pintarEstaciones\(ctx, d, tema, logo, claro\); return; \}/.test(pr) || !/for \(const n of d\.nombres\) if \(n\.tipo === "comuna"\) pintarNombre\(ctx, n, tema\);\n\}/.test(pr) || !/function pintarEstaciones\([^)]*\) \{\n  for \(const s of d\.estaciones\) dibujarEstacion\(ctx, s\.x, s\.y, logo, claro\);\n  for \(const n of d\.nombres\) if \(n\.tipo === "estacion"\) pintarNombre\(ctx, n, tema\);\n\}/.test(pr)) F("18 · las estaciones no van en su propia capa (logos y nombres encima de los puntos)");
+      if ((mpC.match(/dibujarEstacion\(/g) ?? []).length !== 1) F("18 · el logo de las estaciones se dibuja también fuera de su capa (debajo de los puntos)");
+      if (!pr || /globalAlpha/.test(pr) || !/\n\s*if \(!n\.lineas\?\.length\) return;\n/.test(pr) || /\n\s*(?:continue|return);\n/.test(pr) || !/trazo\(\[l\.eje\], false\); ctx\.strokeStyle = l\.color; ctx\.stroke\(\);/.test(pr) || !/for \(const l of n\.lineas\) \{[\s\S]{0,200}?ctx\.arc\(cx, n\.y, r, 0, Math\.PI \* 2\); ctx\.fillStyle = l\.color; ctx\.fill\(\);[\s\S]{0,300}?ctx\.fillStyle = textoSobreLinea\(l\.ref\); ctx\.fillText\(num, cx, n\.y \+ 0\.5\);/.test(pr)) F("18 · las líneas de Metro llevan transparencia, o el nombre de la estación no pinta sus círculos de línea"); }
     // Sin los nombres de localidad de Google en el mapa (la capa de comunas ya los dice; Google los repetía al lado); la foto satelital, tal cual.
     { const cmM = cargar<{ opcionesDeCapa: (c: string, claro: boolean) => { styles: Array<{ featureType?: string; elementType?: string; stylers?: Array<Record<string, string>> }> | null } }>("src/lib/explorar/capa-mapa", F);
       if (cmM) {
