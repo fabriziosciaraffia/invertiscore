@@ -333,7 +333,10 @@ export default function MapaExplorar({ items, seleccionado, encuadre, conZona, o
         if (refs.comunas || refs.metro) {
           const medidas = new Map<string, number>();
           const anchoRef = (t: string, tipo: "comuna" | "estacion") => { const k = `${tipo}|${t}`; let a = medidas.get(k); if (a == null) { ctx.font = tipo === "comuna" ? ESTILO_REFERENCIAS.nombreComuna.fuente : ESTILO_REFERENCIAS.nombreEstacion.fuente; a = ctx.measureText(t).width; medidas.set(k, a); } return a; };
-          pintarReferencias(ctx, componerReferencias(refs, { zoom, telefono: esTelefono(), vista: { w, h }, ocupados: dibujos, ancho: anchoRef, aPixel: (lat, lng) => { const p = proy.fromLatLngToContainerPixel(new g.maps.LatLng(lat, lng)); return { x: p.x, y: p.y }; } }), esClaro(), refs.logo);
+          const dRef = componerReferencias(refs, { zoom, telefono: esTelefono(), vista: { w, h }, ocupados: dibujos, ancho: anchoRef, aPixel: (lat, lng) => { const p = proy.fromLatLngToContainerPixel(new g.maps.LatLng(lat, lng)); return { x: p.x, y: p.y }; } });
+          pintarReferencias(ctx, dRef, esClaro(), refs.logo);
+          // Para la revisión sin mirar el canvas: cuánto dibuja cada capa (límites, líneas, estaciones, nombres) y si el logo cargó.
+          revisionRef.current?.setAttribute("data-referencias", `${dRef.limites.length},${dRef.lineas.length},${dRef.estaciones.length},${dRef.nombres.length},${refs.logo ? "logo" : "sin-logo"}`);
         } else if (dibujos.length > 0 && !refsPedidas.current) {
           refsPedidas.current = true;
           window.setTimeout(() => { void cargarReferencias().then((r) => { refsRef.current = r; dibujarRef.current(); }); }, 0);

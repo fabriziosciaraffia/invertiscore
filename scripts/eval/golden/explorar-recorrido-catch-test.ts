@@ -319,7 +319,9 @@ export async function runExplorarRecorridoTier(): Promise<{ hard: number }> {
   // mapa, el estilo de Franco de cada tema; en satélite, la foto sin estilo.
   const capaSrc = codigo("src/lib/explorar/capa-mapa.ts");
   if (!/const opcionesDe = \(capa: CapaMapa\) => opcionesDeCapa\(capa, esClaro\(\)\);/.test(mapa) || !/\.\.\.opcionesDe\(capaRef\.current\),/.test(mapa)
-    || !/return claro \? \{ mapTypeId: "roadmap", styles: francoMapStyleForTheme\("light"\), backgroundColor: "#F6F6F7" \} : \{ mapTypeId: "roadmap", styles: francoMapStyleForTheme\("dark"\), backgroundColor: "#1a1a1a" \};/.test(capaSrc)) F("9 · el mapa de /explorar no toma el estilo del tema");
+    // ⚠ ACTA 26-nov-2026 (entrega 2 › B): al estilo de cada tema se le suma la regla que apaga los nombres de localidad de Google (la capa de
+    // comunas los dice); la regla de esta línea sigue: cada tema, su estilo de Franco.
+    || !/\? \{ mapTypeId: "roadmap", styles: \[\.\.\.francoMapStyleForTheme\("light"\), SIN_LOCALIDADES_GOOGLE\], backgroundColor: "#F6F6F7" \}\s*: \{ mapTypeId: "roadmap", styles: \[\.\.\.francoMapStyleForTheme\("dark"\), SIN_LOCALIDADES_GOOGLE\], backgroundColor: "#1a1a1a" \};/.test(capaSrc)) F("9 · el mapa de /explorar no toma el estilo del tema");
   if (!/new MutationObserver\(\(\) => \{\s*const map = mapRef\.current;\s*if \(!map\) return;\s*map\.setOptions\(opcionesDe\(capaRef\.current\)\);\s*dibujarRef\.current\(\);\s*\}\);\s*o\.observe\(document\.documentElement, \{ attributes: true, attributeFilter: \["data-theme"\] \}\);/.test(mapa)) F("9 · el mapa de /explorar no cambia al momento cuando cambia el tema");
   // ⚠ ACTA (03-nov-2026, goal «la pasada real de /explorar», «Rojo en ningún pin») · los pines van en el color de su clase y de su
   // tema (colores-pin.ts, por iconoPin): azul ✓ Comprar, tinta con ✓ el analizado; en oscuro, los del chip aclarados. Antes: rojos

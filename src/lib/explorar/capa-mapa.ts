@@ -23,8 +23,17 @@ export function guardarCapaMapa(almacen: Almacen | null, capa: CapaMapa): void {
   try { almacen?.setItem(CLAVE_CAPA_MAPA, capa); } catch { /* sin almacenamiento, sin recordar */ }
 }
 
+/** SIN LOS NOMBRES DE LOCALIDAD DE GOOGLE en el mapa de Explorar (26-nov-2026, entrega 2 › B): la capa de comunas dice esos nombres con
+ *  la letra de Franco y en un lugar libre de pines, y Google los repetía al lado («Pudahuel PUDAHUEL»). Los barrios y las calles de
+ *  Google siguen. Solo en el mapa: la foto satelital va tal cual (decisión del 04-nov). */
+export const SIN_LOCALIDADES_GOOGLE = { featureType: "administrative.locality", elementType: "labels", stylers: [{ visibility: "off" }] };
+
+type EstiloMapa = ReturnType<typeof francoMapStyleForTheme>[number] | typeof SIN_LOCALIDADES_GOOGLE;
+
 /** Las opciones del mapa de Google para una vista y un tema: el mapa con el estilo de Franco de su tema, o la foto híbrida tal cual. */
-export function opcionesDeCapa(capa: CapaMapa, claro: boolean): { mapTypeId: "roadmap" | "hybrid"; styles: ReturnType<typeof francoMapStyleForTheme> | null; backgroundColor: string } {
+export function opcionesDeCapa(capa: CapaMapa, claro: boolean): { mapTypeId: "roadmap" | "hybrid"; styles: EstiloMapa[] | null; backgroundColor: string } {
   if (capa === "satelite") return { mapTypeId: "hybrid", styles: null, backgroundColor: "#1a1a1a" };
-  return claro ? { mapTypeId: "roadmap", styles: francoMapStyleForTheme("light"), backgroundColor: "#F6F6F7" } : { mapTypeId: "roadmap", styles: francoMapStyleForTheme("dark"), backgroundColor: "#1a1a1a" };
+  return claro
+    ? { mapTypeId: "roadmap", styles: [...francoMapStyleForTheme("light"), SIN_LOCALIDADES_GOOGLE], backgroundColor: "#F6F6F7" }
+    : { mapTypeId: "roadmap", styles: [...francoMapStyleForTheme("dark"), SIN_LOCALIDADES_GOOGLE], backgroundColor: "#1a1a1a" };
 }

@@ -532,10 +532,17 @@ export async function runExplorarTodosTier(): Promise<{ hard: number }> {
     for (const archivo of ["src/app/explorar/mapa-explorar.tsx", "src/app/explorar/explorar-cliente.tsx", "src/app/explorar/tarjeta-pin.tsx", "src/lib/explorar/capa-canvas.ts"]) if (/metro-logo\.svg|drawImage/.test(codigo(archivo))) F(`18 · ${archivo} dibuja el logo por su cuenta (debe pasar por marcador-estacion.ts)`);
     // En el mapa: debajo de los pines (se pintan antes que ellos), pedidas después del primer dibujo con pines, y fuera del toque.
     const mpC = codigo("src/app/explorar/mapa-explorar.tsx");
-    if (!/pintarReferencias\(ctx, componerReferencias\(refs, [\s\S]{0,400}?\} else if \(dibujos\.length > 0 && !refsPedidas\.current\) \{\s*refsPedidas\.current = true;\s*window\.setTimeout\(\(\) => \{ void cargarReferencias\(\)/.test(mpC) || !/window\.setTimeout\(\(\) => \{ void cargarReferencias\(\)[\s\S]{0,200}?\}, 0\);\s*\}\s*dibujosRef\.current = dibujos;\s*pintar\(ctx, dibujos, temaPin\(\)\);/.test(mpC)) F("18 · las capas no van debajo de los pines, o se piden antes del primer dibujo con pines");
+    // ACTA 26-nov-2026 (revisión visual): lo compuesto pasa por `dRef` para dejar en el span de revisión cuánto dibuja cada capa.
+    if (!/const dRef = componerReferencias\(refs, [\s\S]{0,400}?pintarReferencias\(ctx, dRef, esClaro\(\), refs\.logo\);[\s\S]{0,400}?\} else if \(dibujos\.length > 0 && !refsPedidas\.current\) \{\s*refsPedidas\.current = true;\s*window\.setTimeout\(\(\) => \{ void cargarReferencias\(\)/.test(mpC) || !/window\.setTimeout\(\(\) => \{ void cargarReferencias\(\)[\s\S]{0,200}?\}, 0\);\s*\}\s*dibujosRef\.current = dibujos;\s*pintar\(ctx, dibujos, temaPin\(\)\);/.test(mpC)) F("18 · las capas no van debajo de los pines, o se piden antes del primer dibujo con pines");
     { const ccS = codigo("src/lib/explorar/capa-canvas.ts"), iT = ccS.indexOf("export function tocado"), tc = iT < 0 ? "" : ccS.slice(iT, ccS.indexOf("\n}", iT));
       if (!tc || /[Rr]eferencia|limites|estacion|lineas/.test(tc) || !/tocado\(dibujosRef\.current/.test(mpC)) F("18 · el toque mira las capas de referencia (no se pueden tocar)"); }
     if ((mpC.match(/pintarReferencias\(/g) ?? []).length !== 2) F("18 · las capas se pintan más de una vez (o encima de los pines)");
+    // Sin los nombres de localidad de Google en el mapa (la capa de comunas ya los dice; Google los repetía al lado); la foto satelital, tal cual.
+    { const cmM = cargar<{ opcionesDeCapa: (c: string, claro: boolean) => { styles: Array<{ featureType?: string; elementType?: string; stylers?: Array<Record<string, string>> }> | null } }>("src/lib/explorar/capa-mapa", F);
+      if (cmM) {
+        const apaga = (st: Array<{ featureType?: string; elementType?: string; stylers?: Array<Record<string, string>> }> | null) => !!st?.some((r) => r.featureType === "administrative.locality" && r.elementType === "labels" && r.stylers?.some((s) => s.visibility === "off"));
+        if (!apaga(cmM.opcionesDeCapa("mapa", true).styles) || !apaga(cmM.opcionesDeCapa("mapa", false).styles) || cmM.opcionesDeCapa("satelite", true).styles !== null) F("18 · el mapa repite los nombres de localidad de Google junto a los de la capa de comunas (o la foto satelital dejó de ir tal cual)");
+      } }
     if (!/CREDITO_OSM/.test(mpC)) F("18 · el mapa perdió el crédito de OpenStreetMap");
   }
   // El cap rate del tramo es el de la tarjeta.
