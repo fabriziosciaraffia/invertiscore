@@ -152,7 +152,7 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
     const t = texto(html);
     // ⚠ ACTA 26-nov-2026 (revisión del preview, cambio 6): antes «4.807 de 4.807 convienen» y el chip «4.807 Comprar»; ahora el número
     // grande y «de 4.807 deptos convienen», y la casilla «Comprar · 4.807» (con su check, prendida).
-    if (!t.includes("4.807 de 4.807 deptos convienen") || !/<button[^>]*data-clase="comprar"[^>]*><span class="ex-ck"[^>]*>(?:<svg[\s\S]*?<\/svg>)?<\/span>Comprar · 4\.807<\/button>/.test(html)) F("1 · el primer pintado no dice «4.807 de 4.807 deptos convienen» con la casilla «Comprar · 4.807» (con una búsqueda guardada en la cuenta)");
+    if (!t.includes("4.807 de 4.807 deptos convienen") || !/<button[^>]*data-clase="comprar"[^>]*><span class="ex-ck"[^>]*>(?:<svg[\s\S]*?<\/svg>)?<\/span><span class="ex-vc-t">Comprar<span class="ex-vc-sep"> · <\/span><span class="ex-vc-n">4\.807<\/span><\/span><\/button>/.test(html)) F("1 · el primer pintado no dice «4.807 de 4.807 deptos convienen» con la casilla «Comprar · 4.807» (con una búsqueda guardada en la cuenta)");
     if (/Ñuñoa/.test(t) || /Filtros · \d/.test(t)) F("1 · el primer pintado trae los filtros del perfil");
     // ⚠ ACTA (30-oct-2026, goal del recorrido real de Fabrizio) · arriba, solo «Filtros» y «¿Cómo se calcula?»: «Ordenar» vive en la lista
     // y «Mi búsqueda», dentro de Filtros (decisión de Fabrizio).

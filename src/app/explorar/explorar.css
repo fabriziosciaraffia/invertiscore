@@ -601,6 +601,15 @@
 @media (hover: hover) { .ex-vc:hover { box-shadow: 0 3px 10px rgba(20, 20, 20, 0.16); transform: translateY(-1px); } .ex-vc[data-off="1"]:hover { border-color: var(--franco-text-secondary); color: var(--franco-text); } }
 .ex-vc:active { transform: scale(0.96); box-shadow: 0 1px 2px rgba(20, 20, 20, 0.08); }
 @media (prefers-reduced-motion: reduce) { .ex-vc { transition: none; } .ex-vc:hover, .ex-vc:active { transform: none; } }
+/* LAS TRES CASILLAS CABEN EN EL TELÉFONO (26-nov-2026): a 390 la fila corría de lado y «No conviene · 11.509» quedaba cortada. Bajo
+   768 px van en tres columnas iguales, con el nombre arriba y la cifra abajo; en el PC siguen en una línea. */
+@media (max-width: 767px) {
+  .ex-contador-chips { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; overflow: visible; margin: 0; padding: 0; }
+  .ex-vc { min-width: 0; min-height: 44px; padding: 4px 8px 4px 7px; white-space: normal; text-align: left; }
+  .ex-vc-t { display: flex; flex-direction: column; min-width: 0; line-height: 1.15; }
+  .ex-vc-sep { display: none; }
+  .ex-vc-n { font-weight: 700; }
+}
 /* «¿Cómo se calcula?» en la barra: con el ícono en el PC, solo el ícono en el teléfono. */
 .ex-como2 { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; min-height: 40px; min-width: 40px; justify-content: center; padding: 0 6px; border: 0; border-radius: 999px; background: transparent; color: var(--franco-text-secondary); font-family: var(--font-body); font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
 .ex-como2:focus-visible, .ex-ver-lista:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; }

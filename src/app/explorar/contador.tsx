@@ -14,7 +14,7 @@
 // (el esqueleto de carga), las casillas no hacen nada todavía.
 // ─────────────────────────────────────────────────────────────────────────────
 import { useEffect, useState } from "react";
-import { CHIP_CLASE_COPY, CLASES_MAPA, CONTADOR_COPY, proporcionClases, textoChipClase, textoContador, type ClaseMapa, type ConteoClases } from "@/lib/explorar/mapa-todos";
+import { CHIP_CLASE_COPY, CLASES_MAPA, CONTADOR_COPY, cifraChipClase, proporcionClases, textoChipClase, textoContador, type ClaseMapa, type ConteoClases } from "@/lib/explorar/mapa-todos";
 import { PORTAL_COPY } from "@/lib/explorar/portal";
 
 /** La llave en el navegador de «la dejó plegada». */
@@ -62,7 +62,9 @@ export function Contador({ conteo, ocultar, calculando = null, alAlternar }: {
                   aria-label={conteo ? `${textoChipClase(c, conteo[c])}${apagado ? ", apagado" : ""}` : CHIP_CLASE_COPY[c]} title={CONTADOR_COPY.accion(c, apagado)}
                   data-explorar={`chip-${c}`} onClick={alAlternar ? () => alAlternar(c) : undefined}>
                   <span className="ex-ck" aria-hidden="true">{!apagado && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l5 5 9-10" /></svg>}</span>
-                  {conteo ? textoChipClase(c, conteo[c]) : CHIP_CLASE_COPY[c]}
+                  {/* «Comprar · 4.531» en una línea en el PC; en el teléfono el nombre arriba y la cifra abajo, para que las tres casillas
+                      quepan a 390 sin correr de lado (26-nov-2026: la tercera quedaba cortada). */}
+                  <span className="ex-vc-t">{CHIP_CLASE_COPY[c]}{conteo && <><span className="ex-vc-sep"> · </span><span className="ex-vc-n">{cifraChipClase(conteo[c])}</span></>}</span>
                 </button>
               );
             })}

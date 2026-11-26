@@ -166,7 +166,9 @@ export const CONTADOR_COPY = {
 } as const;
 export const CHIP_CLASE_COPY: Record<ClaseMapa, string> = { comprar: "Comprar", ajustar: "Ajustar", no: "No conviene" };
 /** La casilla de una clase en la tarjeta del contador: «Comprar · 4.513» (lámina 5d). */
-export const textoChipClase = (clase: ClaseMapa, n: number) => `${CHIP_CLASE_COPY[clase]} · ${miles(n)}`;
+export const textoChipClase = (clase: ClaseMapa, n: number) => `${CHIP_CLASE_COPY[clase]} · ${cifraChipClase(n)}`;
+/** La cifra sola de la casilla («11.509»): en el teléfono va debajo del nombre (26-nov-2026). */
+export const cifraChipClase = (n: number) => miles(n);
 
 // ── LA TARJETA DEL DEPTO (lámina 7) ─────────────────────────────────────────
 export const TARJETA_COPY = {

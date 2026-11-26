@@ -102,7 +102,13 @@ export async function runExplorarTodosTier(): Promise<{ hard: number }> {
     if (!/<b class="ex-contador-big" data-explorar="contador-numero">4\.513<\/b> <span>de 19\.056 deptos convienen<\/span>/.test(html)) F("5 · la tarjeta no dice «4.513» grande y «de 19.056 deptos convienen»");
     if (!/\.ex-contador-big \{[^}]*font-size: 28px;[^}]*color: var\(--chip-v-c/.test(leer("src/app/explorar/explorar.css"))) F("5 · el número de los que convienen no va grande y en azul");
     if (!/data-explorar="contador-proporcion"[^>]*><span data-clase="comprar" style="width:23\.7%"><\/span><span data-clase="ajustar" style="width:15\.8%"><\/span><span data-clase="no" style="width:60\.5%"><\/span>/.test(html)) F("5 · falta la barra fina con la proporción de Comprar, Ajustar y No conviene");
-    for (const [c, txt] of [["comprar", "Comprar · 4.513"], ["ajustar", "Ajustar · 3.016"], ["no", "No conviene · 11.527"]]) if (!html.includes(txt) || !new RegExp(`data-clase="${c}"`).test(html)) F(`5 · falta la casilla «${txt}»`);
+    // ⚠ ACTA 26-nov-2026 (las tres casillas caben a 390): el texto de la casilla va en tres piezas —nombre, « · » y cifra— para que en
+    // el teléfono la cifra baje bajo el nombre; antes era un solo texto «Comprar · 4.513». Se exige la casilla CON su clase y sus tres
+    // piezas en orden, dentro del mismo botón.
+    for (const [c, nom, n] of [["comprar", "Comprar", "4.513"], ["ajustar", "Ajustar", "3.016"], ["no", "No conviene", "11.527"]]) if (!new RegExp(`<button[^>]*data-clase="${c}"[^>]*>(?:(?!</button>)[^])*<span class="ex-vc-t">${nom}<span class="ex-vc-sep"> · </span><span class="ex-vc-n">${n}</span></span></button>`).test(html)) F(`5 · falta la casilla «${nom} · ${n}»`);
+    // A 390 las tres caben: tres columnas, el separador fuera y la cifra bajo el nombre (no una fila que corre de lado).
+    { const cssC = leer("src/app/explorar/explorar.css"); const iM = cssC.lastIndexOf("@media (max-width: 767px) {"); const blq = iM < 0 ? "" : cssC.slice(iM, cssC.indexOf("\n}", iM));
+      if (!/\.ex-contador-chips \{ display: grid; grid-template-columns: repeat\(3, minmax\(0, 1fr\)\);[^}]*overflow: visible;/.test(blq) || !/\.ex-vc-sep \{ display: none; \}/.test(blq) || !/\.ex-vc-t \{ display: flex; flex-direction: column;/.test(blq)) F("5 · a 390 las tres casillas no caben (la fila vuelve a correr de lado o la cifra no baja bajo el nombre)"); }
     if (!/data-clase="no"[^>]*data-off="1"[^>]*aria-pressed="false"[^>]*><span class="ex-ck" aria-hidden="true"><\/span>/.test(html)) F("5 · la casilla apagada no queda apagada y vacía (data-off, aria-pressed=false, sin check)");
     if (!/data-clase="comprar"[^>]*aria-pressed="true"[^>]*><span class="ex-ck" aria-hidden="true"><svg/.test(html)) F("5 · la casilla prendida no lleva su check");
     if (/data-explorar="como-se-calcula"|data-explorar="ver-lista"/.test(html)) F("5 · la (i) o «Ver lista» siguen dentro de la tarjeta del contador");
