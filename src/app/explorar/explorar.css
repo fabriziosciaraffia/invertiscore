@@ -620,6 +620,9 @@
 [data-explorar="imagen"] img { transition: opacity 0.2s ease; }
 [data-explorar="imagen"]:not([data-cargada="1"]) img { opacity: 0; }
 .ex-linea-lugar { display: flex; align-items: baseline; min-width: 0; white-space: nowrap; }
+/* Sin esto, la línea que no envuelve ensancha la tarjeta del carrusel más allá de la pantalla (un ítem flex no baja de su contenido):
+   a 390 se cortaban el corazón y el borde del botón. */
+.ex-tarjeta { min-width: 0; }
 .ex-lugar { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .ex-linea-resto { flex: none; white-space: pre; }
 .ex-lugar-carga { display: inline-block; flex: none; width: 8em; height: 0.9em; align-self: center; border-radius: 4px; background: color-mix(in srgb, var(--franco-text) 12%, var(--franco-card)); }

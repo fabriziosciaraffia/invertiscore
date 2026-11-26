@@ -119,12 +119,16 @@ const lugaresPedidos = new Set<string>();
 const lugaresFallidos = new Set<string>();
 /** Cuánto espera la tarjeta el barrio o la avenida antes de soltar la reserva (el pedido tarda 0,2 s; el primero en frío, ~1,5 s). */
 export const TOPE_LUGAR_MS = 8000;
+// QUIÉN REDIBUJA (26-nov-2026): cada tarjeta montada se suscribe, y cada respuesta avisa a las que estén montadas EN ESE MOMENTO. Antes
+// cada pedido redibujaba solo a la tarjeta que lo hizo, con una marca `montada` que la limpieza ponía en false y nadie devolvía a true:
+// con el doble montaje de React (StrictMode, en desarrollo) o una tarjeta que se cierra y se reabre con el pedido en vuelo, la respuesta
+// llegaba y nadie redibujaba —la línea quedaba sin lugar, o con la reserva gris, hasta que otra cosa la repintara—.
+const lugaresOyentes = new Set<() => void>();
+const avisarLugares = () => { for (const f of Array.from(lugaresOyentes)) f(); };
 export function useLugares(ids: readonly string[]): Record<string, string | null | undefined> {
   const [, setTick] = useState(0);
   const clave = ids.join(",");
-  // Redibuja mientras la tarjeta siga montada, aunque entretanto cambien los cercanos (un pedido lento no se pierde).
-  const montada = useRef(true);
-  useEffect(() => () => { montada.current = false; }, []);
+  useEffect(() => { const f = () => setTick((n) => n + 1); lugaresOyentes.add(f); return () => { lugaresOyentes.delete(f); }; }, []);
   useEffect(() => {
     const faltan = ids.filter((id) => !lugaresVistos.has(id) && !lugaresPedidos.has(id)).slice(0, 40);
     if (!faltan.length) return;
@@ -135,9 +139,9 @@ export function useLugares(ids: readonly string[]): Record<string, string | null
     fetch("/api/explorar/lugar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids: faltan }), signal: corte.signal })
       // Una respuesta mala no se recuerda: el próximo carrusel lo vuelve a pedir.
       .then((r) => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
-      .then((d: Record<string, string | null>) => { for (const id of faltan) { lugaresVistos.set(id, typeof d[id] === "string" ? d[id] : null); lugaresFallidos.delete(id); } if (montada.current) setTick((n) => n + 1); })
+      .then((d: Record<string, string | null>) => { for (const id of faltan) { lugaresVistos.set(id, typeof d[id] === "string" ? d[id] : null); lugaresFallidos.delete(id); } avisarLugares(); })
       // Sin lugar: la reserva se va y la línea sigue con tipología y m² (el próximo carrusel lo vuelve a pedir).
-      .catch(() => { for (const id of faltan) lugaresFallidos.add(id); if (montada.current) setTick((n) => n + 1); })
+      .catch(() => { for (const id of faltan) lugaresFallidos.add(id); avisarLugares(); })
       .finally(() => { window.clearTimeout(tope); for (const id of faltan) lugaresPedidos.delete(id); });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clave]);

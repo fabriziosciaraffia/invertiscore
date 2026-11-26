@@ -223,8 +223,13 @@ export async function runExplorarTodosTier(): Promise<{ hard: number }> {
     if (!/const lugares = useLugares\(pines\.filter\(\(p\) => !metros\.get\(p\.avisoId\)\)\.map\(\(p\) => p\.avisoId\)\);/.test(tarA) || !/metroCercano\(p\.lat, p\.lng\)/.test(tarA)) F("7 · el metro no sale de la lista del repo (o se le sigue pidiendo al servidor a los que tienen metro)");
     // La reserva no queda para siempre: un pedido fallido o cortado por el tope suelta el espacio (null, no undefined).
     if (!/signal: corte\.signal/.test(tarA) || !/window\.setTimeout\(\(\) => corte\.abort\(\), TOPE_LUGAR_MS\)/.test(tarA) || !/\.catch\(\(\) => \{ for \(const id of faltan\) lugaresFallidos\.add\(id\);/.test(tarA) || !/lugaresFallidos\.has\(id\) \? null : undefined/.test(tarA)) F("7 · un pedido del lugar que falla o no vuelve deja la reserva gris para siempre");
+    // Quien redibuja: toda tarjeta montada al llegar la respuesta (suscripción), no solo la que pidió. La marca `montada` que la limpieza
+    // apagaba para siempre dejaba la línea sin lugar o con la reserva gris tras el doble montaje de React o un cierre y reapertura.
+    if (/montada\.current/.test(tarA) || !/lugaresOyentes\.add\(f\); return \(\) => \{ lugaresOyentes\.delete\(f\); \};/.test(tarA) || (tarA.match(/avisarLugares\(\);/g) ?? []).length < 2) F("7 · la respuesta del lugar no redibuja a las tarjetas montadas (se pierde si la tarjeta se volvió a montar)");
     const cssT = leer("src/app/explorar/explorar.css").replace(/\/\*[\s\S]*?\*\//g, "");
     if (!/\.ex-linea-lugar \{ display: flex; align-items: baseline; min-width: 0; white-space: nowrap; \}/.test(cssT) || !/\.ex-linea-resto \{ flex: none;/.test(cssT) || !/\.ex-lugar-carga \{ display: inline-block; flex: none; width: 8em;/.test(cssT)) F("7 · la línea del lugar puede saltar (no es una sola fila con la tipología entera y el espacio reservado)");
+    // Y la línea que no envuelve no ensancha la tarjeta: cada tarjeta del carrusel puede quedar en su 100 %, con el lugar cortado con «…».
+    if (!/\.ex-tarjeta \{ min-width: 0; \}/.test(cssT) || !/\.ex-lugar \{ min-width: 0; overflow: hidden; text-overflow: ellipsis; \}/.test(cssT)) F("7 · un lugar largo ensancha la tarjeta más allá de la pantalla (en vez de cortarse con «…»)");
     // LA FOTO: mientras carga, un gris del mismo tamaño que se ve en los dos temas, y la imagen aparece recién cargada.
     if (!/<span class="ex-img" data-explorar="imagen"><img /.test(hC)) F("7 · la imagen se pinta marcada como cargada antes de cargar");
     const imgA = codigo("src/components/guia/ImagenDepto.tsx");
