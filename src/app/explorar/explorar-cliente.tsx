@@ -336,6 +336,16 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
   const [recien, setRecien] = useState<{ avisoId: string; regalo: boolean; sinRegalo?: MotivoSinRegalo | null } | null>(null);
   // EL ENLACE COMPARTIDO (02-nov-2026): la tarjeta de «ya no está» y si el mapa ya se centró en el depto.
   // LA HOJA DEL COMPARTIDO (04-nov-2026, compartido-hoja.tsx): el pin del enlace (su tarjeta grande) o, si ya no está, lo que pasó.
+  // El teléfono (bajo 768 px, el corte de explorar.css): lo usa el contador para plegarse con la tarjeta abierta. Sigue al ancho.
+  const [esTelefono, setEsTelefono] = useState(false);
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const m = window.matchMedia("(max-width: 767px)");
+    const f = () => setEsTelefono(m.matches);
+    f();
+    m.addEventListener("change", f);
+    return () => m.removeEventListener("change", f);
+  }, []);
   const [hojaComp, setHojaComp] = useState<{ tipo: "pin"; avisoId: string } | { tipo: "caido"; estado: EstadoCaido; depto: DeptoCompartido | null; parecidos: PinMapa[] } | null>(null);
   /** La capa «Si negocias» no llegó: el enlace de un negociado no la espera más (03-nov-2026). */
   const [capaFallo, setCapaFallo] = useState(false);
@@ -1104,7 +1114,8 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
         {/* LA BARRA (25-nov-2026, lámina 5, opción B): solo Usados o Proyectos, y Filtros. PROYECTOS QUEDA ESCONDIDO hasta que haya
             nuevos evaluados (hoy no hay precio por unidad): el selector lleva solo «Usados». La (i) de «¿Cómo se calcula?» pasó a la
             tarjeta del contador. */}
-        <div className="ex-selector" role="radiogroup" aria-label={SELECTOR_COPY.grupo} data-explorar="selector">
+        {/* Sin Proyectos, en el teléfono el selector no se muestra (26-nov-2026): una sola opción no elige nada. Vuelve con los proyectos. */}
+        <div className="ex-selector" role="radiogroup" aria-label={SELECTOR_COPY.grupo} data-explorar="selector" data-una-opcion={PROYECTOS_VISIBLE ? undefined : "1"}>
           <button type="button" role="radio" aria-checked="true" className="ex-selector-op" data-on="1" data-explorar="usados">{SELECTOR_COPY.usados}</button>
           {PROYECTOS_VISIBLE && <button type="button" role="radio" aria-checked="false" className="ex-selector-op" data-explorar="proyectos">{SELECTOR_COPY.proyectos}</button>}
         </div>
@@ -1158,7 +1169,9 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
           )}
           {mapa === "fallo" && <p className="ex-mapa-vacio" data-explorar="sin-mapa">{PORTAL_COPY.sinMapa}</p>}
           {vista === "mapa" && (
-            <Contador conteo={conteo} ocultar={filtros.ocultar} calculando={progreso == null && conteo == null ? enCalculo : null} alAlternar={alternarClase} />
+            // CON LA TARJETA DE UN DEPTO ABIERTA, EN EL TELÉFONO (26-nov-2026): el contador se pliega solo, sin tocar lo que eligió la persona;
+            // al cerrarla vuelve como estaba. «Ver lista» no va mientras la tarjeta está abierta (abajo).
+            <Contador conteo={conteo} ocultar={filtros.ocultar} calculando={progreso == null && conteo == null ? enCalculo : null} alAlternar={alternarClase} plegarPorTarjeta={!!tarjeta && esTelefono} />
           )}
           {fallo && (
             <p className="ex-error ex-error-mapa" role="alert" data-explorar="error">

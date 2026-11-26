@@ -14,7 +14,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import { ChipVeredictoTokens } from "@/components/analysis/shared/ChipVeredicto";
 import { COMO_SE_CALCULA, PORTAL_COPY } from "@/lib/explorar/portal";
-import { SELECTOR_COPY } from "@/lib/explorar/mapa-todos";
+import { PROYECTOS_VISIBLE, SELECTOR_COPY } from "@/lib/explorar/mapa-todos";
 import { Contador } from "./contador";
 import "./explorar.css";
 
@@ -23,7 +23,7 @@ export function EsqueletoExplorar() {
     <div className="ex" data-explorar="esqueleto" aria-busy="true">
       <ChipVeredictoTokens />
       <div className="ex-barra" aria-hidden="true">
-        <span className="ex-selector"><span className="ex-selector-op" data-on="1">{SELECTOR_COPY.usados}</span></span>
+        <span className="ex-selector" data-una-opcion={PROYECTOS_VISIBLE ? undefined : "1"}><span className="ex-selector-op" data-on="1">{SELECTOR_COPY.usados}</span></span>
         <span className="ex-boton">{PORTAL_COPY.filtros}</span>
         <span className="ex-como2"><span className="ex-como2-t">{COMO_SE_CALCULA.enlace}</span></span>
       </div>

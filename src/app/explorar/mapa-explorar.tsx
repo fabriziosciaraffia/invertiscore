@@ -37,17 +37,65 @@ const FUENTE_GRUPO = "700 12px Inter, system-ui, sans-serif";
 /** Los grupos van en tinta, con su anillo blanco (lámina 5). */
 const GRUPO = { fondo: "#141414", texto: "#FFFFFF" } as const;
 
+/** El teléfono, para los controles del mapa: el mismo corte que explorar.css. */
+const MEDIA_TELEFONO = "(max-width: 767px)";
+const esTelefono = () => typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia(MEDIA_TELEFONO).matches;
 const esClaro = () => typeof document !== "undefined" && document.documentElement.getAttribute("data-theme") === "light";
 const opcionesDe = (capa: CapaMapa) => opcionesDeCapa(capa, esClaro());
 const temaPin = (): TemaPin => (esClaro() ? "claro" : "oscuro");
 
-/** «Mapa | Satélite» (04-nov-2026): dos posiciones, con el estilo de las opciones de la casa (la elegida, rellena en tinta). */
+/** «Mapa | Satélite» (04-nov-2026): dos posiciones, con el estilo de las opciones de la casa (la elegida, rellena en tinta). En el PC,
+ *  así. EN EL TELÉFONO (26-nov-2026, pedido de Fabrizio: ocupaba mucho), un botón redondo de 40 px con el ícono de capas, «Tipo de mapa»,
+ *  que abre las dos opciones; se cierran al elegir una, al tocar fuera o con Escape (el foco vuelve al botón). Los dos van dibujados y el
+ *  CSS muestra el que corresponde (explorar.css, bajo 768 px). */
 export function ConmutadorCapa({ capa, alCambiar }: { capa: CapaMapa; alCambiar: (c: CapaMapa) => void }) {
   return (
-    <div className="ex-capa" role="radiogroup" aria-label={CAPA_MAPA_COPY.grupo} data-explorar="capa-mapa">
-      {CAPAS_MAPA.map((c) => (
-        <button key={c} type="button" role="radio" aria-checked={capa === c} className="ex-capa-op" data-capa={c} onClick={() => alCambiar(c)}>{CAPA_MAPA_COPY[c]}</button>
-      ))}
+    <>
+      <div className="ex-capa" role="radiogroup" aria-label={CAPA_MAPA_COPY.grupo} data-explorar="capa-mapa">
+        {CAPAS_MAPA.map((c) => (
+          <button key={c} type="button" role="radio" aria-checked={capa === c} className="ex-capa-op" data-capa={c} onClick={() => alCambiar(c)}>{CAPA_MAPA_COPY[c]}</button>
+        ))}
+      </div>
+      <CapaMovil capa={capa} alCambiar={alCambiar} />
+    </>
+  );
+}
+
+function CapaMovil({ capa, alCambiar }: { capa: CapaMapa; alCambiar: (c: CapaMapa) => void }) {
+  const [abierto, setAbierto] = useState(false);
+  const raiz = useRef<HTMLDivElement>(null);
+  const boton = useRef<HTMLButtonElement>(null);
+  const menu = useRef<HTMLDivElement>(null);
+  const cerrar = (devolverFoco: boolean) => { setAbierto(false); if (devolverFoco) boton.current?.focus(); };
+  useEffect(() => {
+    if (!abierto) return;
+    // Al abrir, el foco va a la opción elegida (el teclado sigue con las flechas).
+    menu.current?.querySelector<HTMLButtonElement>('[aria-checked="true"]')?.focus();
+    const fuera = (e: PointerEvent) => { if (!raiz.current?.contains(e.target as Node)) setAbierto(false); };
+    const tecla = (e: KeyboardEvent) => { if (e.key === "Escape") { e.stopPropagation(); cerrar(true); } };
+    document.addEventListener("pointerdown", fuera, true);
+    document.addEventListener("keydown", tecla, true);
+    return () => { document.removeEventListener("pointerdown", fuera, true); document.removeEventListener("keydown", tecla, true); };
+  }, [abierto]);
+  const flechas = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+    e.preventDefault();
+    const ops = Array.from(menu.current?.querySelectorAll<HTMLButtonElement>("button") ?? []);
+    const i = ops.indexOf(document.activeElement as HTMLButtonElement);
+    ops[(i + (e.key === "ArrowDown" ? 1 : ops.length - 1)) % ops.length]?.focus();
+  };
+  return (
+    <div className="ex-capa-movil" ref={raiz} data-explorar="capa-movil">
+      <button ref={boton} type="button" className="ex-capa-boton" aria-label={CAPA_MAPA_COPY.boton} aria-haspopup="true" aria-expanded={abierto} aria-controls="ex-capa-menu" data-explorar="capa-boton" onClick={() => setAbierto((x) => !x)}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3 2 8l10 5 10-5-10-5Z" /><path d="m2 13 10 5 10-5" /><path d="m2 17.5 10 5 10-5" /></svg>
+      </button>
+      {abierto && (
+        <div ref={menu} id="ex-capa-menu" className="ex-capa-menu" role="radiogroup" aria-label={CAPA_MAPA_COPY.grupo} data-explorar="capa-menu" onKeyDown={flechas}>
+          {CAPAS_MAPA.map((c) => (
+            <button key={c} type="button" role="radio" aria-checked={capa === c} className="ex-capa-op" data-capa={c} onClick={() => { alCambiar(c); cerrar(true); }}>{CAPA_MAPA_COPY[c]}</button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -150,6 +198,7 @@ export default function MapaExplorar({ items, seleccionado, encuadre, conZona, o
   useEffect(() => {
     let cancelado = false;
     let cuadro = 0;
+    let quitarAncho = () => {};
     const tope = window.setTimeout(() => { if (!mapRef.current) cb.current.onEstado("fallo"); }, TOPE_CARGA_MS);
     loadGoogleMaps().then(() => {
       if (cancelado || !divRef.current) return;
@@ -158,9 +207,18 @@ export default function MapaExplorar({ items, seleccionado, encuadre, conZona, o
       if (!g?.maps?.Map) { cb.current.onEstado("fallo"); return; }
       window.clearTimeout(tope);
       const map = new g.maps.Map(divRef.current, {
-        center: CENTRO_SANTIAGO, zoom: 11, disableDefaultUI: true, zoomControl: true, zoomControlOptions: { position: g.maps.ControlPosition.RIGHT_CENTER }, clickableIcons: false,
+        center: CENTRO_SANTIAGO, zoom: 11, disableDefaultUI: true, zoomControl: !esTelefono(), zoomControlOptions: { position: g.maps.ControlPosition.RIGHT_CENTER }, clickableIcons: false,
+        // SIN STREET VIEW NI PANTALLA COMPLETA (26-nov-2026), en el teléfono y en el PC: apagados de forma explícita, en el mapa y en la
+        // vista de calle que Google le monta adentro (su botón de pantalla completa vivía escondido en el DOM).
+        streetViewControl: false, fullscreenControl: false, mapTypeControl: false,
         gestureHandling: "greedy", ...opcionesDe(capaRef.current),
       });
+      map.getStreetView()?.setOptions({ fullscreenControl: false, addressControl: false, enableCloseButton: false });
+      // SIN ZOOM EN EL TELÉFONO (26-nov-2026): bajo 768 px se acerca con dos dedos; en el PC quedan el más y el menos. Sigue al ancho.
+      const telefono = window.matchMedia(MEDIA_TELEFONO);
+      const alCambiarAncho = () => map.setOptions({ zoomControl: !telefono.matches });
+      telefono.addEventListener("change", alCambiarAncho);
+      quitarAncho = () => telefono.removeEventListener("change", alCambiarAncho);
       mapRef.current = map;
       const ctl = document.createElement("div");
       ctl.className = "ex-capa-ctl";
@@ -254,7 +312,7 @@ export default function MapaExplorar({ items, seleccionado, encuadre, conZona, o
       encuadrarRef.current();
       cb.current.onEstado("listo");
     }).catch(() => { if (!cancelado) cb.current.onEstado("fallo"); });
-    return () => { cancelado = true; window.clearTimeout(tope); if (cuadro) window.cancelAnimationFrame(cuadro); };
+    return () => { cancelado = true; quitarAncho(); window.clearTimeout(tope); if (cuadro) window.cancelAnimationFrame(cuadro); };
   }, []);
 
   // Cambió el tema del sitio (30-oct-2026): el estilo del mapa y los pines, al momento, sin volver a cargar el mapa.

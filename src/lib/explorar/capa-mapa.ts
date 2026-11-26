@@ -11,7 +11,7 @@ import { francoMapStyleForTheme } from "@/lib/map-styles";
 export type CapaMapa = "mapa" | "satelite";
 export const CAPAS_MAPA: readonly CapaMapa[] = ["mapa", "satelite"];
 export const CLAVE_CAPA_MAPA = "franco_explorar_capa";
-export const CAPA_MAPA_COPY = { grupo: "Vista del mapa", mapa: "Mapa", satelite: "Satélite" } as const;
+export const CAPA_MAPA_COPY = { grupo: "Vista del mapa", mapa: "Mapa", satelite: "Satélite", boton: "Tipo de mapa" } as const;
 
 type Almacen = Pick<Storage, "getItem" | "setItem">;
 

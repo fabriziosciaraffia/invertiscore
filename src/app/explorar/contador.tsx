@@ -20,20 +20,26 @@ import { PORTAL_COPY } from "@/lib/explorar/portal";
 /** La llave en el navegador de «la dejó plegada». */
 export const CLAVE_CONTADOR_PLEGADO = "franco_contador_plegado";
 
-export function Contador({ conteo, ocultar, calculando = null, alAlternar }: {
+export function Contador({ conteo, ocultar, calculando = null, alAlternar, plegarPorTarjeta = false }: {
   /** null mientras llega el universo. */
   conteo: ConteoClases | null;
   ocultar: readonly ClaseMapa[];
   /** El texto del avance («Calculando…»), en lugar del número. */
   calculando?: string | null;
   alAlternar?: (clase: ClaseMapa) => void;
+  /** Con la tarjeta de un depto abierta en el teléfono (26-nov-2026): se ve plegada sin cambiar lo elegido; la flecha la abre solo
+   *  mientras dure la tarjeta. Al cerrarse, vuelve a lo que la persona dejó. */
+  plegarPorTarjeta?: boolean;
 }) {
-  const [plegada, setPlegada] = useState(false);
+  const [elegida, setPlegada] = useState(false);
+  const [abiertaConTarjeta, setAbiertaConTarjeta] = useState(false);
+  useEffect(() => { if (!plegarPorTarjeta) setAbiertaConTarjeta(false); }, [plegarPorTarjeta]);
+  const plegada = plegarPorTarjeta ? !abiertaConTarjeta : elegida;
   // QUE SE NOTE QUE SE TOCAN (26-nov-2026): la casilla reacciona al pasar el mouse y al presionar (explorar.css) y dice lo que hace
   // (title). Sin línea de ayuda: la tarjeta se está achicando y la casilla prendida/apagada ya se lee sola (decisión de Fabrizio).
   // Lo que dejó la persona la última vez (después del primer pintado: el servidor no sabe).
   useEffect(() => { try { if (window.localStorage.getItem(CLAVE_CONTADOR_PLEGADO) === "1") setPlegada(true); } catch { /* sin almacenamiento */ } }, []);
-  const alternarPliegue = () => setPlegada((x) => {
+  const alternarPliegue = () => plegarPorTarjeta ? setAbiertaConTarjeta((x) => !x) : setPlegada((x) => {
     try { window.localStorage.setItem(CLAVE_CONTADOR_PLEGADO, x ? "0" : "1"); } catch { /* sin almacenamiento */ }
     return !x;
   });

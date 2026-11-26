@@ -321,6 +321,35 @@ export async function runExplorarTodosTier(): Promise<{ hard: number }> {
       else if (porId.get(caso.nuevo_id)! > creado.get(caso.viejo_id)!) F("11 · un republicado lleva su propia alta, no la del primer eslabón");
     }
   }
+  // §13 · EN EL TELÉFONO (26-nov-2026, revisión de Fabrizio en celular; bajo 768 px). Una prueba por pedido.
+  {
+    const cssM = leer("src/app/explorar/explorar.css").replace(/\r\n/g, "\n").replace(/\/\*[\s\S]*?\*\//g, "");
+    const iMed = cssM.indexOf("@media (max-width: 767px) {\n  .ex-capa { display: none; }"), medM = iMed < 0 ? "" : cssM.slice(iMed, cssM.indexOf("\n}", iMed));
+    const mapaC = codigo("src/app/explorar/mapa-explorar.tsx");
+    // 1 · «Mapa | Satélite» se vuelve un botón redondo de 40 px con capas, «Tipo de mapa», que abre las dos opciones; en el PC, la píldora.
+    const modMapa = cargar<{ ConmutadorCapa: FC<Record<string, unknown>> }>("src/app/explorar/mapa-explorar", F);
+    if (modMapa) {
+      const hCapa = renderToStaticMarkup(createElement(modMapa.ConmutadorCapa, { capa: "mapa", alCambiar: () => {} }));
+      if (!/<div class="ex-capa" role="radiogroup"[^>]*data-explorar="capa-mapa">/.test(hCapa) || !/<button type="button" class="ex-capa-boton" aria-label="Tipo de mapa" aria-haspopup="true" aria-expanded="false" aria-controls="ex-capa-menu" data-explorar="capa-boton"><svg/.test(hCapa) || /data-explorar="capa-menu"/.test(hCapa)) F("13.1 · no está el botón «Tipo de mapa» (cerrado, con su ícono) junto a la píldora del PC");
+    }
+    if (!/\.ex-capa-movil \{ display: none;/.test(cssM) || !/\.ex-capa-boton \{ width: 40px; height: 40px;[^}]*border-radius: 999px;/.test(cssM) || !/\.ex-capa \{ display: none; \}/.test(medM) || !/\.ex-capa-movil \{ display: block; \}/.test(medM)) F("13.1 · bajo 768 px no se cambia la píldora por el botón redondo de 40 px (o en el PC se ven los dos)");
+    if (!/onClick=\{\(\) => \{ alCambiar\(c\); cerrar\(true\); \}\}/.test(mapaC) || !/document\.addEventListener\("pointerdown", fuera, true\)/.test(mapaC) || !/if \(e\.key === "Escape"\) \{ e\.stopPropagation\(\); cerrar\(true\); \}/.test(mapaC) || !/e\.key !== "ArrowDown" && e\.key !== "ArrowUp"/.test(mapaC)) F("13.1 · las opciones no se cierran al elegir, al tocar fuera o con Escape (o no se recorren con las flechas)");
+    // 2 · sin Proyectos, el selector «Usados» (una sola opción) no se muestra en el teléfono; vuelve con los proyectos.
+    if (!/data-explorar="selector" data-una-opcion=\{PROYECTOS_VISIBLE \? undefined : "1"\}/.test(cli) || !/\.ex-selector\[data-una-opcion="1"\] \{ display: none; \}/.test(medM)) F("13.2 · sin Proyectos, el selector «Usados» se sigue mostrando en el teléfono");
+    // 3 · sin el más y el menos en el teléfono (se acerca con dos dedos), sí en el PC, siguiendo al ancho.
+    if (!/const MEDIA_TELEFONO = "\(max-width: 767px\)";/.test(mapaC) || !/zoomControl: !esTelefono\(\)/.test(mapaC) || !/map\.setOptions\(\{ zoomControl: !telefono\.matches \}\)/.test(mapaC)) F("13.3 · el zoom del mapa no se va en el teléfono (o no vuelve en el PC)");
+    // 4 · sin Street View ni pantalla completa, en los dos anchos: en el mapa y en la vista de calle que Google le monta adentro.
+    if (!/streetViewControl: false, fullscreenControl: false/.test(mapaC) || !/map\.getStreetView\(\)\?\.setOptions\(\{ fullscreenControl: false/.test(mapaC)) F("13.4 · el mapa deja los controles de Street View o de pantalla completa");
+    // 5 · con la tarjeta de un depto abierta en el teléfono, el contador se ve plegado sin tocar lo elegido, y «Ver lista» no va.
+    if (modCont) {
+      const conTar = renderToStaticMarkup(createElement(modCont.Contador, { conteo: { comprar: 4513, ajustar: 3016, no: 11527 }, ocultar: [], alAlternar: () => {}, plegarPorTarjeta: true }));
+      const sinTar = renderToStaticMarkup(createElement(modCont.Contador, { conteo: { comprar: 4513, ajustar: 3016, no: 11527 }, ocultar: [], alAlternar: () => {}, plegarPorTarjeta: false }));
+      if (!/data-explorar="contador" data-plegada="1"/.test(conTar) || /data-explorar="chip-comprar"/.test(conTar) || /data-plegada="1"/.test(sinTar) || !/data-explorar="chip-comprar"/.test(sinTar)) F("13.5 · con la tarjeta abierta el contador no se ve plegado (o sin tarjeta no vuelve abierto)");
+    }
+    const contM = codigo("src/app/explorar/contador.tsx");
+    if (!/const plegada = plegarPorTarjeta \? !abiertaConTarjeta : elegida;/.test(contM) || !/const alternarPliegue = \(\) => plegarPorTarjeta \? setAbiertaConTarjeta\(\(x\) => !x\) : setPlegada\(/.test(contM)) F("13.5 · plegarse por la tarjeta cambia lo que eligió la persona (o la flecha no la abre mientras dure la tarjeta)");
+    if (!/plegarPorTarjeta=\{!!tarjeta && esTelefono\}/.test(cli) || !/window\.matchMedia\("\(max-width: 767px\)"\)/.test(cli) || !/\{tarjeta \? \(\s*<TarjetaPin[\s\S]*?\) : vista === "mapa" && \([\s\S]{0,400}?<button type="button" className="ex-ver-lista"/.test(cli)) F("13.5 · el contador no se pliega con la tarjeta abierta en el teléfono, o «Ver lista» sigue con la tarjeta abierta");
+  }
   // El cap rate del tramo es el de la tarjeta.
   const capT = mt.capParaTramo(520000, 2800, 38000), capC = capRatePct(520000, 2800, 38000);
   if (capT == null || capC == null || Math.abs(capT - capC) > 0.005) F(`tramos · el cap rate del tramo (${capT}) no es el de la tarjeta (${capC})`);

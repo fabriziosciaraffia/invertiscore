@@ -489,6 +489,21 @@
 .ex-capa-op { min-height: 32px; padding: 0 12px; border: 0; border-radius: 999px; background: transparent; color: var(--franco-text); font-family: var(--font-body); font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; }
 .ex-capa-op[aria-checked="true"] { background: var(--franco-text); color: var(--franco-card); }
 .ex-capa-op:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; }
+/* EN EL TELÉFONO (26-nov-2026): «Mapa | Satélite» se vuelve un botón redondo de 40 px con el ícono de capas que abre las dos opciones;
+   en el PC queda la píldora. El selector «Usados» solo, sin Proyectos, no se muestra (una sola opción no elige nada). */
+.ex-capa-movil { display: none; position: relative; }
+.ex-capa-boton { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; padding: 0; border: 1px solid var(--franco-border); border-radius: 999px; background: var(--franco-card); color: var(--franco-text); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2); cursor: pointer; }
+.ex-capa-boton:focus-visible { outline: 2px solid var(--franco-text); outline-offset: 2px; }
+.ex-capa-boton[aria-expanded="true"] { background: var(--franco-text); color: var(--franco-card); border-color: var(--franco-text); }
+.ex-capa-menu { position: absolute; right: 48px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 2px; padding: 4px; border-radius: 14px; background: var(--franco-card); border: 1px solid var(--franco-border); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18); }
+.ex-capa-menu .ex-capa-op { min-height: 40px; text-align: left; }
+@media (max-width: 767px) {
+  .ex-capa { display: none; }
+  .ex-capa-movil { display: block; }
+  /* Más arriba del centro: con la tarjeta de un depto abierta, el botón quedaba pegado a su borde de arriba. */
+  .ex-capa-ctl { transform: translateY(-80px); }
+  .ex-selector[data-una-opcion="1"] { display: none; }
+}
 
 /* ── EL MAPA CON TODOS LOS DEPTOS (25-nov-2026, láminas 5, 6, 7 y 8 del canvas «La asesoría en el mapa») ── */
 /* Los pines van en un canvas sobre el mapa (capa-canvas.ts): no captura toques; el mapa los recibe y la capa dice qué se tocó. */
