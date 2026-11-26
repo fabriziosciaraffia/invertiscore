@@ -293,20 +293,20 @@ export default function MapaExplorar({ items, seleccionado, encuadre, conZona, o
           aPixel: (lat, lng) => { const p = proy.fromLatLngToContainerPixel(new g.maps.LatLng(lat, lng)); return { x: p.x, y: p.y }; },
         });
         dibujosRef.current = dibujos;
+        pintar(ctx, dibujos, temaPin());
         // Para la revisión sin mirar el canvas: dónde quedó el pin elegido (alto en píxeles del contenedor del mapa).
         const elegido = dibujos.find((d) => d.tipo !== "grupo" && d.elegido);
         revisionRef.current?.setAttribute("data-elegido-y", elegido ? String(Math.round(elegido.y)) : "");
-        pintar(ctx, dibujos, temaPin());
       };
       dibujarRef.current = () => { if (cuadro) return; cuadro = window.requestAnimationFrame(() => { cuadro = 0; pintarYa(); }); };
 
       encuadrarRef.current = () => {
         const ps = itemsRef.current;
         propio.current = true;
-        const f = focoRef.current;
         // Encuadrar mueve el mapa: si hay una tarjeta abierta en el teléfono, al terminar se vuelve a revisar que su pin quede arriba de la
         // hoja (el centro del foco de un enlace caía justo debajo de ella).
         pendienteVisible.current = INTENTOS_VISIBLE;
+        const f = focoRef.current;
         if (f) { map.setCenter(f); map.setZoom(ZOOM_FOCO); focoRef.current = null; cb.current.onFoco?.(); return; }
         // ENCUADRADO EN GRAN SANTIAGO (26-nov-2026): la caja de los deptos sin el 2 % más extremo de cada lado (unos pocos avisos sueltos
         // abrían el mapa en Melipilla y la cordillera); sin deptos todavía, la caja fija de Gran Santiago.

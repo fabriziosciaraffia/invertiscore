@@ -250,7 +250,9 @@ export async function runInformeEnCaminoTier(): Promise<{ hard: number }> {
     if (!ver || ver[1] !== "Ya lo tienes · Ver detalles" || !/href="\/analisis\/inf-1"/.test(ver[0]) || /data-explorar="ver-informe"/.test(antes)) F("6 · la tarjeta analizada no dice «Ya lo tienes · Ver detalles» con el enlace a su informe (o la no analizada lo dice)");
   }
   const tar = codigo("src/app/explorar/tarjeta-pin.tsx");
-  if (!/<ImagenDepto avisoId=\{p\.avisoId\} tipo=\{tipos\[p\.avisoId\]\} clase="ex-img" ajustar=\{esNegociado\(p\)\} \/>/.test(tar)) F("6 · la imagen de la tarjeta depende de otra cosa que el depto (y su clase)");
+  // ⚠ ACTA 26-nov-2026: la imagen se pide con el VEREDICTO del pin (`clase`, la de `claseDePin`, la misma con que el canvas lo pinta)
+  // y ya no con «ajustar»: la miniatura de un No conviene salía azul. La regla no cambia: depende solo del depto y su clase.
+  if (!/<ImagenDepto avisoId=\{p\.avisoId\} tipo=\{tipos\[p\.avisoId\]\} clase="ex-img" veredicto=\{clase\} \/>/.test(tar) || !/const clase = claseDePin\(p\);/.test(tar)) F("6 · la imagen de la tarjeta depende de otra cosa que el depto (y su clase)");
 
   // ══ §7 · LA VUELTA DEL PAGO DESDE UN DEPTO ═════════════════════════════════
   // Comprado desde un depto de la selección, la vuelta de Flow genera el informe sola: la misma regla, sin pop-up, debajo de
