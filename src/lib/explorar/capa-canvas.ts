@@ -15,6 +15,8 @@ import type { ClaseMapa } from "./mapa-todos";
 // TRES DISTANCIAS (26-nov-2026, revisión de Claude y Fabrizio del preview): LEJOS (zoom ≤ 12) grupos negros con número; A MEDIA
 // DISTANCIA (13 a 15) puntos de color sin precio, para que se vea dónde hay azules entre los rojos; CERCA (16 o más) el precio. Antes
 // pasaba de grupos negros a la alfombra de etiquetas sin paso intermedio.
+/** El número de un grupo, con un formateador compartido (26-nov-2026, entrega 2 › A1: no uno nuevo por grupo). */
+const FMT_GRUPO = new Intl.NumberFormat("es-CL");
 export const ZOOM_PUNTOS = 13;
 export const ZOOM_CIFRAS = 16;
 export const CELDA_LEJOS_PX = 56;
@@ -71,7 +73,7 @@ export function componerCapa(items: readonly ItemCapa[], o: { zoom: number; eleg
       if (c.ids.length === 1) puntos.push({ tipo: "punto", x: p.x, y: p.y, id: c.uno.id, clase: c.uno.clase, elegido: false });
       else {
         // El número entero («2.612»), y el círculo crece con él: nunca se sale.
-        const texto = c.ids.length.toLocaleString("es-CL");
+        const texto = FMT_GRUPO.format(c.ids.length);
         grupos.push({ tipo: "grupo", x: p.x, y: p.y, n: c.ids.length, ids: c.ids, lat, lng, texto, r: Math.max(RADIO_GRUPO, Math.ceil(o.ancho(texto) / 2) + 7) });
       }
     }

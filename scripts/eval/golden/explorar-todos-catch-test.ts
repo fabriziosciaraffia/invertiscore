@@ -395,6 +395,30 @@ export async function runExplorarTodosTier(): Promise<{ hard: number }> {
     // Y la hoja mide lo que la tarjeta elegida, no lo que la más alta del carrusel (sin hueco abajo).
     if (!/el\.style\.height = `\$\{elegida\.offsetHeight\}px`;/.test(tarH) || !/\.ex-tarjeta-wrap \.ex-tarjetas \{ align-items: flex-start; overflow-y: hidden;/.test(medH)) F("14 · la hoja queda con un hueco abajo (el carrusel mide lo que la tarjeta más alta)");
   }
+  // §15 · LA CIFRA DE LOS PINES, CON FORMATEADORES COMPARTIDOS (26-nov-2026, entrega 2 › A1). En un celular, armar un formateador por
+  // pin costaba 1.076 ms de los 3,9 s hasta ver los pines. Dos exigencias: la salida es IDÉNTICA a la de `toLocaleString` (la referencia
+  // va acá, escrita a mano) y las funciones que corren una vez por pin no vuelven a llamar `toLocaleString`.
+  {
+    const ref = {
+      miles: (n: number) => Math.round(n).toLocaleString("es-CL"),
+      monto: (n: number) => { const a = Math.abs(n), s = n < 0 ? "−" : ""; return a >= 1_000_000 ? `${s}$${(Math.round(a / 100_000) / 10).toLocaleString("es-CL")} MM` : a >= 1000 ? `${s}$${Math.round(a / 1000).toLocaleString("es-CL")} mil` : `${s}$${Math.round(a).toLocaleString("es-CL")}`; },
+      cap: (c: number) => `${c.toLocaleString("es-CL", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} %`,
+    };
+    const precios = [0, 7, 999, 1000, 1150, 1590.4, 2810, 4513, 10119, 19052, 32006, 123456.7];
+    const montos = [-1_250_000, -541_439, -999, 0, 450, 1000, 20_457, 142_264, 865_000, 1_000_000, 1_950_000, 12_345_678];
+    for (const n of precios) if (mt.textoCifraPin({ precioUF: n, m2: 50, arriendo: null, flujo: null }, "comprar", "precio", 38000) !== `UF ${ref.miles(n)}`) F(`15 · el precio del pin cambió de formato (${n})`);
+    for (const n of montos) if (mt.montoCorto(n) !== ref.monto(n)) F(`15 · un monto corto cambió de formato (${n}: «${mt.montoCorto(n)}» en vez de «${ref.monto(n)}»)`);
+    for (const [arr, uf] of [[520000, 2800], [865000, 4591], [300000, 9000], [1_200_000, 3000]] as const) {
+      const c = mt.capParaTramo(arr, uf, 38000);
+      if (c != null && mt.textoCifraPin({ precioUF: uf, m2: 50, arriendo: arr, flujo: 1 }, "comprar", "cap", 38000) !== ref.cap(c)) F(`15 · el cap rate del pin cambió de formato (${arr}/${uf})`);
+    }
+    const c3 = { comprar: 4531, ajustar: 3012, no: 11509 };
+    if (mt.textoContador(c3).numero !== "4.531" || mt.textoContador(c3).resto !== "de 19.052 deptos convienen") F("15 · el contador cambió de formato");
+    const mtC = codigo("src/lib/explorar/mapa-todos.ts"), ccC = codigo("src/lib/explorar/capa-canvas.ts");
+    const cuerpo = (src: string, desde: string, hasta: string) => { const i = src.indexOf(desde); return i < 0 ? "" : src.slice(i, src.indexOf(hasta, i + desde.length)); };
+    const caliente = [cuerpo(mtC, "const miles =", "\n"), cuerpo(mtC, "export function montoCorto", "\n}"), cuerpo(mtC, "export function textoCifraPin", "\n}")];
+    if (caliente.some((b) => !b) || caliente.some((b) => /toLocaleString\(/.test(b)) || !/const FMT_ES = new Intl\.NumberFormat\("es-CL"\);/.test(mtC) || /c\.ids\.length\.toLocaleString/.test(ccC)) F("15 · la cifra de los pines vuelve a armar un formateador por llamada (toLocaleString)");
+  }
   // El cap rate del tramo es el de la tarjeta.
   const capT = mt.capParaTramo(520000, 2800, 38000), capC = capRatePct(520000, 2800, 38000);
   if (capT == null || capC == null || Math.abs(capT - capC) > 0.005) F(`tramos · el cap rate del tramo (${capT}) no es el de la tarjeta (${capC})`);

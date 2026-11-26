@@ -100,12 +100,17 @@ export function validarRango(v: unknown): RangoTramos | null {
 // ── LA CIFRA DEL PIN ─────────────────────────────────────────────────────────
 /** Lo que dice el pin: el precio por defecto o la barra que se movió por última vez. */
 export type CifraPin = BarraPanel;
-const miles = (n: number) => Math.round(n).toLocaleString("es-CL");
+// FORMATEADORES COMPARTIDOS (26-nov-2026, entrega 2 › A1). `toLocaleString("es-CL")` arma un formateador nuevo en CADA llamada, y la
+// cifra de los 19 mil pines se calcula de una vez: en un celular (CPU 4× más lenta) eran 1.076 ms de los 3,9 s hasta ver los pines
+// (perfil de producción, 26-nov). Un `Intl.NumberFormat` por formato, creado una vez, da EXACTAMENTE la misma salida (lo fija el tier).
+const FMT_ES = new Intl.NumberFormat("es-CL");
+const FMT_UN_DECIMAL = new Intl.NumberFormat("es-CL", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const miles = (n: number) => FMT_ES.format(Math.round(n));
 /** «$420 mil», «$1,2 MM»: montos cortos para el pin. */
 export function montoCorto(n: number): string {
   const a = Math.abs(n);
   const s = n < 0 ? "−" : "";
-  if (a >= 1_000_000) return `${s}$${(Math.round(a / 100_000) / 10).toLocaleString("es-CL")} MM`;
+  if (a >= 1_000_000) return `${s}$${FMT_ES.format(Math.round(a / 100_000) / 10)} MM`;
   if (a >= 1000) return `${s}$${miles(a / 1000)} mil`;
   return `${s}$${miles(a)}`;
 }
@@ -118,7 +123,7 @@ export function textoCifraPin(p: { precioUF: number; m2: number; arriendo: numbe
   if (cifra === "arriendo") return p.arriendo != null ? montoCorto(p.arriendo) : precio;
   if (cifra === "flujo") return p.flujo != null ? `${p.flujo >= 0 ? "+" : ""}${montoCorto(p.flujo)}` : precio;
   const cap = capParaTramo(p.arriendo, p.precioUF, uf);
-  return cap != null ? `${cap.toLocaleString("es-CL", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} %` : precio;
+  return cap != null ? `${FMT_UN_DECIMAL.format(cap)} %` : precio;
 }
 
 // ── EL CONTADOR ──────────────────────────────────────────────────────────────
