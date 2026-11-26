@@ -498,7 +498,17 @@ export async function runExplorarTodosTier(): Promise<{ hard: number }> {
       if (!z16.nombres.some((n) => n.texto === "Baquedano") || z16t.nombres.some((n) => n.tipo === "estacion") || !z16t.estaciones.length || !z17t.nombres.some((n) => n.texto === "Baquedano")) F("18 · los nombres de estación no aparecen a 16 en el PC y a 17 en el teléfono");
       // Los nombres ceden ante los pines: con una etiqueta encima del nombre de la comuna, el nombre no va.
       const pEt = aPixel(-33.43, -70.61);
-      if (comp(11, false, [{ tipo: "etiqueta", x: pEt.x, y: pEt.y, w: 120, h: 22, id: "a", clase: "comprar", texto: "UF 1", elegido: false }]).nombres.some((n) => n.tipo === "comuna")) F("18 · el nombre de una comuna tapa un pin (no le cede el lugar)");
+      // ⚠ ACTA 26-nov-2026 (revisión visual: en la mediana de los avisos siempre había un grupo y no salía ningún nombre): el nombre
+      // prueba posiciones cerca y toma la primera libre DENTRO de su comuna. Con un grupo en la mediana, el nombre sale corrido (no encima);
+      // con la comuna entera tapada, no sale.
+      const conGrupo = comp(11, false, [{ tipo: "grupo", x: pEt.x, y: pEt.y, n: 9, ids: [], lat: 0, lng: 0, texto: "9", r: 16 }]);
+      const nomG = conGrupo.nombres.find((n) => n.tipo === "comuna") as unknown as { x: number; y: number; texto: string } | undefined;
+      if (!nomG || Math.abs(nomG.y - pEt.y) < 8 && Math.abs(nomG.x + (nomG.texto.length * 7) / 2 - pEt.x) < 20) F("18 · con un grupo en la mediana, el nombre de la comuna no busca otro lugar (o queda encima del grupo)");
+      const tapada = comp(11, false, [{ tipo: "etiqueta", x: pEt.x, y: pEt.y, w: 900, h: 700, id: "a", clase: "comprar", texto: "UF 1", elegido: false }]);
+      if (tapada.nombres.some((n) => n.tipo === "comuna")) F("18 · el nombre de una comuna tapa un pin (no le cede el lugar)");
+      // Y nunca fuera de su comuna: una comuna chica (todo a menos de 10 px de la mediana) con la mediana ocupada no pone el nombre afuera.
+      const chica = { comunas: { fuente: "x", comunas: [{ n: "Chica", e: [-33.43, -70.61], a: [[-33.4295, -70.6105, -33.4295, -70.6095, -33.4305, -70.6095, -33.4305, -70.6105]] }] }, metro: null };
+      if (cr.componerReferencias(chica, { zoom: 11, telefono: false, vista, aPixel, ancho: (t: string) => t.length * 7, ocupados: [{ tipo: "grupo", x: pEt.x, y: pEt.y, n: 2, ids: [], lat: 0, lng: 0, texto: "2", r: 12 }] }).nombres.length) F("18 · el nombre de una comuna sale fuera de su comuna al buscar lugar");
       if ((cr.ESTACIONES_ACTIVAS as Array<{ status: string }>).some((s) => s.status !== "active") || cr.ESTACIONES_ACTIVAS.length < 100) F("18 · las estaciones no son las activas de metro-stations.ts");
     }
     // Los archivos: livianos, solo Gran Santiago (las comunas con avisos), los siete colores de OpenStreetMap y el logo intacto.

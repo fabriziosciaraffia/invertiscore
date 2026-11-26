@@ -57,6 +57,18 @@ export interface DibujoReferencias {
   anchoLinea: number;
 }
 
+/** Dónde prueba el nombre de una comuna, en píxeles desde la mediana de sus avisos: primero ahí, después alrededor (hasta 44 px). */
+export const DESPLAZAMIENTOS_NOMBRE: ReadonlyArray<readonly [number, number]> = [[0, 0], [0, -26], [0, 26], [-48, 0], [48, 0], [-34, -22], [34, -22], [-34, 22], [34, 22], [0, -44], [0, 44]];
+/** ¿El punto está dentro del anillo (en píxeles)? */
+function dentroDe(x: number, y: number, anillo: ReadonlyArray<readonly [number, number]>): boolean {
+  let c = false;
+  for (let i = 0, j = anillo.length - 1; i < anillo.length; j = i++) {
+    const [xi, yi] = anillo[i], [xj, yj] = anillo[j];
+    if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) c = !c;
+  }
+  return c;
+}
+
 interface Caja { x0: number; y0: number; x1: number; y1: number }
 const choca = (a: Caja, b: Caja) => a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
 /** La caja que ocupa un dibujo de los pines (los nombres de referencia les ceden el lugar). */
@@ -98,11 +110,22 @@ export function componerReferencias(r: Pick<Referencias, "comunas" | "metro">, o
     }
     if (capaSeVe("nombresEstacion", o.zoom, o.telefono)) for (const s of out.estaciones) { if (!ponerNombre(s.nombre, "estacion", s.x + 12, s.y, "derecha")) ponerNombre(s.nombre, "estacion", s.x - 12, s.y, "izquierda"); }
   }
-  if (r.comunas && capaSeVe("limites", o.zoom, o.telefono)) {
-    for (const c of r.comunas.comunas) for (const a of c.a) out.limites.push(proyectar(a));
-  }
-  if (r.comunas && capaSeVe("nombresComuna", o.zoom, o.telefono)) {
-    for (const c of r.comunas.comunas) { const p = o.aPixel(c.e[0], c.e[1]); ponerNombre(c.n.toLocaleUpperCase("es-CL"), "comuna", p.x, p.y, "centro"); }
+  const verLimites = capaSeVe("limites", o.zoom, o.telefono), verNombres = capaSeVe("nombresComuna", o.zoom, o.telefono);
+  if (r.comunas && (verLimites || verNombres)) {
+    for (const c of r.comunas.comunas) {
+      const anillos = c.a.map(proyectar);
+      if (verLimites) out.limites.push(...anillos);
+      if (!verNombres) continue;
+      // EL NOMBRE BUSCA SU LUGAR (26-nov-2026, revisión visual: en la mediana de los avisos siempre había un grupo y ningún nombre
+      // salía). Prueba la mediana y, si está ocupada, posiciones cerca; toma la primera libre que siga DENTRO de su comuna.
+      const p = o.aPixel(c.e[0], c.e[1]);
+      const texto = c.n.toLocaleUpperCase("es-CL");
+      for (const [dx, dy] of DESPLAZAMIENTOS_NOMBRE) {
+        const x = p.x + dx, y = p.y + dy;
+        if (!anillos.some((a) => dentroDe(x, y, a))) continue;
+        if (ponerNombre(texto, "comuna", x, y, "centro")) break;
+      }
+    }
   }
   return out;
 }
