@@ -1,4 +1,12 @@
 // src/lib/metro-stations.ts
+// CORRECCIÓN 26-nov-2026, contrastada con la lista de estaciones de metro.cl (Fabrizio dio el OK):
+//  · fuera tres estaciones que no existen y no estaban sobre ninguna vía: «Club Hípico» (L6), «EFE Quilicura» (L3; la
+//    combinación con el tren en Quilicura es «Ferrocarril») y «Diagonal Oriente» (L3, es una calle de Ñuñoa);
+//  · cuatro líneas corregidas: Las Torres es L4, Cementerios y El Parrón son L2, Villa Frei es L3;
+//  · Las Torres, una sola vez;
+//  · sin la línea pegada al nombre: una estación de combinación va UNA vez (con la primera de sus líneas), como ya iban
+//    Baquedano, Los Héroes o Tobalaba. Así el nombre sigue siendo único: lo que distingue una estación de otra por dentro.
+//    Las tres que estaban dos veces (Franklin, Ñuble, Ñuñoa) tenían las mismas coordenadas en las dos: las distancias no cambian.
 
 export interface MetroStation {
   name: string;
@@ -38,7 +46,7 @@ export const METRO_STATIONS: MetroStation[] = [
   { name: "Hernando de Magallanes", line: "L1", lat: -33.4079352, lng: -70.5558454, status: "active" },
   { name: "Los Dominicos", line: "L1", lat: -33.4078854, lng: -70.5449939, status: "active" },
 
-  // ===== LÍNEA 2 (Amarilla) — 22 estaciones =====
+  // ===== LÍNEA 2 (Amarilla) — 26 estaciones (Los Héroes va en la L1; Cementerios y El Parrón, al final) =====
   { name: "Vespucio Norte", line: "L2", lat: -33.3807538, lng: -70.6463404, status: "active" },
   { name: "Zapadores", line: "L2", lat: -33.3909444, lng: -70.6424385, status: "active" },
   { name: "Dorsal", line: "L2", lat: -33.3969616, lng: -70.6427404, status: "active" },
@@ -62,10 +70,8 @@ export const METRO_STATIONS: MetroStation[] = [
   { name: "Copa Lo Martínez", line: "L2", lat: -33.5706669, lng: -70.6733824, status: "active" },
   { name: "Hospital El Pino", line: "L2", lat: -33.5828788, lng: -70.6768121, status: "active" },
 
-  // ===== LÍNEA 3 (Café) — 22 estaciones =====
+  // ===== LÍNEA 3 (Café) — 21 estaciones (Puente Cal y Canto en la L2, Universidad de Chile en la L1; Villa Frei, al final) =====
   { name: "Plaza Quilicura", line: "L3", lat: -33.3657194, lng: -70.7288942, status: "active" },
-  { name: "Las Torres", line: "L3", lat: -33.4989098, lng: -70.5864455, status: "active" },
-  { name: "EFE Quilicura", line: "L3", lat: -33.3760, lng: -70.7100, status: "active" },
   { name: "Los Libertadores", line: "L3", lat: -33.3654303, lng: -70.6919903, status: "active" },
   { name: "Cardenal Caro", line: "L3", lat: -33.3732586, lng: -70.6863362, status: "active" },
   { name: "Vivaceta", line: "L3", lat: -33.3853813, lng: -70.6796401, status: "active" },
@@ -77,9 +83,8 @@ export const METRO_STATIONS: MetroStation[] = [
   { name: "Matta", line: "L3", lat: -33.4582698, lng: -70.6430769, status: "active" },
   { name: "Irarrázaval", line: "L3", lat: -33.4550535, lng: -70.6283154, status: "active" },
   { name: "Monseñor Eyzaguirre", line: "L3", lat: -33.4531944, lng: -70.613519, status: "active" },
-  { name: "Ñuñoa L3", line: "L3", lat: -33.4541894, lng: -70.604972, status: "active" },
+  { name: "Ñuñoa", line: "L3", lat: -33.4541894, lng: -70.604972, status: "active" },
   { name: "Chile España", line: "L3", lat: -33.4549078, lng: -70.5981422, status: "active" },
-  { name: "Diagonal Oriente", line: "L3", lat: -33.4575, lng: -70.5850, status: "active" },
   { name: "Plaza Egaña", line: "L3", lat: -33.4534937, lng: -70.570823, status: "active" },
   { name: "Fernando Castillo Velasco", line: "L3", lat: -33.4520879, lng: -70.55812, status: "active" },
 
@@ -92,7 +97,7 @@ export const METRO_STATIONS: MetroStation[] = [
   { name: "Grecia", line: "L4", lat: -33.4695344, lng: -70.5765034, status: "active" },
   { name: "Los Presidentes", line: "L4", lat: -33.479837, lng: -70.5786662, status: "active" },
   { name: "Quilín", line: "L4", lat: -33.4882637, lng: -70.5804178, status: "active" },
-  { name: "Las Torres L4", line: "L4", lat: -33.4989098, lng: -70.5864455, status: "active" },
+  { name: "Las Torres", line: "L4", lat: -33.4989098, lng: -70.5864455, status: "active" },
   { name: "Macul", line: "L4", lat: -33.5092379, lng: -70.5900473, status: "active" },
   { name: "Vicuña Mackenna", line: "L4", lat: -33.5196822, lng: -70.5961986, status: "active" },
   { name: "Vicente Valdés", line: "L4", lat: -33.5264085, lng: -70.5968109, status: "active" },
@@ -139,22 +144,18 @@ export const METRO_STATIONS: MetroStation[] = [
   { name: "Mirador", line: "L5", lat: -33.5133028, lng: -70.6059146, status: "active" },
   { name: "Bellavista de La Florida", line: "L5", lat: -33.5195217, lng: -70.6000253, status: "active" },
 
-  // ===== LÍNEA 6 (Morada) — 11 estaciones =====
+  // ===== LÍNEA 6 (Morada) — 10 estaciones (Franklin en la L2, Ñuble en la L5, Ñuñoa en la L3, Los Leones en la L1) =====
   { name: "Cerrillos", line: "L6", lat: -33.4834342, lng: -70.6955562, status: "active" },
   { name: "Lo Valledor", line: "L6", lat: -33.4784048, lng: -70.6809001, status: "active" },
-  { name: "Club Hípico", line: "L6", lat: -33.4692, lng: -70.6680, status: "active" },
-  { name: "Franklin L6", line: "L6", lat: -33.4766603, lng: -70.6494774, status: "active" },
   { name: "Bio Bío", line: "L6", lat: -33.4766072, lng: -70.6421784, status: "active" },
-  { name: "Ñuble L6", line: "L6", lat: -33.4673629, lng: -70.6247567, status: "active" },
   { name: "Estadio Nacional", line: "L6", lat: -33.4623809, lng: -70.6062176, status: "active" },
-  { name: "Ñuñoa L6", line: "L6", lat: -33.4541894, lng: -70.604972, status: "active" },
   { name: "Inés de Suárez", line: "L6", lat: -33.438721, lng: -70.6073371, status: "active" },
 
   // ===== Estaciones adicionales (OSM) =====
-  { name: "Cementerios", line: "L3", lat: -33.4139806, lng: -70.643597, status: "active" },
-  { name: "El Parrón", line: "L4A", lat: -33.5264317, lng: -70.6614044, status: "active" },
+  { name: "Cementerios", line: "L2", lat: -33.4139806, lng: -70.643597, status: "active" },
+  { name: "El Parrón", line: "L2", lat: -33.5264317, lng: -70.6614044, status: "active" },
   { name: "Presidente Pedro Aguirre Cerda", line: "L6", lat: -33.4786906, lng: -70.6647874, status: "active" },
-  { name: "Villa Frei", line: "L4", lat: -33.4546697, lng: -70.5814833, status: "active" },
+  { name: "Villa Frei", line: "L3", lat: -33.4546697, lng: -70.5814833, status: "active" },
   { name: "Ferrocarril", line: "L3", lat: -33.3654667, lng: -70.7055375, status: "active" },
   { name: "Lo Cruzat", line: "L3", lat: -33.3668342, lng: -70.719772, status: "active" },
 

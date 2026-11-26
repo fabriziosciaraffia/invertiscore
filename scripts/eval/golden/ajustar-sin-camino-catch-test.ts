@@ -87,6 +87,10 @@ export function runAjustarSinCaminoTier(): { hard: number } {
   // solo mientras su puntaje siga bajo el corte de Ajustar — si sube, la exención deja de valer y
   // la fila vuelve a exigir la marca. No se re-vuelcan los fixtures: la fila sigue probando que el
   // veredicto final es Buscar otro.
+  // ⚠ ACTA 26-nov-2026 (corrección de metro-stations.ts, contrastada con metro.cl): la fila «ltr 57951171» tenía como estación más
+  // cercana «Diagonal Oriente» (433 m), que no existe; ahora es Villa Frei (617 m). Su puntaje baja de 55 a 54 y su veredicto sigue
+  // siendo Buscar otro por el filtro del descuento: la fila sigue probando lo mismo. No se re-vuelca el fixture: su entrada no
+  // cambió (la estación sale del motor, no del fixture) y ningún campo guardado depende del puntaje. Es la única de las 54 que se mueve.
   const POR_PUNTAJE: Record<string, string> = {
     "str b4bb8a67": "bono pie, flujo −$116 mil: puntaje 40 con la dimensión de capital en el flujo (antes, el cap rate)",
   };

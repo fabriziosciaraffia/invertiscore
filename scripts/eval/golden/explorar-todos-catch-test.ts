@@ -555,6 +555,16 @@ export async function runExplorarTodosTier(): Promise<{ hard: number }> {
       const met = JSON.parse(leerBin("public/explorar/capa-metro.v2.json").toString("utf8")) as { fuente: string; lineas: Record<string, { color: string; eje: number[]; tramos?: unknown }>; estaciones: Array<{ n: string; l: string[]; p: [number, number] }> };
       const colores: Record<string, string> = { L1: "#cc0000", L2: "#ffbe2e", L3: "#83441d", L4: "#292d91", L4A: "#0099ff", L5: "#006633", L6: "#8e16a1" };
       if (Object.keys(met.lineas).sort().join() !== Object.keys(colores).sort().join() || Object.entries(colores).some(([l, c]) => met.lineas[l]?.color !== c) || !/OpenStreetMap/.test(met.fuente)) F("18 · las líneas de Metro no traen los siete colores de OpenStreetMap (o perdieron el crédito)");
+      // LA LISTA DE ESTACIONES DEL MOTOR (26-nov-2026, contrastada con metro.cl; src/lib/metro-stations.ts): las activas son las 126
+      // estaciones de la red, cada una UNA vez (una combinación, con la primera de sus líneas), sin la línea pegada al nombre, sin las
+      // tres que no existen, y cada una a menos de 150 m del eje de SU línea (el eje de la capa de Metro: así se caza una línea mal puesta).
+      { const ms = (require(join(RAIZ, "src/lib/metro-stations")) as { METRO_STATIONS: Array<{ name: string; line: string; lat: number; lng: number; status: string }> }).METRO_STATIONS;
+        const dEjeM = (q: [number, number], eje: number[]) => { let mejor = Infinity; for (let i = 0; i + 3 < eje.length; i += 2) { const ax = eje[i + 1] * 92700, ay = eje[i] * 110950, bx = eje[i + 3] * 92700, by = eje[i + 2] * 110950, px = q[1] * 92700, py = q[0] * 110950; const dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy; const t = L2 ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / L2)) : 0; mejor = Math.min(mejor, Math.hypot(px - ax - t * dx, py - ay - t * dy)); } return mejor; };
+        const act = ms.filter((s) => s.status === "active");
+        const nombresAct = act.map((s) => s.name);
+        if (act.length !== 126 || new Set(nombresAct).size !== nombresAct.length || nombresAct.some((n) => / L\d/.test(n)) || nombresAct.some((n) => ["Club Hípico", "EFE Quilicura", "Diagonal Oriente"].includes(n))) F(`18 · las estaciones activas no son las 126 de la red, una vez cada una y sin la línea pegada al nombre (${act.length})`);
+        const fueraDeSuLinea = act.filter((s) => !met.lineas[s.line] || dEjeM([s.lat, s.lng], met.lineas[s.line].eje) > 150).map((s) => `${s.name} ${s.line}`);
+        if (fueraDeSuLinea.length) F(`18 · estaciones del motor fuera de su línea: ${fueraDeSuLinea.slice(0, 4).join(", ")}`); }
       // UN eje por línea (no las vías de cada sentido): una sola polilínea, sin `tramos`.
       if (Object.values(met.lineas).some((l) => l.tramos !== undefined || !Array.isArray(l.eje) || l.eje.length < 20 || typeof l.eje[0] !== "number")) F("18 · alguna línea de Metro no es UN eje (vienen las vías de cada sentido)");
       // CADA ESTACIÓN SOBRE SU LÍNEA y cada combinación UN punto al que llegan todas sus líneas (a menos de 1 m de cada eje). Las 17 de la red.
