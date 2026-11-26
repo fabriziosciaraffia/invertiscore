@@ -8,6 +8,7 @@ import { PIES_EXPLORAR, PLAZOS_EXPLORAR } from "@/lib/explorar/explorar";
 import { universoDeLaNoche as esDeLaNoche } from "@/lib/explorar/portal";
 import { respuestaUniverso, universoYCapaCalculados } from "@/lib/explorar/portal-servidor";
 import { respuestaDeLaNoche } from "@/lib/explorar/portal-cache";
+import { parteDelPedido } from "@/lib/explorar/url-noche";
 import { almacenDeConfig, esRecalculoEnEspera, TurnosRecalculo } from "@/lib/explorar/turnos-recalculo";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -46,7 +47,8 @@ export async function GET(request: Request) {
     if (esDeLaNoche(q)) {
       // La misma forma que lo calculado (RespuestaUniverso): el universo va en `universo`, con su propia tabla de comunas.
       // La noche del sello de la página que pide (`s`), la misma que contó el primer pintado (portal-cache.ts › nocheExplorar).
-      return NextResponse.json(await respuestaDeLaNoche(pie, plazo, { sello: sp.get("s") }), { headers: { "Cache-Control": "private, max-age=300" } });
+      // EL PEDIDO PARTIDO (26-nov-2026): sin `parte`, ✓ Comprar y − Ajustar; con `parte=no`, los No conviene.
+      return NextResponse.json(await respuestaDeLaNoche(pie, plazo, { sello: sp.get("s"), parte: parteDelPedido(sp) }), { headers: { "Cache-Control": "private, max-age=300" } });
     }
     const comunas = Array.from(new Set((sp.get("c") ?? "").split(",").map((x) => x.trim()).filter((c) => COMUNAS_OK.has(c))));
     if (comunas.length === 0 || comunas.length > MAX_COMUNAS_POR_PEDIDO) return NextResponse.json({ error: "comunas" }, { status: 400 });

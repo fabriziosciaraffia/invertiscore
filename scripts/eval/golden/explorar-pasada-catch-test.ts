@@ -276,8 +276,9 @@ export async function runExplorarPasadaTier(): Promise<{ hard: number }> {
     }
     const deSello = cuerpo(codigo("src/lib/explorar/portal-cache.ts"), "const nocheDeSello = unstable_cache(");
     if (!/capaDe\(pie, plazo\) \? leerCapa\(\)\.catch\(leerCapa\)\.catch\(\(\) => null\) : Promise\.resolve\(null\),/.test(deSello)) F("3 · la noche lee los − Ajustar a 25 años, o una falla de la capa tumba la noche (sin el reintento)");
-    if (!/return NextResponse\.json\(await respuestaDeLaNoche\(pie, plazo, \{ sello: sp\.get\("s"\) \}\)/.test(codigo("src/app/api/explorar/route.ts"))) F("3 · /api/explorar no manda la capa en el pedido de la noche (o sin el sello del pedido)");
-    if (!/return NextResponse\.json\(await respuestaDeLaNoche\(PIE_ABIERTO, PLAZO_ABIERTO, \{ sinCifras: true, sello: sp\.get\("s"\) \}\)/.test(codigo("src/app/api/explorar/abierto/route.ts"))) F("3 · sin cuenta, el pedido de la noche no trae la capa sin cifras (o sin el sello del pedido)");
+    // ⚠ ACTA 26-nov-2026 (entrega 2 › A, el pedido partido): la noche viaja en dos partes —sin `parte`, ✓ Comprar y − Ajustar; con `parte=no`, los No conviene—; la regla de esta línea no cambia, solo la forma de la llamada (lleva `parte`).
+    if (!/return NextResponse\.json\(await respuestaDeLaNoche\(pie, plazo, \{ sello: sp\.get\("s"\), parte: parteDelPedido\(sp\) \}\)/.test(codigo("src/app/api/explorar/route.ts"))) F("3 · /api/explorar no manda la capa en el pedido de la noche (o sin el sello del pedido)");
+    if (!/return NextResponse\.json\(await respuestaDeLaNoche\(PIE_ABIERTO, PLAZO_ABIERTO, \{ sinCifras: true, sello: sp\.get\("s"\), parte: parteDelPedido\(sp\) \}\)/.test(codigo("src/app/api/explorar/abierto/route.ts"))) F("3 · sin cuenta, el pedido de la noche no trae la capa sin cifras (o sin el sello del pedido)");
     if (/negociab|negociad/i.test(codigo("src/lib/explorar/convienen-guardado.ts"))) F("3 · el número guardado de «convienen» mira a los negociados");
     // El navegador: la capa sale del mismo pedido y un solo lugar decide qué se ve.
     const asegurar = cuerpo(cliente, "const asegurar = useCallback(");
@@ -648,7 +649,8 @@ export async function runExplorarPasadaTier(): Promise<{ hard: number }> {
     // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 11): antes fijaba UNA entrada de la noche («explorar-noche-v2»); ahora
     // son dos —nocheDeSello sin los No conviene y noConvieneDeSello— porque juntas pasaban de los 2 MB de unstable_cache. Las dos
     // se leen con el MISMO sello (`n`) en nocheCompleta, así que la regla de una sola edad sigue.
-    if (!/^explorar-noche-no-v\d+,explorar-noche-v\d+,explorar-sello-v1,explorar-tasa-motor-v2$/.test(llaves) || !/Promise\.all\(\[nocheDeSello\(n, pie, plazo\), plazo >= 30 \? noConvieneDeSello\(n, pie\)/.test(cache)) F(`9 · la noche no vive en sus dos entradas leídas con el mismo sello (llaves de caché: ${llaves})`);
+    if (!/^explorar-noche-no-v\d+,explorar-noche-v\d+,explorar-sello-v1,explorar-tasa-motor-v2$/.test(llaves) || !/Promise\.all\(\[\s*parte !== "no" \? nocheDeSello\(n, pie, plazo\) : Promise\.resolve\(null\),\s*parte !== "base" && plazo >= 30 \? noConvieneDeSello\(n, pie\)/.test(cache)) F(`9 · la noche no vive en sus dos entradas leídas con el mismo sello (llaves de caché: ${llaves})`);
+    // ⚠ ACTA 26-nov-2026 (entrega 2 › A, el pedido partido): la noche viaja en dos partes —sin `parte`, ✓ Comprar y − Ajustar; con `parte=no`, los No conviene—; la regla de esta línea no cambia, solo la forma de la llamada (lleva `parte`).
     if (!/async \(n: number, pie: number, plazo: number\): Promise<NocheGuardada> =>/.test(cache) || !/\{ revalidate: VIDA_SELLO_S \* 2 \}/.test(cache)) F("9 · la entrada de la noche no es por sello, o se vuelve a leer mientras su sello vale");
     const pag = codigo("src/app/explorar/page.tsx");
     if ((pag.match(/nocheExplorar\(/g) ?? []).length !== 2 || /universoDeLaNoche\w*\(\w|negociabl/i.test(pag.replace(/universoDeLaNoche\(filtros\)/g, "")) || (pag.match(/sello: noche\?\.sello \?\? null/g) ?? []).length !== 2) F("9 · la página no lee la noche una sola vez por rama, o no le pasa su sello al navegador");

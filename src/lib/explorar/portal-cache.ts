@@ -56,10 +56,17 @@ const noConvieneDeSello = unstable_cache(
   ["explorar-noche-no-v1"],
   { revalidate: VIDA_SELLO_S * 2 },
 );
-/** La noche de un sello con sus tres clases: las dos entradas, en paralelo. Sin los No conviene (si fallan), el mapa sigue con dos. */
-const nocheCompleta = async (n: number, pie: number, plazo: number): Promise<NocheGuardada> => {
-  const [g, no] = await Promise.all([nocheDeSello(n, pie, plazo), plazo >= 30 ? noConvieneDeSello(n, pie).catch(() => null) : Promise.resolve(null)]);
-  return { ...g, noConviene: no };
+/** Qué parte de la noche (26-nov-2026, entrega 2 › A, el pedido partido): `todo` la página (cuenta las tres clases para el primer
+ *  pintado), `base` el primer pedido del mapa (✓ Comprar y − Ajustar) y `no` el segundo (los No conviene). Cada una lee SOLO su entrada. */
+export type ParteNoche = "todo" | "base" | "no";
+const UNIVERSO_VACIO: UniversoCompacto = { comunas: [], filas: [] };
+/** La noche de un sello: las dos entradas, en paralelo, o la que pida la parte. Sin los No conviene (si fallan), el mapa sigue con dos. */
+const nocheCompleta = async (n: number, pie: number, plazo: number, parte: ParteNoche = "todo"): Promise<NocheGuardada> => {
+  const [g, no] = await Promise.all([
+    parte !== "no" ? nocheDeSello(n, pie, plazo) : Promise.resolve(null),
+    parte !== "base" && plazo >= 30 ? noConvieneDeSello(n, pie).catch(() => null) : Promise.resolve(null),
+  ]);
+  return { n, universo: g?.universo ?? UNIVERSO_VACIO, negociados: g?.negociados ?? null, noConviene: no };
 };
 
 const selloVigenteCache = unstable_cache(async (): Promise<number> => selloDeHora(Date.now()), ["explorar-sello-v1"], { revalidate: 300 });
@@ -67,7 +74,7 @@ const selloVigenteCache = unstable_cache(async (): Promise<number> => selloDeHor
 /** De dónde sale la noche (el tier EXPLORAR-PASADA las reemplaza para probar la regla sin la base ni Next). */
 export interface FuentesNoche {
   vigente: () => Promise<number>;
-  deSello: (n: number, pie: number, plazo: number) => Promise<NocheGuardada>;
+  deSello: (n: number, pie: number, plazo: number, parte?: ParteNoche) => Promise<NocheGuardada>;
   token: (n: number) => string | null;
   leerToken: (t: string) => number | null;
 }
@@ -79,9 +86,9 @@ const FUENTES: FuentesNoche = {
 };
 
 /** LA NOCHE DE EXPLORAR: la del sello que trae el pedido si vale (el de la página que lo hizo), o la del vigente. */
-export async function nocheExplorar(pie: number, plazo: number, sello: string | null = null, f: FuentesNoche = FUENTES): Promise<NocheExplorar> {
+export async function nocheExplorar(pie: number, plazo: number, sello: string | null = null, f: FuentesNoche = FUENTES, parte: ParteNoche = "todo"): Promise<NocheExplorar> {
   const n = (sello ? f.leerToken(sello) : null) ?? (await f.vigente());
-  const g = await f.deSello(n, pie >= 30 ? 30 : 20, plazo >= 30 ? 30 : 25);
+  const g = await f.deSello(n, pie >= 30 ? 30 : 20, plazo >= 30 ? 30 : 25, parte);
   return { sello: f.token(g.n), universo: g.universo, negociados: g.negociados, noConviene: g.noConviene ?? null };
 }
 
@@ -92,18 +99,27 @@ export async function nocheExplorar(pie: number, plazo: number, sello: string | 
 export async function respuestaDeLaNoche(
   pie: number,
   plazo: number,
-  o: { sinCifras?: boolean; sello?: string | null } = {},
+  // `parte` (26-nov-2026, el pedido partido): `base` (por defecto) los ✓ Comprar y los − Ajustar; `no`, solo los No conviene.
+  o: { sinCifras?: boolean; sello?: string | null; parte?: "base" | "no" } = {},
   /** La lectura (el tier EXPLORAR-PASADA la reemplaza para probar el armado sin la base). */
-  leer: (pie: number, plazo: number, sello: string | null) => Promise<NocheExplorar> = (p, z, s) => nocheExplorar(p, z, s),
+  leer: (pie: number, plazo: number, sello: string | null, parte: ParteNoche) => Promise<NocheExplorar> = (p, z, s, parte) => nocheExplorar(p, z, s, FUENTES, parte),
 ): Promise<RespuestaUniverso> {
   const q = { modalidad: "ltr" as const, pie, plazo, tasa: null };
-  const noche = await leer(pie, plazo, o.sello ?? null);
+  const parte = o.parte ?? "base";
+  const noche = await leer(pie, plazo, o.sello ?? null, parte);
+  if (parte === "no") {
+    // La segunda parte: solo los No conviene (sin cifras ni tramos sin cuenta), con el mismo sello. El universo va vacío.
+    return {
+      clave: claveUniverso(q), comunas: [], universo: UNIVERSO_VACIO,
+      ...(noche.noConviene ? { noConviene: o.sinCifras ? universoSinCifras(noche.noConviene) : noche.noConviene } : {}),
+      sello: noche.sello, calculados: 0, ms: 0,
+    };
+  }
   const n = capaDe(pie, plazo) ? noche.negociados : null;
   return {
     clave: claveUniverso(q), comunas: [], universo: o.sinCifras ? universoSinCifras(noche.universo) : noche.universo,
     ...(n ? { negociados: o.sinCifras ? sinCifrasNegociados(n) : n } : {}),
-    // Los No conviene ya viajan sin cifras; sin cuenta, tampoco sus tramos (abierto.ts › sinCifras deja las 13 primeras columnas).
-    ...(noche.noConviene ? { noConviene: o.sinCifras ? universoSinCifras(noche.noConviene) : noche.noConviene } : {}),
+    // Los No conviene NO van en esta parte (26-nov-2026): llegan en la segunda (`parte=no`), después de los primeros pines.
     sello: noche.sello, calculados: 0, ms: 0,
   };
 }

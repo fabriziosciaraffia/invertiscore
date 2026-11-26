@@ -6,6 +6,7 @@ import { PIE_ABIERTO, PLAZO_ABIERTO, sinCifras } from "@/lib/explorar/abierto";
 import { respuestaUniverso, universoYCapaCalculados } from "@/lib/explorar/portal-servidor";
 import { sinCifrasNegociados } from "@/lib/explorar/capa-negociar";
 import { respuestaDeLaNoche } from "@/lib/explorar/portal-cache";
+import { parteDelPedido } from "@/lib/explorar/url-noche";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/explorar/abierto?m=ltr|str[&c=Ñuñoa] (29-oct-2026, la puerta E): el universo del mapa SIN CUENTA. Siempre con pie
@@ -31,7 +32,8 @@ export async function GET(request: Request) {
   try {
     if (modalidad === "ltr") {
       // La noche del sello de la página que pide (`s`): el CDN la guarda por URL, así que cada sello es una entrada aparte.
-      return NextResponse.json(await respuestaDeLaNoche(PIE_ABIERTO, PLAZO_ABIERTO, { sinCifras: true, sello: sp.get("s") }), { headers: { "Cache-Control": CACHE } });
+      // EL PEDIDO PARTIDO (26-nov-2026): sin `parte`, ✓ Comprar y − Ajustar; con `parte=no`, los No conviene. Cada uno, su entrada del CDN.
+      return NextResponse.json(await respuestaDeLaNoche(PIE_ABIERTO, PLAZO_ABIERTO, { sinCifras: true, sello: sp.get("s"), parte: parteDelPedido(sp) }), { headers: { "Cache-Control": CACHE } });
     }
     const comuna = (sp.get("c") ?? "").trim();
     if (!COMUNAS_OK.has(comuna)) return NextResponse.json({ error: "comunas" }, { status: 400 });

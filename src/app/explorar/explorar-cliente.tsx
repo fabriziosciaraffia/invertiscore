@@ -58,6 +58,7 @@ import {
 } from "@/lib/explorar/portal";
 // Solo el tipo (se borra al compilar): la forma de GET /api/explorar, la misma que arma la ruta.
 import type { RespuestaUniverso } from "@/lib/explorar/portal-servidor";
+import { conParteNo, conSello, urlUniverso } from "@/lib/explorar/url-noche";
 import { TarjetaPin } from "./tarjeta-pin";
 import { ChipVeredictoTokens } from "@/components/analysis/shared/ChipVeredicto";
 import type { ResumenInforme } from "@/lib/informe-propio";
@@ -158,7 +159,7 @@ export interface InicialPortal {
 }
 
 /** Un pedido de la noche o de la capa, con el sello de la noche que contó la página (la API lee esa misma). */
-const conSello = (url: string, sello: string | null): string => (sello ? `${url}${url.includes("?") ? "&" : "?"}s=${encodeURIComponent(sello)}` : url);
+// La dirección del pedido (y su sello) sale de url-noche.ts: la misma que la página pide por adelantado.
 
 /** EL ENLACE COMPARTIDO con que se entró (page.tsx › compartidoDe): el aviso; «despublicado» si el servidor sabe que ya no
  *  está publicado (si da Comprar lo dice el universo que se carga); y el depto, para la tarjeta de «ya no está». El de un
@@ -255,6 +256,8 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
   // Lo que ya se está pidiendo (la noche: su clave; lo calculado: clave|comuna): abrir los filtros antes de que llegue el universo
   // no lo pide de nuevo.
   const enCurso = useRef(new Set<string>());
+  /** Las claves cuya segunda parte (los No conviene de la noche) está en camino. */
+  const enCursoNo = useRef(new Set<string>());
   const sinCuentaRef = useRef(sinCuenta);
   sinCuentaRef.current = sinCuenta;
   const [progreso, setProgreso] = useState<AvanceRecalculo | null>(null);
@@ -440,12 +443,34 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
     }
   }, []);
 
+  /** LA SEGUNDA PARTE DEL PEDIDO (26-nov-2026, entrega 2 › A): los No conviene de la noche, pedidos después de que el navegador pintó
+   *  los primeros pines (un cuadro y una vuelta del bucle), con el mismo sello. Se suman sin mover el mapa: el encuadre ya se hizo con la
+   *  primera parte y no depende de ellos. Si falla, quedan pendientes (el contador sigue con los números del HTML) y se reintenta una vez. */
+  const asegurarNoConviene = useCallback(async (clave: string, base: string) => {
+    if (enCursoNo.current.has(clave)) return;
+    enCursoNo.current.add(clave);
+    try {
+      await new Promise<void>((listo) => requestAnimationFrame(() => setTimeout(listo, 0)));
+      for (let intento = 0; intento < 2; intento++) {
+        try {
+          const res = await fetch(conSello(conParteNo(base), selloRef.current), { cache: "default" });
+          if (!res.ok) throw new Error(String(res.status));
+          const d = (await res.json()) as RespuestaUniverso;
+          if (vivo.current) setUniversos((us) => (us[clave] ? { ...us, [clave]: { ...us[clave], no: noDe(d.noConviene) } } : us));
+          return;
+        } catch { /* un reintento */ }
+      }
+    } finally {
+      enCursoNo.current.delete(clave);
+    }
+  }, []);
+
   /** Trae lo que falte para unos filtros: la noche entera en un pedido —con los − Ajustar en el mismo, desde el 03-nov-2026—, o
    *  lo calculado de a una comuna. */
   const asegurar = useCallback(async (f: FiltrosPortal) => {
     const clave = claveUniverso(f);
     // Sin cuenta, el universo sin cifras (el financiamiento por defecto): otra ruta, pública y en la caché del CDN.
-    const base = sinCuentaRef.current ? `/api/explorar/abierto?m=${f.modalidad}` : `/api/explorar?m=${f.modalidad}&p=${f.pie}&z=${f.plazo}${f.tasa != null ? `&ta=${f.tasa}` : ""}`;
+    const base = urlUniverso(f, sinCuentaRef.current);
     setFallo(false);
     setFallidas(null);
     try {
@@ -453,7 +478,8 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
         // La capa que la noche no guarda (pie 20 % o 30 % a 25 años, 04-nov-2026): por comuna, mientras llega el universo.
         if (capaVisible(f) && !capaDeLaNoche(f)) void asegurarCapaCalculada(f);
         // Ya cargado: si a su pie le falta la capa (otro plazo antes, o no llegó), se pide aparte.
-        if (universosRef.current[clave]) { void asegurarNegociados(f); return; }
+        // Si la segunda parte quedó pendiente (falló), se pide de nuevo al volver a estos filtros.
+        if (universosRef.current[clave]) { void asegurarNegociados(f); if (!universosRef.current[clave].no) void asegurarNoConviene(clave, base); return; }
         if (enCurso.current.has(clave)) return;
         enCurso.current.add(clave);
         const conCapa = capaDeLaNoche(f);
@@ -467,7 +493,9 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
           const d = (await res.json()) as RespuestaUniverso;
           if (d.sello) selloRef.current = d.sello;
           if (vivo.current) {
-            setUniversos((us) => ({ ...us, [clave]: { comunas: "todas", pines: descompactar(d.universo), no: noDe(d.noConviene) } }));
+            // EL PEDIDO PARTIDO (26-nov-2026): esta parte trae ✓ Comprar y − Ajustar; los No conviene quedan PENDIENTES (`no` sin definir:
+            // el contador sigue con los números del HTML) y llegan en la segunda, después de dibujar los primeros pines.
+            setUniversos((us) => ({ ...us, [clave]: { comunas: "todas", pines: descompactar(d.universo), no: d.noConviene ? noDe(d.noConviene) : undefined } }));
             if (conCapa && d.negociados) {
               trajoCapa = true;
               const ns = descompactarNegociados(d.negociados);
@@ -479,6 +507,8 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
           if (conCapa) enCursoNeg.current.delete(pieNeg);
         }
         if (conCapa && !trajoCapa) void asegurarNegociados(f);
+        // La segunda parte: los No conviene, después del primer dibujo.
+        if (vivo.current) void asegurarNoConviene(clave, base);
         return;
       }
       const ya = universosRef.current[clave];
@@ -514,7 +544,7 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
     } catch {
       if (vivo.current) { setProgreso(null); setFallo(true); }
     }
-  }, [asegurarNegociados, asegurarCapaCalculada]);
+  }, [asegurarNegociados, asegurarCapaCalculada, asegurarNoConviene]);
 
   // El universo de la vista con que se entró: el de la noche (con la capa en el mismo pedido), con la página quieta (el LCP es
   // el mapa quieto); uno calculado, enseguida. El mapa interactivo, también con la página quieta.
@@ -553,7 +583,8 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
   // tramos; sus cifras no viajan).
   const universoNo = useMemo(() => {
     const u = universos[claveUniverso(filtros)];
-    return universo && u ? u.no ?? [] : null;
+    // Pendientes (la segunda parte no llegó): null, no una lista vacía —si no, el contador diría «No conviene · 0»—.
+    return universo && u && u.no ? u.no : null;
   }, [universos, filtros, universo]);
   const visiblesNo = useMemo(() => (universoNo ? filtrar(universoNo, filtros).filter((p) => !caidos.includes(p.avisoId)) : []), [universoNo, filtros, caidos]);
   /** Las clases que se ven en el mapa (los chips del contador apagan las otras). */
@@ -597,7 +628,7 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
   /** Los No conviene que darían unos filtros, sobre lo cargado; null si falta su universo. */
   const contarNo = useCallback((f: FiltrosPortal): number | null => {
     const u = universoPara(f, universosRef.current);
-    const no = u ? universosRef.current[claveUniverso(f)]?.no ?? [] : null;
+    const no = u ? universosRef.current[claveUniverso(f)]?.no ?? null : null;
     return no ? filtrar(no, f).filter((p) => !caidos.includes(p.avisoId)).length : null;
   }, [universoPara, caidos]);
   /** «Ver N deptos» del panel (25-nov-2026): las tres clases con unos filtros; null mientras falte algo. */
