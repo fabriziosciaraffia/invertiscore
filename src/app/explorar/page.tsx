@@ -1,4 +1,6 @@
+/// <reference types="react-dom/canary" />
 import { Suspense } from "react";
+import { preload } from "react-dom";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import type { User } from "@supabase/supabase-js";
@@ -21,6 +23,15 @@ import { contenidoVistaPrevia, negDelEnlace, rutaVistaPrevia, VISTA_PREVIA_PX } 
 import { fichaCompartida, fichaCompartidaCacheada } from "@/lib/explorar/compartir-servidor";
 import { firmaCompartidoValida } from "@/lib/explorar/firma-compartido";
 import { ExplorarCliente, type CompartidoCliente } from "./explorar-cliente";
+import { conSello, urlUniverso } from "@/lib/explorar/url-noche";
+
+/** EL PEDIDO SALE JUNTO CON LA PÁGINA (26-nov-2026, entrega 2 › A3): la página ya sabe el sello de la noche, así que le pide al
+ *  navegador que traiga la primera parte del mapa mientras baja el resto, en vez de esperar a que el código del mapa la pida (en un
+ *  celular, ~900 ms después). La dirección es EXACTAMENTE la que pedirá el navegador (url-noche.ts): si no, la pediría dos veces. */
+function precargarNoche(filtros: Parameters<typeof urlUniverso>[0], sinCuenta: boolean, sello: string | null | undefined) {
+  if (!sello) return;
+  preload(conSello(urlUniverso(filtros, sinCuenta), sello), { as: "fetch", crossOrigin: "anonymous" });
+}
 import { EsqueletoExplorar } from "./esqueleto";
 import { accesoInvierteV2 } from "@/lib/invierte-v2/acceso-servidor";
 import { ultimaOrdenDe } from "@/lib/invierte-v2/servidor";
@@ -166,6 +177,7 @@ async function ExplorarAbierto({ consulta }: { consulta: string }) {
   // más llegan negociando (03-nov-2026), en la vista global: nunca sumados a los que convienen. La barra del primer pintado:
   // los − Ajustar con los filtros de la URL; 0 si la capa no se ve con ellos.
   const { n, convienen, negociadosGlobal, nAjustar, nNo } = cifrasDeLaNoche(noche, filtros);
+  if (filtros.modalidad === "ltr") precargarNoche(filtros, true, noche?.sello);
   return <ExplorarCliente inicial={{ filtros, orden, n, cuenta: null, tasa, convienen, negociadosGlobal, nAjustar, nNo, sello: noche?.sello ?? null }} abrir={compartido?.avisoId ?? sp.get("a")} compartido={compartido} origen={origenDeLlegada(sp.get("desde"))} invierteV2={invierteV2} />;
 }
 
@@ -186,6 +198,7 @@ async function ExplorarConDatos({ consulta, user }: { consulta: string; user: Us
   ]);
   // La barra del primer pintado (03-nov-2026): los − Ajustar con estos filtros; 0 si la capa no se ve con ellos.
   const { n, nAjustar, nNo } = cifrasDeLaNoche(noche, filtros);
+  if (universoDeLaNoche(filtros)) precargarNoche(filtros, false, noche?.sello);
   void capturarServidor(eventoPortalVista({ userId: user.id, filtros, orden, n, robot: robotDeVisita(headers().get("user-agent"), headers()), llegada: llegadaDeExplorar(sp.get("desde")) })).catch(() => false);
   const a = compartido?.avisoId ?? sp.get("a");
   // Ya firmó la orden de Invierte con Franco (20-nov-2026): el botón de los usados dice «Sumar a mis opciones de inversión».

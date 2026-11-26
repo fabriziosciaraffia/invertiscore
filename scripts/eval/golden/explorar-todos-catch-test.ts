@@ -456,6 +456,15 @@ export async function runExplorarTodosTier(): Promise<{ hard: number }> {
     if (!enc || /[Nn]o\b|universoNo|visiblesNo/.test(enc)) F("16 · el encuadre depende de los No conviene: el mapa saltaría al llegar la segunda parte");
     if (!/: filtros === inicial\.filtros && inicial\.n != null && inicial\.nAjustar != null && inicial\.nNo != null \? \{ comprar: inicial\.n, ajustar: inicial\.nAjustar, no: inicial\.nNo \}/.test(cli)) F("16 · el contador no muestra sus tres números desde el HTML mientras llega la segunda parte");
   }
+  // §17 · EL PEDIDO SALE JUNTO CON LA PÁGINA (26-nov-2026, entrega 2 › A3): la página precarga la primera parte con EXACTAMENTE la
+  // dirección que pedirá el navegador (url-noche.ts, con el sello de la noche), sin cuenta y con cuenta; si las direcciones difirieran, el
+  // navegador pediría dos veces.
+  {
+    const pag = codigo("src/app/explorar/page.tsx");
+    if (!/preload\(conSello\(urlUniverso\(filtros, sinCuenta\), sello\), \{ as: "fetch", crossOrigin: "anonymous" \}\);/.test(pag) || !/import \{ preload \} from "react-dom";/.test(pag)) F("17 · la página no precarga la primera parte con la dirección de url-noche (como fetch, sin credenciales cruzadas)");
+    if (!/if \(filtros\.modalidad === "ltr"\) precargarNoche\(filtros, true, noche\?\.sello\);/.test(pag) || !/if \(universoDeLaNoche\(filtros\)\) precargarNoche\(filtros, false, noche\?\.sello\);/.test(pag)) F("17 · la precarga no corre sin cuenta y con cuenta (o precarga lo que no es la noche)");
+    if (!/fetch\(conSello\(base, selloRef\.current\), \{ cache: "default" \}\)/.test(cli) || !/const base = urlUniverso\(f, sinCuentaRef\.current\);/.test(cli)) F("17 · el navegador arma la dirección de otra forma que la página: lo precargado no se usaría");
+  }
   // El cap rate del tramo es el de la tarjeta.
   const capT = mt.capParaTramo(520000, 2800, 38000), capC = capRatePct(520000, 2800, 38000);
   if (capT == null || capC == null || Math.abs(capT - capC) > 0.005) F(`tramos · el cap rate del tramo (${capT}) no es el de la tarjeta (${capC})`);
