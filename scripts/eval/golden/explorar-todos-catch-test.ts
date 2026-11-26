@@ -423,10 +423,15 @@ export async function runExplorarTodosTier(): Promise<{ hard: number }> {
   // `parte=no`, los No conviene (el 60 % del JSON), pedidos después del primer dibujo. Sin SQL: cada parte lee su propia entrada de caché.
   {
     const un = cargar<{ parteDelPedido: (sp: URLSearchParams) => string; conParteNo: (u: string) => string; conSello: (u: string, s: string | null) => string; urlUniverso: (f: unknown, sin: boolean) => string }>("src/lib/explorar/url-noche", F);
+    const filasDeX = (x: unknown) => ((x as { filas?: unknown[] } | undefined)?.filas ?? []).length;
     const pc = cargar<{ respuestaDeLaNoche: (pie: number, plazo: number, o: Record<string, unknown>, leer: (p: number, z: number, s: string | null, parte: string) => Promise<unknown>) => Promise<Record<string, unknown>> }>("src/lib/explorar/portal-cache", F);
     if (un) {
-      if (un.parteDelPedido(new URLSearchParams("m=ltr&parte=no")) !== "no" || un.parteDelPedido(new URLSearchParams("m=ltr")) !== "base" || un.parteDelPedido(new URLSearchParams("parte=todo")) !== "base") F("16 · la ruta no distingue la segunda parte (`parte=no`) de la primera");
-      if (un.conSello(un.conParteNo(un.urlUniverso({ modalidad: "ltr", pie: 20, plazo: 30, tasa: null }, true)), "S1") !== "/api/explorar/abierto?m=ltr&parte=no&s=S1") F("16 · la dirección de la segunda parte no es la de la primera con `parte=no`");
+      // ⚠ ACTA 26-nov-2026 (la pestaña de antes del deploy): sin `parte` la respuesta es la completa de siempre (`todo`); el navegador
+      // nuevo pide `parte=base` y `parte=no`.
+      if (un.parteDelPedido(new URLSearchParams("m=ltr&parte=no")) !== "no" || un.parteDelPedido(new URLSearchParams("m=ltr&parte=base")) !== "base" || un.parteDelPedido(new URLSearchParams("m=ltr")) !== "todo" || un.parteDelPedido(new URLSearchParams("parte=otra")) !== "todo") F("16 · la ruta no distingue la primera parte, la segunda y el pedido sin `parte` (el código de antes)");
+      const u0 = un.urlUniverso({ modalidad: "ltr", pie: 20, plazo: 30, tasa: null }, true) as string;
+      const conBase = (un as unknown as { conParteBase: (u: string) => string }).conParteBase;
+      if (un.conSello(un.conParteNo(u0), "S1") !== "/api/explorar/abierto?m=ltr&parte=no&s=S1" || !conBase || un.conSello(conBase(u0), "S1") !== "/api/explorar/abierto?m=ltr&parte=base&s=S1") F("16 · las direcciones de las dos partes no son la del universo con `parte=base` y `parte=no`");
     }
     if (pc) {
       const u = (n: number) => ({ comunas: ["Santiago"], filas: Array.from({ length: n }, (_, i) => [`id${i}`, 0, -33.4, -70.6, 50, 2, 1, 2800, 70, 1000, 500000, "usado", null, 1, 2, 3]) });
@@ -434,10 +439,13 @@ export async function runExplorarTodosTier(): Promise<{ hard: number }> {
       // La lectura falsa trae los No conviene en TODAS las partes: la primera tiene que dejarlos fuera igual (si no, una mutación que los
       // devuelve no se notaría).
       const leer = async (_p: number, _z: number, _s: string | null, parte: string) => { pedidas.push(parte); return { sello: "S1", universo: parte === "no" ? { comunas: [], filas: [] } : u(3), negociados: null, noConviene: u(5) }; };
-      const base = await pc.respuestaDeLaNoche(20, 30, { sinCifras: true, sello: "S1" }, leer);
+      const base = await pc.respuestaDeLaNoche(20, 30, { sinCifras: true, sello: "S1", parte: "base" }, leer);
       const no = await pc.respuestaDeLaNoche(20, 30, { sinCifras: true, sello: "S1", parte: "no" }, leer);
+      // El código de antes (sin `parte`): las tres clases juntas, como siempre.
+      const viejo = await pc.respuestaDeLaNoche(20, 30, { sinCifras: true, sello: "S1" }, leer);
+      if (filasDeX(viejo.noConviene) !== 5 || filasDeX(viejo.universo) !== 3) F("16 · una pestaña con el código de antes (sin `parte`) deja de recibir los No conviene");
       const filasDe = (x: unknown) => ((x as { filas?: unknown[] } | undefined)?.filas ?? []).length;
-      if (pedidas.join() !== "base,no") F(`16 · cada parte no lee solo su entrada (leyó: ${pedidas.join()})`);
+      if (pedidas.join() !== "base,no,todo") F(`16 · cada parte no lee solo su entrada (leyó: ${pedidas.join()})`);
       if ("noConviene" in base || filasDe(base.universo) !== 3) F("16 · la primera parte trae los No conviene (o pierde los Comprar)");
       if (filasDe(no.noConviene) !== 5 || filasDe(no.universo) !== 0 || no.sello !== "S1") F("16 · la segunda parte no trae solo los No conviene con el mismo sello");
       if (((no.noConviene as { filas: unknown[][] }).filas[0] ?? []).length > 13) F("16 · sin cuenta, la segunda parte trae cifras o tramos de los No conviene");
@@ -451,7 +459,7 @@ export async function runExplorarTodosTier(): Promise<{ hard: number }> {
     // El navegador: los No conviene quedan PENDIENTES (no «cero») hasta su parte; se piden después del primer dibujo, con el mismo sello,
     // y el encuadre no depende de ellos (no mueve el mapa al llegar).
     if (!/no: d\.noConviene \? noDe\(d\.noConviene\) : undefined/.test(cli) || !/return universo && u && u\.no \? u\.no : null;/.test(cli)) F("16 · mientras llega la segunda parte, el contador diría «No conviene · 0» (pendiente confundido con vacío)");
-    if (!/const asegurarNoConviene = useCallback\(async \(clave: string, base: string\) => \{[\s\S]{0,400}?await new Promise<void>\(\(listo\) => requestAnimationFrame\(\(\) => setTimeout\(listo, 0\)\)\);[\s\S]{0,300}?fetch\(conSello\(conParteNo\(base\), selloRef\.current\)/.test(cli) || !/if \(vivo\.current\) void asegurarNoConviene\(clave, base\);/.test(cli)) F("16 · los No conviene no se piden aparte, después del primer dibujo y con el mismo sello");
+    if (!/const asegurarNoConviene = useCallback\(async \(clave: string, base: string\) => \{[\s\S]{0,400}?await new Promise<void>\(\(listo\) => requestAnimationFrame\(\(\) => setTimeout\(listo, 0\)\)\);[\s\S]{0,300}?fetch\(conSello\(conParteNo\(base\), selloRef\.current\)/.test(cli) || !/fetch\(conSello\(conParteBase\(base\), selloRef\.current\), \{ cache: "default" \}\)/.test(cli) || !/if \(vivo\.current\) void asegurarNoConviene\(clave, base\);/.test(cli)) F("16 · los No conviene no se piden aparte, después del primer dibujo y con el mismo sello");
     const enc = /encuadre=\{`([^`]*)`\}/.exec(cli)?.[1] ?? "";
     if (!enc || /[Nn]o\b|universoNo|visiblesNo/.test(enc)) F("16 · el encuadre depende de los No conviene: el mapa saltaría al llegar la segunda parte");
     if (!/: filtros === inicial\.filtros && inicial\.n != null && inicial\.nAjustar != null && inicial\.nNo != null \? \{ comprar: inicial\.n, ajustar: inicial\.nAjustar, no: inicial\.nNo \}/.test(cli)) F("16 · el contador no muestra sus tres números desde el HTML mientras llega la segunda parte");
@@ -461,9 +469,9 @@ export async function runExplorarTodosTier(): Promise<{ hard: number }> {
   // navegador pediría dos veces.
   {
     const pag = codigo("src/app/explorar/page.tsx");
-    if (!/preload\(conSello\(urlUniverso\(filtros, sinCuenta\), sello\), \{ as: "fetch", crossOrigin: "anonymous" \}\);/.test(pag) || !/import \{ preload \} from "react-dom";/.test(pag)) F("17 · la página no precarga la primera parte con la dirección de url-noche (como fetch, sin credenciales cruzadas)");
+    if (!/preload\(conSello\(conParteBase\(urlUniverso\(filtros, sinCuenta\)\), sello\), \{ as: "fetch", crossOrigin: "anonymous" \}\);/.test(pag) || !/import \{ preload \} from "react-dom";/.test(pag)) F("17 · la página no precarga la primera parte con la dirección de url-noche (como fetch, sin credenciales cruzadas)");
     if (!/if \(filtros\.modalidad === "ltr"\) precargarNoche\(filtros, true, noche\?\.sello\);/.test(pag) || !/if \(universoDeLaNoche\(filtros\)\) precargarNoche\(filtros, false, noche\?\.sello\);/.test(pag)) F("17 · la precarga no corre sin cuenta y con cuenta (o precarga lo que no es la noche)");
-    if (!/fetch\(conSello\(base, selloRef\.current\), \{ cache: "default" \}\)/.test(cli) || !/const base = urlUniverso\(f, sinCuentaRef\.current\);/.test(cli)) F("17 · el navegador arma la dirección de otra forma que la página: lo precargado no se usaría");
+    if (!/fetch\(conSello\(conParteBase\(base\), selloRef\.current\), \{ cache: "default" \}\)/.test(cli) || !/const base = urlUniverso\(f, sinCuentaRef\.current\);/.test(cli)) F("17 · el navegador arma la dirección de otra forma que la página: lo precargado no se usaría");
   }
   // §18 · LAS CAPAS DE REFERENCIA (26-nov-2026, entrega 2 › B y C, lámina 5c): comunas de lejos, Metro de cerca, tenues, debajo de los
   // pines, sin toque y pedidas después de los primeros pines. Fuente: OpenStreetMap (ODbL), el crédito que ya está en el mapa.

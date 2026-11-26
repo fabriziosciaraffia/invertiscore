@@ -23,14 +23,14 @@ import { contenidoVistaPrevia, negDelEnlace, rutaVistaPrevia, VISTA_PREVIA_PX } 
 import { fichaCompartida, fichaCompartidaCacheada } from "@/lib/explorar/compartir-servidor";
 import { firmaCompartidoValida } from "@/lib/explorar/firma-compartido";
 import { ExplorarCliente, type CompartidoCliente } from "./explorar-cliente";
-import { conSello, urlUniverso } from "@/lib/explorar/url-noche";
+import { conParteBase, conSello, urlUniverso } from "@/lib/explorar/url-noche";
 
 /** EL PEDIDO SALE JUNTO CON LA PÁGINA (26-nov-2026, entrega 2 › A3): la página ya sabe el sello de la noche, así que le pide al
  *  navegador que traiga la primera parte del mapa mientras baja el resto, en vez de esperar a que el código del mapa la pida (en un
  *  celular, ~900 ms después). La dirección es EXACTAMENTE la que pedirá el navegador (url-noche.ts): si no, la pediría dos veces. */
 function precargarNoche(filtros: Parameters<typeof urlUniverso>[0], sinCuenta: boolean, sello: string | null | undefined) {
   if (!sello) return;
-  preload(conSello(urlUniverso(filtros, sinCuenta), sello), { as: "fetch", crossOrigin: "anonymous" });
+  preload(conSello(conParteBase(urlUniverso(filtros, sinCuenta)), sello), { as: "fetch", crossOrigin: "anonymous" });
 }
 import { EsqueletoExplorar } from "./esqueleto";
 import { accesoInvierteV2 } from "@/lib/invierte-v2/acceso-servidor";

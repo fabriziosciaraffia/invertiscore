@@ -657,7 +657,8 @@ export async function runExplorarPasadaTier(): Promise<{ hard: number }> {
     const cli9 = codigo("src/app/explorar/explorar-cliente.tsx");
     const aseg = cuerpo(cli9, "const asegurar = useCallback(");
     const asegN = cuerpo(cli9, "const asegurarNegociados = useCallback(");
-    if (!/const selloRef = useRef\(inicial\.sello\);/.test(cli9) || !/await fetch\(conSello\(base, selloRef\.current\)/.test(aseg) || !/fetch\(conSello\([^;]*selloRef\.current\)/.test(asegN) || !/if \(d\.sello\) selloRef\.current = d\.sello;/.test(aseg)) F("9 · el navegador no manda el sello de la página en el pedido de la noche o de la capa");
+    // ⚠ ACTA 26-nov-2026 (entrega 2 › A): el pedido de la noche pide su primera parte (`conParteBase`); el sello va igual.
+    if (!/const selloRef = useRef\(inicial\.sello\);/.test(cli9) || !/await fetch\(conSello\(conParteBase\(base\), selloRef\.current\)/.test(aseg) || !/fetch\(conSello\([^;]*selloRef\.current\)/.test(asegN) || !/if \(d\.sello\) selloRef\.current = d\.sello;/.test(aseg)) F("9 · el navegador no manda el sello de la página en el pedido de la noche o de la capa");
     if (!/nocheExplorar\(pie, 30, sp\.get\("s"\)\)/.test(codigo("src/app/api/explorar/negociar/route.ts")) || !/nocheExplorar\(PIE_ABIERTO, PLAZO_ABIERTO, new URL\(request\.url\)\.searchParams\.get\("s"\)\)/.test(codigo("src/app/api/explorar/abierto/negociar/route.ts"))) F("9 · la capa aparte no sale de la noche del sello del pedido");
     if (/universoDeLaNocheCacheado|negociablesCacheados/.test(archivosDe("src").map((f) => codigo(f)).join("\n"))) F("9 · alguien sigue leyendo el universo o la capa por fuera de la noche con sello");
   }

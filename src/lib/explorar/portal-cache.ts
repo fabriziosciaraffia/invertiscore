@@ -99,13 +99,14 @@ export async function nocheExplorar(pie: number, plazo: number, sello: string | 
 export async function respuestaDeLaNoche(
   pie: number,
   plazo: number,
-  // `parte` (26-nov-2026, el pedido partido): `base` (por defecto) los ✓ Comprar y los − Ajustar; `no`, solo los No conviene.
-  o: { sinCifras?: boolean; sello?: string | null; parte?: "base" | "no" } = {},
+  // `parte` (26-nov-2026, el pedido partido): `base` los ✓ Comprar y los − Ajustar; `no`, solo los No conviene; `todo` (por defecto,
+  // el pedido sin `parte` del código de antes) las tres clases juntas.
+  o: { sinCifras?: boolean; sello?: string | null; parte?: ParteNoche } = {},
   /** La lectura (el tier EXPLORAR-PASADA la reemplaza para probar el armado sin la base). */
   leer: (pie: number, plazo: number, sello: string | null, parte: ParteNoche) => Promise<NocheExplorar> = (p, z, s, parte) => nocheExplorar(p, z, s, FUENTES, parte),
 ): Promise<RespuestaUniverso> {
   const q = { modalidad: "ltr" as const, pie, plazo, tasa: null };
-  const parte = o.parte ?? "base";
+  const parte = o.parte ?? "todo";
   const noche = await leer(pie, plazo, o.sello ?? null, parte);
   if (parte === "no") {
     // La segunda parte: solo los No conviene (sin cifras ni tramos sin cuenta), con el mismo sello. El universo va vacío.
@@ -119,7 +120,9 @@ export async function respuestaDeLaNoche(
   return {
     clave: claveUniverso(q), comunas: [], universo: o.sinCifras ? universoSinCifras(noche.universo) : noche.universo,
     ...(n ? { negociados: o.sinCifras ? sinCifrasNegociados(n) : n } : {}),
-    // Los No conviene NO van en esta parte (26-nov-2026): llegan en la segunda (`parte=no`), después de los primeros pines.
+    // Con `parte=base` los No conviene NO van (llegan en la segunda, `parte=no`, después de los primeros pines); sin `parte` (el código
+    // de antes del pedido partido), sí: la respuesta completa de siempre.
+    ...(parte === "todo" && noche.noConviene ? { noConviene: o.sinCifras ? universoSinCifras(noche.noConviene) : noche.noConviene } : {}),
     sello: noche.sello, calculados: 0, ms: 0,
   };
 }

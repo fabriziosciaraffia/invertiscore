@@ -58,7 +58,7 @@ import {
 } from "@/lib/explorar/portal";
 // Solo el tipo (se borra al compilar): la forma de GET /api/explorar, la misma que arma la ruta.
 import type { RespuestaUniverso } from "@/lib/explorar/portal-servidor";
-import { conParteNo, conSello, urlUniverso } from "@/lib/explorar/url-noche";
+import { conParteBase, conParteNo, conSello, urlUniverso } from "@/lib/explorar/url-noche";
 import { TarjetaPin } from "./tarjeta-pin";
 import { ChipVeredictoTokens } from "@/components/analysis/shared/ChipVeredicto";
 import type { ResumenInforme } from "@/lib/informe-propio";
@@ -488,7 +488,7 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
         if (conCapa) enCursoNeg.current.add(pieNeg);
         let trajoCapa = false;
         try {
-          const res = await fetch(conSello(base, selloRef.current), { cache: "default" });
+          const res = await fetch(conSello(conParteBase(base), selloRef.current), { cache: "default" });
           if (!res.ok) throw new Error(String(res.status));
           const d = (await res.json()) as RespuestaUniverso;
           if (d.sello) selloRef.current = d.sello;
