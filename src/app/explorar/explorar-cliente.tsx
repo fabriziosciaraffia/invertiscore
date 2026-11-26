@@ -920,10 +920,12 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
       posthog?.capture(EVENTOS_COMPARTIR.caido, { aviso_id: compartido.avisoId, estado: ap.estado, parecidos: ap.parecidos.length, modalidad: filtros.modalidad, sin_cuenta: sinCuenta, tope_negociar: compartido.tope ?? null });
       return;
     }
-    // El pin abierto, de cualquiera de las dos clases (04-nov-2026: un − Ajustar analizado vuelve a su tarjeta cuando llega la capa).
+    // El pin abierto, de cualquiera de las clases (04-nov-2026: un − Ajustar analizado vuelve a su tarjeta cuando llega la capa).
+    // 26-nov-2026 (regresión del pedido partido, vista en producción): los No conviene llegan en el SEGUNDO pedido, así que el efecto
+    // también corre cuando llegan; sin esto, el enlace `?a=` de un No conviene —«Volver al mapa» desde su informe— no abría la tarjeta.
     if (todos.some((p) => p.avisoId === abrir)) setCarrusel(cercanos(todos, abrir).map((p) => p.avisoId));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [universo, esperaCapa, abrir, visiblesNeg.length]);
+  }, [universo, esperaCapa, abrir, visiblesNeg.length, visiblesNo.length]);
   // VOLVER AL MAPA (04-nov-2026, volver-al-mapa.ts): los pines analizados en esta pestaña se suman a los de la cuenta —al volver con
   // «atrás», la página puede venir del caché, con la cuenta de antes—, y si la página no trajo el pin abierto, el que quedó en la
   // barra antes de ir al informe: su tarjeta se abre y el mapa se centra en él.
