@@ -19,7 +19,7 @@ import { loadGoogleMaps } from "@/lib/loadGoogleMaps";
 import { CAPA_MAPA_COPY, CAPAS_MAPA, guardarCapaMapa, leerCapaMapa, opcionesDeCapa, type CapaMapa } from "@/lib/explorar/capa-mapa";
 import type { Caja } from "@/lib/explorar/portal";
 import { cajaRecortada, componerCapa, RADIO_PUNTO, tocado, type Dibujo, type ItemCapa } from "@/lib/explorar/capa-canvas";
-import { cargarReferencias, componerReferencias, ESTILO_REFERENCIAS, type DibujoReferencias, type Referencias } from "@/lib/explorar/capas-referencia";
+import { cargarReferencias, componerReferencias, ESTILO_REFERENCIAS, LINEA_EN_NOMBRE, numeroDeLinea, textoSobreLinea, type DibujoReferencias, type Referencias } from "@/lib/explorar/capas-referencia";
 import { dibujarEstacion } from "@/lib/explorar/marcador-estacion";
 import { ANILLO_ELEGIDO_PX, ANILLO_PIN, ANILLO_PIN_PX, colorPin, type TemaPin } from "@/lib/explorar/colores-pin";
 import { CREDITO_OSM } from "@/lib/explorar/lugar";
@@ -126,9 +126,10 @@ export interface MapaExplorarProps {
 }
 
 /** Dibuja la capa en el canvas: puntos, grupos y cifras, con los colores de su clase y del tema. */
-/** LAS CAPAS DE REFERENCIA (26-nov-2026, entrega 2 › B y C): debajo de los pines y tenues. Los límites de comuna en un solo trazo
- *  (los bordes compartidos no se oscurecen al repetirse); cada línea de Metro con su color; las estaciones con su marcador
- *  (marcador-estacion.ts); los nombres con un halo para leerse sobre el mapa. */
+/** LAS CAPAS DE REFERENCIA (26-nov-2026, entrega 2 › B y C): debajo de los pines. Los límites de comuna en un solo trazo y tenue
+ *  (los bordes compartidos no se oscurecen al repetirse); cada línea de Metro en UN trazo, con su color original y sin transparencia;
+ *  las estaciones con su marcador (marcador-estacion.ts); los nombres con un halo para leerse sobre el mapa, y el de cada estación
+ *  seguido de un círculo por cada una de sus líneas. */
 function pintarReferencias(ctx: CanvasRenderingContext2D, d: DibujoReferencias, claro: boolean, logo: HTMLImageElement | null) {
   const tema = claro ? "claro" : "oscuro";
   const trazo = (anillos: ReadonlyArray<ReadonlyArray<readonly [number, number]>>, cerrar: boolean) => {
@@ -141,11 +142,8 @@ function pintarReferencias(ctx: CanvasRenderingContext2D, d: DibujoReferencias, 
     ctx.stroke();
   }
   if (d.lineas.length) {
-    ctx.save();
-    ctx.globalAlpha = ESTILO_REFERENCIAS.lineaMetro.opacidad[tema];
     ctx.lineWidth = d.anchoLinea; ctx.lineCap = "round"; ctx.lineJoin = "round";
-    for (const l of d.lineas) { trazo(l.tramos, false); ctx.strokeStyle = l.color; ctx.stroke(); }
-    ctx.restore();
+    for (const l of d.lineas) { trazo([l.eje], false); ctx.strokeStyle = l.color; ctx.stroke(); }
   }
   for (const s of d.estaciones) dibujarEstacion(ctx, s.x, s.y, logo, claro);
   for (const n of d.nombres) {
@@ -153,6 +151,19 @@ function pintarReferencias(ctx: CanvasRenderingContext2D, d: DibujoReferencias, 
     ctx.font = e.fuente; ctx.textAlign = "left"; ctx.textBaseline = "middle";
     ctx.lineWidth = 3; ctx.strokeStyle = e.halo[tema]; ctx.strokeText(n.texto, n.x, n.y);
     ctx.fillStyle = e[tema]; ctx.fillText(n.texto, n.x, n.y);
+    if (!n.lineas?.length) continue;
+    // Las líneas de la estación: un círculo por línea con su número, después del nombre.
+    const r = LINEA_EN_NOMBRE.radio;
+    let cx = n.x + ctx.measureText(n.texto).width + LINEA_EN_NOMBRE.aireTexto + r;
+    ctx.textAlign = "center";
+    for (const l of n.lineas) {
+      ctx.beginPath(); ctx.arc(cx, n.y, r, 0, Math.PI * 2); ctx.fillStyle = l.color; ctx.fill();
+      ctx.lineWidth = 1; ctx.strokeStyle = e.halo[tema]; ctx.stroke();
+      const num = numeroDeLinea(l.ref);
+      ctx.font = num.length > 1 ? LINEA_EN_NOMBRE.fuenteLarga : LINEA_EN_NOMBRE.fuente;
+      ctx.fillStyle = textoSobreLinea(l.ref); ctx.fillText(num, cx, n.y + 0.5);
+      cx += 2 * r + LINEA_EN_NOMBRE.separacion;
+    }
   }
 }
 
