@@ -128,13 +128,17 @@ export async function runNuevoUsadoTier(): Promise<{ hard: number }> {
       const p2 = { ...p1, avisoId: "a2", condicion: undefined };
       const ojosDe = (html: string) => Array.from(html.matchAll(/<span class="ex-ojo"[^>]*>([^<]*)<\/span>/g)).map((m) => m[1]);
       const nada = () => {};
-      const ojos = ojosDe(dibujar(createElement(TarjetaPin as unknown as FC<Record<string, unknown>>, { pines: [p1, p2], seleccionado: "a1", uf: 39000, analizados: {}, guardados: new Set(), generando: null, error: null, alCambiar: nada, alCerrar: nada, alGuardar: nada, alAnalizar: nada })));
+      // ⚠ ACTA 26-nov-2026 (la tarjeta se arma de una vez): la línea de la tarjeta va en piezas —el lugar (aquí el metro Los Dominicos,
+      // a 520 m, que sale de la lista del repo desde el primer pintado) y la tipología con los m²—, así que se lee el texto entero de la
+      // línea (`data-explorar="linea"`), sin las etiquetas. La regla no cambia: sin «Usado» ni «Nuevo», igual con o sin condición.
+      const lineasDe = (html: string) => Array.from(html.matchAll(/data-explorar="linea">([\s\S]*?)<\/span><\/span>/g)).map((m) => m[1].replace(/<[^>]+>/g, ""));
+      const ojos = lineasDe(dibujar(createElement(TarjetaPin as unknown as FC<Record<string, unknown>>, { pines: [p1, p2], seleccionado: "a1", uf: 39000, analizados: {}, guardados: new Set(), generando: null, error: null, alCambiar: nada, alCerrar: nada, alGuardar: nada, alAnalizar: nada })));
       // ⚠ ACTA 25-nov-2026 (mapa con todos los deptos, decisión 7): antes la tarjeta del pin decía la línea del depto con su condición
       // («Las Condes · 2D2B · 77 m² · Usado»); la tarjeta nueva lleva la comuna en mayúsculas como título y debajo el lugar (metro,
       // barrio o avenida, si lo hay), la tipología y los m², sin la condición: el mapa con todos los deptos es solo de usados. Así
       // que en la tarjeta se fija que la línea no diga «Usado» ni «Nuevo» y sea igual con o sin condición; la lista, abajo, sigue
       // con la línea del depto y su «· Usado».
-      if (ojos.join("|") !== "2D2B · 77 m²|2D2B · 77 m²") F(`3 · la línea de la tarjeta de Explorar no es tipología y m² (sin la condición): ${JSON.stringify(ojos)}`);
+      if (ojos.join("|") !== "Metro Los Dominicos · 2D2B · 77 m²|Metro Los Dominicos · 2D2B · 77 m²") F(`3 · la línea de la tarjeta de Explorar no es tipología y m² (sin la condición): ${JSON.stringify(ojos)}`);
       if (ojos.some((o) => /Usado|Nuevo|Las Condes/.test(o))) F(`3 · la tarjeta de Explorar repite la comuna o dice la condición en su línea: ${JSON.stringify(ojos)}`);
       const lista = ojosDe(dibujar(createElement(ListaPortal as unknown as FC<Record<string, unknown>>, { pines: [p1, p2], total: 2, calculando: false, orden: "puntaje", uf: 39000, analizados: {}, guardados: new Set(), alOrden: nada, alAbrir: nada, alGuardar: nada, alAvisame: nada, alMapa: nada })));
       if (!lista.includes("Las Condes · 2D2B · 77 m² · Usado") || !lista.includes("Las Condes · 2D2B · 77 m²")) F(`3 · la lista de Explorar no dice «· Usado» (o se lo pone al que no lo dice): ${JSON.stringify(lista)}`);

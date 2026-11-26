@@ -355,7 +355,10 @@ export async function runExplorarRecorridoTier(): Promise<{ hard: number }> {
   const ruta = codigo("src/app/api/explorar/calle/[avisoId]/route.ts");
   // ⚠ ACTA (03-nov-2026) · la ruta lee además la clase del pin (`v`): los parámetros salen de `sp`; la imagen pide los dos.
   if (!/const tema = sp\.get\("tema"\) === "oscuro" \? "dark" : "light";/.test(ruta) || !/francoMapStaticStyleParams\(tema\)/.test(ruta)) F("9 · la ruta de la imagen no pide el mapa chico con el estilo del tema");
-  if (!/const oscuro = useTemaOscuro\(\);/.test(codigo("src/components/guia/ImagenDepto.tsx")) || !/src=\{rutaImagenCalle\(avisoId, oscuro, ajustar\)\}/.test(codigo("src/components/guia/ImagenDepto.tsx"))) F("9 · la imagen del depto no sigue al tema");
+  // ⚠ ACTA 26-nov-2026 (la foto aparece recién cargada): la ruta del tema pasa por una constante `src`, que también marca cuándo cargó
+  // esa imagen (data-cargada); se exige la constante con el tema y que sea ella la que va en la imagen.
+  { const imgD = codigo("src/components/guia/ImagenDepto.tsx");
+    if (!/const oscuro = useTemaOscuro\(\);/.test(imgD) || !/const src = rutaImagenCalle\(avisoId, oscuro, ajustar\);/.test(imgD) || !/<img ref=\{img\} onLoad=\{\(\) => setCargada\(src\)\} src=\{src\}/.test(imgD)) F("9 · la imagen del depto no sigue al tema"); }
   if (!/attributeFilter: \["data-theme"\]/.test(codigo("src/lib/tema-vivo.ts")) || !/useSyncExternalStore\(suscribir, oscuroAhora, \(\) => false\)/.test(codigo("src/lib/tema-vivo.ts"))) F("9 · el tema no se lee en vivo (no cambiaría al momento)");
 
   if (fallas.length) {
