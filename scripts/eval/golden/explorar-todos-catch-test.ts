@@ -465,6 +465,61 @@ export async function runExplorarTodosTier(): Promise<{ hard: number }> {
     if (!/if \(filtros\.modalidad === "ltr"\) precargarNoche\(filtros, true, noche\?\.sello\);/.test(pag) || !/if \(universoDeLaNoche\(filtros\)\) precargarNoche\(filtros, false, noche\?\.sello\);/.test(pag)) F("17 · la precarga no corre sin cuenta y con cuenta (o precarga lo que no es la noche)");
     if (!/fetch\(conSello\(base, selloRef\.current\), \{ cache: "default" \}\)/.test(cli) || !/const base = urlUniverso\(f, sinCuentaRef\.current\);/.test(cli)) F("17 · el navegador arma la dirección de otra forma que la página: lo precargado no se usaría");
   }
+  // §18 · LAS CAPAS DE REFERENCIA (26-nov-2026, entrega 2 › B y C, lámina 5c): comunas de lejos, Metro de cerca, tenues, debajo de los
+  // pines, sin toque y pedidas después de los primeros pines. Fuente: OpenStreetMap (ODbL), el crédito que ya está en el mapa.
+  {
+    const cr = cargar<{ ZOOMS_REFERENCIA: Record<string, { pc: readonly number[]; telefono: readonly number[] }>; capaSeVe: (c: string, z: number, t: boolean) => boolean; componerReferencias: (r: unknown, o: unknown) => { limites: unknown[]; lineas: unknown[]; estaciones: Array<{ nombre: string }>; nombres: Array<{ texto: string; tipo: string }> }; ESTACIONES_ACTIVAS: unknown[] }>("src/lib/explorar/capas-referencia", F);
+    if (cr) {
+      // Los zooms de la tabla aprobada, como constantes.
+      const tabla: Record<string, [number[], number[]]> = { limites: [[9, 13], [9, 13]], nombresComuna: [[10, 12], [10, 11]], lineasMetro: [[13, 22], [14, 22]], estaciones: [[15, 22], [16, 22]], nombresEstacion: [[16, 22], [17, 22]] };
+      for (const [capa, [pc, tel]] of Object.entries(tabla)) {
+        const z = cr.ZOOMS_REFERENCIA[capa];
+        if (!z || z.pc.join() !== pc.join() || z.telefono.join() !== tel.join()) F(`18 · los zooms de «${capa}» no son los de la tabla (${z ? `${z.pc}/${z.telefono}` : "falta"})`);
+        for (const [t, [d, h]] of [[false, pc], [true, tel]] as const) if (!cr.capaSeVe(capa, d, t) || !cr.capaSeVe(capa, h, t) || cr.capaSeVe(capa, d - 1, t) || (h < 22 && cr.capaSeVe(capa, h + 1, t))) F(`18 · «${capa}» no aparece y desaparece en sus zooms (${t ? "teléfono" : "PC"})`);
+      }
+      // Lo que se compone a cada zoom, con datos chicos: una comuna, una línea, la estación Baquedano.
+      const datos = { comunas: { fuente: "x", comunas: [{ n: "Providencia", e: [-33.43, -70.61], a: [[-33.40, -70.64, -33.40, -70.58, -33.46, -70.58, -33.46, -70.64]] }] }, metro: { fuente: "x", lineas: { L1: { color: "#cc0000", tramos: [[-33.437, -70.634, -33.437, -70.630]] } } } };
+      const vista = { w: 1000, h: 800 };
+      const aPixel = (lat: number, lng: number) => ({ x: 500 + (lng + 70.61) * 9000, y: 400 - (lat + 33.43) * 9000 });
+      const comp = (zoom: number, telefono: boolean, ocupados: unknown[] = []) => cr.componerReferencias(datos, { zoom, telefono, vista, ocupados, aPixel, ancho: (t: string) => t.length * 7 });
+      const z11 = comp(11, false), z12t = comp(12, true), z13 = comp(13, false), z13t = comp(13, true), z15 = comp(15, false), z16 = comp(16, false), z16t = comp(16, true), z17t = comp(17, true);
+      if (!z11.limites.length || !z11.nombres.some((n) => n.texto === "PROVIDENCIA") || z11.lineas.length || z11.estaciones.length) F("18 · de lejos (zoom 11) no se ven los límites con el nombre de la comuna, o ya se ve el Metro");
+      if (z12t.nombres.some((n) => n.tipo === "comuna") || !comp(12, false).nombres.some((n) => n.tipo === "comuna")) F("18 · en el teléfono el nombre de la comuna no se va antes que en el PC (zoom 12)");
+      if (!z13.lineas.length || !z13.limites.length || z13.estaciones.length || z13t.lineas.length) F("18 · a zoom 13 el Metro no aparece en el PC (o ya aparece en el teléfono, o salen estaciones)");
+      if (!z15.estaciones.some((s) => s.nombre === "Baquedano") || z15.nombres.some((n) => n.tipo === "estacion") || z15.limites.length) F("18 · a zoom 15 no salen las estaciones sin nombre (o siguen los límites)");
+      if (!z16.nombres.some((n) => n.texto === "Baquedano") || z16t.nombres.some((n) => n.tipo === "estacion") || !z16t.estaciones.length || !z17t.nombres.some((n) => n.texto === "Baquedano")) F("18 · los nombres de estación no aparecen a 16 en el PC y a 17 en el teléfono");
+      // Los nombres ceden ante los pines: con una etiqueta encima del nombre de la comuna, el nombre no va.
+      const pEt = aPixel(-33.43, -70.61);
+      if (comp(11, false, [{ tipo: "etiqueta", x: pEt.x, y: pEt.y, w: 120, h: 22, id: "a", clase: "comprar", texto: "UF 1", elegido: false }]).nombres.some((n) => n.tipo === "comuna")) F("18 · el nombre de una comuna tapa un pin (no le cede el lugar)");
+      if ((cr.ESTACIONES_ACTIVAS as Array<{ status: string }>).some((s) => s.status !== "active") || cr.ESTACIONES_ACTIVAS.length < 100) F("18 · las estaciones no son las activas de metro-stations.ts");
+    }
+    // Los archivos: livianos, solo Gran Santiago (las comunas con avisos), los siete colores de OpenStreetMap y el logo intacto.
+    const { createHash } = require("node:crypto") as typeof import("node:crypto");
+    const leerBin = (p: string) => readFileSync(join(RAIZ, p));
+    const pesos = { "public/explorar/capa-comunas.v1.json": 60 * 1024, "public/explorar/capa-metro.v1.json": 20 * 1024, "public/explorar/metro-logo.svg": 6 * 1024 };
+    for (const [p, tope] of Object.entries(pesos)) { let b: Buffer | null = null; try { b = leerBin(p); } catch { /* falta */ } if (!b || b.length > tope) F(`18 · ${p} falta o pesa más de ${tope / 1024} kB`); }
+    try {
+      const com = JSON.parse(leerBin("public/explorar/capa-comunas.v1.json").toString("utf8")) as { fuente: string; comunas: Array<{ n: string }> };
+      const disp = (require(join(RAIZ, "src/lib/comunas-disponibles")) as { COMUNAS_DISPONIBLES: readonly string[] }).COMUNAS_DISPONIBLES;
+      if (com.comunas.map((c) => c.n).sort().join() !== [...disp].sort().join() || !/OpenStreetMap/.test(com.fuente)) F("18 · la capa de comunas no son exactamente las comunas con avisos (o perdió el crédito de OpenStreetMap)");
+      const met = JSON.parse(leerBin("public/explorar/capa-metro.v1.json").toString("utf8")) as { fuente: string; lineas: Record<string, { color: string }> };
+      const colores: Record<string, string> = { L1: "#cc0000", L2: "#ffbe2e", L3: "#83441d", L4: "#292d91", L4A: "#0099ff", L5: "#006633", L6: "#8e16a1" };
+      if (Object.keys(met.lineas).sort().join() !== Object.keys(colores).sort().join() || Object.entries(colores).some(([l, c]) => met.lineas[l]?.color !== c) || !/OpenStreetMap/.test(met.fuente)) F("18 · las líneas de Metro no traen los siete colores de OpenStreetMap (o perdieron el crédito)");
+    } catch { F("18 · las capas no se pueden leer como JSON"); }
+    let hashLogo = ""; try { hashLogo = createHash("sha256").update(leerBin("public/explorar/metro-logo.svg")).digest("hex"); } catch { /* falta */ }
+    if (!hashLogo.startsWith("f5a9feb89a293e07")) F("18 · el logo de Metro no es el archivo de Commons tal cual (se modificó o falta)");
+    // El marcador: un solo módulo con la constante; el logo chico y sin tocar; el neutro a una línea.
+    const mk = codigo("src/lib/explorar/marcador-estacion.ts");
+    if (!/export const MARCADOR_ESTACION: "logo" \| "neutro" = "logo";/.test(mk) || !/if \(MARCADOR_ESTACION === "logo" && logo/.test(mk) || !/ctx\.arc\(x, y, RADIO_NEUTRO_PX, 0, Math\.PI \* 2\);/.test(mk) || !/export const ANCHO_LOGO_PX = 18;/.test(mk) || /filter|globalCompositeOperation|fillStyle = .*\n\s*ctx\.drawImage/.test(mk)) F("18 · el marcador de estación no está en un solo módulo con su constante (o el logo se modifica)");
+    for (const archivo of ["src/app/explorar/mapa-explorar.tsx", "src/app/explorar/explorar-cliente.tsx", "src/app/explorar/tarjeta-pin.tsx", "src/lib/explorar/capa-canvas.ts"]) if (/metro-logo\.svg|drawImage/.test(codigo(archivo))) F(`18 · ${archivo} dibuja el logo por su cuenta (debe pasar por marcador-estacion.ts)`);
+    // En el mapa: debajo de los pines (se pintan antes que ellos), pedidas después del primer dibujo con pines, y fuera del toque.
+    const mpC = codigo("src/app/explorar/mapa-explorar.tsx");
+    if (!/pintarReferencias\(ctx, componerReferencias\(refs, [\s\S]{0,400}?\} else if \(dibujos\.length > 0 && !refsPedidas\.current\) \{\s*refsPedidas\.current = true;\s*window\.setTimeout\(\(\) => \{ void cargarReferencias\(\)/.test(mpC) || !/window\.setTimeout\(\(\) => \{ void cargarReferencias\(\)[\s\S]{0,200}?\}, 0\);\s*\}\s*dibujosRef\.current = dibujos;\s*pintar\(ctx, dibujos, temaPin\(\)\);/.test(mpC)) F("18 · las capas no van debajo de los pines, o se piden antes del primer dibujo con pines");
+    { const ccS = codigo("src/lib/explorar/capa-canvas.ts"), iT = ccS.indexOf("export function tocado"), tc = iT < 0 ? "" : ccS.slice(iT, ccS.indexOf("\n}", iT));
+      if (!tc || /[Rr]eferencia|limites|estacion|lineas/.test(tc) || !/tocado\(dibujosRef\.current/.test(mpC)) F("18 · el toque mira las capas de referencia (no se pueden tocar)"); }
+    if ((mpC.match(/pintarReferencias\(/g) ?? []).length !== 2) F("18 · las capas se pintan más de una vez (o encima de los pines)");
+    if (!/CREDITO_OSM/.test(mpC)) F("18 · el mapa perdió el crédito de OpenStreetMap");
+  }
   // El cap rate del tramo es el de la tarjeta.
   const capT = mt.capParaTramo(520000, 2800, 38000), capC = capRatePct(520000, 2800, 38000);
   if (capT == null || capC == null || Math.abs(capT - capC) > 0.005) F(`tramos · el cap rate del tramo (${capT}) no es el de la tarjeta (${capC})`);

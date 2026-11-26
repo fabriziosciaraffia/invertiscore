@@ -19,6 +19,8 @@ import { loadGoogleMaps } from "@/lib/loadGoogleMaps";
 import { CAPA_MAPA_COPY, CAPAS_MAPA, guardarCapaMapa, leerCapaMapa, opcionesDeCapa, type CapaMapa } from "@/lib/explorar/capa-mapa";
 import type { Caja } from "@/lib/explorar/portal";
 import { cajaRecortada, componerCapa, RADIO_PUNTO, tocado, type Dibujo, type ItemCapa } from "@/lib/explorar/capa-canvas";
+import { cargarReferencias, componerReferencias, ESTILO_REFERENCIAS, type DibujoReferencias, type Referencias } from "@/lib/explorar/capas-referencia";
+import { dibujarEstacion } from "@/lib/explorar/marcador-estacion";
 import { ANILLO_ELEGIDO_PX, ANILLO_PIN, ANILLO_PIN_PX, colorPin, type TemaPin } from "@/lib/explorar/colores-pin";
 import { CREDITO_OSM } from "@/lib/explorar/lugar";
 
@@ -124,6 +126,36 @@ export interface MapaExplorarProps {
 }
 
 /** Dibuja la capa en el canvas: puntos, grupos y cifras, con los colores de su clase y del tema. */
+/** LAS CAPAS DE REFERENCIA (26-nov-2026, entrega 2 › B y C): debajo de los pines y tenues. Los límites de comuna en un solo trazo
+ *  (los bordes compartidos no se oscurecen al repetirse); cada línea de Metro con su color; las estaciones con su marcador
+ *  (marcador-estacion.ts); los nombres con un halo para leerse sobre el mapa. */
+function pintarReferencias(ctx: CanvasRenderingContext2D, d: DibujoReferencias, claro: boolean, logo: HTMLImageElement | null) {
+  const tema = claro ? "claro" : "oscuro";
+  const trazo = (anillos: ReadonlyArray<ReadonlyArray<readonly [number, number]>>, cerrar: boolean) => {
+    ctx.beginPath();
+    for (const a of anillos) { a.forEach(([x, y], i) => (i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y))); if (cerrar) ctx.closePath(); }
+  };
+  if (d.limites.length) {
+    trazo(d.limites, true);
+    ctx.lineWidth = ESTILO_REFERENCIAS.limite.ancho; ctx.strokeStyle = ESTILO_REFERENCIAS.limite[tema]; ctx.lineJoin = "round";
+    ctx.stroke();
+  }
+  if (d.lineas.length) {
+    ctx.save();
+    ctx.globalAlpha = ESTILO_REFERENCIAS.lineaMetro.opacidad[tema];
+    ctx.lineWidth = d.anchoLinea; ctx.lineCap = "round"; ctx.lineJoin = "round";
+    for (const l of d.lineas) { trazo(l.tramos, false); ctx.strokeStyle = l.color; ctx.stroke(); }
+    ctx.restore();
+  }
+  for (const s of d.estaciones) dibujarEstacion(ctx, s.x, s.y, logo, claro);
+  for (const n of d.nombres) {
+    const e = n.tipo === "comuna" ? ESTILO_REFERENCIAS.nombreComuna : ESTILO_REFERENCIAS.nombreEstacion;
+    ctx.font = e.fuente; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+    ctx.lineWidth = 3; ctx.strokeStyle = e.halo[tema]; ctx.strokeText(n.texto, n.x, n.y);
+    ctx.fillStyle = e[tema]; ctx.fillText(n.texto, n.x, n.y);
+  }
+}
+
 function pintar(ctx: CanvasRenderingContext2D, dibujos: readonly Dibujo[], tema: TemaPin) {
   const circulo = (x: number, y: number, r: number, fondo: string, anillo: number) => {
     ctx.beginPath();
@@ -193,6 +225,9 @@ export default function MapaExplorar({ items, seleccionado, encuadre, conZona, o
   cb.current = { onSeleccionar, onTocarMapa, onMovido, onEstado, onFoco };
   const dibujarRef = useRef<() => void>(() => {});
   const revisionRef = useRef<HTMLSpanElement>(null);
+  // Las capas de referencia (comunas y Metro): vacías hasta que se piden, después del primer dibujo con pines.
+  const refsRef = useRef<Referencias>({ comunas: null, metro: null, logo: null });
+  const refsPedidas = useRef(false);
   // EL PIN ELEGIDO, ARRIBA DE LA HOJA (26-nov-2026): en el teléfono la tarjeta es una hoja abajo; si el pin queda debajo de ella (o debajo
   // del contador), el mapa se corre solo hasta dejarlo en el medio de lo que se ve. «ok»: ya se ve; «corrido»: se movió; «espera»: el
   // mapa todavía no tiene proyección.
@@ -292,6 +327,17 @@ export default function MapaExplorar({ items, seleccionado, encuadre, conZona, o
           zoom, elegido: selRef.current, ancho, vista: { w, h },
           aPixel: (lat, lng) => { const p = proy.fromLatLngToContainerPixel(new g.maps.LatLng(lat, lng)); return { x: p.x, y: p.y }; },
         });
+        // LAS CAPAS DE REFERENCIA, DEBAJO DE LOS PINES (26-nov-2026): se componen con los pines ya puestos (sus nombres les ceden el lugar)
+        // y se piden recién después del primer dibujo con pines. No entran en el toque: `tocado` solo mira los dibujos de los pines.
+        const refs = refsRef.current;
+        if (refs.comunas || refs.metro) {
+          const medidas = new Map<string, number>();
+          const anchoRef = (t: string, tipo: "comuna" | "estacion") => { const k = `${tipo}|${t}`; let a = medidas.get(k); if (a == null) { ctx.font = tipo === "comuna" ? ESTILO_REFERENCIAS.nombreComuna.fuente : ESTILO_REFERENCIAS.nombreEstacion.fuente; a = ctx.measureText(t).width; medidas.set(k, a); } return a; };
+          pintarReferencias(ctx, componerReferencias(refs, { zoom, telefono: esTelefono(), vista: { w, h }, ocupados: dibujos, ancho: anchoRef, aPixel: (lat, lng) => { const p = proy.fromLatLngToContainerPixel(new g.maps.LatLng(lat, lng)); return { x: p.x, y: p.y }; } }), esClaro(), refs.logo);
+        } else if (dibujos.length > 0 && !refsPedidas.current) {
+          refsPedidas.current = true;
+          window.setTimeout(() => { void cargarReferencias().then((r) => { refsRef.current = r; dibujarRef.current(); }); }, 0);
+        }
         dibujosRef.current = dibujos;
         pintar(ctx, dibujos, temaPin());
         // Para la revisión sin mirar el canvas: dónde quedó el pin elegido (alto en píxeles del contenedor del mapa).
