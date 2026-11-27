@@ -3,7 +3,7 @@
 // mapa: explorar_mapa_todos), así que el servidor nunca recibe una cifra libre y su respuesta no dice más de lo que el tramo ya
 // dice. Al servidor viaja SOLO uno de estos valores; él devuelve los id de los Comprar que piden como mucho eso al mes, con una
 // MÁSCARA de los cuatro plazos (30, 25, 20, 15): la edad no sale del navegador, que elige el bit de su plazo.
-// La fila es la de asesoria_candidatos (migración 20261127_asesoria_plazos_cortos): el flujo y el veredicto de cada plazo salen
+// La fila es la de asesoria_candidatos (migración 20261127_asesoria_plazos_cortos_1_columnas y _2_funcion): el flujo y el veredicto de cada plazo salen
 // de la evaluación de la noche (la sonda del motor), no de un ajuste. Lo fija el tier ASESORIA.
 // ─────────────────────────────────────────────────────────────────────────────
 

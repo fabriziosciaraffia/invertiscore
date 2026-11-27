@@ -35,6 +35,7 @@ import { limpiarEventoSentry } from "../../../src/lib/asesoria/sentry-limpieza";
 import { ASESORIA_COPY } from "../../../src/lib/asesoria/copy";
 import { validarPedidoPerfil, filaPerfil, calcularPerfil } from "../../../src/lib/asesoria/perfil";
 import { comunaEn, comunasQueMasRinden } from "../../../src/lib/asesoria/lugar";
+import { conveniencia, palanca } from "../../../src/lib/asesoria/palanca";
 
 const RAIZ = join(__dirname, "..", "..", "..");
 const leer = (p: string) => readFileSync(join(RAIZ, p), "utf8").replace(/\r\n/g, "\n");
@@ -244,6 +245,40 @@ export async function runAsesoria(): Promise<{ hard: number }> {
       if (comunaEn(0.5, 0.5, datos) !== "Cuadrado" || comunaEn(2, 2, datos) !== null) F("10 · el toque no encuentra la comuna");
       if (comunasQueMasRinden([{ comuna: "A", cap: 0.06 }, { comuna: "B", cap: 0.05 }, { comuna: "C", cap: 0.07 }], new Map([["A", 5], ["B", 5], ["C", 1]])).join() !== "A,B") F("10 · «donde más rinde» no exige deptos que calcen");
     }
+
+    // ── 11 · EL PLAZO CORTO Y LA PALANCA (punto 5, 27-nov-2026) ──
+    {
+      const cs = [cand("a"), cand("b", { c: { 20: false } }), cand("c", { f: { 20: null } })];
+      const cv = conveniencia(cs, 20);
+      if (cv.x !== 1 || cv.y !== 3) F(`11 · «convienen X de los Y» a 20 años da ${cv.x} de ${cv.y}, no 1 de 3`);
+      if (ASESORIA_COPY.formula.plazoCorto(20, 1596, 4814) !== "Con tu plazo de 20 años, convienen 1.596 de los 4.814.") F("11 · el texto del plazo corto no es el aprobado");
+      // Limita la renta: más pie también sube el tope (pie + crédito), pero acá no deja más deptos (todos ya alcanzan); gana el aporte.
+      const P0 = { plazo: 30 as const, aporte: 50_000, topeUF: 99_999, comunas: [] as string[], uf: CFG.uf };
+      const pide = (id: string, f: number) => cand(id, { precioUF: 1000, f: { 30: f }, lat: -33.4 - Number(id.slice(1)) * 0.01 });
+      const pool = [pide("x1", -40_000), pide("x2", -60_000), pide("x3", -70_000), pide("x4", -70_000)];
+      const nRenta = { ...base, renta: "r1" as const, pie: "p3" as const };
+      const capR = capacidad(nRenta, CFG);
+      const pa = palanca(pool, { ...P0, topeUF: capR.topeUF }, nRenta, CFG);
+      if (capR.limita === "pie") F("11 · el caso de prueba de renta quedó limitado por el pie");
+      if (capacidad({ ...nRenta, pie: "p4" }, CFG).topeUF <= capR.topeUF) F("11 · con la renta limitando, más pie no sube el tope");
+      if (!pa || pa.tipo !== "aporte" || pa.aporte !== 75_000 || pa.n !== 4) F(`11 · con la renta limitando, la palanca no es «hasta $75.000 → 4» (${JSON.stringify(pa)})`);
+      // Limita el pie (300): el chip siguiente (600) sube el tope y deja más que el aporte siguiente.
+      const nPie = { ...base, pie: "p2" as const };
+      const capP = capacidad(nPie, CFG);
+      // y4 entra con el aporte siguiente (+1); y2 e y3 entran con el pie siguiente (+2): gana el que más mueve, el pie.
+      const caros = [cand("y1", { precioUF: capP.topeUF - 10, f: { 30: -40_000 } }), cand("y2", { precioUF: capP.topeUF + 500, lat: -33.3, f: { 30: -40_000 } }), cand("y3", { precioUF: capP.topeUF + 600, lat: -33.2, f: { 30: -40_000 } }), cand("y4", { precioUF: capP.topeUF - 20, lat: -33.1, f: { 30: -70_000 } })];
+      const pp = palanca(caros, { ...P0, topeUF: capP.topeUF }, nPie, CFG);
+      if (!pp || pp.tipo !== "pie" || pp.pieUF !== 600 || pp.n !== 3) F(`11 · con el pie limitando, la palanca no es «pie UF 600 → 3» (${JSON.stringify(pp)})`);
+      // Ninguna mueve: null (no se ofrece nada que no suma).
+      if (palanca([pide("z1", -400_000)], { ...P0, aporte: 300_000, topeUF: capR.topeUF }, nRenta, CFG) !== null) F("11 · se ofrece una palanca que no deja más deptos");
+      const ruta = codigo("src/app/api/asesoria/perfil/route.ts");
+      if (!/const laPalanca = tres\.length < 3 && calc\.cap\.topeUF > 0 \? palanca\(/.test(ruta) || !/const conv = plazo < 30 \? conveniencia\(universo, plazo\) : null;/.test(ruta)) F("11 · /perfil no calcula la palanca con menos de 3 o la conveniencia con plazo corto");
+      const comp = codigo("src/app/explorar/asesoria/asesoria.tsx");
+      if (!/\{!cero && plazoCorto && <p className="as-bf" data-asesoria="plazo-corto">/.test(comp) || !/if \(plazo >= 30 \|\| !d \|\| a\?\.total == null\) return null;/.test(comp)) F("11 · la fórmula no dice el plazo corto (o lo dice a 30 años)");
+      if (!/\{r\.conveniencia && <p className="as-bf" data-asesoria="perfil-plazo-corto">/.test(comp)) F("11 · el perfil no dice el plazo corto");
+      if (!/\{r\.tres\.length < 3 && <p className="as-bf" data-asesoria="perfil-palanca">\{!r\.palanca \? P\.sinPalanca : r\.palanca\.tipo === "aporte" \? P\.palancaAporte\(r\.palanca\.aporte, r\.palanca\.n\) : P\.palancaPie\(r\.palanca\.pieUF, r\.palanca\.n\)\}<\/p>\}/.test(comp)) F("11 · con menos de 3, el perfil no ofrece la palanca con su cifra");
+      if (/aporte|zonas/.test(ASESORIA_COPY.perfil.menos(2) + ASESORIA_COPY.perfil.ninguno)) F("11 · «encontré N» repite la palanca (redundancia)");
+    }
   } catch (e) {
     F(`excepción: ${(e as Error).stack ?? e}`);
   }
@@ -261,3 +296,7 @@ if (require.main === module) void runAsesoria().then((r) => { process.exitCode =
 // evento con el chip; el evento del perfil con el tope; Sentry del servidor sin la limpieza; la limpieza que deja pasar la renta; el
 // texto de boletas cambiado; /deptos que redirige sin mirar el interruptor; la bienvenida que no cede; la burbuja al cargar; /aporte
 // sin el tope; /aporte devolviendo una cifra; /perfil sin el interruptor; la lupa «no» guardada como false.
+// Punto 5 (27-nov-2026), 8 mutaciones más, las 8 en ROJO: la conveniencia sin el veredicto del plazo; la palanca del pie sin
+// recalcular el tope; la palanca que menos mueve; una palanca que no suma; la palanca con 3 o más; el plazo corto dicho a 30 años; el
+// texto del plazo corto cambiado; «encontré N» que repite la palanca. (La primera versión limitaba el pie a «cuando limita el pie»:
+// la mutación que la quitaba salió VERDE y mostró que era falso —con la renta limitando, el tope es pie + crédito y más pie suma—.)

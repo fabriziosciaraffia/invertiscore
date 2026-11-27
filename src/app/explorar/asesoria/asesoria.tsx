@@ -45,6 +45,8 @@ interface Resultado {
   estres: { subeTasaCLP: number; mesVacioCLP: number | null };
   tres: Array<{ id: string; porQue: "rinde" | "pide_menos" | "distinto"; comuna: string; dormitorios: number; precioUF: number; flujo: number | null; cap: number | null }>;
   plazo: number;
+  conveniencia: { x: number; y: number } | null;
+  palanca: { tipo: "aporte"; aporte: number; n: number } | { tipo: "pie"; pieUF: number; n: number } | null;
 }
 
 const almacen = () => (typeof window === "undefined" ? null : window.sessionStorage);
@@ -263,7 +265,7 @@ export function Asesoria(p: {
           <TusNumeros valores={e.numeros} alCambiar={(k, v) => cambiar((s) => ({ ...s, numeros: { ...s.numeros, [k]: v } }))}
             alListo={() => { responder("numeros", null); cambiar((s) => ({ ...s, paso: "formula" })); }} />
         )}
-        {e.paso === "formula" && <Formula cap={cap} convienen={convienen} alcanzan={calzan?.length ?? null} alSeguir={() => { responder("formula", null); cambiar((s) => ({ ...s, paso: PROYECTOS_VISIBLE ? "proyecto" : "aporte", aporte: s.aporte ?? 100_000 })); }} />}
+        {e.paso === "formula" && <Formula cap={cap} convienen={convienen} alcanzan={calzan?.length ?? null} plazoCorto={plazoCortoDe(agregados, plazo)} alSeguir={() => { responder("formula", null); cambiar((s) => ({ ...s, paso: PROYECTOS_VISIBLE ? "proyecto" : "aporte", aporte: s.aporte ?? 100_000 })); }} />}
         {e.paso === "aporte" && (
           <AlMes aporte={e.aporte ?? 100_000} dist={agregados?.dist?.[String(plazo)] ?? null} calzan={calzan?.length ?? null} topado={topado}
             alCambiar={(a) => cambiar((s) => ({ ...s, aporte: a }))} alSeguir={() => { responder("aporte", null); cambiar((s) => ({ ...s, paso: "donde" })); }} />
@@ -442,7 +444,14 @@ function TusNumeros({ valores, alCambiar, alListo }: { valores: Partial<Numeros>
 }
 
 // ── P3 · la fórmula ─────────────────────────────────────────────────────────
-function Formula({ cap, convienen, alcanzan, alSeguir }: { cap: Capacidad | null; convienen: number; alcanzan: number | null; alSeguir: () => void }) {
+/** «Con tu plazo de 20 años, convienen X de los Y»: de los agregados (cuántos, nunca cuáles). null con 30 años o sin datos. */
+function plazoCortoDe(a: Agregados | null, plazo: number): { plazo: number; x: number; y: number } | null {
+  const d = a?.dist?.[String(plazo)];
+  if (plazo >= 30 || !d || a?.total == null) return null;
+  return { plazo, x: d.reduce((s, n) => s + n, 0), y: a.total };
+}
+
+function Formula({ cap, convienen, alcanzan, plazoCorto, alSeguir }: { cap: Capacidad | null; convienen: number; alcanzan: number | null; plazoCorto: { plazo: number; x: number; y: number } | null; alSeguir: () => void }) {
   const F = C.formula;
   if (!cap) return <div className="as-conv"><p className="as-bf">…</p></div>;
   const tasa = cap.tasaPct.toLocaleString("es-CL", { maximumFractionDigits: 2 });
@@ -479,6 +488,7 @@ function Formula({ cap, convienen, alcanzan, alSeguir }: { cap: Capacidad | null
             <span className="as-k">{F.sujeto}</span>
           </div>
         )}
+        {!cero && plazoCorto && <p className="as-bf" data-asesoria="plazo-corto">{F.plazoCorto(plazoCorto.plazo, plazoCorto.x, plazoCorto.y)} {F.plazoPorQue}</p>}
         {!cero && alcanzan != null && <p className="as-bf">{F.filtre(convienen, alcanzan)}</p>}
       </div>
       <div className="as-pie"><button type="button" className="as-principal" onClick={alSeguir} data-asesoria="formula-seguir">{F.seguir}</button></div>
@@ -634,7 +644,9 @@ function Perfil({ r, numeros, experiencia, lupa, aporte, pines, alVer }: {
         </div>
       )}
       <p className="as-tarjeta-t" style={{ marginTop: 6 }}>{P.tresTitulo}</p>
-      {r.tres.length < 3 && <p className="as-bf">{r.tres.length === 0 ? P.ninguno : P.menos(r.tres.length)}</p>}
+      {r.conveniencia && <p className="as-bf" data-asesoria="perfil-plazo-corto">{C.formula.plazoCorto(r.plazo, r.conveniencia.x, r.conveniencia.y)} {C.formula.plazoPorQue}</p>}
+      {r.tres.length < 3 && <p className="as-bf" data-asesoria="perfil-menos">{r.tres.length === 0 ? P.ninguno : P.menos(r.tres.length)}</p>}
+      {r.tres.length < 3 && <p className="as-bf" data-asesoria="perfil-palanca">{!r.palanca ? P.sinPalanca : r.palanca.tipo === "aporte" ? P.palancaAporte(r.palanca.aporte, r.palanca.n) : P.palancaPie(r.palanca.pieUF, r.palanca.n)}</p>}
       {r.tres.map((t) => (
         <div key={t.id} className="as-depto" data-asesoria="depto" data-aviso={t.id}>
           <span className="as-depto-por">{P.porQue[t.porQue]}</span>

@@ -7,6 +7,7 @@
 //
 //   node --env-file=.env.local --import tsx scripts/rellenar-plazos-cortos.ts
 //   (si se corta, se vuelve a lanzar: reescribe lo ya escrito con la misma cuenta)
+//   --seco: lee y calcula todo, NO escribe nada (para medir cuánto demora y cuántas filas escribiría).
 // ─────────────────────────────────────────────────────────────────────────────
 import { createClient } from "@supabase/supabase-js";
 import { candidatoDeFila, type FilaRpc } from "../src/lib/guia/semanal-candidatos";
@@ -14,6 +15,7 @@ import { evaluarPlazosCortos } from "../src/lib/avisos/estandar-deptos";
 
 const PAGINA = 1000;
 const LOTE = 250;
+const SECO = process.argv.includes("--seco");
 const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
 async function main() {
@@ -41,15 +43,16 @@ async function main() {
       if (e.veredicto_20_15 === "COMPRAR") comprar15++;
       lote.push({ aviso_id: f.id, evaluado_at: f.evaluado_at, ...e });
     }
-    for (let i = 0; i < lote.length; i += LOTE) {
+    for (let i = 0; !SECO && i < lote.length; i += LOTE) {
       const { data: n, error: e2 } = await sb.rpc("rellenar_plazos_cortos", { filas: lote.slice(i, i + LOTE) });
       if (e2) throw new Error(`rellenar_plazos_cortos: ${e2.message}`);
       escritas += Number(n) || 0;
     }
-    console.log(`leídas ${leidas} · escritas ${escritas} · Comprar a 20 ${comprar20} · a 15 ${comprar15} · sin evaluar ${sinEvaluar} · ${Math.round((Date.now() - t0) / 1000)} s`);
+    if (SECO) escritas += lote.length;
+    console.log(`${SECO ? "[seco] " : ""}leídas ${leidas} · escritas ${escritas} · Comprar a 20 ${comprar20} · a 15 ${comprar15} · sin evaluar ${sinEvaluar} · ${Math.round((Date.now() - t0) / 1000)} s`);
     if (filas.length < PAGINA) break;
   }
-  console.log(JSON.stringify({ leidas, escritas, sinEvaluar, comprar20, comprar15, s: Math.round((Date.now() - t0) / 1000) }));
+  console.log(JSON.stringify({ seco: SECO, leidas, escritas, sinEvaluar, comprar20, comprar15, s: Math.round((Date.now() - t0) / 1000) }));
 }
 
 main().catch((e) => { console.error(e); process.exitCode = 1; });

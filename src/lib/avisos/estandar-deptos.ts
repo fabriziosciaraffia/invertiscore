@@ -75,7 +75,7 @@ export function evaluarEstandar25(c: CandidatoGuia, cfg: { uf: number; tasa: num
 // LOS PLAZOS CORTOS (27-nov-2026, la asesoría en el mapa): el mismo aviso con pie 20 % a 20 y a 15 años, para quien por su edad
 // no llega a 30 (edad + plazo ≤ 75). Medido con esta misma sonda en 200 Comprar a 30 años: siguen siendo Comprar 69 % a 25,
 // 34 % a 20 y 11,5 % a 15, así que el flujo ajustado por la cuota no alcanza y hace falta el veredicto. Migración
-// 20261127_asesoria_plazos_cortos; las escribe el cron (fila-evaluada.ts) y el relleno (scripts/rellenar-plazos-cortos.ts).
+// 20261127_asesoria_plazos_cortos_1_columnas y _2_funcion; las escribe el cron (fila-evaluada.ts) y el relleno (scripts/rellenar-plazos-cortos.ts).
 // ─────────────────────────────────────────────────────────────────────────────
 export const PLAZOS_CORTOS = [20, 15] as const;
 
