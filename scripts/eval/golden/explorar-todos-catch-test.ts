@@ -139,7 +139,12 @@ export async function runExplorarTodosTier(): Promise<{ hard: number }> {
     if (!/\{!plegada && \(/.test(cont) || !/aria-label=\{plegada \? CONTADOR_COPY\.desplegar : CONTADOR_COPY\.plegar\}/.test(cont)) F("12 · plegada no deja solo la línea del número, o la flecha no cambia a «Desplegar»");
   }
   // §9 y §10 · la (i) vuelve a la barra de arriba (texto en el PC, ícono en el teléfono) y «Ver lista» flota abajo al centro.
-  if (!/data-explorar="filtros"[\s\S]{0,600}?<button type="button" className="ex-como2" data-explorar="como-se-calcula"/.test(cli)) F("9 · «¿Cómo se calcula?» no está en la barra, junto a Filtros");
+  // ⚠ ACTA (27-nov-2026, F22 de la asesoría): entre Filtros y «¿Cómo se calcula?» puede ir SOLO el filtro del perfil de la asesoría con
+  // la hoja cerrada («Tu perfil ×», que es un filtro activo y va junto a Filtros); «¿Cómo se calcula?» va a la derecha por su margin-left.
+  // Se descuenta ese bloque exacto y el resto del chequeo queda igual (600 caracteres). Verificado en rojo con dos mutaciones: otro
+  // elemento de 700 caracteres entre los dos, y el botón sin su data-explorar.
+  const cliSinPerfil = cli.replace(/\{filtroAsesoria\?\.cerrada && \(\s*<button type="button" className="ex-boton" data-activo="1" data-explorar="filtro-perfil"[\s\S]*?<\/button>\s*\)\}/, "");
+  if (!/data-explorar="filtros"[\s\S]{0,600}?<button type="button" className="ex-como2" data-explorar="como-se-calcula"/.test(cliSinPerfil)) F("9 · «¿Cómo se calcula?» no está en la barra, junto a Filtros");
   if (!/\.ex-como2-t \{ display: none; \}/.test(leer("src/app/explorar/explorar.css")) || !/@media \(min-width: 768px\) \{ \.ex-como2-t \{ display: inline; \} \}/.test(leer("src/app/explorar/explorar.css"))) F("9 · en el teléfono «¿Cómo se calcula?» no queda solo con el ícono");
   if (!/<button type="button" className="ex-ver-lista" data-explorar="ver-lista" onClick=\{\(\) => setVista\("lista"\)\}>/.test(cli) || !/\.ex-ver-lista \{ position: absolute; left: 50%;[^}]*background: #141414;/.test(leer("src/app/explorar/explorar.css"))) F("10 · «Ver lista» no flota abajo al centro como botón negro");
   {
