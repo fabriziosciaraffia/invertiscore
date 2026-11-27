@@ -205,10 +205,10 @@ export function tipoPerfil(e: Experiencia, o: ObjetivoAsesoria): TipoPerfil {
 export const objetivoDePerfil = (o: ObjetivoAsesoria): "arriendo" | "plusvalia" | "ambas" => (o === "no_se" ? "ambas" : o);
 
 /** Los avisos que acompañan al perfil, en orden. */
-export function avisosDelPerfil(p: { tipoRenta: TipoRenta; experiencia: Experiencia }): Array<"boletas" | "segunda" | "estimacion"> {
+export function avisosDelPerfil(p: { tipoRenta: TipoRenta; experiencia: Experiencia }): Array<"boletas" | "segunda"> {
+  // Sin «Estimación, sujeta a evaluación del banco» (tercera vuelta, 27-nov-2026): ya lo dice la tarjeta del tope.
   return [
     ...(p.tipoRenta !== "contrato" ? (["boletas"] as const) : []),
     ...(p.experiencia !== "primera" ? (["segunda"] as const) : []),
-    "estimacion" as const,
   ];
 }

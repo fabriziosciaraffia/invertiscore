@@ -1,4 +1,5 @@
 /// <reference types="react-dom/canary" />
+import { plazoDelPerfil } from "@/lib/explorar/flujo-plazo-servidor";
 import { Suspense } from "react";
 import { preload } from "react-dom";
 import type { Metadata } from "next";
@@ -216,6 +217,8 @@ async function ExplorarConDatos({ consulta, user }: { consulta: string; user: Us
   const misDeptos = invierteFirmo
     ? ((await admin.from("inv_deptos").select("aviso_id").eq("user_id", user.id).eq("estado", "elegido")).data ?? []).map((f) => f.aviso_id as string)
     : [];
+  // EL PLAZO DEL PERFIL (tercera vuelta de la asesoría, 27-nov-2026): la tarjeta del mapa muestra el flujo a su plazo y lo dice.
+  const plazoPerfil = user ? await plazoDelPerfil(admin, user.id) : null;
   return (
     <ExplorarCliente
       inicial={{ filtros, orden, n, cuenta, tasa, convienen: null, negociadosGlobal: null, nAjustar, nNo, sello: noche?.sello ?? null }}
@@ -227,6 +230,7 @@ async function ExplorarConDatos({ consulta, user }: { consulta: string; user: Us
       invierteFirmo={invierteFirmo}
       misDeptos={misDeptos}
       asesoria={asesoria}
+      plazoPerfil={plazoPerfil}
     />
   );
 }

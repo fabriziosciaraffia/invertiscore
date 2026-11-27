@@ -15,6 +15,7 @@ import { INVIERTE_COPY, PIES, URGENCIAS, pieDelDepto, textoError, type OrigenInv
 import { CLAVE_PENDIENTE_V2, FLUJO_COPY, validarContacto } from "@/lib/invierte-v2/flujo";
 import { IndicadorPasos } from "./IndicadorPasos";
 import { URL_INVIERTE, urlFirma } from "@/lib/invierte-v2/destino";
+import { lineaDeptoAsesoria, type DeptoAsesoria } from "@/lib/invierte-v2/asesoria";
 
 const H = INVIERTE_COPY.hoja;
 const C = FLUJO_COPY.contacto;
@@ -38,7 +39,7 @@ export function LineaDeptoFlujo({ depto, conChip = true }: { depto: DeptoFlujo; 
   );
 }
 
-export function ContactoForm({ depto, origen, analysisId, inicial, sinSesion, alCerrar }: {
+export function ContactoForm({ depto, origen, analysisId, inicial, sinSesion, alCerrar, asesoria = null }: {
   depto: DeptoFlujo;
   origen: OrigenInvierte;
   analysisId: string | null;
@@ -47,10 +48,13 @@ export function ContactoForm({ depto, origen, analysisId, inicial, sinSesion, al
   sinSesion: boolean;
   /** En la hoja: la ✕ de la fila de arriba, que solo se ve en el PC (en el celular cierra la flecha de la cabecera). */
   alCerrar?: () => void;
+  /** DESDE LA ASESORÍA (tercera vuelta, 27-nov-2026): sus deptos en una fila chica, y la urgencia y el pie que ya se saben (no se
+   *  preguntan: solo el WhatsApp y el permiso). */
+  asesoria?: { deptos: DeptoAsesoria[]; urgencia: UrgenciaInvierte; pie: PieInvierte } | null;
 }) {
   const router = useRouter();
-  const [urgencia, setUrgencia] = useState<UrgenciaInvierte | null>(inicial?.urgencia ?? null);
-  const [pie, setPie] = useState<PieInvierte | null>(inicial?.pie ?? null);
+  const [urgencia, setUrgencia] = useState<UrgenciaInvierte | null>(asesoria?.urgencia ?? inicial?.urgencia ?? null);
+  const [pie, setPie] = useState<PieInvierte | null>(asesoria?.pie ?? inicial?.pie ?? null);
   const [whatsapp, setWhatsapp] = useState(inicial?.whatsapp ?? "");
   const [permiso, setPermiso] = useState(false);
   const [enviando, setEnviando] = useState(false);
@@ -92,8 +96,12 @@ export function ContactoForm({ depto, origen, analysisId, inicial, sinSesion, al
         <div className="iv2-cab-form-id">
           <IndicadorPasos paso={1} />
           <div className="inv-encabezado">
-            <h1 className="inv-titulo" id="iv2-t">{C.titulo}</h1>
-            <LineaDeptoFlujo depto={depto} />
+            <h1 className="inv-titulo" id="iv2-t">{asesoria ? C.asesoriaTitulo(asesoria.deptos.length) : C.titulo}</h1>
+            {asesoria ? (
+              <ul className="iv2-deptos-asesoria" data-inv2="deptos-asesoria">
+                {asesoria.deptos.map((d) => <li key={d.avisoId} data-inv2="depto-asesoria">{lineaDeptoAsesoria(d)}</li>)}
+              </ul>
+            ) : <LineaDeptoFlujo depto={depto} />}
           </div>
         </div>
         {alCerrar && (
@@ -102,16 +110,16 @@ export function ContactoForm({ depto, origen, analysisId, inicial, sinSesion, al
           </button>
         )}
       </div>
-      <p className="inv-parrafo">{C.parrafo}</p>
-      <fieldset className="inv-pregunta">
+      <p className="inv-parrafo">{asesoria ? C.asesoriaParrafo(asesoria.deptos.length) : C.parrafo}</p>
+      {!asesoria && <fieldset className="inv-pregunta">
         <legend>{H.cuando}</legend>
         <div className="inv-opciones">
           {URGENCIAS.map((u) => (
             <button key={u} type="button" className="inv-opcion" aria-pressed={urgencia === u} onClick={() => { setUrgencia(u); setError(null); }} data-inv2={`urgencia-${u}`}>{H.urgencias[u]}</button>
           ))}
         </div>
-      </fieldset>
-      {!inicial?.pieConocido && <fieldset className="inv-pregunta">
+      </fieldset>}
+      {!inicial?.pieConocido && !asesoria && <fieldset className="inv-pregunta">
         <legend>{H.pie(pieUF)} <span className="inv-aclara">{H.pieAclaracion}</span></legend>
         <div className="inv-opciones">
           {PIES.map((p) => (

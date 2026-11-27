@@ -1,3 +1,4 @@
+import { contactoDesdeAsesoria } from "@/lib/invierte-v2/asesoria-servidor";
 import { notFound, redirect } from "next/navigation";
 import { createServiceClient } from "@/lib/supabase/service";
 import { esPie, esUrgencia, type PieInvierte, type UrgenciaInvierte } from "@/lib/invierte/invierte";
@@ -20,6 +21,7 @@ export default async function ContactoPage({ params, searchParams }: { params: {
   const depto = await deptoParaPagina(params.avisoId);
   if (!depto) notFound();
   let inicial: { urgencia: UrgenciaInvierte | null; pie: PieInvierte | null; whatsapp: string; pieConocido?: boolean } | null = null;
+  let asesoriaContacto: Awaited<ReturnType<typeof contactoDesdeAsesoria>> = null;
   if (user) {
     const admin = createServiceClient();
     const [orden, persona, perfil] = await Promise.all([ordenVigenteDe(admin, user.id), leerPersona(admin, user.id), leerPerfilInv(admin, user.id)]);
@@ -30,11 +32,15 @@ export default async function ContactoPage({ params, searchParams }: { params: {
     if (perfil?.origen === "asesoria" && perfil.topePieUF != null && depto.precioUF != null && depto.precioUF <= perfil.topePieUF && !inicial?.pie) {
       inicial = { urgencia: inicial?.urgencia ?? null, pie: "si", whatsapp: inicial?.whatsapp ?? "", pieConocido: true };
     }
+    // DESDE «SEGUIR CON ESTOS DEPTOS» (tercera vuelta, 27-nov-2026): los deptos de la asesoría (`mas`, solo de sus elegidos), sin
+    // preguntar cuándo compra ni el pie (asesoria.ts).
+    const asesoria = user && perfil?.origen === "asesoria" ? await contactoDesdeAsesoria(admin, perfil, depto, searchParams.mas) : null;
+    asesoriaContacto = asesoria;
   }
   const origen = origenDe(searchParams);
   return (
     <MarcoInvierte volver={volverAlOrigen(depto.avisoId, origen, analysisDe(searchParams))} pantalla="contacto" pc={{ sesionEmail: user?.email ?? null }}>
-      <ContactoForm depto={depto} origen={origen} analysisId={analysisDe(searchParams)} inicial={inicial} sinSesion={!user} />
+      <ContactoForm depto={depto} origen={origen} analysisId={analysisDe(searchParams)} inicial={inicial} sinSesion={!user} asesoria={asesoriaContacto} />
     </MarcoInvierte>
   );
 }

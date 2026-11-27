@@ -152,7 +152,24 @@ export function useLugares(ids: readonly string[]): Record<string, string | null
 export const CIERRE_DESLIZAR_PX = 80;
 const esTelefonoAhora = () => typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(max-width: 767px)").matches;
 
-export function TarjetaPin({ pines, seleccionado, uf, analizados, resumenes = {}, guardados, generando, error, alCambiar, alCerrar, alGuardar, alAnalizar, alCompartir, alPrepararCompartir, alVerInforme, sinCuenta = false, recien = null, inscritos, alInvertir, etiquetaInvertir, alMedir }: {
+/** Los flujos de la tarjeta al plazo del perfil (solo si hay plazo menor que 30): undefined mientras llegan. */
+function useFlujoPlazo(ids: string[], plazo: number | null): Record<string, number | null> {
+  const [flujos, setFlujos] = useState<Record<string, number | null>>({});
+  const clave = plazo != null && plazo < 30 ? `${plazo}|${ids.join(",")}` : "";
+  useEffect(() => {
+    if (!clave) return;
+    let vivo = true;
+    void fetch("/api/explorar/flujo-plazo", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids }) })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { flujos?: Record<string, number | null> } | null) => { if (vivo && d?.flujos) { const r = d.flujos; setFlujos((f) => ({ ...f, ...Object.fromEntries(ids.map((id) => [id, r[id] ?? null])) })); } })
+      .catch(() => undefined);
+    return () => { vivo = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clave]);
+  return flujos;
+}
+
+export function TarjetaPin({ pines, seleccionado, uf, analizados, resumenes = {}, guardados, generando, error, alCambiar, alCerrar, alGuardar, alAnalizar, alCompartir, alPrepararCompartir, alVerInforme, sinCuenta = false, recien = null, inscritos, alInvertir, etiquetaInvertir, alMedir, plazo = null, plazoMapa = 30 }: {
   /** Los cercanos, el tocado primero. */
   pines: PinMapa[];
   seleccionado: string;
@@ -184,6 +201,10 @@ export function TarjetaPin({ pines, seleccionado, uf, analizados, resumenes = {}
   etiquetaInvertir?: (p: PinMapa) => string | undefined;
   /** El alto de la tarjeta en pantalla (26-nov-2026): en el teléfono, el mapa se corre para que el pin elegido quede arriba de la hoja. */
   alMedir?: (alto: number) => void;
+  /** El plazo del perfil, si es menor que 30 y el mapa está en su plazo por defecto (tercera vuelta de la asesoría): el flujo se pide a
+   *  ese plazo. `plazoMapa`: el del filtro del mapa, el que vale sin perfil. */
+  plazo?: number | null;
+  plazoMapa?: number;
 }) {
   const fila = useRef<HTMLDivElement>(null);
   // LA HOJA DE ABAJO, EN EL TELÉFONO (26-nov-2026, revisión de Fabrizio en el celular: la tarjeta flotaba en la mitad y costaba cerrarla).
@@ -235,6 +256,7 @@ export function TarjetaPin({ pines, seleccionado, uf, analizados, resumenes = {}
   };
   const alSoltar = (e: React.PointerEvent<HTMLElement>) => { const a = arrastre.current; if (a && a.id === e.pointerId) soltar(!!a.vertical && a.dy > CIERRE_DESLIZAR_PX); };
   const tipos = useCalle(pines.map((p) => p.avisoId));
+  const flujos = useFlujoPlazo(pines.map((p) => p.avisoId), plazo);
   // EL METRO, AL INSTANTE (26-nov-2026): sale de la lista de estaciones del repo (lugar.ts › metroCercano), sin esperar al servidor; al
   // servidor solo se le pide el barrio o la avenida de los que no tienen metro a menos de 1 km.
   const metros = useMemo(() => new Map(pines.map((p) => [p.avisoId, Number.isFinite(p.lat) && Number.isFinite(p.lng) ? metroCercano(p.lat, p.lng) : null])), [pines]);
@@ -296,7 +318,8 @@ export function TarjetaPin({ pines, seleccionado, uf, analizados, resumenes = {}
         {pines.map((p) => {
           const informe = analizados[p.avisoId];
           const cap = capRatePct(p.arriendo, p.precioUF, uf);
-          const neg = (p.flujo ?? 0) < 0;
+          const flujoVisto = plazo != null && plazo < 30 ? flujos[p.avisoId] : p.flujo;
+          const neg = (flujoVisto ?? 0) < 0;
           const clase = claseDePin(p);
           const analizadoAqui = !!informe && !sinCuenta;
           const nueva = !sinCuenta && recien?.avisoId === p.avisoId;
@@ -363,7 +386,7 @@ export function TarjetaPin({ pines, seleccionado, uf, analizados, resumenes = {}
                         <div className="ex-cifra"><span>{TARJETA_COPY.arriendo}</span><b data-explorar="arriendo">{p.arriendo != null ? `$${miles(p.arriendo)}` : "—"}</b></div>
                         <div className="ex-cifra"><span>{TARJETA_COPY.capRate}</span><b data-explorar="cap-rate">{cap != null ? pctUno(cap) : "—"}</b></div>
                         {/* YA LO ANALIZÓ (05-nov-2026): el flujo es el de su informe, no el de la noche; la franja no lo repite. */}
-                        {!analizadoAqui && <div className="ex-cifra"><span>{neg ? TARJETA_COPY.pones : TARJETA_COPY.teSobran}</span><b data-explorar="flujo" className={neg ? "ex-neg" : undefined}>{p.flujo != null ? `$${miles(Math.abs(p.flujo))}` : "—"}</b></div>}
+                        {!analizadoAqui && <div className="ex-cifra"><span>{neg ? TARJETA_COPY.pones : TARJETA_COPY.teSobran} <span className="ex-cifra-plazo" data-explorar="flujo-plazo">{TARJETA_COPY.aPlazo(plazo != null && plazo < 30 ? plazo : plazoMapa)}</span></span><b data-explorar="flujo" className={neg ? "ex-neg" : undefined}>{flujoVisto === undefined ? "…" : flujoVisto != null ? `$${miles(Math.abs(flujoVisto))}` : "—"}</b></div>}
                       </>
                     ))}
                   </div>

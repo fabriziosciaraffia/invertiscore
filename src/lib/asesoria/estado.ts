@@ -48,6 +48,8 @@ export interface EstadoAsesoria {
   lupa: Lupa | null;
   /** «Avísame» de los deptos nuevos (27-nov-2026): una salida, no una pregunta; true si lo tocó. */
   interesNuevos?: boolean | null;
+  /** «Seguir» en la buena noticia (tercera vuelta, 27-nov-2026): no se filtra por aporte; quedan todos los que le alcanzan. */
+  aporteLibre?: boolean | null;
   /** Cerrada la hoja, la persona quitó el filtro de su perfil desde el botón Filtros (F22): el mapa vuelve entero hasta «Retomar». */
   sinFiltro?: boolean | null;
 }
@@ -78,7 +80,7 @@ export function guardarEstado(a: Almacen, e: EstadoAsesoria): void {
 
 /** Lo que viaja al crear el perfil (con cuenta): las respuestas, nunca el estado de la pantalla. */
 export function pedidoPerfil(e: EstadoAsesoria): Record<string, unknown> {
-  return { experiencia: e.experiencia, objetivo: e.objetivo, numeros: e.numeros, aporte: e.aporte, donde: e.donde, lupa: e.lupa, interesNuevos: e.interesNuevos === true };
+  return { experiencia: e.experiencia, objetivo: e.objetivo, numeros: e.numeros, aporte: e.aporte, aporteLibre: e.aporteLibre === true, donde: e.donde, lupa: e.lupa, interesNuevos: e.interesNuevos === true };
 }
 
 /** ¿Está todo para crear el perfil? */

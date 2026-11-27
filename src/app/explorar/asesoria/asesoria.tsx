@@ -28,7 +28,7 @@ import {
   CHIPS_DEUDAS, CHIPS_EDAD, CHIPS_PIE, CHIPS_PREAPROBACION, CHIPS_RENTA, CHIPS_TIPO_RENTA, avisosDelPerfil, capacidad, edadDeChip,
   numerosValidos, topeConMasPie, type Capacidad, type Numeros, type TipoPerfil,
 } from "@/lib/asesoria/capacidad";
-import { ASESORIA_COPY as C, fraccion, miles, pesos, uf as fUF } from "@/lib/asesoria/copy";
+import { ASESORIA_COPY as C, miles, pesos, uf as fUF } from "@/lib/asesoria/copy";
 import {
   ESTADO_INICIAL, PROYECTOS_VISIBLE, avanceBarra, guardarEstado, leerEstado, listoParaPerfil, pedidoPerfil,
   type EstadoAsesoria, type Lupa, type ModoDonde, type Paso,
@@ -76,6 +76,8 @@ export function Asesoria(p: {
   tapado?: boolean;
   /** Cambia cada vez que la persona quita el filtro de su perfil desde el botón Filtros (F22). */
   quitarFiltro?: number;
+  /** La burbuja está a la vista (el mapa esconde su contador). */
+  alBurbuja?: (visible: boolean) => void;
   alFiltrar: (f: FiltroAsesoria | null) => void;
   alRegistrar: (r: { comunas: string[]; topeUF: number; deptos: number }) => void;
   alVerDepto: (avisoId: string) => void;
@@ -140,6 +142,9 @@ export function Asesoria(p: {
   useEffect(() => {
     if (visible === "burbuja" && !burbujaVista) { setBurbujaVista(true); capture(EVENTOS_ASESORIA.burbujaVista, propsBase(prueba)); }
   }, [visible, burbujaVista, capture, prueba]);
+  // Con la burbuja abierta, el contador del mapa se esconde: no muestra el mismo número dos veces (tercera vuelta, 27-nov-2026).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { p.alBurbuja?.(visible === "burbuja"); }, [visible]);
 
   // Los agregados (cap rate por comuna, la distribución del slider, la tasa y la UF): al abrir.
   useEffect(() => {
@@ -166,13 +171,17 @@ export function Asesoria(p: {
   const pasoN = e ? PASO_N[e.paso] : 0;
   // EL ALTO QUE SE PIDE: desde el aporte, el elegido (0 mientras no abra el slider). En la fórmula, con plazo menor a 30 años, el más
   // alto del slider: así «te alcanzan» ya cuenta solo los que son Comprar a SU plazo. Sigue viajando uno de los altos fijos.
-  const altoPedido: Aporte | null = pasoN >= PASO_N.aporte ? aporte : pasoN >= PASO_N.formula && plazo < 30 ? ALTO_MAXIMO : null;
+  // «SEGUIR» EN LA BUENA NOTICIA NO FILTRA POR APORTE (tercera vuelta, 27-nov-2026): con el aporte libre quedan todos los que le
+  // alcanzan, los mismos de la fórmula; solo se filtra si abre «Puedo poner algo al mes» y elige.
+  const altoPedido: Aporte | null = e?.aporteLibre && pasoN >= PASO_N.aporte ? (plazo < 30 ? ALTO_MAXIMO : null) : pasoN >= PASO_N.aporte ? aporte : pasoN >= PASO_N.formula && plazo < 30 ? ALTO_MAXIMO : null;
   // En el aporte hace falta además el alto máximo (los que «te alcanzan», para la buena noticia).
   const altoAlcanzan: Aporte | null = e?.paso === "aporte" && plazo < 30 ? ALTO_MAXIMO : null;
+  // El aporte 0 se pide ya en la fórmula, para que la buena noticia no espere (tercera vuelta, punto 10).
+  const altoPrevio: Aporte | null = e?.paso === "formula" ? 0 : null;
 
   // El aporte: un alto del slider por pedido, con su respuesta recordada.
   useEffect(() => {
-    const faltan = [altoPedido, altoAlcanzan].filter((a): a is Aporte => a != null && !respuestas[a] && !pedidas.current.has(a));
+    const faltan = [altoPedido, altoAlcanzan, altoPrevio].filter((a): a is Aporte => a != null && !respuestas[a] && !pedidas.current.has(a));
     if (!faltan.length) return;
     const t = window.setTimeout(() => {
       for (const alto of faltan) {
@@ -188,7 +197,7 @@ export function Asesoria(p: {
       }
     }, 250);
     return () => window.clearTimeout(t);
-  }, [altoPedido, altoAlcanzan, respuestas]);
+  }, [altoPedido, altoAlcanzan, altoPrevio, respuestas]);
 
   // ── LO QUE CALZA, en el navegador ──
   const idsAporte = altoPedido != null && respuestas[altoPedido] ? idsDelPlazo(respuestas[altoPedido], plazo) : null;
@@ -388,7 +397,7 @@ export function Asesoria(p: {
             {C.segmentos.map((s, i) => <li key={s} className="as-seg" data-av={String(av[i])}><i />{s}</li>)}
           </ol>
         )}
-        {e.paso === "gancho" && <Gancho conteo={p.conteo} alResponder={(x) => { responder("gancho", x); cambiar((s) => ({ ...s, experiencia: x, paso: "objetivo" })); }} />}
+        {e.paso === "gancho" && <Gancho alResponder={(x) => { responder("gancho", x); cambiar((s) => ({ ...s, experiencia: x, paso: "objetivo" })); }} />}
         {e.paso === "objetivo" && e.experiencia && <Objetivo experiencia={e.experiencia} alResponder={(x) => { responder("objetivo", x); cambiar((s) => ({ ...s, objetivo: x, paso: "numeros" })); setNumerosAbiertos(false); }} />}
         {e.paso === "numeros" && e.objetivo && !numerosAbiertos && <AntesDeNumeros objetivo={e.objetivo} agregados={agregados} alSeguir={() => setNumerosAbiertos(true)} />}
         {e.paso === "numeros" && numerosAbiertos && (
@@ -398,19 +407,19 @@ export function Asesoria(p: {
         {e.paso === "formula" && <Formula cap={cap} alcanzan={aportePendiente ? null : calzan?.length ?? null} plazoCorto={plazoCortoDe(agregados, plazo)} palanca={palancaCero}
             frena={cap ? topeConMasPie(cap) : null} interesNuevos={e.interesNuevos === true} alAvisar={avisarNuevos}
             alAjustar={() => { responder("formula", "ajustar"); setNumerosAbiertos(true); cambiar((s) => ({ ...s, paso: "numeros" })); }}
-            alSeguir={() => { responder("formula", null); setSliderAbierto(false); cambiar((s) => ({ ...s, paso: PROYECTOS_VISIBLE ? "proyecto" : "aporte", aporte: 0 })); }} />}
+            alSeguir={() => { responder("formula", null); setSliderAbierto(false); cambiar((s) => ({ ...s, paso: PROYECTOS_VISIBLE ? "proyecto" : "aporte", aporte: 0, aporteLibre: false })); }} />}
         {e.paso === "aporte" && (
           solos?.mostrar && !sliderAbierto ? (
             <BuenaNoticia k={solos.k} n={solos.n} m={solos.m}
-              alPoner={() => { setSliderAbierto(true); cambiar((s) => ({ ...s, aporte: 100_000 })); }}
-              alSeguir={() => { responder("aporte", "solos"); cambiar((s) => ({ ...s, aporte: 0, paso: "donde" })); }} />
+              alPoner={() => { setSliderAbierto(true); cambiar((s) => ({ ...s, aporte: 100_000, aporteLibre: false })); }}
+              alSeguir={() => { responder("aporte", "solos"); cambiar((s) => ({ ...s, aporte: ALTO_MAXIMO, aporteLibre: true, paso: "donde" })); }} />
           ) : solos || sliderAbierto ? (
             <AlMes aporte={e.aporte ?? 0} dist={agregados?.dist?.[String(plazo)] ?? null} calzan={aportePendiente ? null : calzan?.length ?? null} topado={topado}
-              alCambiar={(a) => cambiar((s) => ({ ...s, aporte: a }))} alSeguir={() => { responder("aporte", null); cambiar((s) => ({ ...s, paso: "donde" })); }} />
+              alCambiar={(a) => cambiar((s) => ({ ...s, aporte: a, aporteLibre: false }))} alSeguir={() => { responder("aporte", null); cambiar((s) => ({ ...s, paso: "donde" })); }} />
           ) : <div className="as-conv" data-asesoria="paso-aporte-cargando"><p className="as-bf" data-inicio="1">…</p></div>
         )}
         {e.paso === "donde" && (
-          <Donde aporte={e.aporte ?? 0} donde={e.donde}
+          <Donde aporte={e.aporteLibre ? null : e.aporte ?? 0} donde={e.donde}
             alModo={(m) => {
               if (m === "metro") { cambiar((s) => ({ ...s, donde: { modo: "metro", comunas: [] } })); return; }
               // Donde más rinde: las comunas con mayor cap rate (la mediana) entre las que tienen deptos que calzan.
@@ -433,7 +442,7 @@ export function Asesoria(p: {
         )}
         {e.paso === "perfil" && (
           resultado
-            ? <Perfil r={resultado} numeros={numeros} experiencia={e.experiencia} lupa={e.lupa} aporte={e.aporte ?? 0} pines={p.comprar} interesNuevos={e.interesNuevos === true} alAvisar={avisarNuevos}
+            ? <Perfil r={resultado} numeros={numeros} experiencia={e.experiencia} lupa={e.lupa} aporte={e.aporteLibre ? null : e.aporte ?? 0} pines={p.comprar} interesNuevos={e.interesNuevos === true} alAvisar={avisarNuevos}
                 alVer={(id) => { capture(EVENTOS_ASESORIA.verDepto, propsBase(prueba)); cambiar((x) => ({ ...x, cerrada: true })); p.alVerDepto(id); }}
                 alSeguir={() => capture(EVENTOS_ASESORIA.seguirDeptos, propsBase(prueba, { n: resultado.tres.length }))} />
             : <Cierre sinCuenta={false} cargando={cargandoPerfil} error={errorPerfil} alCrear={() => {}} alReintentar={() => setErrorPerfil(false)} />
@@ -473,30 +482,12 @@ function Icono({ chico = false }: { chico?: boolean }) {
 }
 
 // ── P0 · el gancho ──────────────────────────────────────────────────────────
-function Gancho({ conteo, alResponder }: { conteo: ConteoClases | null; alResponder: (x: "primera" | "uno" | "varios") => void }) {
-  const total = conteo ? conteo.comprar + conteo.ajustar + conteo.no : null;
+function Gancho({ alResponder }: { alResponder: (x: "primera" | "uno" | "varios") => void }) {
+  // El paso 0 parte con la pregunta (tercera vuelta, 27-nov-2026): el universo ya lo mostró la burbuja.
   return (
     <>
       <div className="as-conv" data-asesoria="paso-gancho">
-        {conteo && total ? (
-          <>
-            <p className="as-bf" data-asesoria="gancho-revise">{C.gancho.revise(total, fraccion(conteo.comprar, total))}</p>
-            <div className="as-tarjeta">
-              <p className="as-tarjeta-t">{C.gancho.tarjeta(total)}</p>
-              <div className="as-prop" aria-hidden="true">
-                <span data-clase="comprar" style={{ width: `${(conteo.comprar / total) * 100}%` }} />
-                <span data-clase="ajustar" style={{ width: `${(conteo.ajustar / total) * 100}%` }} />
-                <span data-clase="no" />
-              </div>
-              <div className="as-prop-n">
-                <span><b data-clase="comprar">{miles(conteo.comprar)}</b><br />{C.gancho.clases.comprar}</span>
-                <span><b data-clase="ajustar">{miles(conteo.ajustar)}</b><br />{C.gancho.clases.ajustar}</span>
-                <span style={{ textAlign: "right" }}><b data-clase="no">{miles(conteo.no)}</b><br />{C.gancho.clases.no}</span>
-              </div>
-            </div>
-          </>
-        ) : null}
-        <p className="as-bf">{C.gancho.pregunta}</p>
+        <p className="as-bf" data-inicio="1">{C.gancho.pregunta}</p>
       </div>
       <div className="as-chips">
         {C.experiencia.map((o) => <button key={o.id} type="button" className="as-chip" onClick={() => alResponder(o.id)} data-asesoria={`exp-${o.id}`}>{o.texto}</button>)}
@@ -614,7 +605,7 @@ function OfertaNuevos({ dicho, alAvisar }: { dicho: boolean; alAvisar: () => voi
 }
 
 /** LA TARJETA DEL TOPE (G24): la cifra grande en la banda del degradado y, debajo, los dos límites como barras; el que manda, en azul. */
-function TarjetaTope({ cap }: { cap: Capacidad }) {
+function TarjetaTope({ cap, inicio = false }: { cap: Capacidad; inicio?: boolean }) {
   const F = C.formula;
   const filas = [
     { clave: "renta", etiqueta: cap.limita === "deudas" ? F.barraRenta.deudas : F.barraRenta.renta, valor: cap.topeRentaUF },
@@ -622,7 +613,7 @@ function TarjetaTope({ cap }: { cap: Capacidad }) {
   ];
   const max = Math.max(1, ...filas.map((f) => f.valor));
   return (
-    <div className="as-tope" data-asesoria="tope">
+    <div className="as-tope" data-asesoria="tope" data-inicio={inicio ? "1" : undefined}>
       <div className="as-banda">
         <span className="as-banda-k">{F.puedes}</span>
         <span className="as-banda-grande" data-asesoria="tope-cifra">{fUF(cap.topeUF)}</span>
@@ -643,29 +634,34 @@ function TarjetaTope({ cap }: { cap: Capacidad }) {
 
 function Formula({ cap, alcanzan, plazoCorto, palanca, frena, interesNuevos, alAvisar, alAjustar, alSeguir }: { cap: Capacidad | null; alcanzan: number | null; plazoCorto: { plazo: number; x: number; y: number } | null; palanca: { pieUF: number; n: number } | null; frena: number | null; interesNuevos: boolean; alAvisar: () => void; alAjustar: () => void; alSeguir: () => void }) {
   const F = C.formula;
+  const [verCuenta, setVerCuenta] = useState(false);
   if (!cap) return <div className="as-conv"><p className="as-bf">…</p></div>;
   const tasa = cap.tasaPct.toLocaleString("es-CL", { maximumFractionDigits: 2 });
   const cero = cap.topeUF <= 0;
   return (
     <>
       <div className="as-conv" data-asesoria="paso-formula">
-        <div className="as-tarjeta" data-inicio="1">
-          <p className="as-tarjeta-t">{F.titulo}</p>
-          <div className="as-paso"><span className="as-paso-n">1</span><div className="as-paso-c">
-            <span>{F.porRenta({ renta: cap.rentaCLP, computable: cap.rentaComputableCLP, pctComputable: cap.rentaComputablePct, plazo: cap.plazo, tasa })}</span>
-            <b data-asesoria="formula-renta">{F.porRentaCifra(cap.creditoUF, cap.pieUF, cap.porRentaUF)}</b>
-          </div></div>
-          <div className="as-paso"><span className="as-paso-n">2</span><div className="as-paso-c">
-            <span>{cap.pieUF == null ? F.sinPie : F.porPie}</span>
-            {cap.pieUF != null && cap.porPieUF != null && <b data-asesoria="formula-pie">{F.porPieCifra(cap.pieUF, cap.porPieUF)}</b>}
-          </div></div>
-          <div className="as-paso"><span className="as-paso-n">3</span><div className="as-paso-c">
-            <span>{cero ? F.sinCuota(cap.cargaMaxPct) : F.deudas(cap.cargaPct, cap.cargaMaxPct)}</span>
-            <b>{cero ? F.noPasa : F.pasa}</b>
-          </div></div>
-          <span className="as-k">{F.rangos}</span>
-        </div>
-        {cero ? <p className="as-bf">{F.cero}</p> : <TarjetaTope cap={cap} />}
+        {cero ? <p className="as-bf" data-inicio="1">{F.cero}</p> : <TarjetaTope cap={cap} inicio />}
+        {/* «ASÍ LO CALCULO», PLEGADO (tercera vuelta, 27-nov-2026): la tarjeta del tope es lo principal; la cuenta, si la pide. */}
+        <button type="button" className="as-secundario as-ver-cuenta" aria-expanded={verCuenta} onClick={() => setVerCuenta((v) => !v)} data-asesoria="ver-cuenta">{verCuenta ? F.ocultarCuenta : F.verCuenta}</button>
+        {verCuenta && (
+          <div className="as-tarjeta" data-asesoria="cuenta-formula">
+            <p className="as-tarjeta-t">{F.titulo}</p>
+            <div className="as-paso"><span className="as-paso-n">1</span><div className="as-paso-c">
+              <span>{F.porRenta({ renta: cap.rentaCLP, computable: cap.rentaComputableCLP, pctComputable: cap.rentaComputablePct, plazo: cap.plazo, tasa })}</span>
+              <b data-asesoria="formula-renta">{F.porRentaCifra(cap.creditoUF, cap.pieUF, cap.porRentaUF)}</b>
+            </div></div>
+            <div className="as-paso"><span className="as-paso-n">2</span><div className="as-paso-c">
+              <span>{cap.pieUF == null ? F.sinPie : F.porPie}</span>
+              {cap.pieUF != null && cap.porPieUF != null && <b data-asesoria="formula-pie">{F.porPieCifra(cap.pieUF, cap.porPieUF)}</b>}
+            </div></div>
+            <div className="as-paso"><span className="as-paso-n">3</span><div className="as-paso-c">
+              <span>{cero ? F.sinCuota(cap.cargaMaxPct) : F.deudas(cap.cargaPct, cap.cargaMaxPct)}</span>
+              <b>{cero ? F.noPasa : F.pasa}</b>
+            </div></div>
+            <span className="as-k">{F.rangos}</span>
+          </div>
+        )}
         {!cero && frena != null && frena > cap.topeUF && <p className="as-bf" data-asesoria="formula-frena">{F.frenaPie(frena)}</p>}
         {!cero && plazoCorto && <p className="as-bf" data-asesoria="plazo-corto">{F.plazoCorto(plazoCorto.plazo, plazoCorto.x, plazoCorto.y)} {F.plazoPorQue}</p>}
         {!cero && alcanzan != null && alcanzan > 0 && <p className="as-bf" data-asesoria="formula-alcanzan">{F.filtre(alcanzan)}</p>}
@@ -734,7 +730,7 @@ function AlMes({ aporte, dist, calzan, topado, alCambiar, alSeguir }: { aporte: 
       <div className="as-conv" data-asesoria="paso-aporte">
         <p className="as-bf" data-inicio="1">{A.pregunta}</p>
         <div className="as-tarjeta" data-fuerte="1" style={{ gap: 10 }}>
-          <div className="as-slider-cab"><span className="as-tarjeta-t">{A.titulo}</span><b data-asesoria="aporte-valor">{aporte === 0 ? A.cero : pesos(aporte)}</b></div>
+          <div className="as-slider-cab"><span className="as-tarjeta-t">{A.titulo}</span>{aporte > 0 && <b data-asesoria="aporte-valor">{pesos(aporte)}</b>}</div>
           <div>
             {barras && <div className="as-histo" aria-hidden="true">{barras.map((h, k) => <span key={k} style={{ height: h }} data-dentro={k * BARRAS_PASO <= aporte ? "1" : undefined} />)}</div>}
             <input type="range" className="as-rango" min={0} max={TOPE_SLIDER} step={BARRAS_PASO} value={aporte} aria-label={A.titulo} aria-valuetext={A.hasta(aporte)}
@@ -752,14 +748,14 @@ function AlMes({ aporte, dist, calzan, topado, alCambiar, alSeguir }: { aporte: 
 
 // ── P6 · dónde ──────────────────────────────────────────────────────────────
 function Donde({ aporte, donde, alModo, alQuitar, alListo }: {
-  aporte: number; donde: EstadoAsesoria["donde"];
+  aporte: number | null; donde: EstadoAsesoria["donde"];
   alModo: (m: Exclude<ModoDonde, "comunas">) => void; alQuitar: (c: string) => void; alListo: () => void;
 }) {
   const D = C.donde;
   return (
     <>
       <div className="as-conv" data-asesoria="paso-donde">
-        <p className="as-bu">{aporte === 0 ? C.perfil.aporte(0) : C.alMes.hasta(aporte)}</p>
+        {aporte != null && <p className="as-bu">{aporte === 0 ? C.perfil.aporte(0) : C.alMes.hasta(aporte)}</p>}
         <p className="as-bf" data-inicio="1">{D.pregunta}</p>
         {donde?.modo === "rinde" && <p className="as-bf">{D.rindeElegidas(donde.comunas)}</p>}
       </div>
@@ -855,10 +851,10 @@ function FotoDepto({ id }: { id: string }) {
 }
 
 function Perfil({ r, numeros, experiencia, lupa, aporte, pines, interesNuevos, alAvisar, alVer, alSeguir }: {
-  r: Resultado; numeros: Numeros | null; experiencia: EstadoAsesoria["experiencia"]; lupa: Lupa | null; aporte: number; pines: readonly PinMapa[]; interesNuevos: boolean; alAvisar: () => void; alVer: (id: string) => void; alSeguir: () => void;
+  r: Resultado; numeros: Numeros | null; experiencia: EstadoAsesoria["experiencia"]; lupa: Lupa | null; aporte: number | null; pines: readonly PinMapa[]; interesNuevos: boolean; alAvisar: () => void; alVer: (id: string) => void; alSeguir: () => void;
 }) {
   const P = C.perfil;
-  const avisos = numeros && experiencia ? avisosDelPerfil({ tipoRenta: numeros.tipoRenta, experiencia }) : (["estimacion"] as const);
+  const avisos = numeros && experiencia ? avisosDelPerfil({ tipoRenta: numeros.tipoRenta, experiencia }) : [];
   const m2De = new Map(pines.map((x) => [x.avisoId, x.m2]));
   return (
     <>
@@ -867,7 +863,7 @@ function Perfil({ r, numeros, experiencia, lupa, aporte, pines, interesNuevos, a
           <span className="as-k" data-asesoria="perfil-tipo">{P.titulo} · {P.tipo[r.tipo]}</span>
           <p className="as-perfil-tope" data-asesoria="perfil-tope">{P.encabezadoDeptos(r.capacidad.topeUF, r.tres.length)}</p>
           <span className="as-perfil-l">{P.lineaTipo[r.tipo]}</span>
-          <span className="as-k">{P.aporte(aporte)} · {P.plazo(r.plazo)}</span>
+          <span className="as-k">{aporte == null ? P.plazo(r.plazo) : `${P.aporte(aporte)} · ${P.plazo(r.plazo)}`}</span>
         </div>
         {numeros && <p className="as-aviso" data-asesoria="perfil-preaprobacion">{P.preaprobacion[numeros.preaprobado]}</p>}
         {avisos.map((a) => <p key={a} className="as-aviso">{P.avisos[a]}</p>)}

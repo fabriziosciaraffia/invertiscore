@@ -37,6 +37,7 @@
 //     LA FIRMA (03-nov-2026): el enlace lleva la firma del servidor para ese aviso y el código de quien comparte, que trae el
 //     mismo pedido (POST /api/explorar/compartido, con su tope de 60 por hora); sin firma no hay enlace, y se dice.
 // ─────────────────────────────────────────────────────────────────────────────
+import { PLAZO_POR_DEFECTO } from "@/lib/deptos/estandar";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
@@ -233,7 +234,7 @@ const agregarCapa = (cs: Record<string, CapaCalculada>, clave: string, comuna: s
 
 // El mapa quieto del primer pintado (el LCP) NO va acá: es una capa de la página (page.tsx), una sola imagen y antes del header
 // en el HTML. El cliente avisa cuándo el mapa real dibujó sus teselas (`data-mapa`) y la capa se desvanece (explorar.css).
-export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar = null, origen = "directo", correo = null, compartido = null, invierteV2 = false, invierteFirmo = false, misDeptos = [], asesoria = SIN_ASESORIA }: {
+export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar = null, origen = "directo", correo = null, compartido = null, invierteV2 = false, invierteFirmo = false, misDeptos = [], asesoria = SIN_ASESORIA, plazoPerfil = null }: {
   inicial: InicialPortal;
   abrir?: string | null;
   autoAnalizar?: string | null;
@@ -252,6 +253,8 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
   misDeptos?: string[];
   /** La asesoría en el mapa (27-nov-2026): si esta visita la ve (el interruptor, decidido en el servidor) y si es de prueba. */
   asesoria?: AccesoAsesoria;
+  /** El plazo del perfil de la cuenta (tercera vuelta de la asesoría): la tarjeta muestra el flujo a ese plazo. */
+  plazoPerfil?: number | null;
 }) {
   const router = useRouter();
   const posthog = usePostHog();
@@ -320,6 +323,8 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
   const [aireAsesoria, setAireAsesoria] = useState<{ abajo: number; derecha: number } | null>(null);
   // Quitar el filtro del perfil desde el botón Filtros, con la hoja cerrada (F22): la asesoría lo apaga hasta «Retomar».
   const [quitarAsesoria, setQuitarAsesoria] = useState(0);
+  // Con la burbuja de la asesoría a la vista, el contador del mapa se esconde (tercera vuelta, 27-nov-2026).
+  const [burbujaAsesoria, setBurbujaAsesoria] = useState(false);
   const [miro, setMiro] = useState({ tarjetas: 0, movimientos: 0, veinte: false });
   useEffect(() => {
     if (!asesoria.habilitada) return;
@@ -1255,7 +1260,7 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
             />
           )}
           {mapa === "fallo" && <p className="ex-mapa-vacio" data-explorar="sin-mapa">{PORTAL_COPY.sinMapa}</p>}
-          {vista === "mapa" && !filtroAsesoria && (
+          {vista === "mapa" && !filtroAsesoria && !burbujaAsesoria && (
             // CON LA TARJETA DE UN DEPTO ABIERTA, EN EL TELÉFONO (26-nov-2026): el contador se pliega solo, sin tocar lo que eligió la persona;
             // al cerrarla vuelve como estaba. «Ver lista» no va mientras la tarjeta está abierta (abajo).
             <Contador conteo={conteo} ocultar={filtros.ocultar} calculando={progreso == null && conteo == null ? enCalculo : null} alAlternar={alternarClase} plegarPorTarjeta={!!tarjeta && esTelefono} />
@@ -1270,6 +1275,7 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
               toque={toqueMapa}
               tapado={!!tarjeta}
               quitarFiltro={quitarAsesoria}
+              alBurbuja={setBurbujaAsesoria}
               alFiltrar={setFiltroAsesoria}
               alTapar={setAireAsesoria}
               alRegistrar={({ comunas, topeUF, deptos }) => {
@@ -1302,6 +1308,9 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
               alVerInforme={recordarVuelta}
               alPrepararCompartir={prepararCompartir}
               alMedir={setAltoTarjeta}
+              // El flujo al plazo del perfil solo con el mapa en su plazo por defecto: si eligió otro en Filtros, vale ese (y lo dice).
+              plazo={plazoPerfil != null && plazoPerfil < PLAZO_POR_DEFECTO && filtros.plazo === PLAZO_POR_DEFECTO ? plazoPerfil : null}
+              plazoMapa={filtros.plazo}
               sinCuenta={sinCuenta}
               recien={recien}
               inscritos={invierteV2 ? undefined : inscritos}

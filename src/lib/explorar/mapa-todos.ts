@@ -184,6 +184,8 @@ export const TARJETA_COPY = {
   capRate: "Cap rate bruto",
   teSobran: "Te sobran al mes",
   pones: "Pones al mes",
+  /** El plazo del flujo (tercera vuelta de la asesoría, 27-nov-2026): con perfil, el suyo; sin perfil, 30 años. */
+  aPlazo: (anios: number) => `a ${anios} años`,
   noConviene: "No conviene a este precio",
   /** «Conviene desde UF 2.810 · 3,2 % menos». */
   convieneDesde: (uf: number, pct: number) => `Conviene desde UF ${miles(uf)} · ${pct.toLocaleString("es-CL", { maximumFractionDigits: 1 })} % menos`,

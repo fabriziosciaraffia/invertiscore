@@ -15,10 +15,18 @@ import { calzaCon } from "./aporte";
 
 export const RADIO_EDIFICIO_M = 40;
 
-/** EL CAP RATE FUERA DE RANGO (decisión de Fabrizio, 27-nov-2026): un depto con cap rate bruto sobre 12 % no entra a «tus deptos».
- *  Medido por Claude: son 26 de 4.553 y el percentil 99 es 11,1 %; casi siempre es un arriendo que no corresponde al depto (en el
- *  paseo, «El que mejor rinde» era un 3D de 45 m² con 24,9 %). Solo la elección del perfil: el mapa y el contador no cambian. */
-export const CAP_RATE_MAX_PERFIL = 0.12;
+/** EL CAP RATE FUERA DE RANGO DEL PERFIL (decisión de Fabrizio; bajó de 12 % a 10 % en la tercera vuelta, 27-nov-2026): un depto con
+ *  cap rate bruto sobre 10 % no entra a «tus deptos» ni a la palanca. Medido por Claude sobre el universo (4.551 Comprar a 30 años,
+ *  7 días): el p95 es 8,3 %; sobre 12 % hay 26 y sobre 10 % hay 77. Casi siempre es un arriendo que no corresponde al depto (en el
+ *  paseo, Maipú con 11,6 % y 11,9 %, uno «3D · 44 m²»). Solo la elección del perfil y la palanca: el mapa y el contador no cambian. */
+export const CAP_RATE_MAX_PERFIL = 0.10;
+/** El corte de las MEDIANAS por comuna («Todo Santiago · 5,9 %», aprobado el 27-nov-2026): sigue en 12 %. */
+export const CAP_RATE_MAX_MEDIANAS = 0.12;
+/** LOS 3 DORMITORIOS CHICOS (tercera vuelta, 27-nov-2026): fuera del perfil y de la palanca los de 3 dormitorios o más con menos de
+ *  50 m² —184 de los 4.551 del universo—: el motor les estima arriendo de 3D; pendiente el diagnóstico de arriendo por tamaño. Sin
+ *  superficie conocida, entran. */
+export const M2_MIN_TRES_DORMITORIOS = 50;
+const tresChico = (c: Pick<Candidato, "dormitorios" | "m2">): boolean => c.dormitorios >= 3 && c.m2 != null && c.m2 < M2_MIN_TRES_DORMITORIOS;
 
 export function distanciaM(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
   const R = 6_371_000, rad = Math.PI / 180;
@@ -50,7 +58,7 @@ export interface PerfilTres {
 export function universoDe(cs: readonly Candidato[], p: PerfilTres): Candidato[] {
   return cs.filter((c) => c.precioUF <= p.topeUF && calzaCon(c, p.plazo, p.aporte)
     && (p.comunas.length === 0 || p.comunas.includes(c.comuna)) && (!p.enLugar || p.enLugar(c))
-    && !((capRate(c, p.uf) ?? 0) > CAP_RATE_MAX_PERFIL));
+    && !((capRate(c, p.uf) ?? 0) > CAP_RATE_MAX_PERFIL) && !tresChico(c));
 }
 
 const porScore = (a: Candidato, b: Candidato) => (b.score ?? -1) - (a.score ?? -1) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
@@ -77,7 +85,7 @@ export function elegirTres(cs: readonly Candidato[], p: PerfilTres): Elegido[] {
 }
 
 /** LO QUE RINDE CADA COMUNA (decisión de Fabrizio, 27-nov-2026): la MEDIANA del cap rate de sus Comprar, sin los que pasan de
- *  CAP_RATE_MAX_PERFIL (un arriendo mal estimado inflaba el promedio: Peñalolén daba 9,0 % de promedio y 7,5 % de mediana) y solo
+ *  CAP_RATE_MAX_MEDIANAS (un arriendo mal estimado inflaba el promedio: Peñalolén daba 9,0 % de promedio y 7,5 % de mediana) y solo
  *  comunas con al menos MIN_DEPTOS_COMUNA_RINDE. Y la de todo Santiago, para la fila de referencia («Todo Santiago · 5,9 %»). */
 export const MIN_DEPTOS_COMUNA_RINDE = 15;
 const mediana = (xs: number[]): number => { const s = [...xs].sort((a, b) => a - b); const k = s.length >> 1; return s.length % 2 ? s[k] : (s[k - 1] + s[k]) / 2; };
@@ -87,7 +95,7 @@ export function rindePorComuna(cs: readonly Candidato[], uf: number): { rinde: A
   const todos: number[] = [];
   for (const c of cs) {
     const cap = capRate(c, uf);
-    if (cap == null || cap > CAP_RATE_MAX_PERFIL) continue;
+    if (cap == null || cap > CAP_RATE_MAX_MEDIANAS) continue;
     todos.push(cap);
     const xs = porComuna.get(c.comuna) ?? [];
     xs.push(cap); porComuna.set(c.comuna, xs);

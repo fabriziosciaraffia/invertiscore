@@ -24,6 +24,9 @@ export const FLUJO_COPY = {
   contacto: {
     titulo: "Invierte en este depto con Franco",
     parrafo: "Franco trabaja por tu inversión: partimos por este depto y te mostramos más opciones a la vez, para que elijas la mejor.",
+    // Desde la asesoría (tercera vuelta, 27-nov-2026): con la cifra real de deptos.
+    asesoriaTitulo: (n: number) => (n === 1 ? "Invierte en tu depto con Franco" : `Invierte en tus ${n} deptos con Franco`),
+    asesoriaParrafo: (n: number) => (n === 1 ? "Franco trabaja con tu depto y te va mostrando más opciones." : `Franco trabaja con tus ${n} deptos y te va mostrando más opciones.`),
     permiso: "Acepto que Franco me escriba por WhatsApp sobre mi inversión.",
     continuar: "Continuar",
     guardando: "Guardando…",

@@ -392,6 +392,9 @@ export default function MapaExplorar({ items, seleccionado, encuadre, conZona, o
         // Para la revisión sin mirar el canvas: dónde quedó el pin elegido (alto en píxeles del contenedor del mapa).
         const elegido = dibujos.find((d) => d.tipo !== "grupo" && d.elegido);
         revisionRef.current?.setAttribute("data-elegido-y", elegido ? String(Math.round(elegido.y)) : ""); revisionRef.current?.setAttribute("data-zoom", String(zoom));
+        // Cuántos se dibujaron y entre qué altos (la revisión de que el encuadre deja los pines en la franja que se ve, 27-nov-2026).
+        const ys = dibujos.map((d) => d.y);
+        revisionRef.current?.setAttribute("data-dibujos", `${dibujos.length}|${ys.length ? Math.round(Math.min(...ys)) : ""}|${ys.length ? Math.round(Math.max(...ys)) : ""}`);
       };
       dibujarRef.current = () => { if (cuadro) return; cuadro = window.requestAnimationFrame(() => { cuadro = 0; pintarYa(); }); };
 

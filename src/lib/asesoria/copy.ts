@@ -29,12 +29,9 @@ export const ASESORIA_COPY = {
     cuerpo: "En 2 minutos te digo hasta cuánto puedes comprar y filtro el mapa para ti.",
     boton: "Partir",
   },
-  // P0 · el gancho
+  // P0 · el gancho: parte con la pregunta (tercera vuelta, 27-nov-2026; el universo ya lo mostró la burbuja).
   gancho: {
-    revise: (n: number, frac: string) => `Revisé los deptos usados publicados en Santiago. Solo ${frac} conviene como inversión.`,
-    tarjeta: (n: number) => `${miles(n)} deptos usados revisados`,
-    clases: { comprar: "Comprar", ajustar: "Ajustar", no: "No conviene" },
-    pregunta: "En 2 minutos te muestro cuáles te convienen a ti. Para partir: ¿es tu primera inversión?",
+    pregunta: "Para partir: ¿es tu primera inversión?",
   },
   experiencia: [
     { id: "primera", texto: "Primera vez" },
@@ -63,7 +60,7 @@ export const ASESORIA_COPY = {
     no_se: "Partimos por lo que se puede medir: cuánto rinde cada UF que pones. Eso se llama cap rate.",
   } satisfies Record<ObjetivoAsesoria, string>,
   // La fila gris (27-nov-2026): la mediana de todo Santiago, como referencia.
-  capRate: { nombre: "Cap rate", arriendo: "arriendo del año", precio: "precio", bajada: "Lo que rinden hoy los que convienen, en la mitad de los casos", santiago: "Todo Santiago" },
+  capRate: { nombre: "Cap rate", arriendo: "arriendo del año", precio: "precio", bajada: "Lo que rinde un depto típico de los que convienen", santiago: "Todo Santiago" },
   antesDeNumeros: "Ahora tus números, con rangos. No guardo nada hasta que crees tu cuenta.",
   llenarNumeros: "Llenar tus números",
   // P3 · tus números
@@ -96,6 +93,8 @@ export const ASESORIA_COPY = {
     sinCuota: (max: number) => `Tus deudas ya ocupan el ${max} % de tu renta que mira el banco`,
     noPasa: "No queda espacio para un dividendo",
     rangos: "Uso lo más bajo de cada rango, y lo más alto en deudas.",
+    verCuenta: "Ver la cuenta",
+    ocultarCuenta: "Ocultar la cuenta",
     // LA TARJETA DEL TOPE (G24): la cifra grande y, debajo, los dos límites dibujados como barras.
     puedes: "Puedes comprar hasta aprox.",
     barraRenta: { renta: "Por tu renta", deudas: "Por tu renta y tus deudas" },
@@ -196,7 +195,6 @@ export const ASESORIA_COPY = {
     avisos: {
       boletas: "Con boletas, los bancos piden 2 años de actividad y tus 2 últimas declaraciones de renta.",
       segunda: "Algunos bancos piden 30 % de pie en la segunda vivienda.",
-      estimacion: "Estimación, sujeta a evaluación del banco.",
     },
     // Con menos de 3, no dice «3» (paseo del 27-nov-2026).
     tresTitulo: (n: number) => (n >= 3 ? "Tus 3 deptos" : "Tus deptos"),

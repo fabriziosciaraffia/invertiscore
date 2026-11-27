@@ -568,6 +568,8 @@
 .ex-cifra > span { font-size: 11px; color: var(--franco-text-secondary); white-space: nowrap; }
 .ex-cifra > b { font-size: 14px; font-weight: 700; color: var(--franco-text); white-space: nowrap; }
 .ex-cifra > b.ex-neg { color: var(--signal-red, #C8323C); }
+/* El plazo del flujo (tercera vuelta de la asesoría, 27-nov-2026): «a 15 años» con perfil, «a 30 años» sin él; en su línea, chico. */
+.ex-cifra-plazo { display: block; font-size: 10px; color: var(--franco-text-muted); }
 .ex-conviene-desde { display: block; font-size: 13px; font-weight: 600; color: var(--chip-v-a, #6E4560); }
 @media (min-width: 768px) {
   .ex-tarjeta-wrap { width: 560px; }
@@ -645,6 +647,12 @@
   .ex-vc-t { display: flex; flex-direction: column; min-width: 0; line-height: 1.15; }
   .ex-vc-sep { display: none; }
   .ex-vc-n { font-weight: 700; }
+}
+/* DOS LÍNEAS COMO MUCHO A 375 (tercera vuelta de la asesoría, 27-nov-2026): «No conviene» se partía en dos y la cifra caía a una
+   tercera. Bajo 400 px el nombre no se corta, con letra y aire un poco más chicos. */
+@media (max-width: 400px) {
+  .ex-vc { gap: 4px; padding: 4px 6px; }
+  .ex-vc-t { white-space: nowrap; font-size: 11px; }
 }
 /* LA TARJETA SE ARMA DE UNA VEZ (26-nov-2026): la imagen aparece recién cargada sobre su gris (ImagenDepto › data-cargada), y la línea
    del lugar es una sola fila que no salta: el lugar se corta con «…» si es largo, la tipología y los m² siempre enteros, y mientras el

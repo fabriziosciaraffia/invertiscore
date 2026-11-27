@@ -15,6 +15,8 @@ export interface PedidoPerfilAsesoria {
   objetivo: ObjetivoAsesoria;
   numeros: Numeros;
   aporte: Aporte;
+  /** «Seguir» en la buena noticia: sin límite de aporte (se guarda nulo). */
+  aporteLibre: boolean;
   donde: Donde;
   lupa: Lupa;
   /** «Avísame» de los nuevos (27-nov-2026). */
@@ -43,7 +45,7 @@ export function validarPedidoPerfil(b: Record<string, unknown> | null | undefine
     pedido: {
       experiencia: b.experiencia as Experiencia, objetivo: b.objetivo as ObjetivoAsesoria,
       numeros: { renta: n.renta, tipoRenta: n.tipoRenta, edad: n.edad, pie: n.pie, deudas: n.deudas, preaprobado: n.preaprobado },
-      aporte: b.aporte, donde: { modo: d.modo as ModoDonde, comunas }, lupa: b.lupa as Lupa, interesNuevos: b.interesNuevos === true,
+      aporte: b.aporte, aporteLibre: b.aporteLibre === true, donde: { modo: d.modo as ModoDonde, comunas }, lupa: b.lupa as Lupa, interesNuevos: b.interesNuevos === true,
     },
   };
 }
@@ -76,7 +78,7 @@ export function filaPerfil(userId: string, p: PedidoPerfilAsesoria, c: PerfilCal
     tipo_renta: p.numeros.tipoRenta,
     rango_edad: c.cap.rangoEdad,
     plazo_anios: c.cap.plazo,
-    aporte_mensual_clp: p.aporte,
+    aporte_mensual_clp: p.aporteLibre ? null : p.aporte,
     lupa: p.lupa === "prefiero" ? null : p.lupa === "si",
     tope_uf: c.cap.topeUF,
     // Los dos topes por separado y el camino del pie (27-nov-2026, migración 20261127_asesoria_dos_topes).

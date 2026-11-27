@@ -34,7 +34,7 @@ export async function POST(request: Request) {
     const plazo = calc.cap.plazo as PlazoMascara;
     const enLugar = p.donde.modo === "metro" ? cercaDelMetro : undefined;
     const universo = await universoAsesoria();
-    const perfilTres = { plazo, aporte: p.aporte, topeUF: calc.cap.topeUF, comunas: p.donde.modo === "comunas" || p.donde.modo === "rinde" ? p.donde.comunas : [], enLugar, uf: cfg.uf };
+    const perfilTres = { plazo, aporte: p.aporteLibre ? Number.MAX_SAFE_INTEGER : p.aporte, topeUF: calc.cap.topeUF, comunas: p.donde.modo === "comunas" || p.donde.modo === "rinde" ? p.donde.comunas : [], enLugar, uf: cfg.uf };
     const tres = calc.cap.topeUF > 0 ? elegirTres(universo, perfilTres) : [];
     // Menos de 3: no se rellena; la palanca que más mueve (palanca.ts). Plazo corto: cuántos convienen con su plazo.
     const laPalanca = tres.length < 3 && calc.cap.topeUF > 0 ? palanca(universo, perfilTres, p.numeros, { tasaPct: cfg.tasa, uf: cfg.uf }) : null;
