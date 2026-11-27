@@ -293,6 +293,8 @@ export async function runAsesoria(): Promise<{ hard: number }> {
     {
       const t = ASESORIA_COPY.cierre;
       if (/3/.test(t.titulo(2)) || /3/.test(t.titulo(0)) || !/3 deptos/.test(t.titulo(3))) F("12 · el cierre promete 3 deptos cuando calzan menos");
+      if (/3/.test(ASESORIA_COPY.perfil.tresTitulo(2)) || ASESORIA_COPY.perfil.tresTitulo(3) !== "Tus 3 deptos") F("12 · el perfil titula «Tus 3 deptos» con menos de 3");
+      if (/bajo el 35/.test(ASESORIA_COPY.formula.deudas(35, 35)) || !/bajo el 40/.test(ASESORIA_COPY.formula.deudas(19, 40))) F("12 · la fórmula dice «bajo» el máximo cuando está justo en él");
       const comp = codigo("src/app/explorar/asesoria/asesoria.tsx");
       const css = leer("src/app/explorar/asesoria/asesoria.css");
       for (const clase of ["as-burbuja", "as-hoja", "as-chica"]) if (!(comp.split(`className="as-raiz ${clase} ph-no-capture"`)[1] ?? "").split(">")[0].includes('style={{ ["--as-abajo" as string]: `${abajo}px` }}')) F(`12 · ${clase} no sube sobre el aviso de cookies`);

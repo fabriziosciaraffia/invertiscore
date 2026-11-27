@@ -84,7 +84,8 @@ export const ASESORIA_COPY = {
     porPie: "Por tu pie: el banco presta hasta 80 %, así que tu pie es el 20 %",
     porPieCifra: (pie: number, total: number) => `${uf(pie)} ÷ 20 % = ${uf(total)}`,
     sinPie: "Por tu pie: con menos de UF 300, calculo solo por tu renta",
-    deudas: (carga: number, max: number) => `Tus deudas más el dividendo: ${carga} % de tu renta, bajo el ${max} % que mira el banco`,
+    // Justo en el máximo no dice «bajo» (paseo del 27-nov-2026: «35 % de tu renta, bajo el 35 %»).
+    deudas: (carga: number, max: number) => (carga >= max ? `Tus deudas más el dividendo: ${carga} % de tu renta, justo el ${max} % que mira el banco` : `Tus deudas más el dividendo: ${carga} % de tu renta, bajo el ${max} % que mira el banco`),
     pasa: "Pasa ✓",
     sinCuota: (max: number) => `Tus deudas ya ocupan el ${max} % de tu renta que mira el banco`,
     noPasa: "No queda espacio para un dividendo",
@@ -166,7 +167,8 @@ export const ASESORIA_COPY = {
       segunda: "Algunos bancos piden 30 % de pie en la segunda vivienda.",
       estimacion: "Estimación, sujeta a evaluación del banco.",
     },
-    tresTitulo: "Tus 3 deptos",
+    // Con menos de 3, no dice «3» (paseo del 27-nov-2026).
+    tresTitulo: (n: number) => (n >= 3 ? "Tus 3 deptos" : "Tus deptos"),
     porQue: { rinde: "El que mejor rinde", pide_menos: "El que pide menos al mes", distinto: "Uno distinto", otro: "Otro que te calza" },
     menos: (n: number) => `Con todo lo que me dijiste, encontré ${n}.`,
     ninguno: "Con todo lo que me dijiste, hoy no encontré ninguno.",

@@ -704,7 +704,7 @@ function Perfil({ r, numeros, experiencia, lupa, aporte, pines, alVer }: {
           {C.lupa.pasos.map((x, i) => <div key={x} className="as-lupa-paso"><i>{i + 1}</i><span>{x}</span></div>)}
         </div>
       )}
-      <p className="as-tarjeta-t" style={{ marginTop: 6 }}>{P.tresTitulo}</p>
+      <p className="as-tarjeta-t" style={{ marginTop: 6 }}>{P.tresTitulo(r.tres.length)}</p>
       {r.conveniencia && <p className="as-bf" data-asesoria="perfil-plazo-corto">{C.formula.plazoCorto(r.plazo, r.conveniencia.x, r.conveniencia.y)} {C.formula.plazoPorQue}</p>}
       {r.tres.length < 3 && <p className="as-bf" data-asesoria="perfil-menos">{r.tres.length === 0 ? P.ninguno : P.menos(r.tres.length)}</p>}
       {r.tres.length < 3 && <p className="as-bf" data-asesoria="perfil-palanca">{!r.palanca ? P.sinPalanca : r.palanca.tipo === "aporte" ? P.palancaAporte(r.palanca.aporte, r.palanca.n) : P.palancaPie(r.palanca.pieUF, r.palanca.n)}</p>}
