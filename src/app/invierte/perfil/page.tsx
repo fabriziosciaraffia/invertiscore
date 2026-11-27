@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { createServiceClient } from "@/lib/supabase/service";
 import { PERFIL_COPY } from "@/lib/invierte-v2/perfil";
-import { URL_INVIERTE, URL_OPCIONES } from "@/lib/invierte-v2/destino";
+import { URL_BASE, URL_INVIERTE, URL_OPCIONES } from "@/lib/invierte-v2/destino";
 import { adoptarPerfilAsesoria } from "@/lib/invierte-v2/asesoria-servidor";
 import { contextoPerfil } from "@/lib/invierte-v2/perfil-servidor";
 import { leerPreaprobacion } from "@/lib/invierte-v2/preaprobacion-servidor";
@@ -30,8 +30,8 @@ export default async function PerfilPage({ searchParams }: { searchParams: Recor
   const orden = await ultimaOrdenDe(admin, user.id);
   if (!orden) redirect(URL_INVIERTE);
   // EL PERFIL DE LA ASESORÍA MANDA (27-nov-2026): quien llega con él no vuelve a contestar su perfil; se usa tal cual, se suman sus
-  // deptos elegidos y va directo a sus opciones (asesoria-servidor.ts). Una sola vez: después, esta página es para editarlo.
-  if ((await adoptarPerfilAsesoria(admin, { id: user.id, email: user.email ?? null })).adoptado) redirect(URL_OPCIONES);
+  // deptos elegidos y va directo a «Tus deptos» (asesoria-servidor.ts; en el paseo, «Tu resultado» los escondía tras los parecidos). Una sola vez: después, esta página es para editarlo.
+  if ((await adoptarPerfilAsesoria(admin, { id: user.id, email: user.email ?? null })).adoptado) redirect(URL_BASE);
   const [c, pre] = await Promise.all([contextoPerfil(admin, user.id), leerPreaprobacion(admin, user.id)]);
   const g = c.guardado;
   // La primera vez (sin perfil guardado: recién firmó, o vuelve desde Partimos) lleva la franja «Orden firmada» y el saludo; al

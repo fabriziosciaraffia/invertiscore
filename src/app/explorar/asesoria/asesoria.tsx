@@ -745,7 +745,7 @@ function Donde({ aporte, donde, alModo, alQuitar, alListo }: {
   return (
     <>
       <div className="as-conv" data-asesoria="paso-donde">
-        <p className="as-bu">{C.alMes.hasta(aporte)}</p>
+        <p className="as-bu">{aporte === 0 ? C.perfil.aporte(0) : C.alMes.hasta(aporte)}</p>
         <p className="as-bf" data-inicio="1">{D.pregunta}</p>
         {donde?.modo === "rinde" && <p className="as-bf">{D.rindeElegidas(donde.comunas)}</p>}
       </div>
@@ -899,7 +899,7 @@ function Perfil({ r, numeros, experiencia, lupa, aporte, pines, interesNuevos, a
       </div>
       {r.tres.length > 0 && (
         <div className="as-pie">
-          <a className="as-principal" data-rojo="1" href={urlSeguirDeptos(r.tres.map((t) => t.id))} onClick={alSeguir} data-asesoria="seguir-deptos">{P.seguirDeptos}</a>
+          <a className="as-principal" data-rojo="1" href={urlSeguirDeptos(r.tres.map((t) => t.id))} onClick={alSeguir} data-asesoria="seguir-deptos">{P.seguirDeptos(r.tres.length)}</a>
         </div>
       )}
     </>

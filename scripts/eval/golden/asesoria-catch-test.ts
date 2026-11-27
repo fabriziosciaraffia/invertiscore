@@ -340,7 +340,9 @@ export async function runAsesoria(): Promise<{ hard: number }> {
         if (!/data-inicio="1"/.test(bloque.slice(0, 900))) F(`12 · la pantalla ${paso} no marca su primer mensaje nuevo`);
       }
       const mapa = codigo("src/app/explorar/mapa-explorar.tsx");
-      if (!/a \? \{ top: 64, left: 24, right: 24 \+ a\.derecha, bottom: 24 \+ a\.abajo \} : 24;/.test(mapa) || !/margenDeEncuadre\(aireRef\.current\)\);/.test(mapa)) F("12 · el encuadre no deja los pines en lo que se ve de la hoja");
+      // ⚠ ACTA (27-nov-2026, E16): el margen con la hoja se achicó (52 arriba, 12 a los lados, 8 sobre la hoja): con 64 y 24 la franja
+      // del teléfono dejaba ~60 px para los pines.
+      if (!/a \? \{ top: 52, left: 12, right: 12 \+ a\.derecha, bottom: 8 \+ a\.abajo \} : 24;/.test(mapa) || !/margenDeEncuadre\(aireRef\.current\)\);/.test(mapa)) F("12 · el encuadre no deja los pines en lo que se ve de la hoja");
       const cli = codigo("src/app/explorar/explorar-cliente.tsx");
       if (!/const claveEncuadreAsesoria = !filtroAsesoria \? "" : filtroAsesoria\.quieto \? "\|as:quieto" : "\|as:" \+ \(filtroAsesoria\.ids\?\.size \?\? "todos"\)/.test(cli) || !/\$\{claveEncuadreAsesoria\}`\}/.test(cli)) F("12 · el mapa no se reencuadra con los que calzan (o se mueve mientras se tocan comunas)");
       if (!/quieto: e\?\.paso === "donde"/.test(comp)) F("12 · en «Dónde» el mapa no queda quieto");
@@ -525,14 +527,14 @@ export async function runAsesoria(): Promise<{ hard: number }> {
       const def = comp.match(/export const urlSeguirDeptos = \(ids: readonly string\[\]\): string =>\s*`([^`]+)`;/);
       if (!def || def[1] !== '/invierte/${ids[0]}?${new URLSearchParams({ desde: "explorar", ...(ids.length > 1 ? { mas: ids.slice(1).join(",") } : {}) })}') F("19 · el botón no lleva al primer depto con los otros en la dirección");
       if (urlEsperada(["a", "b", "c"]) !== "/invierte/a?desde=explorar&mas=b%2Cc") F("19 · la dirección del botón no es la esperada");
-      if (!/<a className="as-principal" data-rojo="1" href=\{urlSeguirDeptos\(r\.tres\.map\(\(t\) => t\.id\)\)\} onClick=\{alSeguir\} data-asesoria="seguir-deptos">\{P\.seguirDeptos\}<\/a>/.test(comp) || ASESORIA_COPY.perfil.seguirDeptos !== "Seguir con estos deptos") F("19 · el perfil no lleva el botón rojo «Seguir con estos deptos»");
+      if (!/<a className="as-principal" data-rojo="1" href=\{urlSeguirDeptos\(r\.tres\.map\(\(t\) => t\.id\)\)\} onClick=\{alSeguir\} data-asesoria="seguir-deptos">\{P\.seguirDeptos\(r\.tres\.length\)\}<\/a>/.test(comp) || ASESORIA_COPY.perfil.seguirDeptos(3) !== "Seguir con estos deptos" || ASESORIA_COPY.perfil.seguirDeptos(1) !== "Seguir con este depto") F("19 · el perfil no lleva el botón rojo «Seguir con estos deptos»");
       if ((comp.match(/data-rojo="1"/g) ?? []).length !== 2) F("19 · el rojo aparece en otro botón que «Partir» y «Seguir con estos deptos»");
       const ad = codigo("src/lib/invierte-v2/asesoria-servidor.ts");
       if (!/if \(!orden \|\| !perfil \|\| perfil\.origen !== "asesoria" \|\| perfil\.topeSupuestos\?\.adoptadoInvierte\) return \{ adoptado: false \};/.test(ad)) F("19 · la adopción del perfil no exige orden, perfil de la asesoría y una sola vez");
       if (!/for \(const avisoId of perfil\.elegidos\) \{\s*const s = await sumarDepto\(admin, user, avisoId, null, "mapa", null\)/.test(ad)) F("19 · al firmar no se suman los deptos elegidos");
       if (/hastaCuanto\(/.test(ad)) F("19 · la adopción recalcula el tope (manda el de la asesoría)");
       const pg = codigo("src/app/invierte/perfil/page.tsx");
-      if (!/if \(\(await adoptarPerfilAsesoria\(admin, \{ id: user\.id, email: user\.email \?\? null \}\)\)\.adoptado\) redirect\(URL_OPCIONES\);/.test(pg)) F("19 · Invierte vuelve a preguntar el perfil a quien viene de la asesoría");
+      if (!/if \(\(await adoptarPerfilAsesoria\(admin, \{ id: user\.id, email: user\.email \?\? null \}\)\)\.adoptado\) redirect\(URL_BASE\);/.test(pg)) F("19 · Invierte vuelve a preguntar el perfil a quien viene de la asesoría (o no lo lleva a sus deptos)");
       const ct = codigo("src/app/invierte/[avisoId]/page.tsx");
       if (!/if \(perfil\?\.origen === "asesoria" && perfil\.topePieUF != null && depto\.precioUF != null && depto\.precioUF <= perfil\.topePieUF && !inicial\?\.pie\)/.test(ct) || !/\{!inicial\?\.pieConocido && <fieldset className="inv-pregunta">/.test(codigo("src/components/invierte-v2/ContactoForm.tsx"))) F("19 · el contacto vuelve a preguntar el pie que ya dijo en la asesoría");
       const ac = codigo("src/lib/invierte-v2/acceso-servidor.ts");

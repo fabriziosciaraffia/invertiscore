@@ -207,7 +207,8 @@ export const ASESORIA_COPY = {
     // La prueba de tasa de cada depto (C8): reemplaza a «Si algo se mueve».
     aguanta: "Aguanta si la tasa sube 1 punto",
     conPunto: (x: number) => `Con un punto más de tasa, pones ${pesos(x)} al mes`,
-    seguirDeptos: "Seguir con estos deptos",
+    // Con un solo depto, en singular (paseo del 27-nov-2026).
+    seguirDeptos: (n: number) => (n === 1 ? "Seguir con este depto" : "Seguir con estos deptos"),
     menos: (n: number) => `Con todo lo que me dijiste, encontré ${n}.`,
     ninguno: "Con todo lo que me dijiste, hoy no encontré ninguno.",
     sinPalanca: "Si abres las zonas, aparecen más.",

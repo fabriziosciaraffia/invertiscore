@@ -64,6 +64,8 @@
 /* la conversación */
 .as-conv { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 10px 16px; }
 .as-conv::before { content: ""; flex: 1; }
+/* Nada de la conversación se encoge (paseo del 27-nov-2026: la tarjeta del tope, con overflow hidden, quedaba en 0 de alto). */
+.as-conv > * { flex-shrink: 0; }
 .as-bf { align-self: flex-start; max-width: 320px; margin: 0; padding: 10px 12px; border-radius: 14px 14px 14px 4px; background: color-mix(in srgb, var(--franco-text) 5%, var(--franco-card)); font-size: 14px; line-height: 1.4; }
 .as-bu { align-self: flex-end; max-width: 260px; margin: 0; padding: 9px 12px; border-radius: 14px 14px 4px 14px; background: var(--franco-text); color: var(--franco-bg); font-size: 14px; line-height: 1.4; }
 .as-tarjeta { align-self: stretch; display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border: 1px solid var(--franco-border); border-radius: 14px; background: var(--franco-card); }

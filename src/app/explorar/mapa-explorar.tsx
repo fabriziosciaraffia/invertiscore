@@ -234,9 +234,11 @@ function pintar(ctx: CanvasRenderingContext2D, dibujos: readonly Dibujo[], tema:
   }
 }
 
-/** El margen del encuadre: 24 px, o, con la hoja de la asesoría encima, lo que tapa más 24 (los pines quedan en lo que se ve; 27-nov-2026). */
+/** El margen del encuadre: 24 px, o, con la hoja de la asesoría encima, lo que tapa (los pines quedan en lo que se ve; 27-nov-2026).
+ *  E16 (segunda vuelta): en el teléfono la franja sobre la hoja mide ~150 px; con 64 arriba y 24 abajo quedaban ~60 para los pines y el
+ *  mapa se alejaba hasta mostrar tres grupos. Arriba, lo justo bajo la pastilla (52); a los lados 12; sobre la hoja, 8. */
 export const margenDeEncuadre = (a: { abajo: number; derecha: number } | null): number | { top: number; left: number; right: number; bottom: number } =>
-  a ? { top: 64, left: 24, right: 24 + a.derecha, bottom: 24 + a.abajo } : 24;
+  a ? { top: 52, left: 12, right: 12 + a.derecha, bottom: 8 + a.abajo } : 24;
 
 /** Lo de arriba que tapa el contador plegado, en el teléfono: el pin elegido no se corre debajo de él. */
 const TAPA_ARRIBA_PX = 72;
