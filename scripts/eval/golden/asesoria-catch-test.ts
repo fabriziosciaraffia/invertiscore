@@ -745,3 +745,12 @@ if (require.main === module) void runAsesoria().then((r) => { process.exitCode =
 // subida a los dos plazos (pasó a flujo 0), una muestra simétrica donde la media y la mediana coinciden (pasó a una cuadrática), un
 // depto sin ninguna estación a menos de 5 km (pasó a uno a 2,5 km de Los Dominicos) y 1.930 de 2.130, que da 9 truncando y redondeando
 // (se sumó 88 de 100). Reescritos, los cuatro salen rojos.
+// La tercera vuelta (27-nov-2026), secciones 21 a 24 y las actas sobre 2, 4, 12, 14, 18, 19 y 20: 26 mutaciones, las 26 en ROJO (runner
+// aparte que restaura cada archivo byte a byte): el corte del perfil en 12 %; sin la regla de los 3D chicos; los 3D chicos con 2
+// dormitorios; las medianas con el corte del perfil; los m² sin leer de la fila; los m² en tandas de 2.000; ids ajenos aceptados en
+// Invierte; la urgencia fija; el pie siempre «sí»; vuelve «¿Cuándo piensas comprar?»; el título de un solo depto; la página sin los
+// deptos; la tarjeta sin el flujo al plazo; la tarjeta siempre «a 30 años»; la ruta que lee el plazo del cuerpo; el plazo del perfil
+// nuevo que no llega a la tarjeta; el tope después de la cuenta; la cuenta abierta siempre; el contador con la burbuja; «Seguir» que
+// filtra por aporte; el aporte libre guardado como 300 mil; el perfil que filtra el aporte libre; vuelve la estimación; «Nada» dos
+// veces; sin pedir el 0 en la fórmula; el contador en tres líneas. La línea de la palanca de §21 salió verde con un fixture que no la
+// ejercitaba (UF 3.600 no entraba ni con el pie siguiente): se bajó a UF 2.400 con un control de que el fixture sí la ejercita.
