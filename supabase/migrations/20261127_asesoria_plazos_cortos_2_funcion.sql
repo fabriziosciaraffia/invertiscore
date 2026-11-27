@@ -6,8 +6,11 @@
 -- el universo son ~4.600. Columnas: id, comuna, lat, lng, dormitorios, precio, puntaje a 30, arriendo, flujo a 30 / 25 / 20 / 15,
 -- Comprar a 25 / 20 / 15 (null sin evaluar = no Comprar).
 --
--- MEDIDO el 27-nov-2026, consulta equivalente (la función se mide al aplicarla y la cifra se agrega acá): todas las comunas,
--- 7 días, sin tope → 4.553 filas, 89 ms, 36.161 páginas en caché.
+-- MEDIDO el 27-nov-2026, consulta equivalente: todas las comunas, 7 días, sin tope → 4.553 filas, 89 ms, 36.161 páginas en caché.
+-- APLICADA por Claude el 27-nov-2026, después del relleno (21.688 filas escritas de 21.688; 21.442 con veredicto, 1.596 Comprar a 20
+-- años y 453 a 15; ninguno Comprar a un plazo corto sin serlo al más largo, y ningún flujo al revés). Verificado: devuelve jsonb con 15
+-- campos por fila; todas las comunas a 7 días → 4.553 filas (3.220 Comprar a 25, 1.451 a 20, 376 a 15); con tope UF 3.000 → 3.657.
+-- Queda una sola versión de la función y no la ejecutan anon ni authenticated.
 -- plpgsql con plan a medida (regla del 02-nov-2026).
 -- ─────────────────────────────────────────────────────────────────────────────
 
