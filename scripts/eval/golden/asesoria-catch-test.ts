@@ -304,6 +304,7 @@ export async function runAsesoria(): Promise<{ hard: number }> {
       const cli = codigo("src/app/explorar/explorar-cliente.tsx");
       if (!/\$\{filtroAsesoria\?\.ids \? \(filtroAsesoria\.quieto \? "\|as:quieto" : `\|as:\$\{filtroAsesoria\.ids\.size\}:/.test(cli)) F("12 · el mapa no se reencuadra con los que calzan (o se mueve mientras se tocan comunas)");
       if (!/quieto: e\?\.paso === "donde"/.test(comp)) F("12 · en «Dónde» el mapa no queda quieto");
+      if (!/const aportePendiente = aporte != null && pasoN >= PASO_N\.aporte && !respuestas\[aporte\];/.test(comp) || !/calzan=\{aportePendiente \? null : calzan\?\.length \?\? null\}/.test(comp)) F("12 · mientras llega el aporte, «Calzan» muestra la cifra anterior");
     }
   } catch (e) {
     F(`excepción: ${(e as Error).stack ?? e}`);

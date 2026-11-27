@@ -163,6 +163,8 @@ export function Asesoria(p: {
     if (pasoN >= PASO_N.donde && enLugar) xs = xs.filter(enLugar);
     return xs;
   }, [cap, pasoN, p.comprar, idsAporte, enLugar]);
+  // Mientras no llega la respuesta del alto elegido, «Calzan» dice «…»: la cifra anterior no es la de este alto (paseo del 27-nov-2026).
+  const aportePendiente = aporte != null && pasoN >= PASO_N.aporte && !respuestas[aporte];
   const convienen = p.conteo?.comprar ?? p.comprar.length;
   const total = p.conteo ? p.conteo.comprar + p.conteo.ajustar + p.conteo.no : null;
 
@@ -317,7 +319,7 @@ export function Asesoria(p: {
         )}
         {e.paso === "formula" && <Formula cap={cap} convienen={convienen} alcanzan={calzan?.length ?? null} plazoCorto={plazoCortoDe(agregados, plazo)} alSeguir={() => { responder("formula", null); cambiar((s) => ({ ...s, paso: PROYECTOS_VISIBLE ? "proyecto" : "aporte", aporte: s.aporte ?? 100_000 })); }} />}
         {e.paso === "aporte" && (
-          <AlMes aporte={e.aporte ?? 100_000} dist={agregados?.dist?.[String(plazo)] ?? null} calzan={calzan?.length ?? null} topado={topado}
+          <AlMes aporte={e.aporte ?? 100_000} dist={agregados?.dist?.[String(plazo)] ?? null} calzan={aportePendiente ? null : calzan?.length ?? null} topado={topado}
             alCambiar={(a) => cambiar((s) => ({ ...s, aporte: a }))} alSeguir={() => { responder("aporte", null); cambiar((s) => ({ ...s, paso: "donde" })); }} />
         )}
         {e.paso === "donde" && (
