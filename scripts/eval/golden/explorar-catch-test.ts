@@ -156,14 +156,14 @@ export async function runExplorarTier(): Promise<{ hard: number }> {
   // ── 5 · el mapa carga después del primer pintado ──
   if (!/const MapaExplorar = dynamic\(\(\) => import\("\.\/mapa-explorar"\), \{ ssr: false/.test(cli)) F("5 · el mapa no entra por next/dynamic sin SSR");
   if (!/cuandoLaPaginaEsteQuieta\(\(\) => \{\s*setMapaListo\(true\);/.test(cli)) F("5 · el mapa no espera a que la página esté quieta");
-  // ⚠ ACTA 27-nov-2026 (diagnóstico de carga, opciones A y C, aprobadas por Fabrizio): antes ningún archivo del primer pintado podía
-  // nombrar a Google Maps. Ahora la página lo PRECARGA desde el HTML con prioridad baja (precarga-maps.ts: se baja, no se ejecuta) y el
-  // cliente lo pide en el MISMO momento ocioso que el código del mapa (un solo `void loadGoogleMaps();`, dentro de la página quieta).
-  // Lo que se sigue prohibiendo: que Maps se EJECUTE antes de la página quieta.
+  // ⚠ ACTA 27-nov-2026 (diagnóstico de carga, aprobado por Fabrizio): antes ningún archivo del primer pintado podía nombrar a Google
+  // Maps. Ahora la página abre la CONEXIÓN desde el HTML (precarga-maps.ts: preconnect, sin bajar nada) y el cliente pide el script en el
+  // MISMO momento ocioso que el código del mapa (un solo `void loadGoogleMaps();`, dentro de la página quieta). La precarga del script
+  // se probó y empeoró el LCP y los primeros pines: queda prohibida. Lo que se sigue prohibiendo: bajar o ejecutar Maps antes de la página quieta.
   { const pg = codigo("src/app/explorar/page.tsx"), pm = codigo("src/lib/explorar/precarga-maps.ts");
     // La precarga sirve solo si el cargador pide EXACTAMENTE la misma dirección (si no, el navegador baja el script dos veces).
     if (!/script\.src = urlGoogleMaps\(apiKey\);/.test(codigo("src/lib/loadGoogleMaps.ts")) || (codigo("src/lib/loadGoogleMaps.ts").match(/maps\.googleapis\.com\/maps\/api\/js/g) ?? []).length !== 1) F("5 · el cargador de Maps no pide la misma dirección que la precarga (bajaría el script dos veces)");
-    if (/loadGoogleMaps|maps\.googleapis/.test(pg) || !/^  precargarGoogleMaps\(\);$/m.test(pg) || !/preload\(urlGoogleMaps\(llave\), \{ as: "script", fetchPriority: "low" \}\);/.test(pm) || /loadGoogleMaps\(|createElement|preinit\(/.test(pm)) F("5 · la página ejecuta Google Maps en el primer pintado (o lo precarga sin prioridad baja)");
+    if (/loadGoogleMaps|maps\.googleapis/.test(pg) || !/^  precargarGoogleMaps\(\);$/m.test(pg) || !/for \(const o of ORIGENES_MAPS\) preconnect\(o\);/.test(pm) || !/"https:\/\/maps\.googleapis\.com", "https:\/\/maps\.gstatic\.com"/.test(pm) || /loadGoogleMaps\(|createElement|preinit\(|preload\(/.test(pm)) F("5 · la página baja o ejecuta Google Maps en el primer pintado (o no abre la conexión con Google)");
     const llamadas = (cli.match(/loadGoogleMaps\(\)/g) ?? []).length;
     if (llamadas !== 1 || !/cuandoLaPaginaEsteQuieta\(\(\) => \{\s*setMapaListo\(true\);\s*if \(universoDeLaNoche\(inicial\.filtros\)\) void asegurar\(inicial\.filtros\);(?:\s*\/\/[^\n]*)*\s*void loadGoogleMaps\(\);/.test(cli) || /loadGoogleMaps|maps\.googleapis/.test(codigo("src/lib/explorar/explorar.ts"))) F("5 · el cliente pide Google Maps fuera de la página quieta (o no lo pide junto con el código del mapa)"); }
   if (!/import \{ loadGoogleMaps \} from "@\/lib\/loadGoogleMaps";/.test(codigo("src/app/explorar/mapa-explorar.tsx"))) F("5 · el mapa no usa el cargador de siempre");

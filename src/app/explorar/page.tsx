@@ -107,7 +107,7 @@ const mapaQuieto = (
 );
 
 export default async function ExplorarPage({ searchParams }: { searchParams?: Record<string, string | string[] | undefined> }) {
-  // Google Maps se empieza a bajar con el HTML, con o sin cuenta (precarga-maps.ts): el mapa lo ejecuta con la página quieta.
+  // La conexión con Google Maps se abre con el HTML, con o sin cuenta (precarga-maps.ts): el script se pide con la página quieta.
   precargarGoogleMaps();
   const sp = new URLSearchParams();
   for (const [k, v] of Object.entries(searchParams ?? {})) if (typeof v === "string") sp.set(k, v);
