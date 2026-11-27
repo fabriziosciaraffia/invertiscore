@@ -14,6 +14,7 @@
 import { perfilManualDeElecciones, RANGOS_UF, validarElecciones, type EleccionesDeptos } from "@/lib/deptos/respuesta";
 import { lineaDepto } from "@/lib/guia/linea-depto";
 import { AVISO_NUEVOS } from "@/lib/guia/aviso-nuevos";
+import { ASESORIA_COPY } from "@/lib/asesoria/copy";
 import { DESDE_COMPARTIDO_LLEGADA, DESDE_LANDING } from "./puertas-landing";
 import { PIE_POR_DEFECTO, PLAZO_POR_DEFECTO } from "@/lib/deptos/estandar";
 import { perfilDeFiltros, urlDePortal, validarPortal, type FiltrosPortal, type ModalidadPortal, type OrdenPortal, type PinMapa, type UniversoCompacto } from "./portal";
@@ -72,6 +73,8 @@ export interface PedidoRegistro {
   orden?: OrdenPortal;
   /** LA ASESORÍA (27-nov-2026): los filtros del perfil del semanal (sus comunas, hasta su tope), sin cambiar la vuelta al mapa. */
   filtrosPerfil?: FiltrosPortal;
+  /** Cuántos deptos le muestra el perfil (hasta 3): el título de la hoja dice el número real (F21). */
+  deptosAsesoria?: number;
 }
 
 export const REGISTRO_COPY = {
@@ -84,9 +87,8 @@ export const REGISTRO_COPY = {
   cuerpoPiePlazo: "Crea tu cuenta gratis y elige tu pie y tu plazo.",
   // «Invierte con Franco» sin cuenta (11-nov-2026): la cuenta nueva trae su análisis de regalo, como por cualquier puerta.
   invierteTitulo: "Crea tu cuenta para inscribirte.",
-  // La asesoría (27-nov-2026): el cierre crea la cuenta con el regalo de siempre.
-  asesoriaTitulo: "Tu perfil está listo.",
-  asesoriaCuerpo: { antes: "Crea tu cuenta gratis para verlos. Tu cuenta nueva trae ", fuerte: "un crédito de regalo", despues: "." },
+  // La asesoría (27-nov-2026; F21 de la segunda vuelta): el cierre crea la cuenta con el regalo de siempre. Los textos son los de
+  // asesoria/copy.ts › cierre (el título con el número real de deptos); el chat de atrás no los repite.
   invierteCuerpo: { antes: "Tu cuenta nueva trae ", fuerte: "un crédito de regalo", despues: "." },
   inscribirme: "Inscribirme",
   google: "Entrar con Google",
@@ -109,7 +111,10 @@ export function textosHoja(p: PedidoRegistro): { titulo: string; linea: string |
   if (p.pin && p.motivo === "invierte") {
     return { titulo: REGISTRO_COPY.invierteTitulo, linea: `${lineaDepto(p.pin)} · UF ${miles(p.pin.precioUF)}`, cuerpo: REGISTRO_COPY.invierteCuerpo, boton: REGISTRO_COPY.inscribirme };
   }
-  if (p.motivo === "asesoria") return { titulo: REGISTRO_COPY.asesoriaTitulo, linea: null, cuerpo: REGISTRO_COPY.asesoriaCuerpo, boton: REGISTRO_COPY.crearCuenta };
+  if (p.motivo === "asesoria") {
+    const n = Math.max(0, Math.min(3, p.deptosAsesoria ?? 0));
+    return { titulo: ASESORIA_COPY.cierre.titulo(n), linea: null, cuerpo: ASESORIA_COPY.cierre.cuerpo(n), boton: REGISTRO_COPY.crearCuenta };
+  }
   if (p.pin && (p.motivo === "analizar" || p.motivo === "guardar")) {
     return { titulo: REGISTRO_COPY.conDepto, linea: `${lineaDepto(p.pin)} · UF ${miles(p.pin.precioUF)}`, cuerpo: REGISTRO_COPY.cuerpoDepto, boton: REGISTRO_COPY.verDepto };
   }

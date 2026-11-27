@@ -23,7 +23,7 @@ export interface PedidoPerfilAsesoria {
 
 const EXPERIENCIAS: readonly Experiencia[] = ["primera", "uno", "varios"];
 const OBJETIVOS: readonly ObjetivoAsesoria[] = ["arriendo", "plusvalia", "ambas", "no_se"];
-const MODOS: readonly ModoDonde[] = ["comunas", "metro", "rinde", "pega"];
+const MODOS: readonly ModoDonde[] = ["comunas", "metro", "rinde"];
 const LUPAS: readonly Lupa[] = ["si", "no", "prefiero"];
 
 export function validarPedidoPerfil(b: Record<string, unknown> | null | undefined): { ok: true; pedido: PedidoPerfilAsesoria } | { ok: false; error: string } {
@@ -37,16 +37,13 @@ export function validarPedidoPerfil(b: Record<string, unknown> | null | undefine
   if (!d || !MODOS.includes(d.modo as ModoDonde)) return { ok: false, error: "donde" };
   const comunas = Array.isArray(d.comunas) ? d.comunas.filter((c): c is string => typeof c === "string" && c.length > 0 && c.length <= 40).slice(0, 20) : [];
   if ((d.modo === "comunas" || d.modo === "rinde") && comunas.length === 0) return { ok: false, error: "comunas" };
-  const pega = d.modo === "pega" && d.pega && Number.isFinite(d.pega.lat) && Number.isFinite(d.pega.lng)
-    && d.pega.lat > -34.2 && d.pega.lat < -32.9 && d.pega.lng > -71.2 && d.pega.lng < -70.3 ? { lat: d.pega.lat, lng: d.pega.lng } : null;
-  if (d.modo === "pega" && !pega) return { ok: false, error: "pega" };
   const n = b.numeros as Numeros;
   return {
     ok: true,
     pedido: {
       experiencia: b.experiencia as Experiencia, objetivo: b.objetivo as ObjetivoAsesoria,
       numeros: { renta: n.renta, tipoRenta: n.tipoRenta, edad: n.edad, pie: n.pie, deudas: n.deudas, preaprobado: n.preaprobado },
-      aporte: b.aporte, donde: { modo: d.modo as ModoDonde, comunas, pega }, lupa: b.lupa as Lupa, interesNuevos: b.interesNuevos === true,
+      aporte: b.aporte, donde: { modo: d.modo as ModoDonde, comunas }, lupa: b.lupa as Lupa, interesNuevos: b.interesNuevos === true,
     },
   };
 }

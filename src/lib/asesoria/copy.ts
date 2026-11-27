@@ -19,15 +19,19 @@ export const ASESORIA_COPY = {
   retomar: "Retomar",
   segmentos: ["Qué buscas", "Hasta dónde llegas", "Dónde"] as const,
   convienen: "convienen",
-  calzanContigo: "calzan contigo",
+  // LA CUENTA SOBRE EL MAPA (F19, 27-nov-2026): «3.624 de los 4.512 que convienen te calzan».
+  calzanDe: (n: number, convienen: number) => `${miles(n)} de los ${miles(convienen)} que convienen te calzan`,
   burbuja: {
-    titulo: "¿Cuáles de estos te alcanzan?",
+    // La lámina «Con punch, sin abusar» (G24, 27-nov-2026): parte con el número.
+    numero: (comprar: number, total: number) => ({ n: miles(comprar), de: `de ${miles(total)} convienen` }),
+    revisados: "Revisados anoche, uno por uno",
+    titulo: "¿Cuáles te alcanzan a ti?",
     cuerpo: "En 2 minutos te digo hasta cuánto puedes comprar y filtro el mapa para ti.",
     boton: "Partir",
   },
   // P0 · el gancho
   gancho: {
-    revise: (n: number, frac: string) => `Revisé todos los deptos usados que hay a la venta en Santiago. Solo ${frac} conviene como inversión.`,
+    revise: (n: number, frac: string) => `Revisé los deptos usados publicados en Santiago. Solo ${frac} conviene como inversión.`,
     tarjeta: (n: number) => `${miles(n)} deptos usados revisados`,
     clases: { comprar: "Comprar", ajustar: "Ajustar", no: "No conviene" },
     pregunta: "En 2 minutos te muestro cuáles te convienen a ti. Para partir: ¿es tu primera inversión?",
@@ -58,7 +62,8 @@ export const ASESORIA_COPY = {
     ambas: "Se pueden buscar las dos cosas. Partimos por lo que se puede medir: cuánto rinde cada UF.",
     no_se: "Partimos por lo que se puede medir: cuánto rinde cada UF que pones. Eso se llama cap rate.",
   } satisfies Record<ObjetivoAsesoria, string>,
-  capRate: { nombre: "Cap rate", arriendo: "arriendo del año", precio: "precio", bajada: "Lo que rinden hoy los que convienen" },
+  // La fila gris (27-nov-2026): la mediana de todo Santiago, como referencia.
+  capRate: { nombre: "Cap rate", arriendo: "arriendo del año", precio: "precio", bajada: "Lo que rinden hoy los que convienen, en la mitad de los casos", santiago: "Todo Santiago" },
   antesDeNumeros: "Ahora tus números, con rangos. No guardo nada hasta que crees tu cuenta.",
   llenarNumeros: "Llenar tus números",
   // P3 · tus números
@@ -80,9 +85,10 @@ export const ASESORIA_COPY = {
     porRenta: (p: { renta: number; computable: number; pctComputable: number; plazo: number; tasa: string }) => p.pctComputable === 100
       ? `Por tu renta: el dividendo, hasta 25 % de ${pesos(p.renta)}, paga un crédito a ${p.plazo} años al ${p.tasa} %`
       : `Por tu renta: el dividendo, hasta 25 % de ${pesos(p.computable)} (el ${p.pctComputable} % de ${pesos(p.renta)}), paga un crédito a ${p.plazo} años al ${p.tasa} %`,
-    porRentaCifra: (credito: number, pie: number | null, total: number) => (pie == null ? `${uf(credito)} ÷ 80 % = ${uf(total)}` : `${uf(credito)} + tu pie = ${uf(total)}`),
-    porPie: "Por tu pie: el banco presta hasta 80 %, así que tu pie es el 20 %",
-    porPieCifra: (pie: number, total: number) => `${uf(pie)} ÷ 20 % = ${uf(total)}`,
+    // CON LOS GASTOS DE LA COMPRA (27-nov-2026): el crédito más el pie paga el precio y el 4,4 % de gastos.
+    porRentaCifra: (credito: number, pie: number | null, total: number) => (pie == null ? `${uf(credito)} ÷ 80 % = ${uf(total)}` : `(${uf(credito)} + tu pie) ÷ 1,044 = ${uf(total)}`),
+    porPie: "Por tu pie: el banco presta hasta 80 %. Tu pie paga el 20 % y los gastos de la compra (4,4 %)",
+    porPieCifra: (pie: number, total: number) => `${uf(pie)} ÷ 24,4 % = ${uf(total)}`,
     sinPie: "Por tu pie: con menos de UF 300, calculo solo por tu renta",
     // Justo en el máximo no dice «bajo» (paseo del 27-nov-2026: «35 % de tu renta, bajo el 35 %»).
     deudas: (carga: number, max: number) => (carga >= max ? `Tus deudas más el dividendo: ${carga} % de tu renta, justo el ${max} % que mira el banco` : `Tus deudas más el dividendo: ${carga} % de tu renta, bajo el ${max} % que mira el banco`),
@@ -90,8 +96,13 @@ export const ASESORIA_COPY = {
     sinCuota: (max: number) => `Tus deudas ya ocupan el ${max} % de tu renta que mira el banco`,
     noPasa: "No queda espacio para un dividendo",
     rangos: "Uso lo más bajo de cada rango, y lo más alto en deudas.",
-    manda: { pie: "Manda el menor, tu pie. Puedes comprar hasta aprox.", renta: "Manda el menor, tu renta. Puedes comprar hasta aprox.", deudas: "Mandan tus deudas. Puedes comprar hasta aprox." },
+    // LA TARJETA DEL TOPE (G24): la cifra grande y, debajo, los dos límites dibujados como barras.
+    puedes: "Puedes comprar hasta aprox.",
+    barraRenta: { renta: "Por tu renta", deudas: "Por tu renta y tus deudas" },
+    barraPie: (pie: number) => `Con tu pie de ${uf(pie)}, contando gastos`,
     sinPieTope: (tope: number, pie: number) => `Por tu renta llegas hasta aprox. ${uf(tope)}. Para eso necesitas un pie de ${uf(pie)}.`,
+    // Solo cuando limita el pie (lámina 3): cuánto llega con UF 100 más.
+    frenaPie: (tope: number) => `Lo que te frena es el pie, no la renta. Con UF 100 más llegas a ${uf(tope)}.`,
     sujeto: "Sujeto a evaluación del banco",
     // El plazo corto (punto 5 de Fabrizio, 27-nov-2026): por qué ve menos deptos.
     plazoCorto: (plazo: number, x: number, y: number) => `Con tu plazo de ${plazo} años, convienen ${miles(x)} de los ${miles(y)}.`,
@@ -102,8 +113,6 @@ export const ASESORIA_COPY = {
     seguirIgual: "Seguir igual",
     // La cifra es de usados, y lo dice (ajuste de Fabrizio, 27-nov-2026).
     filtre: (alcanzan: number) => `De los usados que convienen, hoy te alcanzan ${miles(alcanzan)}.`,
-    // Cuando limita el pie y no la renta, los dos límites (el del pie es de usados: en los nuevos el pie va en cuotas).
-    dosLimites: (renta: number, pie: number) => `Por tu renta llegas hasta ${uf(renta)}. Con tu pie, hoy llegas a ${uf(pie)} en usados.`,
     cero: "Con estos números, hoy el banco no te prestaría. Bajar tus deudas es lo primero; mientras, sigues mirando el mapa.",
     seguir: "Seguir",
   },
@@ -115,9 +124,15 @@ export const ASESORIA_COPY = {
   },
   // P5 · al mes
   alMes: {
-    pregunta: "Al principio, casi todo depto pide poner algo al mes. ¿Hasta cuánto pondrías sin que te apriete? Mira cómo cambia el mapa.",
+    // LA BUENA NOTICIA (C7 y lámina 4, 27-nov-2026): si con 0 al mes calzan al menos 8 de cada 10 de los que le alcanzan.
+    solos: (k: number) => ({ grande: `${k} de cada 10`, chico: "se pagan solos con el arriendo" }),
+    solosLinea: (n: number, m: number) => `${miles(n)} de los ${miles(m)} que te alcanzan te dejan plata cada mes, después del dividendo y los gastos.`,
+    noPones: "No tienes que poner plata cada mes.",
+    puedoPoner: "Puedo poner algo al mes",
+    // Sin la buena noticia, el slider con un texto que no promete de más.
+    pregunta: "¿Hasta cuánto pondrías al mes sin que te apriete? Mira cómo cambia el mapa.",
     titulo: "Hasta cuánto pongo al mes",
-    izq: "Me sobra plata",
+    izq: "Nada",
     der: "$300.000+",
     calzan: "Calzan",
     usados: (n: number) => `${miles(n)} usados`,
@@ -132,32 +147,31 @@ export const ASESORIA_COPY = {
     pregunta: "¿Dónde te gustaría? Toca las comunas en el mapa, o dime qué te importa y las elijo yo.",
     metro: "Cerca del metro",
     rinde: "Donde más rinde",
-    pega: "Cerca de mi pega",
-    tocaPega: "Toca en el mapa dónde trabajas. Busco a 3 km a la redonda.",
     elegidas: (n: number) => (n === 1 ? "1 comuna" : `${n} comunas`),
     listo: "Listo",
     rindeElegidas: (cs: string[]) => `Las que más rinden con tus números: ${cs.join(", ")}.`,
   },
   // P7 · la lupa
   lupa: {
-    pregunta: "Última: ¿hay algo que el banco miraría con lupa? Una deuda atrasada, boletas hace poco… Esto no lo ve nadie más.",
+    pregunta: "Última: ¿hay algo que el banco miraría con lupa? Una deuda atrasada, boletas hace poco… Queda en tu perfil, para orientarte mejor.",
     no: "No, nada",
     si: "Sí, algo",
     prefiero: "Prefiero no decir",
     reaccionSi: "Le pasa a más gente de la que crees, y tiene arreglo.",
     pasosTitulo: "Antes de pedir el crédito",
     pasos: [
-      "Ponte al día o repacta. El banco mira cómo vas pagando.",
+      "Si tienes una deuda atrasada, ponte al día o repacta. Si emites boletas hace poco, junta al menos 12 meses antes de pedir el crédito.",
       "Saca tu informe de deudas de la CMF. Es gratis con ClaveÚnica.",
-      "Mientras, sigues mirando deptos. Los pasos quedan en tu perfil.",
     ],
     ver: "Ver lo que encontré",
   },
-  // El cierre: la cuenta
+  // El cierre: la cuenta. El título y la bajada van en la hoja de registro (F21: explorar/abierto.ts); el chat de atrás no los repite.
   cierre: {
     // Nunca promete 3 si calzan menos (paseo del 27-nov-2026).
-    titulo: (n: number) => (n >= 3 ? "Tu perfil y tus 3 deptos están listos." : n === 0 ? "Tu perfil está listo." : `Tu perfil y ${n === 1 ? "el depto que calza" : `los ${n} deptos que calzan`} están listos.`),
-    cuerpo: (n: number) => `Crea tu cuenta gratis para ${n === 0 ? "verlo" : "verlos"}. Tu cuenta nueva trae un crédito de regalo.`,
+    titulo: (n: number) => (n >= 3 ? "Tu perfil y tus 3 deptos están listos." : n === 0 ? "Tu perfil está listo." : `Tu perfil y ${n === 1 ? "tu depto están listos." : `tus ${n} deptos están listos.`}`),
+    cuerpo: (n: number) => (n === 0 ? "Crea tu cuenta gratis y te lo muestro. Trae un crédito de regalo." : `Crea tu cuenta gratis y te ${n === 1 ? "lo" : "los"} muestro. Trae un crédito de regalo.`),
+    chat: "Listo. Ya sé lo que buscas y hasta dónde llegas.",
+    boton: "Crear mi cuenta",
   },
   // El perfil
   perfil: {
@@ -172,9 +186,13 @@ export const ASESORIA_COPY = {
     capacidad: "Puedes comprar hasta aprox.",
     aporte: (a: number) => (a === 0 ? "Sin poner plata al mes" : `Hasta ${pesos(a)} al mes`),
     plazo: (p: number) => `Crédito a ${p} años`,
-    estresTitulo: "Si algo se mueve",
-    subeTasa: (x: number) => `Si la tasa sube 1 punto, tu dividendo sube ${pesos(x)} al mes.`,
-    mesVacio: (y: number) => `Con un mes sin arrendatario al año, pondrías ${pesos(y)} al mes.`,
+    // LA PREAPROBACIÓN (C12, 27-nov-2026): una línea según lo que contestó.
+    preaprobacion: {
+      tengo: "Con preaprobación ya puedes ofertar.",
+      tramite: "Con la preaprobación en trámite, apenas salga puedes ofertar.",
+      no: "Sin preaprobación, es lo primero que te pediría el banco.",
+    },
+    encabezadoDeptos: (tope: number, n: number) => `Hasta ${uf(tope)} · ${n === 0 ? "sin deptos todavía" : n === 1 ? "1 depto para ti" : `${n} deptos para ti`}`,
     avisos: {
       boletas: "Con boletas, los bancos piden 2 años de actividad y tus 2 últimas declaraciones de renta.",
       segunda: "Algunos bancos piden 30 % de pie en la segunda vivienda.",
@@ -182,14 +200,21 @@ export const ASESORIA_COPY = {
     },
     // Con menos de 3, no dice «3» (paseo del 27-nov-2026).
     tresTitulo: (n: number) => (n >= 3 ? "Tus 3 deptos" : "Tus deptos"),
-    porQue: { rinde: "El que mejor rinde", pide_menos: "El que pide menos al mes", distinto: "Uno distinto", otro: "Otro que te calza" },
+    // LAS DOS ETIQUETAS (decisión de Fabrizio, 27-nov-2026), solo cuando son verdad (tarjetas.ts).
+    masBarato: "El más barato",
+    metro: (nombre: string, m: number) => `A ${miles(Math.round(m / 10) * 10)} m del metro ${nombre}`,
+    comprar: "Comprar",
+    // La prueba de tasa de cada depto (C8): reemplaza a «Si algo se mueve».
+    aguanta: "Aguanta si la tasa sube 1 punto",
+    conPunto: (x: number) => `Con un punto más de tasa, pones ${pesos(x)} al mes`,
+    seguirDeptos: "Seguir con estos deptos",
     menos: (n: number) => `Con todo lo que me dijiste, encontré ${n}.`,
     ninguno: "Con todo lo que me dijiste, hoy no encontré ninguno.",
     sinPalanca: "Si abres las zonas, aparecen más.",
     // Menos de 3 (punto 5): no se rellena; la palanca que más mueve, con la cifra.
     palancaAporte: (a: number, n: number) => `Si pones hasta ${pesos(a)} al mes, aparecen ${miles(n)}.`,
     palancaPie: (p: number, n: number) => `Con un pie de ${uf(p)}, aparecen ${miles(n)}.`,
-    flujo: (f: number, plazo: number) => (f >= 0 ? `Te sobran ${pesos(f)} al mes a ${plazo} años` : `Pones ${pesos(-f)} al mes a ${plazo} años`),
+    flujo: (f: number) => (f >= 0 ? { fuerte: `Te deja ${pesos(f)}`, resto: " al mes" } : { fuerte: `Pones ${pesos(-f)}`, resto: " al mes" }),
     cap: (c: number) => `Cap rate ${pct1(c * 100)} %`,
     ver: "Ver en el mapa",
     lupa: "Los pasos antes de pedir el crédito",

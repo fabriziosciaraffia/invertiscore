@@ -1,17 +1,17 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// LA ASESORÍA EN EL MAPA · ENTREGA 1 (27-nov-2026, láminas P0–P7, Burbuja y Recorrido; decisiones de Fabrizio del 27-nov). Solo
-// chips, sin IA ni texto libre. Detrás del interruptor (acceso.ts): la página la monta solo si está habilitada para esta visita.
-//   · LA BURBUJA reemplaza a la bienvenida sin cuenta y aparece cuando ya miró deptos (explorar-cliente decide `lista`: 2 tarjetas
-//     abiertas, o 20 s con 2 movimientos del mapa). Cerrada, queda chica en la esquina con «Retomar».
-//   · LAS SEIS PREGUNTAS: experiencia, objetivo, «Tus números» (una tarjeta y «Listo», después la fórmula), cuánto pone al mes
-//     (el slider de altos fijos), dónde y la lupa. P4 (usado o proyecto) está construido pero escondido (PROYECTOS_VISIBLE).
-//   · LA BARRA de avance siempre a la vista; UNA pantalla, UN paso: un solo botón principal que dice adónde lleva.
-//   · LA CUENTA EN VIVO sobre el mapa («X de 19.056 calzan contigo»), calculada en el navegador: la capacidad no sale de él; al
-//     servidor viaja solo el alto del slider (aporte.ts) y él devuelve id con la máscara de los cuatro plazos.
-//   · EL CIERRE crea la cuenta con el regalo de siempre (la hoja de registro); con cuenta, el perfil (tipo, capacidad, estrés y
-//     avisos) y sus 3 deptos, con «Ver en el mapa» que abre la tarjeta de siempre con su botón.
+// LA ASESORÍA EN EL MAPA (27-nov-2026, láminas P0–P7, Burbuja y Recorrido; segunda vuelta del 27-nov con la lámina «Con punch, sin
+// abusar»). Solo chips, sin IA ni texto libre. Detrás del interruptor (acceso.ts): la página la monta solo si está habilitada.
+//   · LA BURBUJA reemplaza a la bienvenida sin cuenta y aparece cuando ya miró deptos (explorar-cliente decide `lista`). Parte con el
+//     número —«4.512 de 19.037 convienen»— en la banda del degradado. Cerrada, queda chica en la esquina con «Retomar».
+//   · LAS PREGUNTAS: experiencia, objetivo, «Tus números» (una tarjeta y «Listo», después la fórmula), cuánto pone al mes, dónde y la
+//     lupa. EL APORTE (C7): si con 0 al mes calzan al menos 8 de cada 10 de los que le alcanzan, la buena noticia en vez del slider.
+//   · EL DEGRADADO va SOLO en la burbuja y en la tarjeta del tope; el rojo, solo en «Partir» y «Seguir con estos deptos».
+//   · CADA PANTALLA ABRE CON SU PRIMER MENSAJE NUEVO ARRIBA (E15): la hoja se lee desde ahí, también en el teléfono.
+//   · LA CUENTA EN VIVO sobre el mapa, calculada en el navegador: la capacidad no sale de él; al servidor viaja solo el alto del slider.
+//   · EL CIERRE crea la cuenta con el regalo de siempre; con cuenta, el perfil y sus deptos —ordenados por lo que dejan al mes, con la
+//     vista de la calle— y «Seguir con estos deptos», que lleva a Invierte con Franco con los tres.
 // Todo con `ph-no-capture` (la grabación de PostHog no ve ni los chips) y eventos sin montos (eventos.ts).
 // ─────────────────────────────────────────────────────────────────────────────
 import "./asesoria.css";
@@ -20,12 +20,13 @@ import { usePostHog } from "@/lib/posthog-react";
 import type { PinMapa } from "@/lib/explorar/portal";
 import type { ConteoClases } from "@/lib/explorar/mapa-todos";
 import { cargarReferencias, type DatosComunas } from "@/lib/explorar/capas-referencia";
+import { ImagenDepto, useCalle } from "@/components/guia/ImagenDepto";
 import {
-  APORTES, BARRAS_N, BARRAS_PASO, idsDelPlazo, type Aporte, type PlazoMascara, type RespuestaAporte,
+  APORTES, BARRAS_N, BARRAS_PASO, idsDelPlazo, sePaganSolos, type Aporte, type PlazoMascara, type RespuestaAporte,
 } from "@/lib/asesoria/aporte";
 import {
   CHIPS_DEUDAS, CHIPS_EDAD, CHIPS_PIE, CHIPS_PREAPROBACION, CHIPS_RENTA, CHIPS_TIPO_RENTA, avisosDelPerfil, capacidad, edadDeChip,
-  numerosValidos, type Capacidad, type Numeros, type TipoPerfil,
+  numerosValidos, topeConMasPie, type Capacidad, type Numeros, type TipoPerfil,
 } from "@/lib/asesoria/capacidad";
 import { ASESORIA_COPY as C, fraccion, miles, pesos, uf as fUF } from "@/lib/asesoria/copy";
 import {
@@ -33,19 +34,20 @@ import {
   type EstadoAsesoria, type Lupa, type ModoDonde, type Paso,
 } from "@/lib/asesoria/estado";
 import { EVENTOS_ASESORIA, propsBase, propsPaso } from "@/lib/asesoria/eventos";
-import { cercaDe, cercaDelMetro, comunaEn, comunasQueMasRinden, RADIO_PEGA_M } from "@/lib/asesoria/lugar";
+import { cercaDelMetro, comunaEn, comunasQueMasRinden } from "@/lib/asesoria/lugar";
 import { palancaFormula } from "@/lib/asesoria/palanca";
+import type { TarjetaDepto } from "@/lib/asesoria/tarjetas";
 import type { MarcasMapa } from "../mapa-explorar";
 
-/** `quieto`: en «Dónde» el mapa no se reencuadra mientras se tocan comunas (saltaría bajo el dedo). */
-export interface FiltroAsesoria { ids: Set<string> | null; marcas: MarcasMapa | null; quieto?: boolean }
+/** `quieto`: en «Dónde» el mapa no se reencuadra mientras se tocan comunas (saltaría bajo el dedo). `cerrada`: la hoja está cerrada y
+ *  el filtro sigue puesto (el botón Filtros lo muestra y deja quitarlo, F22). */
+export interface FiltroAsesoria { ids: Set<string> | null; marcas: MarcasMapa | null; quieto?: boolean; cerrada?: boolean }
 
-interface Agregados { rinde: Array<{ comuna: string; cap: number; n: number }>; dist: Record<string, number[]> | null; total: number | null; tasa: number; uf: number }
+interface Agregados { rinde: Array<{ comuna: string; cap: number; n: number }>; santiago: number | null; dist: Record<string, number[]> | null; total: number | null; tasa: number; uf: number }
 interface Resultado {
   tipo: TipoPerfil;
   capacidad: Capacidad;
-  estres: { subeTasaCLP: number; mesVacioCLP: number | null };
-  tres: Array<{ id: string; porQue: "rinde" | "pide_menos" | "distinto" | "otro"; comuna: string; dormitorios: number; precioUF: number; flujo: number | null; cap: number | null }>;
+  tres: TarjetaDepto[];
   plazo: number;
   conveniencia: { x: number; y: number } | null;
   palanca: { tipo: "aporte"; aporte: number; n: number } | { tipo: "pie"; pieUF: number; n: number } | null;
@@ -53,6 +55,11 @@ interface Resultado {
 
 const almacen = () => (typeof window === "undefined" ? null : window.sessionStorage);
 const tipologia = (d: number) => (d === 0 ? "Estudio" : `${d}D`);
+const pct1 = (x: number) => `${(Math.round(x * 1000) / 10).toLocaleString("es-CL", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} %`;
+
+/** «Seguir con estos deptos» (D14): el primero en la dirección y los otros dos en `mas` (se suman solos al firmar la orden). */
+export const urlSeguirDeptos = (ids: readonly string[]): string =>
+  `/invierte/${ids[0]}?${new URLSearchParams({ desde: "explorar", ...(ids.length > 1 ? { mas: ids.slice(1).join(",") } : {}) })}`;
 
 export function Asesoria(p: {
   esPrueba: boolean;
@@ -65,8 +72,12 @@ export function Asesoria(p: {
   lista: boolean;
   /** El último toque del mapa fuera de un pin. */
   toque: { lat: number; lng: number; t: number } | null;
+  /** La tarjeta de un depto está abierta: «Retomar» se esconde para no tapar sus botones (F23). */
+  tapado?: boolean;
+  /** Cambia cada vez que la persona quita el filtro de su perfil desde el botón Filtros (F22). */
+  quitarFiltro?: number;
   alFiltrar: (f: FiltroAsesoria | null) => void;
-  alRegistrar: (r: { comunas: string[]; topeUF: number }) => void;
+  alRegistrar: (r: { comunas: string[]; topeUF: number; deptos: number }) => void;
   alVerDepto: (avisoId: string) => void;
   /** Lo que tapa la hoja sobre el mapa (para que el encuadre deje los pines a la vista); null sin hoja. */
   alTapar?: (a: { abajo: number; derecha: number } | null) => void;
@@ -81,7 +92,8 @@ export function Asesoria(p: {
   const [respuestas, setRespuestas] = useState<Record<number, RespuestaAporte>>({});
   const [topado, setTopado] = useState(false);
   const [numerosAbiertos, setNumerosAbiertos] = useState(false);
-  const [esperandoPega, setEsperandoPega] = useState(false);
+  // «Puedo poner algo al mes» (C7): abre el slider aunque la buena noticia diga que no hace falta.
+  const [sliderAbierto, setSliderAbierto] = useState(false);
   const [comunas, setComunas] = useState<DatosComunas | null>(null);
   const [burbujaVista, setBurbujaVista] = useState(false);
   const pedidas = useRef(new Set<number>());
@@ -125,33 +137,44 @@ export function Asesoria(p: {
   // Las comunas del mapa (para tocar en «Dónde»): las mismas de la capa de referencia.
   useEffect(() => { if (e?.paso === "donde" && !comunas) void cargarReferencias().then((r) => setComunas(r.comunas)); }, [e?.paso, comunas]);
 
+  // Quitar el filtro desde el botón Filtros (F22): el mapa vuelve entero hasta «Retomar».
+  const quitarVisto = useRef(p.quitarFiltro ?? 0);
+  useEffect(() => {
+    if (!p.quitarFiltro || p.quitarFiltro === quitarVisto.current) return;
+    quitarVisto.current = p.quitarFiltro;
+    cambiar((x) => ({ ...x, sinFiltro: true }));
+  }, [p.quitarFiltro, cambiar]);
+
   const numeros = e && numerosValidos(e.numeros) ? (e.numeros as Numeros) : null;
   const cap = useMemo(() => (numeros && agregados ? capacidad(numeros, { tasaPct: agregados.tasa, uf: agregados.uf }) : null), [numeros, agregados]);
   const plazo = (numeros ? edadDeChip(numeros.edad).plazo : 30) as PlazoMascara;
   const aporte = e?.aporte ?? null;
   const pasoN = e ? PASO_N[e.paso] : 0;
-  // EL ALTO QUE SE PIDE: desde el slider, el elegido. En la fórmula, con plazo menor a 30 años, el más alto del slider: así «te
-  // alcanzan» ya cuenta solo los que son Comprar a SU plazo (paseo del 27-nov-2026: la fórmula decía 3.805 te alcanzan y, al lado,
-  // «con tu plazo de 20 años convienen 1.451»). Sigue viajando uno de los altos fijos, nunca una cifra de la persona.
+  // EL ALTO QUE SE PIDE: desde el aporte, el elegido (0 mientras no abra el slider). En la fórmula, con plazo menor a 30 años, el más
+  // alto del slider: así «te alcanzan» ya cuenta solo los que son Comprar a SU plazo. Sigue viajando uno de los altos fijos.
   const altoPedido: Aporte | null = pasoN >= PASO_N.aporte ? aporte : pasoN >= PASO_N.formula && plazo < 30 ? ALTO_MAXIMO : null;
+  // En el aporte hace falta además el alto máximo (los que «te alcanzan», para la buena noticia).
+  const altoAlcanzan: Aporte | null = e?.paso === "aporte" && plazo < 30 ? ALTO_MAXIMO : null;
 
   // El aporte: un alto del slider por pedido, con su respuesta recordada.
   useEffect(() => {
-    const alto = altoPedido;
-    if (alto == null || respuestas[alto] || pedidas.current.has(alto)) return;
+    const faltan = [altoPedido, altoAlcanzan].filter((a): a is Aporte => a != null && !respuestas[a] && !pedidas.current.has(a));
+    if (!faltan.length) return;
     const t = window.setTimeout(() => {
-      pedidas.current.add(alto);
-      void fetch("/api/asesoria/aporte", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ aporte: alto }) })
-        .then(async (r) => {
-          if (r.status === 429) { setTopado(true); pedidas.current.delete(alto); return; }
-          if (!r.ok) { pedidas.current.delete(alto); return; }
-          const d = (await r.json()) as RespuestaAporte;
-          setTopado(false);
-          setRespuestas((x) => ({ ...x, [alto]: d }));
-        }).catch(() => { pedidas.current.delete(alto); });
+      for (const alto of faltan) {
+        pedidas.current.add(alto);
+        void fetch("/api/asesoria/aporte", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ aporte: alto }) })
+          .then(async (r) => {
+            if (r.status === 429) { setTopado(true); pedidas.current.delete(alto); return; }
+            if (!r.ok) { pedidas.current.delete(alto); return; }
+            const d = (await r.json()) as RespuestaAporte;
+            setTopado(false);
+            setRespuestas((x) => ({ ...x, [alto]: d }));
+          }).catch(() => { pedidas.current.delete(alto); });
+      }
     }, 250);
     return () => window.clearTimeout(t);
-  }, [altoPedido, respuestas]);
+  }, [altoPedido, altoAlcanzan, respuestas]);
 
   // ── LO QUE CALZA, en el navegador ──
   const idsAporte = altoPedido != null && respuestas[altoPedido] ? idsDelPlazo(respuestas[altoPedido], plazo) : null;
@@ -159,7 +182,6 @@ export function Asesoria(p: {
     const d = e?.donde;
     if (!d) return null;
     if (d.modo === "metro") return (x: PinMapa) => cercaDelMetro(x);
-    if (d.modo === "pega") return d.pega ? (x: PinMapa) => cercaDe(d.pega!)(x) : null;
     return d.comunas.length ? (x: PinMapa) => d.comunas.includes(x.comuna) : null;
   }, [e?.donde]);
   const calzan = useMemo((): PinMapa[] | null => {
@@ -169,6 +191,13 @@ export function Asesoria(p: {
     if (pasoN >= PASO_N.donde && enLugar) xs = xs.filter(enLugar);
     return xs;
   }, [cap, pasoN, p.comprar, idsAporte, enLugar]);
+  // LOS QUE TE ALCANZAN en el aporte (los mismos de la fórmula: tope y, con plazo corto, Comprar a su plazo): la base de «X de cada 10».
+  const idsAlcanzan = altoAlcanzan != null && respuestas[altoAlcanzan] ? idsDelPlazo(respuestas[altoAlcanzan], plazo) : null;
+  const alcanzanAporte = useMemo((): number | null => {
+    if (e?.paso !== "aporte" || !cap) return null;
+    if (altoAlcanzan != null && !idsAlcanzan) return null;
+    return p.comprar.filter((x) => x.precioUF <= cap.topeUF && (!idsAlcanzan || idsAlcanzan.has(x.avisoId))).length;
+  }, [e?.paso, cap, altoAlcanzan, idsAlcanzan, p.comprar]);
   // Mientras no llega la respuesta del alto elegido, «Calzan» dice «…»: la cifra anterior no es la de este alto (paseo del 27-nov-2026).
   const aportePendiente = altoPedido != null && !respuestas[altoPedido];
   const convienen = p.conteo?.comprar ?? p.comprar.length;
@@ -178,37 +207,39 @@ export function Asesoria(p: {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   [e?.paso, cap, numeros, agregados, aportePendiente, calzan, p.comprar]);
   const total = p.conteo ? p.conteo.comprar + p.conteo.ajustar + p.conteo.no : null;
+  // LA BUENA NOTICIA DEL APORTE (C7): con 0 al mes (antes de abrir el slider), ¿cuántos de los que le alcanzan se pagan solos?
+  const solos = e?.paso === "aporte" && !sliderAbierto && aporte === 0 && !aportePendiente && calzan && alcanzanAporte != null
+    ? { ...sePaganSolos(alcanzanAporte, calzan.length), n: calzan.length, m: alcanzanAporte } : null;
+  // Sin la buena noticia, el slider queda abierto: moverlo ya no vuelve a decidir (la decisión se toma una vez, con 0 al mes).
+  const sinBuenaNoticia = solos != null && !solos.mostrar;
+  useEffect(() => { if (sinBuenaNoticia && !sliderAbierto) setSliderAbierto(true); }, [sinBuenaNoticia, sliderAbierto]);
 
-  // El filtro del mapa: los que calzan y, en «Dónde», las marcas. En el perfil, sus 3.
+  // El filtro del mapa: los que calzan y, en «Dónde», las marcas. En el perfil, sus deptos. Sin filtro si la persona lo quitó (F22).
+  const filtroQuitado = e?.sinFiltro === true && visible === "chica";
   const marcas: MarcasMapa | null = e?.paso === "donde" || (e?.donde && pasoN >= PASO_N.donde && pasoN < PASO_N.perfil)
-    ? { todas: e?.paso === "donde", comunas: e?.donde?.modo === "comunas" || e?.donde?.modo === "rinde" ? e.donde.comunas : [], pega: e?.donde?.pega ? { ...e.donde.pega, radioM: RADIO_PEGA_M } : null }
+    ? { todas: e?.paso === "donde", comunas: e?.donde?.modo === "comunas" || e?.donde?.modo === "rinde" ? e.donde.comunas : [] }
     : null;
-  const claveFiltro = visible === "nada" || visible === "burbuja" ? "nada"
+  const claveFiltro = visible === "nada" || visible === "burbuja" || filtroQuitado ? "nada"
     : e?.paso === "perfil" && resultado ? `perfil|${visible}|${resultado.tres.map((t) => t.id).join()}`
     : `${visible}|${calzan ? calzan.length : "-"}|${calzan?.[0]?.avisoId ?? ""}|${JSON.stringify(marcas)}`;
   useEffect(() => {
-    if (visible === "nada" || visible === "burbuja") { p.alFiltrar(null); return; }
+    if (visible === "nada" || visible === "burbuja" || filtroQuitado) { p.alFiltrar(null); return; }
     if (e?.paso === "perfil") { p.alFiltrar(resultado && visible === "abierta" ? { ids: new Set(resultado.tres.map((t) => t.id)), marcas: null } : null); return; }
-    p.alFiltrar({ ids: calzan ? new Set(calzan.map((x) => x.avisoId)) : null, marcas, quieto: e?.paso === "donde" });
+    p.alFiltrar({ ids: calzan ? new Set(calzan.map((x) => x.avisoId)) : null, marcas, quieto: e?.paso === "donde", cerrada: visible === "chica" && !!calzan });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [claveFiltro]);
 
-  // «Dónde»: tocar el mapa elige o quita una comuna, o pone el punto de la pega.
+  // «Dónde»: tocar el mapa elige o quita una comuna.
   const ultimoToque = useRef<number>(0);
   useEffect(() => {
     if (!p.toque || p.toque.t === ultimoToque.current || e?.paso !== "donde") return;
     ultimoToque.current = p.toque.t;
-    if (esperandoPega) {
-      setEsperandoPega(false);
-      cambiar((x) => ({ ...x, donde: { modo: "pega", comunas: [], pega: { lat: p.toque!.lat, lng: p.toque!.lng } } }));
-      return;
-    }
     const c = comunaEn(p.toque.lat, p.toque.lng, comunas);
     if (!c) return;
     cambiar((x) => {
       const ya = x.donde?.modo === "comunas" ? x.donde.comunas : [];
       const nuevas = ya.includes(c) ? ya.filter((y) => y !== c) : [...ya, c];
-      return { ...x, donde: nuevas.length ? { modo: "comunas", comunas: nuevas, pega: null } : null };
+      return { ...x, donde: nuevas.length ? { modo: "comunas", comunas: nuevas } : null };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [p.toque]);
@@ -236,15 +267,14 @@ export function Asesoria(p: {
     if ((e.paso === "cierre" || e.paso === "perfil") && listoParaPerfil(e)) void pedirPerfil(e);
   }, [e, p.sinCuenta, cargandoPerfil, resultado, errorPerfil, pedirPerfil]);
 
-  // LA CONVERSACIÓN BAJA SOLA (paseo del 27-nov-2026): al cambiar de pantalla se ve lo último —la reacción y la pregunta—, salvo
-  // «Tus números», que se lee desde arriba.
-  const pasoVisto = `${e?.paso ?? ""}|${numerosAbiertos}|${e?.lupa ?? ""}|${resultado ? 1 : 0}|${e?.donde?.modo ?? ""}|${e?.cerrada ? 1 : 0}`;
+  // CADA PANTALLA ABRE CON SU PRIMER MENSAJE NUEVO ARRIBA (E15, decisión de Fabrizio del 27-nov-2026; reemplaza a «la conversación baja
+  // sola»): el primer mensaje de Franco de lo nuevo —el marcado `data-inicio`, el último de los marcados si hay varios— queda arriba de
+  // la hoja. Si todo cabe, no se mueve nada.
+  const pasoVisto = `${e?.paso ?? ""}|${numerosAbiertos}|${e?.lupa ?? ""}|${resultado ? 1 : 0}|${e?.cerrada ? 1 : 0}|${sliderAbierto ? 1 : 0}|${solos ? 1 : 0}`;
   useEffect(() => {
     const conv = hojaRef.current?.querySelector<HTMLElement>(".as-conv");
     if (!conv) return;
-    // «Tus números» y el perfil se leen desde arriba; lo demás, desde lo último.
-    const arriba = (e?.paso === "numeros" && numerosAbiertos) || e?.paso === "perfil";
-    const t = window.setTimeout(() => { conv.scrollTop = arriba ? 0 : conv.scrollHeight; }, 60);
+    const t = window.setTimeout(() => { conv.scrollTop = scrollAlInicio(conv); }, 60);
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pasoVisto, agregados]);
@@ -280,41 +310,52 @@ export function Asesoria(p: {
   const partir = () => { cambiar(() => ({ ...ESTADO_INICIAL })); capture(EVENTOS_ASESORIA.abierta, propsBase(prueba)); };
   const cerrar = () => { cambiar((x) => ({ ...x, cerrada: true })); capture(EVENTOS_ASESORIA.cerrada, propsBase(prueba, { paso: e?.paso ?? "burbuja" })); };
   const cerrarBurbuja = () => { cambiar(() => ({ ...ESTADO_INICIAL, cerrada: true })); capture(EVENTOS_ASESORIA.cerrada, propsBase(prueba, { paso: "burbuja" })); };
-  const retomar = () => { cambiar((x) => ({ ...x, cerrada: false })); capture(EVENTOS_ASESORIA.retomada, propsBase(prueba, { paso: e?.paso ?? "gancho" })); };
+  const retomar = () => { cambiar((x) => ({ ...x, cerrada: false, sinFiltro: false })); capture(EVENTOS_ASESORIA.retomada, propsBase(prueba, { paso: e?.paso ?? "gancho" })); };
 
   if (visible === "nada") return null;
 
   if (visible === "burbuja") {
+    const n = p.conteo && total ? C.burbuja.numero(p.conteo.comprar, total) : null;
     return (
       <section className="as-raiz as-burbuja ph-no-capture" data-asesoria="burbuja" aria-label={C.burbuja.titulo} style={{ ["--as-abajo" as string]: `${abajo}px` }}>
-        <div className="as-burbuja-cab">
-          <p className="as-burbuja-t"><span className="as-avatar" aria-hidden="true">F</span>{C.burbuja.titulo}</p>
-          <button type="button" className="as-x" aria-label={C.cerrar} onClick={cerrarBurbuja} data-asesoria="burbuja-cerrar"><X /></button>
+        <div className="as-banda" data-asesoria="burbuja-banda">
+          <button type="button" className="as-x as-x-claro" aria-label={C.cerrar} onClick={cerrarBurbuja} data-asesoria="burbuja-cerrar"><X /></button>
+          {n && p.conteo && total ? (
+            <>
+              <p className="as-banda-n"><b data-asesoria="burbuja-numero">{n.n}</b><span>{n.de}</span></p>
+              <div className="as-banda-barra" aria-hidden="true"><i style={{ width: `${(p.conteo.comprar / total) * 100}%` }} /><i data-clase="ajustar" style={{ width: `${(p.conteo.ajustar / total) * 100}%` }} /></div>
+              <p className="as-banda-k">{C.burbuja.revisados}</p>
+            </>
+          ) : <p className="as-banda-k">{C.burbuja.revisados}</p>}
         </div>
-        <p className="as-burbuja-c">{C.burbuja.cuerpo}</p>
-        <button type="button" className="as-principal" onClick={partir} data-asesoria="partir">{C.burbuja.boton}</button>
+        <div className="as-burbuja-cuerpo">
+          <p className="as-burbuja-t"><Icono />{C.burbuja.titulo}</p>
+          <p className="as-burbuja-c">{C.burbuja.cuerpo}</p>
+          <button type="button" className="as-principal" data-rojo="1" onClick={partir} data-asesoria="partir">{C.burbuja.boton}</button>
+        </div>
       </section>
     );
   }
 
-  // La cuenta sobre el mapa (láminas P0–P6): «4.513 de 19.056 convienen» hasta la fórmula; desde ahí, «1.240 de 19.056 calzan
-  // contigo» con los que convienen tachados al lado.
+  // La cuenta sobre el mapa: «4.512 de 19.037 convienen» hasta la fórmula; desde ahí, «3.624 de los 4.512 que convienen te calzan» (F19).
   // Mientras llega la respuesta del alto, la pastilla vuelve a «convienen»: la cifra anterior no es la de este alto.
   const calzanVisto = aportePendiente ? null : calzan;
   const cuenta = total != null && (
     <p className="as-raiz as-cuenta ph-no-capture" data-asesoria="cuenta" data-n={calzanVisto ? calzanVisto.length : convienen}>
-      <span className="as-cuenta-n">{miles(calzanVisto ? calzanVisto.length : convienen)} de {miles(total)}</span>
       {calzanVisto
-        ? <span className="as-cuenta-t">{C.calzanContigo}<span className="as-cuenta-antes">{miles(convienen)}</span></span>
-        : <span className="as-cuenta-t">{C.convienen}</span>}
+        ? <span className="as-cuenta-t" data-asesoria="cuenta-calzan">{C.calzanDe(calzanVisto.length, convienen)}</span>
+        : <><span className="as-cuenta-n">{miles(convienen)} de {miles(total)}</span><span className="as-cuenta-t">{C.convienen}</span></>}
     </p>
   );
 
   if (visible === "chica" || !e) {
+    // Cerrada: la cuenta solo si el filtro sigue puesto (en el perfil, o quitado, el mapa ya muestra su propio contador: F23), y
+    // «Retomar» se esconde mientras la tarjeta de un depto está abierta (tapaba sus botones, F23).
+    const conCuenta = !!e && e.paso !== "perfil" && !filtroQuitado && !!calzan;
     return (
       <>
-        {cuenta}
-        <button type="button" className="as-raiz as-chica ph-no-capture" onClick={retomar} data-asesoria="retomar" style={{ ["--as-abajo" as string]: `${abajo}px` }}><span className="as-avatar" data-chico="1" aria-hidden="true">F</span>{C.retomar}</button>
+        {conCuenta && cuenta}
+        {!p.tapado && <button type="button" className="as-raiz as-chica ph-no-capture" onClick={retomar} data-asesoria="retomar" style={{ ["--as-abajo" as string]: `${abajo}px` }}><Icono chico />{C.retomar}</button>}
       </>
     );
   }
@@ -325,12 +366,14 @@ export function Asesoria(p: {
       {e.paso !== "perfil" && cuenta}
       <section ref={hojaRef} className="as-raiz as-hoja ph-no-capture" data-asesoria="hoja" data-paso={e.paso} aria-label={C.franco} style={{ ["--as-abajo" as string]: `${abajo}px` }}>
         <div className="as-cab">
-          <div className="as-quien"><span className="as-avatar" data-chico="1" aria-hidden="true">F</span><p className="as-quien-n" data-asesoria="encabezado"><b>{C.franco}</b> · {C.encabezado}</p></div>
+          <div className="as-quien"><Icono chico /><p className="as-quien-n" data-asesoria="encabezado"><b>{C.franco}</b> · {C.encabezado}</p></div>
           <button type="button" className="as-x" style={{ margin: 0 }} aria-label={C.cerrar} onClick={cerrar} data-asesoria="cerrar"><X size={18} /></button>
         </div>
-        <ol className="as-barra" aria-label="Avance" data-asesoria="barra">
-          {C.segmentos.map((s, i) => <li key={s} className="as-seg" data-av={String(av[i])}><i />{s}</li>)}
-        </ol>
+        {e.paso !== "perfil" && (
+          <ol className="as-barra" aria-label="Avance" data-asesoria="barra">
+            {C.segmentos.map((s, i) => <li key={s} className="as-seg" data-av={String(av[i])}><i />{s}</li>)}
+          </ol>
+        )}
         {e.paso === "gancho" && <Gancho conteo={p.conteo} alResponder={(x) => { responder("gancho", x); cambiar((s) => ({ ...s, experiencia: x, paso: "objetivo" })); }} />}
         {e.paso === "objetivo" && e.experiencia && <Objetivo experiencia={e.experiencia} alResponder={(x) => { responder("objetivo", x); cambiar((s) => ({ ...s, objetivo: x, paso: "numeros" })); setNumerosAbiertos(false); }} />}
         {e.paso === "numeros" && e.objetivo && !numerosAbiertos && <AntesDeNumeros objetivo={e.objetivo} agregados={agregados} alSeguir={() => setNumerosAbiertos(true)} />}
@@ -339,23 +382,28 @@ export function Asesoria(p: {
             alListo={() => { responder("numeros", null); cambiar((s) => ({ ...s, paso: "formula" })); }} />
         )}
         {e.paso === "formula" && <Formula cap={cap} alcanzan={aportePendiente ? null : calzan?.length ?? null} plazoCorto={plazoCortoDe(agregados, plazo)} palanca={palancaCero}
-            interesNuevos={e.interesNuevos === true} alAvisar={avisarNuevos}
-            alAjustar={() => { responder("formula", "ajustar"); setNumerosAbiertos(true); cambiar((s) => ({ ...s, paso: "numeros" })); }} alSeguir={() => { responder("formula", null); cambiar((s) => ({ ...s, paso: PROYECTOS_VISIBLE ? "proyecto" : "aporte", aporte: s.aporte ?? 100_000 })); }} />}
+            frena={cap ? topeConMasPie(cap) : null} interesNuevos={e.interesNuevos === true} alAvisar={avisarNuevos}
+            alAjustar={() => { responder("formula", "ajustar"); setNumerosAbiertos(true); cambiar((s) => ({ ...s, paso: "numeros" })); }}
+            alSeguir={() => { responder("formula", null); setSliderAbierto(false); cambiar((s) => ({ ...s, paso: PROYECTOS_VISIBLE ? "proyecto" : "aporte", aporte: 0 })); }} />}
         {e.paso === "aporte" && (
-          <AlMes aporte={e.aporte ?? 100_000} dist={agregados?.dist?.[String(plazo)] ?? null} calzan={aportePendiente ? null : calzan?.length ?? null} topado={topado}
-            alCambiar={(a) => cambiar((s) => ({ ...s, aporte: a }))} alSeguir={() => { responder("aporte", null); cambiar((s) => ({ ...s, paso: "donde" })); }} />
+          solos?.mostrar && !sliderAbierto ? (
+            <BuenaNoticia k={solos.k} n={solos.n} m={solos.m}
+              alPoner={() => { setSliderAbierto(true); cambiar((s) => ({ ...s, aporte: 100_000 })); }}
+              alSeguir={() => { responder("aporte", "solos"); cambiar((s) => ({ ...s, aporte: 0, paso: "donde" })); }} />
+          ) : solos || sliderAbierto ? (
+            <AlMes aporte={e.aporte ?? 0} dist={agregados?.dist?.[String(plazo)] ?? null} calzan={aportePendiente ? null : calzan?.length ?? null} topado={topado}
+              alCambiar={(a) => cambiar((s) => ({ ...s, aporte: a }))} alSeguir={() => { responder("aporte", null); cambiar((s) => ({ ...s, paso: "donde" })); }} />
+          ) : <div className="as-conv" data-asesoria="paso-aporte-cargando"><p className="as-bf" data-inicio="1">…</p></div>
         )}
         {e.paso === "donde" && (
-          <Donde aporte={e.aporte ?? 0} donde={e.donde} esperandoPega={esperandoPega}
+          <Donde aporte={e.aporte ?? 0} donde={e.donde}
             alModo={(m) => {
-              if (m === "pega") { setEsperandoPega(true); cambiar((s) => ({ ...s, donde: null })); return; }
-              setEsperandoPega(false);
-              if (m === "metro") { cambiar((s) => ({ ...s, donde: { modo: "metro", comunas: [], pega: null } })); return; }
-              // Donde más rinde: las comunas con mayor cap rate medio entre las que tienen deptos que calzan.
+              if (m === "metro") { cambiar((s) => ({ ...s, donde: { modo: "metro", comunas: [] } })); return; }
+              // Donde más rinde: las comunas con mayor cap rate (la mediana) entre las que tienen deptos que calzan.
               const porComuna = new Map<string, number>();
               for (const x of calzan ?? []) porComuna.set(x.comuna, (porComuna.get(x.comuna) ?? 0) + 1);
               const cs = comunasQueMasRinden(agregados?.rinde ?? [], porComuna);
-              cambiar((s) => ({ ...s, donde: cs.length ? { modo: "rinde", comunas: cs, pega: null } : null }));
+              cambiar((s) => ({ ...s, donde: cs.length ? { modo: "rinde", comunas: cs } : null }));
             }}
             alQuitar={(c) => cambiar((s) => {
               const r = (s.donde?.comunas ?? []).filter((y) => y !== c);
@@ -365,14 +413,15 @@ export function Asesoria(p: {
         )}
         {e.paso === "lupa" && <LupaPaso lupa={e.lupa} alResponder={(x) => { responder("lupa", x); cambiar((s) => ({ ...s, lupa: x })); }} alSeguir={() => cambiar((s) => ({ ...s, paso: "cierre" }))} />}
         {e.paso === "cierre" && (
-          <Cierre sinCuenta={p.sinCuenta} cargando={cargandoPerfil} error={errorPerfil} calzan={calzan?.length ?? 0}
-            alCrear={() => { capture(EVENTOS_ASESORIA.cuenta, propsBase(prueba, { fase: "hoja" })); p.alRegistrar({ comunas: comunasDelRegistro(e, calzan), topeUF: cap?.topeUF ?? 0 }); }}
+          <Cierre sinCuenta={p.sinCuenta} cargando={cargandoPerfil} error={errorPerfil}
+            alCrear={() => { capture(EVENTOS_ASESORIA.cuenta, propsBase(prueba, { fase: "hoja" })); p.alRegistrar({ comunas: comunasDelRegistro(e, calzan), topeUF: cap?.topeUF ?? 0, deptos: Math.min(3, calzan?.length ?? 0) }); }}
             alReintentar={() => { setErrorPerfil(false); }} />
         )}
         {e.paso === "perfil" && (
           resultado
             ? <Perfil r={resultado} numeros={numeros} experiencia={e.experiencia} lupa={e.lupa} aporte={e.aporte ?? 0} pines={p.comprar} interesNuevos={e.interesNuevos === true} alAvisar={avisarNuevos}
-                alVer={(id) => { capture(EVENTOS_ASESORIA.verDepto, propsBase(prueba)); cambiar((x) => ({ ...x, cerrada: true })); p.alVerDepto(id); }} />
+                alVer={(id) => { capture(EVENTOS_ASESORIA.verDepto, propsBase(prueba)); cambiar((x) => ({ ...x, cerrada: true })); p.alVerDepto(id); }}
+                alSeguir={() => capture(EVENTOS_ASESORIA.seguirDeptos, propsBase(prueba, { n: resultado.tres.length }))} />
             : <Cierre sinCuenta={false} cargando={cargandoPerfil} error={errorPerfil} alCrear={() => {}} alReintentar={() => setErrorPerfil(false)} />
         )}
       </section>
@@ -382,7 +431,16 @@ export function Asesoria(p: {
 
 const PASO_N: Record<Paso, number> = { gancho: 0, objetivo: 1, numeros: 2, formula: 3, proyecto: 4, aporte: 5, donde: 6, lupa: 7, cierre: 8, perfil: 9 };
 
-/** Las comunas que guarda el alta (perfil_busqueda del semanal): las elegidas o, con metro o pega, las de los que calzan (máx. 8). */
+/** Dónde queda el scroll al abrir una pantalla (E15): el último `data-inicio` arriba, con 8 px de aire; sin marca, el primer mensaje
+ *  de Franco. Exportada para el tier ASESORIA. */
+export function scrollAlInicio(conv: HTMLElement): number {
+  const marcas = conv.querySelectorAll<HTMLElement>("[data-inicio]");
+  const el = marcas.length ? marcas[marcas.length - 1] : conv.querySelector<HTMLElement>(".as-bf, .as-tarjeta");
+  if (!el) return 0;
+  return Math.max(0, Math.round(el.getBoundingClientRect().top - conv.getBoundingClientRect().top + conv.scrollTop - 8));
+}
+
+/** Las comunas que guarda el alta (perfil_busqueda del semanal): las elegidas o, con metro, las de los que calzan (máx. 8). */
 function comunasDelRegistro(e: EstadoAsesoria, calzan: readonly PinMapa[] | null): string[] {
   if (e.donde && (e.donde.modo === "comunas" || e.donde.modo === "rinde") && e.donde.comunas.length) return e.donde.comunas.slice(0, 8);
   const n = new Map<string, number>();
@@ -394,6 +452,12 @@ function X({ size = 16 }: { size?: number }) {
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>;
 }
 
+/** El ícono de Franco (G24: reemplaza a la F negra). */
+function Icono({ chico = false }: { chico?: boolean }) {
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img className="as-avatar" data-chico={chico ? "1" : undefined} src="/icon.png" alt="" width={chico ? 32 : 36} height={chico ? 32 : 36} aria-hidden="true" />;
+}
+
 // ── P0 · el gancho ──────────────────────────────────────────────────────────
 function Gancho({ conteo, alResponder }: { conteo: ConteoClases | null; alResponder: (x: "primera" | "uno" | "varios") => void }) {
   const total = conteo ? conteo.comprar + conteo.ajustar + conteo.no : null;
@@ -402,7 +466,7 @@ function Gancho({ conteo, alResponder }: { conteo: ConteoClases | null; alRespon
       <div className="as-conv" data-asesoria="paso-gancho">
         {conteo && total ? (
           <>
-            <p className="as-bf">{C.gancho.revise(total, fraccion(conteo.comprar, total))}</p>
+            <p className="as-bf" data-asesoria="gancho-revise">{C.gancho.revise(total, fraccion(conteo.comprar, total))}</p>
             <div className="as-tarjeta">
               <p className="as-tarjeta-t">{C.gancho.tarjeta(total)}</p>
               <div className="as-prop" aria-hidden="true">
@@ -435,7 +499,7 @@ function Objetivo({ experiencia, alResponder }: { experiencia: "primera" | "uno"
     <>
       <div className="as-conv" data-asesoria="paso-objetivo">
         <p className="as-bu">{texto}</p>
-        <p className="as-bf">{C.reaccionExperiencia[experiencia]}</p>
+        <p className="as-bf" data-inicio="1">{C.reaccionExperiencia[experiencia]}</p>
         {experiencia === "primera" && (
           <div className="as-tarjeta">
             <p className="as-tarjeta-t">{P.titulo}</p>
@@ -458,27 +522,25 @@ function Objetivo({ experiencia, alResponder }: { experiencia: "primera" | "uno"
 // ── P2 · el objetivo ────────────────────────────────────────────────────────
 function AntesDeNumeros({ objetivo, agregados, alSeguir }: { objetivo: "arriendo" | "plusvalia" | "ambas" | "no_se"; agregados: Agregados | null; alSeguir: () => void }) {
   const texto = C.objetivo.find((o) => o.id === objetivo)!.texto;
-  // Las tres comunas que más rinden y, en gris, la de más avisos (la referencia), con un número por comuna.
+  // Las tres comunas que más rinden (la mediana, sin los cap rate sobre 12 % y con al menos 15 deptos) y, en gris, todo Santiago.
   const filas = useMemo(() => {
     if (!agregados?.rinde.length) return [];
-    const top = agregados.rinde.slice(0, 3);
-    const masAvisos = [...agregados.rinde].sort((a, b) => b.n - a.n).find((r) => !top.some((t) => t.comuna === r.comuna));
-    const xs = [...top.map((r) => ({ ...r, gris: false })), ...(masAvisos ? [{ ...masAvisos, gris: true }] : [])];
+    const top = agregados.rinde.slice(0, 3).map((r) => ({ comuna: r.comuna, cap: r.cap, gris: false }));
+    const xs = agregados.santiago != null ? [...top, { comuna: C.capRate.santiago, cap: agregados.santiago, gris: true }] : top;
     const max = Math.max(...xs.map((x) => x.cap));
     return xs.map((x) => ({ ...x, ancho: Math.round((x.cap / max) * 92) }));
   }, [agregados]);
-  const pct = (x: number) => `${(Math.round(x * 1000) / 10).toLocaleString("es-CL", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} %`;
   return (
     <>
       <div className="as-conv" data-asesoria="paso-numeros-antes">
         <p className="as-bu">{texto}</p>
-        <p className="as-bf">{C.reaccionObjetivo[objetivo]}</p>
+        <p className="as-bf" data-inicio="1">{C.reaccionObjetivo[objetivo]}</p>
         {objetivo !== "plusvalia" && filas.length > 0 && (
           <div className="as-tarjeta" data-asesoria="cap-rate">
             <div className="as-formula"><b>{C.capRate.nombre}</b><span>=</span><em>{C.capRate.arriendo}</em><span>÷</span><em>{C.capRate.precio}</em></div>
             <span className="as-k">{C.capRate.bajada}</span>
             {filas.map((f) => (
-              <div key={f.comuna} className="as-fila-cap" data-gris={f.gris ? "1" : undefined}><span>{f.comuna}</span><i><span style={{ width: `${f.ancho}%` }} /></i><b>{pct(f.cap)}</b></div>
+              <div key={f.comuna} className="as-fila-cap" data-gris={f.gris ? "1" : undefined} data-asesoria={f.gris ? "cap-santiago" : undefined}><span>{f.comuna}</span><i><span style={{ width: `${f.ancho}%` }} /></i><b>{pct1(f.cap)}</b></div>
             ))}
           </div>
         )}
@@ -503,7 +565,7 @@ function TusNumeros({ valores, alCambiar, alListo }: { valores: Partial<Numeros>
   );
   return (
     <div className="as-conv" data-asesoria="paso-numeros">
-      <div className="as-tarjeta" data-fuerte="1" style={{ gap: 11 }}>
+      <div className="as-tarjeta" data-fuerte="1" data-inicio="1" style={{ gap: 11 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}><b style={{ fontSize: 15 }}>{N.titulo}</b><span className="as-k">{n} de 6</span></div>
         {fila("renta", N.renta, CHIPS_RENTA)}
         {fila("tipoRenta", N.tipoRenta, CHIPS_TIPO_RENTA)}
@@ -526,7 +588,7 @@ function plazoCortoDe(a: Agregados | null, plazo: number): { plazo: number; x: n
   return { plazo, x: d.reduce((s, n) => s + n, 0), y: a.total };
 }
 
-/** «Avísame» de los nuevos (27-nov-2026): una salida —no una pregunta— cuando limita el pie o hay pocos usados; se guarda en el perfil. */
+/** «Avísame» de los nuevos (27-nov-2026): una salida —no una pregunta— solo cuando calzan menos de 3 (C11); se guarda en el perfil. */
 function OfertaNuevos({ dicho, alAvisar }: { dicho: boolean; alAvisar: () => void }) {
   if (dicho) return <p className="as-bf" data-asesoria="nuevos-listo">{C.nuevos.listo}</p>;
   return (
@@ -537,7 +599,35 @@ function OfertaNuevos({ dicho, alAvisar }: { dicho: boolean; alAvisar: () => voi
   );
 }
 
-function Formula({ cap, alcanzan, plazoCorto, palanca, interesNuevos, alAvisar, alAjustar, alSeguir }: { cap: Capacidad | null; alcanzan: number | null; plazoCorto: { plazo: number; x: number; y: number } | null; palanca: { pieUF: number; n: number } | null; interesNuevos: boolean; alAvisar: () => void; alAjustar: () => void; alSeguir: () => void }) {
+/** LA TARJETA DEL TOPE (G24): la cifra grande en la banda del degradado y, debajo, los dos límites como barras; el que manda, en azul. */
+function TarjetaTope({ cap }: { cap: Capacidad }) {
+  const F = C.formula;
+  const filas = [
+    { clave: "renta", etiqueta: cap.limita === "deudas" ? F.barraRenta.deudas : F.barraRenta.renta, valor: cap.topeRentaUF },
+    ...(cap.pieUF != null && cap.topePieUF != null ? [{ clave: "pie", etiqueta: F.barraPie(cap.pieUF), valor: cap.topePieUF }] : []),
+  ];
+  const max = Math.max(1, ...filas.map((f) => f.valor));
+  return (
+    <div className="as-tope" data-asesoria="tope">
+      <div className="as-banda">
+        <span className="as-banda-k">{F.puedes}</span>
+        <span className="as-banda-grande" data-asesoria="tope-cifra">{fUF(cap.topeUF)}</span>
+        <span className="as-banda-k">{F.sujeto}</span>
+      </div>
+      <div className="as-tope-filas">
+        {filas.map((f) => (
+          <div key={f.clave} className="as-tope-fila" data-asesoria={`tope-${f.clave}`} data-manda={f.valor === cap.topeUF ? "1" : undefined}>
+            <div className="as-tope-l"><span>{f.etiqueta}</span><b>{fUF(f.valor)}</b></div>
+            <i className="as-tope-barra"><span style={{ width: `${Math.round((f.valor / max) * 100)}%` }} /></i>
+          </div>
+        ))}
+        {cap.pieUF == null && <span className="as-k" data-asesoria="tope-sin-pie">{F.sinPieTope(cap.topeUF, cap.pieNecesarioUF ?? 0)}</span>}
+      </div>
+    </div>
+  );
+}
+
+function Formula({ cap, alcanzan, plazoCorto, palanca, frena, interesNuevos, alAvisar, alAjustar, alSeguir }: { cap: Capacidad | null; alcanzan: number | null; plazoCorto: { plazo: number; x: number; y: number } | null; palanca: { pieUF: number; n: number } | null; frena: number | null; interesNuevos: boolean; alAvisar: () => void; alAjustar: () => void; alSeguir: () => void }) {
   const F = C.formula;
   if (!cap) return <div className="as-conv"><p className="as-bf">…</p></div>;
   const tasa = cap.tasaPct.toLocaleString("es-CL", { maximumFractionDigits: 2 });
@@ -545,15 +635,15 @@ function Formula({ cap, alcanzan, plazoCorto, palanca, interesNuevos, alAvisar, 
   return (
     <>
       <div className="as-conv" data-asesoria="paso-formula">
-        <div className="as-tarjeta">
+        <div className="as-tarjeta" data-inicio="1">
           <p className="as-tarjeta-t">{F.titulo}</p>
           <div className="as-paso"><span className="as-paso-n">1</span><div className="as-paso-c">
             <span>{F.porRenta({ renta: cap.rentaCLP, computable: cap.rentaComputableCLP, pctComputable: cap.rentaComputablePct, plazo: cap.plazo, tasa })}</span>
-            <b>{F.porRentaCifra(cap.creditoUF, cap.pieUF, cap.porRentaUF)}</b>
+            <b data-asesoria="formula-renta">{F.porRentaCifra(cap.creditoUF, cap.pieUF, cap.porRentaUF)}</b>
           </div></div>
           <div className="as-paso"><span className="as-paso-n">2</span><div className="as-paso-c">
             <span>{cap.pieUF == null ? F.sinPie : F.porPie}</span>
-            {cap.pieUF != null && cap.porPieUF != null && <b>{F.porPieCifra(cap.pieUF, cap.porPieUF)}</b>}
+            {cap.pieUF != null && cap.porPieUF != null && <b data-asesoria="formula-pie">{F.porPieCifra(cap.pieUF, cap.porPieUF)}</b>}
           </div></div>
           <div className="as-paso"><span className="as-paso-n">3</span><div className="as-paso-c">
             <span>{cero ? F.sinCuota(cap.cargaMaxPct) : F.deudas(cap.cargaPct, cap.cargaMaxPct)}</span>
@@ -561,24 +651,13 @@ function Formula({ cap, alcanzan, plazoCorto, palanca, interesNuevos, alAvisar, 
           </div></div>
           <span className="as-k">{F.rangos}</span>
         </div>
-        {cero ? <p className="as-bf">{F.cero}</p> : cap.pieUF == null ? (
-          <div className="as-tarjeta" data-fuerte="1" style={{ gap: 2 }} data-asesoria="tope">
-            <span className="as-k">{F.sinPieTope(cap.topeUF, cap.pieNecesarioUF ?? 0)}</span>
-            <span className="as-grande">{fUF(cap.topeUF)}</span>
-            <span className="as-k">{F.sujeto}</span>
-          </div>
-        ) : (
-          <div className="as-tarjeta" data-fuerte="1" style={{ gap: 2 }} data-asesoria="tope">
-            <span className="as-k" data-asesoria="tope-texto">{cap.limita === "pie" && cap.topePieUF != null ? F.dosLimites(cap.topeRentaUF, cap.topePieUF) : F.manda[cap.limita]}</span>
-            <span className="as-grande">{fUF(cap.topeUF)}</span>
-            <span className="as-k">{F.sujeto}</span>
-          </div>
-        )}
+        {cero ? <p className="as-bf">{F.cero}</p> : <TarjetaTope cap={cap} />}
+        {!cero && frena != null && frena > cap.topeUF && <p className="as-bf" data-asesoria="formula-frena">{F.frenaPie(frena)}</p>}
         {!cero && plazoCorto && <p className="as-bf" data-asesoria="plazo-corto">{F.plazoCorto(plazoCorto.plazo, plazoCorto.x, plazoCorto.y)} {F.plazoPorQue}</p>}
         {!cero && alcanzan != null && alcanzan > 0 && <p className="as-bf" data-asesoria="formula-alcanzan">{F.filtre(alcanzan)}</p>}
         {!cero && alcanzan === 0 && <p className="as-bf" data-asesoria="formula-cero">{F.ceroDeptos}</p>}
         {!cero && alcanzan === 0 && palanca && <p className="as-bf" data-asesoria="formula-palanca">{C.perfil.palancaPie(palanca.pieUF, palanca.n)}</p>}
-        {!cero && alcanzan != null && (cap.limita === "pie" || alcanzan <= 2) && <OfertaNuevos dicho={interesNuevos} alAvisar={alAvisar} />}
+        {!cero && alcanzan != null && alcanzan < 3 && <OfertaNuevos dicho={interesNuevos} alAvisar={alAvisar} />}
       </div>
       {/* Con 0 que le alcanzan (o sin cuota por las deudas): dos salidas, «Ajustar mis números» (principal) y «Seguir igual». */}
       {cero || alcanzan === 0 ? (
@@ -597,7 +676,35 @@ function Formula({ cap, alcanzan, plazoCorto, palanca, interesNuevos, alAvisar, 
 const TOPE_SLIDER = APORTES[APORTES.length - 1];
 const ALTO_MAXIMO: Aporte = TOPE_SLIDER;
 const altoMasCercano = (v: number): Aporte => APORTES.reduce((a, b) => (Math.abs(b - v) < Math.abs(a - v) ? b : a), APORTES[0]);
-const BARRAS_VISIBLES = TOPE_SLIDER / BARRAS_PASO + 1; // 0 (me sobra) y una cada 25 mil hasta 300 mil; la última junta lo de más
+const BARRAS_VISIBLES = TOPE_SLIDER / BARRAS_PASO + 1; // 0 (nada) y una cada 25 mil hasta 300 mil; la última junta lo de más
+
+/** LA BUENA NOTICIA (C7, lámina 4): la tarjeta azul suave con el anillo; «Seguir» principal y «Puedo poner algo al mes» aparte. */
+function BuenaNoticia({ k, n, m, alPoner, alSeguir }: { k: number; n: number; m: number; alPoner: () => void; alSeguir: () => void }) {
+  const A = C.alMes;
+  const s = A.solos(k);
+  const R = 26, L = 2 * Math.PI * R;
+  return (
+    <>
+      <div className="as-conv" data-asesoria="paso-aporte-solos">
+        <div className="as-buena" data-inicio="1">
+          <div className="as-buena-cab">
+            <svg width="64" height="64" viewBox="0 0 64 64" aria-hidden="true" className="as-anillo">
+              <circle cx="32" cy="32" r={R} fill="none" strokeWidth="9" data-fondo="1" />
+              <circle cx="32" cy="32" r={R} fill="none" strokeWidth="9" strokeLinecap="round" strokeDasharray={`${((L * k) / 10).toFixed(1)} ${L.toFixed(1)}`} transform="rotate(-90 32 32)" />
+            </svg>
+            <div><b className="as-buena-n" data-asesoria="solos-k">{s.grande}</b><span>{s.chico}</span></div>
+          </div>
+          <p className="as-buena-l" data-asesoria="solos-linea">{A.solosLinea(n, m)}</p>
+        </div>
+        <p className="as-bf">{A.noPones}</p>
+      </div>
+      <div className="as-pie as-pie-dos">
+        <button type="button" className="as-secundario" data-azul="1" onClick={alPoner} data-asesoria="aporte-poner">{A.puedoPoner}</button>
+        <button type="button" className="as-principal" onClick={alSeguir} data-asesoria="aporte-seguir">{A.seguir}</button>
+      </div>
+    </>
+  );
+}
 
 function AlMes({ aporte, dist, calzan, topado, alCambiar, alSeguir }: { aporte: Aporte; dist: number[] | null; calzan: number | null; topado: boolean; alCambiar: (a: Aporte) => void; alSeguir: () => void }) {
   const A = C.alMes;
@@ -611,7 +718,7 @@ function AlMes({ aporte, dist, calzan, topado, alCambiar, alSeguir }: { aporte: 
   return (
     <>
       <div className="as-conv" data-asesoria="paso-aporte">
-        <p className="as-bf">{A.pregunta}</p>
+        <p className="as-bf" data-inicio="1">{A.pregunta}</p>
         <div className="as-tarjeta" data-fuerte="1" style={{ gap: 10 }}>
           <div className="as-slider-cab"><span className="as-tarjeta-t">{A.titulo}</span><b data-asesoria="aporte-valor">{aporte === 0 ? A.cero : pesos(aporte)}</b></div>
           <div>
@@ -619,7 +726,7 @@ function AlMes({ aporte, dist, calzan, topado, alCambiar, alSeguir }: { aporte: 
             <input type="range" className="as-rango" min={0} max={TOPE_SLIDER} step={BARRAS_PASO} value={aporte} aria-label={A.titulo} aria-valuetext={A.hasta(aporte)}
               onChange={(ev) => alCambiar(altoMasCercano(Number(ev.target.value)))} data-asesoria="slider" />
           </div>
-          <div className="as-rango-lados as-k"><span>{A.izq}</span><span>{A.der}</span></div>
+          <div className="as-rango-lados as-k"><span data-asesoria="slider-izq">{A.izq}</span><span>{A.der}</span></div>
           <div className="as-calzan"><span>{A.calzan}</span><b data-asesoria="aporte-calzan">{calzan == null ? "…" : A.usados(calzan)}</b></div>
           {topado && <p className="as-error" role="status">{A.tope}</p>}
         </div>
@@ -630,8 +737,8 @@ function AlMes({ aporte, dist, calzan, topado, alCambiar, alSeguir }: { aporte: 
 }
 
 // ── P6 · dónde ──────────────────────────────────────────────────────────────
-function Donde({ aporte, donde, esperandoPega, alModo, alQuitar, alListo }: {
-  aporte: number; donde: EstadoAsesoria["donde"]; esperandoPega: boolean;
+function Donde({ aporte, donde, alModo, alQuitar, alListo }: {
+  aporte: number; donde: EstadoAsesoria["donde"];
   alModo: (m: Exclude<ModoDonde, "comunas">) => void; alQuitar: (c: string) => void; alListo: () => void;
 }) {
   const D = C.donde;
@@ -639,8 +746,7 @@ function Donde({ aporte, donde, esperandoPega, alModo, alQuitar, alListo }: {
     <>
       <div className="as-conv" data-asesoria="paso-donde">
         <p className="as-bu">{C.alMes.hasta(aporte)}</p>
-        <p className="as-bf">{D.pregunta}</p>
-        {esperandoPega && <p className="as-bf">{D.tocaPega}</p>}
+        <p className="as-bf" data-inicio="1">{D.pregunta}</p>
         {donde?.modo === "rinde" && <p className="as-bf">{D.rindeElegidas(donde.comunas)}</p>}
       </div>
       {donde && (donde.modo === "comunas" || donde.modo === "rinde") && donde.comunas.length > 0 && (
@@ -651,7 +757,6 @@ function Donde({ aporte, donde, esperandoPega, alModo, alQuitar, alListo }: {
       <div className="as-chips" style={{ paddingBottom: 8 }}>
         <button type="button" className="as-chip" aria-pressed={donde?.modo === "metro"} onClick={() => alModo("metro")} data-asesoria="donde-metro">{D.metro}</button>
         <button type="button" className="as-chip" aria-pressed={donde?.modo === "rinde"} onClick={() => alModo("rinde")} data-asesoria="donde-rinde">{D.rinde}</button>
-        <button type="button" className="as-chip" aria-pressed={donde?.modo === "pega" || esperandoPega} onClick={() => alModo("pega")} data-asesoria="donde-pega">{D.pega}</button>
       </div>
       <div className="as-pie"><button type="button" className="as-principal" disabled={!donde} onClick={alListo} data-asesoria="donde-listo">{D.listo}</button></div>
     </>
@@ -665,11 +770,11 @@ function LupaPaso({ lupa, alResponder, alSeguir }: { lupa: Lupa | null; alRespon
   return (
     <>
       <div className="as-conv" data-asesoria="paso-lupa">
-        <p className="as-bf">{L.pregunta}</p>
+        <p className="as-bf" data-inicio="1">{L.pregunta}</p>
         {texto && <p className="as-bu">{texto}</p>}
         {lupa === "si" && (
           <>
-            <p className="as-bf">{L.reaccionSi}</p>
+            <p className="as-bf" data-inicio="1">{L.reaccionSi}</p>
             <div className="as-tarjeta" data-asesoria="lupa-pasos">
               <p className="as-tarjeta-t">{L.pasosTitulo}</p>
               {L.pasos.map((x, i) => <div key={x} className="as-lupa-paso"><i>{i + 1}</i><span>{x}</span></div>)}
@@ -691,70 +796,112 @@ function LupaPaso({ lupa, alResponder, alSeguir }: { lupa: Lupa | null; alRespon
 }
 
 // ── el cierre ───────────────────────────────────────────────────────────────
-function Cierre({ sinCuenta, cargando, error, alCrear, alReintentar, calzan = 0 }: { sinCuenta: boolean; cargando: boolean; error: boolean; alCrear: () => void; alReintentar: () => void; calzan?: number }) {
+function Cierre({ sinCuenta, cargando, error, alCrear, alReintentar }: { sinCuenta: boolean; cargando: boolean; error: boolean; alCrear: () => void; alReintentar: () => void }) {
   if (!sinCuenta) {
     return (
       <div className="as-conv" data-asesoria="paso-cierre">
         {error ? (
           <><p className="as-error" role="alert">{C.perfil.error}</p><button type="button" className="as-principal" onClick={alReintentar}>{C.perfil.reintentar}</button></>
-        ) : <p className="as-bf">{cargando ? C.perfil.cargando : C.perfil.cargando}</p>}
+        ) : <p className="as-bf" data-inicio="1">{cargando ? C.perfil.cargando : C.perfil.cargando}</p>}
       </div>
     );
   }
+  // El título y la bajada («Tu perfil y tus 3 deptos están listos.») van en la hoja de registro (F21); el chat de atrás no los repite.
   return (
     <>
       <div className="as-conv" data-asesoria="paso-cierre">
-        <p className="as-bf" data-asesoria="cierre-titulo">{C.cierre.titulo(calzan)}</p>
-        <p className="as-bf">{C.cierre.cuerpo(calzan)}</p>
+        <p className="as-bf" data-inicio="1" data-asesoria="cierre-chat">{C.cierre.chat}</p>
       </div>
-      <div className="as-pie"><button type="button" className="as-principal" onClick={alCrear} data-asesoria="crear-cuenta">Crear mi cuenta</button></div>
+      <div className="as-pie"><button type="button" className="as-principal" onClick={alCrear} data-asesoria="crear-cuenta">{C.cierre.boton}</button></div>
     </>
   );
 }
 
 // ── el perfil ───────────────────────────────────────────────────────────────
-function Perfil({ r, numeros, experiencia, lupa, aporte, pines, interesNuevos, alAvisar, alVer }: {
-  r: Resultado; numeros: Numeros | null; experiencia: EstadoAsesoria["experiencia"]; lupa: Lupa | null; aporte: number; pines: readonly PinMapa[]; interesNuevos: boolean; alAvisar: () => void; alVer: (id: string) => void;
+/** LA FOTO DE UN DEPTO (decisión de Fabrizio, 27-nov-2026): la vista de la calle con su rótulo —o el mapa chico si no hay—, la misma
+ *  imagen y la misma caché de la tarjeta del mapa (ImagenDepto). Se pide SOLO cuando la tarjeta entra en pantalla. */
+function FotoDepto({ id }: { id: string }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [enPantalla, setEnPantalla] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || enPantalla) return;
+    if (typeof IntersectionObserver === "undefined") { setEnPantalla(true); return; }
+    const io = new IntersectionObserver((es) => { if (es.some((x) => x.isIntersecting)) { setEnPantalla(true); io.disconnect(); } }, { root: el.closest(".as-conv"), rootMargin: "80px 0px" });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [enPantalla]);
+  const tipos = useCalle(enPantalla ? [id] : []);
+  return (
+    <span ref={ref} className="as-foto" data-asesoria="foto" data-en-pantalla={enPantalla ? "1" : undefined}>
+      {enPantalla && <ImagenDepto avisoId={id} tipo={tipos[id]} clase="as-foto-img" carga="lazy" />}
+      <span className="as-foto-chip">{C.perfil.comprar}</span>
+    </span>
+  );
+}
+
+function Perfil({ r, numeros, experiencia, lupa, aporte, pines, interesNuevos, alAvisar, alVer, alSeguir }: {
+  r: Resultado; numeros: Numeros | null; experiencia: EstadoAsesoria["experiencia"]; lupa: Lupa | null; aporte: number; pines: readonly PinMapa[]; interesNuevos: boolean; alAvisar: () => void; alVer: (id: string) => void; alSeguir: () => void;
 }) {
   const P = C.perfil;
   const avisos = numeros && experiencia ? avisosDelPerfil({ tipoRenta: numeros.tipoRenta, experiencia }) : (["estimacion"] as const);
   const m2De = new Map(pines.map((x) => [x.avisoId, x.m2]));
   return (
-    <div className="as-conv" data-asesoria="perfil">
-      <div className="as-tarjeta" data-fuerte="1">
-        <span className="as-k">{P.titulo}</span>
-        <p className="as-perfil-tipo" data-asesoria="perfil-tipo">{P.tipo[r.tipo]}</p>
-        <span>{P.lineaTipo[r.tipo]}</span>
-        <span className="as-k" style={{ marginTop: 6 }}>{P.capacidad}</span>
-        <span className="as-grande" data-asesoria="perfil-tope">{fUF(r.capacidad.topeUF)}</span>
-        <span className="as-k">{P.aporte(aporte)} · {P.plazo(r.plazo)}</span>
+    <>
+      <div className="as-conv" data-asesoria="perfil">
+        <div className="as-perfil-cab" data-inicio="1">
+          <span className="as-k" data-asesoria="perfil-tipo">{P.titulo} · {P.tipo[r.tipo]}</span>
+          <p className="as-perfil-tope" data-asesoria="perfil-tope">{P.encabezadoDeptos(r.capacidad.topeUF, r.tres.length)}</p>
+          <span className="as-perfil-l">{P.lineaTipo[r.tipo]}</span>
+          <span className="as-k">{P.aporte(aporte)} · {P.plazo(r.plazo)}</span>
+        </div>
+        {numeros && <p className="as-aviso" data-asesoria="perfil-preaprobacion">{P.preaprobacion[numeros.preaprobado]}</p>}
+        {avisos.map((a) => <p key={a} className="as-aviso">{P.avisos[a]}</p>)}
+        {lupa === "si" && (
+          <div className="as-tarjeta">
+            <p className="as-tarjeta-t">{P.lupa}</p>
+            {C.lupa.pasos.map((x, i) => <div key={x} className="as-lupa-paso"><i>{i + 1}</i><span>{x}</span></div>)}
+          </div>
+        )}
+        {r.conveniencia && <p className="as-bf" data-asesoria="perfil-plazo-corto">{C.formula.plazoCorto(r.plazo, r.conveniencia.x, r.conveniencia.y)} {C.formula.plazoPorQue}</p>}
+        {r.tres.length < 3 && <p className="as-bf" data-asesoria="perfil-menos">{r.tres.length === 0 ? P.ninguno : P.menos(r.tres.length)}</p>}
+        {r.tres.length < 3 && <p className="as-bf" data-asesoria="perfil-palanca">{!r.palanca ? P.sinPalanca : r.palanca.tipo === "aporte" ? P.palancaAporte(r.palanca.aporte, r.palanca.n) : P.palancaPie(r.palanca.pieUF, r.palanca.n)}</p>}
+        {r.tres.length < 3 && <OfertaNuevos dicho={interesNuevos} alAvisar={alAvisar} />}
+        {r.tres.map((t) => {
+          const m2 = m2De.get(t.id);
+          const flujo = t.flujo != null ? P.flujo(t.flujo) : null;
+          return (
+            <div key={t.id} className="as-depto" data-asesoria="depto" data-aviso={t.id}>
+              <FotoDepto id={t.id} />
+              <div className="as-depto-d">
+                {(t.masBarato || t.metro) && (
+                  <span className="as-depto-etq" data-asesoria="depto-etiquetas">
+                    {t.masBarato && <span data-asesoria="etq-barato">{P.masBarato}</span>}
+                    {t.metro && <span data-asesoria="etq-metro">{P.metro(t.metro.nombre, t.metro.m)}</span>}
+                  </span>
+                )}
+                <b className="as-depto-comuna">{t.comuna.toLocaleUpperCase("es-CL")}</b>
+                <span className="as-k">{tipologia(t.dormitorios)}{m2 ? ` · ${miles(m2)} m²` : ""}</span>
+                <span className="as-depto-precio">{fUF(t.precioUF)}</span>
+                {(flujo || t.cap != null) && (
+                  <span className="as-depto-c" data-asesoria="depto-flujo">
+                    {flujo && <><b data-pos={t.flujo! >= 0 ? "1" : undefined}>{flujo.fuerte}</b>{flujo.resto}</>}
+                    {flujo && t.cap != null && " · "}
+                    {t.cap != null && P.cap(t.cap)}
+                  </span>
+                )}
+                {t.tasa && <span className="as-depto-tasa" data-asesoria="depto-tasa">{t.tasa.aguanta ? P.aguanta : P.conPunto(t.tasa.poneCLP)}</span>}
+                <button type="button" className="as-depto-ver" onClick={() => alVer(t.id)} data-asesoria="ver-depto">{P.ver}</button>
+              </div>
+            </div>
+          );
+        })}
       </div>
-      <div className="as-tarjeta">
-        <p className="as-tarjeta-t">{P.estresTitulo}</p>
-        <span>{P.subeTasa(r.estres.subeTasaCLP)}</span>
-        {r.estres.mesVacioCLP != null && <span>{P.mesVacio(r.estres.mesVacioCLP)}</span>}
-      </div>
-      {avisos.map((a) => <p key={a} className="as-aviso">{P.avisos[a]}</p>)}
-      {lupa === "si" && (
-        <div className="as-tarjeta">
-          <p className="as-tarjeta-t">{P.lupa}</p>
-          {C.lupa.pasos.map((x, i) => <div key={x} className="as-lupa-paso"><i>{i + 1}</i><span>{x}</span></div>)}
+      {r.tres.length > 0 && (
+        <div className="as-pie">
+          <a className="as-principal" data-rojo="1" href={urlSeguirDeptos(r.tres.map((t) => t.id))} onClick={alSeguir} data-asesoria="seguir-deptos">{P.seguirDeptos}</a>
         </div>
       )}
-      <p className="as-tarjeta-t" style={{ marginTop: 6 }}>{P.tresTitulo(r.tres.length)}</p>
-      {r.conveniencia && <p className="as-bf" data-asesoria="perfil-plazo-corto">{C.formula.plazoCorto(r.plazo, r.conveniencia.x, r.conveniencia.y)} {C.formula.plazoPorQue}</p>}
-      {r.tres.length < 3 && <p className="as-bf" data-asesoria="perfil-menos">{r.tres.length === 0 ? P.ninguno : P.menos(r.tres.length)}</p>}
-      {r.tres.length < 3 && <p className="as-bf" data-asesoria="perfil-palanca">{!r.palanca ? P.sinPalanca : r.palanca.tipo === "aporte" ? P.palancaAporte(r.palanca.aporte, r.palanca.n) : P.palancaPie(r.palanca.pieUF, r.palanca.n)}</p>}
-      {r.tres.length < 3 && <OfertaNuevos dicho={interesNuevos} alAvisar={alAvisar} />}
-      {r.tres.map((t) => (
-        <div key={t.id} className="as-depto" data-asesoria="depto" data-aviso={t.id}>
-          <span className="as-depto-por">{P.porQue[t.porQue]}</span>
-          <span className="as-depto-l">{t.comuna} · {tipologia(t.dormitorios)}{m2De.get(t.id) ? ` · ${miles(m2De.get(t.id)!)} m²` : ""} · {fUF(t.precioUF)}</span>
-          {t.flujo != null && <span className="as-depto-c">{P.flujo(t.flujo, r.plazo)}</span>}
-          {t.cap != null && <span className="as-depto-c">{P.cap(t.cap)}</span>}
-          <button type="button" className="as-depto-ver" onClick={() => alVer(t.id)} data-asesoria="ver-depto">{P.ver}</button>
-        </div>
-      ))}
-    </div>
+    </>
   );
 }

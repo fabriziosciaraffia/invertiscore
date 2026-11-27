@@ -124,15 +124,15 @@ export interface MapaExplorarProps {
   onFoco?: () => void;
   /** Los píxeles de abajo que tapa la hoja de la tarjeta en el teléfono (26-nov-2026): el pin elegido se corre arriba de ella. */
   tapaAbajo?: number;
-  /** LA ASESORÍA (27-nov-2026, paso «Dónde»): dónde se tocó el mapa fuera de un pin (la comuna que se toca, o el punto de la pega). */
+  /** LA ASESORÍA (27-nov-2026, paso «Dónde»): dónde se tocó el mapa fuera de un pin (la comuna que se toca). */
   onTocarPunto?: (lat: number, lng: number) => void;
-  /** Las comunas elegidas (rellenas), los límites de todas (finos) y el radio de la pega, dibujados con polígonos del mapa. */
+  /** Las comunas elegidas (rellenas) y los límites de todas (finos), dibujados con polígonos del mapa. */
   marcas?: MarcasMapa | null;
   /** Lo que tapa la hoja de la asesoría (abajo en el teléfono, a la derecha en el PC): el encuadre deja los pines en lo que se ve. */
   aire?: { abajo: number; derecha: number } | null;
 }
 
-export interface MarcasMapa { comunas: readonly string[]; todas: boolean; pega: { lat: number; lng: number; radioM: number } | null }
+export interface MarcasMapa { comunas: readonly string[]; todas: boolean }
 
 /** Dibuja la capa en el canvas: puntos, grupos y cifras, con los colores de su clase y del tema. */
 /** LAS CAPAS DE REFERENCIA (26-nov-2026, entrega 2 › B y C): debajo de los pines. Los límites de comuna en un solo trazo y tenue
@@ -472,7 +472,7 @@ export default function MapaExplorar({ items, seleccionado, encuadre, conZona, o
   // pines. Se rehacen enteros cuando cambian (son pocas: las comunas de la capa y un círculo).
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const marcasRef = useRef<any[]>([]);
-  const claveMarcas = marcas ? `${marcas.todas ? 1 : 0}|${marcas.comunas.join(",")}|${marcas.pega ? `${marcas.pega.lat},${marcas.pega.lng}` : ""}` : "";
+  const claveMarcas = marcas ? `${marcas.todas ? 1 : 0}|${marcas.comunas.join(",")}` : "";
   useEffect(() => {
     let vivo = true;
     const limpiar = () => { for (const o of marcasRef.current) o.setMap(null); marcasRef.current = []; };
@@ -491,9 +491,6 @@ export default function MapaExplorar({ items, seleccionado, encuadre, conZona, o
           strokeColor: elegida ? ESTILO_MARCAS.elegida.trazo : ESTILO_MARCAS.otra.trazo, strokeOpacity: elegida ? 1 : 0.7, strokeWeight: elegida ? 2 : 1,
           fillColor: ESTILO_MARCAS.elegida.relleno, fillOpacity: elegida ? ESTILO_MARCAS.elegida.opacidad : 0,
         }));
-      }
-      if (marcas.pega) {
-        marcasRef.current.push(new g.maps.Circle({ map, center: { lat: marcas.pega.lat, lng: marcas.pega.lng }, radius: marcas.pega.radioM, clickable: false, strokeColor: ESTILO_MARCAS.pega.trazo, strokeWeight: 2, fillColor: ESTILO_MARCAS.pega.relleno, fillOpacity: ESTILO_MARCAS.pega.opacidad }));
       }
     });
     return () => { vivo = false; limpiar(); };

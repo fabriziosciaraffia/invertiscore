@@ -98,6 +98,9 @@ import "./explorar.css";
 import { PARAM_ASESORIA, SIN_ASESORIA, type AccesoAsesoria } from "@/lib/asesoria/acceso";
 import { MIRO_MOVIMIENTOS, MIRO_MS, MIRO_TARJETAS } from "@/lib/asesoria/estado";
 import type { FiltroAsesoria } from "./asesoria/asesoria";
+
+/** El filtro de la asesoría como filtro activo de la barra (F22). */
+const FILTRO_PERFIL_COPY = { etiqueta: "Tu perfil", quitar: "Quitar el filtro de tu perfil" } as const;
 import "@/components/invierte/invierte.css";
 
 const MapaExplorar = dynamic(() => import("./mapa-explorar"), { ssr: false, loading: () => null });
@@ -315,6 +318,8 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
   const [filtroAsesoria, setFiltroAsesoria] = useState<FiltroAsesoria | null>(null);
   const [toqueMapa, setToqueMapa] = useState<{ lat: number; lng: number; t: number } | null>(null);
   const [aireAsesoria, setAireAsesoria] = useState<{ abajo: number; derecha: number } | null>(null);
+  // Quitar el filtro del perfil desde el botón Filtros, con la hoja cerrada (F22): la asesoría lo apaga hasta «Retomar».
+  const [quitarAsesoria, setQuitarAsesoria] = useState(0);
   const [miro, setMiro] = useState({ tarjetas: 0, movimientos: 0, veinte: false });
   useEffect(() => {
     if (!asesoria.habilitada) return;
@@ -1188,9 +1193,16 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
           <button type="button" role="radio" aria-checked="true" className="ex-selector-op" data-on="1" data-explorar="usados">{SELECTOR_COPY.usados}</button>
           {PROYECTOS_VISIBLE && <button type="button" role="radio" aria-checked="false" className="ex-selector-op" data-explorar="proyectos">{SELECTOR_COPY.proyectos}</button>}
         </div>
-        <button type="button" className="ex-boton" data-activo={etiquetaFiltros(filtros) !== PORTAL_COPY.filtros ? "1" : undefined} data-explorar="filtros" onClick={() => setHojaFiltros(true)}>
+        <button type="button" className="ex-boton" data-activo={etiquetaFiltros(filtros) !== PORTAL_COPY.filtros || filtroAsesoria?.cerrada ? "1" : undefined} data-explorar="filtros" onClick={() => setHojaFiltros(true)}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4" /></svg> {etiquetaFiltros(filtros)}
         </button>
+        {/* EL FILTRO DE LA ASESORÍA, CON LA HOJA CERRADA (F22, 27-nov-2026): se ve como un filtro activo y se quita con la X. */}
+        {filtroAsesoria?.cerrada && (
+          <button type="button" className="ex-boton" data-activo="1" data-explorar="filtro-perfil" aria-label={FILTRO_PERFIL_COPY.quitar} onClick={() => setQuitarAsesoria((n) => n + 1)}>
+            {FILTRO_PERFIL_COPY.etiqueta}
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+          </button>
+        )}
         {/* «¿CÓMO SE CALCULA?» VUELVE A LA BARRA (26-nov-2026, lámina 5d): con el ícono en el PC; en el teléfono, solo el ícono. */}
         <button type="button" className="ex-como2" data-explorar="como-se-calcula" aria-label={COMO_SE_CALCULA.enlace} onClick={abrirCalculo}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" /></svg>
@@ -1256,11 +1268,13 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
               comprar={visibles}
               lista={yaMiro && !compartido}
               toque={toqueMapa}
+              tapado={!!tarjeta}
+              quitarFiltro={quitarAsesoria}
               alFiltrar={setFiltroAsesoria}
               alTapar={setAireAsesoria}
-              alRegistrar={({ comunas, topeUF }) => {
+              alRegistrar={({ comunas, topeUF, deptos }) => {
                 void import("./hoja-registro");
-                setRegistro({ pedido: { motivo: "asesoria", pin: null, filtrosPerfil: { ...filtrosAbiertos(filtros), comunas, ufMax: topeUF > 0 ? topeUF : null } }, filtros, orden });
+                setRegistro({ pedido: { motivo: "asesoria", pin: null, deptosAsesoria: deptos, filtrosPerfil: { ...filtrosAbiertos(filtros), comunas, ufMax: topeUF > 0 ? topeUF : null } }, filtros, orden });
               }}
               alVerDepto={(id) => { setCarrusel(cercanos(visibles, id).map((p) => p.avisoId)); setSel(id); }}
             />

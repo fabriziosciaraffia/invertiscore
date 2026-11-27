@@ -18,17 +18,25 @@
 //   8 · LOS TEXTOS: el de boletas que no es el aprobado; voseo.
 //   9 · /deptos: que redirija sin mirar el interruptor, o que deje de existir deptos-cliente / la API.
 //  10 · LA BURBUJA reemplaza a la bienvenida solo con la asesoría habilitada, y no aparece al cargar.
+//  15–20 · LA SEGUNDA VUELTA (27-nov-2026, decisiones de Fabrizio): la regla única del tope con los gastos (y la misma en Invierte), las
+//       medianas por comuna, las tarjetas por flujo con sus dos etiquetas y la prueba de tasa, «X de cada 10 se pagan solos», el
+//       destino a Invierte (botón, adopción del perfil, acceso de prueba) y lo que cambió en pantalla (sin la pega, la lupa, la
+//       preaprobación, la cuenta, la hoja de registro, el filtro cerrado, la lámina «Con punch, sin abusar» y la foto de la calle).
 // Verificado EN ROJO por mutación (acta al pie). Corre dentro del QUICK. Sin red ni base: 0 tokens.
 // Solo:  node --env-file=.env.local --import tsx scripts/eval/golden/asesoria-catch-test.ts
 // ============================================================================
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import {
-  capacidad, edadDeChip, estres, tipoPerfil, avisosDelPerfil, objetivoDePerfil, cuota, creditoDeCuota, plazoDeEdad,
+  capacidad, edadDeChip, pruebaTasa, topeConMasPie, tipoPerfil, avisosDelPerfil, objetivoDePerfil, cuota, creditoDeCuota, plazoDeEdad,
   RENTA_COMPUTABLE_PCT, CARGA_MAX_PCT, DEUDA_SIN_TECHO, RENTA_SIN_PISO, type Numeros,
 } from "../../../src/lib/asesoria/capacidad";
-import { APORTES, mascara, respuestaAporte, idsDelPlazo, distribucion, esAporte, type Candidato } from "../../../src/lib/asesoria/aporte";
-import { elegirTres, mismoEdificio, CAP_RATE_MAX_PERFIL } from "../../../src/lib/asesoria/tres";
+import { APORTES, mascara, respuestaAporte, idsDelPlazo, distribucion, esAporte, sePaganSolos, UMBRAL_SOLOS, type Candidato } from "../../../src/lib/asesoria/aporte";
+import { elegirTres, mismoEdificio, CAP_RATE_MAX_PERFIL, rindePorComuna, MIN_DEPTOS_COMUNA_RINDE } from "../../../src/lib/asesoria/tres";
+import { tarjetasDelPerfil } from "../../../src/lib/asesoria/tarjetas";
+import { topesDeCompra, pieMasGastosPct } from "../../../src/lib/tope/regla";
+import { hastaCuanto } from "../../../src/lib/invierte-v2/perfil";
+import { textosHoja } from "../../../src/lib/explorar/abierto";
 import { leerModoAsesoria, accesoAsesoria } from "../../../src/lib/asesoria/acceso";
 import { propsPaso } from "../../../src/lib/asesoria/eventos";
 import { limpiarEventoSentry } from "../../../src/lib/asesoria/sentry-limpieza";
@@ -38,6 +46,10 @@ import { CAMINOS, CAMINO_DE_HOY } from "../../../src/lib/asesoria/capacidad";
 import { pedidoPerfil, ESTADO_INICIAL } from "../../../src/lib/asesoria/estado";
 import { comunaEn, comunasQueMasRinden } from "../../../src/lib/asesoria/lugar";
 import { conveniencia, palanca, palancaFormula } from "../../../src/lib/asesoria/palanca";
+
+/** «Seguir con estos deptos» (D14): la misma cuenta de la URL que el componente (asesoria.tsx › urlSeguirDeptos; el componente es
+ *  "use client" y no se importa acá: el tier comprueba que su código diga exactamente esto). */
+const urlEsperada = (ids: string[]) => `/invierte/${ids[0]}?${new URLSearchParams({ desde: "explorar", ...(ids.length > 1 ? { mas: ids.slice(1).join(",") } : {}) })}`;
 
 const RAIZ = join(__dirname, "..", "..", "..");
 const leer = (p: string) => readFileSync(join(RAIZ, p), "utf8").replace(/\r\n/g, "\n");
@@ -73,9 +85,11 @@ export async function runAsesoria(): Promise<{ hard: number }> {
       const c = capacidad(base, CFG);
       const cuotaMax = 2_500_000 * 0.25;
       const credito = creditoDeCuota(cuotaMax, CFG.tasaPct, 30) / CFG.uf;
-      const esperado = Math.floor(Math.min(600 / 0.2, 600 + credito) / 10) * 10;
+      // ⚠ ACTA (27-nov-2026, regla única): con los gastos de la compra, por pie 600 ÷ 24,4 % y por renta (600 + crédito) ÷ 1,044,
+      // cada uno redondeado hacia abajo a 10 (las mismas cifras de la fórmula).
+      const esperado = Math.min(Math.floor(600 / 0.244 / 10) * 10, Math.floor((600 + credito) / 1.044 / 10) * 10);
       if (c.topeUF !== esperado) F(`1 · el tope da ${c.topeUF}, la cuenta aparte ${esperado}`);
-      if (c.limita !== (600 / 0.2 <= 600 + credito ? "pie" : "renta")) F("1 · lo que limita no es el menor");
+      if (c.limita !== (600 / 0.244 <= (600 + credito) / 1.044 ? "pie" : "renta")) F("1 · lo que limita no es el menor");
       if (c.topeUF % 10 !== 0) F("1 · el tope no está redondeado a 10");
       // Boletas: 70 % de la renta y carga 35 %.
       const b = capacidad({ ...base, tipoRenta: "boletas", pie: "p4", deudas: "d1" }, CFG);
@@ -88,11 +102,13 @@ export async function runAsesoria(): Promise<{ hard: number }> {
       if (capacidad({ ...base, renta: "r2" }, CFG).rentaCLP !== 1_500_000 || capacidad({ ...base, renta: "r1" }, CFG).rentaCLP !== RENTA_SIN_PISO) F("1 · la renta no va con el valor más bajo del rango");
       // Edad 50–54: el crédito a 20 años.
       const v = capacidad({ ...base, edad: "e4", pie: "p4" }, CFG);
-      if (v.plazo !== 20 || !cerca(v.creditoUF, creditoDeCuota(cuotaMax, CFG.tasaPct, 20) / CFG.uf)) F("1 · con 50–54 años el crédito no es a 20");
+      // ⚠ ACTA (27-nov-2026, B4: una cifra, un redondeo): el crédito que muestra la fórmula va redondeado hacia abajo a 10.
+      if (v.plazo !== 20 || v.creditoUF !== Math.floor(creditoDeCuota(cuotaMax, CFG.tasaPct, 20) / CFG.uf / 10) * 10) F("1 · con 50–54 años el crédito no es a 20");
       // Pie «menos de UF 300»: solo por la renta (crédito / 80 %) y el pie que hace falta.
       const s = capacidad({ ...base, pie: "p1" }, CFG);
       const porRenta = Math.floor(credito / 0.8 / 10) * 10;
-      if (s.pieUF !== null || s.topeUF !== porRenta || s.pieNecesarioUF !== Math.round(porRenta * 0.2)) F(`1 · sin pie no calcula por la renta (${s.topeUF} vs ${porRenta}) o no dice el pie que falta`);
+      // ⚠ ACTA (27-nov-2026): el pie que hace falta cuenta los gastos (24,4 % del tope).
+      if (s.pieUF !== null || s.topeUF !== porRenta || s.pieNecesarioUF !== Math.round(porRenta * 0.244)) F(`1 · sin pie no calcula por la renta (${s.topeUF} vs ${porRenta}) o no dice el pie que falta con los gastos`);
       if (ASESORIA_COPY.formula.sinPieTope(4000, 800) !== "Por tu renta llegas hasta aprox. UF 4.000. Para eso necesitas un pie de UF 800.") F("1 · el texto del pie bajo no es el aprobado");
       // Deudas que se comen la carga: cero.
       const z = capacidad({ ...base, renta: "r1", tipoRenta: "boletas", deudas: "d3" }, CFG);
@@ -101,13 +117,20 @@ export async function runAsesoria(): Promise<{ hard: number }> {
       if (c.cargaPct > c.cargaMaxPct) F("1 · la carga mostrada pasa el máximo");
     }
 
-    // ── 2 · EL ESTRÉS Y EL TIPO ──
+    // ── 2 · LA PRUEBA DE TASA Y EL TIPO ──
+    // ⚠ ACTA (27-nov-2026, C8): «Si algo se mueve» (el estrés del perfil) se retiró; cada depto lleva su prueba de tasa.
     {
-      const c = capacidad(base, CFG);
-      const e = estres(c, CFG.uf, { aporteCLP: 100_000, arriendoCLP: 600_000 });
-      const cred = Math.max(0, c.topeUF - 600) * CFG.uf;
-      if (!cerca(e.subeTasaCLP, cuota(cred, CFG.tasaPct + 1, 30) - cuota(cred, CFG.tasaPct, 30))) F("2 · +1 punto de tasa no es la diferencia de cuotas");
-      if (e.mesVacioCLP !== 150_000) F("2 · un mes vacío no es el aporte + el arriendo / 12");
+      const cred = 3000 * 0.8 * CFG.uf;
+      const sube = cuota(cred, CFG.tasaPct + 1, 30) - cuota(cred, CFG.tasaPct, 30);
+      const no = pruebaTasa({ precioUF: 3000, flujoCLP: 50_000, plazo: 30, tasaPct: CFG.tasaPct, uf: CFG.uf });
+      if (no.aguanta || !cerca(no.poneCLP, sube - 50_000)) F(`2 · la prueba de tasa no es «pones la diferencia» cuando el flujo no la cubre (${JSON.stringify(no)})`);
+      const si = pruebaTasa({ precioUF: 3000, flujoCLP: 100_000, plazo: 30, tasaPct: CFG.tasaPct, uf: CFG.uf });
+      if (!si.aguanta || si.poneCLP !== 0) F("2 · un flujo que cubre el punto de tasa no «aguanta»");
+      // Con flujo 0 pone exactamente lo que sube el dividendo, que a 20 años (~51 mil) no es lo de 30 (~57 mil): mide el plazo.
+      const corto = pruebaTasa({ precioUF: 3000, flujoCLP: 0, plazo: 20, tasaPct: CFG.tasaPct, uf: CFG.uf });
+      const sube20 = cuota(cred, CFG.tasaPct + 1, 20) - cuota(cred, CFG.tasaPct, 20);
+      if (Math.abs(sube20 - sube) < 1000) F("2 · el fixture del plazo no distingue 20 de 30 años");
+      if (!cerca(corto.poneCLP, sube20)) F("2 · la prueba de tasa no usa el plazo de la persona");
       if (tipoPerfil("primera", "arriendo") !== "primer_paso" || tipoPerfil("uno", "arriendo") !== "rentista" || tipoPerfil("varios", "plusvalia") !== "patrimonial" || tipoPerfil("uno", "ambas") !== "equilibrado" || tipoPerfil("uno", "no_se") !== "equilibrado") F("2 · el tipo de perfil no sigue la regla");
       if (objetivoDePerfil("no_se") !== "ambas") F("2 · «No sé» no se guarda como «ambas»");
       if (avisosDelPerfil({ tipoRenta: "contrato", experiencia: "primera" }).join() !== "estimacion") F("2 · sin boletas ni deptos, otro aviso que la estimación");
@@ -199,14 +222,14 @@ export async function runAsesoria(): Promise<{ hard: number }> {
       const srv = codigo("src/lib/asesoria/servidor.ts");
       if (/unstable_cache\([^)]*accesoAsesoria/.test(srv) || /accesoAsesoriaDe/.test(srv)) F("6 · el interruptor se lee dentro de una caché compartida");
       // El perfil: validación y la fila sin orden.
-      const ok = validarPedidoPerfil({ experiencia: "uno", objetivo: "no_se", numeros: base, aporte: 100_000, donde: { modo: "comunas", comunas: ["Ñuñoa"], pega: null }, lupa: "prefiero" });
+      const ok = validarPedidoPerfil({ experiencia: "uno", objetivo: "no_se", numeros: base, aporte: 100_000, donde: { modo: "comunas", comunas: ["Ñuñoa"] }, lupa: "prefiero" });
       if (!ok.ok) F("6 · un pedido válido no pasa");
       else {
         const fila = filaPerfil("u", ok.pedido, calcularPerfil(ok.pedido, CFG), { esPrueba: true, existe: false, elegidos: [] });
         if (fila.objetivo !== "ambas" || fila.tipo_perfil !== "equilibrado" || fila.lupa !== null || fila.origen !== "asesoria" || fila.es_prueba !== true || fila.plazo_anios !== 30) F("6 · la fila del perfil no guarda lo aprobado (objetivo, tipo, lupa nula, origen, prueba, plazo)");
         if ("orden_id" in fila) F("6 · la fila del perfil pide una orden");
       }
-      if (validarPedidoPerfil({ experiencia: "uno", objetivo: "arriendo", numeros: base, aporte: 110_000, donde: { modo: "metro", comunas: [], pega: null }, lupa: "no" }).ok) F("6 · el perfil acepta un aporte libre");
+      if (validarPedidoPerfil({ experiencia: "uno", objetivo: "arriendo", numeros: base, aporte: 110_000, donde: { modo: "metro", comunas: [] }, lupa: "no" }).ok) F("6 · el perfil acepta un aporte libre");
     }
 
     // ── 7 · LA PRIVACIDAD ──
@@ -309,7 +332,13 @@ export async function runAsesoria(): Promise<{ hard: number }> {
       for (const clase of ["as-burbuja", "as-hoja", "as-chica"]) if (!(comp.split(`className="as-raiz ${clase} ph-no-capture"`)[1] ?? "").split(">")[0].includes('style={{ ["--as-abajo" as string]: `${abajo}px` }}')) F(`12 · ${clase} no sube sobre el aviso de cookies`);
       if (!/const el = document\.querySelector<HTMLElement>\('\[data-cookies="aviso"\]'\);\s*setAbajo\(el \? Math\.round\(el\.getBoundingClientRect\(\)\.height\) : 0\);/.test(comp)) F("12 · la altura del aviso de cookies no se mide");
       if (!/\.as-hoja \{[^}]*bottom: var\(--as-abajo, 0px\); height: calc\(100% - 150px - var\(--as-abajo, 0px\)\);/.test(css) || !/\.as-burbuja \{[^}]*bottom: calc\(12px \+ var\(--as-abajo, 0px\)\);/.test(css)) F("12 · el CSS no usa la altura del aviso");
-      if (!/conv\.scrollTop = arriba \? 0 : conv\.scrollHeight;/.test(comp) || !/const arriba = \(e\?\.paso === "numeros" && numerosAbiertos\) \|\| e\?\.paso === "perfil";/.test(comp)) F("12 · la conversación no baja sola al cambiar de pantalla");
+      // ⚠ ACTA (27-nov-2026, E15): la regla de «la conversación baja sola» se reemplazó: cada pantalla abre con su primer mensaje nuevo arriba.
+      if (!/const t = window\.setTimeout\(\(\) => \{ conv\.scrollTop = scrollAlInicio\(conv\); \}, 60\);/.test(comp) || /conv\.scrollHeight/.test(comp)) F("12 · la hoja no abre cada pantalla con su primer mensaje nuevo arriba (E15)");
+      if (!/const marcas = conv\.querySelectorAll<HTMLElement>\("\[data-inicio\]"\);\s*const el = marcas\.length \? marcas\[marcas\.length - 1\] : conv\.querySelector<HTMLElement>\("\.as-bf, \.as-tarjeta"\);/.test(comp)) F("12 · el scroll no va al último mensaje nuevo marcado");
+      for (const paso of ["paso-objetivo", "paso-numeros-antes", "paso-numeros", "paso-formula", "paso-aporte-solos", "paso-aporte", "paso-donde", "paso-lupa", "paso-cierre", "perfil"]) {
+        const bloque = (comp.split(`data-asesoria="${paso}"`)[1] ?? "").split("</div>\n")[0];
+        if (!/data-inicio="1"/.test(bloque.slice(0, 900))) F(`12 · la pantalla ${paso} no marca su primer mensaje nuevo`);
+      }
       const mapa = codigo("src/app/explorar/mapa-explorar.tsx");
       if (!/a \? \{ top: 64, left: 24, right: 24 \+ a\.derecha, bottom: 24 \+ a\.abajo \} : 24;/.test(mapa) || !/margenDeEncuadre\(aireRef\.current\)\);/.test(mapa)) F("12 · el encuadre no deja los pines en lo que se ve de la hoja");
       const cli = codigo("src/app/explorar/explorar-cliente.tsx");
@@ -318,7 +347,7 @@ export async function runAsesoria(): Promise<{ hard: number }> {
       // Con plazo corto, la fórmula ya cuenta los Comprar a SU plazo (pide el alto más alto del slider, no una cifra de la persona).
       if (!/const altoPedido: Aporte \| null = pasoN >= PASO_N\.aporte \? aporte : pasoN >= PASO_N\.formula && plazo < 30 \? ALTO_MAXIMO : null;/.test(comp) || !/const ALTO_MAXIMO: Aporte = TOPE_SLIDER;/.test(comp) || !/if \(idsAporte\) xs = xs\.filter\(\(x\) => idsAporte\.has\(x\.avisoId\)\);/.test(comp)) F("12 · con plazo corto, «te alcanzan» de la fórmula no cuenta el plazo");
       if (!/alcanzan=\{aportePendiente \? null : calzan\?\.length \?\? null\}/.test(comp)) F("12 · la fórmula dice «te alcanzan» antes de que llegue el plazo");
-      if (!/const calzanVisto = aportePendiente \? null : calzan;/.test(comp) || !/\{miles\(calzanVisto \? calzanVisto\.length : convienen\)\} de \{miles\(total\)\}/.test(comp)) F("12 · la pastilla del mapa muestra la cifra anterior mientras llega el aporte");
+      if (!/const calzanVisto = aportePendiente \? null : calzan;/.test(comp) || !/\{calzanVisto\s*\? <span className="as-cuenta-t" data-asesoria="cuenta-calzan">\{C\.calzanDe\(calzanVisto\.length, convienen\)\}<\/span>\s*: <><span className="as-cuenta-n">\{miles\(convienen\)\} de \{miles\(total\)\}<\/span>/.test(comp)) F("12 · la pastilla del mapa muestra la cifra anterior mientras llega el aporte");
       // El mismo universo que el mapa: las comunas disponibles y la ventana semanal.
       const srvA = codigo("src/lib/asesoria/servidor.ts");
       if (!/admin\.rpc\("asesoria_candidatos", \{ p_comunas: comunas, p_desde: desde, p_tope: null \}\)/.test(srvA) || !/const comunas = \[\.\.\.\(COMUNAS_DISPONIBLES as readonly string\[\]\)\]\.map\(comunaDeAviso\);/.test(srvA) || !/VENTANA_SEMANAL_DIAS \* 864e5/.test(srvA)) F("12 · el universo de la asesoría no es el del mapa (comunas o ventana)");
@@ -353,24 +382,29 @@ export async function runAsesoria(): Promise<{ hard: number }> {
       if (JSON.stringify(Object.keys(CAMINOS)) !== '["usado"]' || CAMINOS.usado.piePct !== 20 || CAMINOS.usado.forma !== "contado" || CAMINO_DE_HOY !== "usado") F("14 · el camino de hoy no es «usado, 20 % al contado»");
       const c = capacidad(base, CFG);
       const credito = creditoDeCuota(2_500_000 * 0.25, CFG.tasaPct, 30) / CFG.uf;
-      if (c.camino !== "usado" || c.topePieUF !== 3000 || c.topeRentaUF !== Math.floor((600 + credito) / 10) * 10 || c.topeUF !== Math.min(c.topePieUF, c.topeRentaUF)) F(`14 · los dos topes no son los esperados (renta ${c.topeRentaUF}, pie ${c.topePieUF}, tope ${c.topeUF})`);
+      // ⚠ ACTA (27-nov-2026, regla única): los dos topes con los gastos de la compra (600 ÷ 24,4 % = 2.450; (600 + crédito) ÷ 1,044).
+      if (c.camino !== "usado" || c.topePieUF !== 2450 || c.topeRentaUF !== Math.floor((600 + credito) / 1.044 / 10) * 10 || c.topeUF !== Math.min(c.topePieUF, c.topeRentaUF)) F(`14 · los dos topes no son los esperados (renta ${c.topeRentaUF}, pie ${c.topePieUF}, tope ${c.topeUF})`);
       if (capacidad({ ...base, pie: "p1" }, CFG).topePieUF !== null) F("14 · sin pie, el tope por pie no es nulo");
       // b · la cifra de usados lo dice.
       if (ASESORIA_COPY.formula.filtre(1240) !== "De los usados que convienen, hoy te alcanzan 1.240.") F("14 · la cifra no dice que es de usados");
-      // c · limita el pie: los dos límites.
-      if (ASESORIA_COPY.formula.dosLimites(3720, 3000) !== "Por tu renta llegas hasta UF 3.720. Con tu pie, hoy llegas a UF 3.000 en usados.") F("14 · el texto de los dos límites no es el aprobado");
+      // c · los dos límites. ⚠ ACTA (27-nov-2026, G24): el texto «Por tu renta llegas hasta… Con tu pie…» pasó a ser la tarjeta del tope
+      // con los dos límites dibujados como barras («Por tu renta UF X» · «Con tu pie de UF 600, contando gastos UF Y»), siempre.
       const comp = codigo("src/app/explorar/asesoria/asesoria.tsx");
-      if (!/\{cap\.limita === "pie" && cap\.topePieUF != null \? F\.dosLimites\(cap\.topeRentaUF, cap\.topePieUF\) : F\.manda\[cap\.limita\]\}/.test(comp)) F("14 · cuando limita el pie, la fórmula no muestra los dos límites");
+      if (!/\{cero \? <p className="as-bf">\{F\.cero\}<\/p> : <TarjetaTope cap=\{cap\} \/>\}/.test(comp)) F("14 · la fórmula no muestra la tarjeta del tope con los dos límites");
+      if (!/\.\.\.\(cap\.pieUF != null && cap\.topePieUF != null \? \[\{ clave: "pie", etiqueta: F\.barraPie\(cap\.pieUF\), valor: cap\.topePieUF \}\] : \[\]\)/.test(comp) || !/\{ clave: "renta", etiqueta: cap\.limita === "deudas" \? F\.barraRenta\.deudas : F\.barraRenta\.renta, valor: cap\.topeRentaUF \}/.test(comp)) F("14 · la tarjeta del tope no dibuja los dos límites");
+      if (!/data-manda=\{f\.valor === cap\.topeUF \? "1" : undefined\}/.test(comp)) F("14 · la tarjeta del tope no marca el límite que manda");
+      if (ASESORIA_COPY.formula.barraPie(600) !== "Con tu pie de UF 600, contando gastos" || ASESORIA_COPY.formula.barraRenta.renta !== "Por tu renta" || ASESORIA_COPY.formula.puedes !== "Puedes comprar hasta aprox.") F("14 · los rótulos de la tarjeta del tope no son los de la lámina");
       // d · la salida «Avísame»: cuando limita el pie o con 0, 1 o 2; en el perfil con menos de 3, después de la palanca.
       const N = ASESORIA_COPY.nuevos;
       if (N.oferta !== "En deptos nuevos el pie se paga en cuotas. Pronto los sumo: ¿te aviso?" || N.boton !== "Avísame") F("14 · los textos de la salida de nuevos no son los aprobados");
-      if (!/\{!cero && alcanzan != null && \(cap\.limita === "pie" \|\| alcanzan <= 2\) && <OfertaNuevos dicho=\{interesNuevos\} alAvisar=\{alAvisar\} \/>\}/.test(comp)) F("14 · la fórmula no ofrece «Avísame» cuando limita el pie o con 0, 1 o 2");
+      // ⚠ ACTA (27-nov-2026, C11): «Avísame» solo cuando calzan menos de 3 (ya no «cuando limita el pie»).
+      if (!/\{!cero && alcanzan != null && alcanzan < 3 && <OfertaNuevos dicho=\{interesNuevos\} alAvisar=\{alAvisar\} \/>\}/.test(comp) || /cap\.limita === "pie" \|\|/.test(comp)) F("14 · la fórmula ofrece «Avísame» con 3 o más (C11)");
       if (!/data-asesoria="perfil-palanca">[^\n]*\n\s*\{r\.tres\.length < 3 && <OfertaNuevos dicho=\{interesNuevos\} alAvisar=\{alAvisar\} \/>\}/.test(comp)) F("14 · el perfil no ofrece «Avísame» con menos de 3, después de la palanca");
       if (!/className="as-depto-ver" onClick=\{alAvisar\} data-asesoria="nuevos-avisame"/.test(comp)) F("14 · «Avísame» no es un botón secundario");
       // Se guarda: en el estado sin cuenta, en el perfil al crearlo, y al momento si el perfil ya existe. Nunca un correo.
       if (pedidoPerfil({ ...ESTADO_INICIAL, interesNuevos: true }).interesNuevos !== true || pedidoPerfil(ESTADO_INICIAL).interesNuevos !== false) F("14 · «Avísame» no viaja al crear el perfil");
-      const ok = validarPedidoPerfil({ experiencia: "uno", objetivo: "arriendo", numeros: base, aporte: 100_000, donde: { modo: "metro", comunas: [], pega: null }, lupa: "no", interesNuevos: true });
-      const okNo = validarPedidoPerfil({ experiencia: "uno", objetivo: "arriendo", numeros: base, aporte: 100_000, donde: { modo: "metro", comunas: [], pega: null }, lupa: "no" });
+      const ok = validarPedidoPerfil({ experiencia: "uno", objetivo: "arriendo", numeros: base, aporte: 100_000, donde: { modo: "metro", comunas: [] }, lupa: "no", interesNuevos: true });
+      const okNo = validarPedidoPerfil({ experiencia: "uno", objetivo: "arriendo", numeros: base, aporte: 100_000, donde: { modo: "metro", comunas: [] }, lupa: "no" });
       if (!ok.ok || !okNo.ok) F("14 · un pedido válido con o sin «Avísame» no pasa");
       else {
         const fila = filaPerfil("u", ok.pedido, calcularPerfil(ok.pedido, CFG), { esPrueba: true, existe: false, elegidos: [] });
@@ -388,6 +422,166 @@ export async function runAsesoria(): Promise<{ hard: number }> {
       if (Object.keys(ESTADO_INICIAL).filter((k) => !["v", "paso", "cerrada"].includes(k)).join() !== "experiencia,objetivo,numeros,aporte,donde,lupa,interesNuevos") F("14 · el recorrido ganó una pregunta");
       const sql = leer("supabase/migrations/20261127_asesoria_dos_topes.sql");
       for (const col of ["camino text not null default 'usado'", "tope_renta_uf numeric", "tope_pie_uf numeric", "interes_nuevos boolean", "interes_nuevos_at timestamptz"]) if (!sql.includes(col)) F(`14 · la migración no trae ${col}`);
+    }
+
+    // ── 15 · LA REGLA ÚNICA DEL TOPE (tope/regla.ts, decisión de Fabrizio del 27-nov-2026) ──
+    {
+      if (pieMasGastosPct("usado") !== 24.4) F("15 · el pie más los gastos de un usado no es 24,4 %");
+      const t = topesDeCompra({ pieUF: 600, creditoUF: 3000 });
+      if (!cerca(t.topePieUF ?? 0, 600 / 0.244, 0.01) || !cerca(t.topeRentaUF ?? 0, 3600 / 1.044, 0.01) || t.limita !== "pie") F(`15 · los topes no son pie ÷ 24,4 % y (pie + crédito) ÷ 1,044 (${JSON.stringify(t)})`);
+      const sinPie = topesDeCompra({ pieUF: null, creditoUF: 3000 });
+      if (!cerca(sinPie.topeUF, 3000 / 0.8, 0.01) || sinPie.topePieUF !== null) F("15 · sin pie, el tope no es el crédito ÷ 80 % (los gastos los paga el pie que hace falta)");
+      // La misma cuenta en Invierte: con el plazo por edad y la forma de la renta, la cifra antes de redondear es la de la asesoría.
+      for (const n of [base, { ...base, tipoRenta: "boletas" as const, edad: "e4" as const, deudas: "d1" as const }, { ...base, pie: "p4" as const, edad: "e3" as const }]) {
+        const a = capacidad(n, CFG);
+        const renta = n.renta === "r3" ? 2_500_000 : 0;
+        const deudas = n.deudas === "d1" ? 200_000 : 0;
+        const pie = n.pie === "p4" ? 900 : 600;
+        const i = hastaCuanto({ preaprobado: "no", pieUF: pie, rentaCLP: renta, otrasCuotasCLP: deudas, tasaPct: CFG.tasaPct, uf: CFG.uf, plazoAnios: a.plazo, tipoRenta: n.tipoRenta });
+        if (Math.floor(i.topeUF / 10) * 10 !== a.topeUF) F(`15 · Invierte y la asesoría no dan el mismo tope (${i.topeUF} contra ${a.topeUF}, ${n.tipoRenta}, ${a.plazo} años)`);
+      }
+      const ps = codigo("src/lib/invierte-v2/perfil-servidor.ts");
+      if (!/plazoAnios: previo\?\.plazoAnios \?\? null, tipoRenta: previo\?\.tipoRenta \?\? null \}\);/.test(ps)) F("15 · confirmarPerfil no usa el plazo y la renta del perfil de la asesoría");
+      const pv = codigo("src/lib/invierte-v2/perfil.ts");
+      if (!/creditoPorRentaRegla\(\{ rentaCLP, otrasCuotasCLP, tasaPct, uf, plazoAnios: o\.plazoAnios \?\? PLAZO_MAX, tipoRenta: o\.tipoRenta \?\? "contrato" \}\)/.test(pv) || /Math\.pow|\*\* -/.test(pv)) F("15 · Invierte tiene su propia cuenta del crédito (no la de la regla)");
+      // B4: una cifra, un redondeo. La fórmula y la tarjeta muestran las mismas.
+      const c = capacidad(base, CFG);
+      if (c.porRentaUF !== c.topeRentaUF || c.porPieUF !== c.topePieUF) F("15 · la fórmula y la tarjeta del tope no usan la misma cifra");
+      const comp = codigo("src/app/explorar/asesoria/asesoria.tsx");
+      if (!/F\.porRentaCifra\(cap\.creditoUF, cap\.pieUF, cap\.porRentaUF\)/.test(comp) || !/F\.porPieCifra\(cap\.pieUF, cap\.porPieUF\)/.test(comp)) F("15 · la fórmula no muestra las cifras redondeadas de la capacidad");
+      const Fo = ASESORIA_COPY.formula;
+      if (Fo.porPieCifra(600, 2450) !== "UF 600 ÷ 24,4 % = UF 2.450" || !/÷ 1,044/.test(Fo.porRentaCifra(3270, 600, 3700)) || !/gastos de la compra/.test(Fo.porPie)) F("15 · la fórmula no cuenta los gastos en su texto");
+      // La lámina 3: solo cuando limita el pie, «Con UF 100 más llegas a UF X» con la misma regla.
+      const mas = topeConMasPie(c);
+      if (c.limita !== "pie" || mas !== Math.min(c.topeRentaUF, Math.floor(700 / 0.244 / 10) * 10)) F(`15 · «con UF 100 más» no es el tope con 100 de pie más (${mas})`);
+      if (topeConMasPie(capacidad({ ...base, renta: "r1", pie: "p4" }, CFG)) !== null) F("15 · «lo que te frena es el pie» aparece cuando limita la renta");
+      if (Fo.frenaPie(2860) !== "Lo que te frena es el pie, no la renta. Con UF 100 más llegas a UF 2.860.") F("15 · el texto de la lámina 3 no es el aprobado");
+      if (!/\{!cero && frena != null && frena > cap\.topeUF && <p className="as-bf" data-asesoria="formula-frena">\{F\.frenaPie\(frena\)\}<\/p>\}/.test(comp) || !/frena=\{cap \? topeConMasPie\(cap\) : null\}/.test(comp)) F("15 · la fórmula no dice qué la frena");
+    }
+
+    // ── 16 · LO QUE RINDE CADA COMUNA: la mediana (decisión de Fabrizio, 27-nov-2026) ──
+    {
+      if (MIN_DEPTOS_COMUNA_RINDE !== 15) F("16 · el mínimo por comuna no es 15");
+      // A: 15 deptos con cap 4 % + k² · 0,02 % (asimétrica: mediana 4,98 %, media 5,35 %) y uno de 20 % que no cuenta; B: 14 (no entra).
+      const arr = (cap: number, precio = 3000) => Math.round((cap * precio * CFG.uf) / 12);
+      const capA = (k: number) => 0.04 + k * k * 0.0002;
+      const A = Array.from({ length: 15 }, (_, k) => cand(`a${k}`, { comuna: "A", arriendo: arr(capA(k)) }));
+      const raro = cand("araro", { comuna: "A", arriendo: arr(0.2) });
+      const B = Array.from({ length: 14 }, (_, k) => cand(`b${k}`, { comuna: "B", arriendo: arr(0.09) }));
+      const r = rindePorComuna([...A, raro, ...B], CFG.uf);
+      if (r.rinde.length !== 1 || r.rinde[0].comuna !== "A" || !cerca(r.rinde[0].cap, capA(7), 0.0002) || r.rinde[0].n !== 15) F(`16 · lo que rinde la comuna no es la mediana sin los de más de 12 % y sin comunas chicas (${JSON.stringify(r.rinde)})`);
+      const todos = [...A.map((_, k) => capA(k)), ...B.map(() => 0.09)].sort((x, y) => x - y);
+      if (!cerca(r.santiago ?? 0, todos[Math.floor(todos.length / 2)], 0.0002)) F("16 · «Todo Santiago» no es la mediana de todos (sin los de más de 12 %)");
+      if (ASESORIA_COPY.capRate.santiago !== "Todo Santiago") F("16 · la fila gris no dice «Todo Santiago»");
+      const comp = codigo("src/app/explorar/asesoria/asesoria.tsx");
+      if (!/const xs = agregados\.santiago != null \? \[\.\.\.top, \{ comuna: C\.capRate\.santiago, cap: agregados\.santiago, gris: true \}\] : top;/.test(comp)) F("16 · la fila gris no es todo Santiago");
+      if (!/santiago: a\?\.santiago \?\? null/.test(codigo("src/app/api/asesoria/agregados/route.ts"))) F("16 · /agregados no devuelve la mediana de Santiago");
+    }
+
+    // ── 17 · LAS TARJETAS DE TUS DEPTOS (tarjetas.ts) ──
+    {
+      const cfg = { plazo: 30, tasaPct: CFG.tasaPct, uf: CFG.uf };
+      const d = (id: string, o: { precioUF?: number; flujo?: number | null; lat?: number; lng?: number }) => ({ id, comuna: "Santiago", dormitorios: 2, precioUF: o.precioUF ?? 3000, flujo: o.flujo === undefined ? 0 : o.flujo, cap: 0.06, lat: o.lat ?? -33.40, lng: o.lng ?? -70.52 });
+      const t = tarjetasDelPerfil([d("a", { flujo: 10_000, precioUF: 2500 }), d("b", { flujo: 90_000, lat: -33.4374154, lng: -70.6512777 }), d("c", { flujo: 40_000, precioUF: 2600 })], cfg);
+      if (t.map((x) => x.id).join() !== "b,c,a") F(`17 · las tarjetas no van ordenadas por lo que dejan al mes (${t.map((x) => x.id).join()})`);
+      if (t.filter((x) => x.masBarato).map((x) => x.id).join() !== "a") F("17 · «El más barato» no cae en el de menor precio");
+      if (!t[0].metro || t[0].metro.m > 1000 || t.find((x) => x.id === "a")!.metro !== null) F("17 · «A X m del metro» no sale solo con una estación a 1 km o menos");
+      if (tarjetasDelPerfil([d("x", { precioUF: 2000 })], cfg)[0].masBarato) F("17 · con un solo depto dice «El más barato»");
+      if (tarjetasDelPerfil([d("x", { precioUF: 2000 }), d("y", { precioUF: 2000 })], cfg).some((x) => x.masBarato)) F("17 · con un empate dice «El más barato»");
+      const tasa = t[0].tasa;
+      const pt = pruebaTasa({ precioUF: 3000, flujoCLP: 90_000, plazo: 30, tasaPct: CFG.tasaPct, uf: CFG.uf });
+      if (!tasa || tasa.aguanta !== pt.aguanta || tasa.poneCLP !== pt.poneCLP) F("17 · la línea de tasa no es la prueba de tasa del depto");
+      if (tarjetasDelPerfil([d("n", { flujo: null })], cfg)[0].tasa !== null) F("17 · sin flujo se inventa una prueba de tasa");
+      const P = ASESORIA_COPY.perfil;
+      if (P.masBarato !== "El más barato" || P.metro("Santa Isabel", 437) !== "A 440 m del metro Santa Isabel" || P.aguanta !== "Aguanta si la tasa sube 1 punto" || P.conPunto(8000) !== "Con un punto más de tasa, pones $8.000 al mes") F("17 · los textos de las tarjetas no son los aprobados");
+      const comp = codigo("src/app/explorar/asesoria/asesoria.tsx");
+      if (/porQue/.test(comp) || "porQue" in P) F("17 · quedan las etiquetas viejas («El que mejor rinde», «El que pide menos»)");
+      if (!/\{t\.masBarato && <span data-asesoria="etq-barato">\{P\.masBarato\}<\/span>\}/.test(comp) || !/\{t\.metro && <span data-asesoria="etq-metro">\{P\.metro\(t\.metro\.nombre, t\.metro\.m\)\}<\/span>\}/.test(comp)) F("17 · las etiquetas no salen solo cuando son verdad");
+      if (!/\{t\.tasa && <span className="as-depto-tasa" data-asesoria="depto-tasa">\{t\.tasa\.aguanta \? P\.aguanta : P\.conPunto\(t\.tasa\.poneCLP\)\}<\/span>\}/.test(comp)) F("17 · la tarjeta no lleva su prueba de tasa");
+      if (!/tres: tarjetasDelPerfil\(tres\.map\(/.test(codigo("src/app/api/asesoria/perfil/route.ts"))) F("17 · /perfil no arma las tarjetas con tarjetasDelPerfil");
+      if (/estres|estresTitulo|subeTasa|mesVacio/.test(comp + JSON.stringify(Object.keys(P)))) F("17 · queda «Si algo se mueve» (C8)");
+    }
+
+    // ── 18 · «X DE CADA 10 SE PAGAN SOLOS» (C7) ──
+    {
+      if (UMBRAL_SOLOS !== 0.8) F("18 · el umbral no es 8 de cada 10");
+      const a = sePaganSolos(10, 8), b = sePaganSolos(10, 7), c = sePaganSolos(2130, 1930), z = sePaganSolos(0, 0), h = sePaganSolos(100, 88);
+      if (!a.mostrar || a.k !== 8 || b.mostrar || !c.mostrar || c.k !== 9 || z.mostrar || h.k !== 8) F(`18 · la regla de la buena noticia no es «al menos 80 %, hacia abajo» (${JSON.stringify([a, b, c, z])})`);
+      const A = ASESORIA_COPY.alMes;
+      if (A.solos(9).grande !== "9 de cada 10" || A.solos(9).chico !== "se pagan solos con el arriendo" || A.noPones !== "No tienes que poner plata cada mes." || A.puedoPoner !== "Puedo poner algo al mes") F("18 · los textos de la buena noticia no son los aprobados");
+      if (A.solosLinea(1930, 2130) !== "1.930 de los 2.130 que te alcanzan te dejan plata cada mes, después del dividendo y los gastos.") F("18 · la línea de la buena noticia no es la de la lámina");
+      if (A.izq !== "Nada" || /casi todo depto/i.test(A.pregunta)) F("18 · el slider dice algo falso o su izquierda no es «Nada»");
+      const comp = codigo("src/app/explorar/asesoria/asesoria.tsx");
+      if (!/\? \{ \.\.\.sePaganSolos\(alcanzanAporte, calzan\.length\), n: calzan\.length, m: alcanzanAporte \} : null;/.test(comp) || !/e\?\.paso === "aporte" && !sliderAbierto && aporte === 0 && !aportePendiente/.test(comp)) F("18 · la buena noticia no se decide con 0 al mes contra los que te alcanzan");
+      if (!/return p\.comprar\.filter\(\(x\) => x\.precioUF <= cap\.topeUF && \(!idsAlcanzan \|\| idsAlcanzan\.has\(x\.avisoId\)\)\)\.length;/.test(comp)) F("18 · «los que te alcanzan» del aporte no son los de la fórmula");
+      if (!/cambiar\(\(s\) => \(\{ \.\.\.s, paso: PROYECTOS_VISIBLE \? "proyecto" : "aporte", aporte: 0 \}\)\)/.test(comp)) F("18 · el aporte no parte en 0");
+      if (!/<button type="button" className="as-secundario" data-azul="1" onClick=\{alPoner\} data-asesoria="aporte-poner">\{A\.puedoPoner\}<\/button>\s*<button type="button" className="as-principal" onClick=\{alSeguir\} data-asesoria="aporte-seguir">\{A\.seguir\}<\/button>/.test(comp)) F("18 · «Seguir» no es el principal y «Puedo poner algo al mes» el secundario");
+      if (!/const sinBuenaNoticia = solos != null && !solos\.mostrar;\s*useEffect\(\(\) => \{ if \(sinBuenaNoticia && !sliderAbierto\) setSliderAbierto\(true\); \}, \[sinBuenaNoticia, sliderAbierto\]\);/.test(comp)) F("18 · sin la buena noticia, el slider no queda abierto (mover el slider lo haría desaparecer)");
+    }
+
+    // ── 19 · EL DESTINO: Invierte con los tres (D14 y punto 2 de Fabrizio) ──
+    {
+      const comp = codigo("src/app/explorar/asesoria/asesoria.tsx");
+      const def = comp.match(/export const urlSeguirDeptos = \(ids: readonly string\[\]\): string =>\s*`([^`]+)`;/);
+      if (!def || def[1] !== '/invierte/${ids[0]}?${new URLSearchParams({ desde: "explorar", ...(ids.length > 1 ? { mas: ids.slice(1).join(",") } : {}) })}') F("19 · el botón no lleva al primer depto con los otros en la dirección");
+      if (urlEsperada(["a", "b", "c"]) !== "/invierte/a?desde=explorar&mas=b%2Cc") F("19 · la dirección del botón no es la esperada");
+      if (!/<a className="as-principal" data-rojo="1" href=\{urlSeguirDeptos\(r\.tres\.map\(\(t\) => t\.id\)\)\} onClick=\{alSeguir\} data-asesoria="seguir-deptos">\{P\.seguirDeptos\}<\/a>/.test(comp) || ASESORIA_COPY.perfil.seguirDeptos !== "Seguir con estos deptos") F("19 · el perfil no lleva el botón rojo «Seguir con estos deptos»");
+      if ((comp.match(/data-rojo="1"/g) ?? []).length !== 2) F("19 · el rojo aparece en otro botón que «Partir» y «Seguir con estos deptos»");
+      const ad = codigo("src/lib/invierte-v2/asesoria-servidor.ts");
+      if (!/if \(!orden \|\| !perfil \|\| perfil\.origen !== "asesoria" \|\| perfil\.topeSupuestos\?\.adoptadoInvierte\) return \{ adoptado: false \};/.test(ad)) F("19 · la adopción del perfil no exige orden, perfil de la asesoría y una sola vez");
+      if (!/for \(const avisoId of perfil\.elegidos\) \{\s*const s = await sumarDepto\(admin, user, avisoId, null, "mapa", null\)/.test(ad)) F("19 · al firmar no se suman los deptos elegidos");
+      if (/hastaCuanto\(/.test(ad)) F("19 · la adopción recalcula el tope (manda el de la asesoría)");
+      const pg = codigo("src/app/invierte/perfil/page.tsx");
+      if (!/if \(\(await adoptarPerfilAsesoria\(admin, \{ id: user\.id, email: user\.email \?\? null \}\)\)\.adoptado\) redirect\(URL_OPCIONES\);/.test(pg)) F("19 · Invierte vuelve a preguntar el perfil a quien viene de la asesoría");
+      const ct = codigo("src/app/invierte/[avisoId]/page.tsx");
+      if (!/if \(perfil\?\.origen === "asesoria" && perfil\.topePieUF != null && depto\.precioUF != null && depto\.precioUF <= perfil\.topePieUF && !inicial\?\.pie\)/.test(ct) || !/\{!inicial\?\.pieConocido && <fieldset className="inv-pregunta">/.test(codigo("src/components/invierte-v2/ContactoForm.tsx"))) F("19 · el contacto vuelve a preguntar el pie que ya dijo en la asesoría");
+      const ac = codigo("src/lib/invierte-v2/acceso-servidor.ts");
+      if (!/if \(modo !== "lista"\) return false;\s*return accesoPorAsesoria\(user\?\.id \?\? null\);/.test(ac) || !/const \{ modo \} = await estadoAsesoria\(\);\s*if \(modo !== "lista"\) return false;/.test(ac) || !/return a\.habilitada && a\.prueba;/.test(ac)) F("19 · el acceso de prueba abre Invierte fuera de «lista» o a alguien que no está en la lista de la asesoría");
+    }
+
+    // ── 20 · LA SEGUNDA VUELTA EN PANTALLA ──
+    {
+      const comp = codigo("src/app/explorar/asesoria/asesoria.tsx");
+      const css = leer("src/app/explorar/asesoria/asesoria.css");
+      // C6: sin «Cerca de mi pega».
+      for (const f of ["src/app/explorar/asesoria/asesoria.tsx", "src/lib/asesoria/lugar.ts", "src/lib/asesoria/estado.ts", "src/lib/asesoria/perfil.ts", "src/lib/asesoria/eventos.ts", "src/lib/asesoria/estilo-marcas.ts", "src/app/explorar/mapa-explorar.tsx"]) if (/pega\b|RADIO_PEGA|cercaDe\(/i.test(codigo(f))) F(`20 · queda «Cerca de mi pega» en ${f}`);
+      if ("pega" in ASESORIA_COPY.donde || "tocaPega" in ASESORIA_COPY.donde) F("20 · quedan los textos de la pega");
+      if (validarPedidoPerfil({ experiencia: "uno", objetivo: "arriendo", numeros: base, aporte: 0, donde: { modo: "pega", comunas: [] }, lupa: "no" }).ok) F("20 · el perfil todavía acepta «pega»");
+      // C10: la lupa.
+      const L = ASESORIA_COPY.lupa;
+      if (L.pasos.length !== 2 || L.pasos[0] !== "Si tienes una deuda atrasada, ponte al día o repacta. Si emites boletas hace poco, junta al menos 12 meses antes de pedir el crédito." || !/CMF/.test(L.pasos[1])) F("20 · los pasos de la lupa no son los aprobados");
+      if (!L.pregunta.endsWith("Queda en tu perfil, para orientarte mejor.") || /nadie más/.test(L.pregunta)) F("20 · la lupa todavía dice «Esto no lo ve nadie más»");
+      // C12: la preaprobación.
+      const Pr = ASESORIA_COPY.perfil.preaprobacion;
+      if (Pr.tengo !== "Con preaprobación ya puedes ofertar." || Pr.no !== "Sin preaprobación, es lo primero que te pediría el banco." || Pr.tramite !== "Con la preaprobación en trámite, apenas salga puedes ofertar.") F("20 · las líneas de la preaprobación no son las aprobadas");
+      if (!/\{numeros && <p className="as-aviso" data-asesoria="perfil-preaprobacion">\{P\.preaprobacion\[numeros\.preaprobado\]\}<\/p>\}/.test(comp)) F("20 · el perfil no dice la línea de la preaprobación");
+      // F19 y F20.
+      if (ASESORIA_COPY.calzanDe(3624, 4512) !== "3.624 de los 4.512 que convienen te calzan") F("20 · la cuenta del mapa no dice «X de los Y que convienen te calzan»");
+      if (!ASESORIA_COPY.gancho.revise(19037, "1 de cada 4").startsWith("Revisé los deptos usados publicados en Santiago.")) F("20 · el paso 0 no dice «Revisé los deptos usados publicados en Santiago»");
+      // F21: la hoja de registro con el número real, y el chat de atrás no la repite.
+      const h3 = textosHoja({ motivo: "asesoria", pin: null, deptosAsesoria: 3 }), h2 = textosHoja({ motivo: "asesoria", pin: null, deptosAsesoria: 2 }), h0 = textosHoja({ motivo: "asesoria", pin: null, deptosAsesoria: 0 });
+      if (h3.titulo !== "Tu perfil y tus 3 deptos están listos." || h3.cuerpo !== "Crea tu cuenta gratis y te los muestro. Trae un crédito de regalo." || h2.titulo !== "Tu perfil y tus 2 deptos están listos." || /\d/.test(h0.titulo)) F(`20 · la hoja de registro no dice el número real de deptos (${h3.titulo} / ${h2.titulo} / ${h0.titulo})`);
+      if (/C\.cierre\.titulo|C\.cierre\.cuerpo/.test(comp) || !/deptos: Math\.min\(3, calzan\?\.length \?\? 0\)/.test(comp)) F("20 · el chat repite el texto de la hoja de registro, o la hoja no recibe cuántos deptos");
+      const cli = codigo("src/app/explorar/explorar-cliente.tsx");
+      if (!/deptosAsesoria: deptos,/.test(cli)) F("20 · el mapa no pasa cuántos deptos a la hoja de registro");
+      // F22: con la hoja cerrada, el filtro se ve en la barra y se quita.
+      if (!/\{filtroAsesoria\?\.cerrada && \(\s*<button type="button" className="ex-boton" data-activo="1" data-explorar="filtro-perfil" aria-label=\{FILTRO_PERFIL_COPY\.quitar\} onClick=\{\(\) => setQuitarAsesoria\(\(n\) => n \+ 1\)\}>/.test(cli) || !/quitarFiltro=\{quitarAsesoria\}/.test(cli)) F("20 · con la hoja cerrada, el filtro del perfil no se ve ni se quita desde la barra (F22)");
+      if (!/cerrada: visible === "chica" && !!calzan/.test(comp) || !/cambiar\(\(x\) => \(\{ \.\.\.x, sinFiltro: true \}\)\);/.test(comp) || !/const filtroQuitado = e\?\.sinFiltro === true && visible === "chica";/.test(comp)) F("20 · quitar el filtro no lo apaga hasta «Retomar»");
+      if (!/cambiar\(\(x\) => \(\{ \.\.\.x, cerrada: false, sinFiltro: false \}\)\)/.test(comp)) F("20 · «Retomar» no vuelve a poner el filtro");
+      // F23: un solo contador y «Retomar» que no tapa la tarjeta.
+      if (!/const conCuenta = !!e && e\.paso !== "perfil" && !filtroQuitado && !!calzan;/.test(comp) || !/\{conCuenta && cuenta\}/.test(comp)) F("20 · desde el perfil se montan dos contadores (F23)");
+      if (!/\{!p\.tapado && <button type="button" className="as-raiz as-chica ph-no-capture"/.test(comp) || !/tapado=\{!!tarjeta\}/.test(cli)) F("20 · «Retomar» tapa los botones de la tarjeta del depto (F23)");
+      // E17: la pastilla en dos líneas como mucho.
+      if (!/\.as-cuenta \{[^}]*max-height: 3\.2em; overflow: hidden; line-height: 1\.3;/.test(css)) F("20 · la pastilla del mapa puede pasar de dos líneas (E17)");
+      // G24: la burbuja con el número, el ícono de Franco, el degradado solo en la burbuja y el tope.
+      const B = ASESORIA_COPY.burbuja;
+      if (B.titulo !== "¿Cuáles te alcanzan a ti?" || B.revisados !== "Revisados anoche, uno por uno" || B.numero(4512, 19037).n !== "4.512" || B.numero(4512, 19037).de !== "de 19.037 convienen") F("20 · la burbuja no dice lo de la lámina");
+      if (!/<p className="as-banda-n"><b data-asesoria="burbuja-numero">\{n\.n\}<\/b><span>\{n\.de\}<\/span><\/p>/.test(comp)) F("20 · la burbuja no parte con el número");
+      if (!/src="\/icon\.png"/.test(comp) || />F<\/span>/.test(comp)) F("20 · queda la F negra en vez del ícono de Franco");
+      if ((comp.match(/className="as-banda"/g) ?? []).length !== 2 || (css.match(/var\(--as-degradado\)/g) ?? []).length !== 1 || !/\.as-banda \{[^}]*background: var\(--as-degradado\)/.test(css)) F("20 · el degradado aparece fuera de la burbuja y la tarjeta del tope");
+      if (!/\.as-principal\[data-rojo="1"\] \{ background: var\(--signal-red, #C8323C\)/.test(css) || /chip-v-b[^;]*\)[^;]*;/.test(css.replace(/--as-degradado:[^;]*;/, "").replace(/\.as-prop[^\n]*\n/g, ""))) F("20 · el rojo se usa fuera de «Partir» y «Seguir con estos deptos» (o de los datos)");
+      // La foto de la calle: la de siempre, solo con la tarjeta en pantalla.
+      if (!/const io = new IntersectionObserver\(\(es\) => \{ if \(es\.some\(\(x\) => x\.isIntersecting\)\) \{ setEnPantalla\(true\); io\.disconnect\(\); \} \}/.test(comp) || !/const tipos = useCalle\(enPantalla \? \[id\] : \[\]\);/.test(comp) || !/\{enPantalla && <ImagenDepto avisoId=\{id\} tipo=\{tipos\[id\]\} clase="as-foto-img" carga="lazy" \/>\}/.test(comp)) F("20 · la foto del depto no es la vista de la calle cargada solo en pantalla");
     }
   } catch (e) {
     F(`excepción: ${(e as Error).stack ?? e}`);
@@ -424,3 +618,20 @@ if (require.main === module) void runAsesoria().then((r) => { process.exitCode =
 // Los nuevos no quedan afuera (27-nov-2026), 10 mutaciones más, las 10 en ROJO: el pie sin la regla del camino; el tope por renta igual
 // al menor; el perfil sin el tope por pie; la cifra sin decir «usados»; sin los dos límites; «Avísame» solo con 0; «Avísame» que no viaja
 // al perfil; un perfil rehecho que borra el sí; la ruta de «Avísame» sin el interruptor; el botón con otro texto.
+// La segunda vuelta (27-nov-2026), 48 mutaciones (45 sobre este tier y 3 sobre INVIERTE-V2-E2), las 48 en ROJO (runner aparte que
+// restaura cada archivo byte a byte): la regla sin gastos; el tope por renta sin dividir por 1,044; la fórmula sin redondear (B4); «con
+// UF 100 más» con 200; «lo que te frena» con la renta limitando; la prueba de tasa a 30 años siempre; confirmarPerfil sin el plazo y la
+// renta del perfil; Invierte ignorando el plazo; las medianas con los de más de 12 %; el promedio en vez de la mediana; el mínimo a 14;
+// la fila gris que no es Santiago; las tarjetas por precio; «el más barato» con uno solo; el metro a 5 km; la buena noticia con 70 %;
+// «X de cada 10» redondeado hacia arriba; el aporte que parte en 100 mil; «Puedo poner» como principal; el slider que no queda abierto;
+// el botón sin el segundo depto; el rojo en «Seguir» de la fórmula; la adopción repetida; Invierte que vuelve a preguntar el perfil; el
+// acceso sin la marca de prueba; el acceso fuera de «lista»; el contacto que pregunta el pie igual; la lupa con el paso 3; sin la línea
+// de preaprobación; la hoja que siempre dice 3; sin el filtro en la barra; «Retomar» que no repone el filtro; «Retomar» que tapa la
+// tarjeta; dos contadores en el perfil; el scroll al primer marcado; la fórmula sin su marca; la pastilla sin tope de líneas; el
+// degradado en la buena noticia; sin el ícono de Franco; la foto antes de estar en pantalla; «Avísame» con 3; vuelve la pega; el tope sin
+// marcar quién manda; la tarjeta del tope sin el pie; vuelve a bajar sola; y en Invierte: la falta de pie sin gastos, la ayuda del pie
+// sin gastos, el monto aprobado sin contar el pie.
+// CUATRO SALIERON VERDES EN LA PRIMERA PASADA, y los cuatro eran el fixture, no el código: la prueba de tasa con un flujo que cubría la
+// subida a los dos plazos (pasó a flujo 0), una muestra simétrica donde la media y la mediana coinciden (pasó a una cuadrática), un
+// depto sin ninguna estación a menos de 5 km (pasó a uno a 2,5 km de Los Dominicos) y 1.930 de 2.130, que da 9 truncando y redondeando
+// (se sumó 88 de 100). Reescritos, los cuatro salen rojos.

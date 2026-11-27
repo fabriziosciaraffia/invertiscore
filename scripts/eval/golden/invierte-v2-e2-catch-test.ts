@@ -126,22 +126,26 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (!cerca(credito, esperado, 0.01)) F(`1 · el crédito por renta no es el del 25 % / 40 % a 30 años (${credito} vs ${esperado})`);
       const conCarga = creditoPorRenta(2500000, 600000, 4.1, 39000);
       if (!(conCarga < credito) || !cerca(conCarga, ((2500000 * 0.4 - 600000) * (1 - Math.pow(1 + i, -360)) / i) / 39000, 0.01)) F("1 · las otras cuotas no bajan el crédito por la carga del 40 %");
+      // ⚠ ACTA (27-nov-2026, decisión de Fabrizio: UNA SOLA REGLA DEL TOPE con la asesoría, src/lib/tope/regla.ts): los gastos de la
+      // compra (4,4 % en un usado) entran en los dos topes —por pie, pie ÷ 24,4 %; por renta, (pie + crédito) ÷ 1,044—. Las cifras de
+      // abajo se reescribieron con esa regla; la forma de cada chequeo (el menor de los dos, menos preciso sin renta, el pie que cuenta)
+      // no cambió.
       const r = hastaCuanto({ preaprobado: "no", pieUF: 700, rentaCLP: 2500000, otrasCuotasCLP: 100000, ...m });
-      if (r.fuente !== "renta" || !cerca(r.topeUF, Math.min(700 / 0.2, 700 + credito)) || r.menosPreciso) F("1 · el tope con renta no es el menor entre pie/20 % y pie + crédito");
+      if (r.fuente !== "renta" || !cerca(r.topeUF, Math.min(700 / 0.244, (700 + credito) / 1.044)) || r.menosPreciso) F("1 · el tope con renta no es el menor entre pie ÷ 24,4 % y (pie + crédito) ÷ 1,044");
       const bajo = hastaCuanto({ preaprobado: "no", pieUF: 700, rentaCLP: 900000, otrasCuotasCLP: 0, ...m });
       if (bajo.limita !== "credito") F("1 · con poca renta no dice que limita el crédito");
       const sinRenta = hastaCuanto({ preaprobado: "tramite", pieUF: 500, noDiceRenta: true, rentaCLP: 3000000, ...m });
-      if (sinRenta.fuente !== "solo_pie" || !cerca(sinRenta.topeUF, 2500) || !sinRenta.menosPreciso) F("1 · sin renta no es pie/20 % marcado menos preciso");
+      if (sinRenta.fuente !== "solo_pie" || !cerca(sinRenta.topeUF, 500 / 0.244) || !sinRenta.menosPreciso) F("1 · sin renta no es pie ÷ 24,4 % marcado menos preciso");
       // Con preaprobación: el banco financia el 80 %.
       const si = hastaCuanto({ preaprobado: "tengo", montoPreaprobadoUF: 2400, pieTiene: "si", ...m });
       if (si.fuente !== "preaprobacion" || !cerca(si.topeUF, 3000)) F("1 · con preaprobación y el pie completo no es monto / 0,8");
       const parte = hastaCuanto({ preaprobado: "tengo", montoPreaprobadoUF: 2400, pieTiene: "parte", pieUF: 300, ...m });
-      if (!cerca(parte.topeUF, Math.min(2400 + 300, 300 / 0.2)) || parte.limita !== "pie") F("1 · con una parte del pie no es el menor entre monto + pie y pie / 20 %");
+      if (!cerca(parte.topeUF, Math.min((2400 + 300) / 1.044, 300 / 0.244)) || parte.limita !== "pie") F("1 · con una parte del pie no es el menor entre (monto + pie) ÷ 1,044 y pie ÷ 24,4 %");
       const todavia = hastaCuanto({ preaprobado: "tengo", montoPreaprobadoUF: 2400, pieTiene: "no", pieUF: 300, ...m });
       if (todavia.topeUF !== 0) F("1 · con preaprobación y sin pie el tope no es 0");
       const aprobada = hastaCuanto({ preaprobado: "no", pieUF: 700, rentaCLP: 900000, aprobadaUF: 2000, pieTiene: "si", ...m });
       if (aprobada.fuente !== "aprobada" || !cerca(aprobada.topeUF, 2500)) F("1 · la preaprobación aprobada no reemplaza la estimación");
-      if (REGLA_TOPE.piePct !== 20 || REGLA_TOPE.dividendoMaxPct !== 25 || REGLA_TOPE.cargaMaxPct !== 40 || REGLA_TOPE.plazoAnios !== 30) F("1 · la regla no es 20 % / 25 % / 40 % / 30 años");
+      if (REGLA_TOPE.piePct !== 20 || REGLA_TOPE.gastosPct !== 4.4 || REGLA_TOPE.dividendoMaxPct !== 25 || REGLA_TOPE.cargaMaxPct !== 40 || REGLA_TOPE.plazoAnios !== 30) F("1 · la regla no es 20 % + 4,4 % de gastos / 25 % / 40 % / 30 años");
       if (!r.supuestos || r.supuestos.tasaPct !== 4.1 || r.supuestos.uf !== 39000 || r.supuestos.version !== REGLA_TOPE.version) F("1 · los supuestos no van con el resultado");
       // En pantalla: segunda línea, «Sujeto a evaluación del banco»; con preaprobación, «según tu preaprobación».
       if (!/^Con tu pie y tu renta, estimamos que puedes comprar hasta UF 3\.500\. Sujeto a evaluación del banco\.$/.test(lineaTope({ topeUF: 3500, fuente: "renta" }, fmtUF))) F("1 · la línea del tope no es la de la lámina");
@@ -163,7 +167,8 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (c.comunas.join("|") !== "Ñuñoa|Macul|San Miguel" || c.deEntrada !== "Ñuñoa" || c.dePerfil.join("|") !== "Macul|San Miguel") F("2 · las comunas no vienen primero la de entrada y después las del perfil, sin repetir");
       // ⚠ ACTA (20-nov-2026, decisión de Fabrizio): el «Sí» del contacto ya no llena el pie: solo muestra la ayuda «Para el depto que elegiste
       // necesitas UF X (20 %)». El campo va vacío y lo escribe la persona (§14b fija que el tope no salga del precio del depto).
-      if (ayudaPie("si", 3250) !== 650 || ayudaPie("parte", 3250) !== null || ayudaPie(null, 3250) !== null) F("2 · la ayuda del pie no es el 20 % del depto solo cuando dijo que tiene el pie");
+      // ⚠ ACTA (27-nov-2026, regla única): la ayuda cuenta los gastos: 24,4 % del depto (793 de 3.250), no 20 % (650).
+      if (ayudaPie("si", 3250) !== 793 || ayudaPie("parte", 3250) !== null || ayudaPie(null, 3250) !== null) F("2 · la ayuda del pie no es el 24,4 % del depto (pie y gastos) solo cuando dijo que tiene el pie");
       const srv = codigo("src/lib/invierte-v2/perfil-servidor.ts");
       if (!/const reemplaza = tope\.fuente !== "solo_pie";/.test(srv) || !/if \(reemplaza && tope\.topeUF > 0\) pbFila\.precio_max_uf = /.test(srv)) F("2 · el tope reemplaza el precio máximo también sin renta (o nunca)");
       if (!/precioMaxAnterior: anterior/.test(srv) || !/previo\?\.topeSupuestos\?\.precioMaxAnterior/.test(srv)) F("2 · el precio máximo anterior no se guarda (o se pisa en cada cambio)");
@@ -198,14 +203,18 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       // Por qué no alcanza: Y = 20 % del precio − su pie; la renta limita el crédito; con las dos, ambos datos.
       const tRenta = hastaCuanto({ preaprobado: "no", pieUF: 300, rentaCLP: 2500000, otrasCuotasCLP: 0, tasaPct: 4.1, uf: 39000 });
       const p1 = porQueNoAlcanza(3250, tRenta, 300);
-      if (!p1 || p1.motivo !== "pie" || p1.faltaPieUF !== 350) F(`3 · falta de pie mal calculada (${JSON.stringify(p1)})`);
+      // ⚠ ACTA (27-nov-2026, regla única): el pie que pide un depto de UF 3.250 cuenta los gastos: 793, así que le faltan 493 (no 350).
+      if (!p1 || p1.motivo !== "pie" || p1.faltaPieUF !== 493) F(`3 · falta de pie mal calculada (${JSON.stringify(p1)})`);
       const tCred = hastaCuanto({ preaprobado: "no", pieUF: 900, rentaCLP: 700000, otrasCuotasCLP: 0, tasaPct: 4.1, uf: 39000 });
       const p2 = porQueNoAlcanza(3250, tCred, 900);
       if (!p2 || p2.motivo !== "credito" || p2.faltaPieUF !== 0) F(`3 · con el pie de sobra no dice que limita la renta (${JSON.stringify(p2)})`);
       const tAmbas = hastaCuanto({ preaprobado: "no", pieUF: 300, rentaCLP: 700000, otrasCuotasCLP: 0, tasaPct: 4.1, uf: 39000 });
       const p3 = porQueNoAlcanza(3250, tAmbas, 300);
       if (!p3 || p3.motivo !== "pie_y_credito") F("3 · con las dos no dice las dos");
-      if (porQueNoAlcanza(1400, tRenta, 300) !== null) F("3 · dice que no alcanza uno que sí");
+      // ⚠ ACTA (27-nov-2026, regla única): con UF 300 de pie llega hasta UF 1.229 (300 ÷ 24,4 %): el de 1.400 ya no le alcanza de verdad;
+      // el chequeo pasa a uno de 1.200, que sí. Y el de 1.300, que con la regla vieja alcanzaba, ahora dice que falta pie.
+      if (porQueNoAlcanza(1200, tRenta, 300) !== null) F("3 · dice que no alcanza uno que sí");
+      if (porQueNoAlcanza(1300, tRenta, 300)?.motivo !== "pie") F("3 · un depto que pide más pie con los gastos dice que alcanza");
       // Textos de la tabla.
       if (MIN_PARECIDOS !== 30 || vsParecidos(3000, 50, { precioM2UF: 70, n: 29 }) !== null || vsParecidos(3000, 50, { precioM2UF: 75, n: 40 }) !== -20) F("3 · precio contra parecidos se muestra con menos de 30 parecidos (o mal calculado)");
       if (textoMetro({ estacion: "Ñuñoa", metros: 437 }) !== "Estación Ñuñoa, a 450 m aprox." || /min/.test(textoMetro({ estacion: "X", metros: 1200 }))) F("3 · el metro no es «Estación X, a N m aprox.» (o inventa minutos)");
@@ -586,7 +595,9 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       // Las reglas.
       if (!validarArchivo({ mime: "application/pdf", bytes: 1000 }).ok || validarArchivo({ mime: "image/gif", bytes: 1000 }).ok || validarArchivo({ mime: "image/jpeg", bytes: 16 * 1024 * 1024 }).ok || validarArchivo({ mime: "image/heic", bytes: 0 }).ok) F("10 · el archivo no se valida por tipo (PDF/foto) y tamaño (hasta 15 MB)");
       // Quien entró por la renta (sin la pregunta del pie) y le aprueban la preaprobación: cuenta el pie que declaró.
-      if (hastaCuanto({ preaprobado: "no", pieUF: 700, rentaCLP: 2500000, otrasCuotasCLP: 0, tasaPct: 4.1, uf: 41357, aprobadaUF: 2600 }).topeUF !== 3300) F("10 · con un monto aprobado, el pie declarado por el camino de la renta cuenta como cero");
+      // ⚠ ACTA (27-nov-2026, regla única): con el pie declarado (700) y el monto aprobado (2.600), el menor entre 700 ÷ 24,4 % y
+      // (700 + 2.600) ÷ 1,044 —2.868,85—, no 700 + 2.600. Con el pie contado como cero daría 0.
+      if (!cerca(hastaCuanto({ preaprobado: "no", pieUF: 700, rentaCLP: 2500000, otrasCuotasCLP: 0, tasaPct: 4.1, uf: 41357, aprobadaUF: 2600 }).topeUF, 700 / 0.244, 0.01)) F("10 · con un monto aprobado, el pie declarado por el camino de la renta cuenta como cero");
       if (MAX_BYTES_PREAPROBACION !== 15 * 1024 * 1024) F("10 · el tope del archivo no es el del bucket (15 MB)");
       // ⚠ ACTA (20-nov-2026, revisión de Fabrizio, pasos 1 a 5): en revisión también tiene su bloque (sin botón rojo, §19a).
       if (teTocaHoy("en_revision")?.tipo !== "revision" || teTocaHoy("aprobada") || teTocaHoy("sin_credito") || teTocaHoy("explicando") || teTocaHoy("por_corregir")?.tipo !== "corregir") F("10 · «Lo que te toca hoy» aparece cuando no le toca a la persona (o falta cuando hay que corregir)");
@@ -979,7 +990,8 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
       if (!/const \[pie, setPie\] = useState\(inicial\.pieSugeridoUF != null \? conPuntos\(String\(Math\.round\(inicial\.pieSugeridoUF\)\)\) : ""\);/.test(pf14) || /pieAyudaUF[^\n]*setPie|setPie\([^)]*pieAyudaUF/.test(pf14)) F("14b · el formulario llena el pie con la ayuda");
       // ⚠ ACTA (20-nov-2026): la ayuda se dibuja con sinCortar, para que «(20 %)» no se corte (§14g).
       if (!/\{inicial\.pieAyudaUF != null && <p className="iv2-linea-chica" data-inv2="pie-ayuda">\{sinCortar\(P2\.pieAyuda\(fmtUF\(inicial\.pieAyudaUF\)\)\)\}<\/p>\}/.test(pf14) || !/data-inv2="pie-no-se"/.test(pf14)) F("14b · bajo el pie no va la ayuda o falta «Todavía no sé»");
-      if (PERFIL_COPY.p2.pieAyuda("220") !== "Para el depto que elegiste necesitas UF 220 (20 %)." || PERFIL_COPY.p2.pieNoSe !== "Todavía no sé") F("14b · los textos del pie no son los de Fabrizio");
+      // ⚠ ACTA (27-nov-2026, regla única): la ayuda dice que cuenta los gastos: «(20 % de pie más gastos)».
+      if (PERFIL_COPY.p2.pieAyuda("220") !== "Para el depto que elegiste necesitas UF 220 (20 % de pie más gastos)." || PERFIL_COPY.p2.pieNoSe !== "Todavía no sé") F("14b · los textos del pie no son los de Fabrizio");
       // Con un depto de UF 1.100, renta de $3.000.000 y el pie escrito (o «Todavía no sé»), el tope no puede ser el precio del depto.
       const m14 = { tasaPct: 4.1, uf: 39000 };
       const credito14 = creditoPorRenta(3000000, 0, 4.1, 39000);
@@ -991,7 +1003,8 @@ export async function runInvierteV2E2(): Promise<{ hard: number }> {
         if (!v14.ok || v14.pedido.pieUF !== null || v14.pedido.pieNoSabe !== true) F("14b · con «Todavía no sé» se guarda igual un pie"); }
       // La línea de hasta cuánto, según qué limita.
       if (lineaTope({ topeUF: 1100, fuente: "renta", limita: "pie", pieUF: 220, creditoUF: 3752 }, fmtUF) !== "Con tu pie de UF 220 puedes comprar hasta UF 1.100. Por tu renta, el banco podría prestarte hasta UF 3.752: con más pie te alcanzan deptos más grandes.") F("14b · cuando limita el pie, la línea no lo dice como Fabrizio");
-      if (lineaTope({ topeUF: 4690, fuente: "renta", limita: "credito", pieNoSabe: true, creditoUF: 3752 }, fmtUF) !== "Por tu renta, el banco podría prestarte hasta UF 3.752. Con un pie de 20 % podrías comprar hasta UF 4.690. Dinos tu pie para afinarlo.") F("14b · con «Todavía no sé», la línea no es la de Fabrizio");
+      // ⚠ ACTA (27-nov-2026, regla única): «Con un pie de 20 % más gastos».
+      if (lineaTope({ topeUF: 4690, fuente: "renta", limita: "credito", pieNoSabe: true, creditoUF: 3752 }, fmtUF) !== "Por tu renta, el banco podría prestarte hasta UF 3.752. Con un pie de 20 % más gastos podrías comprar hasta UF 4.690. Dinos tu pie para afinarlo.") F("14b · con «Todavía no sé», la línea no es la de Fabrizio");
       if (!/^Con tu pie y tu renta, estimamos/.test(lineaTope({ topeUF: 3000, fuente: "renta", limita: "credito", pieUF: 900, creditoUF: 2100 }, fmtUF))) F("14b · cuando limita la renta, la línea cambió");
 
       // 14c · Las alternativas quedan fijas desde que se muestran: solo se piden todas tras guardar el perfil.

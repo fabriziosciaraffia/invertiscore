@@ -30,8 +30,9 @@ export function avanceBarra(paso: Paso): [number, number, number] {
   }
 }
 
-export type ModoDonde = "comunas" | "metro" | "rinde" | "pega";
-export interface Donde { modo: ModoDonde; comunas: string[]; pega: { lat: number; lng: number } | null }
+// «Cerca de mi pega» se retiró el 27-nov-2026 (C6, decisión de Fabrizio): el chip, el radio de 3 km y el toque en el mapa.
+export type ModoDonde = "comunas" | "metro" | "rinde";
+export interface Donde { modo: ModoDonde; comunas: string[] }
 export type Lupa = "si" | "no" | "prefiero";
 
 export interface EstadoAsesoria {
@@ -47,6 +48,8 @@ export interface EstadoAsesoria {
   lupa: Lupa | null;
   /** «Avísame» de los deptos nuevos (27-nov-2026): una salida, no una pregunta; true si lo tocó. */
   interesNuevos?: boolean | null;
+  /** Cerrada la hoja, la persona quitó el filtro de su perfil desde el botón Filtros (F22): el mapa vuelve entero hasta «Retomar». */
+  sinFiltro?: boolean | null;
 }
 
 export const ESTADO_INICIAL: EstadoAsesoria = {
@@ -61,7 +64,9 @@ export function leerEstado(a: Almacen): EstadoAsesoria | null {
     if (!s) return null;
     const e = JSON.parse(s) as Partial<EstadoAsesoria>;
     if (e.v !== VERSION_ESTADO || !e.paso || !(PASOS as readonly string[]).includes(e.paso)) return null;
-    return { ...ESTADO_INICIAL, ...e } as EstadoAsesoria;
+    // Un estado guardado con «Cerca de mi pega» (retirado): vuelve a preguntar dónde.
+    const donde = e.donde && (["comunas", "metro", "rinde"] as string[]).includes(e.donde.modo) ? { modo: e.donde.modo, comunas: e.donde.comunas ?? [] } : null;
+    return { ...ESTADO_INICIAL, ...e, donde } as EstadoAsesoria;
   } catch {
     return null;
   }

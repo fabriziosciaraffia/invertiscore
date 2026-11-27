@@ -1,13 +1,10 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // DÓNDE, EN LA ASESORÍA (27-nov-2026, lámina P6): las comunas que se tocan en el mapa (los límites de capa-comunas.v1.json), cerca
 // del metro (la misma estación a menos de 1 km de la tarjeta: explorar/lugar.ts), donde más rinde (las tres comunas con mayor cap
-// rate medio entre los que calzan) y cerca de la pega (un punto que se toca, 3 km a la redonda). En el navegador. Tier ASESORIA.
+// rate medio entre los que calzan). «Cerca de mi pega» se retiró el 27-nov-2026. En el navegador. Tier ASESORIA.
 // ─────────────────────────────────────────────────────────────────────────────
 import type { DatosComunas } from "@/lib/explorar/capas-referencia";
 import { metroCercano } from "@/lib/explorar/lugar";
-import { distanciaM } from "./tres";
-
-export const RADIO_PEGA_M = 3_000;
 
 export const COMUNAS_RINDE = 3;
 
@@ -29,7 +26,6 @@ export function comunaEn(lat: number, lng: number, d: DatosComunas | null): stri
 }
 
 export const cercaDelMetro = (p: { lat: number; lng: number }): boolean => metroCercano(p.lat, p.lng) != null;
-export const cercaDe = (centro: { lat: number; lng: number }) => (p: { lat: number; lng: number }): boolean => distanciaM(centro, p) <= RADIO_PEGA_M;
 
 /** Las comunas que más rinden entre las que tienen deptos que calzan (al menos 3): el cap rate medio por comuna de los Comprar
  *  (un número por comuna, del servidor: al anónimo no le viaja el cap rate de cada depto). */

@@ -4,15 +4,30 @@
    (azul Comprar, ciruela Ajustar, rojo No conviene) solo en datos; el resto en tinta y grises. Una sola fuente (Inter).
    ───────────────────────────────────────────────────────────────────────────── */
 .as-raiz { font-family: var(--font-body); color: var(--franco-text); }
+/* LA LÁMINA «CON PUNCH, SIN ABUSAR» (G24, 27-nov-2026): el degradado de la tríada SOLO en la burbuja y en la tarjeta del tope; el rojo
+   SOLO en «Partir» y «Seguir con estos deptos». */
+.as-raiz { --as-degradado: linear-gradient(135deg, var(--chip-v-c, #2B558F) 0%, var(--chip-v-a, #6E4560) 60%, var(--chip-v-b, #C8323C) 100%); --as-azul: var(--chip-v-c, #2B558F); }
 
 /* ── la burbuja ── */
-.as-burbuja { position: absolute; z-index: 30; left: 12px; right: 12px; bottom: calc(12px + var(--as-abajo, 0px)); display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 16px; background: var(--franco-card); box-shadow: 0 12px 32px rgba(20, 20, 20, 0.22); }
-@media (min-width: 768px) { .as-burbuja { left: auto; right: 16px; bottom: calc(16px + var(--as-abajo, 0px)); width: 300px; } }
-.as-burbuja-cab { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
-.as-burbuja-t { display: flex; align-items: center; gap: 10px; margin: 0; font-size: 15px; font-weight: 700; line-height: 1.25; }
-.as-burbuja-c { margin: 0; font-size: 13px; line-height: 1.45; color: var(--franco-text-secondary, #3A3A3F); }
-.as-avatar { width: 36px; height: 36px; flex: none; border-radius: 99px; display: flex; align-items: center; justify-content: center; background: var(--franco-text); color: var(--franco-bg); font-size: 15px; font-weight: 700; }
-.as-avatar[data-chico="1"] { width: 32px; height: 32px; font-size: 14px; }
+.as-burbuja { position: absolute; z-index: 30; left: 12px; right: 12px; bottom: calc(12px + var(--as-abajo, 0px)); display: flex; flex-direction: column; overflow: hidden; border-radius: 20px; background: var(--franco-card); box-shadow: 0 14px 36px rgba(20, 20, 20, 0.28); }
+@media (min-width: 768px) { .as-burbuja { left: auto; right: 16px; bottom: calc(16px + var(--as-abajo, 0px)); width: 320px; } }
+/* la banda del degradado: el número de la burbuja y la cifra del tope */
+.as-banda { position: relative; display: flex; flex-direction: column; gap: 2px; padding: 16px 18px; background: var(--as-degradado); color: #FFFFFF; }
+.as-banda-n { display: flex; align-items: baseline; gap: 8px; margin: 0; padding-right: 36px; }
+.as-banda-n b { font-size: 40px; font-weight: 800; line-height: 1; }
+.as-banda-n span { font-size: 14px; font-weight: 600; opacity: 0.9; }
+.as-banda-barra { display: flex; height: 8px; margin-top: 10px; overflow: hidden; border-radius: 99px; background: rgba(255, 255, 255, 0.25); }
+.as-banda-barra i { display: block; height: 100%; background: #FFFFFF; }
+.as-banda-barra i[data-clase="ajustar"] { background: rgba(255, 255, 255, 0.55); }
+.as-banda-k { margin: 4px 0 0; font-size: 12px; opacity: 0.88; }
+.as-banda-grande { font-size: 40px; font-weight: 800; line-height: 1.05; }
+.as-burbuja-cuerpo { display: flex; flex-direction: column; gap: 12px; padding: 16px 18px 18px; }
+.as-burbuja-t { display: flex; align-items: center; gap: 10px; margin: 0; font-size: 17px; font-weight: 700; line-height: 1.25; }
+.as-burbuja-c { margin: 0; font-size: 14px; line-height: 1.45; color: var(--franco-text-secondary, #3A3A3F); }
+.as-avatar { width: 36px; height: 36px; flex: none; border-radius: 10px; display: block; }
+.as-avatar[data-chico="1"] { width: 32px; height: 32px; border-radius: 9px; }
+.as-x-claro { position: absolute; right: 8px; top: 6px; margin: 0; color: #FFFFFF; }
+.as-x-claro:hover { background: rgba(255, 255, 255, 0.16); }
 .as-x { width: 44px; height: 44px; margin: -10px -10px 0 0; flex: none; display: flex; align-items: center; justify-content: center; border: 0; border-radius: 99px; background: transparent; color: var(--franco-text-muted); cursor: pointer; }
 .as-x:hover { background: color-mix(in srgb, var(--franco-text) 6%, transparent); }
 
@@ -21,10 +36,11 @@
 @media (min-width: 768px) { .as-chica { right: 16px; bottom: calc(16px + var(--as-abajo, 0px)); } }
 
 /* ── la cuenta sobre el mapa ── */
-.as-cuenta { position: absolute; z-index: 5; left: 12px; top: 12px; display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; max-width: calc(100% - 24px); padding: 7px 11px; border-radius: 12px; background: color-mix(in srgb, var(--franco-card) 92%, transparent); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); box-shadow: 0 2px 8px rgba(20, 20, 20, 0.14); }
+/* A 375 la pastilla ocupa como mucho dos líneas (E17). */
+.as-cuenta { position: absolute; z-index: 5; left: 12px; top: 12px; display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; max-width: min(360px, calc(100% - 24px)); max-height: 3.2em; overflow: hidden; line-height: 1.3; padding: 7px 11px; border-radius: 12px; background: color-mix(in srgb, var(--franco-card) 92%, transparent); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); box-shadow: 0 2px 8px rgba(20, 20, 20, 0.14); }
 .as-cuenta-n { font-size: 15px; font-weight: 700; }
 .as-cuenta-t { font-size: 12px; color: var(--franco-text-secondary, #3A3A3F); }
-.as-cuenta-antes { margin-left: 4px; color: var(--franco-text-muted); text-decoration: line-through; }
+.as-cuenta-t[data-asesoria="cuenta-calzan"] { font-size: 13px; font-weight: 600; color: var(--franco-text); }
 
 /* ── la hoja ── */
 .as-hoja { position: absolute; z-index: 30; left: 0; right: 0; bottom: var(--as-abajo, 0px); height: calc(100% - 150px - var(--as-abajo, 0px)); display: flex; flex-direction: column; overflow: hidden; border-radius: 18px 18px 0 0; background: var(--franco-card); box-shadow: 0 -8px 24px rgba(20, 20, 20, 0.14); }
@@ -63,9 +79,12 @@
 .as-chip[aria-pressed="true"] { background: var(--franco-text); color: var(--franco-bg); }
 .as-principal { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 46px; border: 0; border-radius: 99px; background: var(--franco-text); color: var(--franco-bg); font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
 .as-principal:disabled { opacity: 0.4; cursor: default; }
+.as-principal[data-rojo="1"] { background: var(--signal-red, #C8323C); color: #FFFFFF; text-decoration: none; }
+a.as-principal { text-decoration: none; }
 .as-pie { padding: 2px 16px 14px; }
 .as-pie-dos { display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .as-oferta { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.as-secundario[data-azul="1"] { color: var(--as-azul); text-decoration: none; }
 .as-secundario { min-height: 44px; padding: 0 12px; border: 0; background: transparent; color: var(--franco-text); font-family: inherit; font-size: 14px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 
 /* P0 · la proporción */
@@ -128,13 +147,47 @@
 .as-lupa-paso { display: flex; gap: 8px; font-size: 13px; line-height: 1.4; }
 .as-lupa-paso i { width: 20px; height: 20px; flex: none; display: flex; align-items: center; justify-content: center; border-radius: 99px; background: color-mix(in srgb, var(--chip-v-c, #2B558F) 10%, var(--franco-card)); color: var(--chip-v-c, #2B558F); font-size: 11px; font-weight: 700; font-style: normal; }
 
+/* P3 · la tarjeta del tope (G24): la banda del degradado y los dos límites como barras */
+.as-tope { align-self: stretch; overflow: hidden; border-radius: 16px; box-shadow: 0 6px 20px color-mix(in srgb, var(--as-azul) 18%, transparent); }
+.as-tope-filas { display: flex; flex-direction: column; gap: 8px; padding: 12px 16px; background: var(--franco-card); border: 1px solid var(--franco-border); border-top: 0; border-radius: 0 0 16px 16px; }
+.as-tope-fila { display: flex; flex-direction: column; gap: 5px; }
+.as-tope-l { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-size: 13px; }
+.as-tope-l span { color: var(--franco-text-secondary, #3A3A3F); }
+.as-tope-l b { font-size: 15px; white-space: nowrap; }
+.as-tope-fila[data-manda="1"] .as-tope-l b { color: var(--as-azul); }
+.as-tope-barra { position: relative; display: block; height: 8px; border-radius: 99px; background: var(--franco-border); }
+.as-tope-barra span { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 99px; background: color-mix(in srgb, var(--as-azul) 28%, var(--franco-card)); }
+.as-tope-fila[data-manda="1"] .as-tope-barra span { background: var(--as-azul); }
+
+/* P5 · la buena noticia (lámina 4): azul suave con el anillo, sin degradado */
+.as-buena { align-self: stretch; overflow: hidden; border: 1px solid color-mix(in srgb, var(--as-azul) 18%, var(--franco-border)); border-radius: 16px; }
+.as-buena-cab { display: flex; align-items: center; gap: 14px; padding: 14px 16px; background: color-mix(in srgb, var(--as-azul) 9%, var(--franco-card)); color: color-mix(in srgb, var(--as-azul) 70%, var(--franco-text)); }
+.as-buena-cab div { display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
+.as-buena-n { font-size: 24px; font-weight: 800; line-height: 1.1; }
+.as-anillo { flex: none; }
+.as-anillo circle { stroke: var(--as-azul); }
+.as-anillo circle[data-fondo="1"] { stroke: color-mix(in srgb, var(--as-azul) 25%, var(--franco-card)); }
+.as-buena-l { margin: 0; padding: 12px 16px; font-size: 13px; line-height: 1.45; color: var(--franco-text-secondary, #3A3A3F); background: var(--franco-card); }
+
 /* el perfil */
-.as-perfil-tipo { margin: 0; font-size: 20px; font-weight: 700; }
+.as-perfil-cab { display: flex; flex-direction: column; gap: 3px; padding: 2px 2px 4px; }
+.as-perfil-tope { margin: 0; font-size: 20px; font-weight: 800; line-height: 1.2; }
+.as-perfil-l { font-size: 13px; line-height: 1.4; }
 .as-aviso { margin: 0; font-size: 12px; line-height: 1.4; color: var(--franco-text-secondary, #3A3A3F); }
-.as-depto { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border: 1px solid var(--franco-border); border-radius: 12px; }
-.as-depto-por { font-size: 11px; font-weight: 600; color: var(--franco-text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
-.as-depto-l { font-size: 14px; font-weight: 600; }
-.as-depto-c { font-size: 13px; }
-.as-depto-c[data-neg="1"] { color: var(--signal-red, #C8323C); }
-.as-depto-ver { align-self: flex-start; min-height: 36px; padding: 0 12px; border: 1px solid var(--franco-text); border-radius: 99px; background: transparent; color: var(--franco-text); font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+/* las tarjetas de los deptos (lámina 5): foto con «Comprar», comuna, tipología, precio, lo que deja, la prueba de tasa; sin banda de color */
+.as-depto { display: flex; gap: 10px; padding: 10px; border: 1px solid var(--franco-border); border-radius: 14px; }
+.as-depto-d { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.as-depto-etq { display: flex; flex-wrap: wrap; gap: 4px; }
+.as-depto-etq span { font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 99px; background: color-mix(in srgb, var(--franco-text) 6%, var(--franco-card)); color: var(--franco-text-secondary, #3A3A3F); }
+.as-depto-comuna { font-size: 14px; }
+.as-depto-precio { font-size: 16px; font-weight: 700; }
+.as-depto-c { font-size: 12px; line-height: 1.35; }
+.as-depto-c b[data-pos="1"] { color: var(--as-azul); }
+.as-depto-tasa { font-size: 11px; color: var(--franco-text-muted); }
+.as-foto { position: relative; flex: none; width: 84px; height: 84px; overflow: hidden; border-radius: 10px; background: color-mix(in srgb, var(--franco-text) 12%, var(--franco-card)); }
+.as-foto-img { position: absolute; inset: 0; display: block; }
+.as-foto-img img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.as-foto-img .ex-img-etq { left: 4px; bottom: 4px; font-size: 9px; }
+.as-foto-chip { position: absolute; left: 6px; top: 6px; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 99px; background: var(--as-azul); color: #FFFFFF; }
+.as-depto-ver { align-self: flex-start; margin-top: 2px; min-height: 36px; padding: 0 12px; border: 1px solid var(--franco-text); border-radius: 99px; background: transparent; color: var(--franco-text); font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
 .as-error { margin: 0; font-size: 13px; color: var(--signal-red, #C8323C); }

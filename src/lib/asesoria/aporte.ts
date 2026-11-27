@@ -94,3 +94,14 @@ export function distribucion(cs: readonly Candidato[]): Record<PlazoMascara, num
   }
   return out;
 }
+
+/** «X DE CADA 10 SE PAGAN SOLOS» (C7 y lámina 4, decisión de Fabrizio del 27-nov-2026): si con 0 al mes calzan al menos el 80 % de
+ *  los que le alcanzan (a su plazo), el paso del aporte NO abre el slider: muestra la buena noticia con «Seguir» y, aparte, «Puedo
+ *  poner algo al mes». La fracción va HACIA ABAJO (8,9 de cada 10 se dice 8): nunca promete de más. `solos` son los que calzan con
+ *  aporte 0; `alcanzan`, los que calzan con el alto máximo (los mismos de «te alcanzan» de la fórmula). */
+export const UMBRAL_SOLOS = 0.8;
+export function sePaganSolos(alcanzan: number, solos: number): { mostrar: boolean; k: number } {
+  if (alcanzan <= 0) return { mostrar: false, k: 0 };
+  const r = Math.min(1, solos / alcanzan);
+  return { mostrar: r >= UMBRAL_SOLOS, k: Math.floor(r * 10) };
+}

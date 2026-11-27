@@ -171,6 +171,15 @@ export function capacidad(n: Numeros, cfg: { tasaPct: number; uf: number }, cami
   };
 }
 
+/** «LO QUE TE FRENA ES EL PIE» (lámina 3, 27-nov-2026): solo cuando limita el pie, hasta cuánto llega con UF 100 más de pie, con la
+ *  MISMA regla y el mismo redondeo que la fórmula (el tope por renta no se mueve). null si no limita el pie. */
+export const MAS_PIE_UF = 100;
+export function topeConMasPie(cap: Capacidad, masUF: number = MAS_PIE_UF): number | null {
+  if (cap.limita !== "pie" || cap.pieUF == null || cap.topeUF <= 0) return null;
+  const t = topesDeCompra({ pieUF: cap.pieUF + masUF, creditoUF: null, camino: cap.camino });
+  return Math.min(cap.topeRentaUF, abajo10(t.topePieUF ?? 0));
+}
+
 /** LA PRUEBA DE TASA DE UN DEPTO (decisión de Fabrizio, 27-nov-2026: reemplaza a «Si algo se mueve» del perfil): cuánto le cambia el
  *  flujo si la tasa sube 1 punto, con el crédito del 80 % a su plazo. `flujoCLP` es el de la evaluación (ya cuenta un mes vacío). */
 export function pruebaTasa(p: { precioUF: number; flujoCLP: number; plazo: number; tasaPct: number; uf: number }): { aguanta: boolean; poneCLP: number } {

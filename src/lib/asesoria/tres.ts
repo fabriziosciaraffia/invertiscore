@@ -41,7 +41,7 @@ export interface PerfilTres {
   topeUF: number;
   /** Las comunas de sus zonas (vacío = todas: «Donde más rinde» las elige antes). */
   comunas: readonly string[];
-  /** «Cerca de mi pega» o «Cerca del metro»: otro filtro de lugar, ya resuelto en una función. */
+  /** «Cerca del metro»: otro filtro de lugar, ya resuelto en una función. */
   enLugar?: (c: Candidato) => boolean;
   uf: number;
 }

@@ -16,13 +16,15 @@ export const EVENTOS_ASESORIA = {
   deptos: "asesoria_deptos",
   verDepto: "asesoria_ver_depto",
   nuevos: "asesoria_interes_nuevos",
+  // «Seguir con estos deptos» (D14, 27-nov-2026): el botón rojo del perfil que lleva a Invierte con Franco.
+  seguirDeptos: "asesoria_seguir_deptos",
 } as const;
 
 /** Las respuestas que SÍ pueden viajar (no son montos): experiencia, objetivo, el modo de dónde y la lupa. */
 const RESPUESTAS_LIBRES: Partial<Record<Paso, readonly string[]>> = {
   gancho: ["primera", "uno", "varios"],
   objetivo: ["arriendo", "plusvalia", "ambas", "no_se"],
-  donde: ["comunas", "metro", "rinde", "pega"],
+  donde: ["comunas", "metro", "rinde"],
   lupa: ["si", "no", "prefiero"],
 };
 
