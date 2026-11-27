@@ -286,10 +286,12 @@ export function Asesoria(p: {
 
   // La cuenta sobre el mapa (láminas P0–P6): «4.513 de 19.056 convienen» hasta la fórmula; desde ahí, «1.240 de 19.056 calzan
   // contigo» con los que convienen tachados al lado.
+  // Mientras llega la respuesta del alto, la pastilla vuelve a «convienen»: la cifra anterior no es la de este alto.
+  const calzanVisto = aportePendiente ? null : calzan;
   const cuenta = total != null && (
-    <p className="as-raiz as-cuenta ph-no-capture" data-asesoria="cuenta" data-n={calzan ? calzan.length : convienen}>
-      <span className="as-cuenta-n">{miles(calzan ? calzan.length : convienen)} de {miles(total)}</span>
-      {calzan
+    <p className="as-raiz as-cuenta ph-no-capture" data-asesoria="cuenta" data-n={calzanVisto ? calzanVisto.length : convienen}>
+      <span className="as-cuenta-n">{miles(calzanVisto ? calzanVisto.length : convienen)} de {miles(total)}</span>
+      {calzanVisto
         ? <span className="as-cuenta-t">{C.calzanContigo}<span className="as-cuenta-antes">{miles(convienen)}</span></span>
         : <span className="as-cuenta-t">{C.convienen}</span>}
     </p>
