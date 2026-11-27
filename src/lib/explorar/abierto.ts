@@ -60,8 +60,8 @@ export const BORROSO = { flujo: "+$000.000", capRate: "0,0 %", porM2: "00 UF/m²
 /** Lo que la persona tocó y que se hace al terminar el alta. */
 // «invierte» (11-nov-2026, «Pronto: Invierte con Franco»): contestó la hoja de inscripción sin cuenta; al volver con cuenta al mismo
 // pin, la hoja manda lo contestado y confirma.
-export type MotivoRegistro = "analizar" | "guardar" | "avisame" | "orden" | "flujo" | "pie-plazo" | "invierte";
-export const MOTIVOS_REGISTRO: readonly MotivoRegistro[] = ["analizar", "guardar", "avisame", "orden", "flujo", "pie-plazo", "invierte"];
+export type MotivoRegistro = "analizar" | "guardar" | "avisame" | "orden" | "flujo" | "pie-plazo" | "invierte" | "asesoria";
+export const MOTIVOS_REGISTRO: readonly MotivoRegistro[] = ["analizar", "guardar", "avisame", "orden", "flujo", "pie-plazo", "invierte", "asesoria"];
 export const esMotivoRegistro = (x: unknown): x is MotivoRegistro => typeof x === "string" && (MOTIVOS_REGISTRO as readonly string[]).includes(x);
 
 export interface PedidoRegistro {
@@ -70,6 +70,8 @@ export interface PedidoRegistro {
   pin: PinMapa | null;
   /** El orden que se tocó («orden»). */
   orden?: OrdenPortal;
+  /** LA ASESORÍA (27-nov-2026): los filtros del perfil del semanal (sus comunas, hasta su tope), sin cambiar la vuelta al mapa. */
+  filtrosPerfil?: FiltrosPortal;
 }
 
 export const REGISTRO_COPY = {
@@ -82,6 +84,9 @@ export const REGISTRO_COPY = {
   cuerpoPiePlazo: "Crea tu cuenta gratis y elige tu pie y tu plazo.",
   // «Invierte con Franco» sin cuenta (11-nov-2026): la cuenta nueva trae su análisis de regalo, como por cualquier puerta.
   invierteTitulo: "Crea tu cuenta para inscribirte.",
+  // La asesoría (27-nov-2026): el cierre crea la cuenta con el regalo de siempre.
+  asesoriaTitulo: "Tu perfil y tus 3 deptos están listos.",
+  asesoriaCuerpo: { antes: "Crea tu cuenta gratis para verlos. Tu cuenta nueva trae ", fuerte: "un crédito de regalo", despues: "." },
   invierteCuerpo: { antes: "Tu cuenta nueva trae ", fuerte: "un crédito de regalo", despues: "." },
   inscribirme: "Inscribirme",
   google: "Entrar con Google",
@@ -104,6 +109,7 @@ export function textosHoja(p: PedidoRegistro): { titulo: string; linea: string |
   if (p.pin && p.motivo === "invierte") {
     return { titulo: REGISTRO_COPY.invierteTitulo, linea: `${lineaDepto(p.pin)} · UF ${miles(p.pin.precioUF)}`, cuerpo: REGISTRO_COPY.invierteCuerpo, boton: REGISTRO_COPY.inscribirme };
   }
+  if (p.motivo === "asesoria") return { titulo: REGISTRO_COPY.asesoriaTitulo, linea: null, cuerpo: REGISTRO_COPY.asesoriaCuerpo, boton: REGISTRO_COPY.crearCuenta };
   if (p.pin && (p.motivo === "analizar" || p.motivo === "guardar")) {
     return { titulo: REGISTRO_COPY.conDepto, linea: `${lineaDepto(p.pin)} · UF ${miles(p.pin.precioUF)}`, cuerpo: REGISTRO_COPY.cuerpoDepto, boton: REGISTRO_COPY.verDepto };
   }

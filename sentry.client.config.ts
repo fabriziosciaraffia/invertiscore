@@ -3,6 +3,8 @@
 // (chunk compartido de ~100 kB gz) antes del titular. Ahora entra por `import()` tras `load` y el
 // primer rato ocioso. Lo que falle antes de eso no se pierde: se guarda y se manda al inicializar.
 import { cuandoLaPaginaEsteQuieta } from "./src/lib/pagina-quieta";
+// La asesoría (27-nov-2026): las respuestas de «Tus números» y el aporte no viajan en un error (sentry-limpieza.ts).
+import { limpiarEventoSentry } from "./src/lib/asesoria/sentry-limpieza";
 
 const pendientes: unknown[] = [];
 
@@ -39,7 +41,7 @@ if (typeof window !== "undefined") {
             if (typeof navigator !== "undefined" && /bot|crawler|spider/i.test(navigator.userAgent)) {
               return null;
             }
-            return event;
+            return limpiarEventoSentry(event);
           },
         });
         for (const err of pendientes.splice(0)) Sentry.captureException(err);

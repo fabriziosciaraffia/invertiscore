@@ -189,6 +189,7 @@ import { runExplorarNegociarTier } from "./explorar-negociar-catch-test";
 import { runCompartirDeptoTier } from "./compartir-depto-catch-test";
 import { runInviertePronto } from "./invierte-pronto-catch-test";
 import { runInvierteV2 } from "./invierte-v2-catch-test";
+import { runAsesoria } from "./asesoria-catch-test";
 import { runInvierteV2E2 } from "./invierte-v2-e2-catch-test";
 import { runCampanaFase0Tier } from "./campana-fase0-catch-test";
 import { runExplorarPasadaTier } from "./explorar-pasada-catch-test";
@@ -805,6 +806,10 @@ function printSeed(r: SeedReport) {
   // la copia, «Reiniciar prueba» solo sobre pruebas, nada a Meta. ──
   totalHard += (await runInvierteV2()).hard;
   totalHard += (await runInvierteV2E2()).hard;
+  // Tier ASESORIA (27-nov-2026, 0 tokens): la asesoría en el mapa, entrega 1 — la capacidad (renta computable, carga, plazo por
+  // edad, lo más bajo de cada chip y lo más alto en deudas), el aporte por altos fijos con la máscara de los cuatro plazos, los 3 deptos
+  // (40 m), el interruptor, las rutas, la privacidad (eventos sin montos, ph-no-capture, Sentry limpio) y /deptos. ──
+  totalHard += (await runAsesoria()).hard;
   // Tier CAMPANA-FASE0 (12-nov-2026, 0 tokens): el origen de cada registro desde la cookie de la primera visita, Meta con fbc y sin
   // esperar el aviso de cookies, las cuentas de prueba fuera, el panel solo con cuentas reales, /privacy y el FAQ al día. ──
   totalHard += (await runCampanaFase0Tier()).hard;

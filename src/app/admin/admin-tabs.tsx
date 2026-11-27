@@ -18,6 +18,7 @@ const TABS = [
   { href: "/admin/quiero-verlo", label: "Quiero verlo" },
   { href: "/admin/invierte", label: "Invierte" },
   { href: "/admin/invierte-v2", label: "Comprador" },
+  { href: "/admin/asesoria", label: "Asesoría" },
   { href: "/admin/campana", label: "Campaña" },
   { href: "/admin/finanzas", label: "Finanzas" },
 ] as const;

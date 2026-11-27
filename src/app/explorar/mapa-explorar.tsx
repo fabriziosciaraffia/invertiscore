@@ -123,7 +123,13 @@ export interface MapaExplorarProps {
   onFoco?: () => void;
   /** Los píxeles de abajo que tapa la hoja de la tarjeta en el teléfono (26-nov-2026): el pin elegido se corre arriba de ella. */
   tapaAbajo?: number;
+  /** LA ASESORÍA (27-nov-2026, paso «Dónde»): dónde se tocó el mapa fuera de un pin (la comuna que se toca, o el punto de la pega). */
+  onTocarPunto?: (lat: number, lng: number) => void;
+  /** Las comunas elegidas (rellenas), los límites de todas (finos) y el radio de la pega, dibujados con polígonos del mapa. */
+  marcas?: MarcasMapa | null;
 }
+
+export interface MarcasMapa { comunas: readonly string[]; todas: boolean; pega: { lat: number; lng: number; radioM: number } | null }
 
 /** Dibuja la capa en el canvas: puntos, grupos y cifras, con los colores de su clase y del tema. */
 /** LAS CAPAS DE REFERENCIA (26-nov-2026, entrega 2 › B y C): debajo de los pines. Los límites de comuna en un solo trazo y tenue
@@ -232,7 +238,7 @@ const AIRE_PIN_PX = 28;
 /** Cuántos movimientos del mapa se revisa que el pin elegido quede a la vista. */
 const INTENTOS_VISIBLE = 3;
 
-export default function MapaExplorar({ items, seleccionado, encuadre, conZona, onSeleccionar, onTocarMapa, onMovido, onEstado, foco = null, onFoco, tapaAbajo = 0 }: MapaExplorarProps) {
+export default function MapaExplorar({ items, seleccionado, encuadre, conZona, onSeleccionar, onTocarMapa, onMovido, onEstado, foco = null, onFoco, tapaAbajo = 0, onTocarPunto, marcas = null }: MapaExplorarProps) {
   const divRef = useRef<HTMLDivElement>(null);
   const lienzoRef = useRef<HTMLCanvasElement | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -242,10 +248,10 @@ export default function MapaExplorar({ items, seleccionado, encuadre, conZona, o
   const itemsRef = useRef(items);
   const selRef = useRef(seleccionado);
   const dibujosRef = useRef<Dibujo[]>([]);
-  const cb = useRef({ onSeleccionar, onTocarMapa, onMovido, onEstado, onFoco });
+  const cb = useRef({ onSeleccionar, onTocarMapa, onMovido, onEstado, onFoco, onTocarPunto });
   const focoRef = useRef(foco);
   itemsRef.current = items; selRef.current = seleccionado; focoRef.current = foco;
-  cb.current = { onSeleccionar, onTocarMapa, onMovido, onEstado, onFoco };
+  cb.current = { onSeleccionar, onTocarMapa, onMovido, onEstado, onFoco, onTocarPunto };
   const dibujarRef = useRef<() => void>(() => {});
   const revisionRef = useRef<HTMLSpanElement>(null);
   // Las capas de referencia (comunas y Metro): vacías hasta que se piden, después del primer dibujo con pines.
@@ -403,7 +409,7 @@ export default function MapaExplorar({ items, seleccionado, encuadre, conZona, o
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       map.addListener("click", (e: any) => {
         const d = queHay(e);
-        if (!d) { cb.current.onTocarMapa?.(); return; }
+        if (!d) { cb.current.onTocarMapa?.(); if (e?.latLng) cb.current.onTocarPunto?.(e.latLng.lat(), e.latLng.lng()); return; }
         if (d.tipo === "grupo") { propio.current = true; map.setZoom(Math.min((map.getZoom() ?? 11) + 2, 18)); map.panTo({ lat: d.lat, lng: d.lng }); return; }
         cb.current.onSeleccionar(d.id);
       });
@@ -453,6 +459,37 @@ export default function MapaExplorar({ items, seleccionado, encuadre, conZona, o
   }, []);
 
   useEffect(() => { const map = mapRef.current; if (map) { map.setOptions(opcionesDe(capa)); dibujarRef.current(); } }, [capa]);
+  // LAS MARCAS DE LA ASESORÍA (27-nov-2026): polígonos y círculo nativos del mapa, encima de las teselas y debajo del canvas de los
+  // pines. Se rehacen enteros cuando cambian (son pocas: las comunas de la capa y un círculo).
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const marcasRef = useRef<any[]>([]);
+  const claveMarcas = marcas ? `${marcas.todas ? 1 : 0}|${marcas.comunas.join(",")}|${marcas.pega ? `${marcas.pega.lat},${marcas.pega.lng}` : ""}` : "";
+  useEffect(() => {
+    let vivo = true;
+    const limpiar = () => { for (const o of marcasRef.current) o.setMap(null); marcasRef.current = []; };
+    limpiar();
+    if (!marcas) return () => { vivo = false; };
+    void cargarReferencias().then((refs) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const g = (window as any).google, map = mapRef.current;
+      if (!vivo || !g?.maps || !map) return;
+      const anillo = (plano: number[]) => { const pts = []; for (let i = 0; i + 1 < plano.length; i += 2) pts.push({ lat: plano[i], lng: plano[i + 1] }); return pts; };
+      for (const c of refs.comunas?.comunas ?? []) {
+        const elegida = marcas.comunas.includes(c.n);
+        if (!elegida && !marcas.todas) continue;
+        marcasRef.current.push(new g.maps.Polygon({
+          map, paths: c.a.map(anillo), clickable: false, zIndex: elegida ? 2 : 1,
+          strokeColor: elegida ? "#2B558F" : "#9A9AA0", strokeOpacity: elegida ? 1 : 0.7, strokeWeight: elegida ? 2 : 1,
+          fillColor: "#2B558F", fillOpacity: elegida ? 0.16 : 0,
+        }));
+      }
+      if (marcas.pega) {
+        marcasRef.current.push(new g.maps.Circle({ map, center: { lat: marcas.pega.lat, lng: marcas.pega.lng }, radius: marcas.pega.radioM, clickable: false, strokeColor: "#2B558F", strokeWeight: 2, fillColor: "#2B558F", fillOpacity: 0.12 }));
+      }
+    });
+    return () => { vivo = false; limpiar(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [claveMarcas]);
   useEffect(() => { if (mapRef.current) { if (!conZona) encuadrarRef.current(); dibujarRef.current(); } }, [encuadre, conZona]);
   useEffect(() => { if (mapRef.current && focoRef.current) { encuadrarRef.current(); dibujarRef.current(); } }, [foco]);
   // Cambiaron los pines o el elegido: se redibuja; el elegido, si está fuera, se trae a la vista.

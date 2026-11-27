@@ -68,7 +68,8 @@ export function HojaRegistro({ pedido, filtros, orden, origen, alCerrar }: {
   const vuelta = destinoDeVuelta({ filtros, orden, pedido });
   const detalle = detalleDeOrigen(origen);
   // Lo elegido: el pin (su comuna, su tipología, su chip de precio y la modalidad del filtro) o, en «Avísame», los filtros.
-  const loElegido = pedido.pin ? { elecciones: eleccionesDePin(pedido.pin, filtros.modalidad) } : { filtros };
+  // La asesoría (27-nov-2026): el perfil del semanal sale de SUS comunas y SU tope (filtrosPerfil), no de los filtros del mapa.
+  const loElegido = pedido.pin ? { elecciones: eleccionesDePin(pedido.pin, filtros.modalidad) } : { filtros: pedido.filtrosPerfil ?? filtros };
 
   // La puerta candidata de este navegador (la sincroniza useAttributionSync si la cuenta nace por otro camino).
   useEffect(() => { marcarPuertaCandidata("E", detalle); }, [detalle]);

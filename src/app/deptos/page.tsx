@@ -1,4 +1,9 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+import { accesoAsesoriaDe } from "@/lib/asesoria/acceso-servidor";
+import { huellaDeCabeceras } from "@/lib/regalo-alta-servidor";
+import { DESTINO_DEPTOS_CON_ASESORIA } from "@/lib/asesoria/acceso";
 import { createClient } from "@/lib/supabase/server";
 import { HeaderFranco } from "@/components/chrome/HeaderFranco";
 import { AppFooter } from "@/components/chrome/AppFooter";
@@ -35,6 +40,9 @@ export const dynamic = "force-dynamic";
 export default async function DeptosPage({ searchParams }: { searchParams?: Record<string, string | string[] | undefined> }) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
+  // LA ASESORÍA (27-nov-2026): con la asesoría habilitada para esta visita sin cuenta, /deptos deja de ser una puerta y lleva al mapa
+  // con la burbuja abierta. deptos-cliente.tsx y /api/deptos siguen vivos: los usan la invitación y el registro del mapa.
+  if (!user && (await accesoAsesoriaDe({ dispositivoHash: huellaDeCabeceras(headers()).dispositivo, userId: null })).habilitada) redirect(DESTINO_DEPTOS_CON_ASESORIA);
   const sesion = user?.email ? { email: user.email } : null;
   // Lo que se ve al entrar, desde el servidor (17-oct-2026): la frase con las cifras de la noche y el número de la búsqueda
   // por defecto, así el número y el correo están desde el primer segundo.

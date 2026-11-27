@@ -95,6 +95,9 @@ import { FLUJO_COPY } from "@/lib/invierte-v2/flujo";
 import { SUMAR_COPY, urlSumar } from "@/lib/invierte-v2/base";
 import { lineaDepto } from "@/lib/guia/linea-depto";
 import "./explorar.css";
+import { PARAM_ASESORIA, SIN_ASESORIA, type AccesoAsesoria } from "@/lib/asesoria/acceso";
+import { MIRO_MOVIMIENTOS, MIRO_MS, MIRO_TARJETAS } from "@/lib/asesoria/estado";
+import type { FiltroAsesoria } from "./asesoria/asesoria";
 import "@/components/invierte/invierte.css";
 
 const MapaExplorar = dynamic(() => import("./mapa-explorar"), { ssr: false, loading: () => null });
@@ -106,6 +109,8 @@ const AvisoAntesDeAnalizar = dynamic(() => import("@/components/guia/AvisoAntesD
 const PopupNoDa = dynamic(() => import("@/components/guia/PopupNoDa").then((m) => m.PopupNoDa), { ssr: false, loading: () => null });
 const HojaRegistro = dynamic(() => import("./hoja-registro").then((m) => m.HojaRegistro), { ssr: false, loading: () => null });
 const Bienvenida = dynamic(() => import("./bienvenida").then((m) => m.Bienvenida), { ssr: false, loading: () => null });
+// LA ASESORÍA EN EL MAPA (27-nov-2026, entrega 1): detrás del interruptor (lib/asesoria/acceso.ts); su código baja solo si está habilitada.
+const Asesoria = dynamic(() => import("./asesoria/asesoria").then((m) => m.Asesoria), { ssr: false, loading: () => null });
 const HojaCalculo = dynamic(() => import("./hoja-calculo").then((m) => m.HojaCalculo), { ssr: false, loading: () => null });
 const HojaCompartida = dynamic(() => import("./compartido-hoja").then((m) => m.HojaCompartida), { ssr: false, loading: () => null });
 const PopupRecalculo = dynamic(() => import("./recalculo").then((m) => m.PopupRecalculo), { ssr: false, loading: () => null });
@@ -225,7 +230,7 @@ const agregarCapa = (cs: Record<string, CapaCalculada>, clave: string, comuna: s
 
 // El mapa quieto del primer pintado (el LCP) NO va acá: es una capa de la página (page.tsx), una sola imagen y antes del header
 // en el HTML. El cliente avisa cuándo el mapa real dibujó sus teselas (`data-mapa`) y la capa se desvanece (explorar.css).
-export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar = null, origen = "directo", correo = null, compartido = null, invierteV2 = false, invierteFirmo = false, misDeptos = [] }: {
+export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar = null, origen = "directo", correo = null, compartido = null, invierteV2 = false, invierteFirmo = false, misDeptos = [], asesoria = SIN_ASESORIA }: {
   inicial: InicialPortal;
   abrir?: string | null;
   autoAnalizar?: string | null;
@@ -242,6 +247,8 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
   invierteFirmo?: boolean;
   /** Los deptos que ya sigue en Invierte con Franco (19-nov-2026): en su tarjeta, «Mi inversión». */
   misDeptos?: string[];
+  /** La asesoría en el mapa (27-nov-2026): si esta visita la ve (el interruptor, decidido en el servidor) y si es de prueba. */
+  asesoria?: AccesoAsesoria;
 }) {
   const router = useRouter();
   const posthog = usePostHog();
@@ -303,6 +310,19 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
   const [contactoV2, setContactoV2] = useState<PinMapa | null>(null);
   const inscritos = useInscritos(!sinCuenta);
   const [bienvenida, setBienvenida] = useState(false);
+  // LA ASESORÍA (27-nov-2026): el filtro que pone sobre el mapa (los que calzan y, en «Dónde», las marcas), el último toque del mapa
+  // fuera de un pin y cuándo ya miró deptos (2 tarjetas, o 20 s con 2 movimientos del mapa): recién ahí aparece la burbuja.
+  const [filtroAsesoria, setFiltroAsesoria] = useState<FiltroAsesoria | null>(null);
+  const [toqueMapa, setToqueMapa] = useState<{ lat: number; lng: number; t: number } | null>(null);
+  const [miro, setMiro] = useState({ tarjetas: 0, movimientos: 0, veinte: false });
+  useEffect(() => {
+    if (!asesoria.habilitada) return;
+    // Desde /deptos (`?asesoria=1`) la burbuja sale de entrada: esa puerta ya era la de quien busca qué comprar.
+    if (new URLSearchParams(window.location.search).get(PARAM_ASESORIA) === "1") setMiro((m) => ({ ...m, tarjetas: MIRO_TARJETAS }));
+    const t = window.setTimeout(() => setMiro((m) => ({ ...m, veinte: true })), MIRO_MS);
+    return () => window.clearTimeout(t);
+  }, [asesoria.habilitada]);
+  const yaMiro = miro.tarjetas >= MIRO_TARJETAS || (miro.veinte && miro.movimientos >= MIRO_MOVIMIENTOS);
   // «¿Cómo se calcula?» (30-oct-2026): la hoja corta del enlace de la barra de arriba, con y sin cuenta. Abre directo (03-nov-2026).
   const [calculo, setCalculo] = useState(false);
   // EN EL TELÉFONO, «Cómo se calcula» al lado del botón redondo SI CABE (03-nov-2026): se mide lo que dejan libre «Filtros» y el
@@ -594,9 +614,14 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
   /** Las clases que se ven en el mapa (los chips del contador apagan las otras). */
   const seVe = (c: ClaseMapa) => !filtros.ocultar.includes(c);
   /** Los que se ven, de las tres clases, para la tarjeta (se desliza entre los cercanos) y la lista. */
-  const todos = useMemo((): PinMapa[] => [...(seVe("comprar") ? visibles : []), ...(seVe("ajustar") ? visiblesNeg : []), ...(seVe("no") ? visiblesNo : [])],
+  const todos = useMemo((): PinMapa[] => {
+    // LA ASESORÍA (27-nov-2026): con su filtro puesto, el mapa muestra solo los Comprar que calzan con la persona.
+    const ids = filtroAsesoria?.ids;
+    if (ids) return visibles.filter((p) => ids.has(p.avisoId));
+    return [...(seVe("comprar") ? visibles : []), ...(seVe("ajustar") ? visiblesNeg : []), ...(seVe("no") ? visiblesNo : [])];
+  },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [visibles, visiblesNeg, visiblesNo, filtros.ocultar]);
+    [visibles, visiblesNeg, visiblesNo, filtros.ocultar, filtroAsesoria]);
   /** LOS PINES DEL CANVAS (25-nov-2026, capa-canvas.ts): cada uno con su clase, su cifra (el precio, o la barra que se movió) y su
    *  puntaje (el que decide quién conserva la cifra si dos chocan). */
   const items = useMemo((): ItemCapa[] => todos.map((p) => {
@@ -706,6 +731,8 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
   useEffect(() => {
     // Por un depto compartido no: vino a ver ESE depto (la tarjeta se abre sola), y la bienvenida la taparía.
     if (!sinCuenta || inicial.n == null || compartido) return;
+    // Con la asesoría habilitada, la burbuja reemplaza a la bienvenida (27-nov-2026).
+    if (asesoria.habilitada) return;
     let almacen: Storage | null = null;
     try { almacen = window.localStorage; } catch { /* sin almacenamiento: no se muestra */ }
     if (bienvenidaVista(almacen)) return;
@@ -721,6 +748,7 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
     // cercanos ocupen la red (QA en local, 29-oct-2026: el chunk quedaba detrás de ocho imágenes y la hoja tardaba segundos).
     if (sinCuenta) void import("./hoja-registro");
     posthog?.capture(EVENTOS_PORTAL.pin, { aviso_id: avisoId, modalidad: filtros.modalidad, ...(sinCuenta ? { sin_cuenta: true, llegada_explorar: origen } : {}) });
+    if (asesoria.habilitada) setMiro((m) => ({ ...m, tarjetas: m.tarjetas + 1 }));
     setCarrusel(cercanos(todos, avisoId).map((p) => p.avisoId));
     setSel(avisoId);
     setError(null);
@@ -1200,6 +1228,9 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
               conZona={!!filtros.zona}
               onSeleccionar={tocarPin}
               onTocarMapa={() => setSel(null)}
+              onTocarPunto={asesoria.habilitada ? (lat, lng) => setToqueMapa({ lat, lng, t: Date.now() }) : undefined}
+              onMovido={asesoria.habilitada ? () => setMiro((m) => ({ ...m, movimientos: m.movimientos + 1 })) : undefined}
+              marcas={filtroAsesoria?.marcas ?? null}
               onEstado={setMapa}
               foco={foco}
               onFoco={() => setFocoUsado(true)}
@@ -1208,10 +1239,26 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
             />
           )}
           {mapa === "fallo" && <p className="ex-mapa-vacio" data-explorar="sin-mapa">{PORTAL_COPY.sinMapa}</p>}
-          {vista === "mapa" && (
+          {vista === "mapa" && !filtroAsesoria?.ids && (
             // CON LA TARJETA DE UN DEPTO ABIERTA, EN EL TELÉFONO (26-nov-2026): el contador se pliega solo, sin tocar lo que eligió la persona;
             // al cerrarla vuelve como estaba. «Ver lista» no va mientras la tarjeta está abierta (abajo).
             <Contador conteo={conteo} ocultar={filtros.ocultar} calculando={progreso == null && conteo == null ? enCalculo : null} alAlternar={alternarClase} plegarPorTarjeta={!!tarjeta && esTelefono} />
+          )}
+          {asesoria.habilitada && vista === "mapa" && (
+            <Asesoria
+              esPrueba={asesoria.prueba}
+              sinCuenta={sinCuenta}
+              conteo={conteo}
+              comprar={visibles}
+              lista={yaMiro && !compartido}
+              toque={toqueMapa}
+              alFiltrar={setFiltroAsesoria}
+              alRegistrar={({ comunas, topeUF }) => {
+                void import("./hoja-registro");
+                setRegistro({ pedido: { motivo: "asesoria", pin: null, filtrosPerfil: { ...filtrosAbiertos(filtros), comunas, ufMax: topeUF > 0 ? topeUF : null } }, filtros, orden });
+              }}
+              alVerDepto={(id) => { setCarrusel(cercanos(visibles, id).map((p) => p.avisoId)); setSel(id); }}
+            />
           )}
           {fallo && (
             <p className="ex-error ex-error-mapa" role="alert" data-explorar="error">
