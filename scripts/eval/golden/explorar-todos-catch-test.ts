@@ -271,7 +271,8 @@ export async function runExplorarTodosTier(): Promise<{ hard: number }> {
     if (!/<span>Cap rate bruto<\/span><b data-explorar="cap-rate">/.test(hC) || !/<span>Cap rate bruto<\/span><b class="ex-borroso"/.test(tarjeta(pin(), true))) F("7 · la tarjeta no dice «Cap rate bruto» (con y sin cuenta)");
     const hA = tarjeta({ ...pin({ veredicto: "AJUSTA SUPUESTOS", flujo: -45000 }), neg: { d: 3.2, p: 2810, s: 70, f: 1 } } as po.PinMapa);
     if (!/Conviene desde UF 2\.810 · 3,2 % menos/.test(hA)) F("7 · Ajustar no suma «Conviene desde UF X · N % menos»");
-    if (!/>Pones al mes</.test(hA)) F("7 · con flujo negativo la franja no dice «Pones al mes»");
+    // ⚠ ACTA (27-nov-2026, tercera vuelta de la asesoría): la etiqueta del flujo lleva su plazo («a 30 años» sin perfil, el del perfil con él).
+    if (!/>Pones al mes <span class="ex-cifra-plazo" data-explorar="flujo-plazo">a 30 años<\/span>/.test(hA)) F("7 · con flujo negativo la franja no dice «Pones al mes» con su plazo");
     const hN = tarjeta(pin({ veredicto: "BUSCAR OTRA", score: null, flujo: null, arriendo: null }));
     if (!/data-n="1"/.test(hN) || /data-explorar="arriendo"/.test(hN) || !/No conviene a este precio/.test(hN)) F("7 · No conviene no muestra solo el publicado con «No conviene a este precio»");
   }

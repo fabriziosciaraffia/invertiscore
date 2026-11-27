@@ -53,7 +53,7 @@ export async function contactoDesdeAsesoria(admin: SupabaseClient, perfil: Perfi
   if (!ids) return null;
   const col = COLUMNA_FLUJO[perfil.plazoAnios ?? 30] ?? "flujo_20";
   const [sp, ae] = await Promise.all([
-    admin.from("scraped_properties").select("id, direccion, comuna").in("id", ids),
+    admin.from("scraped_properties").select("id, direccion, comuna").in("id", ids).order("id").limit(3),
     admin.from("avisos_evaluados").select(`aviso_id, precio_uf, ${col}`).in("aviso_id", ids),
   ]);
   if (sp.error || ae.error) return null;

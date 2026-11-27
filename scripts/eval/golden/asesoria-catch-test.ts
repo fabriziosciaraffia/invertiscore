@@ -619,7 +619,7 @@ export async function runAsesoria(): Promise<{ hard: number }> {
       const fila = ["x", "Ñuñoa", -33.4, -70.6, 3, 3000, 70, 600_000, -1, -1, -1, -1, true, true, true] as unknown as FilaCandidato;
       if (candidatoDeFila(fila).m2 !== null || candidatoDeFila([...fila, 44] as unknown as FilaCandidato).m2 !== 44) F("21 · candidatoDeFila no lee los m² de la posición 15");
       const srv = codigo("src/lib/asesoria/servidor.ts");
-      if (!/\.from\("scraped_properties"\)\.select\("id, superficie_m2"\)\.in\("id", tanda\)/.test(srv) || !/TANDA_M2 = 200;/.test(srv) || !/Number\(f\[4\]\) >= 3/.test(srv)) F("21 · el universo no completa los m² de los 3D o más en tandas bajo el corte de 1.000");
+      if (!/\.select\("id, superficie_m2"\)\.in\("id", tanda\)\.order\("id"\)\.limit\(200\);/.test(srv) || !/TANDA_M2 = 200;/.test(srv) || !/Number\(f\[4\]\) >= 3/.test(srv)) F("21 · el universo no completa los m² de los 3D o más en tandas bajo el corte de 1.000");
     }
 
     // ── 22 · INVIERTE RECIBE LOS 3 (tercera vuelta, 27-nov-2026) ──

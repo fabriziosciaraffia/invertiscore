@@ -35,7 +35,7 @@ async function leerUniverso(): Promise<FilaCandidato[]> {
   const m2De = new Map<string, number>();
   for (let i = 0; i < ids.length; i += TANDA_M2) {
     const tanda = ids.slice(i, i + TANDA_M2);
-    const r = await admin.from("scraped_properties").select("id, superficie_m2").in("id", tanda);
+    const r = await admin.from("scraped_properties").select("id, superficie_m2").in("id", tanda).order("id").limit(200);
     if (r.error) throw new Error(`m² del universo: ${r.error.message}`);
     for (const x of r.data ?? []) if (x.superficie_m2 != null) m2De.set(String(x.id), Number(x.superficie_m2));
   }
