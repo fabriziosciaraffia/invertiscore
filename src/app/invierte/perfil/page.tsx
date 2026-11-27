@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { createServiceClient } from "@/lib/supabase/service";
 import { PERFIL_COPY } from "@/lib/invierte-v2/perfil";
-import { URL_BASE, URL_INVIERTE, URL_OPCIONES } from "@/lib/invierte-v2/destino";
+import { URL_BASE, URL_INVIERTE } from "@/lib/invierte-v2/destino";
 import { adoptarPerfilAsesoria } from "@/lib/invierte-v2/asesoria-servidor";
 import { contextoPerfil } from "@/lib/invierte-v2/perfil-servidor";
 import { leerPreaprobacion } from "@/lib/invierte-v2/preaprobacion-servidor";
