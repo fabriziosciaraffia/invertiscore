@@ -31,3 +31,23 @@ export function palanca(cs: readonly Candidato[], p: PerfilTres, numeros: Numero
   const mejor = opciones.filter((o) => o.n > hoy).sort((a, b) => b.n - a.n)[0];
   return mejor ?? null;
 }
+
+/** LA PALANCA EN LA FÓRMULA (decisión de Fabrizio, 27-nov-2026): con 0 deptos que le alcanzan, se ofrece ahí mismo, no al final. En el
+ *  navegador, sobre los mismos Comprar del mapa (precio público) y, con plazo corto, solo los que son Comprar a su plazo: el chip de pie
+ *  más bajo, por encima del suyo, con el que aparece al menos uno. null si ningún pie alcanza (por ejemplo, si las deudas no dejan cuota). */
+export function palancaFormula(
+  comprar: ReadonlyArray<{ avisoId: string; precioUF: number }>,
+  numeros: Numeros,
+  cfg: { tasaPct: number; uf: number },
+  idsPlazo: ReadonlySet<string> | null,
+): { pieUF: number; n: number } | null {
+  const i = CHIPS_PIE.findIndex((c) => c.id === numeros.pie);
+  for (let k = i + 1; k < CHIPS_PIE.length; k++) {
+    const chip = CHIPS_PIE[k];
+    if (chip.valor == null) continue;
+    const tope = capacidad({ ...numeros, pie: chip.id }, cfg).topeUF;
+    const n = comprar.filter((x) => x.precioUF <= tope && (!idsPlazo || idsPlazo.has(x.avisoId))).length;
+    if (n > 0) return { pieUF: chip.valor, n };
+  }
+  return null;
+}

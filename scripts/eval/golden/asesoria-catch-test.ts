@@ -28,14 +28,14 @@ import {
   RENTA_COMPUTABLE_PCT, CARGA_MAX_PCT, DEUDA_SIN_TECHO, RENTA_SIN_PISO, type Numeros,
 } from "../../../src/lib/asesoria/capacidad";
 import { APORTES, mascara, respuestaAporte, idsDelPlazo, distribucion, esAporte, type Candidato } from "../../../src/lib/asesoria/aporte";
-import { elegirTres, mismoEdificio } from "../../../src/lib/asesoria/tres";
+import { elegirTres, mismoEdificio, CAP_RATE_MAX_PERFIL } from "../../../src/lib/asesoria/tres";
 import { leerModoAsesoria, accesoAsesoria } from "../../../src/lib/asesoria/acceso";
 import { propsPaso } from "../../../src/lib/asesoria/eventos";
 import { limpiarEventoSentry } from "../../../src/lib/asesoria/sentry-limpieza";
 import { ASESORIA_COPY } from "../../../src/lib/asesoria/copy";
 import { validarPedidoPerfil, filaPerfil, calcularPerfil } from "../../../src/lib/asesoria/perfil";
 import { comunaEn, comunasQueMasRinden } from "../../../src/lib/asesoria/lugar";
-import { conveniencia, palanca } from "../../../src/lib/asesoria/palanca";
+import { conveniencia, palanca, palancaFormula } from "../../../src/lib/asesoria/palanca";
 
 const RAIZ = join(__dirname, "..", "..", "..");
 const leer = (p: string) => readFileSync(join(RAIZ, p), "utf8").replace(/\r\n/g, "\n");
@@ -165,6 +165,13 @@ export async function runAsesoria(): Promise<{ hard: number }> {
       // Dos que existen pero son del mismo edificio que los elegidos: no hay tercero, y eso sí es «encontré 2».
       const t5 = elegirTres([cand("p", { arriendo: 900_000 }), cand("q", { f: { 30: 40_000 }, lat: -33.3 }), cand("p2", { lat: -33.45 + 0.0001 })], P);
       if (t5.length !== 2) F("4 · el tercero salió del mismo edificio que uno elegido");
+      // El cap rate fuera de rango (27-nov-2026): sobre 12 % no entra a «tus deptos», ni siquiera como «el que mejor rinde».
+      if (CAP_RATE_MAX_PERFIL !== 0.12) F("4 · el corte del cap rate no es 12 %");
+      const raro = cand("raro", { precioUF: 1256, arriendo: 1_030_000, f: { 30: 700_000 }, lat: -33.5, score: 99 }); // ~24,9 % como el del paseo
+      const justo = cand("justo", { precioUF: 3000, arriendo: Math.floor((0.12 * 3000 * CFG.uf) / 12), lat: -33.6 });
+      const tc = elegirTres([raro, justo, cand("n1", { lat: -33.7 }), cand("n2", { comuna: "Santiago", lat: -33.8 })], P);
+      if (tc.some((e) => e.c.id === "raro")) F("4 · un depto con cap rate sobre 12 % entró a «tus deptos»");
+      if (!tc.some((e) => e.c.id === "justo")) F("4 · un depto con cap rate de 12 % justo quedó fuera (el corte es «sobre»)");
     }
 
     // ── 5 · EL INTERRUPTOR ──
@@ -263,7 +270,7 @@ export async function runAsesoria(): Promise<{ hard: number }> {
       if (ASESORIA_COPY.formula.plazoCorto(20, 1596, 4814) !== "Con tu plazo de 20 años, convienen 1.596 de los 4.814.") F("11 · el texto del plazo corto no es el aprobado");
       // Limita la renta: más pie también sube el tope (pie + crédito), pero acá no deja más deptos (todos ya alcanzan); gana el aporte.
       const P0 = { plazo: 30 as const, aporte: 50_000, topeUF: 99_999, comunas: [] as string[], uf: CFG.uf };
-      const pide = (id: string, f: number) => cand(id, { precioUF: 1000, f: { 30: f }, lat: -33.4 - Number(id.slice(1)) * 0.01 });
+      const pide = (id: string, f: number) => cand(id, { precioUF: 1000, arriendo: 250_000, f: { 30: f }, lat: -33.4 - Number(id.slice(1)) * 0.01 });
       const pool = [pide("x1", -40_000), pide("x2", -60_000), pide("x3", -70_000), pide("x4", -70_000)];
       const nRenta = { ...base, renta: "r1" as const, pie: "p3" as const };
       const capR = capacidad(nRenta, CFG);
@@ -275,7 +282,7 @@ export async function runAsesoria(): Promise<{ hard: number }> {
       const nPie = { ...base, pie: "p2" as const };
       const capP = capacidad(nPie, CFG);
       // y4 entra con el aporte siguiente (+1); y2 e y3 entran con el pie siguiente (+2): gana el que más mueve, el pie.
-      const caros = [cand("y1", { precioUF: capP.topeUF - 10, f: { 30: -40_000 } }), cand("y2", { precioUF: capP.topeUF + 500, lat: -33.3, f: { 30: -40_000 } }), cand("y3", { precioUF: capP.topeUF + 600, lat: -33.2, f: { 30: -40_000 } }), cand("y4", { precioUF: capP.topeUF - 20, lat: -33.1, f: { 30: -70_000 } })];
+      const caros = [cand("y1", { precioUF: capP.topeUF - 10, arriendo: 300_000, f: { 30: -40_000 } }), cand("y2", { precioUF: capP.topeUF + 500, arriendo: 300_000, lat: -33.3, f: { 30: -40_000 } }), cand("y3", { precioUF: capP.topeUF + 600, arriendo: 300_000, lat: -33.2, f: { 30: -40_000 } }), cand("y4", { precioUF: capP.topeUF - 20, arriendo: 300_000, lat: -33.1, f: { 30: -70_000 } })];
       const pp = palanca(caros, { ...P0, topeUF: capP.topeUF }, nPie, CFG);
       if (!pp || pp.tipo !== "pie" || pp.pieUF !== 600 || pp.n !== 3) F(`11 · con el pie limitando, la palanca no es «pie UF 600 → 3» (${JSON.stringify(pp)})`);
       // Ninguna mueve: null (no se ofrece nada que no suma).
@@ -315,6 +322,28 @@ export async function runAsesoria(): Promise<{ hard: number }> {
       if (!/admin\.rpc\("asesoria_candidatos", \{ p_comunas: comunas, p_desde: desde, p_tope: null \}\)/.test(srvA) || !/const comunas = \[\.\.\.\(COMUNAS_DISPONIBLES as readonly string\[\]\)\]\.map\(comunaDeAviso\);/.test(srvA) || !/VENTANA_SEMANAL_DIAS \* 864e5/.test(srvA)) F("12 · el universo de la asesoría no es el del mapa (comunas o ventana)");
       if (!/const aportePendiente = altoPedido != null && !respuestas\[altoPedido\];/.test(comp) || !/calzan=\{aportePendiente \? null : calzan\?\.length \?\? null\}/.test(comp)) F("12 · mientras llega el aporte, «Calzan» muestra la cifra anterior");
     }
+
+    // ── 13 · CON 0 EN LA FÓRMULA, LA PALANCA AHÍ MISMO (decisión de Fabrizio, 27-nov-2026) ──
+    {
+      const F2 = ASESORIA_COPY.formula;
+      if (F2.ceroDeptos !== "Con estos números, hoy no te alcanza ninguno de los que convienen." || F2.ajustar !== "Ajustar mis números" || F2.seguirIgual !== "Seguir igual") F("13 · los textos del caso con 0 no son los aprobados");
+      // Pie UF 300 con renta de 1M por boletas: tope bajo. El chip de pie más bajo con el que aparece alguno, con su cifra.
+      const n0 = { ...base, renta: "r1" as const, tipoRenta: "boletas" as const, pie: "p2" as const, deudas: "d1" as const };
+      const t0 = capacidad(n0, CFG).topeUF, t600 = capacidad({ ...n0, pie: "p3" }, CFG).topeUF, t900 = capacidad({ ...n0, pie: "p4" }, CFG).topeUF;
+      if (!(t600 > t0 && t900 > t600)) F("13 · el caso de prueba no sube el tope con más pie");
+      const precios = [{ avisoId: "a", precioUF: t0 + 5 }, { avisoId: "b", precioUF: t600 - 5 }, { avisoId: "c", precioUF: t600 - 1 }, { avisoId: "d", precioUF: t900 - 5 }];
+      const pf = palancaFormula(precios, n0, CFG, null);
+      if (!pf || pf.pieUF !== 600 || pf.n !== 3) F(`13 · la palanca de la fórmula no es «pie UF 600 → 3» (${JSON.stringify(pf)})`);
+      const pfPlazo = palancaFormula(precios, n0, CFG, new Set(["d"]));
+      if (!pfPlazo || pfPlazo.pieUF !== 900 || pfPlazo.n !== 1) F("13 · la palanca de la fórmula no respeta los Comprar a su plazo");
+      if (palancaFormula([{ avisoId: "x", precioUF: 99_999 }], n0, CFG, null) !== null) F("13 · se ofrece una palanca de pie que no hace aparecer ninguno");
+      const comp = codigo("src/app/explorar/asesoria/asesoria.tsx");
+      if (!/\{!cero && alcanzan === 0 && <p className="as-bf" data-asesoria="formula-cero">\{F\.ceroDeptos\}<\/p>\}/.test(comp) || !/\{!cero && alcanzan === 0 && palanca && <p className="as-bf" data-asesoria="formula-palanca">\{C\.perfil\.palancaPie\(palanca\.pieUF, palanca\.n\)\}<\/p>\}/.test(comp)) F("13 · con 0, la fórmula no dice el texto y la palanca con su cifra");
+      if (!/\{cero \|\| alcanzan === 0 \? \(\s*<div className="as-pie as-pie-dos">\s*<button type="button" className="as-principal" onClick=\{alAjustar\} data-asesoria="formula-ajustar">\{F\.ajustar\}<\/button>\s*<button type="button" className="as-secundario" onClick=\{alSeguir\} data-asesoria="formula-seguir-igual">\{F\.seguirIgual\}<\/button>/.test(comp)) F("13 · con 0, las dos salidas no son «Ajustar mis números» (principal) y «Seguir igual» (secundaria)");
+      if (!/\{!cero && alcanzan != null && alcanzan > 0 && <p className="as-bf">\{F\.filtre\(convienen, alcanzan\)\}<\/p>\}/.test(comp)) F("13 · con 1 o más, la fórmula no sigue como antes");
+      if (!/alAjustar=\{\(\) => \{ responder\("formula", "ajustar"\); setNumerosAbiertos\(true\); cambiar\(\(s\) => \(\{ \.\.\.s, paso: "numeros" \}\)\); \}\}/.test(comp)) F("13 · «Ajustar mis números» no vuelve a la tarjeta con lo ya contestado");
+      if (!/palancaFormula\(p\.comprar, numeros, \{ tasaPct: agregados\.tasa, uf: agregados\.uf \}, idsAporte\)/.test(comp)) F("13 · la palanca de la fórmula no usa los Comprar del mapa con el plazo");
+    }
   } catch (e) {
     F(`excepción: ${(e as Error).stack ?? e}`);
   }
@@ -344,3 +373,6 @@ if (require.main === module) void runAsesoria().then((r) => { process.exitCode =
 // dejar el mapa quieto.
 // Paseo con 50–54 años (27-nov-2026), 5 mutaciones más, las 5 en ROJO: «Calzan» con la cifra anterior mientras llega el aporte; la
 // fórmula sin el plazo; la fórmula que dice «te alcanzan» antes de que llegue; el universo sin las comunas del mapa; el perfil desde abajo.
+// Cap rate y 0 en la fórmula (27-nov-2026), 9 mutaciones más, las 9 en ROJO: sin el corte del cap rate; el corte con «>=»; el corte a
+// 15 %; la palanca de la fórmula sin el plazo; la palanca con 0; la fórmula sin el texto del 0; con 0, un solo botón; «Ajustar mis
+// números» sin abrir la tarjeta; «Seguir igual» con otro texto.

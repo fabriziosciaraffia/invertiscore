@@ -15,6 +15,11 @@ import { calzaCon } from "./aporte";
 
 export const RADIO_EDIFICIO_M = 40;
 
+/** EL CAP RATE FUERA DE RANGO (decisión de Fabrizio, 27-nov-2026): un depto con cap rate bruto sobre 12 % no entra a «tus deptos».
+ *  Medido por Claude: son 26 de 4.553 y el percentil 99 es 11,1 %; casi siempre es un arriendo que no corresponde al depto (en el
+ *  paseo, «El que mejor rinde» era un 3D de 45 m² con 24,9 %). Solo la elección del perfil: el mapa y el contador no cambian. */
+export const CAP_RATE_MAX_PERFIL = 0.12;
+
 export function distanciaM(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
   const R = 6_371_000, rad = Math.PI / 180;
   const dLat = (b.lat - a.lat) * rad, dLng = (b.lng - a.lng) * rad;
@@ -44,7 +49,8 @@ export interface PerfilTres {
 /** El universo de la persona: Comprar a su plazo, le alcanza, pide como mucho su aporte y está en sus zonas. */
 export function universoDe(cs: readonly Candidato[], p: PerfilTres): Candidato[] {
   return cs.filter((c) => c.precioUF <= p.topeUF && calzaCon(c, p.plazo, p.aporte)
-    && (p.comunas.length === 0 || p.comunas.includes(c.comuna)) && (!p.enLugar || p.enLugar(c)));
+    && (p.comunas.length === 0 || p.comunas.includes(c.comuna)) && (!p.enLugar || p.enLugar(c))
+    && !((capRate(c, p.uf) ?? 0) > CAP_RATE_MAX_PERFIL));
 }
 
 const porScore = (a: Candidato, b: Candidato) => (b.score ?? -1) - (a.score ?? -1) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);

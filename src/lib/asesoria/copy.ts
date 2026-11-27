@@ -96,6 +96,10 @@ export const ASESORIA_COPY = {
     // El plazo corto (punto 5 de Fabrizio, 27-nov-2026): por qué ve menos deptos.
     plazoCorto: (plazo: number, x: number, y: number) => `Con tu plazo de ${plazo} años, convienen ${miles(x)} de los ${miles(y)}.`,
     plazoPorQue: "Con menos años el dividendo sube, y menos deptos se pagan con su arriendo.",
+    // Con 0 deptos que le alcanzan (Fabrizio, 27-nov-2026): la palanca ahí mismo, con dos salidas.
+    ceroDeptos: "Con estos números, hoy no te alcanza ninguno de los que convienen.",
+    ajustar: "Ajustar mis números",
+    seguirIgual: "Seguir igual",
     filtre: (convienen: number, alcanzan: number) => `Ya filtré el mapa: de los ${miles(convienen)} que convienen, ${miles(alcanzan)} te alcanzan.`,
     cero: "Con estos números, hoy el banco no te prestaría. Bajar tus deudas es lo primero; mientras, sigues mirando el mapa.",
     seguir: "Seguir",

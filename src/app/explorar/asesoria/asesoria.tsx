@@ -34,6 +34,7 @@ import {
 } from "@/lib/asesoria/estado";
 import { EVENTOS_ASESORIA, propsBase, propsPaso } from "@/lib/asesoria/eventos";
 import { cercaDe, cercaDelMetro, comunaEn, comunasQueMasRinden, RADIO_PEGA_M } from "@/lib/asesoria/lugar";
+import { palancaFormula } from "@/lib/asesoria/palanca";
 import type { MarcasMapa } from "../mapa-explorar";
 
 /** `quieto`: en «Dónde» el mapa no se reencuadra mientras se tocan comunas (saltaría bajo el dedo). */
@@ -171,6 +172,11 @@ export function Asesoria(p: {
   // Mientras no llega la respuesta del alto elegido, «Calzan» dice «…»: la cifra anterior no es la de este alto (paseo del 27-nov-2026).
   const aportePendiente = altoPedido != null && !respuestas[altoPedido];
   const convienen = p.conteo?.comprar ?? p.comprar.length;
+  // Con 0 que le alcanzan, la palanca en la misma fórmula (el pie siguiente que hace aparecer alguno).
+  const palancaCero = useMemo(() => (e?.paso === "formula" && cap && numeros && agregados && !aportePendiente && calzan && calzan.length === 0
+    ? palancaFormula(p.comprar, numeros, { tasaPct: agregados.tasa, uf: agregados.uf }, idsAporte) : null),
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  [e?.paso, cap, numeros, agregados, aportePendiente, calzan, p.comprar]);
   const total = p.conteo ? p.conteo.comprar + p.conteo.ajustar + p.conteo.no : null;
 
   // El filtro del mapa: los que calzan y, en «Dónde», las marcas. En el perfil, sus 3.
@@ -325,7 +331,8 @@ export function Asesoria(p: {
           <TusNumeros valores={e.numeros} alCambiar={(k, v) => cambiar((s) => ({ ...s, numeros: { ...s.numeros, [k]: v } }))}
             alListo={() => { responder("numeros", null); cambiar((s) => ({ ...s, paso: "formula" })); }} />
         )}
-        {e.paso === "formula" && <Formula cap={cap} convienen={convienen} alcanzan={aportePendiente ? null : calzan?.length ?? null} plazoCorto={plazoCortoDe(agregados, plazo)} alSeguir={() => { responder("formula", null); cambiar((s) => ({ ...s, paso: PROYECTOS_VISIBLE ? "proyecto" : "aporte", aporte: s.aporte ?? 100_000 })); }} />}
+        {e.paso === "formula" && <Formula cap={cap} convienen={convienen} alcanzan={aportePendiente ? null : calzan?.length ?? null} plazoCorto={plazoCortoDe(agregados, plazo)} palanca={palancaCero}
+            alAjustar={() => { responder("formula", "ajustar"); setNumerosAbiertos(true); cambiar((s) => ({ ...s, paso: "numeros" })); }} alSeguir={() => { responder("formula", null); cambiar((s) => ({ ...s, paso: PROYECTOS_VISIBLE ? "proyecto" : "aporte", aporte: s.aporte ?? 100_000 })); }} />}
         {e.paso === "aporte" && (
           <AlMes aporte={e.aporte ?? 100_000} dist={agregados?.dist?.[String(plazo)] ?? null} calzan={aportePendiente ? null : calzan?.length ?? null} topado={topado}
             alCambiar={(a) => cambiar((s) => ({ ...s, aporte: a }))} alSeguir={() => { responder("aporte", null); cambiar((s) => ({ ...s, paso: "donde" })); }} />
@@ -511,7 +518,7 @@ function plazoCortoDe(a: Agregados | null, plazo: number): { plazo: number; x: n
   return { plazo, x: d.reduce((s, n) => s + n, 0), y: a.total };
 }
 
-function Formula({ cap, convienen, alcanzan, plazoCorto, alSeguir }: { cap: Capacidad | null; convienen: number; alcanzan: number | null; plazoCorto: { plazo: number; x: number; y: number } | null; alSeguir: () => void }) {
+function Formula({ cap, convienen, alcanzan, plazoCorto, palanca, alAjustar, alSeguir }: { cap: Capacidad | null; convienen: number; alcanzan: number | null; plazoCorto: { plazo: number; x: number; y: number } | null; palanca: { pieUF: number; n: number } | null; alAjustar: () => void; alSeguir: () => void }) {
   const F = C.formula;
   if (!cap) return <div className="as-conv"><p className="as-bf">…</p></div>;
   const tasa = cap.tasaPct.toLocaleString("es-CL", { maximumFractionDigits: 2 });
@@ -549,9 +556,19 @@ function Formula({ cap, convienen, alcanzan, plazoCorto, alSeguir }: { cap: Capa
           </div>
         )}
         {!cero && plazoCorto && <p className="as-bf" data-asesoria="plazo-corto">{F.plazoCorto(plazoCorto.plazo, plazoCorto.x, plazoCorto.y)} {F.plazoPorQue}</p>}
-        {!cero && alcanzan != null && <p className="as-bf">{F.filtre(convienen, alcanzan)}</p>}
+        {!cero && alcanzan != null && alcanzan > 0 && <p className="as-bf">{F.filtre(convienen, alcanzan)}</p>}
+        {!cero && alcanzan === 0 && <p className="as-bf" data-asesoria="formula-cero">{F.ceroDeptos}</p>}
+        {!cero && alcanzan === 0 && palanca && <p className="as-bf" data-asesoria="formula-palanca">{C.perfil.palancaPie(palanca.pieUF, palanca.n)}</p>}
       </div>
-      <div className="as-pie"><button type="button" className="as-principal" onClick={alSeguir} data-asesoria="formula-seguir">{F.seguir}</button></div>
+      {/* Con 0 que le alcanzan (o sin cuota por las deudas): dos salidas, «Ajustar mis números» (principal) y «Seguir igual». */}
+      {cero || alcanzan === 0 ? (
+        <div className="as-pie as-pie-dos">
+          <button type="button" className="as-principal" onClick={alAjustar} data-asesoria="formula-ajustar">{F.ajustar}</button>
+          <button type="button" className="as-secundario" onClick={alSeguir} data-asesoria="formula-seguir-igual">{F.seguirIgual}</button>
+        </div>
+      ) : (
+        <div className="as-pie"><button type="button" className="as-principal" onClick={alSeguir} data-asesoria="formula-seguir">{F.seguir}</button></div>
+      )}
     </>
   );
 }
