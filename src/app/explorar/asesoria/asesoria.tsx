@@ -108,9 +108,23 @@ export function Asesoria(p: {
       if (!el && ro) { ro.disconnect(); ro = null; }
     };
     medir();
-    const mo = new MutationObserver(medir);
+    // E18 (medición del teléfono, 27-nov-2026): el mapa agrega cientos de nodos al cargar, y medir en cada mutación forzaba un layout
+    // por nodo. Ahora se mira una vez por frame, y solo se mide si el aviso apareció o desapareció (su tamaño lo sigue el ResizeObserver).
+    let previo: Element | null = document.querySelector('[data-cookies="aviso"]');
+    let cuadro = 0;
+    const revisar = () => {
+      if (cuadro) return;
+      cuadro = window.requestAnimationFrame(() => {
+        cuadro = 0;
+        const ahora = document.querySelector('[data-cookies="aviso"]');
+        if (ahora === previo) return;
+        previo = ahora;
+        medir();
+      });
+    };
+    const mo = new MutationObserver(revisar);
     mo.observe(document.body, { childList: true, subtree: true });
-    return () => { mo.disconnect(); ro?.disconnect(); };
+    return () => { mo.disconnect(); ro?.disconnect(); if (cuadro) window.cancelAnimationFrame(cuadro); };
   }, []);
 
   // El estado guardado de esta pestaña (después del primer pintado: el servidor no lo sabe).

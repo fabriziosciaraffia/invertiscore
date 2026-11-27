@@ -331,6 +331,9 @@ export async function runAsesoria(): Promise<{ hard: number }> {
       const css = leer("src/app/explorar/asesoria/asesoria.css");
       for (const clase of ["as-burbuja", "as-hoja", "as-chica"]) if (!(comp.split(`className="as-raiz ${clase} ph-no-capture"`)[1] ?? "").split(">")[0].includes('style={{ ["--as-abajo" as string]: `${abajo}px` }}')) F(`12 · ${clase} no sube sobre el aviso de cookies`);
       if (!/const el = document\.querySelector<HTMLElement>\('\[data-cookies="aviso"\]'\);\s*setAbajo\(el \? Math\.round\(el\.getBoundingClientRect\(\)\.height\) : 0\);/.test(comp)) F("12 · la altura del aviso de cookies no se mide");
+      // E18 (27-nov-2026): medir en cada mutación del body forzaba un layout por nodo del mapa; se mira una vez por frame y se mide solo
+      // si el aviso aparece o desaparece.
+      if (!/const mo = new MutationObserver\(revisar\);/.test(comp) || !/const ahora = document\.querySelector\('\[data-cookies="aviso"\]'\);\s*if \(ahora === previo\) return;/.test(comp)) F("12 · el aviso de cookies se mide en cada mutación del body (layout forzado con cada nodo del mapa)");
       if (!/\.as-hoja \{[^}]*bottom: var\(--as-abajo, 0px\); height: calc\(100% - 150px - var\(--as-abajo, 0px\)\);/.test(css) || !/\.as-burbuja \{[^}]*bottom: calc\(12px \+ var\(--as-abajo, 0px\)\);/.test(css)) F("12 · el CSS no usa la altura del aviso");
       // ⚠ ACTA (27-nov-2026, E15): la regla de «la conversación baja sola» se reemplazó: cada pantalla abre con su primer mensaje nuevo arriba.
       if (!/const t = window\.setTimeout\(\(\) => \{ conv\.scrollTop = scrollAlInicio\(conv\); \}, 60\);/.test(comp) || /conv\.scrollHeight/.test(comp)) F("12 · la hoja no abre cada pantalla con su primer mensaje nuevo arriba (E15)");
