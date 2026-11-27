@@ -1224,7 +1224,7 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
             <MapaExplorar
               items={items}
               seleccionado={tarjeta ? sel : null}
-              encuadre={`${claveUniverso(filtros)}|${filtros.comunas.join()}|${filtros.tipologias.join()}|${filtros.ufMin}|${filtros.ufMax}|${filtros.flujoPositivo}|${filtros.publicados}|${universo ? "1" : "0"}${filtroAsesoria?.ids ? (filtroAsesoria.quieto ? "|as:quieto" : `|as:${filtroAsesoria.ids.size}:${aireAsesoria?.abajo ?? 0}:${aireAsesoria?.derecha ?? 0}`) : ""}`}
+              encuadre={`${claveUniverso(filtros)}|${filtros.comunas.join()}|${filtros.tipologias.join()}|${filtros.ufMin}|${filtros.ufMax}|${filtros.flujoPositivo}|${filtros.publicados}|${universo ? "1" : "0"}${filtroAsesoria ? (filtroAsesoria.quieto ? "|as:quieto" : `|as:${filtroAsesoria.ids?.size ?? "todos"}:${aireAsesoria?.abajo ?? 0}:${aireAsesoria?.derecha ?? 0}`) : ""}`}
               /* Las barras y los chips no reencuadran: la persona mira dónde estaba y ve qué queda. */
               conZona={!!filtros.zona}
               onSeleccionar={tocarPin}

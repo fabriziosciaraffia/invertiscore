@@ -304,7 +304,7 @@ export async function runAsesoria(): Promise<{ hard: number }> {
       const mapa = codigo("src/app/explorar/mapa-explorar.tsx");
       if (!/a \? \{ top: 64, left: 24, right: 24 \+ a\.derecha, bottom: 24 \+ a\.abajo \} : 24\);/.test(mapa)) F("12 · el encuadre no deja los pines en lo que se ve de la hoja");
       const cli = codigo("src/app/explorar/explorar-cliente.tsx");
-      if (!/\$\{filtroAsesoria\?\.ids \? \(filtroAsesoria\.quieto \? "\|as:quieto" : `\|as:\$\{filtroAsesoria\.ids\.size\}:/.test(cli)) F("12 · el mapa no se reencuadra con los que calzan (o se mueve mientras se tocan comunas)");
+      if (!/\$\{filtroAsesoria \? \(filtroAsesoria\.quieto \? "\|as:quieto" : `\|as:\$\{filtroAsesoria\.ids\?\.size \?\? "todos"\}:\$\{aireAsesoria\?\.abajo \?\? 0\}:\$\{aireAsesoria\?\.derecha \?\? 0\}`\) : ""\}/.test(cli)) F("12 · el mapa no se reencuadra con los que calzan (o se mueve mientras se tocan comunas)");
       if (!/quieto: e\?\.paso === "donde"/.test(comp)) F("12 · en «Dónde» el mapa no queda quieto");
       // Con plazo corto, la fórmula ya cuenta los Comprar a SU plazo (pide el alto más alto del slider, no una cifra de la persona).
       if (!/const altoPedido: Aporte \| null = pasoN >= PASO_N\.aporte \? aporte : pasoN >= PASO_N\.formula && plazo < 30 \? ALTO_MAXIMO : null;/.test(comp) || !/const ALTO_MAXIMO: Aporte = TOPE_SLIDER;/.test(comp) || !/if \(idsAporte\) xs = xs\.filter\(\(x\) => idsAporte\.has\(x\.avisoId\)\);/.test(comp)) F("12 · con plazo corto, «te alcanzan» de la fórmula no cuenta el plazo");
