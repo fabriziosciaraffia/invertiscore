@@ -8,6 +8,7 @@ import { metroCercano } from "@/lib/explorar/lugar";
 import { distanciaM } from "./tres";
 
 export const RADIO_PEGA_M = 3_000;
+
 export const COMUNAS_RINDE = 3;
 
 /** ¿El punto cae dentro del anillo? (anillo plano: lat, lng, lat, lng…) */

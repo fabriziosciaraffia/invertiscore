@@ -251,10 +251,10 @@ export function Asesoria(p: {
     <>
       {e.paso !== "perfil" && cuenta}
       <section className="as-raiz as-hoja ph-no-capture" data-asesoria="hoja" data-paso={e.paso} aria-label={C.franco}>
-        <header className="as-cab">
+        <div className="as-cab">
           <div className="as-quien"><span className="as-avatar" data-chico="1" aria-hidden="true">F</span><div className="as-quien-n"><b>{C.franco}</b><span>{C.asistente}</span></div></div>
           <button type="button" className="as-x" style={{ margin: 0 }} aria-label={C.cerrar} onClick={cerrar} data-asesoria="cerrar"><X size={18} /></button>
-        </header>
+        </div>
         <ol className="as-barra" aria-label="Avance" data-asesoria="barra">
           {C.segmentos.map((s, i) => <li key={s} className="as-seg" data-av={String(av[i])}><i />{s}</li>)}
         </ol>

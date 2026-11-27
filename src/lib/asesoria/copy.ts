@@ -12,7 +12,8 @@ const pct1 = (x: number): string => (Math.round(x * 10) / 10).toLocaleString("es
 
 export const ASESORIA_COPY = {
   franco: "Franco",
-  asistente: "Asistente con IA",
+  // La lámina dice «Asistente con IA»; la entrega 1 es solo con chips y ninguna superficie promete IA (tier COPY-SIN-IA).
+  asistente: "Asesoría de inversión",
   cerrar: "Cerrar",
   retomar: "Retomar",
   segmentos: ["Qué buscas", "Hasta dónde llegas", "Dónde"] as const,

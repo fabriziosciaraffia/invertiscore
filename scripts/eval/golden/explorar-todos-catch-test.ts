@@ -147,7 +147,9 @@ export async function runExplorarTodosTier(): Promise<{ hard: number }> {
   const f5 = po.validarPortal({ ocultar: ["ajustar"] });
   if (f5.ocultar.join() !== "ajustar" || po.portalDeUrl(new URLSearchParams(po.urlDePortal(f5))).filtros.ocultar.join() !== "ajustar") F("5 · apagar un chip no viaja en la URL");
   if (po.validarPortal({ ocultar: ["comprar", "ajustar", "no"] }).ocultar.length !== 0) F("5 · las tres apagadas dejan el mapa vacío (debían volver a verse)");
-  if (!/const todos = useMemo\(\(\): PinMapa\[\] => \[\.\.\.\(seVe\("comprar"\) \? visibles : \[\]\), \.\.\.\(seVe\("ajustar"\) \? visiblesNeg : \[\]\), \.\.\.\(seVe\("no"\) \? visiblesNo : \[\]\)\]/.test(cli)) F("5 · los chips apagados no esconden sus pines del mapa");
+  // ⚠ ACTA (27-nov-2026, la asesoría en el mapa): `todos` gana una rama antes —con el filtro de la asesoría puesto, solo los Comprar que
+  // calzan (tier ASESORIA)—; sin él, el arreglo de las tres clases con sus chips, igual que antes, ahora tras un `return`.
+  if (!/const todos = useMemo\(\(\): PinMapa\[\] => \{\s*(?:\/\/[^\n]*\n\s*)?const ids = filtroAsesoria\?\.ids;\s*if \(ids\) return visibles\.filter\(\(p\) => ids\.has\(p\.avisoId\)\);\s*return \[\.\.\.\(seVe\("comprar"\) \? visibles : \[\]\), \.\.\.\(seVe\("ajustar"\) \? visiblesNeg : \[\]\), \.\.\.\(seVe\("no"\) \? visiblesNo : \[\]\)\];/.test(cli)) F("5 · los chips apagados no esconden sus pines del mapa");
   // «Ver lista» (el camino del teclado y del lector de pantalla) lleva lo mismo que el mapa: las tres clases, sin las apagadas.
   if (!/noConviene=\{seVe\("no"\) \? ordenar\(visiblesNo, "precio", uf\) : \[\]\}/.test(cli) || !/pines=\{seVe\("comprar"\) \? visibles : \[\]\}/.test(cli)) F("5 · «Ver lista» no lleva los No conviene o no respeta los chips apagados");
   const lista = codigo("src/app/explorar/lista-portal.tsx");

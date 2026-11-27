@@ -553,7 +553,11 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
   // ⚠ ACTA 26-nov-2026 (revisión del preview, cambio 4): se retira «Buscar en esta zona» (el botón que aparecía al mover el mapa): no
   // hay zonaPendiente ni data-explorar="buscar-zona", y nadie le pasa onMovido al mapa. Queda el negativo, y que la zona que llega
   // en la URL siga filtrando.
-  if (/zonaPendiente|buscar-zona|onMovido=/.test(cli)) F("8 · vuelve «Buscar en esta zona» (o el cliente vuelve a escuchar el movimiento del mapa)");
+  // ⚠ ACTA (27-nov-2026, la asesoría en el mapa, decisión de Fabrizio «la burbuja aparece cuando ya miró deptos»): el cliente vuelve a
+  // escuchar el movimiento del mapa SOLO para contar movimientos con la asesoría habilitada (la burbuja), nunca para una zona. Esa
+  // única forma se quita antes de buscar; cualquier otro onMovido sigue en rojo.
+  const cliSinBurbuja = cli.replace('onMovido={asesoria.habilitada ? () => setMiro((m) => ({ ...m, movimientos: m.movimientos + 1 })) : undefined}', "");
+  if (/zonaPendiente|buscar-zona|onMovido=/.test(cliSinBurbuja)) F("8 · vuelve «Buscar en esta zona» (o el cliente vuelve a escuchar el movimiento del mapa)");
   {
     const conZona = po.portalDeUrl(new URLSearchParams(po.urlDePortal({ ...G, zona: [-33.45, -70.62, -33.42, -70.6] }))).filtros;
     const dentroZ = { ...PIN, avisoId: "zd", lat: -33.43, lng: -70.61 }, fueraZ = { ...PIN, avisoId: "zf", lat: -33.5, lng: -70.7 };

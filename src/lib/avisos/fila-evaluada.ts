@@ -23,9 +23,9 @@ export async function filaEvaluadaCompleta(
   const t = Date.now();
   const negociar = candidato ? evaluarNegociar(candidato, evaluada, cfg) : NEGOCIAR_VACIO;
   const msNegociar = Date.now() - t;
+  const fila = { ...evaluada, ...(candidato ? evaluarEstandar25(candidato, cfg) : ESTANDAR25_VACIO), ...negociar };
   // Los plazos cortos (27-nov-2026): la asesoría filtra con el plazo que la edad permite (estandar-deptos.ts › evaluarPlazosCortos).
-  const fila = { ...evaluada, ...(candidato ? evaluarEstandar25(candidato, cfg) : ESTANDAR25_VACIO), ...(candidato ? evaluarPlazosCortos(candidato, cfg) : PLAZOS_CORTOS_VACIO), ...negociar };
-  return { fila, msNegociar };
+  return { fila: { ...fila, ...(candidato ? evaluarPlazosCortos(candidato, cfg) : PLAZOS_CORTOS_VACIO) }, msNegociar };
 }
 
 /** Reevalúa el aviso con la función de la noche y guarda la fila (upsert por aviso). Devuelve si quedó guardada. */

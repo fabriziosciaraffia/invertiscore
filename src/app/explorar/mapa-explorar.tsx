@@ -19,6 +19,7 @@ import { loadGoogleMaps } from "@/lib/loadGoogleMaps";
 import { CAPA_MAPA_COPY, CAPAS_MAPA, guardarCapaMapa, leerCapaMapa, opcionesDeCapa, type CapaMapa } from "@/lib/explorar/capa-mapa";
 import type { Caja } from "@/lib/explorar/portal";
 import { cajaRecortada, componerCapa, RADIO_PUNTO, tocado, type Dibujo, type ItemCapa } from "@/lib/explorar/capa-canvas";
+import { ESTILO_MARCAS } from "@/lib/asesoria/estilo-marcas";
 import { cargarReferencias, componerReferencias, ESTILO_REFERENCIAS, LINEA_EN_NOMBRE, numeroDeLinea, textoSobreLinea, type DibujoReferencias, type Referencias } from "@/lib/explorar/capas-referencia";
 import { dibujarEstacion } from "@/lib/explorar/marcador-estacion";
 import { ANILLO_ELEGIDO_PX, ANILLO_PIN, ANILLO_PIN_PX, colorPin, type TemaPin } from "@/lib/explorar/colores-pin";
@@ -479,12 +480,12 @@ export default function MapaExplorar({ items, seleccionado, encuadre, conZona, o
         if (!elegida && !marcas.todas) continue;
         marcasRef.current.push(new g.maps.Polygon({
           map, paths: c.a.map(anillo), clickable: false, zIndex: elegida ? 2 : 1,
-          strokeColor: elegida ? "#2B558F" : "#9A9AA0", strokeOpacity: elegida ? 1 : 0.7, strokeWeight: elegida ? 2 : 1,
-          fillColor: "#2B558F", fillOpacity: elegida ? 0.16 : 0,
+          strokeColor: elegida ? ESTILO_MARCAS.elegida.trazo : ESTILO_MARCAS.otra.trazo, strokeOpacity: elegida ? 1 : 0.7, strokeWeight: elegida ? 2 : 1,
+          fillColor: ESTILO_MARCAS.elegida.relleno, fillOpacity: elegida ? ESTILO_MARCAS.elegida.opacidad : 0,
         }));
       }
       if (marcas.pega) {
-        marcasRef.current.push(new g.maps.Circle({ map, center: { lat: marcas.pega.lat, lng: marcas.pega.lng }, radius: marcas.pega.radioM, clickable: false, strokeColor: "#2B558F", strokeWeight: 2, fillColor: "#2B558F", fillOpacity: 0.12 }));
+        marcasRef.current.push(new g.maps.Circle({ map, center: { lat: marcas.pega.lat, lng: marcas.pega.lng }, radius: marcas.pega.radioM, clickable: false, strokeColor: ESTILO_MARCAS.pega.trazo, strokeWeight: 2, fillColor: ESTILO_MARCAS.pega.relleno, fillOpacity: ESTILO_MARCAS.pega.opacidad }));
       }
     });
     return () => { vivo = false; limpiar(); };
