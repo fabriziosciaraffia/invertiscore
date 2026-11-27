@@ -13,7 +13,7 @@ import { sumarDepto } from "./base-servidor";
 import { anotar, ultimaOrdenDe } from "./servidor";
 import type { PerfilInv } from "./perfil-servidor";
 import { contactoDeAsesoria, idsDeLaAsesoria, type DeptoAsesoria } from "./asesoria";
-import type { PieInvierte, UrgenciaInvierte } from "@/lib/invierte/invierte";
+import type { PieInvierte } from "@/lib/invierte/invierte";
 
 export type ResultadoAdopcion = { adoptado: false } | { adoptado: true; sumados: string[] };
 
@@ -44,7 +44,7 @@ export async function adoptarPerfilAsesoria(admin: SupabaseClient, user: { id: s
 /** El flujo de cada plazo en avisos_evaluados (el mismo que mostró el perfil de la asesoría). */
 const COLUMNA_FLUJO: Record<number, string> = { 30: "flujo_20", 25: "flujo_20_25", 20: "flujo_20_20", 15: "flujo_20_15" };
 
-export interface ContactoAsesoria { deptos: DeptoAsesoria[]; urgencia: UrgenciaInvierte; pie: PieInvierte }
+export interface ContactoAsesoria { deptos: DeptoAsesoria[]; pie: PieInvierte }
 
 /** Los deptos que trae «Seguir con estos deptos» (solo de sus elegidos), con su calle o comuna, precio y lo que dejan a SU plazo, y
  *  lo que ya se sabe para no preguntarlo (asesoria.ts). null si no viene de la asesoría. */

@@ -48,6 +48,8 @@ export interface EstadoAsesoria {
   lupa: Lupa | null;
   /** «Avísame» de los deptos nuevos (27-nov-2026): una salida, no una pregunta; true si lo tocó. */
   interesNuevos?: boolean | null;
+  /** Tocó «Ver lo que encontré» sin cuenta y se abrió la hoja de crear cuenta (cuarta vuelta): al volver con ella, sigue al perfil. */
+  registroPedido?: boolean | null;
   /** «Seguir» en la buena noticia (tercera vuelta, 27-nov-2026): no se filtra por aporte; quedan todos los que le alcanzan. */
   aporteLibre?: boolean | null;
   /** Cerrada la hoja, la persona quitó el filtro de su perfil desde el botón Filtros (F22): el mapa vuelve entero hasta «Retomar». */

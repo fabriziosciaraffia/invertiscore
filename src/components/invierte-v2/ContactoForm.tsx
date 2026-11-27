@@ -50,10 +50,10 @@ export function ContactoForm({ depto, origen, analysisId, inicial, sinSesion, al
   alCerrar?: () => void;
   /** DESDE LA ASESORÍA (tercera vuelta, 27-nov-2026): sus deptos en una fila chica, y la urgencia y el pie que ya se saben (no se
    *  preguntan: solo el WhatsApp y el permiso). */
-  asesoria?: { deptos: DeptoAsesoria[]; urgencia: UrgenciaInvierte; pie: PieInvierte } | null;
+  asesoria?: { deptos: DeptoAsesoria[]; pie: PieInvierte } | null;
 }) {
   const router = useRouter();
-  const [urgencia, setUrgencia] = useState<UrgenciaInvierte | null>(asesoria?.urgencia ?? inicial?.urgencia ?? null);
+  const [urgencia, setUrgencia] = useState<UrgenciaInvierte | null>(inicial?.urgencia ?? null);
   const [pie, setPie] = useState<PieInvierte | null>(asesoria?.pie ?? inicial?.pie ?? null);
   const [whatsapp, setWhatsapp] = useState(inicial?.whatsapp ?? "");
   const [permiso, setPermiso] = useState(false);
@@ -64,7 +64,8 @@ export function ContactoForm({ depto, origen, analysisId, inicial, sinSesion, al
   async function enviar(e: FormEvent) {
     e.preventDefault();
     if (enviando) return;
-    const v = validarContacto({ avisoId: depto.avisoId, origen, urgencia, pie, whatsapp, permiso });
+    // Desde la asesoría la urgencia va vacía: no se pregunta y no se inventa (cuarta vuelta, 27-nov-2026).
+    const v = validarContacto({ avisoId: depto.avisoId, origen, urgencia: asesoria ? null : urgencia, sinUrgencia: !!asesoria, pie, whatsapp, permiso });
     if (!v.ok) {
       setError(v.error === "permiso" ? C.faltaPermiso : textoError(v.error === "cuando" || v.error === "pie" || v.error === "whatsapp" ? v.error : "red"));
       return;

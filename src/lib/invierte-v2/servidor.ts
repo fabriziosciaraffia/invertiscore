@@ -54,7 +54,8 @@ export interface PersonaInv {
   email: string | null;
   avisoOrigen: string;
   origen: string;
-  urgencia: string;
+  /** Vacía si llegó desde la asesoría (no se pregunta). */
+  urgencia: string | null;
   pie: string;
   pieUF: number | null;
   whatsapp: string;
@@ -103,7 +104,7 @@ function aOrden(f: Record<string, unknown>): OrdenInv {
 function aPersona(f: Record<string, unknown>): PersonaInv {
   return {
     userId: f.user_id as string, email: (f.email as string | null) ?? null, avisoOrigen: f.aviso_origen as string, origen: f.origen as string,
-    urgencia: f.urgencia as string, pie: f.pie as string, pieUF: f.pie_uf != null ? Number(f.pie_uf) : null, whatsapp: f.whatsapp as string,
+    urgencia: (f.urgencia as string | null) ?? null, pie: f.pie as string, pieUF: f.pie_uf != null ? Number(f.pie_uf) : null, whatsapp: f.whatsapp as string,
     permisoWhatsappAt: f.permiso_whatsapp_at as string, estado: f.estado === "firmo" ? "firmo" : "contacto",
     createdAt: f.created_at as string, updatedAt: f.updated_at as string,
   };

@@ -104,7 +104,8 @@ export const FLUJO_COPY = {
 export interface PedidoContacto {
   avisoId: string;
   origen: OrigenInvierte;
-  urgencia: UrgenciaInvierte;
+  /** Vacía solo desde la asesoría (cuarta vuelta, 27-nov-2026): ahí no se pregunta y no se inventa. */
+  urgencia: UrgenciaInvierte | null;
   pie: PieInvierte;
   whatsapp: string;
   permiso: true;
@@ -116,12 +117,13 @@ export function validarContacto(b: Record<string, unknown> | null | undefined): 
   const x = b ?? {};
   if (!esAvisoId(x.avisoId)) return { ok: false, error: "depto" };
   if (!esOrigen(x.origen)) return { ok: false, error: "origen" };
-  if (!esUrgencia(x.urgencia)) return { ok: false, error: "cuando" };
+  const sinUrgencia = x.sinUrgencia === true && x.urgencia == null;
+  if (!sinUrgencia && !esUrgencia(x.urgencia)) return { ok: false, error: "cuando" };
   if (!esPie(x.pie)) return { ok: false, error: "pie" };
   const whatsapp = normalizarWhatsapp(x.whatsapp);
   if (!whatsapp) return { ok: false, error: "whatsapp" };
   if (x.permiso !== true) return { ok: false, error: "permiso" };
-  return { ok: true, pedido: { avisoId: x.avisoId, origen: x.origen, urgencia: x.urgencia, pie: x.pie, whatsapp, permiso: true } };
+  return { ok: true, pedido: { avisoId: x.avisoId, origen: x.origen, urgencia: sinUrgencia ? null : (x.urgencia as UrgenciaInvierte), pie: x.pie, whatsapp, permiso: true } };
 }
 
 // ── LA FIRMA (paso 2 de 2) ───────────────────────────────────────────────────

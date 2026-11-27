@@ -293,6 +293,10 @@ export function Asesoria(p: {
     if (!e || p.sinCuenta || cargandoPerfil || resultado || errorPerfil) return;
     if ((e.paso === "cierre" || e.paso === "perfil") && listoParaPerfil(e)) void pedirPerfil(e);
   }, [e, p.sinCuenta, cargandoPerfil, resultado, errorPerfil, pedirPerfil]);
+  // Volvió con la cuenta después de «Ver lo que encontré»: el recorrido sigue al perfil.
+  useEffect(() => {
+    if (!p.sinCuenta && e?.paso === "lupa" && e.registroPedido && listoParaPerfil(e)) cambiar((s) => ({ ...s, paso: "cierre" }));
+  }, [e, p.sinCuenta, cambiar]);
 
   // CADA PANTALLA ABRE CON SU PRIMER MENSAJE NUEVO ARRIBA (E15, decisión de Fabrizio del 27-nov-2026; reemplaza a «la conversación baja
   // sola»): el primer mensaje de Franco de lo nuevo —el marcado `data-inicio`, el último de los marcados si hay varios— queda arriba de
@@ -331,6 +335,9 @@ export function Asesoria(p: {
     capture(EVENTOS_ASESORIA.nuevos, propsBase(prueba, { paso: e?.paso ?? "formula" }));
     if (!p.sinCuenta && e?.paso === "perfil") void fetch("/api/asesoria/interes-nuevos", { method: "POST" }).catch(() => {});
   };
+
+  // La hoja de crear cuenta (con el regalo de siempre) y lo que guarda el alta.
+  const registrar = () => { capture(EVENTOS_ASESORIA.cuenta, propsBase(prueba, { fase: "hoja" })); if (e) p.alRegistrar({ comunas: comunasDelRegistro(e, calzan), topeUF: cap?.topeUF ?? 0, deptos: Math.min(3, calzan?.length ?? 0) }); };
 
   // ── las acciones ──
   const responder = (paso: Paso, respuesta: string | null) => capture(EVENTOS_ASESORIA.paso, propsPaso(paso, respuesta, prueba));
@@ -438,18 +445,17 @@ export function Asesoria(p: {
             })}
             alListo={() => { responder("donde", e.donde?.modo ?? null); cambiar((s) => ({ ...s, paso: "lupa" })); }} />
         )}
-        {e.paso === "lupa" && <LupaPaso lupa={e.lupa} alResponder={(x) => { responder("lupa", x); cambiar((s) => ({ ...s, lupa: x })); }} alSeguir={() => cambiar((s) => ({ ...s, paso: "cierre" }))} />}
-        {e.paso === "cierre" && (
-          <Cierre sinCuenta={p.sinCuenta} cargando={cargandoPerfil} error={errorPerfil}
-            alCrear={() => { capture(EVENTOS_ASESORIA.cuenta, propsBase(prueba, { fase: "hoja" })); p.alRegistrar({ comunas: comunasDelRegistro(e, calzan), topeUF: cap?.topeUF ?? 0, deptos: Math.min(3, calzan?.length ?? 0) }); }}
-            alReintentar={() => { setErrorPerfil(false); }} />
-        )}
+        {/* «VER LO QUE ENCONTRÉ» ABRE DIRECTO LA HOJA DE CREAR CUENTA (cuarta vuelta, 27-nov-2026): sin el paso intermedio. Sin cuenta, el
+            recorrido se queda en la lupa (y un cierre guardado de antes vuelve a ella); al volver con la cuenta, sigue solo al perfil. */}
+        {(e.paso === "lupa" || (e.paso === "cierre" && p.sinCuenta)) && <LupaPaso lupa={e.lupa} alResponder={(x) => { responder("lupa", x); cambiar((s) => ({ ...s, lupa: x })); }}
+          alSeguir={() => { if (p.sinCuenta) { cambiar((s) => ({ ...s, registroPedido: true })); registrar(); return; } cambiar((s) => ({ ...s, paso: "cierre" })); }} />}
+        {e.paso === "cierre" && !p.sinCuenta && <Cierre cargando={cargandoPerfil} error={errorPerfil} alReintentar={() => { setErrorPerfil(false); }} />}
         {e.paso === "perfil" && (
           resultado
             ? <Perfil r={resultado} numeros={numeros} experiencia={e.experiencia} lupa={e.lupa} aporte={e.aporteLibre ? null : e.aporte ?? 0} pines={p.comprar} interesNuevos={e.interesNuevos === true} alAvisar={avisarNuevos}
                 alVer={(id) => { capture(EVENTOS_ASESORIA.verDepto, propsBase(prueba)); cambiar((x) => ({ ...x, cerrada: true })); p.alVerDepto(id); }}
                 alSeguir={() => capture(EVENTOS_ASESORIA.seguirDeptos, propsBase(prueba, { n: resultado.tres.length }))} />
-            : <Cierre sinCuenta={false} cargando={cargandoPerfil} error={errorPerfil} alCrear={() => {}} alReintentar={() => setErrorPerfil(false)} />
+            : <Cierre cargando={cargandoPerfil} error={errorPerfil} alReintentar={() => setErrorPerfil(false)} />
         )}
       </section>
     </>
@@ -810,24 +816,14 @@ function LupaPaso({ lupa, alResponder, alSeguir }: { lupa: Lupa | null; alRespon
 }
 
 // ── el cierre ───────────────────────────────────────────────────────────────
-function Cierre({ sinCuenta, cargando, error, alCrear, alReintentar }: { sinCuenta: boolean; cargando: boolean; error: boolean; alCrear: () => void; alReintentar: () => void }) {
-  if (!sinCuenta) {
-    return (
-      <div className="as-conv" data-asesoria="paso-cierre">
-        {error ? (
-          <><p className="as-error" role="alert">{C.perfil.error}</p><button type="button" className="as-principal" onClick={alReintentar}>{C.perfil.reintentar}</button></>
-        ) : <p className="as-bf" data-inicio="1">{cargando ? C.perfil.cargando : C.perfil.cargando}</p>}
-      </div>
-    );
-  }
-  // El título y la bajada («Tu perfil y tus 3 deptos están listos.») van en la hoja de registro (F21); el chat de atrás no los repite.
+function Cierre({ cargando, error, alReintentar }: { cargando: boolean; error: boolean; alReintentar: () => void }) {
+  // Con cuenta: armando el perfil (sin cuenta no hay cierre: la lupa abre la hoja de crear cuenta, cuarta vuelta).
   return (
-    <>
-      <div className="as-conv" data-asesoria="paso-cierre">
-        <p className="as-bf" data-inicio="1" data-asesoria="cierre-chat">{C.cierre.chat}</p>
-      </div>
-      <div className="as-pie"><button type="button" className="as-principal" onClick={alCrear} data-asesoria="crear-cuenta">{C.cierre.boton}</button></div>
-    </>
+    <div className="as-conv" data-asesoria="paso-cierre">
+      {error ? (
+        <><p className="as-error" role="alert">{C.perfil.error}</p><button type="button" className="as-principal" onClick={alReintentar}>{C.perfil.reintentar}</button></>
+      ) : <p className="as-bf" data-inicio="1">{cargando ? C.perfil.cargando : C.perfil.cargando}</p>}
+    </div>
   );
 }
 

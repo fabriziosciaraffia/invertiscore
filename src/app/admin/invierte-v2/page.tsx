@@ -9,6 +9,9 @@ import { AgregarCorreo, ModoSelect, NumeroWhatsapp, QuitarCorreo, ReenviarCopia,
 import { numeroFranco } from "@/lib/invierte-v2/base-servidor";
 import { TAREAS_EN_PAUSA, avisosEnPausa, tareaEnPausa } from "@/lib/invierte-v2/b4";
 
+/** La urgencia vacía: llegó desde la asesoría, donde no se pregunta (cuarta vuelta, 27-nov-2026). */
+const SIN_URGENCIA = "Sin respuesta";
+
 export const dynamic = "force-dynamic";
 
 /**
@@ -93,7 +96,7 @@ export default async function AdminInvierteV2Page() {
                 <td className="px-3 py-2"><Link href={`/admin/invierte-v2/${f.userId}`} className="underline decoration-[var(--franco-border)] underline-offset-2" data-admin="inv2-ficha">{f.email ?? f.userId}</Link>{(pendientes.get(f.userId) ?? 0) > 0 && <div className="text-[12px] font-semibold" data-admin="inv2-pendientes">{pendientes.get(f.userId)} {pendientes.get(f.userId) === 1 ? "tarea pendiente" : "tareas pendientes"}</div>}</td>
                 <td className="whitespace-nowrap px-3 py-2 font-semibold">{f.orden ? "Firmó" : "Contacto"}</td>
                 <td className="px-3 py-2">{f.linea ?? f.avisoOrigen}{f.precioUF != null && <span className="font-mono text-[12px]"> · UF {Math.round(f.precioUF).toLocaleString("es-CL")}</span>}<div className="text-[12px] text-[var(--franco-text-muted)]">desde {f.origen} · {f.campanaTexto}</div></td>
-                <td className="whitespace-nowrap px-3 py-2">{esUrgencia(f.urgencia) ? H.urgencias[f.urgencia] : f.urgencia}</td>
+                <td className="whitespace-nowrap px-3 py-2">{f.urgencia == null ? SIN_URGENCIA : esUrgencia(f.urgencia) ? H.urgencias[f.urgencia] : f.urgencia}</td>
                 <td className="whitespace-nowrap px-3 py-2">{esPie(f.pie) ? H.pies[f.pie] : f.pie}{f.pieUF != null && <span className="text-[var(--franco-text-muted)]"> (UF {f.pieUF.toLocaleString("es-CL")})</span>}</td>
                 <td className="whitespace-nowrap px-3 py-2 font-mono text-[12px]"><a href={`https://wa.me/${f.whatsapp.replace(/^\+/, "")}`} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">{f.whatsapp}</a><div className="font-body text-[11px] text-[var(--franco-text-muted)]">permiso {fmtDateShort(f.permisoWhatsappAt)}</div></td>
                 <td className="whitespace-nowrap px-3 py-2">

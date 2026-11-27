@@ -3,12 +3,12 @@
 // deptos» llega al contacto con `desde=explorar&mas=<los otros>`: el contacto dice «Invierte en tus 3 deptos con Franco», muestra los
 // tres en una fila chica y NO pregunta «¿Cuándo piensas comprar?» ni el pie —ya se sabe lo suficiente—, solo el WhatsApp y el permiso.
 //   · Los ids valen solo si son de los `elegidos` de SU perfil de la asesoría (nadie arma una lista ajena por la dirección).
-//   · La urgencia sale de la preaprobación (la columna es obligatoria): con preaprobación, este mes; en trámite, de 1 a 3 meses; sin
-//     ella, más adelante. El pie, de su tope por pie: le alcanza el depto de entrada → sí; si no, lo que dijo (la asesoría guarda «una
-//     parte» con menos de UF 300).
+//   · La urgencia NO se inventa (cuarta vuelta, 27-nov-2026): queda vacía, sin respuesta (migración 20261127_inv_personas_urgencia_vacia).
+//     El pie, de su tope por pie: le alcanza el depto de entrada → sí; si no, lo que dijo (la asesoría guarda «una parte» con menos de
+//     UF 300).
 // Puro. Tier ASESORIA.
 // ─────────────────────────────────────────────────────────────────────────────
-import type { PieInvierte, UrgenciaInvierte } from "@/lib/invierte/invierte";
+import type { PieInvierte } from "@/lib/invierte/invierte";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -23,10 +23,10 @@ export function idsDeLaAsesoria(avisoId: string, mas: string | string[] | null |
   return ids;
 }
 
-export function contactoDeAsesoria(p: { preaprobado: "tengo" | "tramite" | "no"; topePieUF: number | null; pieTiene: PieInvierte | null }, precioEntradaUF: number | null): { urgencia: UrgenciaInvierte; pie: PieInvierte } {
-  const urgencia: UrgenciaInvierte = p.preaprobado === "tengo" ? "este_mes" : p.preaprobado === "tramite" ? "uno_a_tres" : "mas_adelante";
+export function contactoDeAsesoria(p: { preaprobado: "tengo" | "tramite" | "no"; topePieUF: number | null; pieTiene: PieInvierte | null }, precioEntradaUF: number | null): { pie: PieInvierte } {
+  void p.preaprobado;
   const pie: PieInvierte = p.topePieUF != null && precioEntradaUF != null && precioEntradaUF <= p.topePieUF ? "si" : p.pieTiene === "no" ? "no" : "parte";
-  return { urgencia, pie };
+  return { pie };
 }
 
 export interface DeptoAsesoria { avisoId: string; lugar: string; precioUF: number; flujoCLP: number | null }

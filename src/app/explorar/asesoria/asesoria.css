@@ -196,3 +196,8 @@ a.as-principal { text-decoration: none; }
 
 /* «Ver la cuenta» bajo la tarjeta del tope (tercera vuelta, 27-nov-2026). */
 .as-ver-cuenta { align-self: flex-start; padding: 0 2px; }
+
+/* LA X DE LA BURBUJA SE VE (cuarta vuelta, 27-nov-2026): blanca sobre la parte clara del degradado casi no se veía. Fondo oscuro
+   translúcido y borde blanco, con los 44 px de área de .as-x. Va al final para ganarle al fondo transparente de .as-x. */
+.as-x-claro { background: rgba(15, 15, 15, 0.42); border: 1.5px solid rgba(255, 255, 255, 0.85); color: #FFFFFF; }
+.as-x-claro:hover { background: rgba(15, 15, 15, 0.58); }

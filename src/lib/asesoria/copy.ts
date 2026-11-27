@@ -169,8 +169,6 @@ export const ASESORIA_COPY = {
     // Nunca promete 3 si calzan menos (paseo del 27-nov-2026).
     titulo: (n: number) => (n >= 3 ? "Tu perfil y tus 3 deptos están listos." : n === 0 ? "Tu perfil está listo." : `Tu perfil y ${n === 1 ? "tu depto están listos." : `tus ${n} deptos están listos.`}`),
     cuerpo: (n: number) => (n === 0 ? "Crea tu cuenta gratis y te lo muestro. Trae un crédito de regalo." : `Crea tu cuenta gratis y te ${n === 1 ? "lo" : "los"} muestro. Trae un crédito de regalo.`),
-    chat: "Listo. Ya sé lo que buscas y hasta dónde llegas.",
-    boton: "Crear mi cuenta",
   },
   // El perfil
   perfil: {

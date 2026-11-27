@@ -38,7 +38,7 @@ import { topesDeCompra, pieMasGastosPct } from "../../../src/lib/tope/regla";
 import { hastaCuanto } from "../../../src/lib/invierte-v2/perfil";
 import { textosHoja } from "../../../src/lib/explorar/abierto";
 import { idsDeLaAsesoria, contactoDeAsesoria, lineaDeptoAsesoria } from "../../../src/lib/invierte-v2/asesoria";
-import { FLUJO_COPY } from "../../../src/lib/invierte-v2/flujo";
+import { FLUJO_COPY, validarContacto } from "../../../src/lib/invierte-v2/flujo";
 import { TARJETA_COPY } from "../../../src/lib/explorar/mapa-todos";
 import { leerModoAsesoria, accesoAsesoria } from "../../../src/lib/asesoria/acceso";
 import { propsPaso } from "../../../src/lib/asesoria/eventos";
@@ -632,7 +632,8 @@ export async function runAsesoria(): Promise<{ hard: number }> {
       if (idsDeLaAsesoria(A, "no-es-uuid", el) !== null) F("22 · se acepta un «mas» que no es una lista de ids");
       // Lo que ya se sabe: la urgencia sale de la preaprobación y el pie de su tope por pie.
       const k = (pre: "tengo" | "tramite" | "no", tope: number | null, pie: "si" | "parte" | "no" | null, precio: number) => contactoDeAsesoria({ preaprobado: pre, topePieUF: tope, pieTiene: pie }, precio);
-      if (k("tengo", 2450, "si", 2000).urgencia !== "este_mes" || k("tramite", 2450, "si", 2000).urgencia !== "uno_a_tres" || k("no", 2450, "si", 2000).urgencia !== "mas_adelante") F("22 · la urgencia no sale de la preaprobación");
+      // ⚠ ACTA (27-nov-2026, cuarta vuelta): la urgencia NO se deriva de la preaprobación: queda vacía (sin respuesta), §25.
+      if ("urgencia" in k("tengo", 2450, "si", 2000)) F("22 · la urgencia se inventa a partir de la preaprobación");
       if (k("no", 2450, "si", 2000).pie !== "si" || k("no", 2450, "si", 2600).pie !== "parte" || k("no", null, "parte", 2600).pie !== "parte" || k("no", null, "no", 2600).pie !== "no") F("22 · el pie no sale de su tope por pie");
       const Fc = FLUJO_COPY.contacto;
       if (Fc.asesoriaTitulo(3) !== "Invierte en tus 3 deptos con Franco" || Fc.asesoriaTitulo(1) !== "Invierte en tu depto con Franco" || Fc.asesoriaParrafo(3) !== "Franco trabaja con tus 3 deptos y te va mostrando más opciones.") F("22 · los textos del contacto desde la asesoría no son los aprobados");
@@ -692,6 +693,28 @@ export async function runAsesoria(): Promise<{ hard: number }> {
       // 8 · las casillas del contador del mapa en dos líneas como mucho a 375.
       if (!/@media \(max-width: 400px\) \{\s*\.ex-vc \{[^}]*padding: 4px 6px[^}]*\}\s*\.ex-vc-t \{[^}]*white-space: nowrap;[^}]*font-size: 11px;/.test(cssEx)) F("24 · las casillas del contador pueden pasar de dos líneas a 375");
       void css;
+    }
+
+    // ── 25 · CUARTA VUELTA (27-nov-2026): la urgencia vacía, la lupa directo a la cuenta y la x de la burbuja ──
+    {
+      const A = "11111111-1111-4111-8111-111111111111";
+      const vac = validarContacto({ avisoId: A, origen: "explorar", urgencia: null, sinUrgencia: true, pie: "si", whatsapp: "+56900000000", permiso: true });
+      if (!vac.ok || vac.pedido.urgencia !== null) F("25 · desde la asesoría el contacto no acepta la urgencia vacía");
+      if (validarContacto({ avisoId: A, origen: "explorar", urgencia: null, pie: "si", whatsapp: "+56900000000", permiso: true }).ok) F("25 · fuera de la asesoría el contacto acepta la urgencia vacía");
+      const form = codigo("src/components/invierte-v2/ContactoForm.tsx");
+      if (!/const v = validarContacto\(\{ avisoId: depto\.avisoId, origen, urgencia: asesoria \? null : urgencia, sinUrgencia: !!asesoria, pie, whatsapp, permiso \}\);/.test(form)) F("25 · el contacto desde la asesoría no manda la urgencia vacía");
+      if (!/urgencia: pedido\.urgencia,/.test(codigo("src/lib/invierte-v2/servidor.ts"))) F("25 · la persona no guarda la urgencia que llegó (vacía incluida)");
+      for (const f of ["src/app/admin/invierte-v2/page.tsx", "src/app/admin/invierte-v2/[userId]/page.tsx"]) if (!/SIN_URGENCIA/.test(codigo(f))) F(`25 · ${f} no dice «Sin respuesta» con la urgencia vacía`);
+      const sql = leer("supabase/migrations/20261127_inv_personas_urgencia_vacia.sql");
+      if (!/alter table public\.inv_personas alter column urgencia drop not null;/.test(sql)) F("25 · falta la migración que permite la urgencia vacía");
+      // 3 · «Ver lo que encontré» abre la hoja de crear cuenta, sin el paso intermedio.
+      const comp = codigo("src/app/explorar/asesoria/asesoria.tsx");
+      if (!/alSeguir=\{\(\) => \{ if \(p\.sinCuenta\) \{ cambiar\(\(s\) => \(\{ \.\.\.s, registroPedido: true \}\)\); registrar\(\); return; \} cambiar\(\(s\) => \(\{ \.\.\.s, paso: "cierre" \}\)\); \}\}/.test(comp)) F("25 · «Ver lo que encontré» no abre directo la hoja de crear cuenta");
+      if (/C\.cierre\.chat|data-asesoria="crear-cuenta"/.test(comp) || "chat" in ASESORIA_COPY.cierre) F("25 · queda el paso intermedio con su mensaje y el segundo «Crear mi cuenta»");
+      if (!/if \(!p\.sinCuenta && e\?\.paso === "lupa" && e\.registroPedido && listoParaPerfil\(e\)\) cambiar\(\(s\) => \(\{ \.\.\.s, paso: "cierre" \}\)\);/.test(comp)) F("25 · al volver con la cuenta, el recorrido no sigue al perfil");
+      // 4 · la x de la burbuja se ve y mide 44 px.
+      const css = leer("src/app/explorar/asesoria/asesoria.css");
+      if (!/\.as-x-claro \{[^}]*background: rgba\(15, 15, 15, 0\.42\);[^}]*border: 1\.5px solid rgba\(255, 255, 255, 0\.85\);/.test(css) || !/\.as-x \{ width: 44px; height: 44px;/.test(css) || !/className="as-x as-x-claro"/.test(comp)) F("25 · la x de la burbuja no tiene fondo y borde visibles o no mide 44 px");
     }
   } catch (e) {
     F(`excepción: ${(e as Error).stack ?? e}`);

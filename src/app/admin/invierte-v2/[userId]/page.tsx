@@ -22,6 +22,9 @@ import { avisosEnPausa, tareaEnPausa } from "@/lib/invierte-v2/b4";
 import { leerPreaprobacion } from "@/lib/invierte-v2/preaprobacion-servidor";
 import { lineaAprobada } from "@/lib/invierte-v2/preaprobacion";
 
+/** La urgencia vacía: llegó desde la asesoría, donde no se pregunta (cuarta vuelta, 27-nov-2026). */
+const SIN_URGENCIA = "Sin respuesta";
+
 export const dynamic = "force-dynamic";
 
 /**
@@ -170,7 +173,7 @@ export default async function FichaInvierteV2Page({ params }: { params: { userId
           <h2 className="m-0 mb-3 font-heading text-lg font-bold">Contacto</h2>
           {persona ? (
             <dl className="m-0 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 font-body text-[13px]">
-              <dt className="text-[var(--franco-text-muted)]">¿Cuándo?</dt><dd className="m-0">{esUrgencia(persona.urgencia) ? H.urgencias[persona.urgencia] : persona.urgencia}</dd>
+              <dt className="text-[var(--franco-text-muted)]">¿Cuándo?</dt><dd className="m-0">{persona.urgencia == null ? SIN_URGENCIA : esUrgencia(persona.urgencia) ? H.urgencias[persona.urgencia] : persona.urgencia}</dd>
               <dt className="text-[var(--franco-text-muted)]">¿Pie?</dt><dd className="m-0">{esPie(persona.pie) ? H.pies[persona.pie] : persona.pie}{persona.pieUF != null ? ` (UF ${fmtUF(persona.pieUF)})` : ""}</dd>
               <dt className="text-[var(--franco-text-muted)]">WhatsApp</dt><dd className="m-0 font-mono text-[12px]"><a href={`https://wa.me/${persona.whatsapp.replace(/^\+/, "")}`} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">{persona.whatsapp}</a></dd>
               <dt className="text-[var(--franco-text-muted)]">Entró desde</dt><dd className="m-0">{persona.origen} · {persona.avisoOrigen}</dd>
