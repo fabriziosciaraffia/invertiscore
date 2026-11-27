@@ -24,6 +24,7 @@ import { fichaCompartida, fichaCompartidaCacheada } from "@/lib/explorar/compart
 import { firmaCompartidoValida } from "@/lib/explorar/firma-compartido";
 import { ExplorarCliente, type CompartidoCliente } from "./explorar-cliente";
 import { conParteBase, conSello, urlUniverso } from "@/lib/explorar/url-noche";
+import { precargarGoogleMaps } from "@/lib/explorar/precarga-maps";
 
 /** EL PEDIDO SALE JUNTO CON LA PÁGINA (26-nov-2026, entrega 2 › A3): la página ya sabe el sello de la noche, así que le pide al
  *  navegador que traiga la primera parte del mapa mientras baja el resto, en vez de esperar a que el código del mapa la pida (en un
@@ -106,6 +107,8 @@ const mapaQuieto = (
 );
 
 export default async function ExplorarPage({ searchParams }: { searchParams?: Record<string, string | string[] | undefined> }) {
+  // Google Maps se empieza a bajar con el HTML, con o sin cuenta (precarga-maps.ts): el mapa lo ejecuta con la página quieta.
+  precargarGoogleMaps();
   const sp = new URLSearchParams();
   for (const [k, v] of Object.entries(searchParams ?? {})) if (typeof v === "string") sp.set(k, v);
   const supabase = createClient();

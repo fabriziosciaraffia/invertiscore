@@ -607,7 +607,9 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
   // ── 12 · el primer pintado liviano ──
   if (!/const MapaExplorar = dynamic\(\(\) => import\("\.\/mapa-explorar"\), \{ ssr: false/.test(cli) || !/cuandoLaPaginaEsteQuieta\(\(\) => \{\s*setMapaListo\(true\);\s*if \(universoDeLaNoche\(inicial\.filtros\)\) void asegurar\(inicial\.filtros\);/.test(cli)) F("12 · el mapa o el universo de la noche no esperan a la página quieta");
   if (!/vivo\.current = true;\s*if \(!universoDeLaNoche\(inicial\.filtros\)\) void asegurar\(inicial\.filtros\);\s*const cancelar = cuandoLaPaginaEsteQuieta\(/.test(cli)) F("12 · el universo de la noche se pide antes de la página quieta (compite con el LCP)");
-  if (/loadGoogleMaps|maps\.googleapis/.test(cli + pag + codigo("src/lib/explorar/portal.ts"))) F("12 · Google Maps entra al primer pintado");
+  // ⚠ ACTA 27-nov-2026 (opciones A y C): la página precarga Maps desde el HTML (se baja con prioridad baja, no se ejecuta) y el cliente
+  // lo pide con la página quieta, junto con el código del mapa; lo fija EXPLORAR §5. Acá: que nada lo EJECUTE en el primer pintado.
+  if (/loadGoogleMaps|maps\.googleapis/.test(pag + codigo("src/lib/explorar/portal.ts")) || (cli.match(/loadGoogleMaps\(\)/g) ?? []).length !== 1) F("12 · Google Maps entra al primer pintado");
   if (/universo=|pines=\{/.test(pag)) F("12 · la página manda los pines en el HTML (rompe el LCP)");
   if (!/<img src=\{MAPA_QUIETO_M\} alt="" width=\{560\} height=\{426\} fetchPriority="high"/.test(pag)) F("12 · falta el mapa quieto incrustado (el LCP del teléfono)");
   // EN EL MISMO CUADRO QUE EL PRIMER PINTADO (28-oct-2026, medido en producción): con decoding="async" el mapa quieto se pintaba

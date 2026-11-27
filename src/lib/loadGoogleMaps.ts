@@ -1,5 +1,9 @@
 let loadPromise: Promise<void> | null = null;
 
+/** La dirección del script de Google Maps. UNA sola fuente: /explorar la precarga desde el HTML (explorar/precarga-maps.ts) y
+ *  el navegador solo reutiliza esa descarga si la dirección es EXACTAMENTE la misma. */
+export const urlGoogleMaps = (apiKey: string): string => `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=geometry,places`;
+
 export function loadGoogleMaps(): Promise<void> {
   if (typeof window === "undefined") return Promise.resolve();
   if (window.google?.maps?.places) return Promise.resolve();
@@ -21,7 +25,7 @@ export function loadGoogleMaps(): Promise<void> {
     }
 
     const script = document.createElement("script");
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=geometry,places`;
+    script.src = urlGoogleMaps(apiKey);
     script.async = true;
     script.defer = true;
     script.onload = () => resolve();

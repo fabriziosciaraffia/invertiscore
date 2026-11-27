@@ -42,6 +42,7 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { claveActual, iniciarCarga } from "@/lib/carga-global";
 import { cuandoLaPaginaEsteQuieta } from "@/lib/pagina-quieta";
+import { loadGoogleMaps } from "@/lib/loadGoogleMaps";
 import { usePostHog } from "@/lib/posthog-react";
 import { comprasDeExplorar, lineaTicketConSaldo, nombreDelDepto } from "@/lib/guia/compra-desde-depto";
 import { alCerrarQueda, informeCambio, informeFallo, informeGenerando, informeListo, type PasoInforme, type VeredictoVisto } from "@/lib/guia/informe-en-camino";
@@ -554,6 +555,9 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
     const cancelar = cuandoLaPaginaEsteQuieta(() => {
       setMapaListo(true);
       if (universoDeLaNoche(inicial.filtros)) void asegurar(inicial.filtros);
+      // EL CÓDIGO DEL MAPA Y GOOGLE MAPS, A LA VEZ (27-nov-2026, opción C): antes Maps se pedía recién cuando el código del mapa
+      // (next/dynamic) había bajado y montado; ahora se pide en el mismo momento ocioso, junto con ese código.
+      void loadGoogleMaps();
       // «¿Cómo se calcula?» abre directo (03-nov-2026): su hoja ya está bajada cuando se toca.
       void import("./hoja-calculo");
       // El pop-up del recálculo (04-nov-2026): ya bajado cuando se elige otra tasa, pie o plazo.

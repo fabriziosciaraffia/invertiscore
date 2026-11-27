@@ -156,9 +156,16 @@ export async function runExplorarTier(): Promise<{ hard: number }> {
   // ── 5 · el mapa carga después del primer pintado ──
   if (!/const MapaExplorar = dynamic\(\(\) => import\("\.\/mapa-explorar"\), \{ ssr: false/.test(cli)) F("5 · el mapa no entra por next/dynamic sin SSR");
   if (!/cuandoLaPaginaEsteQuieta\(\(\) => \{\s*setMapaListo\(true\);/.test(cli)) F("5 · el mapa no espera a que la página esté quieta");
-  for (const p of ["src/app/explorar/explorar-cliente.tsx", "src/app/explorar/page.tsx", "src/lib/explorar/explorar.ts"]) {
-    if (/loadGoogleMaps|maps\.googleapis/.test(codigo(p))) F(`5 · ${p} trae Google Maps al primer pintado`);
-  }
+  // ⚠ ACTA 27-nov-2026 (diagnóstico de carga, opciones A y C, aprobadas por Fabrizio): antes ningún archivo del primer pintado podía
+  // nombrar a Google Maps. Ahora la página lo PRECARGA desde el HTML con prioridad baja (precarga-maps.ts: se baja, no se ejecuta) y el
+  // cliente lo pide en el MISMO momento ocioso que el código del mapa (un solo `void loadGoogleMaps();`, dentro de la página quieta).
+  // Lo que se sigue prohibiendo: que Maps se EJECUTE antes de la página quieta.
+  { const pg = codigo("src/app/explorar/page.tsx"), pm = codigo("src/lib/explorar/precarga-maps.ts");
+    // La precarga sirve solo si el cargador pide EXACTAMENTE la misma dirección (si no, el navegador baja el script dos veces).
+    if (!/script\.src = urlGoogleMaps\(apiKey\);/.test(codigo("src/lib/loadGoogleMaps.ts")) || (codigo("src/lib/loadGoogleMaps.ts").match(/maps\.googleapis\.com\/maps\/api\/js/g) ?? []).length !== 1) F("5 · el cargador de Maps no pide la misma dirección que la precarga (bajaría el script dos veces)");
+    if (/loadGoogleMaps|maps\.googleapis/.test(pg) || !/^  precargarGoogleMaps\(\);$/m.test(pg) || !/preload\(urlGoogleMaps\(llave\), \{ as: "script", fetchPriority: "low" \}\);/.test(pm) || /loadGoogleMaps\(|createElement|preinit\(/.test(pm)) F("5 · la página ejecuta Google Maps en el primer pintado (o lo precarga sin prioridad baja)");
+    const llamadas = (cli.match(/loadGoogleMaps\(\)/g) ?? []).length;
+    if (llamadas !== 1 || !/cuandoLaPaginaEsteQuieta\(\(\) => \{\s*setMapaListo\(true\);\s*if \(universoDeLaNoche\(inicial\.filtros\)\) void asegurar\(inicial\.filtros\);(?:\s*\/\/[^\n]*)*\s*void loadGoogleMaps\(\);/.test(cli) || /loadGoogleMaps|maps\.googleapis/.test(codigo("src/lib/explorar/explorar.ts"))) F("5 · el cliente pide Google Maps fuera de la página quieta (o no lo pide junto con el código del mapa)"); }
   if (!/import \{ loadGoogleMaps \} from "@\/lib\/loadGoogleMaps";/.test(codigo("src/app/explorar/mapa-explorar.tsx"))) F("5 · el mapa no usa el cargador de siempre");
   // ⚠ ACTA (28-oct-2026, Explorar como portal) · la página ya no manda tarjetas: solo el número (EXPLORAR-PORTAL §12); el
   // universo baja con la página quieta. Las constantes que la página lee siguen saliendo de la lib pura, nunca del cliente.
