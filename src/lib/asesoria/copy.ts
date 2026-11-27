@@ -16,6 +16,8 @@ export const ASESORIA_COPY = {
   cerrar: "Cerrar",
   retomar: "Retomar",
   segmentos: ["Qué buscas", "Hasta dónde llegas", "Dónde"] as const,
+  convienen: "convienen",
+  calzanContigo: "calzan contigo",
   burbuja: {
     titulo: "¿Cuáles de estos te alcanzan?",
     cuerpo: "En 2 minutos te digo hasta cuánto puedes comprar y filtro el mapa para ti.",

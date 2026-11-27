@@ -1239,7 +1239,7 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
             />
           )}
           {mapa === "fallo" && <p className="ex-mapa-vacio" data-explorar="sin-mapa">{PORTAL_COPY.sinMapa}</p>}
-          {vista === "mapa" && !filtroAsesoria?.ids && (
+          {vista === "mapa" && !filtroAsesoria && (
             // CON LA TARJETA DE UN DEPTO ABIERTA, EN EL TELÉFONO (26-nov-2026): el contador se pliega solo, sin tocar lo que eligió la persona;
             // al cerrarla vuelve como estaba. «Ver lista» no va mientras la tarjeta está abierta (abajo).
             <Contador conteo={conteo} ocultar={filtros.ocultar} calculando={progreso == null && conteo == null ? enCalculo : null} alAlternar={alternarClase} plegarPorTarjeta={!!tarjeta && esTelefono} />
