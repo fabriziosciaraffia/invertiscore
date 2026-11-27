@@ -6,7 +6,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { evaluarAviso, type AvisoParaEvaluar } from "./evaluar-aviso";
-import { candidatoDeEvaluacion, ESTANDAR25_VACIO, evaluarEstandar25 } from "./estandar-deptos";
+import { candidatoDeEvaluacion, ESTANDAR25_VACIO, evaluarEstandar25, evaluarPlazosCortos, PLAZOS_CORTOS_VACIO } from "./estandar-deptos";
 import { evaluarNegociar, NEGOCIAR_VACIO } from "./negociar";
 import type { Sugerencias } from "@/lib/services/market-suggestions";
 
@@ -23,7 +23,8 @@ export async function filaEvaluadaCompleta(
   const t = Date.now();
   const negociar = candidato ? evaluarNegociar(candidato, evaluada, cfg) : NEGOCIAR_VACIO;
   const msNegociar = Date.now() - t;
-  const fila = { ...evaluada, ...(candidato ? evaluarEstandar25(candidato, cfg) : ESTANDAR25_VACIO), ...negociar };
+  // Los plazos cortos (27-nov-2026): la asesoría filtra con el plazo que la edad permite (estandar-deptos.ts › evaluarPlazosCortos).
+  const fila = { ...evaluada, ...(candidato ? evaluarEstandar25(candidato, cfg) : ESTANDAR25_VACIO), ...(candidato ? evaluarPlazosCortos(candidato, cfg) : PLAZOS_CORTOS_VACIO), ...negociar };
   return { fila, msNegociar };
 }
 

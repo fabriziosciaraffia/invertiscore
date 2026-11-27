@@ -71,6 +71,40 @@ export function evaluarEstandar25(c: CandidatoGuia, cfg: { uf: number; tasa: num
   return out as unknown as FilaEstandar25;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// LOS PLAZOS CORTOS (27-nov-2026, la asesoría en el mapa): el mismo aviso con pie 20 % a 20 y a 15 años, para quien por su edad
+// no llega a 30 (edad + plazo ≤ 75). Medido con esta misma sonda en 200 Comprar a 30 años: siguen siendo Comprar 69 % a 25,
+// 34 % a 20 y 11,5 % a 15, así que el flujo ajustado por la cuota no alcanza y hace falta el veredicto. Migración
+// 20261127_asesoria_plazos_cortos; las escribe el cron (fila-evaluada.ts) y el relleno (scripts/rellenar-plazos-cortos.ts).
+// ─────────────────────────────────────────────────────────────────────────────
+export const PLAZOS_CORTOS = [20, 15] as const;
+
+export interface FilaPlazosCortos {
+  veredicto_20_20: string | null;
+  score_20_20: number | null;
+  flujo_20_20: number | null;
+  veredicto_20_15: string | null;
+  score_20_15: number | null;
+  flujo_20_15: number | null;
+}
+
+export const PLAZOS_CORTOS_VACIO: FilaPlazosCortos = {
+  veredicto_20_20: null, score_20_20: null, flujo_20_20: null, veredicto_20_15: null, score_20_15: null, flujo_20_15: null,
+};
+
+/** Un aviso con pie 20 % a 20 y a 15 años. Sin arriendo o sin la mediana comunal guardada, vacío. */
+export function evaluarPlazosCortos(c: CandidatoGuia, cfg: { uf: number; tasa: number }, asOf: Date = new Date()): FilaPlazosCortos {
+  const out: Record<string, string | number | null> = {};
+  for (const plazo of PLAZOS_CORTOS) {
+    const s = sondaDeCandidato(c, { piePct: 20, plazoAnios: plazo }, cfg, asOf);
+    if (!s) return PLAZOS_CORTOS_VACIO;
+    out[`veredicto_20_${plazo}`] = s.veredicto;
+    out[`score_20_${plazo}`] = s.score;
+    out[`flujo_20_${plazo}`] = s.flujo;
+  }
+  return out as unknown as FilaPlazosCortos;
+}
+
 /** El aviso recién evaluado por el cron como candidato (lo que la fila resolvió), para evaluarlo a 25 años. */
 export function candidatoDeEvaluacion(a: AvisoParaEvaluar, f: Pick<FilaEvaluacion, "precio_uf" | "antiguedad_anios" | "antiguedad_origen" | "arriendo" | "venta" | "gastos_comunes" | "mediana_comuna">): CandidatoGuia {
   return {
