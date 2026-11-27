@@ -203,7 +203,8 @@ export async function runExplorarPortalTier(): Promise<{ hard: number }> {
       ["el título «PROVIDENCIA» y la línea «Metro Pedro de Valdivia · 2D2B · 79 m²»", /data-explorar="comuna">PROVIDENCIA</.test(una) && /data-explorar="linea"><span class="ex-lugar" data-explorar="lugar">Metro Pedro de Valdivia<\/span><span class="ex-linea-resto"><span class="ex-sep"> · <\/span>2D2B · 79 m²<\/span>/.test(una) && !/Usado/.test(una)],
       ["el precio «UF 4.591»", /<span>Publicado<\/span><b data-explorar="precio">UF 4\.591<\/b>/.test(una)],
       ["el veredicto y el puntaje «Comprar · 84»", t.includes("Comprar · 84")],
-      ["el flujo «Te sobran al mes $142.264»", /<span>Te sobran al mes<\/span><b data-explorar="flujo">\$142\.264<\/b>/.test(una)],
+      // ⚠ ACTA (27-nov-2026, tercera vuelta de la asesoría): la etiqueta del flujo lleva su plazo («a 30 años» sin perfil).
+      ["el flujo «Te sobran al mes · a 30 años $142.264»", /<span>Te sobran al mes <span class="ex-cifra-plazo" data-explorar="flujo-plazo">a 30 años<\/span><\/span><b data-explorar="flujo">\$142\.264<\/b>/.test(una)],
       // ACTA 26-nov-2026 (ajuste de Fabrizio): antes fijaba la etiqueta «Cap rate»; ahora dice «Cap rate bruto» (el informe muestra el neto).
       ["el cap rate bruto «5,8 %» y el arriendo «$865.000»", /<span>Cap rate bruto<\/span><b data-explorar="cap-rate">5,8 %<\/b>/.test(una) && /<span>Arriendo est\.<\/span><b data-explorar="arriendo">\$865\.000<\/b>/.test(una)],
       ["«Ver este depto»", /data-explorar="analizar"[^>]*>\s*Ver este depto/.test(una)],
