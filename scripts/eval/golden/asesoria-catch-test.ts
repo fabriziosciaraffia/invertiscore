@@ -654,7 +654,10 @@ export async function runAsesoria(): Promise<{ hard: number }> {
       if (!/<span className="ex-cifra-plazo" data-explorar="flujo-plazo">\{TARJETA_COPY\.aPlazo\(plazo != null && plazo < 30 \? plazo : plazoMapa\)\}<\/span>/.test(tj)) F("23 · la tarjeta no dice «a N años» (con perfil su plazo; sin perfil, el del mapa, 30 por defecto)");
       const rt = codigo("src/app/api/explorar/flujo-plazo/route.ts");
       if (!/if \(!user\) return NextResponse\.json\(\{ error: "sin-sesion" \}, \{ status: 401 \}\);/.test(rt) || !/\.from\("inv_perfiles"\)\.select\("plazo_anios"\)\.eq\("user_id", user\.id\)/.test(rt) || /b\.plazo|body\.plazo/.test(rt)) F("23 · la ruta del flujo por plazo no exige sesión o no lee el plazo de SU perfil");
-      if (!/const plazoPerfil = user \? await plazoDelPerfil\(admin, user\.id\) : null;/.test(codigo("src/app/explorar/page.tsx")) || !/plazo=\{plazoPerfil != null && plazoPerfil < PLAZO_POR_DEFECTO && filtros\.plazo === PLAZO_POR_DEFECTO \? plazoPerfil : null\}\s*plazoMapa=\{filtros\.plazo\}/.test(codigo("src/app/explorar/explorar-cliente.tsx"))) F("23 · el mapa no pasa el plazo del perfil a la tarjeta");
+      if (!/const plazoPerfil = user \? await plazoDelPerfil\(admin, user\.id\) : null;/.test(codigo("src/app/explorar/page.tsx")) || !/plazo=\{plazoVivo != null && plazoVivo < PLAZO_POR_DEFECTO && filtros\.plazo === PLAZO_POR_DEFECTO \? plazoVivo : null\}\s*plazoMapa=\{filtros\.plazo\}/.test(codigo("src/app/explorar/explorar-cliente.tsx"))) F("23 · el mapa no pasa el plazo del perfil a la tarjeta");
+      // El perfil se crea en el navegador DESPUÉS de cargar la página (paseo del 27-nov-2026: con perfil a 15 años la tarjeta decía «a 30
+      // años»): la asesoría avisa el plazo apenas lo guarda.
+      if (!/p\.alPlazoPerfil\?\.\(d\.plazo\);/.test(codigo("src/app/explorar/asesoria/asesoria.tsx")) || !/alPlazoPerfil=\{setPlazoVivo\}/.test(codigo("src/app/explorar/explorar-cliente.tsx")) || !/const \[plazoVivo, setPlazoVivo\] = useState<number \| null>\(plazoPerfil\);/.test(codigo("src/app/explorar/explorar-cliente.tsx"))) F("23 · el plazo del perfil recién creado no llega a la tarjeta");
     }
 
     // ── 24 · LA PANTALLA, TERCERA VUELTA (27-nov-2026) ──

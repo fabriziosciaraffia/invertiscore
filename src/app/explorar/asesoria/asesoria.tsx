@@ -78,6 +78,8 @@ export function Asesoria(p: {
   quitarFiltro?: number;
   /** La burbuja está a la vista (el mapa esconde su contador). */
   alBurbuja?: (visible: boolean) => void;
+  /** El perfil quedó guardado con este plazo: la tarjeta del mapa muestra el flujo a ese plazo (la página lo leyó antes de existir). */
+  alPlazoPerfil?: (plazo: number) => void;
   alFiltrar: (f: FiltroAsesoria | null) => void;
   alRegistrar: (r: { comunas: string[]; topeUF: number; deptos: number }) => void;
   alVerDepto: (avisoId: string) => void;
@@ -275,6 +277,7 @@ export function Asesoria(p: {
       if (!r.ok) throw new Error(String(r.status));
       const d = (await r.json()) as Resultado;
       setResultado(d);
+      p.alPlazoPerfil?.(d.plazo);
       // Copiar primero, borrar después: el estado pasa a «perfil» recién con el perfil guardado.
       cambiar((x) => ({ ...x, paso: "perfil", cerrada: false }));
       capture(EVENTOS_ASESORIA.perfil, propsBase(prueba, { tipo: d.tipo }));
@@ -284,6 +287,7 @@ export function Asesoria(p: {
     } finally {
       setCargandoPerfil(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cambiar, capture, prueba]);
   useEffect(() => {
     if (!e || p.sinCuenta || cargandoPerfil || resultado || errorPerfil) return;

@@ -325,6 +325,8 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
   const [quitarAsesoria, setQuitarAsesoria] = useState(0);
   // Con la burbuja de la asesoría a la vista, el contador del mapa se esconde (tercera vuelta, 27-nov-2026).
   const [burbujaAsesoria, setBurbujaAsesoria] = useState(false);
+  // El plazo del perfil: el que leyó la página o, si el perfil se creó recién en la asesoría, el que ella avisa.
+  const [plazoVivo, setPlazoVivo] = useState<number | null>(plazoPerfil);
   const [miro, setMiro] = useState({ tarjetas: 0, movimientos: 0, veinte: false });
   useEffect(() => {
     if (!asesoria.habilitada) return;
@@ -1276,6 +1278,7 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
               tapado={!!tarjeta}
               quitarFiltro={quitarAsesoria}
               alBurbuja={setBurbujaAsesoria}
+              alPlazoPerfil={setPlazoVivo}
               alFiltrar={setFiltroAsesoria}
               alTapar={setAireAsesoria}
               alRegistrar={({ comunas, topeUF, deptos }) => {
@@ -1309,7 +1312,7 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
               alPrepararCompartir={prepararCompartir}
               alMedir={setAltoTarjeta}
               // El flujo al plazo del perfil solo con el mapa en su plazo por defecto: si eligió otro en Filtros, vale ese (y lo dice).
-              plazo={plazoPerfil != null && plazoPerfil < PLAZO_POR_DEFECTO && filtros.plazo === PLAZO_POR_DEFECTO ? plazoPerfil : null}
+              plazo={plazoVivo != null && plazoVivo < PLAZO_POR_DEFECTO && filtros.plazo === PLAZO_POR_DEFECTO ? plazoVivo : null}
               plazoMapa={filtros.plazo}
               sinCuenta={sinCuenta}
               recien={recien}
