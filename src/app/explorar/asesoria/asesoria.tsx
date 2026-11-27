@@ -36,7 +36,8 @@ import { EVENTOS_ASESORIA, propsBase, propsPaso } from "@/lib/asesoria/eventos";
 import { cercaDe, cercaDelMetro, comunaEn, comunasQueMasRinden, RADIO_PEGA_M } from "@/lib/asesoria/lugar";
 import type { MarcasMapa } from "../mapa-explorar";
 
-export interface FiltroAsesoria { ids: Set<string> | null; marcas: MarcasMapa | null }
+/** `quieto`: en «Dónde» el mapa no se reencuadra mientras se tocan comunas (saltaría bajo el dedo). */
+export interface FiltroAsesoria { ids: Set<string> | null; marcas: MarcasMapa | null; quieto?: boolean }
 
 interface Agregados { rinde: Array<{ comuna: string; cap: number; n: number }>; dist: Record<string, number[]> | null; total: number | null; tasa: number; uf: number }
 interface Resultado {
@@ -66,8 +67,11 @@ export function Asesoria(p: {
   alFiltrar: (f: FiltroAsesoria | null) => void;
   alRegistrar: (r: { comunas: string[]; topeUF: number }) => void;
   alVerDepto: (avisoId: string) => void;
+  /** Lo que tapa la hoja sobre el mapa (para que el encuadre deje los pines a la vista); null sin hoja. */
+  alTapar?: (a: { abajo: number; derecha: number } | null) => void;
 }) {
   const posthog = usePostHog();
+  const hojaRef = useRef<HTMLElement>(null);
   const [e, setE] = useState<EstadoAsesoria | null>(null);
   const [resultado, setResultado] = useState<Resultado | null>(null);
   const [cargandoPerfil, setCargandoPerfil] = useState(false);
@@ -80,6 +84,21 @@ export function Asesoria(p: {
   const [comunas, setComunas] = useState<DatosComunas | null>(null);
   const [burbujaVista, setBurbujaVista] = useState(false);
   const pedidas = useRef(new Set<number>());
+  // EL AVISO DE COOKIES (paseo del 27-nov-2026): es fijo abajo y tapaba el botón principal. Mientras se vea, la asesoría sube lo que mide.
+  const [abajo, setAbajo] = useState(0);
+  useEffect(() => {
+    let ro: ResizeObserver | null = null;
+    const medir = () => {
+      const el = document.querySelector<HTMLElement>('[data-cookies="aviso"]');
+      setAbajo(el ? Math.round(el.getBoundingClientRect().height) : 0);
+      if (el && !ro && typeof ResizeObserver !== "undefined") { ro = new ResizeObserver(medir); ro.observe(el); }
+      if (!el && ro) { ro.disconnect(); ro = null; }
+    };
+    medir();
+    const mo = new MutationObserver(medir);
+    mo.observe(document.body, { childList: true, subtree: true });
+    return () => { mo.disconnect(); ro?.disconnect(); };
+  }, []);
 
   // El estado guardado de esta pestaña (después del primer pintado: el servidor no lo sabe).
   useEffect(() => { setE(leerEstado(almacen())); }, []);
@@ -157,7 +176,7 @@ export function Asesoria(p: {
   useEffect(() => {
     if (visible === "nada" || visible === "burbuja") { p.alFiltrar(null); return; }
     if (e?.paso === "perfil") { p.alFiltrar(resultado && visible === "abierta" ? { ids: new Set(resultado.tres.map((t) => t.id)), marcas: null } : null); return; }
-    p.alFiltrar({ ids: calzan ? new Set(calzan.map((x) => x.avisoId)) : null, marcas });
+    p.alFiltrar({ ids: calzan ? new Set(calzan.map((x) => x.avisoId)) : null, marcas, quieto: e?.paso === "donde" });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [claveFiltro]);
 
@@ -204,6 +223,37 @@ export function Asesoria(p: {
     if ((e.paso === "cierre" || e.paso === "perfil") && listoParaPerfil(e)) void pedirPerfil(e);
   }, [e, p.sinCuenta, cargandoPerfil, resultado, errorPerfil, pedirPerfil]);
 
+  // LA CONVERSACIÓN BAJA SOLA (paseo del 27-nov-2026): al cambiar de pantalla se ve lo último —la reacción y la pregunta—, salvo
+  // «Tus números», que se lee desde arriba.
+  const pasoVisto = `${e?.paso ?? ""}|${numerosAbiertos}|${e?.lupa ?? ""}|${resultado ? 1 : 0}|${e?.donde?.modo ?? ""}|${e?.cerrada ? 1 : 0}`;
+  useEffect(() => {
+    const conv = hojaRef.current?.querySelector<HTMLElement>(".as-conv");
+    if (!conv) return;
+    const arriba = e?.paso === "numeros" && numerosAbiertos;
+    const t = window.setTimeout(() => { conv.scrollTop = arriba ? 0 : conv.scrollHeight; }, 60);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pasoVisto, agregados]);
+
+  // LO QUE TAPA LA HOJA (paseo del 27-nov-2026: las comunas elegidas quedaban fuera de la franja del mapa que se ve).
+  const alTaparRef = useRef(p.alTapar);
+  alTaparRef.current = p.alTapar;
+  const hayHoja = visible === "abierta";
+  useEffect(() => {
+    const hoja = hojaRef.current, envoltura = hoja?.offsetParent as HTMLElement | null;
+    if (!hayHoja || !hoja || !envoltura) { alTaparRef.current?.(null); return; }
+    const medir = () => {
+      const h = hoja.getBoundingClientRect(), w = envoltura.getBoundingClientRect();
+      const deLado = h.width < w.width * 0.8;
+      const a = deLado ? { abajo: 0, derecha: Math.round(w.right - h.left) } : { abajo: Math.round(w.bottom - h.top), derecha: 0 };
+      alTaparRef.current?.(a);
+    };
+    medir();
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(medir) : null;
+    ro?.observe(hoja);
+    return () => { ro?.disconnect(); alTaparRef.current?.(null); };
+  }, [hayHoja, e?.paso]);
+
   // ── las acciones ──
   const responder = (paso: Paso, respuesta: string | null) => capture(EVENTOS_ASESORIA.paso, propsPaso(paso, respuesta, prueba));
   const partir = () => { cambiar(() => ({ ...ESTADO_INICIAL })); capture(EVENTOS_ASESORIA.abierta, propsBase(prueba)); };
@@ -215,7 +265,7 @@ export function Asesoria(p: {
 
   if (visible === "burbuja") {
     return (
-      <section className="as-raiz as-burbuja ph-no-capture" data-asesoria="burbuja" aria-label={C.burbuja.titulo}>
+      <section className="as-raiz as-burbuja ph-no-capture" data-asesoria="burbuja" aria-label={C.burbuja.titulo} style={{ ["--as-abajo" as string]: `${abajo}px` }}>
         <div className="as-burbuja-cab">
           <p className="as-burbuja-t"><span className="as-avatar" aria-hidden="true">F</span>{C.burbuja.titulo}</p>
           <button type="button" className="as-x" aria-label={C.cerrar} onClick={cerrarBurbuja} data-asesoria="burbuja-cerrar"><X /></button>
@@ -241,7 +291,7 @@ export function Asesoria(p: {
     return (
       <>
         {cuenta}
-        <button type="button" className="as-raiz as-chica ph-no-capture" onClick={retomar} data-asesoria="retomar"><span className="as-avatar" data-chico="1" aria-hidden="true">F</span>{C.retomar}</button>
+        <button type="button" className="as-raiz as-chica ph-no-capture" onClick={retomar} data-asesoria="retomar" style={{ ["--as-abajo" as string]: `${abajo}px` }}><span className="as-avatar" data-chico="1" aria-hidden="true">F</span>{C.retomar}</button>
       </>
     );
   }
@@ -250,7 +300,7 @@ export function Asesoria(p: {
   return (
     <>
       {e.paso !== "perfil" && cuenta}
-      <section className="as-raiz as-hoja ph-no-capture" data-asesoria="hoja" data-paso={e.paso} aria-label={C.franco}>
+      <section ref={hojaRef} className="as-raiz as-hoja ph-no-capture" data-asesoria="hoja" data-paso={e.paso} aria-label={C.franco} style={{ ["--as-abajo" as string]: `${abajo}px` }}>
         <div className="as-cab">
           <div className="as-quien"><span className="as-avatar" data-chico="1" aria-hidden="true">F</span><p className="as-quien-n" data-asesoria="encabezado"><b>{C.franco}</b> · {C.encabezado}</p></div>
           <button type="button" className="as-x" style={{ margin: 0 }} aria-label={C.cerrar} onClick={cerrar} data-asesoria="cerrar"><X size={18} /></button>
@@ -290,7 +340,7 @@ export function Asesoria(p: {
         )}
         {e.paso === "lupa" && <LupaPaso lupa={e.lupa} alResponder={(x) => { responder("lupa", x); cambiar((s) => ({ ...s, lupa: x })); }} alSeguir={() => cambiar((s) => ({ ...s, paso: "cierre" }))} />}
         {e.paso === "cierre" && (
-          <Cierre sinCuenta={p.sinCuenta} cargando={cargandoPerfil} error={errorPerfil}
+          <Cierre sinCuenta={p.sinCuenta} cargando={cargandoPerfil} error={errorPerfil} calzan={calzan?.length ?? 0}
             alCrear={() => { capture(EVENTOS_ASESORIA.cuenta, propsBase(prueba, { fase: "hoja" })); p.alRegistrar({ comunas: comunasDelRegistro(e, calzan), topeUF: cap?.topeUF ?? 0 }); }}
             alReintentar={() => { setErrorPerfil(false); }} />
         )}
@@ -593,7 +643,7 @@ function LupaPaso({ lupa, alResponder, alSeguir }: { lupa: Lupa | null; alRespon
 }
 
 // ── el cierre ───────────────────────────────────────────────────────────────
-function Cierre({ sinCuenta, cargando, error, alCrear, alReintentar }: { sinCuenta: boolean; cargando: boolean; error: boolean; alCrear: () => void; alReintentar: () => void }) {
+function Cierre({ sinCuenta, cargando, error, alCrear, alReintentar, calzan = 0 }: { sinCuenta: boolean; cargando: boolean; error: boolean; alCrear: () => void; alReintentar: () => void; calzan?: number }) {
   if (!sinCuenta) {
     return (
       <div className="as-conv" data-asesoria="paso-cierre">
@@ -606,8 +656,8 @@ function Cierre({ sinCuenta, cargando, error, alCrear, alReintentar }: { sinCuen
   return (
     <>
       <div className="as-conv" data-asesoria="paso-cierre">
-        <p className="as-bf">{C.cierre.titulo}</p>
-        <p className="as-bf">{C.cierre.cuerpo}</p>
+        <p className="as-bf" data-asesoria="cierre-titulo">{C.cierre.titulo(calzan)}</p>
+        <p className="as-bf">{C.cierre.cuerpo(calzan)}</p>
       </div>
       <div className="as-pie"><button type="button" className="as-principal" onClick={alCrear} data-asesoria="crear-cuenta">Crear mi cuenta</button></div>
     </>

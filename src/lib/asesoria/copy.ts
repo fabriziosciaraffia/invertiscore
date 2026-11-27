@@ -141,8 +141,9 @@ export const ASESORIA_COPY = {
   },
   // El cierre: la cuenta
   cierre: {
-    titulo: "Tu perfil y tus 3 deptos están listos.",
-    cuerpo: "Crea tu cuenta gratis para verlos. Tu cuenta nueva trae un crédito de regalo.",
+    // Nunca promete 3 si calzan menos (paseo del 27-nov-2026).
+    titulo: (n: number) => (n >= 3 ? "Tu perfil y tus 3 deptos están listos." : n === 0 ? "Tu perfil está listo." : `Tu perfil y ${n === 1 ? "el depto que calza" : `los ${n} deptos que calzan`} están listos.`),
+    cuerpo: (n: number) => `Crea tu cuenta gratis para ${n === 0 ? "verlo" : "verlos"}. Tu cuenta nueva trae un crédito de regalo.`,
   },
   // El perfil
   perfil: {

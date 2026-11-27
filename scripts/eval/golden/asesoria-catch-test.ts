@@ -288,6 +288,23 @@ export async function runAsesoria(): Promise<{ hard: number }> {
       if (!/\{r\.tres\.length < 3 && <p className="as-bf" data-asesoria="perfil-palanca">\{!r\.palanca \? P\.sinPalanca : r\.palanca\.tipo === "aporte" \? P\.palancaAporte\(r\.palanca\.aporte, r\.palanca\.n\) : P\.palancaPie\(r\.palanca\.pieUF, r\.palanca\.n\)\}<\/p>\}/.test(comp)) F("11 · con menos de 3, el perfil no ofrece la palanca con su cifra");
       if (/aporte|zonas/.test(ASESORIA_COPY.perfil.menos(2) + ASESORIA_COPY.perfil.ninguno)) F("11 · «encontré N» repite la palanca (redundancia)");
     }
+
+    // ── 12 · LO QUE ENCONTRÓ EL PASEO (27-nov-2026) ──
+    {
+      const t = ASESORIA_COPY.cierre;
+      if (/3/.test(t.titulo(2)) || /3/.test(t.titulo(0)) || !/3 deptos/.test(t.titulo(3))) F("12 · el cierre promete 3 deptos cuando calzan menos");
+      const comp = codigo("src/app/explorar/asesoria/asesoria.tsx");
+      const css = leer("src/app/explorar/asesoria/asesoria.css");
+      for (const clase of ["as-burbuja", "as-hoja", "as-chica"]) if (!(comp.split(`className="as-raiz ${clase} ph-no-capture"`)[1] ?? "").split(">")[0].includes('style={{ ["--as-abajo" as string]: `${abajo}px` }}')) F(`12 · ${clase} no sube sobre el aviso de cookies`);
+      if (!/const el = document\.querySelector<HTMLElement>\('\[data-cookies="aviso"\]'\);\s*setAbajo\(el \? Math\.round\(el\.getBoundingClientRect\(\)\.height\) : 0\);/.test(comp)) F("12 · la altura del aviso de cookies no se mide");
+      if (!/\.as-hoja \{[^}]*bottom: var\(--as-abajo, 0px\); height: calc\(100% - 150px - var\(--as-abajo, 0px\)\);/.test(css) || !/\.as-burbuja \{[^}]*bottom: calc\(12px \+ var\(--as-abajo, 0px\)\);/.test(css)) F("12 · el CSS no usa la altura del aviso");
+      if (!/conv\.scrollTop = arriba \? 0 : conv\.scrollHeight;/.test(comp) || !/const arriba = e\?\.paso === "numeros" && numerosAbiertos;/.test(comp)) F("12 · la conversación no baja sola al cambiar de pantalla");
+      const mapa = codigo("src/app/explorar/mapa-explorar.tsx");
+      if (!/a \? \{ top: 64, left: 24, right: 24 \+ a\.derecha, bottom: 24 \+ a\.abajo \} : 24\);/.test(mapa)) F("12 · el encuadre no deja los pines en lo que se ve de la hoja");
+      const cli = codigo("src/app/explorar/explorar-cliente.tsx");
+      if (!/\$\{filtroAsesoria\?\.ids \? \(filtroAsesoria\.quieto \? "\|as:quieto" : `\|as:\$\{filtroAsesoria\.ids\.size\}:/.test(cli)) F("12 · el mapa no se reencuadra con los que calzan (o se mueve mientras se tocan comunas)");
+      if (!/quieto: e\?\.paso === "donde"/.test(comp)) F("12 · en «Dónde» el mapa no queda quieto");
+    }
   } catch (e) {
     F(`excepción: ${(e as Error).stack ?? e}`);
   }
@@ -312,3 +329,6 @@ if (require.main === module) void runAsesoria().then((r) => { process.exitCode =
 // 27-nov-2026 (tercera ronda), 6 mutaciones más, las 6 en ROJO: sin el tercero por puntaje; el tercero por puntaje antes que el
 // distinto; el tercero sin mirar el edificio; el texto viejo de «Que gane valor»; el encabezado con «asesoría de inversión»; el
 // encabezado sin «Franco».
+// El paseo (27-nov-2026), 6 mutaciones más, las 6 en ROJO: el cierre que promete 3 cuando calzan menos; la hoja sin subir sobre el
+// aviso de cookies; el CSS sin la altura del aviso; la conversación que no baja sola; el encuadre sin el aire de la hoja; «Dónde» sin
+// dejar el mapa quieto.

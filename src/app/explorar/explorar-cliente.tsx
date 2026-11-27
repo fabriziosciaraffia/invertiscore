@@ -314,6 +314,7 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
   // fuera de un pin y cuándo ya miró deptos (2 tarjetas, o 20 s con 2 movimientos del mapa): recién ahí aparece la burbuja.
   const [filtroAsesoria, setFiltroAsesoria] = useState<FiltroAsesoria | null>(null);
   const [toqueMapa, setToqueMapa] = useState<{ lat: number; lng: number; t: number } | null>(null);
+  const [aireAsesoria, setAireAsesoria] = useState<{ abajo: number; derecha: number } | null>(null);
   const [miro, setMiro] = useState({ tarjetas: 0, movimientos: 0, veinte: false });
   useEffect(() => {
     if (!asesoria.habilitada) return;
@@ -1223,7 +1224,7 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
             <MapaExplorar
               items={items}
               seleccionado={tarjeta ? sel : null}
-              encuadre={`${claveUniverso(filtros)}|${filtros.comunas.join()}|${filtros.tipologias.join()}|${filtros.ufMin}|${filtros.ufMax}|${filtros.flujoPositivo}|${filtros.publicados}|${universo ? "1" : "0"}`}
+              encuadre={`${claveUniverso(filtros)}|${filtros.comunas.join()}|${filtros.tipologias.join()}|${filtros.ufMin}|${filtros.ufMax}|${filtros.flujoPositivo}|${filtros.publicados}|${universo ? "1" : "0"}${filtroAsesoria?.ids ? (filtroAsesoria.quieto ? "|as:quieto" : `|as:${filtroAsesoria.ids.size}:${aireAsesoria?.abajo ?? 0}:${aireAsesoria?.derecha ?? 0}`) : ""}`}
               /* Las barras y los chips no reencuadran: la persona mira dónde estaba y ve qué queda. */
               conZona={!!filtros.zona}
               onSeleccionar={tocarPin}
@@ -1231,6 +1232,7 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
               onTocarPunto={asesoria.habilitada ? (lat, lng) => setToqueMapa({ lat, lng, t: Date.now() }) : undefined}
               onMovido={asesoria.habilitada ? () => setMiro((m) => ({ ...m, movimientos: m.movimientos + 1 })) : undefined}
               marcas={filtroAsesoria?.marcas ?? null}
+              aire={filtroAsesoria ? aireAsesoria : null}
               onEstado={setMapa}
               foco={foco}
               onFoco={() => setFocoUsado(true)}
@@ -1253,6 +1255,7 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
               lista={yaMiro && !compartido}
               toque={toqueMapa}
               alFiltrar={setFiltroAsesoria}
+              alTapar={setAireAsesoria}
               alRegistrar={({ comunas, topeUF }) => {
                 void import("./hoja-registro");
                 setRegistro({ pedido: { motivo: "asesoria", pin: null, filtrosPerfil: { ...filtrosAbiertos(filtros), comunas, ufMax: topeUF > 0 ? topeUF : null } }, filtros, orden });

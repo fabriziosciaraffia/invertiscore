@@ -6,8 +6,8 @@
 .as-raiz { font-family: var(--font-body); color: var(--franco-text); }
 
 /* ── la burbuja ── */
-.as-burbuja { position: absolute; z-index: 30; left: 12px; right: 12px; bottom: 12px; display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 16px; background: var(--franco-card); box-shadow: 0 12px 32px rgba(20, 20, 20, 0.22); }
-@media (min-width: 768px) { .as-burbuja { left: auto; right: 16px; bottom: 16px; width: 300px; } }
+.as-burbuja { position: absolute; z-index: 30; left: 12px; right: 12px; bottom: calc(12px + var(--as-abajo, 0px)); display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 16px; background: var(--franco-card); box-shadow: 0 12px 32px rgba(20, 20, 20, 0.22); }
+@media (min-width: 768px) { .as-burbuja { left: auto; right: 16px; bottom: calc(16px + var(--as-abajo, 0px)); width: 300px; } }
 .as-burbuja-cab { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
 .as-burbuja-t { display: flex; align-items: center; gap: 10px; margin: 0; font-size: 15px; font-weight: 700; line-height: 1.25; }
 .as-burbuja-c { margin: 0; font-size: 13px; line-height: 1.45; color: var(--franco-text-secondary, #3A3A3F); }
@@ -17,8 +17,8 @@
 .as-x:hover { background: color-mix(in srgb, var(--franco-text) 6%, transparent); }
 
 /* ── chica, con «Retomar» ── */
-.as-chica { position: absolute; z-index: 30; right: 12px; bottom: 76px; display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 4px 14px 4px 4px; border: 0; border-radius: 99px; background: var(--franco-card); color: var(--franco-text); box-shadow: 0 6px 18px rgba(20, 20, 20, 0.2); font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
-@media (min-width: 768px) { .as-chica { right: 16px; bottom: 16px; } }
+.as-chica { position: absolute; z-index: 30; right: 12px; bottom: calc(76px + var(--as-abajo, 0px)); display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 4px 14px 4px 4px; border: 0; border-radius: 99px; background: var(--franco-card); color: var(--franco-text); box-shadow: 0 6px 18px rgba(20, 20, 20, 0.2); font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+@media (min-width: 768px) { .as-chica { right: 16px; bottom: calc(16px + var(--as-abajo, 0px)); } }
 
 /* ── la cuenta sobre el mapa ── */
 .as-cuenta { position: absolute; z-index: 5; left: 12px; top: 12px; display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; max-width: calc(100% - 24px); padding: 7px 11px; border-radius: 12px; background: color-mix(in srgb, var(--franco-card) 92%, transparent); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); box-shadow: 0 2px 8px rgba(20, 20, 20, 0.14); }
@@ -27,10 +27,10 @@
 .as-cuenta-antes { margin-left: 4px; color: var(--franco-text-muted); text-decoration: line-through; }
 
 /* ── la hoja ── */
-.as-hoja { position: absolute; z-index: 30; left: 0; right: 0; bottom: 0; height: calc(100% - 150px); display: flex; flex-direction: column; overflow: hidden; border-radius: 18px 18px 0 0; background: var(--franco-card); box-shadow: 0 -8px 24px rgba(20, 20, 20, 0.14); }
-.as-hoja[data-paso="donde"] { height: 55%; }
+.as-hoja { position: absolute; z-index: 30; left: 0; right: 0; bottom: var(--as-abajo, 0px); height: calc(100% - 150px - var(--as-abajo, 0px)); display: flex; flex-direction: column; overflow: hidden; border-radius: 18px 18px 0 0; background: var(--franco-card); box-shadow: 0 -8px 24px rgba(20, 20, 20, 0.14); }
+.as-hoja[data-paso="donde"] { height: calc(55% - var(--as-abajo, 0px)); }
 @media (min-width: 768px) {
-  .as-hoja, .as-hoja[data-paso="donde"] { left: auto; right: 16px; top: 16px; bottom: 16px; width: 400px; height: auto; border-radius: 18px; box-shadow: 0 12px 32px rgba(20, 20, 20, 0.2); }
+  .as-hoja, .as-hoja[data-paso="donde"] { left: auto; right: 16px; top: 16px; bottom: calc(16px + var(--as-abajo, 0px)); width: 400px; height: auto; border-radius: 18px; box-shadow: 0 12px 32px rgba(20, 20, 20, 0.2); }
 }
 .as-cab { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px 10px 16px; border-bottom: 1px solid var(--franco-border); }
 .as-quien { display: flex; align-items: center; gap: 10px; }
@@ -93,7 +93,8 @@
 .as-num { display: flex; flex-direction: column; gap: 5px; }
 .as-num-l { font-size: 12px; font-weight: 600; color: var(--franco-text-secondary, #3A3A3F); }
 .as-ops { display: flex; gap: 5px; }
-.as-op { flex: 1; min-width: 0; min-height: 36px; padding: 0 4px; border: 1px solid var(--franco-border); border-radius: 99px; background: var(--franco-card); color: var(--franco-text-secondary, #3A3A3F); font-family: inherit; font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+/* Cada chip según su texto (paseo del 27-nov-2026: con ancho igual, «UF 300–600» se cortaba a 390). */
+.as-op { flex: 1 1 auto; min-width: 0; min-height: 36px; padding: 0 6px; border: 1px solid var(--franco-border); border-radius: 99px; background: var(--franco-card); color: var(--franco-text-secondary, #3A3A3F); font-family: inherit; font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
 .as-op[aria-pressed="true"] { border-color: var(--franco-text); background: var(--franco-text); color: var(--franco-bg); }
 .as-nota { margin: 0; padding: 8px 10px; border-radius: 10px; background: color-mix(in srgb, var(--franco-text) 5%, var(--franco-card)); font-size: 12px; line-height: 1.4; }
 

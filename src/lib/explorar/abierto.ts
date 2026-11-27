@@ -85,7 +85,7 @@ export const REGISTRO_COPY = {
   // «Invierte con Franco» sin cuenta (11-nov-2026): la cuenta nueva trae su análisis de regalo, como por cualquier puerta.
   invierteTitulo: "Crea tu cuenta para inscribirte.",
   // La asesoría (27-nov-2026): el cierre crea la cuenta con el regalo de siempre.
-  asesoriaTitulo: "Tu perfil y tus 3 deptos están listos.",
+  asesoriaTitulo: "Tu perfil está listo.",
   asesoriaCuerpo: { antes: "Crea tu cuenta gratis para verlos. Tu cuenta nueva trae ", fuerte: "un crédito de regalo", despues: "." },
   invierteCuerpo: { antes: "Tu cuenta nueva trae ", fuerte: "un crédito de regalo", despues: "." },
   inscribirme: "Inscribirme",

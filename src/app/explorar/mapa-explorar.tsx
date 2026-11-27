@@ -128,6 +128,8 @@ export interface MapaExplorarProps {
   onTocarPunto?: (lat: number, lng: number) => void;
   /** Las comunas elegidas (rellenas), los límites de todas (finos) y el radio de la pega, dibujados con polígonos del mapa. */
   marcas?: MarcasMapa | null;
+  /** Lo que tapa la hoja de la asesoría (abajo en el teléfono, a la derecha en el PC): el encuadre deja los pines en lo que se ve. */
+  aire?: { abajo: number; derecha: number } | null;
 }
 
 export interface MarcasMapa { comunas: readonly string[]; todas: boolean; pega: { lat: number; lng: number; radioM: number } | null }
@@ -239,7 +241,7 @@ const AIRE_PIN_PX = 28;
 /** Cuántos movimientos del mapa se revisa que el pin elegido quede a la vista. */
 const INTENTOS_VISIBLE = 3;
 
-export default function MapaExplorar({ items, seleccionado, encuadre, conZona, onSeleccionar, onTocarMapa, onMovido, onEstado, foco = null, onFoco, tapaAbajo = 0, onTocarPunto, marcas = null }: MapaExplorarProps) {
+export default function MapaExplorar({ items, seleccionado, encuadre, conZona, onSeleccionar, onTocarMapa, onMovido, onEstado, foco = null, onFoco, tapaAbajo = 0, onTocarPunto, marcas = null, aire = null }: MapaExplorarProps) {
   const divRef = useRef<HTMLDivElement>(null);
   const lienzoRef = useRef<HTMLCanvasElement | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -251,6 +253,8 @@ export default function MapaExplorar({ items, seleccionado, encuadre, conZona, o
   const dibujosRef = useRef<Dibujo[]>([]);
   const cb = useRef({ onSeleccionar, onTocarMapa, onMovido, onEstado, onFoco, onTocarPunto });
   const focoRef = useRef(foco);
+  const aireRef = useRef(aire);
+  aireRef.current = aire;
   itemsRef.current = items; selRef.current = seleccionado; focoRef.current = foco;
   cb.current = { onSeleccionar, onTocarMapa, onMovido, onEstado, onFoco, onTocarPunto };
   const dibujarRef = useRef<() => void>(() => {});
@@ -396,7 +400,9 @@ export default function MapaExplorar({ items, seleccionado, encuadre, conZona, o
         // ENCUADRADO EN GRAN SANTIAGO (26-nov-2026): la caja de los deptos sin el 2 % más extremo de cada lado (unos pocos avisos sueltos
         // abrían el mapa en Melipilla y la cordillera); sin deptos todavía, la caja fija de Gran Santiago.
         const caja = cajaRecortada(ps) ?? CAJA_GRAN_SANTIAGO;
-        map.fitBounds(new g.maps.LatLngBounds({ lat: caja.s, lng: caja.w }, { lat: caja.n, lng: caja.e }), 24);
+        // Con la hoja de la asesoría encima, el encuadre deja los pines en la parte del mapa que se ve (27-nov-2026).
+        const a = aireRef.current;
+        map.fitBounds(new g.maps.LatLngBounds({ lat: caja.s, lng: caja.w }, { lat: caja.n, lng: caja.e }), a ? { top: 64, left: 24, right: 24 + a.derecha, bottom: 24 + a.abajo } : 24);
         g.maps.event.addListenerOnce(map, "idle", () => { if ((map.getZoom() ?? 0) > ZOOM_MAX_ENCUADRE) { propio.current = true; map.setZoom(ZOOM_MAX_ENCUADRE); } });
       };
       // EL TOQUE: el mapa recibe el clic (el canvas no captura nada) y la capa dice qué se tocó.
