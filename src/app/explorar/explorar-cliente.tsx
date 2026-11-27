@@ -324,6 +324,8 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
     return () => window.clearTimeout(t);
   }, [asesoria.habilitada]);
   const yaMiro = miro.tarjetas >= MIRO_TARJETAS || (miro.veinte && miro.movimientos >= MIRO_MOVIMIENTOS);
+  // El encuadre con la asesoría: se reencuadra al abrir la hoja y cuando cambian los que calzan; en «Dónde» queda quieto.
+  const claveEncuadreAsesoria = !filtroAsesoria ? "" : filtroAsesoria.quieto ? "|as:quieto" : "|as:" + (filtroAsesoria.ids?.size ?? "todos") + ":" + (aireAsesoria?.abajo ?? 0) + ":" + (aireAsesoria?.derecha ?? 0);
   // «¿Cómo se calcula?» (30-oct-2026): la hoja corta del enlace de la barra de arriba, con y sin cuenta. Abre directo (03-nov-2026).
   const [calculo, setCalculo] = useState(false);
   // EN EL TELÉFONO, «Cómo se calcula» al lado del botón redondo SI CABE (03-nov-2026): se mide lo que dejan libre «Filtros» y el
@@ -1224,7 +1226,7 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
             <MapaExplorar
               items={items}
               seleccionado={tarjeta ? sel : null}
-              encuadre={`${claveUniverso(filtros)}|${filtros.comunas.join()}|${filtros.tipologias.join()}|${filtros.ufMin}|${filtros.ufMax}|${filtros.flujoPositivo}|${filtros.publicados}|${universo ? "1" : "0"}${filtroAsesoria ? (filtroAsesoria.quieto ? "|as:quieto" : `|as:${filtroAsesoria.ids?.size ?? "todos"}:${aireAsesoria?.abajo ?? 0}:${aireAsesoria?.derecha ?? 0}`) : ""}`}
+              encuadre={`${claveUniverso(filtros)}|${filtros.comunas.join()}|${filtros.tipologias.join()}|${filtros.ufMin}|${filtros.ufMax}|${filtros.flujoPositivo}|${filtros.publicados}|${universo ? "1" : "0"}${claveEncuadreAsesoria}`}
               /* Las barras y los chips no reencuadran: la persona mira dónde estaba y ve qué queda. */
               conZona={!!filtros.zona}
               onSeleccionar={tocarPin}

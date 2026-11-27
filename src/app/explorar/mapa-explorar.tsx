@@ -234,6 +234,10 @@ function pintar(ctx: CanvasRenderingContext2D, dibujos: readonly Dibujo[], tema:
   }
 }
 
+/** El margen del encuadre: 24 px, o, con la hoja de la asesoría encima, lo que tapa más 24 (los pines quedan en lo que se ve; 27-nov-2026). */
+export const margenDeEncuadre = (a: { abajo: number; derecha: number } | null): number | { top: number; left: number; right: number; bottom: number } =>
+  a ? { top: 64, left: 24, right: 24 + a.derecha, bottom: 24 + a.abajo } : 24;
+
 /** Lo de arriba que tapa el contador plegado, en el teléfono: el pin elegido no se corre debajo de él. */
 const TAPA_ARRIBA_PX = 72;
 /** El aire entre el pin elegido y el borde de la hoja. */
@@ -400,9 +404,7 @@ export default function MapaExplorar({ items, seleccionado, encuadre, conZona, o
         // ENCUADRADO EN GRAN SANTIAGO (26-nov-2026): la caja de los deptos sin el 2 % más extremo de cada lado (unos pocos avisos sueltos
         // abrían el mapa en Melipilla y la cordillera); sin deptos todavía, la caja fija de Gran Santiago.
         const caja = cajaRecortada(ps) ?? CAJA_GRAN_SANTIAGO;
-        // Con la hoja de la asesoría encima, el encuadre deja los pines en la parte del mapa que se ve (27-nov-2026).
-        const a = aireRef.current;
-        map.fitBounds(new g.maps.LatLngBounds({ lat: caja.s, lng: caja.w }, { lat: caja.n, lng: caja.e }), a ? { top: 64, left: 24, right: 24 + a.derecha, bottom: 24 + a.abajo } : 24);
+        map.fitBounds(new g.maps.LatLngBounds({ lat: caja.s, lng: caja.w }, { lat: caja.n, lng: caja.e }), margenDeEncuadre(aireRef.current));
         g.maps.event.addListenerOnce(map, "idle", () => { if ((map.getZoom() ?? 0) > ZOOM_MAX_ENCUADRE) { propio.current = true; map.setZoom(ZOOM_MAX_ENCUADRE); } });
       };
       // EL TOQUE: el mapa recibe el clic (el canvas no captura nada) y la capa dice qué se tocó.
