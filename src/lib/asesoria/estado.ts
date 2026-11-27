@@ -45,10 +45,12 @@ export interface EstadoAsesoria {
   aporte: Aporte | null;
   donde: Donde | null;
   lupa: Lupa | null;
+  /** «Avísame» de los deptos nuevos (27-nov-2026): una salida, no una pregunta; true si lo tocó. */
+  interesNuevos?: boolean | null;
 }
 
 export const ESTADO_INICIAL: EstadoAsesoria = {
-  v: VERSION_ESTADO, paso: "gancho", cerrada: false, experiencia: null, objetivo: null, numeros: {}, aporte: null, donde: null, lupa: null,
+  v: VERSION_ESTADO, paso: "gancho", cerrada: false, experiencia: null, objetivo: null, numeros: {}, aporte: null, donde: null, lupa: null, interesNuevos: null,
 };
 
 type Almacen = Pick<Storage, "getItem" | "setItem" | "removeItem"> | null;
@@ -71,7 +73,7 @@ export function guardarEstado(a: Almacen, e: EstadoAsesoria): void {
 
 /** Lo que viaja al crear el perfil (con cuenta): las respuestas, nunca el estado de la pantalla. */
 export function pedidoPerfil(e: EstadoAsesoria): Record<string, unknown> {
-  return { experiencia: e.experiencia, objetivo: e.objetivo, numeros: e.numeros, aporte: e.aporte, donde: e.donde, lupa: e.lupa };
+  return { experiencia: e.experiencia, objetivo: e.objetivo, numeros: e.numeros, aporte: e.aporte, donde: e.donde, lupa: e.lupa, interesNuevos: e.interesNuevos === true };
 }
 
 /** ¿Está todo para crear el perfil? */

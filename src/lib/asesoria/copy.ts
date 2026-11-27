@@ -97,12 +97,21 @@ export const ASESORIA_COPY = {
     plazoCorto: (plazo: number, x: number, y: number) => `Con tu plazo de ${plazo} años, convienen ${miles(x)} de los ${miles(y)}.`,
     plazoPorQue: "Con menos años el dividendo sube, y menos deptos se pagan con su arriendo.",
     // Con 0 deptos que le alcanzan (Fabrizio, 27-nov-2026): la palanca ahí mismo, con dos salidas.
-    ceroDeptos: "Con estos números, hoy no te alcanza ninguno de los que convienen.",
+    ceroDeptos: "Con estos números, hoy no te alcanza ningún usado de los que convienen.",
     ajustar: "Ajustar mis números",
     seguirIgual: "Seguir igual",
-    filtre: (convienen: number, alcanzan: number) => `Ya filtré el mapa: de los ${miles(convienen)} que convienen, ${miles(alcanzan)} te alcanzan.`,
+    // La cifra es de usados, y lo dice (ajuste de Fabrizio, 27-nov-2026).
+    filtre: (alcanzan: number) => `De los usados que convienen, hoy te alcanzan ${miles(alcanzan)}.`,
+    // Cuando limita el pie y no la renta, los dos límites (el del pie es de usados: en los nuevos el pie va en cuotas).
+    dosLimites: (renta: number, pie: number) => `Por tu renta llegas hasta ${uf(renta)}. Con tu pie, hoy llegas a ${uf(pie)} en usados.`,
     cero: "Con estos números, hoy el banco no te prestaría. Bajar tus deudas es lo primero; mientras, sigues mirando el mapa.",
     seguir: "Seguir",
+  },
+  // LOS NUEVOS (ajuste de Fabrizio, 27-nov-2026): una salida, no una pregunta. Solo se guarda; no se manda ningún correo todavía.
+  nuevos: {
+    oferta: "En deptos nuevos el pie se paga en cuotas. Pronto los sumo: ¿te aviso?",
+    boton: "Avísame",
+    listo: "Listo: te aviso cuando sume los deptos nuevos.",
   },
   // P5 · al mes
   alMes: {

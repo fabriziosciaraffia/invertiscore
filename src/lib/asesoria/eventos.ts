@@ -15,6 +15,7 @@ export const EVENTOS_ASESORIA = {
   perfil: "asesoria_perfil",
   deptos: "asesoria_deptos",
   verDepto: "asesoria_ver_depto",
+  nuevos: "asesoria_interes_nuevos",
 } as const;
 
 /** Las respuestas que SÍ pueden viajar (no son montos): experiencia, objetivo, el modo de dónde y la lupa. */

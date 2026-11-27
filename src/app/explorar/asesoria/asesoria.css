@@ -65,6 +65,7 @@
 .as-principal:disabled { opacity: 0.4; cursor: default; }
 .as-pie { padding: 2px 16px 14px; }
 .as-pie-dos { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.as-oferta { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
 .as-secundario { min-height: 44px; padding: 0 12px; border: 0; background: transparent; color: var(--franco-text); font-family: inherit; font-size: 14px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 
 /* P0 · la proporción */

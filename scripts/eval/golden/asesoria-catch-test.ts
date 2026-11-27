@@ -34,6 +34,8 @@ import { propsPaso } from "../../../src/lib/asesoria/eventos";
 import { limpiarEventoSentry } from "../../../src/lib/asesoria/sentry-limpieza";
 import { ASESORIA_COPY } from "../../../src/lib/asesoria/copy";
 import { validarPedidoPerfil, filaPerfil, calcularPerfil } from "../../../src/lib/asesoria/perfil";
+import { CAMINOS, CAMINO_DE_HOY } from "../../../src/lib/asesoria/capacidad";
+import { pedidoPerfil, ESTADO_INICIAL } from "../../../src/lib/asesoria/estado";
 import { comunaEn, comunasQueMasRinden } from "../../../src/lib/asesoria/lugar";
 import { conveniencia, palanca, palancaFormula } from "../../../src/lib/asesoria/palanca";
 
@@ -326,7 +328,7 @@ export async function runAsesoria(): Promise<{ hard: number }> {
     // ── 13 · CON 0 EN LA FÓRMULA, LA PALANCA AHÍ MISMO (decisión de Fabrizio, 27-nov-2026) ──
     {
       const F2 = ASESORIA_COPY.formula;
-      if (F2.ceroDeptos !== "Con estos números, hoy no te alcanza ninguno de los que convienen." || F2.ajustar !== "Ajustar mis números" || F2.seguirIgual !== "Seguir igual") F("13 · los textos del caso con 0 no son los aprobados");
+      if (F2.ceroDeptos !== "Con estos números, hoy no te alcanza ningún usado de los que convienen." || F2.ajustar !== "Ajustar mis números" || F2.seguirIgual !== "Seguir igual") F("13 · los textos del caso con 0 no son los aprobados");
       // Pie UF 300 con renta de 1M por boletas: tope bajo. El chip de pie más bajo con el que aparece alguno, con su cifra.
       const n0 = { ...base, renta: "r1" as const, tipoRenta: "boletas" as const, pie: "p2" as const, deudas: "d1" as const };
       const t0 = capacidad(n0, CFG).topeUF, t600 = capacidad({ ...n0, pie: "p3" }, CFG).topeUF, t900 = capacidad({ ...n0, pie: "p4" }, CFG).topeUF;
@@ -340,9 +342,52 @@ export async function runAsesoria(): Promise<{ hard: number }> {
       const comp = codigo("src/app/explorar/asesoria/asesoria.tsx");
       if (!/\{!cero && alcanzan === 0 && <p className="as-bf" data-asesoria="formula-cero">\{F\.ceroDeptos\}<\/p>\}/.test(comp) || !/\{!cero && alcanzan === 0 && palanca && <p className="as-bf" data-asesoria="formula-palanca">\{C\.perfil\.palancaPie\(palanca\.pieUF, palanca\.n\)\}<\/p>\}/.test(comp)) F("13 · con 0, la fórmula no dice el texto y la palanca con su cifra");
       if (!/\{cero \|\| alcanzan === 0 \? \(\s*<div className="as-pie as-pie-dos">\s*<button type="button" className="as-principal" onClick=\{alAjustar\} data-asesoria="formula-ajustar">\{F\.ajustar\}<\/button>\s*<button type="button" className="as-secundario" onClick=\{alSeguir\} data-asesoria="formula-seguir-igual">\{F\.seguirIgual\}<\/button>/.test(comp)) F("13 · con 0, las dos salidas no son «Ajustar mis números» (principal) y «Seguir igual» (secundaria)");
-      if (!/\{!cero && alcanzan != null && alcanzan > 0 && <p className="as-bf">\{F\.filtre\(convienen, alcanzan\)\}<\/p>\}/.test(comp)) F("13 · con 1 o más, la fórmula no sigue como antes");
+      if (!/\{!cero && alcanzan != null && alcanzan > 0 && <p className="as-bf" data-asesoria="formula-alcanzan">\{F\.filtre\(alcanzan\)\}<\/p>\}/.test(comp)) F("13 · con 1 o más, la fórmula no sigue como antes");
       if (!/alAjustar=\{\(\) => \{ responder\("formula", "ajustar"\); setNumerosAbiertos\(true\); cambiar\(\(s\) => \(\{ \.\.\.s, paso: "numeros" \}\)\); \}\}/.test(comp)) F("13 · «Ajustar mis números» no vuelve a la tarjeta con lo ya contestado");
       if (!/palancaFormula\(p\.comprar, numeros, \{ tasaPct: agregados\.tasa, uf: agregados\.uf \}, idsAporte\)/.test(comp)) F("13 · la palanca de la fórmula no usa los Comprar del mapa con el plazo");
+    }
+
+    // ── 14 · LOS NUEVOS NO QUEDAN AFUERA (ajuste de Fabrizio, 27-nov-2026) ──
+    {
+      // a · la regla del pie por camino y los dos topes por separado.
+      if (JSON.stringify(Object.keys(CAMINOS)) !== '["usado"]' || CAMINOS.usado.piePct !== 20 || CAMINOS.usado.forma !== "contado" || CAMINO_DE_HOY !== "usado") F("14 · el camino de hoy no es «usado, 20 % al contado»");
+      const c = capacidad(base, CFG);
+      const credito = creditoDeCuota(2_500_000 * 0.25, CFG.tasaPct, 30) / CFG.uf;
+      if (c.camino !== "usado" || c.topePieUF !== 3000 || c.topeRentaUF !== Math.floor((600 + credito) / 10) * 10 || c.topeUF !== Math.min(c.topePieUF, c.topeRentaUF)) F(`14 · los dos topes no son los esperados (renta ${c.topeRentaUF}, pie ${c.topePieUF}, tope ${c.topeUF})`);
+      if (capacidad({ ...base, pie: "p1" }, CFG).topePieUF !== null) F("14 · sin pie, el tope por pie no es nulo");
+      // b · la cifra de usados lo dice.
+      if (ASESORIA_COPY.formula.filtre(1240) !== "De los usados que convienen, hoy te alcanzan 1.240.") F("14 · la cifra no dice que es de usados");
+      // c · limita el pie: los dos límites.
+      if (ASESORIA_COPY.formula.dosLimites(3720, 3000) !== "Por tu renta llegas hasta UF 3.720. Con tu pie, hoy llegas a UF 3.000 en usados.") F("14 · el texto de los dos límites no es el aprobado");
+      const comp = codigo("src/app/explorar/asesoria/asesoria.tsx");
+      if (!/\{cap\.limita === "pie" && cap\.topePieUF != null \? F\.dosLimites\(cap\.topeRentaUF, cap\.topePieUF\) : F\.manda\[cap\.limita\]\}/.test(comp)) F("14 · cuando limita el pie, la fórmula no muestra los dos límites");
+      // d · la salida «Avísame»: cuando limita el pie o con 0, 1 o 2; en el perfil con menos de 3, después de la palanca.
+      const N = ASESORIA_COPY.nuevos;
+      if (N.oferta !== "En deptos nuevos el pie se paga en cuotas. Pronto los sumo: ¿te aviso?" || N.boton !== "Avísame") F("14 · los textos de la salida de nuevos no son los aprobados");
+      if (!/\{!cero && alcanzan != null && \(cap\.limita === "pie" \|\| alcanzan <= 2\) && <OfertaNuevos dicho=\{interesNuevos\} alAvisar=\{alAvisar\} \/>\}/.test(comp)) F("14 · la fórmula no ofrece «Avísame» cuando limita el pie o con 0, 1 o 2");
+      if (!/data-asesoria="perfil-palanca">[^\n]*\n\s*\{r\.tres\.length < 3 && <OfertaNuevos dicho=\{interesNuevos\} alAvisar=\{alAvisar\} \/>\}/.test(comp)) F("14 · el perfil no ofrece «Avísame» con menos de 3, después de la palanca");
+      if (!/className="as-depto-ver" onClick=\{alAvisar\} data-asesoria="nuevos-avisame"/.test(comp)) F("14 · «Avísame» no es un botón secundario");
+      // Se guarda: en el estado sin cuenta, en el perfil al crearlo, y al momento si el perfil ya existe. Nunca un correo.
+      if (pedidoPerfil({ ...ESTADO_INICIAL, interesNuevos: true }).interesNuevos !== true || pedidoPerfil(ESTADO_INICIAL).interesNuevos !== false) F("14 · «Avísame» no viaja al crear el perfil");
+      const ok = validarPedidoPerfil({ experiencia: "uno", objetivo: "arriendo", numeros: base, aporte: 100_000, donde: { modo: "metro", comunas: [], pega: null }, lupa: "no", interesNuevos: true });
+      const okNo = validarPedidoPerfil({ experiencia: "uno", objetivo: "arriendo", numeros: base, aporte: 100_000, donde: { modo: "metro", comunas: [], pega: null }, lupa: "no" });
+      if (!ok.ok || !okNo.ok) F("14 · un pedido válido con o sin «Avísame» no pasa");
+      else {
+        const fila = filaPerfil("u", ok.pedido, calcularPerfil(ok.pedido, CFG), { esPrueba: true, existe: false, elegidos: [] });
+        if (fila.camino !== "usado" || fila.tope_renta_uf !== c.topeRentaUF || fila.tope_pie_uf !== c.topePieUF || fila.tope_uf !== c.topeUF) F("14 · el perfil no guarda los dos topes y el camino");
+        if (fila.interes_nuevos !== true || typeof fila.interes_nuevos_at !== "string") F("14 · el perfil no guarda «Avísame»");
+        const filaNo = filaPerfil("u", okNo.pedido, calcularPerfil(okNo.pedido, CFG), { esPrueba: true, existe: true, elegidos: [] });
+        if ("interes_nuevos" in filaNo) F("14 · un perfil rehecho sin «Avísame» borra un sí anterior");
+      }
+      const ruta = codigo("src/app/api/asesoria/interes-nuevos/route.ts");
+      if (!/if \(!user\) return NextResponse\.json\(\{ error: "sin-sesion" \}, \{ status: 401 \}\);/.test(ruta) || !/if \(!acceso\.habilitada\) return NextResponse\.json\(\{ error: "no-existe" \}, \{ status: 404 \}\);/.test(ruta)) F("14 · la ruta de «Avísame» sin sesión o sin el interruptor");
+      if (!/\.update\(\{ interes_nuevos: true, interes_nuevos_at: new Date\(\)\.toISOString\(\), updated_at: new Date\(\)\.toISOString\(\) \}\)\s*\.eq\("user_id", user\.id\)/.test(ruta)) F("14 · la ruta de «Avísame» escribe algo más que su respuesta, o de otra cuenta");
+      if (/email|resend|enviarCorreo|sendEmail|capturarServidor/i.test(ruta) || /email|resend|enviarCorreo|sendEmail/i.test(codigo("src/lib/asesoria/perfil.ts"))) F("14 · «Avísame» manda un correo (todavía solo se guarda)");
+      if (!/capture\(EVENTOS_ASESORIA\.nuevos, propsBase\(prueba, \{ paso: e\?\.paso \?\? "formula" \}\)\);/.test(comp)) F("14 · «Avísame» no se mide (o se mide con un monto)");
+      // e · ninguna pregunta nueva: los pasos son los mismos.
+      if (Object.keys(ESTADO_INICIAL).filter((k) => !["v", "paso", "cerrada"].includes(k)).join() !== "experiencia,objetivo,numeros,aporte,donde,lupa,interesNuevos") F("14 · el recorrido ganó una pregunta");
+      const sql = leer("supabase/migrations/20261127_asesoria_dos_topes.sql");
+      for (const col of ["camino text not null default 'usado'", "tope_renta_uf numeric", "tope_pie_uf numeric", "interes_nuevos boolean", "interes_nuevos_at timestamptz"]) if (!sql.includes(col)) F(`14 · la migración no trae ${col}`);
     }
   } catch (e) {
     F(`excepción: ${(e as Error).stack ?? e}`);
@@ -376,3 +421,6 @@ if (require.main === module) void runAsesoria().then((r) => { process.exitCode =
 // Cap rate y 0 en la fórmula (27-nov-2026), 9 mutaciones más, las 9 en ROJO: sin el corte del cap rate; el corte con «>=»; el corte a
 // 15 %; la palanca de la fórmula sin el plazo; la palanca con 0; la fórmula sin el texto del 0; con 0, un solo botón; «Ajustar mis
 // números» sin abrir la tarjeta; «Seguir igual» con otro texto.
+// Los nuevos no quedan afuera (27-nov-2026), 10 mutaciones más, las 10 en ROJO: el pie sin la regla del camino; el tope por renta igual
+// al menor; el perfil sin el tope por pie; la cifra sin decir «usados»; sin los dos límites; «Avísame» solo con 0; «Avísame» que no viaja
+// al perfil; un perfil rehecho que borra el sí; la ruta de «Avísame» sin el interruptor; el botón con otro texto.

@@ -268,6 +268,13 @@ export function Asesoria(p: {
     return () => { ro?.disconnect(); alTaparRef.current?.(null); };
   }, [hayHoja, e?.paso]);
 
+  // «Avísame» de los nuevos: queda en el estado (viaja al crear el perfil) y, con perfil ya creado, se guarda al momento. Sin correos.
+  const avisarNuevos = () => {
+    cambiar((x) => ({ ...x, interesNuevos: true }));
+    capture(EVENTOS_ASESORIA.nuevos, propsBase(prueba, { paso: e?.paso ?? "formula" }));
+    if (!p.sinCuenta && e?.paso === "perfil") void fetch("/api/asesoria/interes-nuevos", { method: "POST" }).catch(() => {});
+  };
+
   // ── las acciones ──
   const responder = (paso: Paso, respuesta: string | null) => capture(EVENTOS_ASESORIA.paso, propsPaso(paso, respuesta, prueba));
   const partir = () => { cambiar(() => ({ ...ESTADO_INICIAL })); capture(EVENTOS_ASESORIA.abierta, propsBase(prueba)); };
@@ -331,7 +338,8 @@ export function Asesoria(p: {
           <TusNumeros valores={e.numeros} alCambiar={(k, v) => cambiar((s) => ({ ...s, numeros: { ...s.numeros, [k]: v } }))}
             alListo={() => { responder("numeros", null); cambiar((s) => ({ ...s, paso: "formula" })); }} />
         )}
-        {e.paso === "formula" && <Formula cap={cap} convienen={convienen} alcanzan={aportePendiente ? null : calzan?.length ?? null} plazoCorto={plazoCortoDe(agregados, plazo)} palanca={palancaCero}
+        {e.paso === "formula" && <Formula cap={cap} alcanzan={aportePendiente ? null : calzan?.length ?? null} plazoCorto={plazoCortoDe(agregados, plazo)} palanca={palancaCero}
+            interesNuevos={e.interesNuevos === true} alAvisar={avisarNuevos}
             alAjustar={() => { responder("formula", "ajustar"); setNumerosAbiertos(true); cambiar((s) => ({ ...s, paso: "numeros" })); }} alSeguir={() => { responder("formula", null); cambiar((s) => ({ ...s, paso: PROYECTOS_VISIBLE ? "proyecto" : "aporte", aporte: s.aporte ?? 100_000 })); }} />}
         {e.paso === "aporte" && (
           <AlMes aporte={e.aporte ?? 100_000} dist={agregados?.dist?.[String(plazo)] ?? null} calzan={aportePendiente ? null : calzan?.length ?? null} topado={topado}
@@ -363,7 +371,7 @@ export function Asesoria(p: {
         )}
         {e.paso === "perfil" && (
           resultado
-            ? <Perfil r={resultado} numeros={numeros} experiencia={e.experiencia} lupa={e.lupa} aporte={e.aporte ?? 0} pines={p.comprar}
+            ? <Perfil r={resultado} numeros={numeros} experiencia={e.experiencia} lupa={e.lupa} aporte={e.aporte ?? 0} pines={p.comprar} interesNuevos={e.interesNuevos === true} alAvisar={avisarNuevos}
                 alVer={(id) => { capture(EVENTOS_ASESORIA.verDepto, propsBase(prueba)); cambiar((x) => ({ ...x, cerrada: true })); p.alVerDepto(id); }} />
             : <Cierre sinCuenta={false} cargando={cargandoPerfil} error={errorPerfil} alCrear={() => {}} alReintentar={() => setErrorPerfil(false)} />
         )}
@@ -518,7 +526,18 @@ function plazoCortoDe(a: Agregados | null, plazo: number): { plazo: number; x: n
   return { plazo, x: d.reduce((s, n) => s + n, 0), y: a.total };
 }
 
-function Formula({ cap, convienen, alcanzan, plazoCorto, palanca, alAjustar, alSeguir }: { cap: Capacidad | null; convienen: number; alcanzan: number | null; plazoCorto: { plazo: number; x: number; y: number } | null; palanca: { pieUF: number; n: number } | null; alAjustar: () => void; alSeguir: () => void }) {
+/** «Avísame» de los nuevos (27-nov-2026): una salida —no una pregunta— cuando limita el pie o hay pocos usados; se guarda en el perfil. */
+function OfertaNuevos({ dicho, alAvisar }: { dicho: boolean; alAvisar: () => void }) {
+  if (dicho) return <p className="as-bf" data-asesoria="nuevos-listo">{C.nuevos.listo}</p>;
+  return (
+    <div className="as-oferta" data-asesoria="nuevos">
+      <p className="as-bf">{C.nuevos.oferta}</p>
+      <button type="button" className="as-depto-ver" onClick={alAvisar} data-asesoria="nuevos-avisame">{C.nuevos.boton}</button>
+    </div>
+  );
+}
+
+function Formula({ cap, alcanzan, plazoCorto, palanca, interesNuevos, alAvisar, alAjustar, alSeguir }: { cap: Capacidad | null; alcanzan: number | null; plazoCorto: { plazo: number; x: number; y: number } | null; palanca: { pieUF: number; n: number } | null; interesNuevos: boolean; alAvisar: () => void; alAjustar: () => void; alSeguir: () => void }) {
   const F = C.formula;
   if (!cap) return <div className="as-conv"><p className="as-bf">…</p></div>;
   const tasa = cap.tasaPct.toLocaleString("es-CL", { maximumFractionDigits: 2 });
@@ -550,15 +569,16 @@ function Formula({ cap, convienen, alcanzan, plazoCorto, palanca, alAjustar, alS
           </div>
         ) : (
           <div className="as-tarjeta" data-fuerte="1" style={{ gap: 2 }} data-asesoria="tope">
-            <span className="as-k">{F.manda[cap.limita]}</span>
+            <span className="as-k" data-asesoria="tope-texto">{cap.limita === "pie" && cap.topePieUF != null ? F.dosLimites(cap.topeRentaUF, cap.topePieUF) : F.manda[cap.limita]}</span>
             <span className="as-grande">{fUF(cap.topeUF)}</span>
             <span className="as-k">{F.sujeto}</span>
           </div>
         )}
         {!cero && plazoCorto && <p className="as-bf" data-asesoria="plazo-corto">{F.plazoCorto(plazoCorto.plazo, plazoCorto.x, plazoCorto.y)} {F.plazoPorQue}</p>}
-        {!cero && alcanzan != null && alcanzan > 0 && <p className="as-bf">{F.filtre(convienen, alcanzan)}</p>}
+        {!cero && alcanzan != null && alcanzan > 0 && <p className="as-bf" data-asesoria="formula-alcanzan">{F.filtre(alcanzan)}</p>}
         {!cero && alcanzan === 0 && <p className="as-bf" data-asesoria="formula-cero">{F.ceroDeptos}</p>}
         {!cero && alcanzan === 0 && palanca && <p className="as-bf" data-asesoria="formula-palanca">{C.perfil.palancaPie(palanca.pieUF, palanca.n)}</p>}
+        {!cero && alcanzan != null && (cap.limita === "pie" || alcanzan <= 2) && <OfertaNuevos dicho={interesNuevos} alAvisar={alAvisar} />}
       </div>
       {/* Con 0 que le alcanzan (o sin cuota por las deudas): dos salidas, «Ajustar mis números» (principal) y «Seguir igual». */}
       {cero || alcanzan === 0 ? (
@@ -693,8 +713,8 @@ function Cierre({ sinCuenta, cargando, error, alCrear, alReintentar, calzan = 0 
 }
 
 // ── el perfil ───────────────────────────────────────────────────────────────
-function Perfil({ r, numeros, experiencia, lupa, aporte, pines, alVer }: {
-  r: Resultado; numeros: Numeros | null; experiencia: EstadoAsesoria["experiencia"]; lupa: Lupa | null; aporte: number; pines: readonly PinMapa[]; alVer: (id: string) => void;
+function Perfil({ r, numeros, experiencia, lupa, aporte, pines, interesNuevos, alAvisar, alVer }: {
+  r: Resultado; numeros: Numeros | null; experiencia: EstadoAsesoria["experiencia"]; lupa: Lupa | null; aporte: number; pines: readonly PinMapa[]; interesNuevos: boolean; alAvisar: () => void; alVer: (id: string) => void;
 }) {
   const P = C.perfil;
   const avisos = numeros && experiencia ? avisosDelPerfil({ tipoRenta: numeros.tipoRenta, experiencia }) : (["estimacion"] as const);
@@ -725,6 +745,7 @@ function Perfil({ r, numeros, experiencia, lupa, aporte, pines, alVer }: {
       {r.conveniencia && <p className="as-bf" data-asesoria="perfil-plazo-corto">{C.formula.plazoCorto(r.plazo, r.conveniencia.x, r.conveniencia.y)} {C.formula.plazoPorQue}</p>}
       {r.tres.length < 3 && <p className="as-bf" data-asesoria="perfil-menos">{r.tres.length === 0 ? P.ninguno : P.menos(r.tres.length)}</p>}
       {r.tres.length < 3 && <p className="as-bf" data-asesoria="perfil-palanca">{!r.palanca ? P.sinPalanca : r.palanca.tipo === "aporte" ? P.palancaAporte(r.palanca.aporte, r.palanca.n) : P.palancaPie(r.palanca.pieUF, r.palanca.n)}</p>}
+      {r.tres.length < 3 && <OfertaNuevos dicho={interesNuevos} alAvisar={alAvisar} />}
       {r.tres.map((t) => (
         <div key={t.id} className="as-depto" data-asesoria="depto" data-aviso={t.id}>
           <span className="as-depto-por">{P.porQue[t.porQue]}</span>

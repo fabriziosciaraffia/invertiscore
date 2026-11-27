@@ -17,6 +17,8 @@ export interface PedidoPerfilAsesoria {
   aporte: Aporte;
   donde: Donde;
   lupa: Lupa;
+  /** «Avísame» de los nuevos (27-nov-2026). */
+  interesNuevos: boolean;
 }
 
 const EXPERIENCIAS: readonly Experiencia[] = ["primera", "uno", "varios"];
@@ -44,7 +46,7 @@ export function validarPedidoPerfil(b: Record<string, unknown> | null | undefine
     pedido: {
       experiencia: b.experiencia as Experiencia, objetivo: b.objetivo as ObjetivoAsesoria,
       numeros: { renta: n.renta, tipoRenta: n.tipoRenta, edad: n.edad, pie: n.pie, deudas: n.deudas, preaprobado: n.preaprobado },
-      aporte: b.aporte, donde: { modo: d.modo as ModoDonde, comunas, pega }, lupa: b.lupa as Lupa,
+      aporte: b.aporte, donde: { modo: d.modo as ModoDonde, comunas, pega }, lupa: b.lupa as Lupa, interesNuevos: b.interesNuevos === true,
     },
   };
 }
@@ -80,6 +82,12 @@ export function filaPerfil(userId: string, p: PedidoPerfilAsesoria, c: PerfilCal
     aporte_mensual_clp: p.aporte,
     lupa: p.lupa === "prefiero" ? null : p.lupa === "si",
     tope_uf: c.cap.topeUF,
+    // Los dos topes por separado y el camino del pie (27-nov-2026, migración 20261127_asesoria_dos_topes).
+    camino: c.cap.camino,
+    tope_renta_uf: c.cap.topeRentaUF,
+    tope_pie_uf: c.cap.topePieUF,
+    // «Avísame» de los nuevos: se guarda solo si lo tocó (un perfil rehecho sin tocarlo no borra un sí anterior).
+    ...(p.interesNuevos ? { interes_nuevos: true, interes_nuevos_at: new Date().toISOString() } : {}),
     // «renta» como en Invierte: hubo renta (lo que limita queda en los supuestos). «solo_pie» es sin renta, y acá siempre la hay.
     tope_fuente: "renta",
     tope_supuestos: {

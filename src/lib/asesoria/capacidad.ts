@@ -20,8 +20,16 @@ export const RENTA_COMPUTABLE_PCT = { contrato: 100, boletas: 70, ambas: 85 } as
 export const CARGA_MAX_PCT = { contrato: 40, boletas: 35, ambas: 35 } as const;
 /** El dividendo no pasa del 25 % de la renta computable (la regla de Invierte). */
 export const DIVIDENDO_MAX_PCT = REGLA_TOPE.dividendoMaxPct;
-/** El pie: el banco financia el 80 %. */
-export const PIE_PCT = REGLA_TOPE.piePct;
+/** LOS CAMINOS DEL PIE (ajuste de Fabrizio, 27-nov-2026): la regla del pie es un parámetro por camino, para no cerrarle la puerta a los
+ *  nuevos (pie en cuotas, bono pie), que esta entrega no construye. Hoy hay UN camino: usado, 20 % al contado. Un camino nuevo se
+ *  agrega acá con su regla, sin tocar el tope por renta. */
+export const CAMINOS = {
+  usado: { piePct: REGLA_TOPE.piePct, forma: "contado" },
+} as const;
+export type Camino = keyof typeof CAMINOS;
+export const CAMINO_DE_HOY: Camino = "usado";
+/** El pie del camino de hoy: el banco financia el 80 %. */
+export const PIE_PCT = CAMINOS[CAMINO_DE_HOY].piePct;
 /** Edad + plazo no pasa de esto (con la edad más alta del rango). */
 export const EDAD_MAS_PLAZO_MAX = 75;
 export const PLAZO_MAX = 30;
@@ -125,8 +133,15 @@ export function creditoDeCuota(cuotaCLP: number, tasaPct: number, plazoAnios: nu
 export type Limita = "pie" | "renta" | "deudas";
 
 export interface Capacidad {
-  /** Hasta cuánto puede comprar, en UF, redondeado hacia abajo a 10 (se muestra «hasta aprox.»). 0 si las deudas no dejan cuota. */
+  /** El camino con que se calculó el pie (hoy, siempre «usado»). */
+  camino: Camino;
+  /** Hasta cuánto puede comprar, en UF, redondeado hacia abajo a 10 (se muestra «hasta aprox.»): el menor de los dos topes. 0 si las
+   *  deudas no dejan cuota. */
   topeUF: number;
+  /** LOS DOS TOPES, por separado (se guardan los dos en el perfil): el de la renta (crédito + pie, o crédito / 80 % sin pie) y el del
+   *  pie según la regla del camino (pie / 20 %; null con menos de UF 300). Redondeados hacia abajo a 10. */
+  topeRentaUF: number;
+  topePieUF: number | null;
   limita: Limita;
   /** El pie con que se calculó (null: menos de UF 300, solo por la renta). */
   pieUF: number | null;
@@ -154,7 +169,7 @@ export interface Capacidad {
 
 const abajo10 = (x: number) => Math.max(0, Math.floor(x / 10) * 10);
 
-export function capacidad(n: Numeros, cfg: { tasaPct: number; uf: number }): Capacidad {
+export function capacidad(n: Numeros, cfg: { tasaPct: number; uf: number }, camino: Camino = CAMINO_DE_HOY): Capacidad {
   const renta = de(CHIPS_RENTA, n.renta)!.valor;
   const pct = RENTA_COMPUTABLE_PCT[n.tipoRenta];
   const cargaMax = CARGA_MAX_PCT[n.tipoRenta];
@@ -164,7 +179,7 @@ export function capacidad(n: Numeros, cfg: { tasaPct: number; uf: number }): Cap
   const cuotaMax = Math.max(0, Math.min((rentaComp * DIVIDENDO_MAX_PCT) / 100, (rentaComp * cargaMax) / 100 - deudas));
   const creditoUF = cfg.uf > 0 ? creditoDeCuota(cuotaMax, cfg.tasaPct, plazo) / cfg.uf : 0;
   const pieUF = de(CHIPS_PIE, n.pie)!.valor;
-  const f = PIE_PCT / 100;
+  const f = CAMINOS[camino].piePct / 100;
   let topeExacto: number, limita: Limita, porRenta: number, porPie: number | null, pieNecesario: number | null = null;
   if (pieUF == null) {
     porRenta = creditoUF / (1 - f);
@@ -182,7 +197,8 @@ export function capacidad(n: Numeros, cfg: { tasaPct: number; uf: number }): Cap
   const creditoUsadoUF = pieUF == null ? topeUF * (1 - f) : Math.max(0, topeUF - pieUF);
   const dividendo = cuota(creditoUsadoUF * cfg.uf, cfg.tasaPct, plazo);
   return {
-    topeUF, limita, pieUF, pieNecesarioUF: pieNecesario == null ? null : Math.round(pieNecesario),
+    camino, topeUF, topeRentaUF: creditoUF <= 0 ? 0 : abajo10(porRenta), topePieUF: porPie == null ? null : abajo10(porPie),
+    limita, pieUF, pieNecesarioUF: pieNecesario == null ? null : Math.round(pieNecesario),
     porRentaUF: Math.round(porRenta), creditoUF: Math.round(creditoUF), porPieUF: porPie == null ? null : Math.round(porPie),
     plazo, rangoEdad: rango, tasaPct: cfg.tasaPct, rentaCLP: renta, rentaComputableCLP: Math.round(rentaComp), rentaComputablePct: pct,
     cargaMaxPct: cargaMax, deudasCLP: deudas, cuotaMaxCLP: Math.round(cuotaMax), dividendoCLP: Math.round(dividendo),
