@@ -8,6 +8,7 @@
 //     sus etiquetas; los persiste en inv_deptos (lo que deja de alcanzar se marca, no se borra) y anota en la bitácora, con la
 //     orden, qué deptos le presentó Franco (se conserva seis años).
 // ─────────────────────────────────────────────────────────────────────────────
+import type { TipoRenta } from "@/lib/tope/regla";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { findNearestStation } from "@/lib/metro-stations";
 import { fichasDe } from "./ficha-depto-servidor";
@@ -48,6 +49,13 @@ export interface PerfilInv {
   avisarCuandoAlcance: boolean;
   esPrueba: boolean;
   updatedAt: string;
+  /** EL PERFIL DE LA ASESORÍA (27-nov-2026): de dónde salió, el plazo que la edad permite, cómo recibe la renta, el tope por pie y
+   *  los 3 deptos que eligió. Manda sobre el paso de perfil de Invierte (asesoria-servidor.ts). */
+  origen: "invierte" | "asesoria";
+  plazoAnios: number | null;
+  tipoRenta: TipoRenta | null;
+  topePieUF: number | null;
+  elegidos: string[];
 }
 
 const aPerfil = (f: Record<string, unknown>): PerfilInv => ({
@@ -58,6 +66,9 @@ const aPerfil = (f: Record<string, unknown>): PerfilInv => ({
   otrasCuotasCLP: (f.otras_cuotas_clp as number | null) ?? null, noDiceRenta: f.no_dice_renta === true, topeUF: f.tope_uf == null ? null : Number(f.tope_uf),
   topeFuente: (f.tope_fuente as PerfilInv["topeFuente"]) ?? null, topeSupuestos: (f.tope_supuestos as Record<string, unknown> | null) ?? null,
   avisarCuandoAlcance: f.avisar_cuando_alcance === true, esPrueba: f.es_prueba === true, updatedAt: f.updated_at as string,
+  origen: f.origen === "asesoria" ? "asesoria" : "invierte", plazoAnios: f.plazo_anios == null ? null : Number(f.plazo_anios),
+  tipoRenta: f.tipo_renta === "boletas" || f.tipo_renta === "ambas" || f.tipo_renta === "contrato" ? f.tipo_renta : null,
+  topePieUF: f.tope_pie_uf == null ? null : Number(f.tope_pie_uf), elegidos: Array.isArray(f.elegidos) ? (f.elegidos as string[]) : [],
 });
 
 export async function leerPerfilInv(admin: SupabaseClient, userId: string): Promise<PerfilInv | null> {
@@ -116,7 +127,8 @@ export async function confirmarPerfil(admin: SupabaseClient, user: { id: string;
   const [m, previo, { data: pb }, esPrueba] = await Promise.all([
     mercado(admin), leerPerfilInv(admin, user.id), admin.from("perfil_busqueda").select("comunas, precio_max_uf").eq("user_id", user.id).maybeSingle(), esCuentaTest(admin, user.id),
   ]);
-  const tope = hastaCuanto({ ...pedido, tasaPct: m.tasaPct, uf: m.uf, aprobadaUF: previo?.topeFuente === "aprobada" ? Number(previo.topeSupuestos?.aprobadaUF ?? 0) || null : null });
+  // UNA SOLA REGLA (27-nov-2026): la misma cuenta que la asesoría, con el plazo por edad y el tipo de renta de su perfil si los tiene.
+  const tope = hastaCuanto({ ...pedido, tasaPct: m.tasaPct, uf: m.uf, aprobadaUF: previo?.topeFuente === "aprobada" ? Number(previo.topeSupuestos?.aprobadaUF ?? 0) || null : null, plazoAnios: previo?.plazoAnios ?? null, tipoRenta: previo?.tipoRenta ?? null });
   const reemplaza = tope.fuente !== "solo_pie";
   // El precio máximo anterior: el que había la PRIMERA vez que el tope lo reemplazó (para poder volver a él).
   const anterior = (previo?.topeSupuestos?.precioMaxAnterior as { valor: number | null } | undefined) ?? (pb ? { valor: pb.precio_max_uf == null ? null : Number(pb.precio_max_uf) } : { valor: null });

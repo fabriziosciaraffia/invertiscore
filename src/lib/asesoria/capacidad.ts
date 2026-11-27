@@ -12,29 +12,16 @@
 //   · el pie «menos de UF 300» calcula solo por la renta (pie de 20 %) y dice qué pie hace falta.
 // Lo fija el tier ASESORIA.
 // ─────────────────────────────────────────────────────────────────────────────
-import { REGLA_TOPE } from "@/lib/invierte-v2/perfil";
-
-/** Cuánto de la renta cuenta el banco, según cómo se recibe (estimación: el perfil lo dice). */
-export const RENTA_COMPUTABLE_PCT = { contrato: 100, boletas: 70, ambas: 85 } as const;
-/** La carga total máxima (dividendo + deudas): 40 %, o 35 % si parte de la renta es por boletas. */
-export const CARGA_MAX_PCT = { contrato: 40, boletas: 35, ambas: 35 } as const;
-/** El dividendo no pasa del 25 % de la renta computable (la regla de Invierte). */
-export const DIVIDENDO_MAX_PCT = REGLA_TOPE.dividendoMaxPct;
-/** LOS CAMINOS DEL PIE (ajuste de Fabrizio, 27-nov-2026): la regla del pie es un parámetro por camino, para no cerrarle la puerta a los
- *  nuevos (pie en cuotas, bono pie), que esta entrega no construye. Hoy hay UN camino: usado, 20 % al contado. Un camino nuevo se
- *  agrega acá con su regla, sin tocar el tope por renta. */
-export const CAMINOS = {
-  usado: { piePct: REGLA_TOPE.piePct, forma: "contado" },
-} as const;
-export type Camino = keyof typeof CAMINOS;
-export const CAMINO_DE_HOY: Camino = "usado";
-/** El pie del camino de hoy: el banco financia el 80 %. */
+// LA REGLA ES UNA SOLA (27-nov-2026): la del módulo compartido con Invierte (src/lib/tope/regla.ts), con los gastos de la compra.
+import {
+  CAMINOS, CAMINO_DE_HOY, CARGA_MAX_PCT, DIVIDENDO_MAX_PCT, EDAD_MAS_PLAZO_MAX, PLAZO_MAX, RENTA_COMPUTABLE_PCT, creditoDeCuota, creditoPorRentaRegla,
+  cuota, pieMasGastosPct, topesDeCompra, type Camino, type TipoRenta,
+} from "@/lib/tope/regla";
+export { CAMINOS, CAMINO_DE_HOY, CARGA_MAX_PCT, DIVIDENDO_MAX_PCT, EDAD_MAS_PLAZO_MAX, PLAZO_MAX, RENTA_COMPUTABLE_PCT, creditoDeCuota, cuota, pieMasGastosPct };
+export type { Camino, TipoRenta };
+/** El pie del camino de hoy (sin gastos): el banco financia el 80 %. */
 export const PIE_PCT = CAMINOS[CAMINO_DE_HOY].piePct;
-/** Edad + plazo no pasa de esto (con la edad más alta del rango). */
-export const EDAD_MAS_PLAZO_MAX = 75;
-export const PLAZO_MAX = 30;
 
-export type TipoRenta = keyof typeof RENTA_COMPUTABLE_PCT;
 export type RangoEdad = "hasta_39" | "40_49" | "50_54" | "55_mas";
 
 // ── LOS CHIPS DE «TUS NÚMEROS» (lámina P3Numeros) ───────────────────────────
@@ -117,19 +104,6 @@ export function edadDeChip(id: IdEdad): { rango: RangoEdad; plazo: number } {
   return { rango: c.rango, plazo: c.rango === "55_mas" ? 15 : plazoDeEdad(c.edadMax) };
 }
 
-/** La cuota de un crédito (sistema francés, sin seguros): la misma fórmula que calcDividendo. */
-export function cuota(creditoCLP: number, tasaPct: number, plazoAnios: number): number {
-  if (creditoCLP <= 0) return 0;
-  const i = tasaPct / 100 / 12, n = plazoAnios * 12;
-  return i === 0 ? creditoCLP / n : (creditoCLP * i) / (1 - Math.pow(1 + i, -n));
-}
-/** El crédito que paga una cuota (la inversa). */
-export function creditoDeCuota(cuotaCLP: number, tasaPct: number, plazoAnios: number): number {
-  if (cuotaCLP <= 0) return 0;
-  const i = tasaPct / 100 / 12, n = plazoAnios * 12;
-  return i === 0 ? cuotaCLP * n : (cuotaCLP * (1 - Math.pow(1 + i, -n))) / i;
-}
-
 export type Limita = "pie" | "renta" | "deudas";
 
 export interface Capacidad {
@@ -138,19 +112,20 @@ export interface Capacidad {
   /** Hasta cuánto puede comprar, en UF, redondeado hacia abajo a 10 (se muestra «hasta aprox.»): el menor de los dos topes. 0 si las
    *  deudas no dejan cuota. */
   topeUF: number;
-  /** LOS DOS TOPES, por separado (se guardan los dos en el perfil): el de la renta (crédito + pie, o crédito / 80 % sin pie) y el del
-   *  pie según la regla del camino (pie / 20 %; null con menos de UF 300). Redondeados hacia abajo a 10. */
+  /** LOS DOS TOPES, por separado (se guardan los dos en el perfil), con los gastos de la compra: el de la renta ((pie + crédito) ÷
+   *  1,044, o crédito ÷ 80 % sin pie) y el del pie (pie ÷ 24,4 %; null con menos de UF 300). Redondeados hacia abajo a 10: son las
+   *  MISMAS cifras que muestra la fórmula (una sola cifra, un solo redondeo). */
   topeRentaUF: number;
   topePieUF: number | null;
   limita: Limita;
   /** El pie con que se calculó (null: menos de UF 300, solo por la renta). */
   pieUF: number | null;
-  /** El pie que hace falta para el tope (solo sin pie: «Para eso necesitas un pie de UF Y»). */
+  /** El pie que hace falta para el tope, contando los gastos (solo sin pie: «Para eso necesitas un pie de UF Y»). */
   pieNecesarioUF: number | null;
-  /** Por la renta: crédito + pie (o crédito / 80 % sin pie). */
+  /** Por la renta (= topeRentaUF). */
   porRentaUF: number;
   creditoUF: number;
-  /** Por el pie: pie / 20 % (null sin pie). */
+  /** Por el pie (= topePieUF). */
   porPieUF: number | null;
   plazo: number;
   rangoEdad: RangoEdad;
@@ -171,48 +146,38 @@ const abajo10 = (x: number) => Math.max(0, Math.floor(x / 10) * 10);
 
 export function capacidad(n: Numeros, cfg: { tasaPct: number; uf: number }, camino: Camino = CAMINO_DE_HOY): Capacidad {
   const renta = de(CHIPS_RENTA, n.renta)!.valor;
-  const pct = RENTA_COMPUTABLE_PCT[n.tipoRenta];
-  const cargaMax = CARGA_MAX_PCT[n.tipoRenta];
-  const rentaComp = (renta * pct) / 100;
   const deudas = de(CHIPS_DEUDAS, n.deudas)!.valor;
   const { rango, plazo } = edadDeChip(n.edad);
-  const cuotaMax = Math.max(0, Math.min((rentaComp * DIVIDENDO_MAX_PCT) / 100, (rentaComp * cargaMax) / 100 - deudas));
-  const creditoUF = cfg.uf > 0 ? creditoDeCuota(cuotaMax, cfg.tasaPct, plazo) / cfg.uf : 0;
+  const cr = creditoPorRentaRegla({ rentaCLP: renta, tipoRenta: n.tipoRenta, otrasCuotasCLP: deudas, plazoAnios: plazo, tasaPct: cfg.tasaPct, uf: cfg.uf });
   const pieUF = de(CHIPS_PIE, n.pie)!.valor;
+  const t = topesDeCompra({ pieUF, creditoUF: cr.creditoUF, camino });
+  const sinCuota = cr.creditoUF <= 0;
+  const topeRenta = sinCuota ? 0 : abajo10(t.topeRentaUF ?? 0);
+  const topePie = t.topePieUF == null ? null : abajo10(t.topePieUF);
+  const topeUF = sinCuota ? 0 : topePie == null ? topeRenta : Math.min(topeRenta, topePie);
+  const limita: Limita = pieUF != null && t.limita === "pie" ? "pie" : cr.limitanDeudas ? "deudas" : "renta";
   const f = CAMINOS[camino].piePct / 100;
-  let topeExacto: number, limita: Limita, porRenta: number, porPie: number | null, pieNecesario: number | null = null;
-  if (pieUF == null) {
-    porRenta = creditoUF / (1 - f);
-    porPie = null;
-    topeExacto = porRenta;
-    limita = cuotaMax < (rentaComp * DIVIDENDO_MAX_PCT) / 100 ? "deudas" : "renta";
-    pieNecesario = abajo10(topeExacto) * f;
-  } else {
-    porRenta = pieUF + creditoUF;
-    porPie = pieUF / f;
-    topeExacto = Math.min(porPie, porRenta);
-    limita = porPie <= porRenta ? "pie" : cuotaMax < (rentaComp * DIVIDENDO_MAX_PCT) / 100 ? "deudas" : "renta";
-  }
-  const topeUF = creditoUF <= 0 ? 0 : abajo10(topeExacto);
-  const creditoUsadoUF = pieUF == null ? topeUF * (1 - f) : Math.max(0, topeUF - pieUF);
+  // El crédito que usaría al tope: el precio menos lo que pone de pie después de los gastos (sin pie, el 80 % del precio).
+  const gastosUF = (topeUF * CAMINOS[camino].gastosPct) / 100;
+  const creditoUsadoUF = pieUF == null ? topeUF * (1 - f) : Math.max(0, Math.min(cr.creditoUF, topeUF + gastosUF - pieUF));
   const dividendo = cuota(creditoUsadoUF * cfg.uf, cfg.tasaPct, plazo);
   return {
-    camino, topeUF, topeRentaUF: creditoUF <= 0 ? 0 : abajo10(porRenta), topePieUF: porPie == null ? null : abajo10(porPie),
-    limita, pieUF, pieNecesarioUF: pieNecesario == null ? null : Math.round(pieNecesario),
-    porRentaUF: Math.round(porRenta), creditoUF: Math.round(creditoUF), porPieUF: porPie == null ? null : Math.round(porPie),
-    plazo, rangoEdad: rango, tasaPct: cfg.tasaPct, rentaCLP: renta, rentaComputableCLP: Math.round(rentaComp), rentaComputablePct: pct,
-    cargaMaxPct: cargaMax, deudasCLP: deudas, cuotaMaxCLP: Math.round(cuotaMax), dividendoCLP: Math.round(dividendo),
-    cargaPct: rentaComp > 0 ? Math.round(((dividendo + deudas) / rentaComp) * 100) : 0,
+    camino, topeUF, topeRentaUF: topeRenta, topePieUF: topePie,
+    limita, pieUF, pieNecesarioUF: pieUF == null ? Math.round((topeUF * pieMasGastosPct(camino)) / 100) : null,
+    porRentaUF: topeRenta, creditoUF: abajo10(cr.creditoUF), porPieUF: topePie,
+    plazo, rangoEdad: rango, tasaPct: cfg.tasaPct, rentaCLP: renta, rentaComputableCLP: Math.round(cr.rentaComputableCLP), rentaComputablePct: RENTA_COMPUTABLE_PCT[n.tipoRenta],
+    cargaMaxPct: cr.cargaMaxPct, deudasCLP: deudas, cuotaMaxCLP: Math.round(cr.cuotaMaxCLP), dividendoCLP: Math.round(dividendo),
+    cargaPct: cr.rentaComputableCLP > 0 ? Math.round(((dividendo + deudas) / cr.rentaComputableCLP) * 100) : 0,
   };
 }
 
-/** LA PRUEBA DE ESTRÉS del perfil: cuánto sube el dividendo si la tasa sube 1 punto, y cuánto pone con 1 mes vacío al año
- *  (el arriendo de un mes repartido en los 12, sobre lo que ya pone). */
-export function estres(c: Pick<Capacidad, "topeUF" | "pieUF" | "plazo" | "tasaPct">, uf: number, p: { aporteCLP: number; arriendoCLP: number | null }): { subeTasaCLP: number; mesVacioCLP: number | null } {
-  const f = PIE_PCT / 100;
-  const creditoCLP = (c.pieUF == null ? c.topeUF * (1 - f) : Math.max(0, c.topeUF - c.pieUF)) * uf;
-  const sube = cuota(creditoCLP, c.tasaPct + 1, c.plazo) - cuota(creditoCLP, c.tasaPct, c.plazo);
-  return { subeTasaCLP: Math.round(sube), mesVacioCLP: p.arriendoCLP == null ? null : Math.round(p.aporteCLP + p.arriendoCLP / 12) };
+/** LA PRUEBA DE TASA DE UN DEPTO (decisión de Fabrizio, 27-nov-2026: reemplaza a «Si algo se mueve» del perfil): cuánto le cambia el
+ *  flujo si la tasa sube 1 punto, con el crédito del 80 % a su plazo. `flujoCLP` es el de la evaluación (ya cuenta un mes vacío). */
+export function pruebaTasa(p: { precioUF: number; flujoCLP: number; plazo: number; tasaPct: number; uf: number }): { aguanta: boolean; poneCLP: number } {
+  const creditoCLP = p.precioUF * (1 - PIE_PCT / 100) * p.uf;
+  const sube = cuota(creditoCLP, p.tasaPct + 1, p.plazo) - cuota(creditoCLP, p.tasaPct, p.plazo);
+  const queda = p.flujoCLP - sube;
+  return { aguanta: queda >= 0, poneCLP: queda >= 0 ? 0 : Math.round(-queda) };
 }
 
 // ── EL TIPO DE PERFIL ────────────────────────────────────────────────────────

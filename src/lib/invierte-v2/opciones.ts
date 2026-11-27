@@ -9,6 +9,7 @@
 //   · resultado: el suyo le alcanza / el suyo no pero otros sí (caso 1) / no le alcanza ninguno (caso 2), con el porqué
 //     (falta pie, la renta limita el crédito, o las dos, primero la que más pesa).
 // ─────────────────────────────────────────────────────────────────────────────
+import { pieNecesarioUF } from "@/lib/tope/regla";
 import type { Objetivo, Preocupacion, Tope } from "./perfil";
 import { REGLA_TOPE } from "./perfil";
 import { etiquetaVeredicto, signoVeredicto } from "@/lib/veredicto-etiqueta";
@@ -175,16 +176,19 @@ export type Motivo = "pie" | "credito" | "pie_y_credito";
 
 /** Lo que tiene de pie para la cuenta del faltante (con preaprobación y pie completo, el pie justo del monto). */
 export function pieDisponible(t: Tope, pieUF: number | null): number {
-  if ((t.fuente === "preaprobacion" || t.fuente === "aprobada") && t.limita === null && t.creditoUF) return t.creditoUF / (1 - REGLA_TOPE.piePct / 100) * REGLA_TOPE.piePct / 100;
+  if ((t.fuente === "preaprobacion" || t.fuente === "aprobada") && t.limita === null && t.creditoUF) return pieNecesarioUF(t.creditoUF / (1 - REGLA_TOPE.piePct / 100));
   return Math.max(0, pieUF ?? 0);
 }
 
-/** Por qué un depto de precio P no le alcanza: falta pie (Y = 20 % de P − su pie), el crédito no llega (renta o preaprobación),
+/** Por qué un depto de precio P no le alcanza (regla única, 27-nov-2026: con los gastos de la compra): falta pie (Y = 24,4 % de P
+ *  —pie más gastos— − su pie), el crédito no llega (renta o preaprobación),
  *  o las dos; con las dos, primero la que más pesa (la que por sí sola deja un tope más bajo). */
 export function porQueNoAlcanza(precioUF: number, t: Tope, pieUF: number | null): { motivo: Motivo; faltaPieUF: number; creditoUF: number | null } | null {
   const pie = pieDisponible(t, pieUF);
-  const faltaPie = Math.max(0, Math.ceil(precioUF * REGLA_TOPE.piePct / 100 - pie));
-  const faltaCredito = t.creditoUF != null && precioUF - Math.min(pie, precioUF * REGLA_TOPE.piePct / 100) > t.creditoUF + 0.5;
+  const necesario = pieNecesarioUF(precioUF);
+  const faltaPie = Math.max(0, Math.ceil(necesario - pie));
+  // El crédito tiene que cubrir el precio más los gastos menos lo que pone (como mucho, el pie con sus gastos).
+  const faltaCredito = t.creditoUF != null && precioUF * (1 + REGLA_TOPE.gastosPct / 100) - Math.min(pie, necesario) > t.creditoUF + 0.5;
   if (!faltaPie && !faltaCredito) return null;
   if (faltaPie && faltaCredito) return { motivo: "pie_y_credito", faltaPieUF: faltaPie, creditoUF: t.creditoUF };
   return { motivo: faltaPie ? "pie" : "credito", faltaPieUF: faltaPie, creditoUF: t.creditoUF };

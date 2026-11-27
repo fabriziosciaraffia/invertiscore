@@ -178,7 +178,7 @@ export async function aprobar(admin: SupabaseClient, adminEmail: string | null, 
   const perfil = await leerPerfilInv(admin, doc.userId);
   if (perfil) {
     const m = await mercado(admin);
-    const tope = hastaCuanto({ preaprobado: perfil.preaprobado, montoPreaprobadoUF: perfil.montoPreaprobadoUF, pieTiene: perfil.pieTiene, pieUF: perfil.pieUF, rentaCLP: perfil.rentaCLP, otrasCuotasCLP: perfil.otrasCuotasCLP, noDiceRenta: perfil.noDiceRenta, tasaPct: m.tasaPct, uf: m.uf, aprobadaUF: a.montoUF });
+    const tope = hastaCuanto({ preaprobado: perfil.preaprobado, montoPreaprobadoUF: perfil.montoPreaprobadoUF, pieTiene: perfil.pieTiene, pieUF: perfil.pieUF, rentaCLP: perfil.rentaCLP, otrasCuotasCLP: perfil.otrasCuotasCLP, noDiceRenta: perfil.noDiceRenta, tasaPct: m.tasaPct, uf: m.uf, aprobadaUF: a.montoUF, plazoAnios: perfil.plazoAnios, tipoRenta: perfil.tipoRenta });
     const supuestos = { ...(perfil.topeSupuestos ?? {}), ...tope.supuestos, limita: tope.limita, porPieUF: tope.porPieUF, creditoUF: tope.creditoUF, aprobadaUF: a.montoUF, reemplazoPrecioMax: true };
     const p = await admin.from("inv_perfiles").update({ tope_uf: tope.topeUF, tope_fuente: tope.fuente, tope_supuestos: supuestos, updated_at: ahora }).eq("user_id", doc.userId);
     if (p.error) console.error("[inv2] tope aprobado:", p.error.message);

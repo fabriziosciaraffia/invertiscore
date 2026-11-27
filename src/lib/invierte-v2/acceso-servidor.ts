@@ -6,6 +6,9 @@
 //     compartido se lo serviría a otra. Lo fija un predicado del tier INVIERTE-V2.
 //   · El modo y la lista se recuerdan 60 s por proceso (el admin los olvida al cambiarlos). Si no se pueden leer: APAGADO.
 // ─────────────────────────────────────────────────────────────────────────────
+import { headers } from "next/headers";
+import { accesoAsesoriaDe, estadoAsesoria } from "@/lib/asesoria/acceso-servidor";
+import { huellaDeCabeceras } from "@/lib/regalo-alta-servidor";
 import { createServiceClient } from "@/lib/supabase/service";
 import { CLAVE_MODO, TABLA_ACCESO, correoDeLista, leerModo, tieneAcceso, type ModoInvierteV2 } from "./acceso";
 
@@ -35,9 +38,26 @@ export async function estadoInterruptor(): Promise<{ modo: ModoInvierteV2; lista
 }
 
 /** ¿Esta persona (o nadie, sin sesión) ve el flujo nuevo? */
-export async function accesoInvierteV2(user: { email?: string | null } | null | undefined): Promise<boolean> {
+export async function accesoInvierteV2(user: { id?: string | null; email?: string | null } | null | undefined): Promise<boolean> {
   const { modo, lista } = await estadoInterruptor();
-  return tieneAcceso({ modo, email: user?.email ?? null, lista });
+  if (tieneAcceso({ modo, email: user?.email ?? null, lista })) return true;
+  // LA PRUEBA DE LA ASESORÍA (27-nov-2026): mientras Invierte Y la asesoría estén los dos en «lista», el dispositivo o la cuenta de
+  // prueba habilitados en la asesoría entran también a Invierte, para recorrer «Seguir con estos deptos» de punta a punta. No abre
+  // Invierte a nadie más: fuera de «lista», o sin estar en la lista de la asesoría, todo sigue igual.
+  if (modo !== "lista") return false;
+  return accesoPorAsesoria(user?.id ?? null);
+}
+
+async function accesoPorAsesoria(userId: string | null): Promise<boolean> {
+  try {
+    const { modo } = await estadoAsesoria();
+    if (modo !== "lista") return false;
+    const a = await accesoAsesoriaDe({ dispositivoHash: huellaDeCabeceras(headers()).dispositivo, userId });
+    return a.habilitada && a.prueba;
+  } catch {
+    // Sin pedido (headers() fuera de una página o ruta), no hay dispositivo que mirar.
+    return false;
+  }
 }
 
 /** ¿Este correo está en la lista? (la excepción de la copia de la orden en correo-destino.ts). Sin poder leer, no. */

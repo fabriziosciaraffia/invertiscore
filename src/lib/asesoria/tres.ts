@@ -75,3 +75,26 @@ export function elegirTres(cs: readonly Candidato[], p: PerfilTres): Elegido[] {
   else { const otro = porPuntaje.find(libre); if (otro) out.push({ c: otro, porQue: "otro" }); }
   return out;
 }
+
+/** LO QUE RINDE CADA COMUNA (decisión de Fabrizio, 27-nov-2026): la MEDIANA del cap rate de sus Comprar, sin los que pasan de
+ *  CAP_RATE_MAX_PERFIL (un arriendo mal estimado inflaba el promedio: Peñalolén daba 9,0 % de promedio y 7,5 % de mediana) y solo
+ *  comunas con al menos MIN_DEPTOS_COMUNA_RINDE. Y la de todo Santiago, para la fila de referencia («Todo Santiago · 5,9 %»). */
+export const MIN_DEPTOS_COMUNA_RINDE = 15;
+const mediana = (xs: number[]): number => { const s = [...xs].sort((a, b) => a - b); const k = s.length >> 1; return s.length % 2 ? s[k] : (s[k - 1] + s[k]) / 2; };
+
+export function rindePorComuna(cs: readonly Candidato[], uf: number): { rinde: Array<{ comuna: string; cap: number; n: number }>; santiago: number | null } {
+  const porComuna = new Map<string, number[]>();
+  const todos: number[] = [];
+  for (const c of cs) {
+    const cap = capRate(c, uf);
+    if (cap == null || cap > CAP_RATE_MAX_PERFIL) continue;
+    todos.push(cap);
+    const xs = porComuna.get(c.comuna) ?? [];
+    xs.push(cap); porComuna.set(c.comuna, xs);
+  }
+  const r4 = (x: number) => Math.round(x * 10_000) / 10_000;
+  const rinde = Array.from(porComuna.entries()).filter(([, xs]) => xs.length >= MIN_DEPTOS_COMUNA_RINDE)
+    .map(([comuna, xs]) => ({ comuna, cap: r4(mediana(xs)), n: xs.length }))
+    .sort((a, b) => b.cap - a.cap || (a.comuna < b.comuna ? -1 : 1));
+  return { rinde, santiago: todos.length ? r4(mediana(todos)) : null };
+}

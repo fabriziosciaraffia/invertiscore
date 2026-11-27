@@ -4,10 +4,10 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { captureApiError } from "@/lib/observabilidad";
 import { huellaDeRequest } from "@/lib/regalo-alta-servidor";
 import { accesoAsesoriaDe } from "@/lib/asesoria/acceso-servidor";
-import { estres } from "@/lib/asesoria/capacidad";
 import { calcularPerfil, filaPerfil, validarPedidoPerfil } from "@/lib/asesoria/perfil";
 import { capRate, elegirTres } from "@/lib/asesoria/tres";
-import { cercaDe, cercaDelMetro } from "@/lib/asesoria/lugar";
+import { cercaDelMetro } from "@/lib/asesoria/lugar";
+import { tarjetasDelPerfil } from "@/lib/asesoria/tarjetas";
 import { universoAsesoria } from "@/lib/asesoria/servidor";
 import { conveniencia, palanca } from "@/lib/asesoria/palanca";
 import { leerConfigGuia } from "@/lib/guia/guia-servidor";
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     const cfg = await leerConfigGuia(admin);
     const calc = calcularPerfil(p, { tasaPct: cfg.tasa, uf: cfg.uf });
     const plazo = calc.cap.plazo as PlazoMascara;
-    const enLugar = p.donde.modo === "metro" ? cercaDelMetro : p.donde.modo === "pega" && p.donde.pega ? cercaDe(p.donde.pega) : undefined;
+    const enLugar = p.donde.modo === "metro" ? cercaDelMetro : undefined;
     const universo = await universoAsesoria();
     const perfilTres = { plazo, aporte: p.aporte, topeUF: calc.cap.topeUF, comunas: p.donde.modo === "comunas" || p.donde.modo === "rinde" ? p.donde.comunas : [], enLugar, uf: cfg.uf };
     const tres = calc.cap.topeUF > 0 ? elegirTres(universo, perfilTres) : [];
@@ -43,13 +43,11 @@ export async function POST(request: Request) {
     const fila = filaPerfil(user.id, p, calc, { esPrueba: acceso.prueba, existe: !!previo, elegidos: tres.map((e) => e.c.id) });
     const { error } = await admin.from("inv_perfiles").upsert(fila, { onConflict: "user_id" });
     if (error) throw new Error(`inv_perfiles: ${error.message}`);
-    const arriendos = tres.map((e) => e.c.arriendo).filter((x): x is number => x != null).sort((a, b) => a - b);
-    const arriendoMedio = arriendos.length ? arriendos[Math.floor(arriendos.length / 2)] : null;
     return NextResponse.json({
       tipo: calc.tipo,
       capacidad: calc.cap,
-      estres: estres(calc.cap, cfg.uf, { aporteCLP: p.aporte, arriendoCLP: arriendoMedio }),
-      tres: tres.map((e) => ({ id: e.c.id, porQue: e.porQue, comuna: e.c.comuna, dormitorios: e.c.dormitorios, precioUF: e.c.precioUF, flujo: e.c.flujo[plazo], cap: capRate(e.c, cfg.uf), lat: e.c.lat, lng: e.c.lng })),
+      // Los 3 elegidos como antes, mostrados por lo que dejan al mes, con sus etiquetas verdaderas y su prueba de tasa (tarjetas.ts).
+      tres: tarjetasDelPerfil(tres.map((e) => ({ id: e.c.id, comuna: e.c.comuna, dormitorios: e.c.dormitorios, precioUF: e.c.precioUF, flujo: e.c.flujo[plazo], cap: capRate(e.c, cfg.uf), lat: e.c.lat, lng: e.c.lng })), { plazo, tasaPct: cfg.tasa, uf: cfg.uf }),
       plazo,
       conveniencia: conv,
       palanca: laPalanca,

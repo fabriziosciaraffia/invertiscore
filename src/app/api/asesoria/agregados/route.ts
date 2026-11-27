@@ -21,7 +21,7 @@ export async function GET(request: Request) {
     const cfg = await leerConfigGuia(createServiceClient());
     // La tasa y la UF son las de la fórmula: llegan aunque el universo falle (entonces sin la tarjeta del cap rate ni las barras).
     const a = await agregadosAsesoria(cfg.uf).catch((e) => { captureApiError(e, { ruta: "GET /api/asesoria/agregados", operacion: "universo", userId: user?.id ?? null }); return null; });
-    return NextResponse.json({ rinde: a?.rinde ?? [], dist: a?.dist ?? null, total: a?.total ?? null, tasa: cfg.tasa, uf: cfg.uf }, { headers: { "Cache-Control": "private, max-age=300" } });
+    return NextResponse.json({ rinde: a?.rinde ?? [], santiago: a?.santiago ?? null, dist: a?.dist ?? null, total: a?.total ?? null, tasa: cfg.tasa, uf: cfg.uf }, { headers: { "Cache-Control": "private, max-age=300" } });
   } catch (e) {
     captureApiError(e, { ruta: "GET /api/asesoria/agregados", operacion: "agregados", userId: user?.id ?? null });
     return NextResponse.json({ error: "interno" }, { status: 500 });

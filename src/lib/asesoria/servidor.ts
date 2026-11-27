@@ -9,7 +9,7 @@ import { createHash } from "crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServiceClient } from "@/lib/supabase/service";
 import { candidatoDeFila, distribucion, type Candidato, type FilaCandidato, type PlazoMascara } from "./aporte";
-import { capRate } from "./tres";
+import { rindePorComuna } from "./tres";
 import { COMUNAS_DISPONIBLES } from "@/lib/comunas-disponibles";
 import { comunaDeAviso } from "@/lib/guia/semanal-candidatos";
 import { VENTANA_SEMANAL_DIAS } from "@/lib/guia/semanal";
@@ -36,18 +36,11 @@ export async function universoAsesoria(): Promise<Candidato[]> {
 }
 
 /** Los agregados del anónimo: el cap rate medio de los Comprar por comuna (con al menos 20) y la distribución del slider. */
-export async function agregadosAsesoria(uf: number): Promise<{ rinde: Array<{ comuna: string; cap: number; n: number }>; dist: Record<PlazoMascara, number[]>; total: number }> {
+export async function agregadosAsesoria(uf: number): Promise<{ rinde: Array<{ comuna: string; cap: number; n: number }>; santiago: number | null; dist: Record<PlazoMascara, number[]>; total: number }> {
   const u = await universoAsesoria();
-  const m = new Map<string, { s: number; k: number }>();
-  for (const c of u) {
-    const cap = capRate(c, uf);
-    if (cap == null) continue;
-    const a = m.get(c.comuna) ?? { s: 0, k: 0 };
-    a.s += cap; a.k += 1; m.set(c.comuna, a);
-  }
-  const rinde = Array.from(m.entries()).filter(([, a]) => a.k >= 20).map(([comuna, a]) => ({ comuna, cap: Math.round((a.s / a.k) * 10_000) / 10_000, n: a.k }))
-    .sort((a, b) => b.cap - a.cap);
-  return { rinde, dist: distribucion(u), total: u.length };
+  // La mediana por comuna, sin los cap rate fuera de rango y con mínimo de deptos (tres.ts › rindePorComuna).
+  const { rinde, santiago } = rindePorComuna(u, uf);
+  return { rinde, santiago, dist: distribucion(u), total: u.length };
 }
 
 const hash = (v: string) => createHash("sha256").update(v).digest("hex");

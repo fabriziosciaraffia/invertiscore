@@ -10,6 +10,7 @@
 // Es UN solo perfil: al confirmar, las comunas y el tope se escriben también en perfil_busqueda (el de la selección semanal).
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { CAMINOS, CARGA_MAX_PCT, DIVIDENDO_MAX_PCT, PLAZO_MAX, VERSION_REGLA, creditoPorRentaRegla, pieNecesarioUF, topesDeCompra, type TipoRenta } from "@/lib/tope/regla";
 export const OBJETIVOS = ["arriendo", "plusvalia", "ambas"] as const;
 export type Objetivo = (typeof OBJETIVOS)[number];
 export const PREOCUPACIONES = ["no_arriende", "poner_plata", "elegir_mal", "tramite"] as const;
@@ -62,7 +63,8 @@ export const PERFIL_COPY = {
     pieParte: "¿Cuánto tienes de pie?",
     pie: "Pie disponible",
     /** Debajo del pie, solo si en el contacto dijo que lo tiene (20-nov-2026); nunca llena el campo. */
-    pieAyuda: (x: string) => `Para el depto que elegiste necesitas UF ${x} (20 %).`,
+    // Con los gastos de la compra (27-nov-2026): el pie del 20 % más el 4,4 % de gastos.
+    pieAyuda: (x: string) => `Para el depto que elegiste necesitas UF ${x} (20 % de pie más gastos).`,
     pieNoSe: "Todavía no sé",
     renta: "Renta líquida al mes",
     rentaAclara: "La usamos solo para estimar qué deptos te alcanzan. No se comparte con nadie.",
@@ -87,13 +89,18 @@ export const PERFIL_COPY = {
   },
 } as const;
 
-// ── LA REGLA DE HASTA CUÁNTO (versión 1) ─────────────────────────────────────
+// ── LA REGLA DE HASTA CUÁNTO (versión 2, 27-nov-2026) ──────────────────────────
+// UNA SOLA CUENTA con la asesoría en el mapa (decisión de Fabrizio): la de src/lib/tope/regla.ts. Lo nuevo de la versión 2: los gastos
+// de la compra (4,4 % en un usado) entran en los dos topes —por pie, pie ÷ 24,4 %; por renta, (pie + crédito) ÷ 1,044—, y el plazo y
+// la forma de recibir la renta salen del perfil de la asesoría cuando lo hay (plazo por edad; boletas al 70 % y carga 35 %). Sin
+// ellos, 30 años y contrato, como antes.
 export const REGLA_TOPE = {
-  version: 1,
-  piePct: 20,              // el pie mínimo: el banco financia el 80 %
-  dividendoMaxPct: 25,     // el dividendo no pasa del 25 % de la renta líquida
-  cargaMaxPct: 40,         // dividendo + otras cuotas no pasan del 40 %
-  plazoAnios: 30,
+  version: VERSION_REGLA,
+  piePct: CAMINOS.usado.piePct,          // el pie mínimo: el banco financia el 80 %
+  gastosPct: CAMINOS.usado.gastosPct,    // los gastos de la compra (trámites del crédito y comisión de Franco)
+  dividendoMaxPct: DIVIDENDO_MAX_PCT,    // el dividendo no pasa del 25 % de la renta computable
+  cargaMaxPct: CARGA_MAX_PCT.contrato,   // dividendo + otras cuotas no pasan del 40 % (35 % con boletas)
+  plazoAnios: PLAZO_MAX,                 // sin la edad, 30 años
 } as const;
 
 export type FuenteTope = "renta" | "solo_pie" | "preaprobacion" | "aprobada";
@@ -116,62 +123,62 @@ export interface EntradaTope {
   uf: number;
   /** Monto de la preaprobación APROBADA por Franco: reemplaza la estimación. */
   aprobadaUF?: number | null;
+  /** Del perfil de la asesoría (27-nov-2026): el plazo que la edad permite y cómo recibe la renta. Sin ellos, 30 años y contrato. */
+  plazoAnios?: number | null;
+  tipoRenta?: TipoRenta | null;
 }
 
 export interface Tope {
   topeUF: number;
   fuente: FuenteTope;
   limita: Limita;
-  /** Hasta cuánto alcanza el pie solo (pie / 20 %). */
+  /** Hasta cuánto alcanza el pie solo, contando los gastos (pie ÷ 24,4 %). */
   porPieUF: number;
   /** El crédito: el que alcanza la renta, o el preaprobado. Null sin renta. */
   creditoUF: number | null;
   menosPreciso: boolean;
-  supuestos: { version: number; piePct: number; dividendoMaxPct: number; cargaMaxPct: number; plazoAnios: number; tasaPct: number; uf: number; /** «Todavía no sé» mi pie (20-nov-2026). */ pieNoSabe?: boolean };
+  supuestos: { version: number; piePct: number; gastosPct: number; dividendoMaxPct: number; cargaMaxPct: number; plazoAnios: number; tasaPct: number; uf: number; tipoRenta?: TipoRenta; /** «Todavía no sé» mi pie (20-nov-2026). */ pieNoSabe?: boolean };
 }
 
 const r2 = (x: number) => Math.round(x * 100) / 100;
 
-/** El crédito que cabe en la renta: dividendo ≤ 25 % de la renta líquida y dividendo + otras cuotas ≤ 40 %, a 30 años con la
- *  tasa del motor y sin seguros (la misma fórmula que calcDividendo, invertida). En UF. */
-export function creditoPorRenta(rentaCLP: number, otrasCuotasCLP: number, tasaPct: number, uf: number): number {
-  const cuota = Math.max(0, Math.min(rentaCLP * REGLA_TOPE.dividendoMaxPct / 100, rentaCLP * REGLA_TOPE.cargaMaxPct / 100 - Math.max(0, otrasCuotasCLP)));
-  if (cuota <= 0 || uf <= 0) return 0;
-  const i = tasaPct / 100 / 12;
-  const n = REGLA_TOPE.plazoAnios * 12;
-  const creditoCLP = i === 0 ? cuota * n : (cuota * (1 - Math.pow(1 + i, -n))) / i;
-  return creditoCLP / uf;
+/** El crédito que cabe en la renta (la regla única: dividendo ≤ 25 % de la renta computable y dividendo + otras cuotas ≤ la carga
+ *  máxima, al plazo dado —30 años si no se sabe la edad— con la tasa del motor y sin seguros). En UF. */
+export function creditoPorRenta(rentaCLP: number, otrasCuotasCLP: number, tasaPct: number, uf: number, o: { plazoAnios?: number | null; tipoRenta?: TipoRenta | null } = {}): number {
+  return creditoPorRentaRegla({ rentaCLP, otrasCuotasCLP, tasaPct, uf, plazoAnios: o.plazoAnios ?? PLAZO_MAX, tipoRenta: o.tipoRenta ?? "contrato" }).creditoUF;
 }
 
 export function hastaCuanto(e: EntradaTope): Tope {
-  const supuestos = { version: REGLA_TOPE.version, piePct: REGLA_TOPE.piePct, dividendoMaxPct: REGLA_TOPE.dividendoMaxPct, cargaMaxPct: REGLA_TOPE.cargaMaxPct, plazoAnios: REGLA_TOPE.plazoAnios, tasaPct: e.tasaPct, uf: e.uf };
+  const plazo = e.plazoAnios ?? PLAZO_MAX;
+  const tipo = e.tipoRenta ?? "contrato";
+  const supuestos = { version: REGLA_TOPE.version, piePct: REGLA_TOPE.piePct, gastosPct: REGLA_TOPE.gastosPct, dividendoMaxPct: REGLA_TOPE.dividendoMaxPct, cargaMaxPct: CARGA_MAX_PCT[tipo], plazoAnios: plazo, tasaPct: e.tasaPct, uf: e.uf, ...(e.tipoRenta ? { tipoRenta: tipo } : {}) };
   const fraccionPie = REGLA_TOPE.piePct / 100;
   const pie = Math.max(0, e.pieUF ?? 0);
-  const porPie = pie / fraccionPie;
   const monto = e.aprobadaUF ?? (e.preaprobado === "tengo" ? e.montoPreaprobadoUF ?? null : null);
   if (monto != null && monto > 0) {
     const fuente: FuenteTope = e.aprobadaUF ? "aprobada" : "preaprobacion";
-    // El banco financia el 80 %: con el pie completo, monto / 0,8; con una parte, el menor entre monto + pie y pie / 20 %.
+    // El banco financia el 80 %: con el pie completo (pie y gastos cubiertos), monto ÷ 0,8; con una parte, la regla única con el
+    // monto del banco como crédito (el menor entre pie ÷ 24,4 % y (pie + monto) ÷ 1,044).
     if (e.pieTiene === "si") return { topeUF: r2(monto / (1 - fraccionPie)), fuente, limita: null, porPieUF: r2(monto / (1 - fraccionPie)), creditoUF: r2(monto), menosPreciso: false, supuestos };
     // Sin la pregunta «¿tienes ese pie?» (quien entró por la renta y después le aprobaron la preaprobación, entrega 3) cuenta el
     // pie que declaró; con «Todavía no», cero.
     const pieReal = e.pieTiene === "parte" || (e.pieTiene == null && e.pieUF != null) ? pie : 0;
-    const porPieReal = pieReal / fraccionPie;
-    const porCredito = monto + pieReal;
-    return { topeUF: r2(Math.min(porPieReal, porCredito)), fuente, limita: porPieReal <= porCredito ? "pie" : "credito", porPieUF: r2(porPieReal), creditoUF: r2(monto), menosPreciso: false, supuestos };
+    const t = topesDeCompra({ pieUF: pieReal, creditoUF: monto });
+    return { topeUF: r2(t.topeUF), fuente, limita: t.limita === "pie" ? "pie" : "credito", porPieUF: r2(t.topePieUF ?? 0), creditoUF: r2(monto), menosPreciso: false, supuestos };
   }
   // «Todavía no sé» mi pie (decisión de Fabrizio, 20-nov-2026): solo por la renta, con un pie de 20 % (el crédito es el 80 %).
   if (e.pieNoSabe && !e.noDiceRenta && e.rentaCLP && e.rentaCLP > 0) {
-    const credito = creditoPorRenta(e.rentaCLP, e.otrasCuotasCLP ?? 0, e.tasaPct, e.uf);
-    const tope = credito / (1 - fraccionPie);
-    return { topeUF: r2(tope), fuente: "renta", limita: "credito", porPieUF: r2(tope), creditoUF: r2(credito), menosPreciso: true, supuestos: { ...supuestos, pieNoSabe: true } };
+    const credito = creditoPorRenta(e.rentaCLP, e.otrasCuotasCLP ?? 0, e.tasaPct, e.uf, { plazoAnios: plazo, tipoRenta: tipo });
+    const t = topesDeCompra({ pieUF: null, creditoUF: credito });
+    return { topeUF: r2(t.topeUF), fuente: "renta", limita: "credito", porPieUF: r2(t.topeUF), creditoUF: r2(credito), menosPreciso: true, supuestos: { ...supuestos, pieNoSabe: true } };
   }
   if (e.noDiceRenta || !e.rentaCLP || e.rentaCLP <= 0) {
-    return { topeUF: r2(porPie), fuente: "solo_pie", limita: "pie", porPieUF: r2(porPie), creditoUF: null, menosPreciso: true, supuestos };
+    const t = topesDeCompra({ pieUF: pie, creditoUF: null });
+    return { topeUF: r2(t.topeUF), fuente: "solo_pie", limita: "pie", porPieUF: r2(t.topePieUF ?? 0), creditoUF: null, menosPreciso: true, supuestos };
   }
-  const credito = creditoPorRenta(e.rentaCLP, e.otrasCuotasCLP ?? 0, e.tasaPct, e.uf);
-  const porCredito = pie + credito;
-  return { topeUF: r2(Math.min(porPie, porCredito)), fuente: "renta", limita: porPie <= porCredito ? "pie" : "credito", porPieUF: r2(porPie), creditoUF: r2(credito), menosPreciso: false, supuestos };
+  const credito = creditoPorRenta(e.rentaCLP, e.otrasCuotasCLP ?? 0, e.tasaPct, e.uf, { plazoAnios: plazo, tipoRenta: tipo });
+  const t = topesDeCompra({ pieUF: pie, creditoUF: credito });
+  return { topeUF: r2(t.topeUF), fuente: "renta", limita: t.limita === "pie" ? "pie" : "credito", porPieUF: r2(t.topePieUF ?? 0), creditoUF: r2(credito), menosPreciso: false, supuestos };
 }
 
 /** La segunda línea bajo el resultado (nunca el titular). Según qué limita (decisión de Fabrizio, 20-nov-2026): sin el pie, por la
@@ -179,7 +186,7 @@ export function hastaCuanto(e: EntradaTope): Tope {
 export function lineaTope(t: Pick<Tope, "topeUF" | "fuente"> & { limita?: Tope["limita"]; creditoUF?: number | null; pieUF?: number | null; pieNoSabe?: boolean }, fmtUF: (n: number) => string): string {
   if (t.fuente === "preaprobacion" || t.fuente === "aprobada") return `Según tu preaprobación, puedes comprar hasta UF ${fmtUF(t.topeUF)}. Sujeto a evaluación del banco.`;
   if (t.fuente === "solo_pie") return `Con tu pie, estimamos que puedes comprar hasta UF ${fmtUF(t.topeUF)}. Sin tu renta es menos preciso. Sujeto a evaluación del banco.`;
-  if (t.pieNoSabe && t.creditoUF != null) return `Por tu renta, el banco podría prestarte hasta UF ${fmtUF(t.creditoUF)}. Con un pie de 20 % podrías comprar hasta UF ${fmtUF(t.topeUF)}. Dinos tu pie para afinarlo.`;
+  if (t.pieNoSabe && t.creditoUF != null) return `Por tu renta, el banco podría prestarte hasta UF ${fmtUF(t.creditoUF)}. Con un pie de 20 % más gastos podrías comprar hasta UF ${fmtUF(t.topeUF)}. Dinos tu pie para afinarlo.`;
   if (t.limita === "pie" && t.pieUF != null && t.creditoUF != null) return `Con tu pie de UF ${fmtUF(t.pieUF)} puedes comprar hasta UF ${fmtUF(t.topeUF)}. Por tu renta, el banco podría prestarte hasta UF ${fmtUF(t.creditoUF)}: con más pie te alcanzan deptos más grandes.`;
   return `Con tu pie y tu renta, estimamos que puedes comprar hasta UF ${fmtUF(t.topeUF)}. Sujeto a evaluación del banco.`;
 }
@@ -200,7 +207,7 @@ export function comunasPrecargadas(comunaEntrada: string | null, delPerfil: read
  *  UF X (20 %)». NUNCA llena el campo: en el perfil solo se llena lo que la persona dijo antes, y nada financiero se deduce del
  *  depto (decisión de Fabrizio: el pie deducido del depto hacía que el tope fuera su precio, y el cálculo daba vueltas en círculo). */
 export function ayudaPie(respuestaContacto: string | null, precioEntradaUF: number | null): number | null {
-  return respuestaContacto === "si" && precioEntradaUF ? Math.round(precioEntradaUF * REGLA_TOPE.piePct / 100) : null;
+  return respuestaContacto === "si" && precioEntradaUF ? Math.round(pieNecesarioUF(precioEntradaUF)) : null;
 }
 
 // ── LA VALIDACIÓN (la ruta vuelve a exigir todo) ─────────────────────────────

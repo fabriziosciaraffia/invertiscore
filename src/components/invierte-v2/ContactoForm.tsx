@@ -42,7 +42,8 @@ export function ContactoForm({ depto, origen, analysisId, inicial, sinSesion, al
   depto: DeptoFlujo;
   origen: OrigenInvierte;
   analysisId: string | null;
-  inicial: { urgencia: UrgenciaInvierte | null; pie: PieInvierte | null; whatsapp: string } | null;
+  /** `pieConocido` (27-nov-2026): el pie ya lo dijo en la asesoría y le alcanza este depto; la pregunta no se repite. */
+  inicial: { urgencia: UrgenciaInvierte | null; pie: PieInvierte | null; whatsapp: string; pieConocido?: boolean } | null;
   sinSesion: boolean;
   /** En la hoja: la ✕ de la fila de arriba, que solo se ve en el PC (en el celular cierra la flecha de la cabecera). */
   alCerrar?: () => void;
@@ -110,14 +111,14 @@ export function ContactoForm({ depto, origen, analysisId, inicial, sinSesion, al
           ))}
         </div>
       </fieldset>
-      <fieldset className="inv-pregunta">
+      {!inicial?.pieConocido && <fieldset className="inv-pregunta">
         <legend>{H.pie(pieUF)} <span className="inv-aclara">{H.pieAclaracion}</span></legend>
         <div className="inv-opciones">
           {PIES.map((p) => (
             <button key={p} type="button" className="inv-opcion" aria-pressed={pie === p} onClick={() => { setPie(p); setError(null); }} data-inv2={`pie-${p}`}>{H.pies[p]}</button>
           ))}
         </div>
-      </fieldset>
+      </fieldset>}
       <div className="inv-pregunta">
         <label htmlFor="iv2-wsp" className="inv-legend">{H.whatsapp}</label>
         <input id="iv2-wsp" type="tel" inputMode="tel" autoComplete="tel" className="inv-campo" placeholder={H.whatsappPlaceholder} value={whatsapp} onChange={(e) => { setWhatsapp(e.target.value); setError(null); }} data-inv2="whatsapp" />
