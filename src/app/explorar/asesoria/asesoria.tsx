@@ -43,7 +43,7 @@ interface Resultado {
   tipo: TipoPerfil;
   capacidad: Capacidad;
   estres: { subeTasaCLP: number; mesVacioCLP: number | null };
-  tres: Array<{ id: string; porQue: "rinde" | "pide_menos" | "distinto"; comuna: string; dormitorios: number; precioUF: number; flujo: number | null; cap: number | null }>;
+  tres: Array<{ id: string; porQue: "rinde" | "pide_menos" | "distinto" | "otro"; comuna: string; dormitorios: number; precioUF: number; flujo: number | null; cap: number | null }>;
   plazo: number;
   conveniencia: { x: number; y: number } | null;
   palanca: { tipo: "aporte"; aporte: number; n: number } | { tipo: "pie"; pieUF: number; n: number } | null;
@@ -252,7 +252,7 @@ export function Asesoria(p: {
       {e.paso !== "perfil" && cuenta}
       <section className="as-raiz as-hoja ph-no-capture" data-asesoria="hoja" data-paso={e.paso} aria-label={C.franco}>
         <div className="as-cab">
-          <div className="as-quien"><span className="as-avatar" data-chico="1" aria-hidden="true">F</span><div className="as-quien-n"><b>{C.franco}</b><span>{C.asistente}</span></div></div>
+          <div className="as-quien"><span className="as-avatar" data-chico="1" aria-hidden="true">F</span><p className="as-quien-n" data-asesoria="encabezado"><b>{C.franco}</b> · {C.encabezado}</p></div>
           <button type="button" className="as-x" style={{ margin: 0 }} aria-label={C.cerrar} onClick={cerrar} data-asesoria="cerrar"><X size={18} /></button>
         </div>
         <ol className="as-barra" aria-label="Avance" data-asesoria="barra">

@@ -12,8 +12,9 @@ const pct1 = (x: number): string => (Math.round(x * 10) / 10).toLocaleString("es
 
 export const ASESORIA_COPY = {
   franco: "Franco",
-  // La lámina dice «Asistente con IA»; la entrega 1 es solo con chips y ninguna superficie promete IA (tier COPY-SIN-IA).
-  asistente: "Asesoría de inversión",
+  // El encabezado del panel (27-nov-2026, Fabrizio): «Franco · tu perfil de inversión». Ni «con IA» (la entrega 1 es con chips) ni
+  // «asesoría de inversión» (término en revisión del abogado): ninguno de los dos aparece en un texto visible.
+  encabezado: "tu perfil de inversión",
   cerrar: "Cerrar",
   retomar: "Retomar",
   segmentos: ["Qué buscas", "Hasta dónde llegas", "Dónde"] as const,
@@ -53,8 +54,8 @@ export const ASESORIA_COPY = {
   // P2 · el objetivo
   reaccionObjetivo: {
     arriendo: "Entonces manda el arriendo: cuánto rinde cada UF que pones. Eso se llama cap rate.",
-    plusvalia: "Entonces manda dónde está: que la zona se valorice. Igual cuido que no te pida mucho al mes.",
-    ambas: "Las dos: que el arriendo cubra lo más posible y que esté en una zona que se valoriza. Partimos por lo que se puede medir: cuánto rinde cada UF.",
+    plusvalia: "Entonces lo que más pesa es la zona. Igual cuido que no te pida mucho al mes.",
+    ambas: "Se pueden buscar las dos cosas. Partimos por lo que se puede medir: cuánto rinde cada UF.",
     no_se: "Partimos por lo que se puede medir: cuánto rinde cada UF que pones. Eso se llama cap rate.",
   } satisfies Record<ObjetivoAsesoria, string>,
   capRate: { nombre: "Cap rate", arriendo: "arriendo del año", precio: "precio", bajada: "Lo que rinden hoy los que convienen" },
@@ -165,7 +166,7 @@ export const ASESORIA_COPY = {
       estimacion: "Estimación, sujeta a evaluación del banco.",
     },
     tresTitulo: "Tus 3 deptos",
-    porQue: { rinde: "El que mejor rinde", pide_menos: "El que pide menos al mes", distinto: "Uno distinto" },
+    porQue: { rinde: "El que mejor rinde", pide_menos: "El que pide menos al mes", distinto: "Uno distinto", otro: "Otro que te calza" },
     menos: (n: number) => `Con todo lo que me dijiste, encontré ${n}.`,
     ninguno: "Con todo lo que me dijiste, hoy no encontré ninguno.",
     sinPalanca: "Si abres las zonas, aparecen más.",

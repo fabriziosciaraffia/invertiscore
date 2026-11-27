@@ -34,9 +34,8 @@
 }
 .as-cab { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px 10px 16px; border-bottom: 1px solid var(--franco-border); }
 .as-quien { display: flex; align-items: center; gap: 10px; }
-.as-quien-n { display: flex; flex-direction: column; gap: 1px; }
-.as-quien-n b { font-size: 15px; }
-.as-quien-n span { font-size: 11px; color: var(--franco-text-muted); }
+.as-quien-n { margin: 0; font-size: 14px; color: var(--franco-text-secondary, #3A3A3F); }
+.as-quien-n b { font-size: 15px; color: var(--franco-text); }
 
 /* la barra de avance */
 .as-barra { display: flex; gap: 8px; padding: 10px 16px 2px; margin: 0; list-style: none; }

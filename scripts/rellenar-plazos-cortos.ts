@@ -43,11 +43,15 @@ async function main() {
       if (e.veredicto_20_15 === "COMPRAR") comprar15++;
       lote.push({ aviso_id: f.id, evaluado_at: f.evaluado_at, ...e });
     }
+    // evaluado_at viaja como el TEXTO que devolvió la base (nunca por un Date: el update lo compara exacto).
+    const antes = escritas;
     for (let i = 0; !SECO && i < lote.length; i += LOTE) {
       const { data: n, error: e2 } = await sb.rpc("rellenar_plazos_cortos", { filas: lote.slice(i, i + LOTE) });
       if (e2) throw new Error(`rellenar_plazos_cortos: ${e2.message}`);
       escritas += Number(n) || 0;
     }
+    // EL FRENO: si una página escribe menos del 90 % de lo leído (el cron reevalúa pocas filas a la vez), algo no calza: se para.
+    if (!SECO && escritas - antes < filas.length * 0.9) throw new Error(`freno: la página escribió ${escritas - antes} de ${filas.length} (desde ${desde})`);
     if (SECO) escritas += lote.length;
     console.log(`${SECO ? "[seco] " : ""}leídas ${leidas} · escritas ${escritas} · Comprar a 20 ${comprar20} · a 15 ${comprar15} · sin evaluar ${sinEvaluar} · ${Math.round((Date.now() - t0) / 1000)} s`);
     if (filas.length < PAGINA) break;

@@ -156,9 +156,15 @@ export async function runAsesoria(): Promise<{ hard: number }> {
       // Fuera del tope, del aporte o del plazo, no.
       const fuera = elegirTres([cand("caro", { precioUF: 4000 }), cand("pide", { f: { 25: -200_000 } }), cand("no25", { c: { 25: false } })], { ...P, plazo: 25 });
       if (fuera.length) F("4 · eligió uno fuera del tope, del aporte o que no es Comprar a su plazo");
-      // El distinto necesita otra comuna u otra tipología.
-      const t3 = elegirTres([cand("p", { arriendo: 900_000 }), cand("q", { f: { 30: 40_000 }, lat: -33.3 }), cand("r", { lat: -33.2, score: 99 })], P);
-      if (t3.length !== 2) F("4 · el tercero no es distinto (misma comuna y tipología) y salió igual");
+      // La variedad es preferencia (27-nov-2026): sin uno distinto, el tercero es el de mejor puntaje («otro»), nunca «encontré 2».
+      const t3 = elegirTres([cand("p", { arriendo: 900_000 }), cand("q", { f: { 30: 40_000 }, lat: -33.3 }), cand("s", { lat: -33.1, score: 50 }), cand("r", { lat: -33.2, score: 99 })], P);
+      if (t3.length !== 3 || t3[2].porQue !== "otro" || t3[2].c.id !== "r") F(`4 · sin uno distinto, el tercero no es el de mejor puntaje (${t3.map((e) => e.porQue + ":" + e.c.id).join()})`);
+      // Con uno distinto disponible, gana el distinto aunque otro tenga más puntaje.
+      const t4 = elegirTres([cand("p", { arriendo: 900_000 }), cand("q", { f: { 30: 40_000 }, lat: -33.3 }), cand("r", { lat: -33.2, score: 99 }), cand("o", { comuna: "Santiago", lat: -33.1, score: 10 })], P);
+      if (t4[2]?.porQue !== "distinto" || t4[2].c.id !== "o") F("4 · con uno distinto disponible, el tercero no es el distinto");
+      // Dos que existen pero son del mismo edificio que los elegidos: no hay tercero, y eso sí es «encontré 2».
+      const t5 = elegirTres([cand("p", { arriendo: 900_000 }), cand("q", { f: { 30: 40_000 }, lat: -33.3 }), cand("p2", { lat: -33.45 + 0.0001 })], P);
+      if (t5.length !== 2) F("4 · el tercero salió del mismo edificio que uno elegido");
     }
 
     // ── 5 · EL INTERRUPTOR ──
@@ -222,6 +228,9 @@ export async function runAsesoria(): Promise<{ hard: number }> {
       const voseo = todo.match(/\b(tenés|querés|podés|sabés|mirá|tocá|elegí|escribí|comprá|revisá|seguí|contá|decí|ponés|sos)\b/i);
       if (voseo) F(`8 · voseo en los textos: «${voseo[0]}»`);
       if (/no soy corredor|anti-?corredor/i.test(todo)) F("8 · copy anti-corredor");
+      if (/asesor[ií]a de inversi[oó]n|con IA/i.test(todo)) F("8 · un texto visible dice «asesoría de inversión» o «con IA»");
+      if (ASESORIA_COPY.reaccionObjetivo.plusvalia !== "Entonces lo que más pesa es la zona. Igual cuido que no te pida mucho al mes." || ASESORIA_COPY.reaccionObjetivo.ambas !== "Se pueden buscar las dos cosas. Partimos por lo que se puede medir: cuánto rinde cada UF.") F("8 · los textos de «Que gane valor» o «Las dos» no son los aprobados");
+      if (!/<p className="as-quien-n" data-asesoria="encabezado"><b>\{C\.franco\}<\/b> · \{C\.encabezado\}<\/p>/.test(codigo("src/app/explorar/asesoria/asesoria.tsx")) || ASESORIA_COPY.encabezado !== "tu perfil de inversión") F("8 · el encabezado no dice «Franco · tu perfil de inversión»");
     }
 
     // ── 9 · /deptos ──
@@ -300,3 +309,6 @@ if (require.main === module) void runAsesoria().then((r) => { process.exitCode =
 // recalcular el tope; la palanca que menos mueve; una palanca que no suma; la palanca con 3 o más; el plazo corto dicho a 30 años; el
 // texto del plazo corto cambiado; «encontré N» que repite la palanca. (La primera versión limitaba el pie a «cuando limita el pie»:
 // la mutación que la quitaba salió VERDE y mostró que era falso —con la renta limitando, el tope es pie + crédito y más pie suma—.)
+// 27-nov-2026 (tercera ronda), 6 mutaciones más, las 6 en ROJO: sin el tercero por puntaje; el tercero por puntaje antes que el
+// distinto; el tercero sin mirar el edificio; el texto viejo de «Que gane valor»; el encabezado con «asesoría de inversión»; el
+// encabezado sin «Franco».

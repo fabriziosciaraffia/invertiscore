@@ -3,7 +3,9 @@
 // —los Comprar a SU plazo que le alcanzan (precio ≤ tope), que piden como mucho su aporte y que están en sus zonas— salen:
 //   1 · EL QUE MEJOR RINDE: el de mayor cap rate (arriendo × 12 ÷ precio en pesos). Empate: mayor puntaje, después id.
 //   2 · EL QUE PIDE MENOS AL MES: el de mayor flujo a su plazo. Empate: mayor puntaje, después id.
-//   3 · EL DISTINTO: el de mayor puntaje con una comuna o una tipología que no tenga ninguno de los otros dos.
+//   3 · EL DISTINTO: el de mayor puntaje con una comuna o una tipología que no tenga ninguno de los otros dos. La variedad es una
+//       PREFERENCIA, no un requisito (Fabrizio, 27-nov-2026): si no hay uno distinto, el tercero es el de mejor puntaje («otro»).
+//       Nunca se dice «encontré 2» si hay más.
 // Nunca dos del mismo edificio (misma comuna y a menos de 40 m: cada corredor pone el pin un poco distinto). Si un depto gana dos
 // lugares se queda con el primero y el otro pasa al siguiente. Si hay menos de 3, los que hay (y la pantalla lo dice).
 // Lo fija el tier ASESORIA.
@@ -25,7 +27,7 @@ export const mismoEdificio = (a: Candidato, b: Candidato): boolean => a.comuna =
 export const capRate = (c: Pick<Candidato, "arriendo" | "precioUF">, uf: number): number | null =>
   c.arriendo != null && c.precioUF > 0 && uf > 0 ? (c.arriendo * 12) / (c.precioUF * uf) : null;
 
-export type PorQue = "rinde" | "pide_menos" | "distinto";
+export type PorQue = "rinde" | "pide_menos" | "distinto" | "otro";
 export interface Elegido { c: Candidato; porQue: PorQue }
 
 export interface PerfilTres {
@@ -61,7 +63,9 @@ export function elegirTres(cs: readonly Candidato[], p: PerfilTres): Elegido[] {
   if (b) out.push({ c: b, porQue: "pide_menos" });
   // 3 · el distinto: otra comuna u otra tipología que los dos de arriba
   const comunas = new Set(out.map((e) => e.c.comuna)), tipos = new Set(out.map((e) => e.c.dormitorios));
-  const c = [...u].sort(porScore).find((x) => libre(x) && (!comunas.has(x.comuna) || !tipos.has(x.dormitorios)));
+  const porPuntaje = [...u].sort(porScore);
+  const c = porPuntaje.find((x) => libre(x) && (!comunas.has(x.comuna) || !tipos.has(x.dormitorios)));
   if (c) out.push({ c, porQue: "distinto" });
+  else { const otro = porPuntaje.find(libre); if (otro) out.push({ c: otro, porQue: "otro" }); }
   return out;
 }
