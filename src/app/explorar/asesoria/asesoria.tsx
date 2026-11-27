@@ -128,27 +128,32 @@ export function Asesoria(p: {
   const cap = useMemo(() => (numeros && agregados ? capacidad(numeros, { tasaPct: agregados.tasa, uf: agregados.uf }) : null), [numeros, agregados]);
   const plazo = (numeros ? edadDeChip(numeros.edad).plazo : 30) as PlazoMascara;
   const aporte = e?.aporte ?? null;
+  const pasoN = e ? PASO_N[e.paso] : 0;
+  // EL ALTO QUE SE PIDE: desde el slider, el elegido. En la fórmula, con plazo menor a 30 años, el más alto del slider: así «te
+  // alcanzan» ya cuenta solo los que son Comprar a SU plazo (paseo del 27-nov-2026: la fórmula decía 3.805 te alcanzan y, al lado,
+  // «con tu plazo de 20 años convienen 1.451»). Sigue viajando uno de los altos fijos, nunca una cifra de la persona.
+  const altoPedido: Aporte | null = pasoN >= PASO_N.aporte ? aporte : pasoN >= PASO_N.formula && plazo < 30 ? ALTO_MAXIMO : null;
 
   // El aporte: un alto del slider por pedido, con su respuesta recordada.
   useEffect(() => {
-    if (aporte == null || respuestas[aporte] || pedidas.current.has(aporte)) return;
+    const alto = altoPedido;
+    if (alto == null || respuestas[alto] || pedidas.current.has(alto)) return;
     const t = window.setTimeout(() => {
-      pedidas.current.add(aporte);
-      void fetch("/api/asesoria/aporte", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ aporte }) })
+      pedidas.current.add(alto);
+      void fetch("/api/asesoria/aporte", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ aporte: alto }) })
         .then(async (r) => {
-          if (r.status === 429) { setTopado(true); pedidas.current.delete(aporte); return; }
-          if (!r.ok) { pedidas.current.delete(aporte); return; }
+          if (r.status === 429) { setTopado(true); pedidas.current.delete(alto); return; }
+          if (!r.ok) { pedidas.current.delete(alto); return; }
           const d = (await r.json()) as RespuestaAporte;
           setTopado(false);
-          setRespuestas((x) => ({ ...x, [aporte]: d }));
-        }).catch(() => { pedidas.current.delete(aporte); });
+          setRespuestas((x) => ({ ...x, [alto]: d }));
+        }).catch(() => { pedidas.current.delete(alto); });
     }, 250);
     return () => window.clearTimeout(t);
-  }, [aporte, respuestas]);
+  }, [altoPedido, respuestas]);
 
   // ── LO QUE CALZA, en el navegador ──
-  const pasoN = e ? PASO_N[e.paso] : 0;
-  const idsAporte = aporte != null && respuestas[aporte] ? idsDelPlazo(respuestas[aporte], plazo) : null;
+  const idsAporte = altoPedido != null && respuestas[altoPedido] ? idsDelPlazo(respuestas[altoPedido], plazo) : null;
   const enLugar = useMemo(() => {
     const d = e?.donde;
     if (!d) return null;
@@ -159,12 +164,12 @@ export function Asesoria(p: {
   const calzan = useMemo((): PinMapa[] | null => {
     if (!cap || pasoN < PASO_N.formula) return null;
     let xs = p.comprar.filter((x) => x.precioUF <= cap.topeUF);
-    if (pasoN >= PASO_N.aporte && idsAporte) xs = xs.filter((x) => idsAporte.has(x.avisoId));
+    if (idsAporte) xs = xs.filter((x) => idsAporte.has(x.avisoId));
     if (pasoN >= PASO_N.donde && enLugar) xs = xs.filter(enLugar);
     return xs;
   }, [cap, pasoN, p.comprar, idsAporte, enLugar]);
   // Mientras no llega la respuesta del alto elegido, «Calzan» dice «…»: la cifra anterior no es la de este alto (paseo del 27-nov-2026).
-  const aportePendiente = aporte != null && pasoN >= PASO_N.aporte && !respuestas[aporte];
+  const aportePendiente = altoPedido != null && !respuestas[altoPedido];
   const convienen = p.conteo?.comprar ?? p.comprar.length;
   const total = p.conteo ? p.conteo.comprar + p.conteo.ajustar + p.conteo.no : null;
 
@@ -231,7 +236,8 @@ export function Asesoria(p: {
   useEffect(() => {
     const conv = hojaRef.current?.querySelector<HTMLElement>(".as-conv");
     if (!conv) return;
-    const arriba = e?.paso === "numeros" && numerosAbiertos;
+    // «Tus números» y el perfil se leen desde arriba; lo demás, desde lo último.
+    const arriba = (e?.paso === "numeros" && numerosAbiertos) || e?.paso === "perfil";
     const t = window.setTimeout(() => { conv.scrollTop = arriba ? 0 : conv.scrollHeight; }, 60);
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -317,7 +323,7 @@ export function Asesoria(p: {
           <TusNumeros valores={e.numeros} alCambiar={(k, v) => cambiar((s) => ({ ...s, numeros: { ...s.numeros, [k]: v } }))}
             alListo={() => { responder("numeros", null); cambiar((s) => ({ ...s, paso: "formula" })); }} />
         )}
-        {e.paso === "formula" && <Formula cap={cap} convienen={convienen} alcanzan={calzan?.length ?? null} plazoCorto={plazoCortoDe(agregados, plazo)} alSeguir={() => { responder("formula", null); cambiar((s) => ({ ...s, paso: PROYECTOS_VISIBLE ? "proyecto" : "aporte", aporte: s.aporte ?? 100_000 })); }} />}
+        {e.paso === "formula" && <Formula cap={cap} convienen={convienen} alcanzan={aportePendiente ? null : calzan?.length ?? null} plazoCorto={plazoCortoDe(agregados, plazo)} alSeguir={() => { responder("formula", null); cambiar((s) => ({ ...s, paso: PROYECTOS_VISIBLE ? "proyecto" : "aporte", aporte: s.aporte ?? 100_000 })); }} />}
         {e.paso === "aporte" && (
           <AlMes aporte={e.aporte ?? 100_000} dist={agregados?.dist?.[String(plazo)] ?? null} calzan={aportePendiente ? null : calzan?.length ?? null} topado={topado}
             alCambiar={(a) => cambiar((s) => ({ ...s, aporte: a }))} alSeguir={() => { responder("aporte", null); cambiar((s) => ({ ...s, paso: "donde" })); }} />
@@ -550,6 +556,7 @@ function Formula({ cap, convienen, alcanzan, plazoCorto, alSeguir }: { cap: Capa
 
 // ── P5 · al mes ─────────────────────────────────────────────────────────────
 const TOPE_SLIDER = APORTES[APORTES.length - 1];
+const ALTO_MAXIMO: Aporte = TOPE_SLIDER;
 const altoMasCercano = (v: number): Aporte => APORTES.reduce((a, b) => (Math.abs(b - v) < Math.abs(a - v) ? b : a), APORTES[0]);
 const BARRAS_VISIBLES = TOPE_SLIDER / BARRAS_PASO + 1; // 0 (me sobra) y una cada 25 mil hasta 300 mil; la última junta lo de más
 

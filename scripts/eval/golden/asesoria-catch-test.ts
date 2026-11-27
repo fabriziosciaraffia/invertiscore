@@ -298,13 +298,19 @@ export async function runAsesoria(): Promise<{ hard: number }> {
       for (const clase of ["as-burbuja", "as-hoja", "as-chica"]) if (!(comp.split(`className="as-raiz ${clase} ph-no-capture"`)[1] ?? "").split(">")[0].includes('style={{ ["--as-abajo" as string]: `${abajo}px` }}')) F(`12 · ${clase} no sube sobre el aviso de cookies`);
       if (!/const el = document\.querySelector<HTMLElement>\('\[data-cookies="aviso"\]'\);\s*setAbajo\(el \? Math\.round\(el\.getBoundingClientRect\(\)\.height\) : 0\);/.test(comp)) F("12 · la altura del aviso de cookies no se mide");
       if (!/\.as-hoja \{[^}]*bottom: var\(--as-abajo, 0px\); height: calc\(100% - 150px - var\(--as-abajo, 0px\)\);/.test(css) || !/\.as-burbuja \{[^}]*bottom: calc\(12px \+ var\(--as-abajo, 0px\)\);/.test(css)) F("12 · el CSS no usa la altura del aviso");
-      if (!/conv\.scrollTop = arriba \? 0 : conv\.scrollHeight;/.test(comp) || !/const arriba = e\?\.paso === "numeros" && numerosAbiertos;/.test(comp)) F("12 · la conversación no baja sola al cambiar de pantalla");
+      if (!/conv\.scrollTop = arriba \? 0 : conv\.scrollHeight;/.test(comp) || !/const arriba = \(e\?\.paso === "numeros" && numerosAbiertos\) \|\| e\?\.paso === "perfil";/.test(comp)) F("12 · la conversación no baja sola al cambiar de pantalla");
       const mapa = codigo("src/app/explorar/mapa-explorar.tsx");
       if (!/a \? \{ top: 64, left: 24, right: 24 \+ a\.derecha, bottom: 24 \+ a\.abajo \} : 24\);/.test(mapa)) F("12 · el encuadre no deja los pines en lo que se ve de la hoja");
       const cli = codigo("src/app/explorar/explorar-cliente.tsx");
       if (!/\$\{filtroAsesoria\?\.ids \? \(filtroAsesoria\.quieto \? "\|as:quieto" : `\|as:\$\{filtroAsesoria\.ids\.size\}:/.test(cli)) F("12 · el mapa no se reencuadra con los que calzan (o se mueve mientras se tocan comunas)");
       if (!/quieto: e\?\.paso === "donde"/.test(comp)) F("12 · en «Dónde» el mapa no queda quieto");
-      if (!/const aportePendiente = aporte != null && pasoN >= PASO_N\.aporte && !respuestas\[aporte\];/.test(comp) || !/calzan=\{aportePendiente \? null : calzan\?\.length \?\? null\}/.test(comp)) F("12 · mientras llega el aporte, «Calzan» muestra la cifra anterior");
+      // Con plazo corto, la fórmula ya cuenta los Comprar a SU plazo (pide el alto más alto del slider, no una cifra de la persona).
+      if (!/const altoPedido: Aporte \| null = pasoN >= PASO_N\.aporte \? aporte : pasoN >= PASO_N\.formula && plazo < 30 \? ALTO_MAXIMO : null;/.test(comp) || !/const ALTO_MAXIMO: Aporte = TOPE_SLIDER;/.test(comp) || !/if \(idsAporte\) xs = xs\.filter\(\(x\) => idsAporte\.has\(x\.avisoId\)\);/.test(comp)) F("12 · con plazo corto, «te alcanzan» de la fórmula no cuenta el plazo");
+      if (!/alcanzan=\{aportePendiente \? null : calzan\?\.length \?\? null\}/.test(comp)) F("12 · la fórmula dice «te alcanzan» antes de que llegue el plazo");
+      // El mismo universo que el mapa: las comunas disponibles y la ventana semanal.
+      const srvA = codigo("src/lib/asesoria/servidor.ts");
+      if (!/admin\.rpc\("asesoria_candidatos", \{ p_comunas: comunas, p_desde: desde, p_tope: null \}\)/.test(srvA) || !/const comunas = \[\.\.\.\(COMUNAS_DISPONIBLES as readonly string\[\]\)\]\.map\(comunaDeAviso\);/.test(srvA) || !/VENTANA_SEMANAL_DIAS \* 864e5/.test(srvA)) F("12 · el universo de la asesoría no es el del mapa (comunas o ventana)");
+      if (!/const aportePendiente = altoPedido != null && !respuestas\[altoPedido\];/.test(comp) || !/calzan=\{aportePendiente \? null : calzan\?\.length \?\? null\}/.test(comp)) F("12 · mientras llega el aporte, «Calzan» muestra la cifra anterior");
     }
   } catch (e) {
     F(`excepción: ${(e as Error).stack ?? e}`);
@@ -333,3 +339,5 @@ if (require.main === module) void runAsesoria().then((r) => { process.exitCode =
 // El paseo (27-nov-2026), 6 mutaciones más, las 6 en ROJO: el cierre que promete 3 cuando calzan menos; la hoja sin subir sobre el
 // aviso de cookies; el CSS sin la altura del aviso; la conversación que no baja sola; el encuadre sin el aire de la hoja; «Dónde» sin
 // dejar el mapa quieto.
+// Paseo con 50–54 años (27-nov-2026), 5 mutaciones más, las 5 en ROJO: «Calzan» con la cifra anterior mientras llega el aporte; la
+// fórmula sin el plazo; la fórmula que dice «te alcanzan» antes de que llegue; el universo sin las comunas del mapa; el perfil desde abajo.

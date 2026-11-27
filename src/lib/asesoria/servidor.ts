@@ -10,21 +10,26 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServiceClient } from "@/lib/supabase/service";
 import { candidatoDeFila, distribucion, type Candidato, type FilaCandidato, type PlazoMascara } from "./aporte";
 import { capRate } from "./tres";
+import { COMUNAS_DISPONIBLES } from "@/lib/comunas-disponibles";
+import { comunaDeAviso } from "@/lib/guia/semanal-candidatos";
+import { VENTANA_SEMANAL_DIAS } from "@/lib/guia/semanal";
 
-export const DIAS_UNIVERSO = 7;
 /** Las consultas del aporte que una sesión, o una IP, puede hacer en una hora (el slider tiene 8 altos). */
 export const TOPE_APORTE_SESION = 30;
 export const TOPE_APORTE_IP = 60;
 
 async function leerUniverso(): Promise<FilaCandidato[]> {
   const admin = createServiceClient();
-  const desde = new Date(Date.now() - DIAS_UNIVERSO * 86_400_000).toISOString();
-  const { data, error } = await admin.rpc("asesoria_candidatos", { p_comunas: null, p_desde: desde, p_tope: null });
+  // EL MISMO UNIVERSO QUE EL MAPA (paseo del 27-nov-2026: la fórmula decía 4.512 y 4.553 en la misma pantalla): las comunas
+  // disponibles y la misma ventana que explorar_mapa_todos (portal-servidor.ts › todosDeLaNoche).
+  const comunas = [...(COMUNAS_DISPONIBLES as readonly string[])].map(comunaDeAviso);
+  const desde = new Date(Date.now() - VENTANA_SEMANAL_DIAS * 864e5).toISOString().replace("Z", "");
+  const { data, error } = await admin.rpc("asesoria_candidatos", { p_comunas: comunas, p_desde: desde, p_tope: null });
   if (error) throw new Error(`asesoria_candidatos: ${error.message}`);
   return (Array.isArray(data) ? data : []) as FilaCandidato[];
 }
 
-const universoCacheado = unstable_cache(leerUniverso, ["asesoria-universo-v1"], { revalidate: 600 });
+const universoCacheado = unstable_cache(leerUniverso, ["asesoria-universo-v2"], { revalidate: 600 });
 
 export async function universoAsesoria(): Promise<Candidato[]> {
   return (await universoCacheado()).map(candidatoDeFila);
