@@ -15,15 +15,26 @@ import { calzaCon } from "./aporte";
 
 export const RADIO_EDIFICIO_M = 40;
 
-/** EL CAP RATE FUERA DE RANGO DEL PERFIL (decisión de Fabrizio; bajó de 12 % a 10 % en la tercera vuelta, 27-nov-2026): un depto con
- *  cap rate bruto sobre 10 % no entra a «tus deptos» ni a la palanca. Medido por Claude sobre el universo (4.551 Comprar a 30 años,
- *  7 días): el p95 es 8,3 %; sobre 12 % hay 26 y sobre 10 % hay 77. Casi siempre es un arriendo que no corresponde al depto (en el
- *  paseo, Maipú con 11,6 % y 11,9 %, uno «3D · 44 m²»). Solo la elección del perfil y la palanca: el mapa y el contador no cambian. */
-export const CAP_RATE_MAX_PERFIL = 0.10;
+// ── LAS REGLAS DE CONFIANZA DEL ARRIENDO (cuarta vuelta, decisión de Fabrizio del 27-nov-2026) ─────────────────────────────────────
+// Mientras los deptos del perfil se ordenen por lo que dejan, suben primero los arriendos sobreestimados (con 10 % salía un Maipú 3D de
+// 59 m² con arriendo de $729.000 sacado de 5 comparables, en el p90 del arriendo por m² de Maipú). Para elegir «tus deptos» y para la
+// palanca —NO para el mapa ni el contador— un depto entra solo si pasa las cuatro. Medido con este módulo sobre el universo del
+// 27-nov-2026 (4.510 Comprar a 30 años, 7 días): con las cuatro salen 736 y quedan 3.774; en una grilla de 256 perfiles comunes
+// (renta × pie × edad × dónde × aporte) ninguno queda con menos de 3.
+/** a · Al menos 8 comparables en la estimación del arriendo (arriendo->'n'). Hoy tienen menos 157. Sin el dato, fuera (hoy, ninguno). */
+export const MIN_COMPARABLES_ARRIENDO = 8;
+/** b · El arriendo por m² no pasa del p90 de su comuna y tipología (dormitorios), sobre el mismo universo. Hoy lo pasan 445. */
+export const PERCENTIL_ARRIENDO_M2 = 0.9;
+/** En los grupos comuna × tipología con menos de 10 deptos (con m² y arriendo) la regla del p90 no se aplica: con pocos datos el p90
+ *  no dice nada, y basta la de los comparables. Hoy hay 158 deptos en grupos así. */
+export const MIN_GRUPO_PERCENTIL = 10;
+/** c · EL CAP RATE FUERA DE RANGO DEL PERFIL, como última red: sobre 12 % no entra (bajó a 10 % en la tercera vuelta y volvió a 12 %
+ *  en la cuarta, cuando entraron las reglas a y b). Hoy pasan 25 de 4.510; el p95 es 8,3 %. */
+export const CAP_RATE_MAX_PERFIL = 0.12;
 /** El corte de las MEDIANAS por comuna («Todo Santiago · 5,9 %», aprobado el 27-nov-2026): sigue en 12 %. */
 export const CAP_RATE_MAX_MEDIANAS = 0.12;
-/** LOS 3 DORMITORIOS CHICOS (tercera vuelta, 27-nov-2026): fuera del perfil y de la palanca los de 3 dormitorios o más con menos de
- *  50 m² —184 de los 4.551 del universo—: el motor les estima arriendo de 3D; pendiente el diagnóstico de arriendo por tamaño. Sin
+/** d · LOS 3 DORMITORIOS CHICOS (tercera vuelta, 27-nov-2026): fuera del perfil y de la palanca los de 3 dormitorios o más con menos
+ *  de 50 m² —178 de los 4.510 del universo de hoy—: el motor les estima arriendo de 3D; pendiente el diagnóstico de arriendo por tamaño. Sin
  *  superficie conocida, entran. */
 export const M2_MIN_TRES_DORMITORIOS = 50;
 const tresChico = (c: Pick<Candidato, "dormitorios" | "m2">): boolean => c.dormitorios >= 3 && c.m2 != null && c.m2 < M2_MIN_TRES_DORMITORIOS;
@@ -54,11 +65,41 @@ export interface PerfilTres {
   uf: number;
 }
 
-/** El universo de la persona: Comprar a su plazo, le alcanza, pide como mucho su aporte y está en sus zonas. */
+/** El p90 del arriendo por m² de cada comuna y tipología, sobre el universo dado (solo los grupos con al menos MIN_GRUPO_PERCENTIL).
+ *  Se calcula una vez por universo. */
+const p90sDe = new WeakMap<readonly Candidato[], Map<string, number>>();
+const claveGrupo = (c: Pick<Candidato, "comuna" | "dormitorios">) => `${c.comuna}|${c.dormitorios}`;
+export function p90ArriendoM2(cs: readonly Candidato[]): Map<string, number> {
+  const ya = p90sDe.get(cs);
+  if (ya) return ya;
+  const grupos = new Map<string, number[]>();
+  for (const c of cs) if (c.m2 && c.m2 > 0 && c.arriendo != null) { const xs = grupos.get(claveGrupo(c)) ?? []; xs.push(c.arriendo / c.m2); grupos.set(claveGrupo(c), xs); }
+  const out = new Map<string, number>();
+  for (const [k, xs] of Array.from(grupos.entries())) {
+    if (xs.length < MIN_GRUPO_PERCENTIL) continue;
+    const s = [...xs].sort((a, b) => a - b);
+    const pos = PERCENTIL_ARRIENDO_M2 * (s.length - 1), lo = Math.floor(pos), hi = Math.ceil(pos);
+    out.set(k, s[lo] + (s[hi] - s[lo]) * (pos - lo));
+  }
+  p90sDe.set(cs, out);
+  return out;
+}
+
+/** ¿El arriendo de este depto es de fiar para el perfil? Las cuatro reglas de confianza. */
+export function arriendoConfiable(c: Candidato, p90: ReadonlyMap<string, number>, uf: number): boolean {
+  if (c.n == null || c.n < MIN_COMPARABLES_ARRIENDO) return false;
+  const tope = p90.get(claveGrupo(c));
+  if (tope != null && c.m2 && c.m2 > 0 && c.arriendo != null && c.arriendo / c.m2 > tope) return false;
+  if ((capRate(c, uf) ?? 0) > CAP_RATE_MAX_PERFIL) return false;
+  return !tresChico(c);
+}
+
+/** El universo de la persona: Comprar a su plazo, le alcanza, pide como mucho su aporte, está en sus zonas y su arriendo es de fiar. */
 export function universoDe(cs: readonly Candidato[], p: PerfilTres): Candidato[] {
+  const p90 = p90ArriendoM2(cs);
   return cs.filter((c) => c.precioUF <= p.topeUF && calzaCon(c, p.plazo, p.aporte)
     && (p.comunas.length === 0 || p.comunas.includes(c.comuna)) && (!p.enLugar || p.enLugar(c))
-    && !((capRate(c, p.uf) ?? 0) > CAP_RATE_MAX_PERFIL) && !tresChico(c));
+    && arriendoConfiable(c, p90, p.uf));
 }
 
 const porScore = (a: Candidato, b: Candidato) => (b.score ?? -1) - (a.score ?? -1) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);

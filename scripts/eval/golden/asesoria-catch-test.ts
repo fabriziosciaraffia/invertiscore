@@ -32,7 +32,7 @@ import {
   RENTA_COMPUTABLE_PCT, CARGA_MAX_PCT, DEUDA_SIN_TECHO, RENTA_SIN_PISO, type Numeros,
 } from "../../../src/lib/asesoria/capacidad";
 import { APORTES, mascara, respuestaAporte, idsDelPlazo, distribucion, esAporte, sePaganSolos, UMBRAL_SOLOS, candidatoDeFila, type Candidato, type FilaCandidato } from "../../../src/lib/asesoria/aporte";
-import { elegirTres, mismoEdificio, CAP_RATE_MAX_PERFIL, CAP_RATE_MAX_MEDIANAS, M2_MIN_TRES_DORMITORIOS, universoDe, rindePorComuna, MIN_DEPTOS_COMUNA_RINDE } from "../../../src/lib/asesoria/tres";
+import { elegirTres, mismoEdificio, CAP_RATE_MAX_PERFIL, CAP_RATE_MAX_MEDIANAS, M2_MIN_TRES_DORMITORIOS, MIN_COMPARABLES_ARRIENDO, PERCENTIL_ARRIENDO_M2, MIN_GRUPO_PERCENTIL, universoDe, rindePorComuna, MIN_DEPTOS_COMUNA_RINDE } from "../../../src/lib/asesoria/tres";
 import { tarjetasDelPerfil } from "../../../src/lib/asesoria/tarjetas";
 import { topesDeCompra, pieMasGastosPct } from "../../../src/lib/tope/regla";
 import { hastaCuanto } from "../../../src/lib/invierte-v2/perfil";
@@ -65,7 +65,7 @@ const base: Numeros = { renta: "r3", tipoRenta: "contrato", edad: "e2", pie: "p3
 
 function cand(id: string, o: Partial<Candidato> & { f?: Partial<Record<30 | 25 | 20 | 15, number | null>>; c?: Partial<Record<25 | 20 | 15, boolean>> } = {}): Candidato {
   return {
-    id, comuna: o.comuna ?? "Ñuñoa", lat: o.lat ?? -33.45, lng: o.lng ?? -70.6, dormitorios: o.dormitorios ?? 2, precioUF: o.precioUF ?? 3000, m2: o.m2 === undefined ? 60 : o.m2,
+    id, comuna: o.comuna ?? "Ñuñoa", lat: o.lat ?? -33.45, lng: o.lng ?? -70.6, dormitorios: o.dormitorios ?? 2, precioUF: o.precioUF ?? 3000, m2: o.m2 === undefined ? 60 : o.m2, n: o.n === undefined ? 20 : o.n,
     score: o.score ?? 70, arriendo: o.arriendo === undefined ? 600_000 : o.arriendo,
     flujo: { 30: -50_000, 25: -80_000, 20: -120_000, 15: -200_000, ...(o.f ?? {}) },
     comprar: { 30: true, 25: true, 20: true, 15: true, ...(o.c ?? {}) },
@@ -195,13 +195,13 @@ export async function runAsesoria(): Promise<{ hard: number }> {
       const t5 = elegirTres([cand("p", { arriendo: 900_000 }), cand("q", { f: { 30: 40_000 }, lat: -33.3 }), cand("p2", { lat: -33.45 + 0.0001 })], P);
       if (t5.length !== 2) F("4 · el tercero salió del mismo edificio que uno elegido");
       // El cap rate fuera de rango (27-nov-2026): sobre 12 % no entra a «tus deptos», ni siquiera como «el que mejor rinde».
-      // ⚠ ACTA (27-nov-2026, tercera vuelta): el corte del perfil bajó a 10 % (p95 del universo, 8,3 %); el de las medianas queda en 12 %.
-      if (CAP_RATE_MAX_PERFIL !== 0.10 || CAP_RATE_MAX_MEDIANAS !== 0.12) F("4 · el corte del cap rate no es 10 % en el perfil y 12 % en las medianas");
+      // ⚠ ACTA (27-nov-2026, cuarta vuelta): el corte del perfil vuelve a 12 %, como última red (las reglas de confianza del arriendo, §26).
+      if (CAP_RATE_MAX_PERFIL !== 0.12 || CAP_RATE_MAX_MEDIANAS !== 0.12) F("4 · el corte del cap rate no es 12 % en el perfil y en las medianas");
       const raro = cand("raro", { precioUF: 1256, arriendo: 1_030_000, f: { 30: 700_000 }, lat: -33.5, score: 99 }); // ~24,9 % como el del paseo
-      const justo = cand("justo", { precioUF: 3000, arriendo: Math.floor((0.10 * 3000 * CFG.uf) / 12), lat: -33.6 });
+      const justo = cand("justo", { precioUF: 3000, arriendo: Math.floor((0.12 * 3000 * CFG.uf) / 12), lat: -33.6 });
       const tc = elegirTres([raro, justo, cand("n1", { lat: -33.7 }), cand("n2", { comuna: "Santiago", lat: -33.8 })], P);
       if (tc.some((e) => e.c.id === "raro")) F("4 · un depto con cap rate sobre 12 % entró a «tus deptos»");
-      if (!tc.some((e) => e.c.id === "justo")) F("4 · un depto con cap rate de 10 % justo quedó fuera (el corte es «sobre»)");
+      if (!tc.some((e) => e.c.id === "justo")) F("4 · un depto con cap rate de 12 % justo quedó fuera (el corte es «sobre»)");
     }
 
     // ── 5 · EL INTERRUPTOR ──
@@ -602,11 +602,12 @@ export async function runAsesoria(): Promise<{ hard: number }> {
       const P = { plazo: 30 as const, aporte: 100_000, topeUF: 5000, comunas: [] as string[], uf: CFG.uf };
       const arr = (cap: number) => Math.round((cap * 3000 * CFG.uf) / 12);
       const u = universoDe([
-        cand("cap105", { arriendo: arr(0.105) }), cand("cap95", { arriendo: arr(0.095), lat: -33.3 }),
+        cand("cap125", { arriendo: arr(0.125) }), cand("cap95", { arriendo: arr(0.095), lat: -33.3 }),
         cand("3d44", { dormitorios: 3, m2: 44, lat: -33.2 }), cand("2d44", { dormitorios: 2, m2: 44, lat: -33.1 }),
         cand("3dnull", { dormitorios: 3, m2: null, lat: -33.0 }), cand("3d50", { dormitorios: 3, m2: 50, lat: -33.5 }), cand("4d48", { dormitorios: 4, m2: 48, lat: -33.6 }),
       ], P).map((c) => c.id).sort().join();
-      if (u !== "2d44,3d50,3dnull,cap95") F(`21 · el universo del perfil no saca el cap rate sobre 10 % y los 3D o más de menos de 50 m² (${u})`);
+      // ⚠ ACTA (27-nov-2026, cuarta vuelta): el corte volvió a 12 % (cap125 sale, el de 11-12 % ya no).
+      if (u !== "2d44,3d50,3dnull,cap95") F(`21 · el universo del perfil no saca el cap rate sobre 12 % y los 3D o más de menos de 50 m² (${u})`);
       // La palanca usa el mismo universo (palanca.ts › universoDe): un 3D de 44 m² no hace aparecer deptos.
       const conPie600 = palanca([cand("grande", { dormitorios: 3, m2: 70, precioUF: 2400, f: { 30: -40_000 } })], { ...P, topeUF: 1220 }, { ...base, pie: "p2" }, CFG);
       if (!conPie600 || conPie600.n !== 1) F("21 · el fixture de la palanca no la ejercita (un 3D de 70 m² con pie UF 600 debía aparecer)");
@@ -614,12 +615,15 @@ export async function runAsesoria(): Promise<{ hard: number }> {
       if (pP !== null) F("21 · la palanca cuenta un 3D de menos de 50 m²");
       // Las medianas siguen con el corte de 12 % (lo aprobado para «Todo Santiago»).
       const once = Array.from({ length: 15 }, (_, k) => cand(`m${k}`, { comuna: "M", arriendo: arr(0.11) }));
-      if (rindePorComuna(once, CFG.uf).rinde.length !== 1) F("21 · las medianas por comuna sacan los de 10-12 % (su corte es 12 %)");
+      if (rindePorComuna(once, CFG.uf).rinde.length !== 1) F("21 · las medianas por comuna sacan los de 11 % (su corte es 12 %)");
       // Los m² llegan en la fila (posición 15) y, sin ella, quedan nulos.
       const fila = ["x", "Ñuñoa", -33.4, -70.6, 3, 3000, 70, 600_000, -1, -1, -1, -1, true, true, true] as unknown as FilaCandidato;
       if (candidatoDeFila(fila).m2 !== null || candidatoDeFila([...fila, 44] as unknown as FilaCandidato).m2 !== 44) F("21 · candidatoDeFila no lee los m² de la posición 15");
+      if (candidatoDeFila(fila).n !== null || candidatoDeFila([...fila, 44, 12] as unknown as FilaCandidato).n !== 12) F("26 · candidatoDeFila no lee los comparables de la posición 16");
       const srv = codigo("src/lib/asesoria/servidor.ts");
-      if (!/\.select\("id, superficie_m2"\)\.in\("id", tanda\)\.order\("id"\)\.limit\(200\);/.test(srv) || !/TANDA_M2 = 200;/.test(srv) || !/Number\(f\[4\]\) >= 3/.test(srv)) F("21 · el universo no completa los m² de los 3D o más en tandas bajo el corte de 1.000");
+      // ⚠ ACTA (27-nov-2026, cuarta vuelta): los m² se completan para TODOS (la regla del p90 de arriendo por m²), y los comparables también.
+      if (!/\.select\("id, superficie_m2"\)\.in\("id", tanda\)\.order\("id"\)\.limit\(200\)/.test(srv) || !/TANDA_M2 = 200;/.test(srv)) F("21 · el universo no completa los m² en tandas bajo el corte de 1.000");
+      if (!/\.from\("avisos_evaluados"\)\.select\("aviso_id, arriendo"\)\.in\("aviso_id", tanda\)\.order\("aviso_id"\)\.limit\(200\)/.test(srv)) F("26 · el universo no completa los comparables del arriendo");
     }
 
     // ── 22 · INVIERTE RECIBE LOS 3 (tercera vuelta, 27-nov-2026) ──
@@ -715,6 +719,33 @@ export async function runAsesoria(): Promise<{ hard: number }> {
       // 4 · la x de la burbuja se ve y mide 44 px.
       const css = leer("src/app/explorar/asesoria/asesoria.css");
       if (!/\.as-x-claro \{[^}]*background: rgba\(15, 15, 15, 0\.42\);[^}]*border: 1\.5px solid rgba\(255, 255, 255, 0\.85\);/.test(css) || !/\.as-x \{ width: 44px; height: 44px;/.test(css) || !/className="as-x as-x-claro"/.test(comp)) F("25 · la x de la burbuja no tiene fondo y borde visibles o no mide 44 px");
+    }
+
+    // ── 26 · LA CONFIANZA DEL ARRIENDO (cuarta vuelta, 27-nov-2026) ──
+    {
+      if (MIN_COMPARABLES_ARRIENDO !== 8 || PERCENTIL_ARRIENDO_M2 !== 0.9 || MIN_GRUPO_PERCENTIL !== 10) F("26 · las reglas de confianza no son 8 comparables, p90 y grupos de 10");
+      const P = { plazo: 30 as const, aporte: 100_000, topeUF: 5000, comunas: [] as string[], uf: CFG.uf };
+      // a · menos de 8 comparables fuera (sin el dato, fuera también: no se sabe en qué se apoya).
+      const a = universoDe([cand("n7", { n: 7 }), cand("n8", { n: 8, lat: -33.3 }), cand("nnull", { n: null, lat: -33.2 })], P).map((c) => c.id).join();
+      if (a !== "n8") F(`26 · la regla de los comparables no saca los de menos de 8 (${a})`);
+      // b · arriendo por m² sobre el p90 de su comuna y tipología, sobre el mismo universo: un grupo de 12 2D en «G» con 10.000 a 12.200
+      //     por m² (p90 ≈ 12.000) y uno con 13.000 → fuera; en un grupo de 9 («H») la regla no se aplica.
+      const grupo = Array.from({ length: 12 }, (_, k) => cand(`g${k}`, { comuna: "G", m2: 50, arriendo: 50 * (10_000 + k * 200), precioUF: 3000, lat: -33.4 - k * 0.01 }));
+      const alto = cand("galto", { comuna: "G", m2: 50, arriendo: 50 * 13_000, lat: -33.9 });
+      const chico = Array.from({ length: 8 }, (_, k) => cand(`h${k}`, { comuna: "H", m2: 50, arriendo: 50 * 10_000, lat: -33.4 - k * 0.01 }));
+      const hAlto = cand("halto", { comuna: "H", m2: 50, arriendo: 50 * 20_000, lat: -33.9 });
+      const ub = universoDe([...grupo, alto, ...chico, hAlto], P).map((c) => c.id);
+      if (ub.includes("galto")) F("26 · un arriendo por m² sobre el p90 de su comuna y tipología entra al perfil");
+      if (!ub.includes("halto")) F("26 · en un grupo de menos de 10 se aplica la regla del p90 (pocos datos)");
+      if (!ub.includes("g0") || ub.filter((x) => x.startsWith("g")).length < 11) F("26 · la regla del p90 saca de más");
+      // El mismo depto en otra tipología del grupo no cuenta para el p90: el p90 es por comuna Y dormitorios.
+      const otraTip = cand("g3d", { comuna: "G", dormitorios: 3, m2: 70, arriendo: 70 * 13_000, lat: -33.95 });
+      if (!universoDe([...grupo, otraTip], P).some((c) => c.id === "g3d")) F("26 · el p90 no se calcula por tipología (un 3D se mide contra los 2D)");
+      // La palanca usa el mismo universo: un depto con 5 comparables no la mueve.
+      if (palanca([cand("p5", { n: 5, dormitorios: 2, m2: 60, precioUF: 2400, f: { 30: -40_000 } })], { ...P, topeUF: 1220 }, { ...base, pie: "p2" }, CFG) !== null) F("26 · la palanca cuenta un depto de menos de 8 comparables");
+      // El mapa y el contador no cambian: la distribución y la respuesta del aporte usan el universo entero.
+      const dosCs = [cand("x", { n: 3 }), cand("y", { n: 30, lat: -33.3 })];
+      if (respuestaAporte(dosCs, 100_000).i.length !== 2 || distribucion(dosCs)[30].reduce((s2, k) => s2 + k, 0) !== 2) F("26 · las reglas del perfil cambian el mapa o el contador");
     }
   } catch (e) {
     F(`excepción: ${(e as Error).stack ?? e}`);

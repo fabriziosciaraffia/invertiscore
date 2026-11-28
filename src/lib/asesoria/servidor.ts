@@ -29,20 +29,25 @@ async function leerUniverso(): Promise<FilaCandidato[]> {
   const { data, error } = await admin.rpc("asesoria_candidatos", { p_comunas: comunas, p_desde: desde, p_tope: null });
   if (error) throw new Error(`asesoria_candidatos: ${error.message}`);
   const filas = (Array.isArray(data) ? data : []) as FilaCandidato[];
-  // LOS m² DE LOS 3 DORMITORIOS O MÁS (tercera vuelta, 27-nov-2026): la función no los trae y la regla de los 3D chicos los necesita
-  // (tres.ts › M2_MIN_TRES_DORMITORIOS). Se completan acá, dentro de la caché de 10 minutos, solo para esos ids.
-  const ids = filas.filter((f) => Number(f[4]) >= 3).map((f) => f[0]);
-  const m2De = new Map<string, number>();
+  // LOS m² Y LOS COMPARABLES DEL ARRIENDO (tercera y cuarta vuelta, 27-nov-2026): la función no los trae y las reglas de confianza del
+  // perfil los necesitan (tres.ts). Se completan acá, dentro de la caché de 10 minutos, en tandas bajo el corte de 1.000 filas.
+  const ids = filas.map((f) => f[0]);
+  const m2De = new Map<string, number>(), nDe = new Map<string, number>();
   for (let i = 0; i < ids.length; i += TANDA_M2) {
     const tanda = ids.slice(i, i + TANDA_M2);
-    const r = await admin.from("scraped_properties").select("id, superficie_m2").in("id", tanda).order("id").limit(200);
+    const [r, a] = await Promise.all([
+      admin.from("scraped_properties").select("id, superficie_m2").in("id", tanda).order("id").limit(200),
+      admin.from("avisos_evaluados").select("aviso_id, arriendo").in("aviso_id", tanda).order("aviso_id").limit(200),
+    ]);
     if (r.error) throw new Error(`m² del universo: ${r.error.message}`);
+    if (a.error) throw new Error(`comparables del universo: ${a.error.message}`);
     for (const x of r.data ?? []) if (x.superficie_m2 != null) m2De.set(String(x.id), Number(x.superficie_m2));
+    for (const x of a.data ?? []) { const n = (x.arriendo as { n?: unknown } | null)?.n; if (n != null && Number.isFinite(Number(n))) nDe.set(String(x.aviso_id), Number(n)); }
   }
-  return filas.map((f) => (m2De.has(f[0]) ? ([...f.slice(0, 15), m2De.get(f[0])!] as unknown as FilaCandidato) : f));
+  return filas.map((f) => [...f.slice(0, 15), m2De.get(f[0]) ?? null, nDe.get(f[0]) ?? null] as unknown as FilaCandidato);
 }
 
-const universoCacheado = unstable_cache(leerUniverso, ["asesoria-universo-v3"], { revalidate: 600 });
+const universoCacheado = unstable_cache(leerUniverso, ["asesoria-universo-v4"], { revalidate: 600 });
 
 export async function universoAsesoria(): Promise<Candidato[]> {
   return (await universoCacheado()).map(candidatoDeFila);

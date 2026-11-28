@@ -19,8 +19,9 @@ export const esPlazoMascara = (x: unknown): x is PlazoMascara => typeof x === "n
 
 /** Una fila de asesoria_candidatos: id, comuna, lat, lng, dormitorios, precio UF, puntaje a 30, arriendo, flujo a 30 / 25 / 20 /
  *  15, Comprar a 25 / 20 / 15. (Comprar a 30 lo es por construcción: la función solo trae los Comprar a 30.) */
-// La posición 15 (los m²) no la trae la función: la completa el servidor (servidor.ts › leerUniverso), solo para los de 3 dormitorios o más.
-export type FilaCandidato = [string, string, number, number, number, number, number | null, number | null, number | null, number | null, number | null, number | null, boolean, boolean, boolean, (number | null)?];
+// Las posiciones 15 (los m²) y 16 (los comparables del arriendo) no las trae la función: las completa el servidor (servidor.ts ›
+// leerUniverso) para las reglas de confianza del perfil (tres.ts).
+export type FilaCandidato = [string, string, number, number, number, number, number | null, number | null, number | null, number | null, number | null, number | null, boolean, boolean, boolean, (number | null)?, (number | null)?];
 
 export interface Candidato {
   id: string;
@@ -29,8 +30,10 @@ export interface Candidato {
   lng: number;
   dormitorios: number;
   precioUF: number;
-  /** La superficie, solo si tiene 3 dormitorios o más (la regla de los 3D chicos, tres.ts); null si no se sabe. */
+  /** La superficie (las reglas de los 3D chicos y del arriendo por m², tres.ts); null si no se sabe. */
   m2: number | null;
+  /** Cuántos comparables tiene la estimación del arriendo (arriendo->'n'); null si no se sabe. */
+  n: number | null;
   score: number | null;
   arriendo: number | null;
   /** Flujo y Comprar por plazo. */
@@ -40,7 +43,7 @@ export interface Candidato {
 
 export function candidatoDeFila(f: FilaCandidato): Candidato {
   return {
-    id: f[0], comuna: f[1], lat: Number(f[2]), lng: Number(f[3]), dormitorios: Number(f[4]), precioUF: Number(f[5]), m2: f[15] == null ? null : Number(f[15]),
+    id: f[0], comuna: f[1], lat: Number(f[2]), lng: Number(f[3]), dormitorios: Number(f[4]), precioUF: Number(f[5]), m2: f[15] == null ? null : Number(f[15]), n: f[16] == null ? null : Number(f[16]),
     score: f[6], arriendo: f[7],
     flujo: { 30: f[8], 25: f[9], 20: f[10], 15: f[11] },
     comprar: { 30: true, 25: f[12] === true, 20: f[13] === true, 15: f[14] === true },
