@@ -704,6 +704,8 @@ export async function runAsesoria(): Promise<{ hard: number }> {
       const A = "11111111-1111-4111-8111-111111111111";
       const vac = validarContacto({ avisoId: A, origen: "explorar", urgencia: null, sinUrgencia: true, pie: "si", whatsapp: "+56900000000", permiso: true });
       if (!vac.ok || vac.pedido.urgencia !== null) F("25 · desde la asesoría el contacto no acepta la urgencia vacía");
+      // El servidor vuelve a validar el pedido que manda el navegador (paseo del 27-nov-2026: 400 «cuándo» porque el pedido no llevaba la marca).
+      if (vac.ok && !validarContacto(vac.pedido as unknown as Record<string, unknown>).ok) F("25 · el servidor rechaza el pedido con la urgencia vacía que validó el navegador");
       if (validarContacto({ avisoId: A, origen: "explorar", urgencia: null, pie: "si", whatsapp: "+56900000000", permiso: true }).ok) F("25 · fuera de la asesoría el contacto acepta la urgencia vacía");
       const form = codigo("src/components/invierte-v2/ContactoForm.tsx");
       if (!/const v = validarContacto\(\{ avisoId: depto\.avisoId, origen, urgencia: asesoria \? null : urgencia, sinUrgencia: !!asesoria, pie, whatsapp, permiso \}\);/.test(form)) F("25 · el contacto desde la asesoría no manda la urgencia vacía");

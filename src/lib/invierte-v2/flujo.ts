@@ -106,6 +106,8 @@ export interface PedidoContacto {
   origen: OrigenInvierte;
   /** Vacía solo desde la asesoría (cuarta vuelta, 27-nov-2026): ahí no se pregunta y no se inventa. */
   urgencia: UrgenciaInvierte | null;
+  /** Marca de la urgencia vacía: viaja en el pedido para que el servidor, que lo vuelve a validar, la acepte. */
+  sinUrgencia?: true;
   pie: PieInvierte;
   whatsapp: string;
   permiso: true;
@@ -123,7 +125,7 @@ export function validarContacto(b: Record<string, unknown> | null | undefined): 
   const whatsapp = normalizarWhatsapp(x.whatsapp);
   if (!whatsapp) return { ok: false, error: "whatsapp" };
   if (x.permiso !== true) return { ok: false, error: "permiso" };
-  return { ok: true, pedido: { avisoId: x.avisoId, origen: x.origen, urgencia: sinUrgencia ? null : (x.urgencia as UrgenciaInvierte), pie: x.pie, whatsapp, permiso: true } };
+  return { ok: true, pedido: { avisoId: x.avisoId, origen: x.origen, urgencia: sinUrgencia ? null : (x.urgencia as UrgenciaInvierte), ...(sinUrgencia ? { sinUrgencia: true as const } : {}), pie: x.pie, whatsapp, permiso: true } };
 }
 
 // ── LA FIRMA (paso 2 de 2) ───────────────────────────────────────────────────
