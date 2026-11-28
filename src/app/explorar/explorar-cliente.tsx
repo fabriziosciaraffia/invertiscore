@@ -1270,6 +1270,7 @@ export function ExplorarCliente({ inicial, abrir: abrirProp = null, autoAnalizar
           {asesoria.habilitada && vista === "mapa" && (
             <Asesoria
               esPrueba={asesoria.prueba}
+              correo={correo}
               sinCuenta={sinCuenta}
               conteo={conteo}
               comprar={visibles}

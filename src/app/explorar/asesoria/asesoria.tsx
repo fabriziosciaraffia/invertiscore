@@ -30,7 +30,7 @@ import {
 } from "@/lib/asesoria/capacidad";
 import { ASESORIA_COPY as C, miles, pesos, uf as fUF } from "@/lib/asesoria/copy";
 import {
-  ESTADO_INICIAL, PROYECTOS_VISIBLE, avanceBarra, guardarEstado, leerEstado, listoParaPerfil, pedidoPerfil,
+  CLAVE_ESTADO, ESTADO_INICIAL, PROYECTOS_VISIBLE, avanceBarra, estadoParaCuenta, guardarEstado, huellaCuenta, leerEstado, listoParaPerfil, pedidoPerfil,
   type EstadoAsesoria, type Lupa, type ModoDonde, type Paso,
 } from "@/lib/asesoria/estado";
 import { EVENTOS_ASESORIA, propsBase, propsPaso } from "@/lib/asesoria/eventos";
@@ -64,6 +64,8 @@ export const urlSeguirDeptos = (ids: readonly string[]): string =>
 export function Asesoria(p: {
   esPrueba: boolean;
   sinCuenta: boolean;
+  /** El correo de la sesión (null sin cuenta): el estado guardado de otra cuenta no se hereda. */
+  correo?: string | null;
   /** Las tres clases de la vista global (el gancho y «de 19.056»). */
   conteo: ConteoClases | null;
   /** Los Comprar del universo cargado (sin el filtro de la asesoría). */
@@ -132,9 +134,17 @@ export function Asesoria(p: {
   }, []);
 
   // El estado guardado de esta pestaña (después del primer pintado: el servidor no lo sabe).
-  useEffect(() => { setE(leerEstado(almacen())); }, []);
+  // De otra cuenta (o de una cuenta, ya sin sesión): se descarta y se borra (antes del merge, 27-nov-2026).
+  useEffect(() => {
+    const x = estadoParaCuenta(leerEstado(almacen()), p.correo ? huellaCuenta(p.correo) : null);
+    if (!x) almacen()?.removeItem(CLAVE_ESTADO);
+    setE(x);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const cambiar = useCallback((f: (x: EstadoAsesoria) => EstadoAsesoria) => {
-    setE((x) => { const n = f(x ?? ESTADO_INICIAL); guardarEstado(almacen(), n); return n; });
+    setE((x) => { const n = { ...f(x ?? ESTADO_INICIAL), cuenta: p.correo ? huellaCuenta(p.correo) : null }; guardarEstado(almacen(), n); return n; });
+    // La cuenta no cambia sin recargar la página (el login y el logout navegan).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const prueba = p.esPrueba;
   const capture = useCallback((ev: string, props: Record<string, string | number | boolean>) => { posthog?.capture(ev, props); }, [posthog]);
@@ -293,6 +303,18 @@ export function Asesoria(p: {
     if (!e || p.sinCuenta || cargandoPerfil || resultado || errorPerfil) return;
     if ((e.paso === "cierre" || e.paso === "perfil") && listoParaPerfil(e)) void pedirPerfil(e);
   }, [e, p.sinCuenta, cargandoPerfil, resultado, errorPerfil, pedirPerfil]);
+  // SIN CUENTA EN EL PERFIL (o el cierre): nunca «Armando tu perfil…» sin fin; vuelve a la lupa y se abre la hoja de crear cuenta.
+  const yaMandoAHoja = useRef(false);
+  // La hoja dice cuántos deptos le esperan: espera a tener los que calzan (o 5 s, si los números no llegan).
+  const [esperoNumeros, setEsperoNumeros] = useState(true);
+  useEffect(() => { const t = window.setTimeout(() => setEsperoNumeros(false), 5000); return () => window.clearTimeout(t); }, []);
+  useEffect(() => {
+    if (!e || yaMandoAHoja.current) return;
+    if (p.sinCuenta && (e.paso === "perfil" || e.paso === "cierre") && calzan == null && esperoNumeros) return;
+    if (p.sinCuenta && (e.paso === "perfil" || e.paso === "cierre")) { cambiar((s) => ({ ...s, paso: "lupa", registroPedido: true })); registrar(); }
+    yaMandoAHoja.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [e, p.sinCuenta, calzan, esperoNumeros]);
   // Volvió con la cuenta después de «Ver lo que encontré»: el recorrido sigue al perfil.
   useEffect(() => {
     if (!p.sinCuenta && e?.paso === "lupa" && e.registroPedido && listoParaPerfil(e)) cambiar((s) => ({ ...s, paso: "cierre" }));
@@ -450,7 +472,7 @@ export function Asesoria(p: {
         {(e.paso === "lupa" || (e.paso === "cierre" && p.sinCuenta)) && <LupaPaso lupa={e.lupa} alResponder={(x) => { responder("lupa", x); cambiar((s) => ({ ...s, lupa: x })); }}
           alSeguir={() => { if (p.sinCuenta) { cambiar((s) => ({ ...s, registroPedido: true })); registrar(); return; } cambiar((s) => ({ ...s, paso: "cierre" })); }} />}
         {e.paso === "cierre" && !p.sinCuenta && <Cierre cargando={cargandoPerfil} error={errorPerfil} alReintentar={() => { setErrorPerfil(false); }} />}
-        {e.paso === "perfil" && (
+        {e.paso === "perfil" && !p.sinCuenta && (
           resultado
             ? <Perfil r={resultado} numeros={numeros} experiencia={e.experiencia} lupa={e.lupa} aporte={e.aporteLibre ? null : e.aporte ?? 0} pines={p.comprar} interesNuevos={e.interesNuevos === true} alAvisar={avisarNuevos}
                 alVer={(id) => { capture(EVENTOS_ASESORIA.verDepto, propsBase(prueba)); cambiar((x) => ({ ...x, cerrada: true })); p.alVerDepto(id); }}

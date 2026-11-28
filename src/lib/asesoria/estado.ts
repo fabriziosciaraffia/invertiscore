@@ -48,6 +48,8 @@ export interface EstadoAsesoria {
   lupa: Lupa | null;
   /** «Avísame» de los deptos nuevos (27-nov-2026): una salida, no una pregunta; true si lo tocó. */
   interesNuevos?: boolean | null;
+  /** De qué cuenta es el recorrido (una huella del correo, no el correo): null mientras no tiene cuenta. Si la sesión cambia, se borra. */
+  cuenta?: string | null;
   /** Tocó «Ver lo que encontré» sin cuenta y se abrió la hoja de crear cuenta (cuarta vuelta): al volver con ella, sigue al perfil. */
   registroPedido?: boolean | null;
   /** «Seguir» en la buena noticia (tercera vuelta, 27-nov-2026): no se filtra por aporte; quedan todos los que le alcanzan. */
@@ -78,6 +80,25 @@ export function leerEstado(a: Almacen): EstadoAsesoria | null {
 
 export function guardarEstado(a: Almacen, e: EstadoAsesoria): void {
   try { a?.setItem(CLAVE_ESTADO, JSON.stringify(e)); } catch { /* sin almacenamiento, el recorrido sigue en memoria */ }
+}
+
+/** LA HUELLA DE LA CUENTA (antes del merge, 27-nov-2026): para saber de quién es el estado guardado sin dejar el correo en el navegador.
+ *  FNV-1a de 32 bits: no es secreto, solo distingue cuentas en esta pestaña. */
+export function huellaCuenta(correo: string): string {
+  let h = 0x811c9dc5;
+  const t = correo.trim().toLowerCase();
+  for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+  return `c${h.toString(36)}`;
+}
+
+/** EL ESTADO NO SE HEREDA (antes del merge, 27-nov-2026): con la renta, la edad, el pie y las comunas de una persona, en un computador
+ *  compartido la siguiente heredaba sus números. Un estado de otra cuenta —o de una cuenta, ya sin sesión— se descarta (null); uno sin
+ *  cuenta que ahora la tiene queda con ella (es la misma persona que acaba de registrarse). */
+export function estadoParaCuenta(e: EstadoAsesoria | null, cuenta: string | null): EstadoAsesoria | null {
+  if (!e) return null;
+  if (e.cuenta && e.cuenta !== cuenta) return null;
+  if (!e.cuenta && cuenta) return { ...e, cuenta };
+  return e;
 }
 
 /** Lo que viaja al crear el perfil (con cuenta): las respuestas, nunca el estado de la pantalla. */

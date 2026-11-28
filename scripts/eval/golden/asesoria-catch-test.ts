@@ -46,7 +46,8 @@ import { limpiarEventoSentry } from "../../../src/lib/asesoria/sentry-limpieza";
 import { ASESORIA_COPY } from "../../../src/lib/asesoria/copy";
 import { validarPedidoPerfil, filaPerfil, calcularPerfil } from "../../../src/lib/asesoria/perfil";
 import { CAMINOS, CAMINO_DE_HOY } from "../../../src/lib/asesoria/capacidad";
-import { pedidoPerfil, ESTADO_INICIAL } from "../../../src/lib/asesoria/estado";
+import { pedidoPerfil, ESTADO_INICIAL, estadoParaCuenta, huellaCuenta, CLAVE_ESTADO } from "../../../src/lib/asesoria/estado";
+import { purgarBorradoresYPestana } from "../../../src/lib/draft-keys";
 import { comunaEn, comunasQueMasRinden } from "../../../src/lib/asesoria/lugar";
 import { conveniencia, palanca, palancaFormula } from "../../../src/lib/asesoria/palanca";
 
@@ -749,6 +750,32 @@ export async function runAsesoria(): Promise<{ hard: number }> {
       const dosCs = [cand("x", { n: 3 }), cand("y", { n: 30, lat: -33.3 })];
       if (respuestaAporte(dosCs, 100_000).i.length !== 2 || distribucion(dosCs)[30].reduce((s2, k) => s2 + k, 0) !== 2) F("26 · las reglas del perfil cambian el mapa o el contador");
     }
+
+    // ── 27 · EL ESTADO NO SOBREVIVE AL CIERRE DE SESIÓN (antes del merge, 27-nov-2026) ──
+    {
+      const e = { ...ESTADO_INICIAL, paso: "perfil" as const, numeros: { renta: "r3" as const } };
+      const A = huellaCuenta("ana@ejemplo.cl"), B = huellaCuenta("beto@ejemplo.cl");
+      if (A === B || /@|ana/.test(A)) F("27 · la huella de la cuenta no distingue cuentas o deja ver el correo");
+      if (estadoParaCuenta({ ...e, cuenta: A }, null) !== null) F("27 · sin sesión se hereda el estado de la cuenta anterior");
+      if (estadoParaCuenta({ ...e, cuenta: A }, B) !== null) F("27 · otra cuenta hereda el estado de la anterior");
+      if (estadoParaCuenta({ ...e, cuenta: A }, A)?.paso !== "perfil") F("27 · la misma cuenta pierde su estado");
+      if (estadoParaCuenta({ ...e, cuenta: null }, A)?.cuenta !== A) F("27 · el recorrido sin cuenta no queda con la cuenta recién creada");
+      if (estadoParaCuenta({ ...e, cuenta: null }, null)?.paso !== "perfil") F("27 · el recorrido sin cuenta se pierde");
+      // Los dos botones de salir pasan por purgarBorradoresYPestana: borra el estado de la asesoría.
+      const guardado: Record<string, string> = { [CLAVE_ESTADO]: "{}" };
+      const g = globalThis as unknown as { sessionStorage?: Storage; localStorage?: Storage };
+      const antes = { s: g.sessionStorage, l: g.localStorage };
+      const falso = (m: Record<string, string>) => ({ getItem: (k: string) => m[k] ?? null, setItem: (k: string, v: string) => { m[k] = v; }, removeItem: (k: string) => { delete m[k]; }, key: (i: number) => Object.keys(m)[i] ?? null, get length() { return Object.keys(m).length; }, clear: () => { for (const k of Object.keys(m)) delete m[k]; } }) as unknown as Storage;
+      g.sessionStorage = falso(guardado); g.localStorage = falso({});
+      try { purgarBorradoresYPestana(); } finally { g.sessionStorage = antes.s; g.localStorage = antes.l; }
+      if (CLAVE_ESTADO in guardado) F("27 · al cerrar sesión queda el estado de la asesoría (renta, edad, pie, comunas)");
+      const comp = codigo("src/app/explorar/asesoria/asesoria.tsx");
+      if (!/const x = estadoParaCuenta\(leerEstado\(almacen\(\)\), p\.correo \? huellaCuenta\(p\.correo\) : null\);\s*if \(!x\) almacen\(\)\?\.removeItem\(CLAVE_ESTADO\);\s*setE\(x\);/.test(comp)) F("27 · la asesoría no descarta el estado de otra cuenta al cargar");
+      if (!/correo=\{correo\}/.test((codigo("src/app/explorar/explorar-cliente.tsx").split("<Asesoria")[1] ?? "").split("/>")[0])) F("27 · el mapa no le pasa la cuenta a la asesoría");
+      // b · sin cuenta en el perfil (o el cierre): la hoja de crear cuenta, nunca «Armando tu perfil…» sin fin.
+      if (!/if \(p\.sinCuenta && \(e\.paso === "perfil" \|\| e\.paso === "cierre"\)\) \{ cambiar\(\(s\) => \(\{ \.\.\.s, paso: "lupa", registroPedido: true \}\)\); registrar\(\); \}/.test(comp)) F("27 · sin cuenta en el perfil queda «Armando tu perfil…» sin salida");
+      if (!/\{e\.paso === "perfil" && !p\.sinCuenta && \(/.test(comp)) F("27 · el perfil se muestra sin cuenta");
+    }
   } catch (e) {
     F(`excepción: ${(e as Error).stack ?? e}`);
   }
@@ -810,3 +837,9 @@ if (require.main === module) void runAsesoria().then((r) => { process.exitCode =
 // filtra por aporte; el aporte libre guardado como 300 mil; el perfil que filtra el aporte libre; vuelve la estimación; «Nada» dos
 // veces; sin pedir el 0 en la fórmula; el contador en tres líneas. La línea de la palanca de §21 salió verde con un fixture que no la
 // ejercitaba (UF 3.600 no entraba ni con el pie siguiente): se bajó a UF 2.400 con un control de que el fixture sí la ejercita.
+// Antes del merge (27-nov-2026), §25 (la marca de la urgencia vacía viaja en el pedido) y §27 (el estado no sobrevive al cierre de
+// sesión ni se queda en «Armando tu perfil…» sin cuenta): 7 mutaciones, las 7 en ROJO —se hereda sin sesión; el logout no borra la
+// asesoría; la asesoría no descarta al cargar; el recorrido sin cuenta no adopta la cuenta nueva; sin cuenta queda en el perfil; el
+// perfil se muestra sin cuenta; y (§25) el servidor rechaza el pedido sin la marca—. Las 11 de §26 (las reglas de confianza) también
+// en ROJO: los comparables a 5, sin esa regla, sin dato que entra, sin el p90, el p90 en grupos chicos, el p90 sin tipología, p95 en
+// vez de p90, sin el corte de 12 %, sin los 3D chicos, los comparables sin leer de la fila y el universo sin comparables.

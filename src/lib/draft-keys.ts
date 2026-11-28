@@ -1,3 +1,4 @@
+import { CLAVE_ESTADO as CLAVE_ESTADO_ASESORIA } from "@/lib/asesoria/estado";
 // ─────────────────────────────────────────────────────────────────────────────
 // Keys de borrador en localStorage — dueño único de los patrones
 //
@@ -79,6 +80,8 @@ export function purgarBorradoresYPestana(): number {
   const n = purgarBorradores();
   try {
     sessionStorage.removeItem(V4_TAB_KEY);
+    // LA ASESORÍA DEL MAPA (27-nov-2026): su estado guarda renta, edad, pie y comunas; al cerrar sesión se borra también.
+    sessionStorage.removeItem(CLAVE_ESTADO_ASESORIA);
   } catch {
     /* ignore */
   }
